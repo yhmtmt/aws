@@ -1086,6 +1086,7 @@ bool c_aws::main(){
 				// stop all the filters
 				handle_stop();
 				cout << "Processing loop stopped." << endl;
+				m_exit = true;
 			}
 		}
 	}

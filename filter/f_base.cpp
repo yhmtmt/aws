@@ -212,19 +212,21 @@ void * f_base::fthread(void * ptr)
 			filter->m_cycle++;
 		}
 		filter->lock_cmd();
-		
-		filter->tran_chout();
-		filter->calc_time_diff();
 
 		if(filter->m_bochrep){
 			if(!filter->repoch())
 				filter->m_bactive = false;
-		}else if (!filter->proc()){
-			filter->m_bactive = false;
+		} else if(filter->m_bochlog){
+			filter->logoch();
 		}
 
-		if(filter->m_bochlog){
-			filter->logoch();
+		filter->tran_chout();
+		filter->calc_time_diff();
+
+		if (!filter->m_bochrep){
+		  if(!filter->proc()){
+			filter->m_bactive = false;
+		  }
 		}
 
 		if(filter->m_clk.is_run()){
@@ -576,6 +578,7 @@ bool f_base::repoch()
 			if(m_ochlogin.is_open()){
 				if(m_cur_time_rec == -1){
 					m_ochlogin.read((char*) &m_cur_time_rec, sizeof(long long));
+					//cout << "Recorded time " << m_cur_time_rec << " Current time " << m_cur_time << endl;
 				}
 
 				if(m_cur_time_rec < 0){
@@ -584,7 +587,7 @@ bool f_base::repoch()
 				}
 
 				ltime = m_cur_time_rec;
-
+				
 				if(ltime <= m_cur_time){
 					for(int i = 0; i < m_chout.size(); i++)
 						m_chout[i]->read(this, m_ochlogin, m_cur_time);
@@ -613,9 +616,9 @@ bool f_base::repoch()
 					if(ltime > m_tcurochlog)
 						break;
 				}
-
 				fochjournal.getline(buf, 1024);
 				m_ochlogin.open(buf, ios_base::binary);
+				//cout << "Opening ochlog " << buf <<endl;
 				m_tcurochlog = ltime;
 			}
 		}while(m_cur_time > ltime);

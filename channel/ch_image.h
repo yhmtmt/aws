@@ -202,58 +202,21 @@ public:
 		if(!m_bnew)
 			return;
 		lock();
+		//		cout << "Entering tran" << endl;
 		int tmp = m_front;
 		m_front = m_back;
 		m_back = tmp;
 		m_bnew = false;
+		//		cout << "Exiting tran" << endl;
 		unlock();
 	}
 
 	// for channel logging
-	virtual bool write(f_base * pf, ofstream & fout, long long t)
-	{
-		lock();
-		fout.write((const char*) &m_bnew, sizeof(bool));
-		if(!m_bnew){
-			unlock();
-			return true;
-		}
-
-		vector<uchar> buf;
-		imencode(".png", m_img[m_back], buf);
-		Mat bufm(buf);
-		uchar * ptr = bufm.ptr<uchar>();
-		unsigned long long ul = (unsigned long long) (bufm.cols * bufm.rows);
-		fout.write((const char*) &m_ifrm[m_back], sizeof(long long));
-		fout.write((const char*) &ul, sizeof(unsigned long long));
-		fout.write((const char*) ptr, (streamsize) ul);
-		unlock();
-		return true;
-	}
+	virtual bool write(f_base * pf, ofstream & fout, long long t);
 
 	// for channel replay
-	virtual bool read(f_base * pf, ifstream & fin, long long t)
-	{
-		lock();
-		fin.read((char*) &m_bnew, sizeof(bool));
-		if(!m_bnew){
-			unlock();
-			return true;
-		}
-
-		unsigned long long ul;
-		m_time[m_back] = t;
-		fin.read((char*) &m_ifrm[m_back], sizeof(long long));
-		fin.read((char*) &ul, sizeof(unsigned long long));
-		Mat bufm(1, (int) ul, CV_8UC1);
-		fin.read((char*) bufm.data, (streamsize) ul);
-
-		imdecode(bufm, CV_LOAD_IMAGE_ANYDEPTH, &m_img[m_back]);
-
-		unlock();
-		return true;
-	}
-
+	virtual bool read(f_base * pf, ifstream & fin, long long t);
+	
 };
 
 #endif
