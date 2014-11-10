@@ -1,28 +1,29 @@
-# Yohei Matsumoto. 
-# 8 Nov. 2014
+# aws - Automatic Watch System
+## Yohei Matsumoto. 
+## 8 Nov. 2014
 
 "aws" is  a concurrent processing midle designed for Autonomouse Watch System.
 
 aws is actually providing only the filter based concurrent processing model and the execution frame work. Many filters with various functions are defined in the system, the filters can be instantiated, connected and executed flexibly by shell script based command system. You can add new filters by inheriting filter base class, implementing initialization/destruction/processing methods and configuring input/output channels. 
 
-############ Building aws#################################################
+# Building aws
 I prepared Visual Studio 2010 project for Windows and a Makefile for Linux.
 
 * For Windows
 You need to install Windows SDK and DirectX SDK first. If the Windows SDK you installed locate include and library directory at different path, it causes compile error, you need to reset the configuration of paths at VC Project's propertiy dialog. Additionally,you need to install cygwin to execute its commands and the scripts. 
 
 *For x86 Linux
---------------------------------------------------------------------------
+    
 make
- 
+    
 
 *For Petalinux on Zynq
 After configuring Xilinx tools paths,
- 
+    
 make "ZYNQ=y"
- 
+    
 
-############ Building commands ###########################################
+# Building commands 
 Commanding aws is achieved by executing commands. You need to build them at directory rcmd.
  
 cd rcmd
@@ -33,29 +34,29 @@ Of course for Petalinux
  
 make "ZYNQ=y"
  
-
 And the executables built in the directory should be moved to your executable path.
 
-############ Using aws ##################################################
+# Using aws 
 1. Build aws and commands.(move the executables to the executable paths)
 2. Prepare a home directory, and generate a configuration file named ".aws"
 3. Execute commands or the script to build and run the filter graph.
 
-############ ".aws" file specification ##################################
+# ".aws" file specification
 ".aws" file is the configuration file for aws system. Actually, there is a single line description that specifies the destination IP address and the port of the aws commands send their commands. The description is,
 
-------------------------------------------------------------------------
+    
 rcmd <IP address> <port>
-------------------------------------------------------------------------
+    
 
 By default aws opens port at 20000 on the executing computer.You can command different aws processes by moving to the directory with different ".aws" file. 
 
 You can find the sample of ".aws" at the directory "dbdir". 
 
-############ Executing aws #############################################
+# Executing aws
 "aws" can be executed with some options.
 
-Options
+##Options
+    
 "-port <port number> "
  specifies the number of command waiting port. (default 20000)
 
@@ -64,89 +65,105 @@ Options
 
 "-tzone <minute>"
  specifies time zone in minute.  For example, UTC+9 is 540. aws uses UTC time inside the kernel, but the filters often do not. Therefore, aws provides time zone setting to provide local time for each filter.  (default 540)
-
-############ Building filter graph  #####################################
+     
+# Building filter graph
 You need to build filter graph for your specific application. Filter graphs are composed by  filters and channels. All filters have input and output channels to transfer data from or to other filters. 
 
 There are 2 commands to build filter graph.
 
 (1) "filter" command
-Desc: This command instantiates filter class specified. The channel instances listed after -i and -o should be instanciated using channel command preliminary to this.
+Desc: This command instantiates filter class specified. The channel instances listed after -i and -o should be instanciated using channel command preliminary to this
+    
 Usage: 
 filter <class name> <instance name> -i <input channel instance#1> ... <input channel instance#n> -o <output channel instance#1> ... <output channel instance#m>
-
+    
 
 (2) "channel" command
 Desc: This command instantiates channel class specified. Each filter has its own communication channel. The channel instances are to be instantiated before instantiating filters use them.
+    
 Usage:
 channel <class name> <instance name> 
+     
 
-############ Configuring filter parameters###############################
+# Configuring filter parameters
 Filters have their own parameters.You need to modify these parameters to control the behaviours of the filters, or you need to get the parameter values to know the processing results of the filter exectuion.  You can set or get the values of the parameters by using commands "fset" and "fget".
 
 (1) "fset" command
 Desc: Setting the filter parameter. You can specify arbitrary number of combinations of the parameter name and the value. (However actually the number is limited by the character length: the length should be less than 1024.)
+    
 Usage:
 fset <filter instance name> <parameter name#1> <value#1> <parameter name#2> <value#2> ..... <parameter name#n> <value#n>
-
+    
 (2) "fget" command
 Desc: Getting the filter parameters. You can specifiy multiple parameters, and the parameters are returned as space separated strings.
+    
 Usage:
 fget <fitler instance name> <parameter name#1> <parameter name#2> ..... <parameter name#n>
-
-############ Running filter graph #######################################
+    
+# Running filter graph
 To run the filter graph, there are some commands to note.
 
 (1) cyc
 Desc: specifying the cycle time of the filter execution. (default 1/60 sec) This paramter should be specified befor running filter graphs.
+    
 Usage
 cyc <time in second>
-
+    
 (2) syn
 Desc: This parameter is currently not working.
-
+    
+Usage: syn
+    
 (3) trat
 Desc: Time rate specification. Only for offline mode, the time passes specified rate to the actual speed. (default 1) If you want to execute graph faster, please specify the integer value larger than 1.
+    
 Usage:
 trat <time rate>
+    
 
 (4) online
 Desc: There two modes running filter graphs; One is online, another is offline. In the offline mode, pause state and step execution is supported. Step execution is useful during designing algorithms which cannot be ran at realtime. "pause" and "step" are described later. The mode should be specified before running filter graph.
+    
 Usage:
 online <yes | no>
-
+    
 (5) go 
 Desc: Running filter graph. For online mode, the command simply execute filter graph. For ofline mode, The filter graph is executed from the specified start time and to the end time. When the time is reached to the end time specified, the filter graph transits the state to "pause". Time should be specified aws's common format.(See Etc)
+    
 Usage:
 go [<start time> [<end time>]]
-
+    
 (6) pause
 Desc: If the online mode is enabled, you can pause the execution by this command. The state is again back to running state by executing "go" command without specifying start and end time. "step" command can be used to run graphs few cycles and pause again.
+    
 Usage:
 pause
-
+    
 (7) step
 Desc: For pause state, you can step to the specified time. If no argument is specified, step run one cycle from the current time. If a argument <absolute time> is specified, the filter graph jumps to the specified time. Finally if <number of cycles> following after "c", the filter graph jumps to specified cycles later.
+    
 Usage:
 step
 step <absolute time> 
 step c <number of cycles>
-
+    
 (8) stop
 Desc: Stopping filter graphs. 
+    
 Usage:
 stop
-
+    
 (9) quit
 Desc: Shutdown aws process. 
+    
 Usage:
 quit
-
-################## Fitlers #################################################
+    
+# Fitlers
 Here I describe the filter classes currently included in the system. 
 
 (1) sample
- 
+
 Desc: Sample of the filter design. You will understand how the new filter can be implemented. This class is defined in f_base.h as f_sample.
  
 -IN: Null
@@ -160,7 +177,6 @@ u64par : 64bit unsigned integer
  
 -PRC: Only printing values of parameters to stdout.
 
- 
 (2) nmea
  
 Desc: IO source filter of NMEA0183. The input source can be serial ports, UDP sockets and files. File input is only supported for offline mode, and the file format should be "<time> <NMEA sentence>". <time> should be specified aws's common format.(See Etc.) 
