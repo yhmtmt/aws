@@ -1,14 +1,11 @@
 # aws - Automatic Watch System
 ## Yohei Matsumoto. 
-## 8 Nov. 2014
 
 "aws" is  a concurrent processing midle designed for Autonomouse Watch System.
 
 aws is actually providing only the filter based concurrent processing model and the execution frame work. Many filters with various functions are defined in the system, the filters can be instantiated, connected and executed flexibly by shell script based command system. You can add new filters by inheriting filter base class, implementing initialization/destruction/processing methods and configuring input/output channels. 
 
 ## Building aws
-I prepared Visual Studio 2010 project for Windows and a Makefile for Linux.
-
 * For Windows
 You need to install Windows SDK and DirectX SDK first. If the Windows SDK you installed locate include and library directory at different path, it causes compile error, you need to reset the configuration of paths at VC Project's propertiy dialog. Additionally,you need to install cygwin to execute its commands and the scripts. 
 
@@ -55,8 +52,6 @@ You can find the sample of ".aws" at the directory "dbdir".
 ## Executing aws
 "aws" can be executed with some options.
 
-#### Options
-    
     "-port <port number> "
  specifies the number of command waiting port. (default 20000)
 
@@ -74,30 +69,29 @@ There are 2 commands to build filter graph.
 (1) "filter" command
 Desc: This command instantiates filter class specified. The channel instances listed after -i and -o should be instanciated using channel command preliminary to this
     
-Usage: 
+Usage:  
     filter <class name> <instance name> -i <input channel instance#1> ... <input channel instance#n> -o <output channel instance#1> ... <output channel instance#m>
     
 
 (2) "channel" command
 Desc: This command instantiates channel class specified. Each filter has its own communication channel. The channel instances are to be instantiated before instantiating filters use them.
     
-Usage:
+Usage:  
     channel <class name> <instance name> 
      
-
 ## Configuring filter parameters
 Filters have their own parameters.You need to modify these parameters to control the behaviours of the filters, or you need to get the parameter values to know the processing results of the filter exectuion.  You can set or get the values of the parameters by using commands "fset" and "fget".
 
 (1) "fset" command
 Desc: Setting the filter parameter. You can specify arbitrary number of combinations of the parameter name and the value. (However actually the number is limited by the character length: the length should be less than 1024.)
     
-Usage:
+Usage:  
     fset <filter instance name> <parameter name#1> <value#1> <parameter name#2> <value#2> ..... <parameter name#n> <value#n>
     
 (2) "fget" command
 Desc: Getting the filter parameters. You can specifiy multiple parameters, and the parameters are returned as space separated strings.
     
-Usage:
+Usage:  
     fget <fitler instance name> <parameter name#1> <parameter name#2> ..... <parameter name#n>
     
 ## Running filter graph
@@ -106,58 +100,58 @@ To run the filter graph, there are some commands to note.
 (1) cyc
 Desc: specifying the cycle time of the filter execution. (default 1/60 sec) This paramter should be specified befor running filter graphs.
     
-Usage
+Usage:  
     cyc <time in second>
     
 (2) syn
 Desc: This parameter is currently not working.
     
-Usage: 
+Usage:  
     syn
     
 (3) trat
 Desc: Time rate specification. Only for offline mode, the time passes specified rate to the actual speed. (default 1) If you want to execute graph faster, please specify the integer value larger than 1.
     
-Usage:
+Usage:  
     trat <time rate>
     
 
 (4) online
 Desc: There two modes running filter graphs; One is online, another is offline. In the offline mode, pause state and step execution is supported. Step execution is useful during designing algorithms which cannot be ran at realtime. "pause" and "step" are described later. The mode should be specified before running filter graph.
     
-Usage:
+Usage:  
     online <yes | no>
     
 (5) go 
 Desc: Running filter graph. For online mode, the command simply execute filter graph. For ofline mode, The filter graph is executed from the specified start time and to the end time. When the time is reached to the end time specified, the filter graph transits the state to "pause". Time should be specified aws's common format.(See Etc)
     
-Usage:
+Usage:  
     go [<start time> [<end time>]]
     
 (6) pause
 Desc: If the online mode is enabled, you can pause the execution by this command. The state is again back to running state by executing "go" command without specifying start and end time. "step" command can be used to run graphs few cycles and pause again.
     
-Usage:
+Usage:  
     pause
     
 (7) step
 Desc: For pause state, you can step to the specified time. If no argument is specified, step run one cycle from the current time. If a argument <absolute time> is specified, the filter graph jumps to the specified time. Finally if <number of cycles> following after "c", the filter graph jumps to specified cycles later.
     
-Usage:
-step
-step <absolute time> 
-step c <number of cycles>
+Usage:  
+    step
+    step <absolute time> 
+    step c <number of cycles>
     
 (8) stop
 Desc: Stopping filter graphs. 
     
-Usage:
+Usage:  
     stop
     
 (9) quit
 Desc: Shutdown aws process. 
     
-Usage:
+Usage:  
 quit
     
 ## Fitlers
@@ -814,7 +808,7 @@ You can add your own setter/getter function. Be careful that the channel can be 
 * aws's time specification.
 Time specification is in the form of 
     
-    "[<week day> <month> <day> <hour>:<minute>:<second>:<milisecond> <year>]". 
+    [<week day> <month> <day> <hour>:<minute>:<second>:<milisecond> <year>] 
     
 `<week day>` is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, `<day>`, `<hour>`, `<minute>` and `<second>` are two digits (means zero should be padded for the single digit day.),  `<milisecond>` is three digits, and <year> is four digits. Here is the example,
 
@@ -823,3 +817,5 @@ Time specification is in the form of
      
 
 This format is actually the same as TeraTerm time stamp. So you can use TeraTerm for loggin Serial communications such as NMEA0183. 
+
+## License
