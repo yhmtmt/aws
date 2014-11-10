@@ -14,25 +14,25 @@ You need to install Windows SDK and DirectX SDK first. If the Windows SDK you in
 *For x86 Linux
 --------------------------------------------------------------------------
 make
---------------------------------------------------------------------------
+->
 
 *For Petalinux on Zynq
 After configuring Xilinx tools paths,
---------------------------------------------------------------------------
+->
 make "ZYNQ=y"
---------------------------------------------------------------------------
+->
 
 ############ Building commands ###########################################
 Commanding aws is achieved by executing commands. You need to build them at directory rcmd.
---------------------------------------------------------------------------
+->
 cd rcmd
 make
---------------------------------------------------------------------------
+->
 
 Of course for Petalinux
---------------------------------------------------------------------------
+->
 make "ZYNQ=y"
---------------------------------------------------------------------------
+->
 
 And the executables built in the directory should be moved to your executable path.
 
@@ -145,7 +145,7 @@ quit
 ################## Fitlers #################################################
 Here I describe the filter classes currently included in the system. 
 
----------------------------------------------------------------------------
+->-
 (1) sample
 -------------------------------------------------
 Desc: Sample of the filter design. You will understand how the new filter can be implemented. This class is defined in f_base.h as f_sample.
@@ -161,7 +161,7 @@ u64par : 64bit unsigned integer
 -------------------------------------------------
 -PRC: Only printing values of parameters to stdout.
 
----------------------------------------------------------------------------
+->-
 (2) nmea
 -------------------------------------------------
 Desc: IO source filter of NMEA0183. The input source can be serial ports, UDP sockets and files. File input is only supported for offline mode, and the file format should be "<time> <NMEA sentence>". <time> should be specified aws's common format.(See Etc.) 
@@ -185,7 +185,7 @@ filter: Sentence filter. 5 characters are to be specified. * can be used as wild
 Write nmea in the input channel to the IO source. 
 Read nmea in the IO source and write it to output channel.
 
----------------------------------------------------------------------------
+->-
 (4) hd5400
 -------------------------------------------------
 -Desc: 
@@ -198,7 +198,7 @@ Read nmea in the IO source and write it to output channel.
 -------------------------------------------------
 -PRC:
 
----------------------------------------------------------------------------
+->-
 (5) imgshk
 -------------------------------------------------
 -Desc: 
@@ -210,7 +210,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (6) debayer
 -------------------------------------------------
 -Desc: 
@@ -222,7 +222,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (7) gry
 -------------------------------------------------
 -Desc: 
@@ -234,7 +234,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (8) edge
 -------------------------------------------------
 -Desc: 
@@ -246,7 +246,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (9) reg
 -------------------------------------------------
 -Desc: 
@@ -258,7 +258,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (10) hough
 -------------------------------------------------
 -Desc: 
@@ -270,7 +270,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (11) bgksub
 -------------------------------------------------
 -Desc: 
@@ -282,7 +282,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (11) stab
 -------------------------------------------------
 -Desc: 
@@ -294,7 +294,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (12) window
 -------------------------------------------------
 -Desc: 
@@ -306,7 +306,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (13) mwin
 -------------------------------------------------
 -Desc: 
@@ -318,7 +318,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (14) shioji_ctrl_rcv
 -------------------------------------------------
 -Desc: 
@@ -330,7 +330,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (15) shioji_ctrl
 -------------------------------------------------
 -Desc: 
@@ -342,7 +342,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (16) shioji
 -------------------------------------------------
 -Desc: 
@@ -354,7 +354,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (17) shipdet
 -------------------------------------------------
 -Desc: 
@@ -366,7 +366,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (18) trck
 -------------------------------------------------
 -Desc: 
@@ -378,7 +378,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (19) gauss
 -------------------------------------------------
 -Desc: 
@@ -390,7 +390,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (20) camcalib
 -------------------------------------------------
 -Desc: 
@@ -402,7 +402,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (21) clip
 -------------------------------------------------
 -Desc: 
@@ -414,7 +414,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (22) avt_cam
 -------------------------------------------------
 -Desc: 
@@ -426,7 +426,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (23) imgs
 -------------------------------------------------
 -Desc: 
@@ -438,7 +438,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (24) dwin
 -------------------------------------------------
 -Desc: 
@@ -450,7 +450,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (25) syswin
 -------------------------------------------------
 -Desc: 
@@ -462,7 +462,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (26) spwin
 -------------------------------------------------
 -Desc: 
@@ -474,7 +474,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (27) ptzwin
 -------------------------------------------------
 -Desc: 
@@ -486,7 +486,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (28) inspector
 -------------------------------------------------
 -Desc: 
@@ -498,7 +498,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (29) vfile
 -------------------------------------------------
 -Desc: 
@@ -510,7 +510,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (30) vdev
 -------------------------------------------------
 -Desc: 
@@ -522,7 +522,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (31) uvcam
 -------------------------------------------------
 -Desc: 
@@ -534,7 +534,7 @@ Read nmea in the IO source and write it to output channel.
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (32) trnimg
 -------------------------------------------------
 -Desc: Transmits images over TCP/IP network. You can choose the compression algorithm, color format, color depth, image scale, and compression quality.
@@ -557,7 +557,7 @@ scale: Scale for resizing.
 First, Waiting for connection to rcvimg instance.
 After the session established, images in the input channel is sent to the rcvimg instance with specified image format and scale. 
 
----------------------------------------------------------------------------
+->-
 (32) rcvimg
 -------------------------------------------------
 -Desc: Recieves images transmitted by trnimg instances. Basically image format is recognized automatically by source packet's format fields.
@@ -580,7 +580,7 @@ qpng: PNG quality [0-10]"
 First Connecting to trnimg instance. 
 After the connection established, images are received and transfered to output channel.
 
----------------------------------------------------------------------------
+->-
 (32) trn
 -------------------------------------------------
 -Desc: 
@@ -592,7 +592,7 @@ After the connection established, images are received and transfered to output c
 -PAR:
 -------------------------------------------------
 -PRC:
----------------------------------------------------------------------------
+->-
 (32) rcv
 -------------------------------------------------
 -Desc: 
@@ -607,79 +607,79 @@ After the connection established, images are received and transfered to output c
 
 
 ################## Channels ################################################
----------------------------------------------------------------------------
+->-
 (1) imgc
 -------------------------------------------------
 -Desc Transfers Mat object. Destination filter gets the clone of the image object.
 -------------------------------------------------
 -Pars Mat
----------------------------------------------------------------------------
+->-
 (2) imgr
 -------------------------------------------------
 -Desc Transfers Mat object. Destination filter gets the reference of the image object. You need to be careful if the channel is connected to multiple destinations.
 -------------------------------------------------
 -Pars Mat
----------------------------------------------------------------------------
+->-
 (1) pvt
 -------------------------------------------------
 -Desc
 -------------------------------------------------
 -Pars
----------------------------------------------------------------------------
+->-
 (1) nmea 
 -------------------------------------------------
 -Desc Transfers nmea sentences. Source filter pushes nmea sentences to the channel. Destination filters pops them.
 -------------------------------------------------
 -Pars vector<char[83]>
----------------------------------------------------------------------------
+->-
 (1) ais
 -------------------------------------------------
 -Desc
 -------------------------------------------------
 -Pars
----------------------------------------------------------------------------
+->-
 (1) bmsg
 -------------------------------------------------
 -Desc
 -------------------------------------------------
 -Pars
----------------------------------------------------------------------------
+->-
 (1) ship
 -------------------------------------------------
 -Desc
 -------------------------------------------------
 -Pars
----------------------------------------------------------------------------
+->-
 (1) ship_ctrl
 -------------------------------------------------
 -Desc
 -------------------------------------------------
 -Pars
----------------------------------------------------------------------------
+->-
 (1) vrect
 -------------------------------------------------
 -Desc
 -------------------------------------------------
 -Pars
----------------------------------------------------------------------------
+->-
 (1) trck
 -------------------------------------------------
 -Desc
 -------------------------------------------------
 -Pars
----------------------------------------------------------------------------
+->-
 (1) ptz
 -------------------------------------------------
 -Desc
 -------------------------------------------------
 -Pars
----------------------------------------------------------------------------
+->-
 (1) ptzc
 -------------------------------------------------
 -Desc
 -------------------------------------------------
 -Pars
----------------------------------------------------------------------------
+->-
 (1) campar
 -------------------------------------------------
 -Desc
@@ -694,11 +694,11 @@ Here I explain how you can design and add your new filter to the system. There a
 1. Inherit f_base class and implement followings (here the filter class is f_filter)
 * f_filter(const char *)
 The constructor has single "const char *" argument, and the f_base(const char*) should be called in the initialization list as follow,
---------------------------------------------------------------------------
+->
 f_filter::f_filter(const char * name): f_base(name)
 {
 }
---------------------------------------------------------------------------
+->
 
 * virtual bool init_run()
 Override if you need to initialize the filter before running it.If you return false, the filter graph cannot go to running state.
@@ -712,11 +712,11 @@ The main function of the filter. The function is iteratively called by the frame
 2. Insert your filter to the factory function.
 To instantiate your filter with "filter" command, you need to insert the instantiation code to the factory function. Factory function "f_base * f_base::create(const char * tname, const char * fname)" is in "filter/f_base.cpp". You should add following code,
 
----------------------------------------------------------------------------
+->-
 if(strcmp("filter", tname) == 0){
   return new f_filter(tname);
 }
----------------------------------------------------------------------------
+->-
 
 Where "filter" is the name of the filter class. Of course, "f_filter" should be defined in this scope, you need to include your header file at "filter/f_base.h". Also, your filter source code should be placed in the directory "filter".
 
@@ -724,22 +724,22 @@ Where "filter" is the name of the filter class. Of course, "f_filter" should be 
 3. Declare parameters and register them if you need to get or set their values from outside the process.
 You can expose most of the types of parameters to outside of the system easily by calling "register_fpar()" series inside the constructor "f_filter(const char*)". For most of the  parameter types, "register_fpar()" is called as follow,
 
----------------------------------------------------------------------------
+->-
 register_fpar("parameter_name", &parameter, "Here is the parameter explanation.");
----------------------------------------------------------------------------
+->-
 
 Then you can access the parameter using fset/fget command with the parameter name "parameter_name". 
 
 For string parameters, you need to allocate sufficient memory area and then,
 
----------------------------------------------------------------------------
+->-
 char_str = new char[1024]; // here char_str is "char *" declared in the class.
 register_fpar("char_str", char_str, 1023 /* buffer length without null character*/, "This is the string parameter sample.");
----------------------------------------------------------------------------
+->-
 
 You can specify the enum parameter corresponding to string set. First, prepare the enum and string set.
 
----------------------------------------------------------------------------
+->-
 enum e_val {
      ALPHA, BETA, GAMMA, UNKNOWN 
 };
@@ -747,13 +747,13 @@ enum e_val {
 char * estr[e_val::UNKNOWN] = {
      "alpha", "beta", "gamma"
 };
----------------------------------------------------------------------------
+->-
 
 Then at the "f_filter(const char *)", 
 
----------------------------------------------------------------------------
+->-
 register_fpar("eval", (int*)(eval) /* e_val parameter */, estr, "Choose from {alpha, beta, gamma}");
----------------------------------------------------------------------------
+->-
 
 where eval is the e_val type parameter declared in the class.
 
@@ -778,19 +778,19 @@ You may need to design new channels to connect your own filters.
 * ch_channel(const char * name)
 The constructor has a "const char * " argument, and the initialization list has ch_base initialization.
 
-----------------------------------------------------------------------------
+->--
 ch_channel(const char * name): ch_base(name)
 {
 }
-----------------------------------------------------------------------------
+->--
 
 2. Insert instantiation code to the factory function
 Include your definition to "ch_base.h" and insert following code to "ch_base::create(const char * type_name, const char * chan_name)"
----------------------------------------------------------------------------
+->-
 if(strcmp("channel", type_name) == 0){
   return new ch_channel(chan_name);
 }
----------------------------------------------------------------------------
+->-
 
 3. Define and implement your setter/getter with mutual exclusion.
 You can add your own setter/getter function. Be careful that the channel can be accessed from multiple filters simultaneously. The setter/getter should correctly use the mutual exclusion methods "lock()" and "unlock()" prepared in ch_base().
@@ -807,8 +807,8 @@ Time specification is in the form of
 
 <week day> is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, <day>, <hour>, <minute> and <second> are two digits (means zero should be padded for the single digit day.),  <milisecond> is three digits, and <year> is four digits. Here is the example,
 
----------------------------------------------------------------------------
+->-
 [Sun Aug 17 21:07:38:072 2014]
----------------------------------------------------------------------------
+->-
 
 This format is actually the same as TeraTerm time stamp. So you can use TeraTerm for loggin Serial communications such as NMEA0183. 
