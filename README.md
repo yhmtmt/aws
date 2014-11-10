@@ -67,10 +67,9 @@ You need to build filter graph for your specific application. Filter graphs are 
 There are 2 commands to build filter graph.
 
 (1) "filter" command
-Desc: This command instantiates filter class specified. The channel instances listed after -i and -o should be instanciated using channel command preliminary to this
+Desc: This command instantiates filter class specified. The channel instances listed after -i and -o should be instanciated using channel command preliminary.
     
-Usage:  
-    filter <class name> <instance name> -i <input channel instance#1> ... <input channel instance#n> -o <output channel instance#1> ... <output channel instance#m>
+    filter <class name> <instance name> -i <input channel instance#1> ... <input channel instance#n> -o <output channel instance#1> ... <output channel instance#m>`
     
 
 (2) "channel" command
@@ -78,7 +77,7 @@ Desc: This command instantiates channel class specified. Each filter has its own
     
 Usage:  
     channel <class name> <instance name> 
-     
+
 ## Configuring filter parameters
 Filters have their own parameters.You need to modify these parameters to control the behaviours of the filters, or you need to get the parameter values to know the processing results of the filter exectuion.  You can set or get the values of the parameters by using commands "fset" and "fget".
 
@@ -805,14 +804,9 @@ You can add your own setter/getter function. Be careful that the channel can be 
 
 ## Etc
 
-* aws's time specification.
-Time specification is in the form of 
-    
-    [<week day> <month> <day> <hour>:<minute>:<second>:<milisecond> <year>] 
-    
-`<week day>` is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, `<day>`, `<hour>`, `<minute>` and `<second>` are two digits (means zero should be padded for the single digit day.),  `<milisecond>` is three digits, and <year> is four digits. Here is the example,
+* In the framework, time specification is in the form of `[<week day> <month> <day> <hour>:<minute>:<second>:<milisecond> <year>]`. `<week day>` is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, `<day>`, `<hour>`, `<minute>` and `<second>` are two digits (means zero should be padded for the single digit day.),  `<milisecond>` is three digits, and <year> is four digits. Here is the example,
 
-     
+    
     [Sun Aug 17 21:07:38:072 2014]
      
 
