@@ -1,0 +1,140 @@
+#include "stdafx.h"
+// Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
+// Science and Technology, All right reserved. 
+
+// f_base is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// f_base is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with f_base.  If not, see <http://www.gnu.org/licenses/>. 
+
+#include <cstdio>
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <cmath>
+using namespace std;
+
+#define XMD_H
+#ifdef SANYO_HD5400
+#include <jpeglib.h>
+#include <curl/curl.h>
+#endif
+
+
+#include <opencv2/opencv.hpp>
+using namespace cv;
+
+#include "../util/aws_sock.h"
+#include "../util/thread_util.h"
+#include "../util/c_clock.h"
+
+#include "../util/util.h"
+#include "../channel.h"
+#include "f_base.h"
+#include "f_misc.h"
+
+
+bool f_debayer::proc(){
+	long long timg;
+	Mat img = m_pin->get_img(timg);
+	Mat bgr;
+	switch(m_type){
+	case BG8:
+		cnvBayerBG8ToBGR8(img, bgr);
+		break;
+	case GB8:
+		cnvBayerGB8ToBGR8(img, bgr);
+		break;
+	case RG8:
+		cnvBayerRG8ToBGR8(img, bgr);
+		break;
+	case GR8:
+		cnvBayerGR8ToBGR8(img, bgr);
+		break;
+	case BG16:
+		cnvBayerBG16ToBGR16(img, bgr);
+		break;
+	case GB16:
+		cnvBayerGB16ToBGR16(img, bgr);
+		break;
+	case RG16:
+		cnvBayerRG16ToBGR16(img, bgr);
+		break;
+	case GR16:
+		cnvBayerGR16ToBGR16(img, bgr);
+		break;
+	}
+
+	m_pout->set_img(bgr, timg);
+	return true;
+}
+
+bool f_gauss::cmd_proc(s_cmd & cmd)
+{
+	int num_args = cmd.num_args;
+	char ** args = cmd.args;
+
+	if(num_args < 2)
+		return false;
+
+	int itok = 2;
+
+	if(strcmp(args[itok], "sigma") == 0){
+		if(num_args != 4)
+			return false;
+		m_sigma = atof(args[itok+1]);
+		return true;
+	}
+
+	return f_base::cmd_proc(cmd);
+}
+
+
+bool f_clip::cmd_proc(s_cmd & cmd)
+{
+	int num_args = cmd.num_args;
+	char ** args = cmd.args;
+
+	if(num_args < 2)
+		return false;
+
+	int itok = 2;
+
+	if(strcmp(args[itok], "rc") == 0){
+		if(num_args != 7)
+			return false;
+		m_rc_clip = Rect(atoi(args[itok+1]),
+			atoi(args[itok+2]), atoi(args[itok+3]), atoi(args[itok+4]));
+
+		return true;
+	}
+
+	return f_base::cmd_proc(cmd);
+}
+
+bool f_bkgsub::cmd_proc(s_cmd & cmd)
+{
+	int num_args = cmd.num_args;
+	char ** args = cmd.args;
+
+	if(num_args < 2)
+		return false;
+
+	int itok = 2;
+
+	if(strcmp(args[itok], "rc") == 0){
+		return true;
+	}
+
+	return f_base::cmd_proc(cmd);
+	
+}

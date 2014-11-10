@@ -1,0 +1,8 @@
+#include "channel/ch_base.h"
+#include "channel/ch_image.h"
+#include "channel/ch_campar.h"
+#include "channel/ch_scalar.h"
+#include "channel/ch_vector.h"
+#include "channel/ch_nmea.h"
+#include "channel/ch_ais.h"
+#include "channel/ch_navdat.h"
