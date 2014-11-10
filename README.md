@@ -621,7 +621,7 @@ After the connection established, images are received and transfered to output c
 -PRC:
 
 
-################## Channels ################################################
+# Channels
  
 (1) imgc
  
@@ -703,17 +703,17 @@ After the connection established, images are received and transfered to output c
 
 
 
-################## Designing New Filter ####################################
+# Designing New Filter
 Here I explain how you can design and add your new filter to the system. There are some points. 1. and 2. are the duty, and the others are the tips.
 
 1. Inherit f_base class and implement followings (here the filter class is f_filter)
 * f_filter(const char *)
 The constructor has single "const char *" argument, and the f_base(const char*) should be called in the initialization list as follow,
- 
+   
 f_filter::f_filter(const char * name): f_base(name)
 {
 }
- 
+     
 
 * virtual bool init_run()
 Override if you need to initialize the filter before running it.If you return false, the filter graph cannot go to running state.
@@ -731,7 +731,7 @@ To instantiate your filter with "filter" command, you need to insert the instant
 if(strcmp("filter", tname) == 0){
   return new f_filter(tname);
 }
- 
+     
 
 Where "filter" is the name of the filter class. Of course, "f_filter" should be defined in this scope, you need to include your header file at "filter/f_base.h". Also, your filter source code should be placed in the directory "filter".
 
@@ -786,44 +786,44 @@ Basically, your filter should work independently if the other filters caused the
 
 
 
-################## Designing New Channel ###################################
+# Designing New Channel
 You may need to design new channels to connect your own filters. 
 
 1. Inherit ch_base and implement followings. (here your channel class is ch_channel)
 * ch_channel(const char * name)
 The constructor has a "const char * " argument, and the initialization list has ch_base initialization.
 
- 
+     
 ch_channel(const char * name): ch_base(name)
 {
 }
- 
+     
 
 2. Insert instantiation code to the factory function
 Include your definition to "ch_base.h" and insert following code to "ch_base::create(const char * type_name, const char * chan_name)"
- 
+     
 if(strcmp("channel", type_name) == 0){
   return new ch_channel(chan_name);
 }
- 
+     
 
 3. Define and implement your setter/getter with mutual exclusion.
 You can add your own setter/getter function. Be careful that the channel can be accessed from multiple filters simultaneously. The setter/getter should correctly use the mutual exclusion methods "lock()" and "unlock()" prepared in ch_base().
 
 
-################## Utilities ###############################################
+# Utilities
 
-################## Etc #####################################################
+# Etc
 
 * aws's time specification.
 Time specification is in the form of 
-
+    
 "[<week day> <month> <day> <hour>:<minute>:<second>:<milisecond> <year>]". 
-
+    
 <week day> is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, <day>, <hour>, <minute> and <second> are two digits (means zero should be padded for the single digit day.),  <milisecond> is three digits, and <year> is four digits. Here is the example,
 
- 
+     
 [Sun Aug 17 21:07:38:072 2014]
- 
+     
 
 This format is actually the same as TeraTerm time stamp. So you can use TeraTerm for loggin Serial communications such as NMEA0183. 
