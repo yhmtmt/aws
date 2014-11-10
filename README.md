@@ -67,16 +67,14 @@ You need to build filter graph for your specific application. Filter graphs are 
 There are 2 commands to build filter graph.
 
 (1) "filter" command
+    filter <class name> <instance name> -i <input channel instance#1> ... <input channel instance#n> -o <output channel instance#1> ... <output channel instance#m>`
 Desc: This command instantiates filter class specified. The channel instances listed after -i and -o should be instanciated using channel command preliminary.
     
-    filter <class name> <instance name> -i <input channel instance#1> ... <input channel instance#n> -o <output channel instance#1> ... <output channel instance#m>`
     
 
 (2) "channel" command
-Desc: This command instantiates channel class specified. Each filter has its own communication channel. The channel instances are to be instantiated before instantiating filters use them.
-    
-Usage:  
     channel <class name> <instance name> 
+Desc: This command instantiates channel class specified. Each filter has its own communication channel. The channel instances are to be instantiated before instantiating filters use them.
 
 ## Configuring filter parameters
 Filters have their own parameters.You need to modify these parameters to control the behaviours of the filters, or you need to get the parameter values to know the processing results of the filter exectuion.  You can set or get the values of the parameters by using commands "fset" and "fget".
