@@ -284,7 +284,7 @@ Transfers nmea sentences. Source filter pushes nmea sentences to the channel. De
 ## Designing New Filter
 Here I explain how you can design and add your new filter to the system. There are some points. 1. and 2. are the duty, and the others are the tips.
 
-1. Inherit f_base class and implement followings (here the filter class is f_filter)
+#### Inherit f_base class and implement followings (here the filter class is f_filter)
 * 'f_filter(const char *)'
 The constructor has single "const char *" argument, and the f_base(const char*) should be called in the initialization list as follow,
    
@@ -292,16 +292,16 @@ The constructor has single "const char *" argument, and the f_base(const char*) 
     {
     }
      
-     * `virtual bool init_run()`
-Override if you need to initialize the filter before running it.If you return false, the filter graph cannot go to running state.
+     * `virtual bool init_run()`  
+Override if you need to initialize the filter before running it.If you return false, the filter graph cannot go to running state.  
 
-	 * `virtual void destroy_run()`
-Ovverride if you need to destroy something before stopping it.
+	 * `virtual void destroy_run()`  
+Ovverride if you need to destroy something before stopping it.  
 
-	  * `virtual bool proc()`
+	 * `virtual bool proc()`  
 The main function of the filter. The function is iteratively called by the framework during running state. If you return false, the filter graph is stopped totally.
 
-2. Insert your filter to the factory function.
+#### Insert your filter to the factory function.
 To instantiate your filter with "filter" command, you need to insert the instantiation code to the factory function. Factory function "f_base * f_base::create(const char * tname, const char * fname)" is in "filter/f_base.cpp". You should add following code,
  
     if(strcmp("filter", tname) == 0){
@@ -311,20 +311,18 @@ To instantiate your filter with "filter" command, you need to insert the instant
 Where "filter" is the name of the filter class. Of course, "f_filter" should be defined in this scope, you need to include your header file at "filter/f_base.h". Also, your filter source code should be placed in the directory "filter".
 
 
-3. Declare parameters and register them if you need to get or set their values from outside the process.
+#### Declare parameters and register them if you need to get or set their values from outside the process.
 You can expose most of the types of parameters to outside of the system easily by calling "register_fpar()" series inside the constructor "f_filter(const char*)". For most of the  parameter types, "register_fpar()" is called as follow,
 
     register_fpar("parameter_name", &parameter, "Here is the parameter explanation.");
  
 Then you can access the parameter using fset/fget command with the parameter name "parameter_name". 
 
-For string parameters, you need to allocate sufficient memory area and then,
-
+For string parameters, you need to allocate sufficient memory area and then,  
  
     char_str = new char[1024]; // here char_str is "char *" declared in the class.
     register_fpar("char_str", char_str, 1023 /* buffer length without null character*/, "This is the string parameter sample.");
  
-
 You can specify the enum parameter corresponding to string set. First, prepare the enum and string set.  
  
     enum e_val {
@@ -341,24 +339,22 @@ Then at the "f_filter(const char *)",
  
 where eval is the e_val type parameter declared in the class.
 
-4. get channel connecting to other filters.
+#### get channel connecting to other filters.
 You may need to access data channels connecting to other filters inside "proc()"". Input and output channels are listed in m_chin and m_chout respectively, and their type is vector<ch_base*>. You should use dynamic_cast to cast the channel objects to yours. Framework of aws does not have the validation schemeof the channel list, so you need to check the list at "init_run()" or "proc()" to be what you intended.
 
-5. get current time.
+#### get current time.
 In some cases, you need to watch the current time, you can get it from "m_cur_time" member. And also you can get time string for specified time zone by "get_time_str()". get_time_str() is useful for logging with time record.
 
-6. Filter should be independent.
+#### Make your filter independent
 Basically, your filter should work independently if the other filters caused the problem.  Because the dependencies between filters are limited to the channels, only what you need to do is correctly handling the channels.
 * When required channel instances are not registered in m_chin and m_chout, the filter should return false at "init_run()"
 * Even if channel does not have valid data, "proc()" must not be stopped. You should clearly define the behavior of "proc()" for the case. The channel data transmission can be delayed in the filter graph.
 * Prepare for the pause state. If your filter is used in the offline mode, 
 
-
-
 ## Designing New Channel
 You may need to design new channels to connect your own filters. 
 
-1. Inherit ch_base and implement followings. (here your channel class is ch_channel)
+#### Inherit ch_base and implement followings. (here your channel class is ch_channel)
 * `ch_channel(const char * name)`
 The constructor has a "const char * " argument, and the initialization list has ch_base initialization.  
 
@@ -368,14 +364,14 @@ The constructor has a "const char * " argument, and the initialization list has 
     }
      
 
-2. Insert instantiation code to the factory function
+#### Insert instantiation code to the factory function
 Include your definition to "ch_base.h" and insert following code to "ch_base::create(const char * type_name, const char * chan_name)"  
      
     if(strcmp("channel", type_name) == 0){
       return new ch_channel(chan_name);
     }
      
-3. Define and implement your setter/getter with mutual exclusion.
+#### Define and implement your setter/getter with mutual exclusion.
 You can add your own setter/getter function. Be careful that the channel can be accessed from multiple filters simultaneously. The setter/getter should correctly use the mutual exclusion methods "lock()" and "unlock()" prepared in ch_base().
 
 
