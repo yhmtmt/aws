@@ -57,10 +57,10 @@ You can find the sample of ".aws" at the directory "dbdir".
 * `-port <port number>`  
 specifies the number of command waiting port. (default 20000)
 
-*`-wpath <path>`  
+* `-wpath <path>`  
 specifies the path to the working directory. aws uses relative paths from the path to find files specified. This keeps the compatibility between Linux and Windows.(default working path aws executed)
 
-*`-tzone <minute>`
+* `-tzone <minute>`  
 specifies time zone in minute.  For example, UTC+9 is 540. aws uses UTC time inside the kernel, but the filters often do not. Therefore, aws provides time zone setting to provide local time for each filter.  (default 540)
      
 ## Building filter graph
@@ -68,15 +68,11 @@ You need to build filter graph for your specific application. Filter graphs are 
 
 There are 2 commands to build filter graph.
 
-(1) "filter" command
-    filter <class name> <instance name> -i <input channel instance#1> ... <input channel instance#n> -o <output channel instance#1> ... <output channel instance#m>`
-Desc: This command instantiates filter class specified. The channel instances listed after -i and -o should be instanciated using channel command preliminary.
-    
-    
+* `filter <class name> <instance name> -i <input channel instance#1> ... <input channel instance#n> -o <output channel instance#1> ... <output channel instance#m>`  
+This command instantiates filter class specified. The channel instances listed after -i and -o should be instanciated using channel command preliminary.
 
-(2) "channel" command
-    channel <class name> <instance name> 
-Desc: This command instantiates channel class specified. Each filter has its own communication channel. The channel instances are to be instantiated before instantiating filters use them.
+* `channel <class name> <instance name>`  
+This command instantiates channel class specified. Each filter has its own communication channel. The channel instances are to be instantiated before instantiating filters use them.
 
 ## Configuring filter parameters
 Filters have their own parameters.You need to modify these parameters to control the behaviours of the filters, or you need to get the parameter values to know the processing results of the filter exectuion.  You can set or get the values of the parameters by using commands "fset" and "fget".
