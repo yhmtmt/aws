@@ -18,9 +18,11 @@ aws depends on various libraries.
 * PvAPI  
   
 For linux, I prepared a Makefile. You can build binary simply typing make.  
+
     make
 
 For Petalinux@Zynq, first configure environmental variables of Xilinx's tools, then type,  
+
     make "ZYNQ=y"
     
 ## Building commands 
