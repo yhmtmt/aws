@@ -285,20 +285,16 @@ Transfers nmea sentences. Source filter pushes nmea sentences to the channel. De
 Here I explain how you can design and add your new filter to the system. There are some points. 1. and 2. are the duty, and the others are the tips.
 
 #### Inherit f_base class and implement followings (here the filter class is f_filter)
-* 'f_filter(const char *)'
+* 'f_filter(const char *): f_base(name){ }'  
 The constructor has single "const char *" argument, and the f_base(const char*) should be called in the initialization list as follow,
-   
-    f_filter::f_filter(const char * name): f_base(name)
-    {
-    }
      
-     * `virtual bool init_run()`  
+* `virtual bool init_run()`  
 Override if you need to initialize the filter before running it.If you return false, the filter graph cannot go to running state.  
 
-	 * `virtual void destroy_run()`  
+* `virtual void destroy_run()`  
 Ovverride if you need to destroy something before stopping it.  
 
-	 * `virtual bool proc()`  
+* `virtual bool proc()`  
 The main function of the filter. The function is iteratively called by the framework during running state. If you return false, the filter graph is stopped totally.
 
 #### Insert your filter to the factory function.
@@ -310,7 +306,6 @@ To instantiate your filter with "filter" command, you need to insert the instant
      
 Where "filter" is the name of the filter class. Of course, "f_filter" should be defined in this scope, you need to include your header file at "filter/f_base.h". Also, your filter source code should be placed in the directory "filter".
 
-
 #### Declare parameters and register them if you need to get or set their values from outside the process.
 You can expose most of the types of parameters to outside of the system easily by calling "register_fpar()" series inside the constructor "f_filter(const char*)". For most of the  parameter types, "register_fpar()" is called as follow,
 
@@ -321,7 +316,9 @@ Then you can access the parameter using fset/fget command with the parameter nam
 For string parameters, you need to allocate sufficient memory area and then,  
  
     char_str = new char[1024]; // here char_str is "char *" declared in the class.
-    register_fpar("char_str", char_str, 1023 /* buffer length without null character*/, "This is the string parameter sample.");
+    register_fpar("char_str", char_str, 
+        1023 /* buffer length without null character*/, 
+        "This is the string parameter sample.");
  
 You can specify the enum parameter corresponding to string set. First, prepare the enum and string set.  
  
@@ -333,9 +330,10 @@ You can specify the enum parameter corresponding to string set. First, prepare t
          "alpha", "beta", "gamma"
     };
  
-Then at the "f_filter(const char *)",  
+Then at "f_filter(const char *)",  
 
-    register_fpar("eval", (int*)(eval) /* e_val parameter */, estr, "Choose from {alpha, beta, gamma}");
+    register_fpar("eval", (int*)(eval) /* e_val parameter */, 
+        estr, "Choose from {alpha, beta, gamma}");
  
 where eval is the e_val type parameter declared in the class.
 
@@ -355,14 +353,8 @@ Basically, your filter should work independently if the other filters caused the
 You may need to design new channels to connect your own filters. 
 
 #### Inherit ch_base and implement followings. (here your channel class is ch_channel)
-* `ch_channel(const char * name)`
+* `ch_channel(const char * name): ch_base(name){ }`  
 The constructor has a "const char * " argument, and the initialization list has ch_base initialization.  
-
-     
-    ch_channel(const char * name): ch_base(name)
-    {
-    }
-     
 
 #### Insert instantiation code to the factory function
 Include your definition to "ch_base.h" and insert following code to "ch_base::create(const char * type_name, const char * chan_name)"  
