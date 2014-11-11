@@ -260,9 +260,9 @@ fmt: Image data format {0: raw 1: jpg 2: png)
 depth: Color depth in byte  
 channel: Number of color channels  
 cfmt: Color format {0: Mono, 1: Bayer, 2:RGB}  
-qjpg: Jpeg quality [0-100]")  
-qpng: PNG quality [0-10]"  
-	* PRC:  
+qjpg: Jpeg quality [0-100]  
+qpng: PNG quality [0-10]  
+      * PRC:  
 First Connecting to trnimg instance. 
 After the connection established, images are received and transfered to output channel.
 
@@ -292,14 +292,13 @@ The constructor has single "const char *" argument, and the f_base(const char*) 
     {
     }
      
-
-* `virtual bool init_run()`
+     * `virtual bool init_run()`
 Override if you need to initialize the filter before running it.If you return false, the filter graph cannot go to running state.
 
-* `virtual void destroy_run()`
+	 * `virtual void destroy_run()`
 Ovverride if you need to destroy something before stopping it.
 
-* `virtual bool proc()`
+	  * `virtual bool proc()`
 The main function of the filter. The function is iteratively called by the framework during running state. If you return false, the filter graph is stopped totally.
 
 2. Insert your filter to the factory function.
