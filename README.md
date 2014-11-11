@@ -44,11 +44,9 @@ And the executables built in the directory should be moved to your executable pa
 
 ## ".aws" file specification
 ".aws" file is the configuration file for aws system. Actually, there is a single line description that specifies the destination IP address and the port of the aws commands send their commands. The description is,
-
     
     rcmd <IP address> <port>
     
-
 By default aws opens port at 20000 on the executing computer.You can command different aws processes by moving to the directory with different ".aws" file. 
 
 You can find the sample of ".aws" at the directory "dbdir". 
@@ -56,16 +54,13 @@ You can find the sample of ".aws" at the directory "dbdir".
 ## Executing aws
 "aws" can be executed with some options.
 
-    -port <port number> 
-
+* `-port <port number>`  
 specifies the number of command waiting port. (default 20000)
 
-    -wpath <path>
-
+*`-wpath <path>`  
 specifies the path to the working directory. aws uses relative paths from the path to find files specified. This keeps the compatibility between Linux and Windows.(default working path aws executed)
 
-    -tzone <minute>
-
+*`-tzone <minute>`
 specifies time zone in minute.  For example, UTC+9 is 540. aws uses UTC time inside the kernel, but the filters often do not. Therefore, aws provides time zone setting to provide local time for each filter.  (default 540)
      
 ## Building filter graph
