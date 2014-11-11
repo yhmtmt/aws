@@ -6,16 +6,25 @@
 aws is actually providing only the filter based concurrent processing model and the execution frame work. Many filters with various functions are defined in the system, the filters can be instantiated, connected and executed flexibly by shell script based command system. You can add new filters by inheriting filter base class, implementing initialization/destruction/processing methods and configuring input/output channels. 
 
 ## Building aws
-aws depends on various libraries. 
+aws depends on various libraries. Here `$(CPU)` is one of `{arm, x86, x64}`.
 
 * DirectX SDK (For Windows)
 * Windows SDK (For Windows)
 * curl (For Windows)
 * pthread for windows (For Windows)
 * libjpeg (for Windows)
-* OpenCV 2.4.9
+* OpenCV 2.4.9  
+Place headers and libs(so) in the following paths. (relative path)
+  * INCLUDE: `opencv/include"
+  * LIB: `opencv/$(CPU)/lib`
 * cminpack 
+Place headers and static libs(a) in the following paths.
+  * INCLUDE: `cminpack/include`
+  * LIB: `cminpack/LINUX/$(CPU)/lib`
 * PvAPI  
+Place headers and libs(so) in the following paths.
+      * INCLUDE: `PvAPI/include`
+      * LIB: `PvAPI/lib/$(CPU)/bin`  
   
 For linux, I prepared a Makefile. You can build binary simply typing make.  
 
