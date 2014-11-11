@@ -108,11 +108,8 @@ For pause state, you can step to the specified time. If no argument is specified
     
 * `stop`  
 Stopping filter graphs. 
-    
-Usage:  
-    stop
-    
-* `quit`
+
+* `quit`  
 Shutdown aws process. 
     
 ## Fitlers
@@ -120,19 +117,19 @@ Here I describe the filter classes currently included in the system.
 
 1. sample  
 Sample of the filter design. You will understand how the new filter can be implemented. This class is defined in f_base.h as f_sample.  
-- IN: Null  
-- OUT: Null  
-- PAR:  
+* IN: Null  
+* OUT: Null  
+* PAR:  
 f64par : 64bit floating point number  
 s64par : 64bit signed integer  
 u64par : 64bit unsigned integer  
-- PRC: Only printing values of parameters to stdout.  
+* PRC: Only printing values of parameters to stdout.  
 
 2. nmea  
 IO source filter of NMEA0183. The input source can be serial ports, UDP sockets and files. File input is only supported for offline mode, and the file format should be "<time> <NMEA sentence>". <time> should be specified aws's common format.(See Etc.)  
-- IN:  nmea
-- OUT: nmea 
-- PAR:  
+* IN:  nmea
+* OUT: nmea 
+* PAR:  
 fnmea: File path of NMEA source file  
 src_host: IP address of NMEA source (if not specified ADDR_ANY is used)  
 dst_host: IP address of NMEA destination (if not specified UDP output is not turned on).  
@@ -142,7 +139,7 @@ bps: Baud rate of NMEA source COM port.
 port: Port number of NMEA source UDP.  
 log: Log enable (y or n)  
 filter: Sentence filter. 5 characters are to be specified. * can be used as wild card.  
-- PRC:  
+* PRC:  
 Write nmea in the input channel to the IO source. 
 Read nmea in the IO source and write it to output channel.
 
@@ -328,9 +325,9 @@ Read nmea in the IO source and write it to output channel.
  
 18. trnimg  
 Transmits images over TCP/IP network. You can choose the compression algorithm, color format, color depth, image scale, and compression quality.
-- IN: {imgc | imgr}  
-- OUT:   
-- PAR:
+* IN: {imgc | imgr}  
+* OUT:   
+* PAR:
 port: Destination port number  
 fmt: Image data format {0: raw 1: jpg 2: png)  
 depth: Color depth in byte  
@@ -339,14 +336,14 @@ fmt: Color format {0: Mono, 1: Bayer, 2:RGB}
 qjpg: Jpeg quality [0-100]")  
 qpng: PNG quality [0-10]"  
 scale: Scale for resizing.  
-- PRC:
+* PRC:
 First, Waiting for connection to rcvimg instance.
 After the session established, images in the input channel is sent to the rcvimg instance with specified image format and scale.  
 19. rcvimg  
  Recieves images transmitted by trnimg instances. Basically image format is recognized automatically by source packet's format fields.
-- IN:  
-- OUT: {imgc | imgr}  
-- PAR:  
+* IN:  
+* OUT: {imgc | imgr}  
+* PAR:  
 addr: Server address (in IPv4)  
 port: Destination port number  
 fmt: Image data format {0: raw 1: jpg 2: png)  
@@ -355,24 +352,24 @@ channel: Number of color channels
 cfmt: Color format {0: Mono, 1: Bayer, 2:RGB}  
 qjpg: Jpeg quality [0-100]")  
 qpng: PNG quality [0-10]"  
-- PRC:  
+* PRC:  
 First Connecting to trnimg instance. 
 After the connection established, images are received and transfered to output channel.
 
 # Channels
 1. imgc  
  Transfers Mat object. Destination filter gets the clone of the image object.
-- Pars Mat  
+* Pars Mat  
  
 2. imgr  
 Transfers Mat object. Destination filter gets the reference of the image object. You need to be careful if the channel is connected to multiple destinations.  
-- Pars Mat  
+* Pars Mat  
  
 3. nmea  
 Transfers nmea sentences. Source filter pushes nmea sentences to the channel. Destination filters pops them.
-- Pars vector<char[83]>  
+* Pars vector<char[83]>  
 4. ship_ctrl  
-- Pars
+* Pars
 
 ## Designing New Filter
 Here I explain how you can design and add your new filter to the system. There are some points. 1. and 2. are the duty, and the others are the tips.
@@ -419,8 +416,7 @@ For string parameters, you need to allocate sufficient memory area and then,
     register_fpar("char_str", char_str, 1023 /* buffer length without null character*/, "This is the string parameter sample.");
  
 
-You can specify the enum parameter corresponding to string set. First, prepare the enum and string set.
-
+You can specify the enum parameter corresponding to string set. First, prepare the enum and string set.  
  
     enum e_val {
          ALPHA, BETA, GAMMA, UNKNOWN 
@@ -430,13 +426,10 @@ You can specify the enum parameter corresponding to string set. First, prepare t
          "alpha", "beta", "gamma"
     };
  
+Then at the "f_filter(const char *)",  
 
-Then at the "f_filter(const char *)", 
-
- 
     register_fpar("eval", (int*)(eval) /* e_val parameter */, estr, "Choose from {alpha, beta, gamma}");
  
-
 where eval is the e_val type parameter declared in the class.
 
 4. get channel connecting to other filters.
@@ -458,7 +451,7 @@ You may need to design new channels to connect your own filters.
 
 1. Inherit ch_base and implement followings. (here your channel class is ch_channel)
 * `ch_channel(const char * name)`
-The constructor has a "const char * " argument, and the initialization list has ch_base initialization.
+The constructor has a "const char * " argument, and the initialization list has ch_base initialization.  
 
      
     ch_channel(const char * name): ch_base(name)
@@ -467,7 +460,7 @@ The constructor has a "const char * " argument, and the initialization list has 
      
 
 2. Insert instantiation code to the factory function
-Include your definition to "ch_base.h" and insert following code to "ch_base::create(const char * type_name, const char * chan_name)"
+Include your definition to "ch_base.h" and insert following code to "ch_base::create(const char * type_name, const char * chan_name)"  
      
     if(strcmp("channel", type_name) == 0){
       return new ch_channel(chan_name);
@@ -481,12 +474,10 @@ You can add your own setter/getter function. Be careful that the channel can be 
 
 ## Etc
 
-* In the framework, time specification is in the form of `[<week day> <month> <day> <hour>:<minute>:<second>:<milisecond> <year>]`. `<week day>` is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, `<day>`, `<hour>`, `<minute>` and `<second>` are two digits (means zero should be padded for the single digit day.),  `<milisecond>` is three digits, and <year> is four digits. Here is the example,
-
+* In the framework, time specification is in the form of `[<week day> <month> <day> <hour>:<minute>:<second>:<milisecond> <year>]`. `<week day>` is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, `<day>`, `<hour>`, `<minute>` and `<second>` are two digits (means zero should be padded for the single digit day.),  `<milisecond>` is three digits, and <year> is four digits. Here is the example,  
     
     [Sun Aug 17 21:07:38:072 2014]
      
-
 This format is actually the same as TeraTerm time stamp. So you can use TeraTerm for loggin Serial communications such as NMEA0183. 
 
 ## License
