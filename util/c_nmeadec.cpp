@@ -61,6 +61,70 @@ bool eval_nmea_chksum(const char * str){
 	return cs == csa;
 }
 
+int enc_cbr(int cbr){
+#ifdef _WIN32
+	switch(cbr){
+	case 110:
+		return CBR_110;     //  baud rate
+	case 300:
+		return CBR_300;     //  baud rate
+	case 600:
+		return CBR_600;     //  baud rate
+	case 1200:
+		return CBR_1200;     //  baud rate
+	case 2400:
+		return CBR_2400;     //  baud rate
+	case 4800:
+		return CBR_4800;     //  baud rate
+	case 9600:
+		return CBR_9600;     //  baud rate
+	case 14400:
+		return CBR_14400;     //  baud rate
+	case 19200:
+		return CBR_19200;     //  baud rate
+	case 38400:
+		return CBR_38400;     //  baud rate
+	case 56000:
+		return CBR_56000;     //  baud rate
+	case 57600:
+		return CBR_57600;     //  baud rate
+	case 115200:
+		return CBR_115200;     //  baud rate
+	case 128000:
+		return CBR_128000;     //  baud rate
+	case 256000:
+		return CBR_256000;     //  baud rate
+	}
+#else
+	switch(cbr){
+	case 110:
+		return B110;     //  baud rate
+	case 300:
+		return B300;     //  baud rate
+	case 600:
+		return B600;     //  baud rate
+	case 1200:
+		return B1200;     //  baud rate
+	case 2400:
+		return B2400;     //  baud rate
+	case 4800:
+		return B4800;     //  baud rate
+	case 9600:
+		return B9600;     //  baud rate
+	case 19200:
+		return B19200;     //  baud rate
+	case 38400:
+		return B38400;     //  baud rate
+	case 57600:
+		return B57600;     //  baud rate
+	case 115200:
+		return B115200;     //  baud rate
+	}
+
+#endif
+	return -1;
+}
+
 //////////////////////////////////////////////////////////////// s_binary_message
 bool s_binary_message::set_msg_hex(char * buf)
 {
@@ -561,730 +625,6 @@ bool s_binary_message::get_msg_pvc(
 	return true;
 }
 
-/////////////////////////////////////////// c_nmeadec member
-void * c_nmeadec::loop(void * p)
-{
-	char buf[1024];
-	c_nmeadec * pndec = (c_nmeadec*) p;
-
-	while(!pndec->is_exit()){
-		pndec->getline(buf, 1024);
-		if(buf[0] == '\0')
-			continue;
-		if(pndec->m_file_log.is_open())
-		  pndec->m_file_log << buf << endl;
-		cout << buf << endl;
-		c_nmea_dat * pnd = c_nmea_dat::dec_nmea_dat(buf);
-		
-		if(pnd == NULL)
-			continue;
-
-		pndec->push(pnd);
-	}
-
-	return NULL;
-}
-
-c_nmeadec::c_nmeadec():m_nmea_src(NONE), m_dat_head(0),	m_num_dats(0), 
-		       m_num_max_dats(128), 
-#ifdef _WIN32
-		       m_hcom(NULL), 
-#else
-		       m_hcom(0),
-#endif
-		       m_sys_time(0),  m_s(-1.),
-		       m_len_msg(0), m_seq_id(0)
-{
-	// com port setting; 38400bps, no-parity, one stop bit, 8bit/byte
-	m_dats.resize(m_num_max_dats);
-	pthread_mutex_init(&m_mtx, NULL);
-	pthread_cond_init(&m_cond, NULL);
-}
-
-c_nmeadec::~c_nmeadec()
-{
-	disable_log();
-	close();
-	pthread_mutex_destroy(&m_mtx);
-	pthread_cond_destroy(&m_cond);
-}
-
-bool c_nmeadec::is_exit()
-{
-	switch(m_nmea_src){
-	case FILE:
-		return m_exit | m_file.eof();
-	case COM:
-	case UDP:
-	default:
-		;
-	}
-	return m_exit;
-}
-
-bool c_nmeadec::open(const char * fname){
-	m_nmea_src = FILE;
-	m_file.open(fname);
-	m_exit = false;
-	
-	return m_file.is_open();
-}
-
-int enc_cbr(int cbr){
-#ifdef _WIN32
-	switch(cbr){
-	case 110:
-		return CBR_110;     //  baud rate
-	case 300:
-		return CBR_300;     //  baud rate
-	case 600:
-		return CBR_600;     //  baud rate
-	case 1200:
-		return CBR_1200;     //  baud rate
-	case 2400:
-		return CBR_2400;     //  baud rate
-	case 4800:
-		return CBR_4800;     //  baud rate
-	case 9600:
-		return CBR_9600;     //  baud rate
-	case 14400:
-		return CBR_14400;     //  baud rate
-	case 19200:
-		return CBR_19200;     //  baud rate
-	case 38400:
-		return CBR_38400;     //  baud rate
-	case 56000:
-		return CBR_56000;     //  baud rate
-	case 57600:
-		return CBR_57600;     //  baud rate
-	case 115200:
-		return CBR_115200;     //  baud rate
-	case 128000:
-		return CBR_128000;     //  baud rate
-	case 256000:
-		return CBR_256000;     //  baud rate
-	}
-#else
-	switch(cbr){
-	case 110:
-		return B110;     //  baud rate
-	case 300:
-		return B300;     //  baud rate
-	case 600:
-		return B600;     //  baud rate
-	case 1200:
-		return B1200;     //  baud rate
-	case 2400:
-		return B2400;     //  baud rate
-	case 4800:
-		return B4800;     //  baud rate
-	case 9600:
-		return B9600;     //  baud rate
-	case 19200:
-		return B19200;     //  baud rate
-	case 38400:
-		return B38400;     //  baud rate
-	case 57600:
-		return B57600;     //  baud rate
-	case 115200:
-		return B115200;     //  baud rate
-	}
-
-#endif
-	return -1;
-}
-
-bool c_nmeadec::open(unsigned short port)	
-{
-	cout << "Opening UDP port " << port << endl;
-	m_sock = socket(AF_INET, SOCK_DGRAM, 0);
-	m_sock_addr.sin_family = AF_INET;
-	m_sock_addr.sin_port = htons(port);
-#ifdef _WIN32
-	m_sock_addr.sin_addr.S_un.S_addr = INADDR_ANY;
-#else
-	m_sock_addr.sin_addr.s_addr = INADDR_ANY;
-#endif
-	if(::bind(m_sock, (sockaddr*)&m_sock_addr, sizeof(m_sock_addr)) == SOCKET_ERROR){
-		cerr << "opening udp port failed." << endl;
-		return false;
-	}
-
-	pthread_create(&m_loop, NULL, loop, this);
-	m_exit = false;
-	m_nmea_src = UDP;
-	cout << "Bind done." << endl;
-	return true;
-}
-
-bool c_nmeadec::open(int icom, int cbr)
-{
-	m_nmea_src = COM;
-
-#ifdef _WIN32
-	wchar_t com_path[32];
-	swprintf(com_path, 32, L"\\\\.\\COM%d", icom);
-	BOOL fSuccess;
-
-	SecureZeroMemory(&m_dcb, sizeof(DCB));
-	m_dcb.DCBlength = sizeof(DCB);
-	m_dcb.ByteSize = 8;             //  data size, xmit and rcv
-	m_dcb.BaudRate = enc_cbr(cbr);
-	m_dcb.Parity   = NOPARITY;      //  parity bit
-	m_dcb.StopBits = ONESTOPBIT;    //  stop bit
-	/*
-	m_dcb.fOutxCtsFlow = FALSE;
-	m_dcb.fOutxDsrFlow = FALSE;
-	m_dcb.fDtrControl = DTR_CONTROL_DISABLE;
-	m_dcb.fRtsControl = RTS_CONTROL_DISABLE;
-
-	m_dcb.fOutX = FALSE;
-	m_dcb.fInX = FALSE;
-	m_dcb.fTXContinueOnXoff = TRUE;
-	m_dcb.XonLim = 512;
-	m_dcb.XoffLim = 512;
-	m_dcb.XonChar = 0x11;
-	m_dcb.XoffChar = 0x13;
-
-	m_dcb.fNull = TRUE;
-	m_dcb.fAbortOnError = TRUE;
-	m_dcb.fErrorChar = FALSE;
-	m_dcb.ErrorChar = 0x00;
-	m_dcb.EofChar = 0x03;
-	m_dcb.EvtChar = 0x02;
-
-	m_timeout.ReadIntervalTimeout = 500;
-	m_timeout.ReadTotalTimeoutMultiplier = 0;
-	m_timeout.ReadTotalTimeoutConstant = 500;
-	m_timeout.WriteTotalTimeoutMultiplier = 0;
-	m_timeout.WriteTotalTimeoutConstant = 500;
-	*/
-
-
-	if(cbr == -1){
-		cout << "Invalid baudrate " << cbr << endl;
-		return false;
-	}
-
-	m_hcom = CreateFile( com_path,
-		GENERIC_READ | GENERIC_WRITE,
-		0,      //  must be opened with exclusive-access
-		NULL,   //  default security attributes
-		OPEN_EXISTING, //  must use OPEN_EXISTING
-		0,      //  not overlapped I/O
-		NULL ); //  hTemplate must be NULL for comm devices
-
-	if(m_hcom == INVALID_HANDLE_VALUE){
-		cout << "Error" << GetLastError() << ":";
-		cout << "Create file faild to open COM" << icom << endl;
-		return false;
-	}
-
-	try {
-		/*
-		fSuccess = SetupComm(m_hcom, 1024, 1024);
-		if(!fSuccess)
-		{
-			throw "SetupComm failed.";
-		}
-		
-		fSuccess = PurgeComm(m_hcom, 
-		PURGE_TXABORT | PURGE_RXABORT | 
-		PURGE_TXCLEAR | PURGE_RXCLEAR);
-
-		if(fSuccess)
-		{
-		throw "PurgeComm failed.";
-		}
-		*/
-		fSuccess = SetCommState(m_hcom, &m_dcb);
-		if(!fSuccess){
-			throw "SetCommState failed.";
-		}
-		/*
-		fSuccess = SetCommTimeouts(m_hcom, &m_timeout);
-
-		if(!fSuccess){
-			throw "SetCommTimeouts failed.";
-		}
-		*/
-	}catch(char * str){
-		cout << "Error" << GetLastError() << ":";
-		cout << str << endl;
-		CloseHandle(m_hcom);
-		return false;
-	}
-	m_exit = false;
-	m_buf_tail = m_buf_head = 0;
-#else
-	char buf[64];
-	sprintf(buf, "/dev/tty%d", icom);
-	m_hcom = ::open(buf, O_RDWR | O_NOCTTY | O_NDELAY);
-	if(m_hcom == -1){
-		cerr << "Faild to open " << buf << endl;
-		return false;
-	}
-	tcgetattr(m_hcom, &m_copt);
-	cfsetispeed(&m_copt, enc_cbr(cbr));
-	cfsetospeed(&m_copt, enc_cbr(cbr));
-	m_copt.c_cflag &= ~PARENB;
-	m_copt.c_cflag &= ~CSTOPB;
-	m_copt.c_cflag &= ~CSIZE;
-	m_copt.c_cflag |= CS8;
-	m_copt.c_cc[VMIN] = 0;
-	m_copt.c_cc[VTIME] = 1;
-	m_copt.c_cflag |= (CLOCAL | CREAD);
-
-	if(tcsetattr(m_hcom, TCSANOW, &m_copt) != 0){
-		::close(m_hcom);
-		cerr << "Failed to configure " << buf << endl;
-		return false;
-	}
-
-#endif
-	pthread_create(&m_loop, NULL, loop, this);
-	return true;
-}
-
-void c_nmeadec::close()
-{
-	m_exit = true;
-
-	if(m_nmea_src != FILE){
-		pthread_cond_signal(&m_cond);
-		pthread_join(m_loop, NULL);
-		if(m_nmea_src == COM){
-#ifdef _WIN32
-			CloseHandle(m_hcom);
-			m_hcom = NULL;
-#else
-			::close(m_hcom);
-			m_hcom = 0;
-#endif
-		}else{
-#ifdef _WIN32
-			closesocket(m_sock);
-#else
-			::close(m_sock);
-#endif
-		}
-	}else{
-		m_file.close();
-	}
-
-	for(vector<c_nmea_dat*>::iterator itr = m_dats.begin(); itr != m_dats.end(); itr++)
-		delete *itr;
-	m_dats.clear();
-}
-
-bool c_nmeadec::enable_log(const char * fname)
-{
-	m_file_log.open(fname);
-	if(!m_file_log.is_open()){
-		return false;
-	}
-	return true;
-}
-
-void c_nmeadec::disable_log()
-{
-	if(!m_file_log.is_open())
-		return;
-	m_file_log.close();
-}
-
-
-bool c_nmeadec::send_binary_message(s_binary_message & msg)
-{
-	m_seq_id = msg.sq;
-	return send_binary_message(msg.mmsi, msg.id, msg.ch, msg.msg, msg.len);
-}
-
-int c_nmeadec::send(const char * str_nmea)
-{
-	int len;
-#ifdef _WIN32
-	if(m_hcom == NULL)
-		return 0;
-	if(!WriteFile(m_hcom, (LPVOID) str_nmea, (DWORD) strlen(str_nmea),
-		(DWORD*) &len, NULL))
-		cout << "WriteFile failed." << endl;
-	else
-		cout << strlen(str_nmea) << "/" << len << " wrote." << endl;
-#else
-	if(m_hcom == 0)
-		return 0;
-	len = write(m_hcom, str_nmea, strlen(str_nmea));
-#endif
-	return len;
-}
-
-bool c_nmeadec::send_binary_message(unsigned int mmsi_dst, int id, int chan, 
-	const unsigned char *  buf, int bits)
-{
-	if(bits > 952){
-		cout << "Irregal message length in send_bbm." << endl;
-		return false;
-	}
-
-	if(chan >= 4){
-		cout << "Irregal channel specification in send_bbm." << endl;
-		return false;
-	}
-
-	if(id != 8 && id != 14 && id != 6 && id != 12){
-		cout << "Irregal message id in send_bbm." << endl;
-		return false;
-	}
-
-	int num_sends;
-
-	char nmea[85]; // nmea 82 plus CRLF plus null
-	nmea[0] = '!'; nmea[1] = m_toker[0]; nmea[2] = m_toker[1];
-
-	int bit_lim;
-	// Message type "ABM," or "BBM," filled in the nmea buffer
-	if(id == 6 || id == 12){ //ABM
-		nmea[3] = 'A';
-		bit_lim = 288;
-		m_seq_id %= 4;
-	}else{ // BBM
-		nmea[3] = 'B'; 
-		bit_lim = 348;
-		m_seq_id %= 10;
-	}
-	nmea[4] = 'B'; nmea[5] = 'M'; nmea[6] = ',';
-
-	// calculating number of sentences needed 
-	if(bits <= bit_lim){
-		num_sends = 1;
-	}else{
-		num_sends = 1 + (bits - bit_lim) / 360 + (((bits - bit_lim) % 360) == 0 ? 0 : 1);
-		num_sends = max(num_sends, 9);
-	}
-
-	nmea[7] = num_sends + '0'; nmea[8] = ',';  // Total number of sentences
-	nmea[11] = m_seq_id + '0'; nmea[12] = ','; // sequential message identifier
-	int ibit = 0;
-	int ibuf = 0;
-	int im = 0;
-	for(int isend = 0; isend < num_sends; isend++){
-		// first 58x6=348bit
-		// subsequent 60x6=360bit
-		int i;
-		nmea[9] = (1 + isend) + '0'; nmea[10] = ','; // sentense number (upto num_sends)
-		if(isend == 0){
-			if(id == 6 || id == 12){
-				sprintf(&nmea[13], "%09d", mmsi_dst);
-				nmea[22] = ',';
-				nmea[23] = chan + '0'; nmea[24] = ',';
-				if(id == 6){
-					nmea[25] = '6';
-					i = 26;
-				}else{
-					nmea[25] = '1'; nmea[26] = '2';
-					i = 27;
-				}
-			}else{
-				nmea[13] = chan + '0'; nmea[14] = ',';
-				if(id == 8){
-					nmea[15] = '8';
-					i = 16;
-				}else{
-					nmea[15] = '1'; nmea[16] = '4';
-					i = 17;
-				}
-			}
-				nmea[i] = ',';
-			i++;
-		}else{
-			nmea[13] = ','; nmea[14] = ',';
-			if(id == 6 || id == 12){
-				nmea[15] = ',';
-				i = 16;
-			}else
-				i = 15;
-		}
-			
-		// copy message
-		while(1){
-			unsigned char uc = 0;
-
-			switch(im){
-			case 0:
-				uc = (buf[ibuf] >> 2) & 0x3F;
-				ibit += 6;
-				im = 1;
-				break;
-			case 1:
-				uc = (buf[ibuf] << 4);
-				ibit += 2;
-				if(ibit < bits){
-					ibuf++;
-					uc |= ((buf[ibuf] & 0xF0) >> 4); 
-					ibit += 4;
-				}
-				im = 2;
-				break;
-			case 2:
-				uc = (buf[ibuf] << 2);
-				ibit += 4;
-				if(ibit < bits){
-					ibuf++;
-					uc |= (buf[ibuf] & 0xC0) >> 6;
-					ibit += 2;
-				}
-				im = 3;
-				break;
-			case 3:
-				uc = buf[ibuf];
-				ibit += 6;
-				ibuf++;
-				im = 0;
-				break;
-			}
-
-			nmea[i] = armor(uc & 0x3F);
-			i++;
-			if(ibit >= bits || ibit >= bit_lim)
-				break;
-		}
-
-		nmea[i] = ',';
-		i++;
-		if(isend == num_sends - 1){
-			int pad = (bits % 6);
-			if(pad)
-				pad = 6 - pad;
-
-			nmea[i] = pad + '0';	
-		}else{
-			nmea[i] = '0';
-		}
-		i++;
-		nmea[i] = '*';
-		unsigned char chksum = calc_nmea_chksum(nmea);
-		char c;
-		i++;
-		c = (chksum >> 4) & 0x0F;
-		nmea[i] = (c < 10 ? c + '0' : c - 10 + 'A');
-		i++;
-		c = chksum & 0x0F;
-		nmea[i] = (c < 10 ? c + '0' : c - 10 + 'A');
-
-		i++;
-		nmea[i] = 13; // cr
-		i++;
-		nmea[i] = 10; // lf
-		i++;
-		nmea[i] = '\0';
-
-		cout << "sending: " << nmea << endl;
-		send(nmea);
-		bit_lim += 360;
-	}
-	m_seq_id = m_seq_id + 1;
-
-	return true;
-}
-
-// this method is not called if m_bfile == true.
-bool c_nmeadec::getline(char * buf, size_t size){
-	int i = 0;
-
-#ifdef _WIN32
-	DWORD rdy = 1024, nr = 0;
-	COMSTAT stat;
-	DWORD err;
-#else
-	int rdy = 1024, nr = 0;
-#endif
-
-	while(1){
-		if(is_exit())
-			return false;
-		while(m_buf_head < m_buf_tail){
-			buf[i] = m_tmp_buf[m_buf_head];
-
-			if(buf[i] == '\n' || buf[i] == '\r'){
-				buf[i] = '\0';
-				m_buf_head++;
-
-				return i != 0;
-			}
-			m_buf_head++; 
-			i++;
-		}
-		switch(m_nmea_src){
-		case COM:
-
-#ifdef _WIN32
-		  ClearCommError(m_hcom, &err, &stat);
-		  rdy = stat.cbInQue;
-		  if(!ReadFile(m_hcom, m_tmp_buf, (DWORD) min(size, rdy), &nr, NULL)){
-		    cout << "ReadFile failed." << endl;
-		    return false;
-		  }
-#else
-		  nr = read(m_hcom, m_tmp_buf, size);
-#endif
-		  break;
-		case UDP:
-		  nr = recv(m_sock, m_tmp_buf, (int) size, 0);
-		  break;
-		default:
-		  return false;
-		}
-		m_buf_tail = nr;
-		m_buf_head = 0;
-	}
-	return true;
-}	
-
-void c_nmeadec::push(c_nmea_dat * pnd){
-	pthread_mutex_lock(&m_mtx);
-	if(m_num_dats == m_num_max_dats){
-		pthread_cond_wait(&m_cond, &m_mtx);
-	}
-	m_dats[(m_dat_head + m_num_dats) % m_num_max_dats] = pnd;
-	m_num_dats++;
-
-	pthread_mutex_unlock(&m_mtx);
-}
-
-bool c_nmeadec::seek(long long seek_time)
-{
-	// if nmea source is a file, seek the time specified.
-	if(m_nmea_src != FILE){
-		for(vector<c_nmea_dat*>::iterator itr = m_dats.begin(); itr != m_dats.end(); itr++)
-			if(*itr != NULL){
-				delete *itr;
-				*itr = NULL;
-				m_dat_head = m_num_dats = 0;
-			}
-		return true;
-	}
-
-	m_s = -1;
-	m_sys_time = 0;
-
-	c_nmea_dat * pnd;
-
-	if(m_dats[0] != NULL)
-		delete m_dats[0];
-
-	m_dats[0] = NULL;
-	s_vdm_pl::clear();
-	m_file.seekg(0);
-	m_file.clear(ios_base::goodbit);
-
-	while((pnd = get_dat(seek_time)) != NULL){
-		delete pnd;
-	}
-	return true;
-}
-
-c_nmea_dat * c_nmeadec::get_dat(long long cur_time)
-{
-	if(m_nmea_src == FILE){ // offline mode
-		// in offline mode, UTC second encoded in GPGGA and GPRMC messages is used to synchronize
-		// to the aws system clock.  This may cause clock error in the long time execution of off
-		// line mode.
-		char buf[1024];
-		c_nmea_dat * pnd0 = m_dats[0];
-		while(pnd0 == NULL && !m_file.eof() ){
-			m_file.getline(buf, 1024);
-			if(m_file_log.is_open())
-				m_file_log << buf << endl;
-
-			pnd0 = c_nmea_dat::dec_nmea_dat(buf);
-		}
-
-		if(pnd0 == NULL){
-			return NULL;
-		}
-
-		long long inc;		// time difference of UTC sec of current message and previous one.
-		switch(pnd0->get_type()){
-		case ENDT_GGA:
-			{
-				c_gga * pnd = (c_gga*) pnd0;
-				if(m_s >= 0){
-					inc = (long long) ((pnd->m_s - m_s) * SEC);
-					inc += (long long) ((pnd->m_m - m_m) * 60LL * SEC);
-					inc += (long long) ((pnd->m_h - m_h) * 3600LL * SEC);
-					if(inc < 0)
-						inc += 24LL * 3600LL * SEC;
-				}else
-					inc = 0;
-
-				if(m_sys_time + inc > cur_time){ // aws system clock has not reached yet.
-					m_dats[0] = pnd0;
-					return NULL;
-				}
-
-				m_s = pnd->m_s;
-				m_h = (char) pnd->m_h;
-				m_m = (char) pnd->m_m;
-			}
-			break;
-		case ENDT_RMC:
-			{
-				c_rmc * pnd = (c_rmc*) pnd0;
-				if(m_s >= 0){
-					inc = (long long) ((pnd->m_s - m_s) * SEC);
-					inc += (long long) ((pnd->m_m - m_m) * 60LL * SEC);
-					inc += (long long) ((pnd->m_h - m_h) * 3600LL * SEC);
-					if(inc < 0)
-						inc += 24LL * 3600LL * SEC;
-				}else
-					inc = 0;
-
-				if(m_sys_time + inc > cur_time){ // aws system clock has not reached yet.
-					m_dats[0] = pnd0;
-					return NULL;
-				}
-
-				m_s = pnd->m_s;
-				m_h = (char) pnd->m_h;
-				m_m = (char) pnd->m_m;
-			}
-			break;
-		default:
-			inc = 0;
-		}
-	
-		m_sys_time += inc;
-
-		m_dats[0] = NULL;
-		return pnd0;
-	}
-
-	c_nmea_dat * pnd;
-	{
-		pthread_lock lock(m_mtx); // RAII based mutex
-		if(m_num_dats == 0){
-			return NULL;
-		}
-
-		// new message is dispatched
-		pnd = m_dats[m_dat_head];
-		if(pnd == NULL){
-			return NULL;
-		}
-
-		m_dats[m_dat_head] = NULL;
-		m_dat_head++;
-		if(m_dat_head >= m_num_max_dats)
-			m_dat_head -= (int) m_num_max_dats;
-
-		m_num_dats--;
-	}
-	pthread_cond_signal(&m_cond);
-	return pnd;
-}
-
-
 ///////////////////////////////////////////// navdat decoder
 c_nmea_dat * c_nmea_dat::dec_nmea_dat(const char * str)
 {
@@ -1310,7 +650,6 @@ c_nmea_dat * c_nmea_dat::dec_nmea_dat(const char * str)
 		pnd = c_ttm::dec_ttm(str);
 	}else if(parstrcmp(&str[3], "ABK"))
 		pnd = c_abk::dec_abk(str);
-	
 
 	if(pnd){
 		pnd->m_toker[0] = str[1];
