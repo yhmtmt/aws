@@ -499,6 +499,7 @@ bool f_uvc_cam::init_run()
 
 void f_uvc_cam::destroy_run()
 {
+
 	///////////////////////////stop
 	enum v4l2_buf_type type;
 
@@ -517,29 +518,30 @@ void f_uvc_cam::destroy_run()
 	}
 	////////////////////////uninit
 	unsigned int i;
+	if(buffer != NULL){
 
-	switch (io) {
-	case IO_METHOD_READ:
-		free(buffers[0].start);
-		break;
+		switch (io) {
+		case IO_METHOD_READ:
+			free(buffers[0].start);
+			break;
 
-	case IO_METHOD_MMAP:
-		for (i = 0; i < n_buffers; ++i)
-			if (-1 == munmap(buffers[i].start, buffers[i].length)){
-				errnoout("munmap");
-				exit(1);
-			}
-		break;
+		case IO_METHOD_MMAP:
+			for (i = 0; i < n_buffers; ++i)
+				if (-1 == munmap(buffers[i].start, buffers[i].length)){
+					errnoout("munmap");
+					exit(1);
+				}
+				break;
 
-	case IO_METHOD_USERPTR:
-		for (i = 0; i < n_buffers; ++i)
-			free(buffers[i].start);
-		break;
+		case IO_METHOD_USERPTR:
+			for (i = 0; i < n_buffers; ++i)
+				free(buffers[i].start);
+			break;
+		}
+
+		free(buffers);
+		buffers = NULL;
 	}
-
-	free(buffers);
-	buffers = NULL;
-
 	///////////////////////////close
 	if (-1 == close(fd)){
 		errnoout("close");

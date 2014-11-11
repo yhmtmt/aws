@@ -198,12 +198,12 @@ bool f_trn_img::proc()
 			if(lenh_sent != lenh){
 				cerr << "Socket error in sending stream header" << endl;
 				disconnect();
-				return false;
+				return true;
 			}
 		}else{
 			cerr << "Socket error after returning select." << endl;
 			disconnect();
-			return false;
+			return true;
 		}
 	}else{
 		cerr << "Sending stream header timeout." << endl;
@@ -224,12 +224,12 @@ bool f_trn_img::proc()
 			if(len_data_sent != len_data){
 				cerr << "Socket error in sending data stream." <<endl;
 				disconnect();
-				return false;
+				return true;
 			}
 		}else{
 			cerr << "Socket error after returning select." << endl;
 			disconnect();
-			return false;
+			return true;
 		}
 	}else{
 		cerr << "Sending stream data timeout." << endl;

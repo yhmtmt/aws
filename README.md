@@ -388,7 +388,7 @@ You can add your own setter/getter function. Be careful that the channel can be 
 
 ## Etc
 
-* In the framework, time specification is in the form of `[<week day> <month> <day> <hour>:<minute>:<second>:<milisecond> <year>]`. `<week day>` is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, `<day>`, `<hour>`, `<minute>` and `<second>` are two digits (means zero should be padded for the single digit day.),  `<milisecond>` is three digits, and <year> is four digits. Here is the example,  
+* In the framework, time specification is in the form of `[<week day> <month> <day> <hour>:<minute>:<second>:<millisecond> <year>]`. `<week day>` is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, `<day>`, `<hour>`, `<minute>` and `<second>` are two digits (means zero should be padded for the single digit day.),  `<millisecond>` is three digits, and <year> is four digits. Here is the example,  
     
     [Sun Aug 17 21:07:38:072 2014]
      
