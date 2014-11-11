@@ -378,3 +378,6 @@ You can add your own setter/getter function. Be careful that the channel can be 
 This format is actually the same as TeraTerm time stamp. So you can use TeraTerm for loggin Serial communications such as NMEA0183. 
 
 ## License
+Source codes are under GPLv3.  
+
+[GPLv3](http://www.gnu.org/licenses/gpl-3.0.txt)
