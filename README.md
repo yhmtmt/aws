@@ -7,8 +7,11 @@ aws is actually providing only the filter based concurrent processing model and 
 
 ## Building aws
 First,  
+
     git clone https://github.com/yhmtmt/aws.git
-Then move to the direcotry "aws", 
+
+Then move to the direcotry "aws",  
+ 
     git clone https://github.com/yhmtmt/CmdAppBase.git
 
 aws depends on various libraries. You need to install them to the following paths to use attached Makefile. Here `$(CPU)` is one of `{arm, x86, x64}`.
