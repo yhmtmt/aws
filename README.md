@@ -117,19 +117,19 @@ Here I describe the filter classes currently included in the system.
 
 1. sample  
 Sample of the filter design. You will understand how the new filter can be implemented. This class is defined in f_base.h as f_sample.  
-* IN: Null  
-* OUT: Null  
-* PAR:  
+	* IN: Null  
+	* OUT: Null  
+	* PAR:  
 f64par : 64bit floating point number  
 s64par : 64bit signed integer  
 u64par : 64bit unsigned integer  
-* PRC: Only printing values of parameters to stdout.  
+	* PRC: Only printing values of parameters to stdout.  
 
 2. nmea  
 IO source filter of NMEA0183. The input source can be serial ports, UDP sockets and files. File input is only supported for offline mode, and the file format should be "<time> <NMEA sentence>". <time> should be specified aws's common format.(See Etc.)  
-* IN:  nmea
-* OUT: nmea 
-* PAR:  
+	* IN:  nmea
+	* OUT: nmea 
+	* PAR:  
 fnmea: File path of NMEA source file  
 src_host: IP address of NMEA source (if not specified ADDR_ANY is used)  
 dst_host: IP address of NMEA destination (if not specified UDP output is not turned on).  
@@ -138,196 +138,106 @@ com: Number of NMEA source COM port.
 bps: Baud rate of NMEA source COM port.  
 port: Port number of NMEA source UDP.  
 log: Log enable (y or n)  
-filter: Sentence filter. 5 characters are to be specified. * can be used as wild card.  
-* PRC:  
+filter: Sentence filter. 5 characters are to be specified. \* can be used as wild card.  
+	* PRC:  
 Write nmea in the input channel to the IO source. 
 Read nmea in the IO source and write it to output channel.
 
 3. stab
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
  
 4. shioji_ctrl_rcv
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
  
 5. shioji_ctrl
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
  
 6. shioji
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
  
 7. clip
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
+
 8. avt_cam
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
+
 9. imgs
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
  
 10. dwin
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
+
 11. syswin
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
+
 12. spwin
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
+
 13. ptzwin
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
  
 14. inspector
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
+
 15. vfile
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
  
 16. vdev
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
  
 17. uvcam
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
+   * IN:
+   * OUT: 
+   * PAR:
+   * PRC:
  
 18. trnimg  
 Transmits images over TCP/IP network. You can choose the compression algorithm, color format, color depth, image scale, and compression quality.
-* IN: {imgc | imgr}  
-* OUT:   
-* PAR:
+	* IN: {imgc | imgr}  
+	* OUT:   
+	* PAR:
 port: Destination port number  
 fmt: Image data format {0: raw 1: jpg 2: png)  
 depth: Color depth in byte  
@@ -336,14 +246,14 @@ fmt: Color format {0: Mono, 1: Bayer, 2:RGB}
 qjpg: Jpeg quality [0-100]")  
 qpng: PNG quality [0-10]"  
 scale: Scale for resizing.  
-* PRC:
+	* PRC:
 First, Waiting for connection to rcvimg instance.
 After the session established, images in the input channel is sent to the rcvimg instance with specified image format and scale.  
 19. rcvimg  
  Recieves images transmitted by trnimg instances. Basically image format is recognized automatically by source packet's format fields.
-* IN:  
-* OUT: {imgc | imgr}  
-* PAR:  
+	* IN:  
+	* OUT: {imgc | imgr}  
+	* PAR:  
 addr: Server address (in IPv4)  
 port: Destination port number  
 fmt: Image data format {0: raw 1: jpg 2: png)  
@@ -352,24 +262,24 @@ channel: Number of color channels
 cfmt: Color format {0: Mono, 1: Bayer, 2:RGB}  
 qjpg: Jpeg quality [0-100]")  
 qpng: PNG quality [0-10]"  
-* PRC:  
+	* PRC:  
 First Connecting to trnimg instance. 
 After the connection established, images are received and transfered to output channel.
 
 # Channels
 1. imgc  
  Transfers Mat object. Destination filter gets the clone of the image object.
-* Pars Mat  
+	* Pars Mat  
  
 2. imgr  
 Transfers Mat object. Destination filter gets the reference of the image object. You need to be careful if the channel is connected to multiple destinations.  
-* Pars Mat  
+	* Pars Mat  
  
 3. nmea  
 Transfers nmea sentences. Source filter pushes nmea sentences to the channel. Destination filters pops them.
-* Pars vector<char[83]>  
+	* Pars vector<char[83]>  
 4. ship_ctrl  
-* Pars
+	* Pars
 
 ## Designing New Filter
 Here I explain how you can design and add your new filter to the system. There are some points. 1. and 2. are the duty, and the others are the tips.
