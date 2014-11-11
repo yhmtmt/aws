@@ -24,7 +24,7 @@ OS	= LINUX
 DEFS = -D_$(CPU) -D_$(OS) 
 
 # module selection switch
-SANYO_HD5400 = y
+SANYO_HD5400 = n
 AVT_CAM = y
 FWINDOW = n
 
