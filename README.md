@@ -6,7 +6,12 @@
 aws is actually providing only the filter based concurrent processing model and the execution frame work. Many filters with various functions are defined in the system, the filters can be instantiated, connected and executed flexibly by shell script based command system. You can add new filters by inheriting filter base class, implementing initialization/destruction/processing methods and configuring input/output channels. 
 
 ## Building aws
-aws depends on various libraries. Here `$(CPU)` is one of `{arm, x86, x64}`.
+First,  
+    git clone https://github.com/yhmtmt/aws.git
+Then move to the direcotry "aws", 
+    git clone https://github.com/yhmtmt/CmdAppBase.git
+
+aws depends on various libraries. You need to install them to the following paths to use attached Makefile. Here `$(CPU)` is one of `{arm, x86, x64}`.
 
 * DirectX SDK (For Windows)
 * Windows SDK (For Windows)
@@ -26,7 +31,7 @@ Place headers and libs(so) in the following paths.
       * INCLUDE: `PvAPI/include`
       * LIB: `PvAPI/lib/$(CPU)/bin`  
   
-For linux, I prepared a Makefile. You can build binary simply typing make.  
+For linux, you can build binary simply typing make.  
 
     make
 
