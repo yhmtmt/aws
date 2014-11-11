@@ -289,7 +289,7 @@ void f_avt_cam::set_new_frm(tPvFrame * pfrm)
 		}
 	}
 
-	ibuf = (unsigned int) pfrm->Context[1];
+	ibuf = *((unsigned int*) (&pfrm->Context[1]));
 	m_cur_frm = pfrm->FrameCount;
 	m_frm_done[ibuf] = true;
 
