@@ -77,99 +77,62 @@ This command instantiates channel class specified. Each filter has its own commu
 ## Configuring filter parameters
 Filters have their own parameters.You need to modify these parameters to control the behaviours of the filters, or you need to get the parameter values to know the processing results of the filter exectuion.  You can set or get the values of the parameters by using commands "fset" and "fget".
 
-(1) "fset" command
-Desc: Setting the filter parameter. You can specify arbitrary number of combinations of the parameter name and the value. (However actually the number is limited by the character length: the length should be less than 1024.)
-    
-Usage:  
-    fset <filter instance name> <parameter name#1> <value#1> <parameter name#2> <value#2> ..... <parameter name#n> <value#n>
-    
-(2) "fget" command
-Desc: Getting the filter parameters. You can specifiy multiple parameters, and the parameters are returned as space separated strings.
-    
-Usage:  
-    fget <fitler instance name> <parameter name#1> <parameter name#2> ..... <parameter name#n>
+* `fset <filter instance name> <parameter name#1> <value#1> <parameter name#2> <value#2> ..... <parameter name#n> <value#n>`  
+Setting the filter parameter. You can specify arbitrary number of combinations of the parameter name and the value. (However actually the number is limited by the character length: the length should be less than 1024.)
+* `fget <fitler instance name> <parameter name#1> <parameter name#2> ..... <parameter name#n>`  
+Getting the filter parameters. You can specifiy multiple parameters, and the parameters are returned as space separated strings.
     
 ## Running filter graph
 To run the filter graph, there are some commands to note.
 
-(1) cyc
-Desc: specifying the cycle time of the filter execution. (default 1/60 sec) This paramter should be specified befor running filter graphs.
-    
-Usage:  
-    cyc <time in second>
-    
-(2) syn
-Desc: This parameter is currently not working.
-    
-Usage:  
-    syn
-    
-(3) trat
-Desc: Time rate specification. Only for offline mode, the time passes specified rate to the actual speed. (default 1) If you want to execute graph faster, please specify the integer value larger than 1.
-    
-Usage:  
-    trat <time rate>
-    
+* `cyc <time in second>`  
+specifying the cycle time of the filter execution. (default 1/60 sec) This paramter should be specified befor running filter graphs.
 
-(4) online
-Desc: There two modes running filter graphs; One is online, another is offline. In the offline mode, pause state and step execution is supported. Step execution is useful during designing algorithms which cannot be ran at realtime. "pause" and "step" are described later. The mode should be specified before running filter graph.
+* `syn`  
+This parameter is currently not working.
+
+* `trat`  
+Time rate specification. Only for offline mode, the time passes specified rate to the actual speed. (default 1) If you want to execute graph faster, please specify the integer value larger than 1.
+
+* `online <yes | no>`  
+There two modes running filter graphs; One is online, another is offline. In the offline mode, pause state and step execution is supported. Step execution is useful during designing algorithms which cannot be ran at realtime. "pause" and "step" are described later. The mode should be specified before running filter graph.
     
-Usage:  
-    online <yes | no>
-    
-(5) go 
+* `go [<start time> [<end time>]]`  
 Desc: Running filter graph. For online mode, the command simply execute filter graph. For ofline mode, The filter graph is executed from the specified start time and to the end time. When the time is reached to the end time specified, the filter graph transits the state to "pause". Time should be specified aws's common format.(See Etc)
     
-Usage:  
-    go [<start time> [<end time>]]
+* `pause`
+If the online mode is enabled, you can pause the execution by this command. The state is again back to running state by executing "go" command without specifying start and end time. "step" command can be used to run graphs few cycles and pause again.
     
-(6) pause
-Desc: If the online mode is enabled, you can pause the execution by this command. The state is again back to running state by executing "go" command without specifying start and end time. "step" command can be used to run graphs few cycles and pause again.
+* `step [<absolute time> | c <number of cycles>]`  
+For pause state, you can step to the specified time. If no argument is specified, step run one cycle from the current time. If a argument <absolute time> is specified, the filter graph jumps to the specified time. Finally if <number of cycles> following after "c", the filter graph jumps to specified cycles later.
     
-Usage:  
-    pause
-    
-(7) step
-Desc: For pause state, you can step to the specified time. If no argument is specified, step run one cycle from the current time. If a argument <absolute time> is specified, the filter graph jumps to the specified time. Finally if <number of cycles> following after "c", the filter graph jumps to specified cycles later.
-    
-Usage:  
-    step
-    step <absolute time> 
-    step c <number of cycles>
-    
-(8) stop
-Desc: Stopping filter graphs. 
+* `stop`  
+Stopping filter graphs. 
     
 Usage:  
     stop
     
-(9) quit
-Desc: Shutdown aws process. 
-    
-Usage:  
-quit
+* `quit`
+Shutdown aws process. 
     
 ## Fitlers
 Here I describe the filter classes currently included in the system. 
 
-(1) sample
-
-Desc: Sample of the filter design. You will understand how the new filter can be implemented. This class is defined in f_base.h as f_sample.
+1. sample  
+Sample of the filter design. You will understand how the new filter can be implemented. This class is defined in f_base.h as f_sample.
  
--IN: Null
+- IN: Null  
  
--OUT: Null
+- OUT: Null  
  
--PAR: 
+- PAR: 
 f64par : 64bit floating point number 
 s64par : 64bit signed integer 
-u64par : 64bit unsigned integer
- 
--PRC: Only printing values of parameters to stdout.
+u64par : 64bit unsigned integer  
+- PRC: Only printing values of parameters to stdout.  
 
-(2) nmea
- 
-Desc: IO source filter of NMEA0183. The input source can be serial ports, UDP sockets and files. File input is only supported for offline mode, and the file format should be "<time> <NMEA sentence>". <time> should be specified aws's common format.(See Etc.) 
+2. nmea  
+IO source filter of NMEA0183. The input source can be serial ports, UDP sockets and files. File input is only supported for offline mode, and the file format should be "<time> <NMEA sentence>". <time> should be specified aws's common format.(See Etc.) 
  
 -IN:  nmea
  
