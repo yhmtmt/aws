@@ -160,13 +160,13 @@ bool f_avt_cam::init_run()
 	memset(m_frame, 0, sizeof(tPvFrame) * m_num_buf);
 	m_frm_done.resize(m_num_buf);
 
-	int ibuf;
+	unsigned int ibuf;
 	for(ibuf = 0; ibuf < m_num_buf; ibuf++){
 		m_frm_done[ibuf] = false;
 		m_frame[ibuf].Context[0] = (void*) this;
-		m_frame[ibuf].Context[0] = (void*) ibuf;
+		m_frame[ibuf].Context[1] = (void*) ibuf;
 		m_frame[ibuf].ImageBufferSize = m_size_buf;
-		m_frame[ibuf].ImageBuffer = new unsigned char[m_size_buf];
+		m_frame[ibuf].ImageBuffer = (void*) new unsigned char[m_size_buf];
 		if(!m_frame[ibuf].ImageBuffer){
 			f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_ALLOC);
 			goto free_buf;
@@ -213,7 +213,7 @@ bool f_avt_cam::init_run()
 
 free_buf:
 	for(ibuf = 0; ibuf < m_num_buf; ibuf++){
-		delete[] m_frame[ibuf].ImageBuffer;
+		delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
 	}
 	delete m_frame;
 	m_frame = NULL;
@@ -252,7 +252,7 @@ void f_avt_cam::destroy_run()
 
 	int ibuf;
 	for(ibuf = 0; ibuf < m_num_buf; ibuf++){
-		delete[] m_frame[ibuf].ImageBuffer;
+		delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
 	}
 	delete[] m_frame;
 	m_frame = NULL;
@@ -266,7 +266,7 @@ void f_avt_cam::destroy_run()
 
 void f_avt_cam::set_new_frm(tPvFrame * pfrm)
 {
-	int ibuf;
+	unsigned int ibuf;
 	if(pfrm->Status == ePvErrSuccess){
 		Mat img;
 		switch(pfrm->Format){
@@ -289,7 +289,7 @@ void f_avt_cam::set_new_frm(tPvFrame * pfrm)
 		}
 	}
 
-	ibuf = (int) pfrm->Context[1];
+	ibuf = (unsigned int) pfrm->Context[1];
 	m_cur_frm = pfrm->FrameCount;
 	m_frm_done[ibuf] = true;
 
