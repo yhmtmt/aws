@@ -119,55 +119,34 @@ Shutdown aws process.
 Here I describe the filter classes currently included in the system. 
 
 1. sample  
-Sample of the filter design. You will understand how the new filter can be implemented. This class is defined in f_base.h as f_sample.
- 
+Sample of the filter design. You will understand how the new filter can be implemented. This class is defined in f_base.h as f_sample.  
 - IN: Null  
- 
 - OUT: Null  
- 
-- PAR: 
-f64par : 64bit floating point number 
-s64par : 64bit signed integer 
+- PAR:  
+f64par : 64bit floating point number  
+s64par : 64bit signed integer  
 u64par : 64bit unsigned integer  
 - PRC: Only printing values of parameters to stdout.  
 
 2. nmea  
-IO source filter of NMEA0183. The input source can be serial ports, UDP sockets and files. File input is only supported for offline mode, and the file format should be "<time> <NMEA sentence>". <time> should be specified aws's common format.(See Etc.) 
- 
--IN:  nmea
- 
--OUT: nmea 
- 
--PAR:
-fnmea: File path of NMEA source file
-src_host: IP address of NMEA source (if not specified ADDR_ANY is used)
-dst_host: IP address of NMEA destination (if not specified UDP output is not turned on). 
-src: Source type. FILE or UDP or COM is allowed.
-com: Number of NMEA source COM port.
-bps: Baud rate of NMEA source COM port.
-port: Port number of NMEA source UDP.
-log: Log enable (y or n)
-filter: Sentence filter. 5 characters are to be specified. * can be used as wild card.
- 
--PRC:
+IO source filter of NMEA0183. The input source can be serial ports, UDP sockets and files. File input is only supported for offline mode, and the file format should be "<time> <NMEA sentence>". <time> should be specified aws's common format.(See Etc.)  
+- IN:  nmea
+- OUT: nmea 
+- PAR:  
+fnmea: File path of NMEA source file  
+src_host: IP address of NMEA source (if not specified ADDR_ANY is used)  
+dst_host: IP address of NMEA destination (if not specified UDP output is not turned on).  
+src: Source type. FILE or UDP or COM is allowed.  
+com: Number of NMEA source COM port.  
+bps: Baud rate of NMEA source COM port.  
+port: Port number of NMEA source UDP.  
+log: Log enable (y or n)  
+filter: Sentence filter. 5 characters are to be specified. * can be used as wild card.  
+- PRC:  
 Write nmea in the input channel to the IO source. 
 Read nmea in the IO source and write it to output channel.
 
- 
-(4) hd5400
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
-
- 
-(5) imgshk
+3. stab
  
 -Desc: 
  
@@ -179,7 +158,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(6) debayer
+4. shioji_ctrl_rcv
  
 -Desc: 
  
@@ -191,7 +170,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(7) gry
+5. shioji_ctrl
  
 -Desc: 
  
@@ -203,7 +182,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(8) edge
+6. shioji
  
 -Desc: 
  
@@ -215,7 +194,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(9) reg
+7. clip
  
 -Desc: 
  
@@ -227,7 +206,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(10) hough
+8. avt_cam
  
 -Desc: 
  
@@ -239,7 +218,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(11) bgksub
+9. imgs
  
 -Desc: 
  
@@ -251,7 +230,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(11) stab
+10. dwin
  
 -Desc: 
  
@@ -263,7 +242,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(12) window
+11. syswin
  
 -Desc: 
  
@@ -275,7 +254,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(13) mwin
+12. spwin
  
 -Desc: 
  
@@ -287,7 +266,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(14) shioji_ctrl_rcv
+13. ptzwin
  
 -Desc: 
  
@@ -299,7 +278,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(15) shioji_ctrl
+14. inspector
  
 -Desc: 
  
@@ -311,7 +290,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(16) shioji
+15. vfile
  
 -Desc: 
  
@@ -323,7 +302,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(17) shipdet
+16. vdev
  
 -Desc: 
  
@@ -335,7 +314,7 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(18) trck
+17. uvcam
  
 -Desc: 
  
@@ -347,314 +326,53 @@ Read nmea in the IO source and write it to output channel.
  
 -PRC:
  
-(19) gauss
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(20) camcalib
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(21) clip
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(22) avt_cam
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(23) imgs
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(24) dwin
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(25) syswin
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(26) spwin
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(27) ptzwin
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(28) inspector
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(29) vfile
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(30) vdev
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(31) uvcam
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(32) trnimg
- 
--Desc: Transmits images over TCP/IP network. You can choose the compression algorithm, color format, color depth, image scale, and compression quality.
- 
--IN: {imgc | imgr}
- 
--OUT: 
- 
--PAR:
-port: Destination port number
-fmt: Image data format {0: raw 1: jpg 2: png)
-depth: Color depth in byte
-channel: Number of color channels
-fmt: Color format {0: Mono, 1: Bayer, 2:RGB}
-qjpg: Jpeg quality [0-100]")
-qpng: PNG quality [0-10]"
-scale: Scale for resizing.
- 
--PRC:
+18. trnimg  
+Transmits images over TCP/IP network. You can choose the compression algorithm, color format, color depth, image scale, and compression quality.
+- IN: {imgc | imgr}  
+- OUT:   
+- PAR:
+port: Destination port number  
+fmt: Image data format {0: raw 1: jpg 2: png)  
+depth: Color depth in byte  
+channel: Number of color channels  
+fmt: Color format {0: Mono, 1: Bayer, 2:RGB}  
+qjpg: Jpeg quality [0-100]")  
+qpng: PNG quality [0-10]"  
+scale: Scale for resizing.  
+- PRC:
 First, Waiting for connection to rcvimg instance.
-After the session established, images in the input channel is sent to the rcvimg instance with specified image format and scale. 
-
- 
-(32) rcvimg
- 
--Desc: Recieves images transmitted by trnimg instances. Basically image format is recognized automatically by source packet's format fields.
- 
--IN:
- 
--OUT: {imgc | imgr}
- 
--PAR:
-addr: Server address (in IPv4)
-port: Destination port number
-fmt: Image data format {0: raw 1: jpg 2: png)
-depth: Color depth in byte
-channel: Number of color channels
-cfmt: Color format {0: Mono, 1: Bayer, 2:RGB}
-qjpg: Jpeg quality [0-100]")
-qpng: PNG quality [0-10]"
- 
--PRC:
+After the session established, images in the input channel is sent to the rcvimg instance with specified image format and scale.  
+19. rcvimg  
+ Recieves images transmitted by trnimg instances. Basically image format is recognized automatically by source packet's format fields.
+- IN:  
+- OUT: {imgc | imgr}  
+- PAR:  
+addr: Server address (in IPv4)  
+port: Destination port number  
+fmt: Image data format {0: raw 1: jpg 2: png)  
+depth: Color depth in byte  
+channel: Number of color channels  
+cfmt: Color format {0: Mono, 1: Bayer, 2:RGB}  
+qjpg: Jpeg quality [0-100]")  
+qpng: PNG quality [0-10]"  
+- PRC:  
 First Connecting to trnimg instance. 
 After the connection established, images are received and transfered to output channel.
 
- 
-(32) trn
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
- 
-(32) rcv
- 
--Desc: 
- 
--IN:
- 
--OUT: 
- 
--PAR:
- 
--PRC:
-
-
 # Channels
+1. imgc  
+ Transfers Mat object. Destination filter gets the clone of the image object.
+- Pars Mat  
  
-(1) imgc
+2. imgr  
+Transfers Mat object. Destination filter gets the reference of the image object. You need to be careful if the channel is connected to multiple destinations.  
+- Pars Mat  
  
--Desc Transfers Mat object. Destination filter gets the clone of the image object.
- 
--Pars Mat
- 
-(2) imgr
- 
--Desc Transfers Mat object. Destination filter gets the reference of the image object. You need to be careful if the channel is connected to multiple destinations.
- 
--Pars Mat
- 
-(1) pvt
- 
--Desc
- 
--Pars
- 
-(1) nmea 
- 
--Desc Transfers nmea sentences. Source filter pushes nmea sentences to the channel. Destination filters pops them.
- 
--Pars vector<char[83]>
- 
-(1) ais
- 
--Desc
- 
--Pars
- 
-(1) bmsg
- 
--Desc
- 
--Pars
- 
-(1) ship
- 
--Desc
- 
--Pars
- 
-(1) ship_ctrl
- 
--Desc
- 
--Pars
- 
-(1) vrect
- 
--Desc
- 
--Pars
- 
-(1) trck
- 
--Desc
- 
--Pars
- 
-(1) ptz
- 
--Desc
- 
--Pars
- 
-(1) ptzc
- 
--Desc
- 
--Pars
-
-(1) campar
- 
--Desc
-
--Pars
-
-
+3. nmea  
+Transfers nmea sentences. Source filter pushes nmea sentences to the channel. Destination filters pops them.
+- Pars vector<char[83]>  
+4. ship_ctrl  
+- Pars
 
 ## Designing New Filter
 Here I explain how you can design and add your new filter to the system. There are some points. 1. and 2. are the duty, and the others are the tips.
