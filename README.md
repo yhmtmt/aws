@@ -6,28 +6,30 @@
 aws is actually providing only the filter based concurrent processing model and the execution frame work. Many filters with various functions are defined in the system, the filters can be instantiated, connected and executed flexibly by shell script based command system. You can add new filters by inheriting filter base class, implementing initialization/destruction/processing methods and configuring input/output channels. 
 
 ## Building aws
-* For Windows
-You need to install Windows SDK and DirectX SDK first. If the Windows SDK you installed locate include and library directory at different path, it causes compile error, you need to reset the configuration of paths at VC Project's propertiy dialog. Additionally,you need to install cygwin to execute its commands and the scripts. 
+aws depends on various libraries. 
 
-*For x86 Linux
-    
+* DirectX SDK (For Windows)
+* Windows SDK (For Windows)
+* curl (For Windows)
+* pthread for windows (For Windows)
+* libjpeg (for Windows)
+* OpenCV 2.4.9
+* cminpack 
+* PvAPI  
+  
+For linux, I prepared a Makefile. You can build binary simply typing make.  
     make
-    
 
-*For Petalinux on Zynq
-After configuring Xilinx tools paths,
-    
+For Petalinux@Zynq, first configure environmental variables of Xilinx's tools, then type,  
     make "ZYNQ=y"
     
-
 ## Building commands 
-Commanding aws is achieved by executing commands. You need to build them at directory rcmd.
+aws can only be controled by dedicated remote command. You need to build them at directory rcmd.  
  
     cd rcmd
     make
  
-
-Of course for Petalinux
+For Petalinux, after configuring environmental variables of Xilinx's tools,   
  
     make "ZYNQ=y"
  
@@ -52,14 +54,17 @@ You can find the sample of ".aws" at the directory "dbdir".
 ## Executing aws
 "aws" can be executed with some options.
 
-    "-port <port number> "
- specifies the number of command waiting port. (default 20000)
+    -port <port number> 
 
-    "-wpath <path>"
- specifies the path to the working directory. aws uses relative paths from the path to find files specified. This keeps the compatibility between Linux and Windows.(default working path aws executed)
+specifies the number of command waiting port. (default 20000)
 
-    "-tzone <minute>"
- specifies time zone in minute.  For example, UTC+9 is 540. aws uses UTC time inside the kernel, but the filters often do not. Therefore, aws provides time zone setting to provide local time for each filter.  (default 540)
+    -wpath <path>
+
+specifies the path to the working directory. aws uses relative paths from the path to find files specified. This keeps the compatibility between Linux and Windows.(default working path aws executed)
+
+    -tzone <minute>
+
+specifies time zone in minute.  For example, UTC+9 is 540. aws uses UTC time inside the kernel, but the filters often do not. Therefore, aws provides time zone setting to provide local time for each filter.  (default 540)
      
 ## Building filter graph
 You need to build filter graph for your specific application. Filter graphs are composed by  filters and channels. All filters have input and output channels to transfer data from or to other filters. 
