@@ -238,8 +238,6 @@ bool f_shioji::getrec()
 				(int) (sizeof(m_buf)-len), 0, 
 				(sockaddr*)&m_svr_sock_addr, (socklen_t*) &m_size_svr_sock_addr);
 #endif
-
-
 			if(len == 0)
 				cout << "Connection was closed." << endl;
 

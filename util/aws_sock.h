@@ -4,6 +4,9 @@
 #include <Windows.h>
 //#include <winsock2.h>
 #define MSG_MORE MSG_PARTIAL
+#define SD_RECEIVE 0
+#define SD_SEND 1
+#define SD_BOTH 2
 #else /* for unix */
 #include <sys/types.h>
 #include <sys/socket.h>

@@ -305,24 +305,32 @@ bool f_rcv_img::proc()
 	tv.tv_sec = 0;
 
 	s_img_pkt0 h0;
-	int len_rcv;
-	int len_rcvd;
-	if(select((int) m_sock + 1, &fr, NULL, &fe, &tv)){
-		if(FD_ISSET(m_sock, &fr)){
-			len_rcv =  sizeof(h0);
-			len_rcvd = recv(m_sock, (char*) &h0, len_rcv, MSG_MORE);
-			if(len_rcv != len_rcvd || !h0.check()){
-				cerr << "Failed to recieve stream header." << endl;
+	int len_rcv = sizeof(h0);
+	int len_rcvd = 0;
+	while(len_rcvd != len_rcv){
+		if(select((int) m_sock + 1, &fr, NULL, &fe, &tv)){
+			if(FD_ISSET(m_sock, &fr)){
+				int len = recv(m_sock, ((char*) &h0) + len_rcvd, len_rcv - len_rcvd, MSG_MORE);
+				if(len == SOCKET_ERROR){
+					cerr << "Socket error during receiving header" << endl;
+					disconnect();
+					return true;
+				}
+				len_rcvd += len;
+			}else if(FD_ISSET(m_sock, &fe)){
+				cerr << "Socket error" << endl;
 				disconnect();
 				return true;
 			}
-		}else if(FD_ISSET(m_sock, &fe)){
-			cerr << "Socket error" << endl;
-			disconnect();
+		}else{
+			cerr << "Receiving stream header timeout." << endl;
 			return true;
 		}
-	}else{
-		cerr << "Receiving stream header timeout." << endl;
+	}
+
+	if(!h0.check()){
+		cerr << "Failed to recieve stream header." << endl;
+		disconnect();
 		return true;
 	}
 

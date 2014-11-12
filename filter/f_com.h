@@ -199,6 +199,7 @@ private:
 	bool wait_connection();
 	void disconnect()
 	{
+		shutdown(m_sock_client, SD_BOTH);
 		m_bconnected = false;
 	}
 	bool m_bconnected;
@@ -258,6 +259,7 @@ private:
 	bool try_connection();
 	void disconnect()
 	{
+		shutdown(m_sock, SD_BOTH);
 		m_bconnected = false;
 	}
 	bool m_bconnected;

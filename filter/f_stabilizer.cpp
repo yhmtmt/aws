@@ -280,7 +280,6 @@ bool f_stabilizer::proc(){
 	m_num_frms++;
 
 	// Motion parameter is estimated as a moving average of Wnew
-
 	Mat clrout, gryout;
 	switch(m_core.get_wt()){
 	case EWT_AFN:
