@@ -550,6 +550,11 @@ bool c_aws::add_channel(s_cmd & cmd)
 {
 	char ** tok = cmd.args;
 	int itok = 1;
+	if(get_channel(tok[itok+1]) != NULL){
+		cerr << "Cannot register channels with same name " << tok[itok+1] << "." << endl;
+		return false;
+	}
+
 	ch_base * pchan = ch_base::create(tok[itok], tok[itok+1]);
 	if(pchan == NULL)
 		return false;
@@ -560,6 +565,11 @@ bool c_aws::add_channel(s_cmd & cmd)
 bool c_aws::add_filter(s_cmd & cmd){
 	char ** tok = cmd.args;
 	int itok = 1;
+
+	if(get_filter(tok[itok+1]) != NULL){
+		cerr << "Cannot register filters with same name " << tok[itok + 1] << "." << endl;
+		return false;
+	}
 	f_base * pfilter = f_base::create(tok[itok], tok[itok+1]);
 
 	if(pfilter == NULL){
