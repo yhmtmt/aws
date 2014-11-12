@@ -518,7 +518,7 @@ void f_uvc_cam::destroy_run()
 	}
 	////////////////////////uninit
 	unsigned int i;
-	if(buffer != NULL){
+	if(buffers != NULL){
 
 		switch (io) {
 		case IO_METHOD_READ:

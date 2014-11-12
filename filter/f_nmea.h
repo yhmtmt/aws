@@ -16,6 +16,10 @@
 
 #define SIZE_NMEA_BUF 166 // for two NMEA
 
+#ifndef _WIN32
+#include <termios.h>
+#endif 
+
 class f_nmea: public f_base
 {
 protected:

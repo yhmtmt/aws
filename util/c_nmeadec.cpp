@@ -26,6 +26,9 @@
 #include "thread_util.h"
 
 using namespace std;
+#ifndef _WIN32
+#include <termios.h>
+#endif
 
 #include "c_nmeadec.h"
 
