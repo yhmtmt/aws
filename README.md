@@ -161,24 +161,28 @@ Write nmea in the input channel to the IO source.
 Read nmea in the IO source and write it to output channel.
 
 3. stab
+This filter stabilizes the rigid motion (means 2D rotation and translation). Rotation and vertical motions are removed. Of course, we cannot distinguish true camera motion to unintended motion. We need to choose carefully the sensitivity constant of the algorithm. The filter requires a color image and the grayscale image as the input channels. Then the filter outputs stabilized color and grayscale images. (This is not designed for new framework, and should be modified.)
+   * IN: img(grayscale) img(color)
+   * OUT: img(grayscale) img(color)
+   * PAR:
+   * PRC:
+
+4. shioji_ctrl_rcv  
+The filter receives Shiojimaru's control packet from the UDP socket. (This filter is out of date. It needs to be modified for current framework)  
    * IN:
    * OUT: 
    * PAR:
    * PRC:
  
-4. shioji_ctrl_rcv
+5. shioji_ctrl  
+This filter output control values to the filter "shioji". The values are modified via remote command.(This filter is out of date. It needs to be modified for current framework.)
    * IN:
    * OUT: 
    * PAR:
    * PRC:
  
-5. shioji_ctrl
-   * IN:
-   * OUT: 
-   * PAR:
-   * PRC:
- 
-6. shioji
+6. shioji  
+This filter sends packets to control Shiojimaru. The control values are given both from the input channel and remote command. This filter also recieves Shiojimaru's state packet transmitted from the server, and output the values to the channel. (This filter is out of date. It needs to be modified for current framework.)
    * IN:
    * OUT: 
    * PAR:
