@@ -26,9 +26,6 @@
 #include "thread_util.h"
 
 using namespace std;
-#ifndef _WIN32
-#include <termios.h>
-#endif
 
 #include "c_nmeadec.h"
 
@@ -38,8 +35,6 @@ unsigned char encchar(unsigned char c8);
 bool parstrcmp(const char * str1, const char * str2);
 int parstrcpy(char * str, const char * src, int num);
 int parstrcpy(char * str, const char * src, char delim, int max_buf = 32);
-
-#define SEC 10000000
 
 unsigned char calc_nmea_chksum(const char * str)
 {
@@ -62,70 +57,6 @@ bool eval_nmea_chksum(const char * str){
 
 	unsigned char csa = (unsigned char) htoi(&str[i+1]);
 	return cs == csa;
-}
-
-int enc_cbr(int cbr){
-#ifdef _WIN32
-	switch(cbr){
-	case 110:
-		return CBR_110;     //  baud rate
-	case 300:
-		return CBR_300;     //  baud rate
-	case 600:
-		return CBR_600;     //  baud rate
-	case 1200:
-		return CBR_1200;     //  baud rate
-	case 2400:
-		return CBR_2400;     //  baud rate
-	case 4800:
-		return CBR_4800;     //  baud rate
-	case 9600:
-		return CBR_9600;     //  baud rate
-	case 14400:
-		return CBR_14400;     //  baud rate
-	case 19200:
-		return CBR_19200;     //  baud rate
-	case 38400:
-		return CBR_38400;     //  baud rate
-	case 56000:
-		return CBR_56000;     //  baud rate
-	case 57600:
-		return CBR_57600;     //  baud rate
-	case 115200:
-		return CBR_115200;     //  baud rate
-	case 128000:
-		return CBR_128000;     //  baud rate
-	case 256000:
-		return CBR_256000;     //  baud rate
-	}
-#else
-	switch(cbr){
-	case 110:
-		return B110;     //  baud rate
-	case 300:
-		return B300;     //  baud rate
-	case 600:
-		return B600;     //  baud rate
-	case 1200:
-		return B1200;     //  baud rate
-	case 2400:
-		return B2400;     //  baud rate
-	case 4800:
-		return B4800;     //  baud rate
-	case 9600:
-		return B9600;     //  baud rate
-	case 19200:
-		return B19200;     //  baud rate
-	case 38400:
-		return B38400;     //  baud rate
-	case 57600:
-		return B57600;     //  baud rate
-	case 115200:
-		return B115200;     //  baud rate
-	}
-
-#endif
-	return -1;
 }
 
 //////////////////////////////////////////////////////////////// s_binary_message

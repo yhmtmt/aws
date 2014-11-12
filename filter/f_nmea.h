@@ -19,6 +19,7 @@
 #ifndef _WIN32
 #include <termios.h>
 #endif 
+int enc_cbr(int cbr);
 
 class f_nmea: public f_base
 {

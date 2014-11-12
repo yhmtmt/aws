@@ -499,8 +499,11 @@ bool f_uvc_cam::init_run()
 
 void f_uvc_cam::destroy_run()
 {
+  if(-1 == fd) // no need to destroy
+    return;
 
 	///////////////////////////stop
+
 	enum v4l2_buf_type type;
 
 	switch (io) {
