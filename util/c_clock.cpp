@@ -23,8 +23,8 @@ using namespace std;
 
 #include "c_clock.h"
 
-static char * strWday[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
-static char * strMonth[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+static const char * strWday[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"};
+static const char * strMonth[12] = {"Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
 
 const char * getMonthStr(int month)
 {
@@ -76,7 +76,7 @@ bool decTmStr(char * tmStr, tmex & tm)
 		return false;
 	// tmStr[1-3] is week day.
 	for(tm.tm_wday = 0; tm.tm_wday < 7;	tm.tm_wday++){
-		char * ptr1 = strWday[tm.tm_wday];
+		const char * ptr1 = strWday[tm.tm_wday];
 		char * ptr2 = &tmStr[1];
 		if(ptr1[0] == ptr2[0] && ptr1[1] == ptr2[1] && ptr1[2] == ptr2[2]){
 			break;
@@ -90,7 +90,7 @@ bool decTmStr(char * tmStr, tmex & tm)
 
 	// tmStr[5-7] is month
 	for(tm.tm_mon = 0; tm.tm_mon < 12; tm.tm_mon++){
-		char * ptr1 = strMonth[tm.tm_mon];
+		const char * ptr1 = strMonth[tm.tm_mon];
 		char * ptr2 = &tmStr[5];
 		if(ptr1[0] == ptr2[0] && ptr1[1] == ptr2[1] && ptr1[2] == ptr2[2]){
 			break;
