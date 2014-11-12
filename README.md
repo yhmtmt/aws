@@ -150,7 +150,7 @@ IO source filter of NMEA0183. The input source can be serial ports, UDP sockets 
 fnmea: File path of NMEA source file  
 src_host: IP address of NMEA source (if not specified ADDR_ANY is used)  
 dst_host: IP address of NMEA destination (if not specified UDP output is not turned on).  
-src: Source type. FILE or UDP or COM is allowed.  
+src: Source type. One of {FILE,  UDP, COM}.  
 com: Number of NMEA source COM port.  
 bps: Baud rate of NMEA source COM port.  
 port: Port number of NMEA source UDP.  
@@ -159,12 +159,36 @@ filter: Sentence filter. 5 characters are to be specified. \* can be used as wil
 	* PRC:  
 Write nmea in the input channel to the IO source. 
 Read nmea in the IO source and write it to output channel.
+3. nmea_proc  
+This filter decode NMEA0183 and set the sensor variables to the system's global variables. Input is from filter "nmea" with channel "nmea". Currently, a part of GPS and AIS sentences are supported.   
+   * IN: nmea  
+   * OUT: NULL  
+   * PAR:
+bm_ver: The version of the AIS binary message which aws defined.  
+trmc: {yes, no} Correct the time of the system with RMC sentence.  
+   * PRC:
 
 3. stab
 This filter stabilizes the rigid motion (means 2D rotation and translation). Rotation and vertical motions are removed. Of course, we cannot distinguish true camera motion to unintended motion. We need to choose carefully the sensitivity constant of the algorithm. The filter requires a color image and the grayscale image as the input channels. Then the filter outputs stabilized color and grayscale images. (This is not designed for new framework, and should be modified.)
    * IN: img(grayscale) img(color)
    * OUT: img(grayscale) img(color)
-   * PAR:
+   * PAR:  
+roi: ROI for template. (4 integer values)  
+plv: Pyramit level.  
+itr: Maximum number of Gauss-Newton iteration.  
+log: Loggin.  
+clr: Initialize grayscale output to grayscale input. (This cause the template region without stabilization. Thus it initializes the algorithm)  
+w: flag for weighted iteration  
+m: load mask image to eliminate disturbing pixels from calculation.  
+rb: 
+rbth:  
+rsbsz:  
+wt: Warp type.  
+ipt: inter polation type
+alhpa:  
+beta:  
+through: Disable stabilization.
+disp: Displaying stabilization status.  
    * PRC:
 
 4. shioji_ctrl_rcv  
@@ -306,7 +330,7 @@ Transfers nmea sentences. Source filter pushes nmea sentences to the channel. De
 Here I explain how you can design and add your new filter to the system. There are some points. 1. and 2. are the duty, and the others are the tips.
 
 #### Inherit f_base class and implement followings (here the filter class is f_filter)
-* 'f_filter(const char *): f_base(name){ }'  
+* `f_filter(const char *): f_base(name){ }`  
 The constructor has single "const char *" argument, and the f_base(const char*) should be called in the initialization list as follow,
      
 * `virtual bool init_run()`  
