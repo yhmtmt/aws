@@ -117,7 +117,7 @@ There two modes running filter graphs; One is online, another is offline. In the
 * `go [<start time> [<end time>]]`  
 Desc: Running filter graph. For online mode, the command simply execute filter graph. For ofline mode, The filter graph is executed from the specified start time and to the end time. When the time is reached to the end time specified, the filter graph transits the state to "pause". Time should be specified aws's common format.(See Etc)
     
-* `pause`
+* `pause`  
 If the online mode is enabled, you can pause the execution by this command. The state is again back to running state by executing "go" command without specifying start and end time. "step" command can be used to run graphs few cycles and pause again.
     
 * `step [<absolute time> | c <number of cycles>]`  
@@ -168,7 +168,7 @@ bm_ver: The version of the AIS binary message which aws defined.
 trmc: {yes, no} Correct the time of the system with RMC sentence.  
    * PRC:
 
-3. stab
+3. stab  
 This filter stabilizes the rigid motion (means 2D rotation and translation). Rotation and vertical motions are removed. Of course, we cannot distinguish true camera motion to unintended motion. We need to choose carefully the sensitivity constant of the algorithm. The filter requires a color image and the grayscale image as the input channels. Then the filter outputs stabilized color and grayscale images. (This is not designed for new framework, and should be modified.)
    * IN: img(grayscale) img(color)
    * OUT: img(grayscale) img(color)
