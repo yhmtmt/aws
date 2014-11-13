@@ -261,23 +261,31 @@ This filter sends packets to control Shiojimaru. The control values are given bo
    * PRC:
 
 15. vfile
+This filter grabs images from video file via DirectShow filters. Only for Windows.  
    * IN:
-   * OUT: 
-   * PAR:
+   * OUT: {imgr or imgc}  
+   * PAR:  
+file: File path of the video.  
+abs_time: Absolute time of the video start. Follow the time specification format described later.  
    * PRC:
  
 16. vdev
+This filter grabs images from video capture device via DirectShow filters. Only for Windows  
    * IN:
-   * OUT: 
+   * OUT: {imgr or imgc}  
    * PAR:
+device: device number. (default 0)  
    * PRC:
  
 17. uvcam
+This filter grabs images from USB camera compatible with UVC driver. Only for Linux.  
    * IN:
-   * OUT: 
-   * PAR:
+   * OUT: {imgr or imgc}  
+   * PAR:  
+dev_name: Path to the camera device. (default /dev/video0)  
    * PRC:
- 
+Grabbing a image from camera and transmitting it to output channel.  
+
 18. trnimg  
 Transmits images over TCP/IP network. You can choose the compression algorithm, color format, color depth, image scale, and compression quality.
 	* IN: {imgc | imgr}  
