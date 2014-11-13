@@ -1,16 +1,16 @@
 ZYNQ	= n
 
 #compiler
-CC	= g++
+CC	= g++ -m32
 
 #linker
 LD	= ld
 
 #debug option
-DFLAG = -g 
+DFLAGS = -g 
 
 #optimization option
-OFLAG = -O3
+OFLAGS = -O3
 
 # cpu architecture (currently arm, x64, x86, WIN64)
 #CPU	= arm
