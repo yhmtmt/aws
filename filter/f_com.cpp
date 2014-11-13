@@ -277,7 +277,8 @@ bool f_rcv_img::try_connection()
 {
 	int itr = 0;
 	while(1){
-		if(::connect(m_sock, (sockaddr*) &m_sock_addr, 
+		if(::connect(m_sock, 
+			(sockaddr*) &m_sock_addr, 
 			sizeof(m_sock_addr)) == SOCKET_ERROR){
 				cerr << "Socket error in connect." << endl;
 				return false;
@@ -329,7 +330,7 @@ bool f_rcv_img::proc()
 		if(select((int) m_sock + 1, &fr, NULL, &fe, &tv)){
 			if(FD_ISSET(m_sock, &fr)){
 				int len = recv(m_sock, ((char*) &h0) + len_rcvd, len_rcv - len_rcvd, MSG_MORE);
-				if(len == SOCKET_ERROR){
+				if(len == SOCKET_ERROR || len == 0){
 					cerr << "Socket error during receiving header" << endl;
 					disconnect();
 					return true;
@@ -372,7 +373,7 @@ bool f_rcv_img::proc()
 		if(select((int) m_sock + 1, &fr, NULL, &fe, &tv)){
 			if(FD_ISSET(m_sock, &fr)){
 				int len = recv(m_sock, (char*) data.data + len_rcvd, len_rcv - len_rcvd, 0);
-				if(len == SOCKET_ERROR){
+				if(len == SOCKET_ERROR || len == 0){
 					cerr << "Failed to recieve stream data." << endl;
 					disconnect();
 					return true;

@@ -258,8 +258,7 @@ private:
 
 	bool try_connection();
 	void disconnect()
-	{
-		shutdown(m_sock, SD_BOTH);
+	{		shutdown(m_sock, SD_BOTH);
 		m_bconnected = false;
 	}
 	bool m_bconnected;
