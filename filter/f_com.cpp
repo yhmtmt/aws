@@ -301,7 +301,7 @@ bool f_rcv_img::proc()
 	FD_SET(m_sock, &fr);
 	FD_SET(m_sock, &fe);
 
-	tv.tv_usec = 100000;
+	tv.tv_usec = 500000;
 	tv.tv_sec = 0;
 
 	s_img_pkt0 h0;
@@ -324,7 +324,7 @@ bool f_rcv_img::proc()
 			}
 		}else{
 			cerr << "Receiving stream header timeout." << endl;
-			return true;
+			continue;
 		}
 	}
 
@@ -342,7 +342,7 @@ bool f_rcv_img::proc()
 		FD_SET(m_sock, &fr);
 		FD_SET(m_sock, &fe);
 
-		tv.tv_usec = 100000;
+		tv.tv_usec = 500000;
 		tv.tv_sec = 0;
 
 		if(select((int) m_sock + 1, &fr, NULL, &fe, &tv)){
@@ -361,7 +361,7 @@ bool f_rcv_img::proc()
 			}
 		}else{
 			cerr << "Receiving stream data timeout." << endl;
-			return true;
+			continue;
 		}
 	}
 
