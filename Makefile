@@ -24,7 +24,7 @@ OS	= LINUX
 DEFS = -D_$(CPU) -D_$(OS) 
 
 # module selection switch
-SANYO_HD5400 = n
+SANYO_HD5400 = y
 AVT_CAM = y
 FWINDOW = n
 
@@ -84,10 +84,15 @@ COBJS = $(addsuffix .o,$(CHANNEL))
 UOBJS = $(addsuffix .o,$(UTIL))
 OBJS = command.o c_aws.o aws.o 
 
+FSRCS = $(addsuffix .o,$(FILTER))
+CSRCS = $(addsuffix .o,$(CHANNEL))
+USRCS = $(addsuffix .o,$(UTIL))
+SRCS = $(FSRCS) $(CSRCS) $(USRCS)
+
 EXE = aws
 FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS)
 
-aws: $(OBJS)	
+aws: $(SRCS)	
 	cd $(FDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(FOBJS)"
 	cd $(CDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(COBJS)"
 	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)"
