@@ -18,11 +18,6 @@
 #ifndef SOCKET_ERROR 
 #define SOCKET_ERROR (-1)
 #endif
-
-#define SD_RECEIVE 0
-#define SD_SEND 1
-#define SD_BOTH 2
-
 inline int closesocket(SOCKET s)
 {
 	return ::close(s);
@@ -30,6 +25,9 @@ inline int closesocket(SOCKET s)
 
 #endif
 
+#define SD_RECEIVE 0
+#define SD_SEND 1
+#define SD_BOTH 2
 
 inline void set_sockaddr_addr(sockaddr_in & addr, const char * str_addr = NULL)
 {
