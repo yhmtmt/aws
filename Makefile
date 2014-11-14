@@ -10,7 +10,7 @@ LD	= ld
 DFLAGS = -g 
 
 #optimization option
-OFLAGS = -O3
+#OFLAGS = -O3
 
 # cpu architecture (currently arm, x64, x86, WIN64)
 #CPU	= arm
@@ -24,7 +24,7 @@ OS	= LINUX
 DEFS = -D_$(CPU) -D_$(OS) 
 
 # module selection switch
-SANYO_HD5400 = y
+SANYO_HD5400 = n
 AVT_CAM = y
 FWINDOW = n
 
@@ -84,15 +84,15 @@ COBJS = $(addsuffix .o,$(CHANNEL))
 UOBJS = $(addsuffix .o,$(UTIL))
 OBJS = command.o c_aws.o aws.o 
 
-FSRCS = $(addsuffix .o,$(FILTER))
-CSRCS = $(addsuffix .o,$(CHANNEL))
-USRCS = $(addsuffix .o,$(UTIL))
+FSRCS = $(addsuffix .cpp,$(FILTER))
+CSRCS = $(addsuffix .cpp,$(CHANNEL))
+USRCS = $(addsuffix .cpp,$(UTIL))
 SRCS = $(FSRCS) $(CSRCS) $(USRCS)
 
 EXE = aws
 FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS)
 
-aws: $(SRCS)	
+aws: $(OBJS)
 	cd $(FDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(FOBJS)"
 	cd $(CDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(COBJS)"
 	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)"

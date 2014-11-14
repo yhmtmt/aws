@@ -263,7 +263,7 @@ public:
 		out << " ID:" << m_id 
 			<< " DIST:" << m_dist << "(" << m_dist_unit << "M)"
 			<< " BEAR:" << m_bear << (m_is_bear_true ? "(deg, T)" : "(deg, R)")
-			<< " SPD:" << m_spd << (m_dist_unit == 'K' ? "(K/h)" : (m_dist_unit == 'N' ? "(KT)" : (m_dist_unit == 'S' ? "(MPH)" : "(???)")))
+			<< " SPD:" << m_spd << (m_dist_unit == 'K' ? "(K/h)" : (m_dist_unit == 'N' ? "(KT)" : (m_dist_unit == 'S' ? "(MPH)" : "(xxx)")))
 			<< " CRS:" << m_crs << (m_is_crs_true ? "(deg, T)" : "(deg, R)")
 			<< " DCPA:" << m_dcpa << "(" << m_dist_unit << "M)"
 			<< " TCPA:" << m_tcpa << "(MIN)"

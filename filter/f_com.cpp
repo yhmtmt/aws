@@ -181,78 +181,72 @@ bool f_trn_img::proc()
 
 	fd_set fw, fe;
 	timeval tv;
-	FD_ZERO(&fw);
-	FD_ZERO(&fe);
-	FD_SET(m_sock_client, &fw);
-	FD_SET(m_sock_client, &fe);
-	tv.tv_sec = 0;
-	tv.tv_usec = 500000;
-
 	s_img_pkt0 h0 = s_img_pkt0(len_data, data.type(), m_fmt, m_cfmt, 
 		(unsigned int) sz.width, (unsigned int) sz.height);
 	int lenh = sizeof(h0);
 	int lenh_sent = 0;
 	int to_retry = 0;
-	while(lenh_sent != lenh){
-		if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
-			if(FD_ISSET(m_sock_client, &fw)){
-				int len = send(m_sock_client, 
-					((const char *) &h0) + lenh_sent, 
-					lenh - lenh_sent, MSG_MORE);
-				if(len == SOCKET_ERROR){
-					cerr << "Socket error in sending stream header" << endl;
-					disconnect();
-					return true;
-				}
-				lenh_sent += len;
-			}else{
-				cerr << "Socket error after returning select." << endl;
-				disconnect();
-				return true;
-			}
-		}else{
-			cerr << "Sending stream header timeout." << endl;
-			if(to_retry > 5){
-				cerr << "Retry exceeded 5 times. Giving up." << endl;
-				disconnect();
-				return true;
-			}
-			to_retry++;
-			continue;
-		}
+	FD_ZERO(&fw);
+	FD_ZERO(&fe);
+	FD_SET(m_sock_client, &fw);
+	FD_SET(m_sock_client, &fe);
+	tv.tv_sec = 1;
+	tv.tv_usec = 500000;
+	
+	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
+	  if(FD_ISSET(m_sock_client, &fw)){
+	    int len = send(m_sock_client, 
+			   (const char *) &h0, lenh, 0);
+	    if(len == SOCKET_ERROR || len == 0){
+	      cerr << "Socket error in sending stream header" << endl;
+	      disconnect();
+	      return true;
+	    }
+	    if(len != lenh){
+	      cerr << "Incomplete transmission." << endl;
+	    }
+	  }else{
+	    cerr << "Socket error after returning select." << endl;
+	    disconnect();
+	    return true;
+	  }
+	}else{
+	  cerr << "Sending stream header timeout." << endl;
+	  return true;
 	}
+	
+	int len_data_sent = 0;
+	to_retry = 0;
 	FD_ZERO(&fw);
 	FD_ZERO(&fe);
 	FD_SET(m_sock_client, &fw);
 	FD_SET(m_sock_client, &fe);
 	tv.tv_sec = 0;
 	tv.tv_usec = 500000;
-	int len_data_sent = 0;
-	to_retry = 0;
-	while(len_data_sent != len_data){
-		if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
-			if(FD_ISSET(m_sock_client, &fw)){
-				int len = send(m_sock_client, 
-					(const char *) data.data, len_data, 0);
-				if(len == SOCKET_ERROR){
-					cerr << "Socket error in sending data stream." <<endl;
-					disconnect();
-					return true;
-				}
-				len_data_sent += len;
-			}else{
-				cerr << "Socket error after returning select." << endl;
-				disconnect();
-				return true;
-			}
-		}else{
-			cerr << "Sending stream data timeout." << endl;
-			if(to_retry > 5){
-				cerr << "Retry exeeded 5 times. Giving up." << endl;
-			}
-			continue;
-		}
-	}
+	
+	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
+	    if(FD_ISSET(m_sock_client, &fw)){
+	      int len = send(m_sock_client, 
+			     (const char *) data.data, 
+			     len_data, 0);
+	      if(len == SOCKET_ERROR || len == 0){
+		cerr << "Socket error in sending data stream." <<endl;
+		disconnect();
+		return true;
+	      }
+	      if(len != len_data){
+		cerr << "Incomplete transmittion." << endl;
+	      }
+	    }else{
+	      cerr << "Socket error after returning select." << endl;
+	      disconnect();
+	      return true;
+	    }
+
+	  }else{
+	    cerr << "Sending stream data timeout." << endl;
+	    return true;
+	  }
 	return true;
 }
 
