@@ -181,13 +181,10 @@ bool f_trn_img::proc()
 
 	fd_set fw, fe;
 	timeval tv;
-<<<<<<< HEAD
 	s_img_pkt0 h0 = s_img_pkt0(len_data, data.type(), m_fmt, m_cfmt, 
 		(unsigned int) sz.width, (unsigned int) sz.height);
 	int lenh = sizeof(h0);
 	int lenh_sent = 0;
-	int to_retry = 0;
-=======
 	FD_ZERO(&fw);
 	FD_ZERO(&fe);
 	FD_SET(m_sock_client, &fw);
@@ -195,9 +192,6 @@ bool f_trn_img::proc()
 	tv.tv_sec = 0;
 	tv.tv_usec = 100000;
 
-	s_img_pkt0 h0 = s_img_pkt0(len_data, data.type(), m_fmt, m_cfmt, 
-		(unsigned int) sz.width, (unsigned int) sz.height);
-	int lenh = sizeof(h0);
 	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
 		if(FD_ISSET(m_sock_client, &fw)){
 			int lenh_sent = send(m_sock_client, 
@@ -217,12 +211,10 @@ bool f_trn_img::proc()
 		return true;
 	}
 
->>>>>>> d76a92e3ca7cf6d04e1822ffb0e7ff46e1e84293
 	FD_ZERO(&fw);
 	FD_ZERO(&fe);
 	FD_SET(m_sock_client, &fw);
 	FD_SET(m_sock_client, &fe);
-<<<<<<< HEAD
 	tv.tv_sec = 1;
 	tv.tv_usec = 500000;
 	
@@ -248,8 +240,8 @@ bool f_trn_img::proc()
 	  return true;
 	}
 	
+
 	int len_data_sent = 0;
-	to_retry = 0;
 	FD_ZERO(&fw);
 	FD_ZERO(&fe);
 	FD_SET(m_sock_client, &fw);
@@ -280,30 +272,7 @@ bool f_trn_img::proc()
 	    cerr << "Sending stream data timeout." << endl;
 	    return true;
 	  }
-=======
-	tv.tv_sec = 0;
-	tv.tv_usec = 100000;
 
-	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
-		if(FD_ISSET(m_sock_client, &fw)){
-			int len_data_sent = send(m_sock_client, 
-				(const char *) data.data, len_data, 0);
-			if(len_data_sent != len_data){
-				cerr << "Socket error in sending data stream." <<endl;
-				disconnect();
-				return true;
-			}
-		}else{
-			cerr << "Socket error after returning select." << endl;
-			disconnect();
-			return true;
-		}
-	}else{
-		cerr << "Sending stream data timeout." << endl;
-		return true;
-	}
-
->>>>>>> d76a92e3ca7cf6d04e1822ffb0e7ff46e1e84293
 	return true;
 }
 
