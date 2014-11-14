@@ -80,41 +80,39 @@ bool f_trn_img::init_run()
 
 bool f_trn_img::wait_connection()
 {
+	int res;
 	fd_set fr, fe;
 	timeval tv;
 	int itr = 0;
-	while(1){
-		FD_ZERO(&fr);
-		FD_ZERO(&fe);
-		FD_SET(m_sock_svr, &fr);
-		FD_SET(m_sock_svr, &fe);
-		tv.tv_sec = 3;
-		tv.tv_usec = 0;
+	FD_ZERO(&fr);
+	FD_ZERO(&fe);
+	FD_SET(m_sock_svr, &fr);
+	FD_SET(m_sock_svr, &fe);
+	tv.tv_sec = 3;
+	tv.tv_usec = 0;
 
-		if(select((int) m_sock_svr + 1, &fr, NULL, &fe, &tv)){
-			if(FD_ISSET(m_sock_svr, &fr)){
-				m_sz_sock_client_addr = sizeof(m_sock_client_addr);
-				m_sock_client = accept(m_sock_svr, 
-					(sockaddr*) &m_sock_client_addr, &m_sz_sock_client_addr);
-				if(m_sock_client == SOCKET_ERROR){
-					f_base::send_err(this, __FILE__, __LINE__, FERR_TRN_IMG_SOCK_SVR_CON);
-					return false;
-				}
-				cerr << "Server connection established." << endl;
-				m_bconnected = true;
-				break;
-			}else{
+	res = select((int) m_sock_svr + 1, &fr, NULL, &fe, &tv);
+	if(res > 0){
+		if(FD_ISSET(m_sock_svr, &fr)){
+			m_sz_sock_client_addr = sizeof(m_sock_client_addr);
+			m_sock_client = accept(m_sock_svr, 
+				(sockaddr*) &m_sock_client_addr, &m_sz_sock_client_addr);
+			if(m_sock_client == SOCKET_ERROR){
 				f_base::send_err(this, __FILE__, __LINE__, FERR_TRN_IMG_SOCK_SVR_CON);
 				return false;
 			}
+			cerr << "Server connection established." << endl;
+			m_bconnected = true;
 		}else{
-			cerr << "Waiting connection." << endl;
-			itr++;
-		}
-
-		if(itr == 10){
+			f_base::send_err(this, __FILE__, __LINE__, FERR_TRN_IMG_SOCK_SVR_CON);
 			return false;
 		}
+	}else if(res < 0){
+		int en = errno;
+		cerr << "Error No " << en << " " << strerror(en) << endl;
+		return false;
+	}else{
+		return false;	
 	}
 	return true;
 }
@@ -200,7 +198,6 @@ bool f_trn_img::proc()
 			if(lenh_sent != lenh){
 				cerr << "Incomplete transmission of header. " << endl;
 				cerr << lenh_sent << "/" << lenh << endl;
-				disconnect();
 				return true;
 			}
 		}else{
