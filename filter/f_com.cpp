@@ -181,15 +181,48 @@ bool f_trn_img::proc()
 
 	fd_set fw, fe;
 	timeval tv;
+<<<<<<< HEAD
 	s_img_pkt0 h0 = s_img_pkt0(len_data, data.type(), m_fmt, m_cfmt, 
 		(unsigned int) sz.width, (unsigned int) sz.height);
 	int lenh = sizeof(h0);
 	int lenh_sent = 0;
 	int to_retry = 0;
+=======
 	FD_ZERO(&fw);
 	FD_ZERO(&fe);
 	FD_SET(m_sock_client, &fw);
 	FD_SET(m_sock_client, &fe);
+	tv.tv_sec = 0;
+	tv.tv_usec = 100000;
+
+	s_img_pkt0 h0 = s_img_pkt0(len_data, data.type(), m_fmt, m_cfmt, 
+		(unsigned int) sz.width, (unsigned int) sz.height);
+	int lenh = sizeof(h0);
+	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
+		if(FD_ISSET(m_sock_client, &fw)){
+			int lenh_sent = send(m_sock_client, 
+				(const char *) &h0, lenh, MSG_MORE);
+			if(lenh_sent != lenh){
+				cerr << "Socket error in sending stream header" << endl;
+				disconnect();
+				return true;
+			}
+		}else{
+			cerr << "Socket error after returning select." << endl;
+			disconnect();
+			return true;
+		}
+	}else{
+		cerr << "Sending stream header timeout." << endl;
+		return true;
+	}
+
+>>>>>>> d76a92e3ca7cf6d04e1822ffb0e7ff46e1e84293
+	FD_ZERO(&fw);
+	FD_ZERO(&fe);
+	FD_SET(m_sock_client, &fw);
+	FD_SET(m_sock_client, &fe);
+<<<<<<< HEAD
 	tv.tv_sec = 1;
 	tv.tv_usec = 500000;
 	
@@ -247,6 +280,30 @@ bool f_trn_img::proc()
 	    cerr << "Sending stream data timeout." << endl;
 	    return true;
 	  }
+=======
+	tv.tv_sec = 0;
+	tv.tv_usec = 100000;
+
+	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
+		if(FD_ISSET(m_sock_client, &fw)){
+			int len_data_sent = send(m_sock_client, 
+				(const char *) data.data, len_data, 0);
+			if(len_data_sent != len_data){
+				cerr << "Socket error in sending data stream." <<endl;
+				disconnect();
+				return true;
+			}
+		}else{
+			cerr << "Socket error after returning select." << endl;
+			disconnect();
+			return true;
+		}
+	}else{
+		cerr << "Sending stream data timeout." << endl;
+		return true;
+	}
+
+>>>>>>> d76a92e3ca7cf6d04e1822ffb0e7ff46e1e84293
 	return true;
 }
 
@@ -271,7 +328,8 @@ bool f_rcv_img::try_connection()
 {
 	int itr = 0;
 	while(1){
-		if(::connect(m_sock, (sockaddr*) &m_sock_addr, 
+		if(::connect(m_sock, 
+			(sockaddr*) &m_sock_addr, 
 			sizeof(m_sock_addr)) == SOCKET_ERROR){
 				cerr << "Socket error in connect." << endl;
 				return false;
@@ -318,12 +376,11 @@ bool f_rcv_img::proc()
 	s_img_pkt0 h0;
 	int len_rcv = sizeof(h0);
 	int len_rcvd = 0;
-	int to_retry = 0;
 	while(len_rcvd != len_rcv){
 		if(select((int) m_sock + 1, &fr, NULL, &fe, &tv)){
 			if(FD_ISSET(m_sock, &fr)){
 				int len = recv(m_sock, ((char*) &h0) + len_rcvd, len_rcv - len_rcvd, MSG_MORE);
-				if(len == SOCKET_ERROR){
+				if(len == SOCKET_ERROR || len == 0){
 					cerr << "Socket error during receiving header" << endl;
 					disconnect();
 					return true;
@@ -336,11 +393,6 @@ bool f_rcv_img::proc()
 			}
 		}else{
 			cerr << "Receiving stream header timeout." << endl;
-			if(to_retry > 5){
-				cerr << "Retry exceeded 5 times, giving up." << endl;
-				disconnect();
-				return true;
-			}
 			continue;
 		}
 	}
@@ -354,7 +406,6 @@ bool f_rcv_img::proc()
 	Mat data = Mat(h0.h, h0.w, h0.type);
 	len_rcv =  h0.len;
 	len_rcvd = 0;
-	to_retry = 0;
 	while(len_rcvd < len_rcv){
 		FD_ZERO(&fe);
 		FD_SET(m_sock, &fr);
@@ -366,7 +417,7 @@ bool f_rcv_img::proc()
 		if(select((int) m_sock + 1, &fr, NULL, &fe, &tv)){
 			if(FD_ISSET(m_sock, &fr)){
 				int len = recv(m_sock, (char*) data.data + len_rcvd, len_rcv - len_rcvd, 0);
-				if(len == SOCKET_ERROR){
+				if(len == SOCKET_ERROR || len == 0){
 					cerr << "Failed to recieve stream data." << endl;
 					disconnect();
 					return true;
@@ -379,11 +430,6 @@ bool f_rcv_img::proc()
 			}
 		}else{
 			cerr << "Receiving stream data timeout." << endl;
-			if(to_retry > 5){
-				cerr << "Retry exceeded 5 times, giving up." << endl;
-				disconnect();
-				return true;
-			}
 			continue;
 		}
 	}
