@@ -179,6 +179,7 @@ bool f_trn_img::proc()
 	int depth = (int) data.elemSize1();
 	unsigned int len_data = size_elem * sz.width * sz.height;
 
+	int res;
 	fd_set fw, fe;
 	timeval tv;
 	s_img_pkt0 h0 = s_img_pkt0(len_data, data.type(), m_fmt, m_cfmt, 
@@ -191,7 +192,8 @@ bool f_trn_img::proc()
 	tv.tv_sec = 0;
 	tv.tv_usec = 500000;
 
-	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
+	res = select((int) m_sock_client + 1, NULL, &fw, &fe, &tv);
+	if(res > 0){
 		if(FD_ISSET(m_sock_client, &fw)){
 			int lenh_sent = send(m_sock_client, 
 				(const char *) &h0, lenh, MSG_MORE);
@@ -206,6 +208,9 @@ bool f_trn_img::proc()
 			disconnect();
 			return true;
 		}
+	}else if(res < 0){
+		int en = errno;
+		cerr << "Error No " << en << " " << strerror(en) << endl;
 	}else{
 		cerr << "Sending stream header timeout." << endl;
 		return true;
@@ -219,7 +224,8 @@ bool f_trn_img::proc()
 	tv.tv_sec = 0;
 	tv.tv_usec = 500000;
 
-	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
+	res = select((int) m_sock_client + 1, NULL, &fw, &fe, &tv);
+	if(res > 0){
 		if(FD_ISSET(m_sock_client, &fw)){
 			int len = send(m_sock_client, 
 				(const char *) data.data, 
@@ -239,6 +245,9 @@ bool f_trn_img::proc()
 			return true;
 		}
 
+	}else if(res < 0){	
+		int en = errno;
+		cerr << "Error No " << en << " " << strerror(en) << endl;
 	}else{
 		cerr << "Sending stream data timeout." << endl;
 		return true;
@@ -301,6 +310,7 @@ bool f_rcv_img::proc()
 		}
 	}
 
+	int res;
 	fd_set fr;
 	fd_set fe;
 	timeval tv;
@@ -317,7 +327,7 @@ bool f_rcv_img::proc()
 	int len_rcv = sizeof(h0);
 	int len_rcvd = 0;
 	while(len_rcvd != len_rcv){
-		int res = select((int) m_sock + 1, &fr, NULL, &fe, &tv);
+		res = select((int) m_sock + 1, &fr, NULL, &fe, &tv);
 		if(res > 0){
 			if(FD_ISSET(m_sock, &fr)){
 				int len = recv(m_sock, ((char*) &h0) + len_rcvd, len_rcv - len_rcvd, MSG_MORE);
@@ -359,7 +369,8 @@ bool f_rcv_img::proc()
 		tv.tv_usec = 500000;
 		tv.tv_sec = 0;
 
-		if(select((int) m_sock + 1, &fr, NULL, &fe, &tv)){
+		res = select((int) m_sock + 1, &fr, NULL, &fe, &tv);
+		if(res > 0){
 			if(FD_ISSET(m_sock, &fr)){
 				int len = recv(m_sock, (char*) data.data + len_rcvd, len_rcv - len_rcvd, 0);
 				if(len == SOCKET_ERROR || len == 0){
@@ -373,6 +384,10 @@ bool f_rcv_img::proc()
 				disconnect();
 				return true;
 			}
+		}else if(res < 0){
+			int en = errno;
+			cerr << "Error No " << en << " " << strerror(en) << endl;
+			continue;
 		}else{
 			cerr << "Receiving stream data timeout." << endl;
 			continue;
