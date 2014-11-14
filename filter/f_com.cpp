@@ -184,20 +184,20 @@ bool f_trn_img::proc()
 	s_img_pkt0 h0 = s_img_pkt0(len_data, data.type(), m_fmt, m_cfmt, 
 		(unsigned int) sz.width, (unsigned int) sz.height);
 	int lenh = sizeof(h0);
-	int lenh_sent = 0;
 	FD_ZERO(&fw);
 	FD_ZERO(&fe);
 	FD_SET(m_sock_client, &fw);
 	FD_SET(m_sock_client, &fe);
 	tv.tv_sec = 0;
-	tv.tv_usec = 100000;
+	tv.tv_usec = 500000;
 
 	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
 		if(FD_ISSET(m_sock_client, &fw)){
 			int lenh_sent = send(m_sock_client, 
 				(const char *) &h0, lenh, MSG_MORE);
 			if(lenh_sent != lenh){
-				cerr << "Socket error in sending stream header" << endl;
+				cerr << "Incomplete transmission of header. " << endl;
+				cerr << lenh_sent << "/" << lenh << endl;
 				disconnect();
 				return true;
 			}
@@ -211,36 +211,6 @@ bool f_trn_img::proc()
 		return true;
 	}
 
-	FD_ZERO(&fw);
-	FD_ZERO(&fe);
-	FD_SET(m_sock_client, &fw);
-	FD_SET(m_sock_client, &fe);
-	tv.tv_sec = 1;
-	tv.tv_usec = 500000;
-	
-	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
-	  if(FD_ISSET(m_sock_client, &fw)){
-	    int len = send(m_sock_client, 
-			   (const char *) &h0, lenh, 0);
-	    if(len == SOCKET_ERROR || len == 0){
-	      cerr << "Socket error in sending stream header" << endl;
-	      disconnect();
-	      return true;
-	    }
-	    if(len != lenh){
-	      cerr << "Incomplete transmission." << endl;
-	    }
-	  }else{
-	    cerr << "Socket error after returning select." << endl;
-	    disconnect();
-	    return true;
-	  }
-	}else{
-	  cerr << "Sending stream header timeout." << endl;
-	  return true;
-	}
-	
-
 	int len_data_sent = 0;
 	FD_ZERO(&fw);
 	FD_ZERO(&fe);
@@ -248,30 +218,31 @@ bool f_trn_img::proc()
 	FD_SET(m_sock_client, &fe);
 	tv.tv_sec = 0;
 	tv.tv_usec = 500000;
-	
-	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
-	    if(FD_ISSET(m_sock_client, &fw)){
-	      int len = send(m_sock_client, 
-			     (const char *) data.data, 
-			     len_data, 0);
-	      if(len == SOCKET_ERROR || len == 0){
-		cerr << "Socket error in sending data stream." <<endl;
-		disconnect();
-		return true;
-	      }
-	      if(len != len_data){
-		cerr << "Incomplete transmittion." << endl;
-	      }
-	    }else{
-	      cerr << "Socket error after returning select." << endl;
-	      disconnect();
-	      return true;
-	    }
 
-	  }else{
-	    cerr << "Sending stream data timeout." << endl;
-	    return true;
-	  }
+	if(select((int) m_sock_client + 1, NULL, &fw, &fe, &tv)){
+		if(FD_ISSET(m_sock_client, &fw)){
+			int len = send(m_sock_client, 
+				(const char *) data.data, 
+				len_data, 0);
+			if(len == SOCKET_ERROR || len == 0){
+				cerr << "Socket error in sending data stream." <<endl;
+				disconnect();
+				return true;
+			}
+			if(len != len_data){
+				cerr << "Incomplete transmittion of data." << endl;
+				cerr << len << "/" << len_data << endl;
+			}
+		}else{
+			cerr << "Socket error after returning select." << endl;
+			disconnect();
+			return true;
+		}
+
+	}else{
+		cerr << "Sending stream data timeout." << endl;
+		return true;
+	}
 
 	return true;
 }
@@ -346,7 +317,8 @@ bool f_rcv_img::proc()
 	int len_rcv = sizeof(h0);
 	int len_rcvd = 0;
 	while(len_rcvd != len_rcv){
-		if(select((int) m_sock + 1, &fr, NULL, &fe, &tv)){
+		int res = select((int) m_sock + 1, &fr, NULL, &fe, &tv);
+		if(res > 0){
 			if(FD_ISSET(m_sock, &fr)){
 				int len = recv(m_sock, ((char*) &h0) + len_rcvd, len_rcv - len_rcvd, MSG_MORE);
 				if(len == SOCKET_ERROR || len == 0){
@@ -360,6 +332,10 @@ bool f_rcv_img::proc()
 				disconnect();
 				return true;
 			}
+		}else if(res == -1){
+			int en = errno;
+			cerr << "Error no " << en << " " << strerror(en) << endl;
+			return true;
 		}else{
 			cerr << "Receiving stream header timeout." << endl;
 			continue;
