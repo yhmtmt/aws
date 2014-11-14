@@ -87,19 +87,29 @@ OBJS = command.o c_aws.o aws.o
 FSRCS = $(addsuffix .cpp,$(FILTER))
 CSRCS = $(addsuffix .cpp,$(CHANNEL))
 USRCS = $(addsuffix .cpp,$(UTIL))
-SRCS = $(FSRCS) $(CSRCS) $(USRCS)
+SRCS = command.cpp c_aws.cpp aws.cpp
 
 EXE = aws
 FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS)
 
-aws: $(OBJS)
-	cd $(FDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(FOBJS)"
-	cd $(CDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(COBJS)"
-	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)"
+aws: $(OBJS) $(FOBJS) $(COBJS) $(UOBJS)
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) -o $(EXE) $(LIB)
+
+$(FOBJS): 
+	cd $(FDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(FOBJS)"	
+
+$(COBJS):
+	cd $(CDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(COBJS)"
+
+$(UOBJS):
+	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)"	
 
 .cpp.o:
 	$(CC) $(FLAGS) -c $< -o $@
+
+command.o: command.cpp
+c_aws.o: c_aws.cpp
+aws.o: aws.cpp
 
 clean:
 	rm *.o $(FDIR)/*.o $(CDIR)/*.o $(UDIR)/*.o
