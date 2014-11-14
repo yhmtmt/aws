@@ -1,7 +1,7 @@
 ZYNQ	= n
 
 #compiler
-CC	= g++ -m32
+CC	= g++
 
 #linker
 LD	= ld
@@ -51,6 +51,10 @@ LIB = -L$(CUR_DIR)/opencv/$(CPU)/lib -lpthread -lopencv_core -lopencv_contrib -l
 
 LIB += -L$(CUR_DIR)/cminpack/$(OS)/$(CPU) -lcminpack
 
+ifeq ($(CPU), x86)
+	CC := $(CC) -m32
+endif
+
 ifeq ($(ZYNQ), y)
 	include	$(PETALINUX)/software/petalinux-dist/tools/user-commons.mk
 	CC	= $(CXX)
@@ -92,16 +96,16 @@ SRCS = command.cpp c_aws.cpp aws.cpp
 EXE = aws
 FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS)
 
-aws: $(OBJS) $(FOBJS) $(COBJS) $(UOBJS)
+aws: $(OBJS) filter.o channel.o util.o
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) -o $(EXE) $(LIB)
 
-$(FOBJS): 
+filter.o: 
 	cd $(FDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(FOBJS)"	
 
-$(COBJS):
+channel.o:
 	cd $(CDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(COBJS)"
 
-$(UOBJS):
+util.o:
 	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)"	
 
 .cpp.o:
