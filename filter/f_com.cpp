@@ -88,8 +88,8 @@ bool f_trn_img::wait_connection()
 		FD_ZERO(&fe);
 		FD_SET(m_sock_svr, &fr);
 		FD_SET(m_sock_svr, &fe);
-		tv.tv_sec = 0;
-		tv.tv_usec = 100000;
+		tv.tv_sec = 3;
+		tv.tv_usec = 0;
 
 		if(select((int) m_sock_svr + 1, &fr, NULL, &fe, &tv)){
 			if(FD_ISSET(m_sock_svr, &fr)){
@@ -189,8 +189,8 @@ bool f_trn_img::proc()
 	FD_ZERO(&fe);
 	FD_SET(m_sock_client, &fw);
 	FD_SET(m_sock_client, &fe);
-	tv.tv_sec = 0;
-	tv.tv_usec = 500000;
+	tv.tv_sec = 3;
+	tv.tv_usec = 0;
 
 	res = select((int) m_sock_client + 1, NULL, &fw, &fe, &tv);
 	if(res > 0){
@@ -221,8 +221,8 @@ bool f_trn_img::proc()
 	FD_ZERO(&fe);
 	FD_SET(m_sock_client, &fw);
 	FD_SET(m_sock_client, &fe);
-	tv.tv_sec = 0;
-	tv.tv_usec = 500000;
+	tv.tv_sec = 3;
+	tv.tv_usec = 0;
 
 	res = select((int) m_sock_client + 1, NULL, &fw, &fe, &tv);
 	if(res > 0){
@@ -320,8 +320,8 @@ bool f_rcv_img::proc()
 	FD_SET(m_sock, &fr);
 	FD_SET(m_sock, &fe);
 
-	tv.tv_usec = 500000;
-	tv.tv_sec = 0;
+	tv.tv_usec = 0;
+	tv.tv_sec = 3;
 
 	s_img_pkt0 h0;
 	int len_rcv = sizeof(h0);
@@ -366,8 +366,8 @@ bool f_rcv_img::proc()
 		FD_SET(m_sock, &fr);
 		FD_SET(m_sock, &fe);
 
-		tv.tv_usec = 500000;
-		tv.tv_sec = 0;
+		tv.tv_usec = 0;
+		tv.tv_sec = 3;
 
 		res = select((int) m_sock + 1, &fr, NULL, &fe, &tv);
 		if(res > 0){
