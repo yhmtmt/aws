@@ -117,9 +117,6 @@ To run the filter graph, there are some commands to note.
 * `cyc <time in second>`  
 specifying the cycle time of the filter execution. (default 1/60 sec) This paramter should be specified befor running filter graphs.
 
-* `syn`  
-This parameter is currently not working.
-
 * `trat`  
 Time rate specification. Only for offline mode, the time passes specified rate to the actual speed. (default 1) If you want to execute graph faster, please specify the integer value larger than 1.
 
