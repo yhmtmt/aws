@@ -1,16 +1,19 @@
-ZYNQ	= n
-
 #compiler
 CC	= g++
 
 #linker
 LD	= ld
 
-#debug option
-DFLAGS = -g 
+#debug option (y: build as debug binary)
+DEBUG = y
 
+#install Directory
+INST_DIR = ./bin
 #optimization option
 #OFLAGS = -O3
+
+# Platform specification (y: Petalinux build environment is enabled)
+ZYNQ	= n
 
 # cpu architecture (currently arm, x64, x86, WIN64)
 #CPU	= arm
@@ -33,6 +36,7 @@ CUR_DIR = $(shell pwd)
 FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
+RCMD_DIR = $(CUR_DIR)/rcmd
 
 # module listing 
 # listing filter module
@@ -51,10 +55,17 @@ LIB = -L$(CUR_DIR)/opencv/$(CPU)/lib -lpthread -lopencv_core -lopencv_contrib -l
 
 LIB += -L$(CUR_DIR)/cminpack/$(OS)/$(CPU) -lcminpack
 
+# for x86 CPU architecture
 ifeq ($(CPU), x86)
 	CC := $(CC) -m32
 endif
 
+# for debug mode
+ifeq ($(DEBUG), y)
+	DFLAGS = -g 	
+endif
+
+# for ZYNQ/Petalinux system
 ifeq ($(ZYNQ), y)
 	include	$(PETALINUX)/software/petalinux-dist/tools/user-commons.mk
 	CC	= $(CXX)
@@ -96,28 +107,41 @@ SRCS = command.cpp c_aws.cpp aws.cpp
 EXE = aws
 FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS)
 
-aws: $(OBJS) filter.o channel.o util.o
+
+.PHONY: rcmd
+all:
+	make rcmd
+	make aws
+
+rcmd: 
+	cd $(RCMD_DIR); make CC="$(CC)"; 
+
+aws: $(OBJS) filter channel util 
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) -o $(EXE) $(LIB)
 
-filter.o: 
+.PHONY: filter
+.PHONY: channel
+.PHONY: util
+
+filter: 
 	cd $(FDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(FOBJS)"	
 
-channel.o:
+channel:
 	cd $(CDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(COBJS)"
 
-util.o:
+util:
 	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)"	
 
 .cpp.o:
 	$(CC) $(FLAGS) -c $< -o $@
 
-command.o: command.cpp
-c_aws.o: c_aws.cpp
-aws.o: aws.cpp
-
+.PHONY: clean
 clean:
 	rm *.o $(FDIR)/*.o $(CDIR)/*.o $(UDIR)/*.o
 	rm aws
+	cd $(RCMD_DIR); make clean
 
+.PHONY: clean
 install:
-	cp aws bin/
+	cp aws $(INST_DIR)/
+	cd $(RCMD_DIR); make install
