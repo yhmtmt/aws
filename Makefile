@@ -144,4 +144,4 @@ clean:
 .PHONY: clean
 install:
 	cp aws $(INST_DIR)/
-	cd $(RCMD_DIR); make install
+	cd $(RCMD_DIR); make install INST_DIR="$(INST_DIR)"

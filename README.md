@@ -42,8 +42,16 @@ For Petalinux@Zynq, first configure environmental variables of Xilinx's tools, t
 
     make "ZYNQ=y"
     
-## Building commands 
-aws can only be controled by dedicated remote command. You need to build them at directory rcmd.  
+Remote commands are also built simultaneously.  The binaries can be installed by  
+    make install
+
+to the directory "bin". The directory should be prepared by yourself. Otherwise, you can specify the install directory as follow,  
+
+    make install "INST_DIR=/usr/local/bin"
+
+
+## Building commadnds 
+aws can only be controled by dedicated remote commands. The remote commands connect to the aws process with TCP socket and play their roles.  You can build them at directory rcmd.  
  
     cd rcmd
     make
@@ -52,7 +60,11 @@ For Petalinux, after configuring environmental variables of Xilinx's tools,
  
     make "ZYNQ=y"
  
-And the executables built in the directory should be moved to your executable path.
+And the executables built in the directory should be moved to your executable path.  
+
+    make install "INST_DIR=/usr/local/bin"
+
+
 
 ## Using aws 
 1. Build aws and commands.(move the executables to the executable paths)
