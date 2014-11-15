@@ -42,12 +42,11 @@ using namespace cv;
 const char * c_aws::m_str_cmd[CMD_UNKNOWN] = {
 	"channel", "filter", "fcmd", "fset", "fget", 
 	"go", "stop", "quit", "step","cyc","online",
-	"pause", "syn", "clear", "rcmd", "trat" 
+	"pause","clear", "rcmd", "trat" 
 };
 
 c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
-	m_cmd_port(20000), m_working_path(NULL),
-	m_bsync(true), m_bonline(true), m_exit(false),
+	m_cmd_port(20000), m_working_path(NULL), m_bonline(true), m_exit(false),
 	m_cycle_time(166667), m_time(0), m_time_zone_minute(540), m_time_rate(1)
 {
 	set_name_app("aws");
@@ -466,18 +465,6 @@ void c_aws::proc_command()
 				}else{
 					result = true;
 				}
-			}
-			break;
-		case CMD_SYN:
-			if(!f_base::m_clk.is_stop()){
-				sprintf(cmd.get_ret_str(), "Synchronization status cannot be changed during execution.");
-				result = false;
-			}else{
-				if(strcmp(cmd.args[1], "yes") == 0)
-					m_bsync = true;
-				else
-					m_bsync = false;
-				result = true;
 			}
 			break;
 		case CMD_CLEAR:

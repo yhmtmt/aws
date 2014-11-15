@@ -12,7 +12,7 @@ bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok);
 enum e_cmd {
 	CMD_CHAN, CMD_FLTR, CMD_FCMD, CMD_FSET, CMD_FGET,
 	CMD_GO, CMD_STOP,	CMD_QUIT, CMD_STEP, CMD_CYC,
-	CMD_ONLINE, CMD_PAUSE, CMD_SYN, CMD_CLEAR, 
+	CMD_ONLINE, CMD_PAUSE, CMD_CLEAR, 
 	CMD_RCMD, CMD_TRAT, CMD_UNKNOWN
 };
 

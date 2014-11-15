@@ -53,9 +53,6 @@ protected:
 	// flag for exiting function run()
 	bool m_exit;
 
-	// synchronous mode flag
-	bool m_bsync;
-
 	bool m_bonline;
 
 	// create and add channel

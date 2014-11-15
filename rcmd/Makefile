@@ -10,8 +10,8 @@ ifeq ($(ZYNQ), y)
 	CC	= $(CXX)
 endif
 
-OBJ = aws_cmd.o filter.o channel.o fcmd.o fset.o fget.o cyc.o online.o pause.o syn.o go.o quit.o stop.o step.o trat.o clear.o  
-TGT = filter channel fcmd fset fget cyc online pause syn go quit stop step trat clear
+OBJ = aws_cmd.o filter.o channel.o fcmd.o fset.o fget.o cyc.o online.o pause.o go.o quit.o stop.o step.o trat.o clear.o  
+TGT = filter channel fcmd fset fget cyc online pause go quit stop step trat clear
 
 all: $(TGT)
 $(TGT): $(OBJ)
