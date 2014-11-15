@@ -15,7 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_inspector.cpp.  If not, see <http://www.gnu.org/licenses/>. 
-
+#include <Windowsx.h>
 #include <cstdio>
 
 #include <iostream>
@@ -212,7 +212,9 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_num_chsbds_calib(120),
 	m_op(NORMAL),
 	m_3dmode(NONE3D),
-	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL)
+	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
+	m_mm(MM_NORMAL)
+	
 {
 	m_fname_model[0] = '\0';
 	m_fname_campar[0] = '\0';
@@ -415,7 +417,8 @@ bool f_inspector::proc()
 
 	//////////////////// render total view port /////////////////////
 
-	m_maincam.show(m_pd3dev, 0, (float) m_ViewPort.Height);
+	m_maincam.show(m_pd3dev, (float)(0 + m_main_offset.x),
+		(float) (m_ViewPort.Height + m_main_offset.y));
 
 	switch(m_3dmode){
 	case SUB:
@@ -1149,4 +1152,40 @@ void f_inspector::renderChsbd(long long timg)
 
 void f_inspector::renderModel(long long timg)
 {
+}
+
+
+///////////////////////////////////////////////////////// message handler
+
+void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
+{
+	m_mc.x = GET_X_LPARAM(lParam);
+	m_mc.y = GET_Y_LPARAM(lParam);
+	if(wParam & MK_SHIFT){ // scroll
+		m_mm = MM_SCROLL;
+		m_pt_sc_start = m_mc;
+	}
+}
+
+void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
+{
+	m_mc.x = GET_X_LPARAM(lParam);
+	m_mc.y = GET_Y_LPARAM(lParam);
+	switch(m_mm){
+	case MM_SCROLL:
+		m_main_offset += m_mc - m_pt_sc_start;
+		m_mm = MM_NORMAL;
+		break;
+	}
+};
+
+void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
+{
+	m_mc.x = GET_X_LPARAM(lParam);
+	m_mc.y = GET_Y_LPARAM(lParam);
+	switch(m_mm){
+	case MM_SCROLL:
+		m_main_offset += m_mc - m_pt_sc_start;
+		m_pt_sc_start = m_mc;
+	}
 }

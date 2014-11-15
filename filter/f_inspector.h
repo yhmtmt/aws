@@ -121,7 +121,8 @@ private:
 	// model 
 	//
 	vector<string> m_name_model; // name of the model
-	vector<vector<Point3f > > m_point_model; // model points in model coordinate
+	vector<vector<vector<Point2f> > > m_point_2d;
+	vector<vector<Point3f > > m_point_3d; // model points in model coordinate
 	vector<vector<vector<int> > > m_edge_model; // model edge list
 	int m_cur_model; // current selected model
 	int m_cur_model_point; // current selected point of the model
@@ -221,4 +222,29 @@ public:
 	}
 
 	virtual bool proc();
+
+
+	enum e_mmode{
+		MM_NORMAL, MM_SCROLL
+	} m_mm;
+
+	Point2i m_mc; // mouse cursor
+	Point2i m_pt_sc_start; // scroll start
+	Point2i m_main_offset;
+
+	virtual void handle_lbuttondown(WPARAM wParam, LPARAM lParam);
+	virtual void handle_lbuttonup(WPARAM wParam, LPARAM lParam);
+
+	virtual void handle_lbuttondblclk(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_rbuttondown(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_rbuttonup(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_rbuttondblclk(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_mbuttondown(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_mbuttonup(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_mbuttondblclk(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_mousewheel(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_mousemove(WPARAM wParam, LPARAM lParam);
+	virtual void handle_keydown(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_syskeydown(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_keyup(WPARAM wParam, LPARAM lParam){};
 };

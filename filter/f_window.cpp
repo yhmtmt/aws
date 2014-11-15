@@ -552,31 +552,64 @@ LRESULT CALLBACK f_ds_window::WindowProc(HWND hwnd, UINT uMsg,
 	WPARAM wParam, LPARAM lParam)
 {
 	f_ds_window * pwin = get_window(hwnd); 
+	if(pwin == NULL)
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+
 	switch(uMsg){
 	case WM_KEYDOWN:
 		switch(wParam){
 		case VK_ESCAPE:
 			PostQuitMessage(0);
 			break;
+		default:
+			pwin->handle_keydown(wParam, lParam);
 		}
 		break;
+	case WM_KEYUP:
+		switch(wParam){
+		default:
+			pwin->handle_keyup(wParam, lParam);
+		}
 	case WM_LBUTTONDOWN:
-		if(pwin != NULL)
-			pwin->handle_lbuttondown(wParam, lParam);
+		pwin->handle_lbuttondown(wParam, lParam);
+		break;
+	case WM_MBUTTONDOWN:
+		pwin->handle_mbuttondown(wParam, lParam);
+		break;
+	case WM_RBUTTONDOWN:
+		pwin->handle_rbuttondown(wParam, lParam);
 		break;
 	case WM_MOUSEMOVE:
-		if(pwin != NULL)
-			pwin->handle_mousemove(wParam, lParam);
+		pwin->handle_mousemove(wParam, lParam);
 		break;
 	case WM_LBUTTONUP:
-		if(pwin != NULL)
-			pwin->handle_lbuttonup(wParam, lParam);
+		pwin->handle_lbuttonup(wParam, lParam);
+		break;
+	case WM_MBUTTONUP:
+		pwin->handle_mbuttonup(wParam, lParam);
+		break;
+	case WM_RBUTTONUP:
+		pwin->handle_rbuttonup(wParam, lParam);
+		break;
+	case WM_LBUTTONDBLCLK:
+		pwin->handle_lbuttondblclk(wParam, lParam);
+		break;
+	case WM_MBUTTONDBLCLK:
+		pwin->handle_mbuttondblclk(wParam, lParam);
+		break;
+	case WM_RBUTTONDBLCLK:
+		pwin->handle_rbuttondblclk(wParam, lParam);
+		break;
+	case WM_MOUSEWHEEL:
+		pwin->handle_mousewheel(wParam, lParam);
 		break;
 	case WM_SYSKEYDOWN:
 		switch(wParam){
 		case VK_RETURN:
 			pwin->change_dispmode();
 			break;
+		default:
+			pwin->handle_syskeydown(wParam, lParam);
 		}
 		break;
 	case WM_CLOSE:
@@ -590,7 +623,7 @@ LRESULT CALLBACK f_ds_window::WindowProc(HWND hwnd, UINT uMsg,
 		}
 		break;
 	case WM_KILLFOCUS:
-		if(pwin != NULL && !pwin->m_bwin)
+		if(!pwin->m_bwin)
 			pwin->change_dispmode();
 		break;
 	default:
