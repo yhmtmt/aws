@@ -236,7 +236,7 @@ public:
 	virtual void handle_lbuttondown(WPARAM wParam, LPARAM lParam);
 	virtual void handle_lbuttonup(WPARAM wParam, LPARAM lParam);
 
-	virtual void handle_lbuttondblclk(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_lbuttondblclk(WPARAM wParam, LPARAM lParam);
 	virtual void handle_rbuttondown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_rbuttonup(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_rbuttondblclk(WPARAM wParam, LPARAM lParam){};
@@ -245,7 +245,8 @@ public:
 	virtual void handle_mbuttondblclk(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_mousewheel(WPARAM wParam, LPARAM lParam);
 	virtual void handle_mousemove(WPARAM wParam, LPARAM lParam);
-	virtual void handle_keydown(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_keydown(WPARAM wParam, LPARAM lParam);
 	virtual void handle_syskeydown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_keyup(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_char(WPARAM wParam, LPARAM lParam);
 };

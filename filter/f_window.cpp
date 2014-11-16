@@ -564,12 +564,18 @@ LRESULT CALLBACK f_ds_window::WindowProc(HWND hwnd, UINT uMsg,
 		default:
 			pwin->handle_keydown(wParam, lParam);
 		}
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
 		break;
 	case WM_KEYUP:
 		switch(wParam){
 		default:
 			pwin->handle_keyup(wParam, lParam);
 		}
+		return DefWindowProc(hwnd, uMsg, wParam, lParam);
+		break;
+	case WM_CHAR:
+		pwin->handle_char(wParam, lParam);
+		break;
 	case WM_LBUTTONDOWN:
 		pwin->handle_lbuttondown(wParam, lParam);
 		break;

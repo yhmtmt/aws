@@ -259,7 +259,7 @@ public:
 	virtual void handle_keydown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_syskeydown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_keyup(WPARAM wParam, LPARAM lParam){};
-
+	virtual void handle_char(WPARAM wParam, LPARAM lParam){};
 	virtual bool init_run(){
 		pthread_mutex_init(&m_d3d_mtx, NULL); 
 		if(!create_wnd()){

@@ -1162,7 +1162,7 @@ void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 {
 	m_mc.x = GET_X_LPARAM(lParam);
 	m_mc.y = GET_Y_LPARAM(lParam);
-	if(wParam & MK_SHIFT){ // scroll
+	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){ // scroll
 		m_mm = MM_SCROLL;
 		m_pt_sc_start = m_mc;
 	}
@@ -1179,6 +1179,16 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 		break;
 	}
 };
+
+void f_inspector::handle_lbuttondblclk(WPARAM wParam, LPARAM lParam)
+{
+	m_mc.x = GET_X_LPARAM(lParam);
+	m_mc.y = GET_Y_LPARAM(lParam);
+	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
+		m_main_offset = Point2i(0, 0);
+		m_main_scale = 0.;
+	}
+}
 
 void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 {
@@ -1199,5 +1209,22 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
 			short step = delta / WHEEL_DELTA;
 			m_main_scale *= (float) pow(1.1, (double) step); 
+	}
+}
+
+
+void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
+{
+}
+
+void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
+{
+	switch(wParam){
+	case 'F': /* F key*/
+		m_main_offset = Point2i(0, 0);
+		m_main_scale = 1.0;
+		break;	
+	default:
+		break;
 	}
 }
