@@ -1160,8 +1160,7 @@ void f_inspector::renderModel(long long timg)
 
 void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 {
-	m_mc.x = GET_X_LPARAM(lParam);
-	m_mc.y = GET_Y_LPARAM(lParam);
+	extractPointlParam(lParam, m_mc);
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){ // scroll
 		m_mm = MM_SCROLL;
 		m_pt_sc_start = m_mc;
@@ -1170,8 +1169,7 @@ void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 
 void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 {
-	m_mc.x = GET_X_LPARAM(lParam);
-	m_mc.y = GET_Y_LPARAM(lParam);
+	extractPointlParam(lParam, m_mc);
 	switch(m_mm){
 	case MM_SCROLL:
 		m_main_offset += m_mc - m_pt_sc_start;
@@ -1182,8 +1180,7 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 
 void f_inspector::handle_lbuttondblclk(WPARAM wParam, LPARAM lParam)
 {
-	m_mc.x = GET_X_LPARAM(lParam);
-	m_mc.y = GET_Y_LPARAM(lParam);
+	extractPointlParam(lParam, m_mc);
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
 		m_main_offset = Point2i(0, 0);
 		m_main_scale = 0.;
@@ -1192,8 +1189,7 @@ void f_inspector::handle_lbuttondblclk(WPARAM wParam, LPARAM lParam)
 
 void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 {
-	m_mc.x = GET_X_LPARAM(lParam);
-	m_mc.y = GET_Y_LPARAM(lParam);
+	extractPointlParam(lParam, m_mc);
 	switch(m_mm){
 	case MM_SCROLL:
 		m_main_offset += m_mc - m_pt_sc_start;
@@ -1203,12 +1199,18 @@ void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 
 void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 {
-	m_mc.x = GET_X_LPARAM(lParam);
-	m_mc.y = GET_Y_LPARAM(lParam);
+	extractPointlParam(lParam, m_mc);
+	RECT rc;
 	short delta = GET_WHEEL_DELTA_WPARAM(wParam);
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
 			short step = delta / WHEEL_DELTA;
-			m_main_scale *= (float) pow(1.1, (double) step); 
+			float scale = (float) pow(1.1, (double) step);
+			m_main_scale *=  scale;
+			float x, y;
+			x = (float)(m_main_offset.x - m_mc.x) * scale;
+			y = (float)(m_ViewPort.Height + m_main_offset.y - m_mc.y) * scale;
+			m_main_offset.x = (int) x + m_mc.x;
+			m_main_offset.y = (int) y + m_mc.y - m_ViewPort.Height;
 	}
 }
 

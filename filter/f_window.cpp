@@ -15,7 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_window.cpp.  If not, see <http://www.gnu.org/licenses/>. 
-
+#include <WindowsX.h>
 #include <cstdio>
 
 #include <iostream>
@@ -45,6 +45,8 @@ using namespace cv;
 
 #include "f_base.h"
 #include "f_window.h"
+
+
 
 #define ALPHA 0.1
 ///////////////////////////////////////////////////////////////// f_mark_window
@@ -123,6 +125,8 @@ f_ds_window::f_ds_window(const char * name): f_base(name),
 	m_wclsx.lpszMenuName = NULL;
 	m_wclsx.cbClsExtra = 0;
 	m_wclsx.cbWndExtra = 0;
+	m_client_org.x = GetSystemMetrics(SM_CXSIZEFRAME);
+	m_client_org.y = GetSystemMetrics(SM_CYCAPTION) + GetSystemMetrics(SM_CYSIZEFRAME);
 }
 
 f_ds_window::~f_ds_window()
@@ -640,6 +644,11 @@ LRESULT CALLBACK f_ds_window::WindowProc(HWND hwnd, UINT uMsg,
 	}
 
 	return 0;
+}
+
+void f_ds_window::extractPointlParam(LPARAM lParam, Point2i & pt){
+	pt.x = GET_X_LPARAM(lParam) - m_client_org.x;
+	pt.y = GET_Y_LPARAM(lParam) - m_client_org.y;
 }
 
 ///////////////////////////////////////////////////////////////// f_sys_window

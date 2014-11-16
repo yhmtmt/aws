@@ -144,8 +144,11 @@ protected:
 	TCHAR * m_clsname_t; //registered window class name 
 	WNDCLASSEX m_wclsx; // window class registered
 	HWND m_hwnd;		// handle of the created window 
-
+	POINT m_client_org; // client origin in the window
 	bool create_wnd();
+
+	//////////////////////////////////// Windows helper
+	void extractPointlParam(LPARAM lParam, Point2i & pt);
 
 	/////////////////////////////////// direct3d objs
 
