@@ -231,6 +231,7 @@ public:
 	Point2i m_mc; // mouse cursor
 	Point2i m_pt_sc_start; // scroll start
 	Point2i m_main_offset;
+	float m_main_scale;
 
 	virtual void handle_lbuttondown(WPARAM wParam, LPARAM lParam);
 	virtual void handle_lbuttonup(WPARAM wParam, LPARAM lParam);
@@ -242,7 +243,7 @@ public:
 	virtual void handle_mbuttondown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_mbuttonup(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_mbuttondblclk(WPARAM wParam, LPARAM lParam){};
-	virtual void handle_mousewheel(WPARAM wParam, LPARAM lParam){};
+	virtual void handle_mousewheel(WPARAM wParam, LPARAM lParam);
 	virtual void handle_mousemove(WPARAM wParam, LPARAM lParam);
 	virtual void handle_keydown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_syskeydown(WPARAM wParam, LPARAM lParam){};

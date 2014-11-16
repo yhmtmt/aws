@@ -213,7 +213,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_op(NORMAL),
 	m_3dmode(NONE3D),
 	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
-	m_mm(MM_NORMAL)
+	m_mm(MM_NORMAL),
+	m_main_offset(0, 0), m_main_scale(1.0)
 	
 {
 	m_fname_model[0] = '\0';
@@ -418,7 +419,7 @@ bool f_inspector::proc()
 	//////////////////// render total view port /////////////////////
 
 	m_maincam.show(m_pd3dev, (float)(0 + m_main_offset.x),
-		(float) (m_ViewPort.Height + m_main_offset.y));
+		(float) (m_ViewPort.Height + m_main_offset.y), m_main_scale);
 
 	switch(m_3dmode){
 	case SUB:
@@ -1187,5 +1188,16 @@ void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 	case MM_SCROLL:
 		m_main_offset += m_mc - m_pt_sc_start;
 		m_pt_sc_start = m_mc;
+	}
+}
+
+void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
+{
+	m_mc.x = GET_X_LPARAM(lParam);
+	m_mc.y = GET_Y_LPARAM(lParam);
+	short delta = GET_WHEEL_DELTA_WPARAM(wParam);
+	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
+			short step = delta / WHEEL_DELTA;
+			m_main_scale *= (float) pow(1.1, (double) step); 
 	}
 }
