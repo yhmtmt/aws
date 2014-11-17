@@ -316,6 +316,10 @@ public:
 	virtual bool render_ship(LPDIRECT3DDEVICE9 pd3dev, 
 		const list<c_ship*> & ships, double range);
 
+	virtual bool render_point2d(LPDIRECT3DDEVICE9 pd3dev,
+		c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+		vector<Point2f> & points, int pttype);
+
 	virtual bool set_campar(s_rotpar & rot, bool bptz = false)
 	{	
 		if(bptz){

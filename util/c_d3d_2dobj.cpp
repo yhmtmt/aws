@@ -628,8 +628,8 @@ bool c_d3d_camview::init(LPDIRECT3DDEVICE9 pd3dev,
 
 	for(int i = 1; i < 38; i++){
 		double theta = (double) (i - 1) * 2 * PI / 36.;
-		v[i].x = range * sin(theta);
-		v[i].y = range * cos(theta);
+		v[i].x = (float) (range * sin(theta));
+		v[i].y = (float) (range * cos(theta));
 		v[i].z = 0.0;
 		v[i].n = D3DXVECTOR3(0, 0, -1);
 	}
@@ -836,13 +836,13 @@ void c_d3d_camview::calc_prjmtx(s_rotpar & rot_own, Point3d & t_own)
 	m_Mtrn.at<double>(2, 3) = ptr[2];
 
 	ptr = m_Mtrn.ptr<double>(0);
-	m_M3dview._11 = ptr[0]; m_M3dview._21 = ptr[1]; m_M3dview._31 = ptr[2]; m_M3dview._41 = ptr[3];
+	m_M3dview._11 = (float) ptr[0]; m_M3dview._21 = (float) ptr[1]; m_M3dview._31 = (float) ptr[2]; m_M3dview._41 = (float) ptr[3];
 	
 	ptr = m_Mtrn.ptr<double>(1);
-	m_M3dview._12 = ptr[0]; m_M3dview._22 = ptr[1]; m_M3dview._32 = ptr[2]; m_M3dview._42 = ptr[3];
+	m_M3dview._12 = (float) ptr[0]; m_M3dview._22 = (float) ptr[1]; m_M3dview._32 = (float) ptr[2]; m_M3dview._42 = (float) ptr[3];
 
 	ptr = m_Mtrn.ptr<double>(2);
-	m_M3dview._13 = ptr[0]; m_M3dview._23 = ptr[1]; m_M3dview._33 = ptr[2]; m_M3dview._43 = ptr[3];
+	m_M3dview._13 = (float) ptr[0]; m_M3dview._23 = (float) ptr[1]; m_M3dview._33 = (float) ptr[2]; m_M3dview._43 = (float) ptr[3];
 	m_M3dview._14 = m_M3dview._24 = m_M3dview._34 = 0.;
 	m_M3dview._44 = 1.;
 
@@ -986,5 +986,74 @@ bool c_d3d_camview::render_hrzn(LPDIRECT3DDEVICE9 pd3dev,
 		}
 	}
 
+	return true;
+}
+
+bool c_d3d_camview::render_point2d(LPDIRECT3DDEVICE9 pd3dev,	
+		c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+		vector<Point2f> & points, int pttype)
+{
+	pttype %= 12; // {sq, dia, x, cross} x {red, green, blue}
+	int shape = pttype % 4;
+	D3DCOLOR color;
+	switch(pttype / 4){
+	case 0:
+		color = D3DCOLOR_RGBA(255, 0, 0, 0);
+		break;
+	case 1:
+		color = D3DCOLOR_RGBA(0, 255, 0, 0);
+		break;
+	case 2:
+		color = D3DCOLOR_RGBA(0, 0, 255, 0);
+		break;
+	}
+	D3DXVECTOR2 v[5];
+
+	int size = 5;
+	for(int ipt = 0; ipt < points.size(); ipt++){
+		Point2f & pt = points[ipt];
+		pline->Begin();
+		switch(shape){
+		case 0: // square
+			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
+			v[2] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
+			v[4] = v[0];
+			pline->Draw(v, 5, color);
+			break;
+		case 1: // diamond
+			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
+			v[2] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
+			v[4] = v[0];
+			pline->Draw(v, 5, color);
+			break;
+		case 2: // X
+			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
+			pline->Draw(v, 2, color);
+			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
+			pline->Draw(&v[2], 2, color);
+			break;
+		case 3:
+			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
+			pline->Draw(v, 2, color);
+			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
+			pline->Draw(&v[2], 2, color);
+			break;
+		}
+		pline->End();
+
+		if(ptxt != NULL){
+			char buf[10];
+			sprintf(buf, "%d", ipt);
+			ptxt->render(pd3dev, buf, pt.x, (float)(pt.y + 3.0), 1.0, 0.0, EDTC_CB, color); 
+		}
+	}
 	return true;
 }

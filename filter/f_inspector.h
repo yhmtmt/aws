@@ -126,6 +126,7 @@ private:
 	vector<vector<vector<int> > > m_edge_model; // model edge list
 	int m_cur_model; // current selected model
 	int m_cur_model_point; // current selected point of the model
+	vector<vector<Point2f > > m_cur_point_2d;
 
 	// model poses in each time frame
 	vector<long long> m_pose_time;		// times corresponding model pose
