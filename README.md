@@ -28,11 +28,11 @@ Place headers and libs(so) in the following paths. (relative path)
 * cminpack 
 Place headers and static libs(a) in the following paths.
   * INCLUDE: `cminpack/include`
-  * LIB: `cminpack/LINUX/$(CPU)/lib`
+  * LIB: `cminpack/LINUX/$(CPU)`
 * PvAPI  
 Place headers and libs(so) in the following paths.
       * INCLUDE: `PvAPI/include`
-      * LIB: `PvAPI/lib/$(CPU)/bin`  
+      * LIB: `PvAPI/bin/$(CPU)`  
   
 For linux, you can build binary simply typing make.  
 
