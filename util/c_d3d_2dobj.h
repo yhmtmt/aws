@@ -318,7 +318,7 @@ public:
 
 	virtual bool render_point2d(LPDIRECT3DDEVICE9 pd3dev,
 		c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-		vector<Point2f> & points, int pttype);
+		vector<Point2f> & points, int pttype, int state = 0, int cur_point = -1);
 
 	virtual bool set_campar(s_rotpar & rot, bool bptz = false)
 	{	

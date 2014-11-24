@@ -79,7 +79,7 @@ bool c_d3d_text::init(LPDIRECT3DDEVICE9 pd3dev, unsigned int size)
 	CONST MAT2 m = {{0,1},{0,0},{0,0},{0,1}};
 	HFONT hFont = CreateFont(size, 0, 0, 0, 0, FALSE, FALSE, FALSE,
 		ANSI_CHARSET, OUT_TT_ONLY_PRECIS, CLIP_DEFAULT_PRECIS, PROOF_QUALITY,
-		FIXED_PITCH | FF_MODERN, NULL);
+		FIXED_PITCH | FF_MODERN, _T("Terminal"));
 	HDC hdc = GetDC(NULL);
 	HFONT oldFont = (HFONT) SelectObject(hdc, hFont);
 	m_sx = m_sy = 0;
@@ -103,7 +103,7 @@ bool c_d3d_text::init(LPDIRECT3DDEVICE9 pd3dev, unsigned int size)
 		m_sy = max((short) tm.tmHeight, m_sy);
 		D3DLOCKED_RECT lrc;
 		pTx->LockRect(0, &lrc, NULL, D3DLOCK_DISCARD);
-		FillMemory(lrc.pBits, lrc.Pitch * sy, 0);
+		FillMemory(lrc.pBits, lrc.Pitch * tm.tmHeight, 0);
 		for(int y = org_y; y < org_y+sy; y++){
 			for(int x = org_x; x < org_x+sx; x++){
 				DWORD Trans = (255*ptr[x-org_x+sx*(y-org_y)]) / 16;
@@ -991,28 +991,61 @@ bool c_d3d_camview::render_hrzn(LPDIRECT3DDEVICE9 pd3dev,
 
 bool c_d3d_camview::render_point2d(LPDIRECT3DDEVICE9 pd3dev,	
 		c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-		vector<Point2f> & points, int pttype)
+		vector<Point2f> & points, int pttype, int state, int cur_point)
 {
+	// state 0: NORMAL -> 127
+	// state 1: STRONG -> 255
+	// state 2: GRAY -> 127,127,127
+	// state 3: WHITE -> 255,255,255
+
 	pttype %= 12; // {sq, dia, x, cross} x {red, green, blue}
 	int shape = pttype % 4;
-	D3DCOLOR color;
-	switch(pttype / 4){
-	case 0:
-		color = D3DCOLOR_RGBA(255, 0, 0, 0);
-		break;
-	case 1:
-		color = D3DCOLOR_RGBA(0, 255, 0, 0);
-		break;
-	case 2:
-		color = D3DCOLOR_RGBA(0, 0, 255, 0);
-		break;
+	int val;
+	if(state == 0 || state == 2){
+		val = 128;
+	}else if(state == 1 || state == 3){
+		val = 255;
 	}
+
+	D3DCOLOR color;
+	if(state < 2){
+		switch(pttype / 4){
+		case 0:
+			color = D3DCOLOR_RGBA(val, 0, 0, 255);
+			break;
+		case 1:
+			color = D3DCOLOR_RGBA(0, val, 0, 255);
+			break;
+		case 2:
+			color = D3DCOLOR_RGBA(0, 0, val, 255);
+			break;
+		}
+	}else{
+		color = D3DCOLOR_RGBA(val, val, val, 255);
+	}
+
 	D3DXVECTOR2 v[5];
 
 	int size = 5;
+	pline->Begin();
 	for(int ipt = 0; ipt < points.size(); ipt++){
 		Point2f & pt = points[ipt];
-		pline->Begin();
+		if(ipt == cur_point){
+			v[0] = D3DXVECTOR2((float)(pt.x - 1.0), (float)(pt.y));
+			v[1] = D3DXVECTOR2((float)(pt.x - 3.0), (float)(pt.y));
+			pline->Draw(v, 2, color);
+			v[0].x += 4.0;
+			v[1].x += 4.0;
+			pline->Draw(v, 2, color);
+			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 1.0));
+			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 3.0));
+			pline->Draw(v, 2, color);
+			v[0].y += 4.0;
+			v[1].y += 4.0;
+			pline->Draw(v, 2, color);
+			continue;
+		}
+
 		switch(shape){
 		case 0: // square
 			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
@@ -1047,7 +1080,6 @@ bool c_d3d_camview::render_point2d(LPDIRECT3DDEVICE9 pd3dev,
 			pline->Draw(&v[2], 2, color);
 			break;
 		}
-		pline->End();
 
 		if(ptxt != NULL){
 			char buf[10];
@@ -1055,5 +1087,7 @@ bool c_d3d_camview::render_point2d(LPDIRECT3DDEVICE9 pd3dev,
 			ptxt->render(pd3dev, buf, pt.x, (float)(pt.y + 3.0), 1.0, 0.0, EDTC_CB, color); 
 		}
 	}
+	pline->End();
+
 	return true;
 }

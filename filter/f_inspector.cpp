@@ -190,7 +190,7 @@ int prj_pause(void * p, int m, int n, const __cminpack_real__ *x,
 }
 
 const char * f_inspector::m_str_op[f_inspector::UNKNOWN]
-= {"normal", "model", "chsbd", "svcb", "ldcb", "clcb",
+= {"normal", "model", "obj", "point", "chsbd", "svcb", "ldcb", "clcb",
 	"calib", "svcp", "ldcp", "clcp", "pscp", "pscptbl", "ps"};
 
 const char * f_inspector::m_str_3dmode[f_inspector::UNKNOWN3D]
@@ -198,8 +198,7 @@ const char * f_inspector::m_str_3dmode[f_inspector::UNKNOWN3D]
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_bundistort(false), 
-	m_bpttrack(false), m_bcbtrack(false), m_cur_model(0), m_cur_model_point(0),
-	m_bchsbd_found(false),
+	m_bpttrack(false), m_bcbtrack(false), m_bchsbd_found(false),
 	m_sz_chsbd(6, 9), m_pitch_chsbd(0.0254f/*meter*/), m_bshow_chsbd(false),
 	m_bpose_fixed(false), m_bcampar_fixed(false), m_bcam_tbl_loaded(false),
 	m_bcalib_use_intrinsic_guess(false),
@@ -210,6 +209,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true),
 	m_bcalib_rational_model(false),
 	m_num_chsbds_calib(120),
+	m_cur_model(-1), m_cur_obj(-1), m_cur_obj_point(-1), m_cur_model_point(-1),
 	m_op(NORMAL),
 	m_3dmode(NONE3D),
 	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
@@ -410,6 +410,32 @@ bool f_inspector::proc()
 
 	m_maincam.blt_offsrf(m_pd3dev, img_s);
 
+	// rendering 2d points
+	for(int iobj = 0; iobj < m_obj_points.size(); iobj++){
+		s_obj_points & obj = m_obj_points[iobj];
+		if(m_op == OBJ){
+			if(iobj == m_cur_obj){
+				m_maincam.render_point2d(m_pd3dev, 
+					NULL, m_pline,
+					obj.get_pts(), iobj, 1);
+			}else{
+				m_maincam.render_point2d(m_pd3dev, 
+					NULL, m_pline,
+					obj.get_pts(), iobj, 0);
+			}
+		}else if(m_op == POINT){
+			if(iobj == m_cur_obj){
+				m_maincam.render_point2d(m_pd3dev, 
+					NULL, m_pline,
+					obj.get_pts(), iobj, 1, m_cur_obj_point);
+			}else{
+				m_maincam.render_point2d(m_pd3dev, 
+					NULL, m_pline,
+					obj.get_pts(), iobj, 0);
+			}			
+		}
+	}
+
 	m_maincam.ResetRenderTarget(m_pd3dev);
 	////////////////////// render 3d scene ///////////////////////////
 	if(m_3dmode != NONE3D && m_bcampar_fixed){
@@ -418,8 +444,8 @@ bool f_inspector::proc()
 
 	//////////////////// render total view port /////////////////////
 
-	m_maincam.show(m_pd3dev, (float)(0 + m_main_offset.x),
-		(float) (m_ViewPort.Height + m_main_offset.y), m_main_scale);
+	m_maincam.show(m_pd3dev, (float)(0. + m_main_offset.x),
+		(float) ((float) m_ViewPort.Height + m_main_offset.y), m_main_scale);
 
 	switch(m_3dmode){
 	case SUB:
@@ -432,6 +458,29 @@ bool f_inspector::proc()
 		break;
 	}
 
+	char information[1024];
+	snprintf(information, 1023, 
+		"OP=%s, MM=%d, Models=%d, CurModel=%d, Objs=%d, CurObj=%d, CurPoints=%d, CurPoint=%d",
+		m_str_op[m_op], m_mm, m_model_points.size(),
+		m_cur_model, m_obj_points.size(), 
+		m_cur_obj, 
+		(m_cur_obj < 0 ? m_cur_obj : m_obj_points[m_cur_obj].get_num_points()),
+		m_cur_obj_point);
+	
+	m_d3d_txt.render(m_pd3dev, information, 0, 0, 1.0, 0, EDTC_LT);
+
+
+	snprintf(information, 1023, "MC(%d, %d)", m_mc.x, m_mc.y);
+	m_d3d_txt.render(m_pd3dev, information, 0, 20, 1.0, 0, EDTC_LT);
+	D3DXVECTOR2 v[2];
+	m_pline->Begin();
+	v[0] = D3DXVECTOR2((float) 0, (float) m_mc.y);
+	v[1] = D3DXVECTOR2((float)m_ViewPort.Width - 1, (float) m_mc.y);
+	m_pline->Draw(v, 2, D3DCOLOR_RGBA(0, 255, 0, 255));
+	v[0] = D3DXVECTOR2((float) m_mc.x, (float) m_ViewPort.Height - 1);
+	v[1] = D3DXVECTOR2((float) m_mc.x, (float) 0);
+	m_pline->Draw(v, 2, D3DCOLOR_RGBA(0, 255, 0, 255));
+	m_pline->End();
 	m_pd3dev->EndScene();
 	////////////////////// grab rendered back surface ////////////////
 	if(m_grab_name)
@@ -1164,6 +1213,8 @@ void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){ // scroll
 		m_mm = MM_SCROLL;
 		m_pt_sc_start = m_mc;
+	}else{
+		m_mm = MM_POINT;
 	}
 }
 
@@ -1172,8 +1223,21 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 	extractPointlParam(lParam, m_mc);
 	switch(m_mm){
 	case MM_SCROLL:
-		m_main_offset += m_mc - m_pt_sc_start;
+		m_main_offset.x += (float)(m_mc.x - m_pt_sc_start.x);
+		m_main_offset.y += (float)(m_mc.y - m_pt_sc_start.y);
 		m_mm = MM_NORMAL;
+		break;
+	case MM_POINT:
+		if(m_obj_points.size() == 0)
+			break;
+
+		Point2f pt;
+		double iscale = 1.0 / m_main_scale;
+		pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
+		pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
+		pt.y *= (float) iscale;
+		pt.y += (float) m_ViewPort.Height;
+		m_obj_points[m_cur_obj].push_pt(pt);
 		break;
 	}
 };
@@ -1182,7 +1246,7 @@ void f_inspector::handle_lbuttondblclk(WPARAM wParam, LPARAM lParam)
 {
 	extractPointlParam(lParam, m_mc);
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
-		m_main_offset = Point2i(0, 0);
+		m_main_offset = Point2f(0, 0);
 		m_main_scale = 0.;
 	}
 }
@@ -1192,7 +1256,8 @@ void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 	extractPointlParam(lParam, m_mc);
 	switch(m_mm){
 	case MM_SCROLL:
-		m_main_offset += m_mc - m_pt_sc_start;
+		m_main_offset.x += (float)(m_mc.x - m_pt_sc_start.x);
+		m_main_offset.y += (float)(m_mc.y - m_pt_sc_start.y);
 		m_pt_sc_start = m_mc;
 	}
 }
@@ -1200,7 +1265,9 @@ void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 {
 	extractPointlParam(lParam, m_mc);
-	RECT rc;
+	m_mc.x -= m_client_org.x;
+	m_mc.y -= m_client_org.y;
+
 	short delta = GET_WHEEL_DELTA_WPARAM(wParam);
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
 			short step = delta / WHEEL_DELTA;
@@ -1208,24 +1275,71 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 			m_main_scale *=  scale;
 			float x, y;
 			x = (float)(m_main_offset.x - m_mc.x) * scale;
-			y = (float)(m_ViewPort.Height + m_main_offset.y - m_mc.y) * scale;
-			m_main_offset.x = (int) x + m_mc.x;
-			m_main_offset.y = (int) y + m_mc.y - m_ViewPort.Height;
+			y = (float)((int) m_ViewPort.Height + m_main_offset.y - m_mc.y) * scale;
+			m_main_offset.x =  (float)(x + (double) m_mc.x);
+			m_main_offset.y =  (float)(y + (double) m_mc.y - (double) m_ViewPort.Height);
 	}
 }
 
 
 void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 {
+	switch(wParam){
+	case VK_LEFT:
+		switch(m_op){
+		case MODEL:
+			m_cur_obj = m_cur_obj - 1;
+			if(m_cur_obj < 0){
+				m_cur_obj += (int) m_obj_points.size();
+			}
+			break;
+		case POINT:
+			m_cur_obj_point = m_cur_obj_point  - 1;
+			if(m_cur_obj_point < 0){
+				m_cur_obj_point += (int) m_obj_points[m_cur_obj].get_num_points();
+			}
+			break;
+		}
+		break;
+	case VK_RIGHT:
+		switch(m_op){
+		case MODEL:
+			m_cur_obj = m_cur_obj + 1;
+			m_cur_obj %= (int) m_obj_points.size();;
+			break;
+		case POINT:
+			m_cur_obj_point = m_cur_obj_point + 1;
+			m_cur_obj_point %= (int) m_obj_points[m_cur_obj].get_num_points();
+			break;
+		}
+		break;
+	default:
+		break;
+	}
 }
 
 void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 {
 	switch(wParam){
 	case 'F': /* F key*/
-		m_main_offset = Point2i(0, 0);
+		m_main_offset = Point2f(0., 0.);
 		m_main_scale = 1.0;
-		break;	
+		break;
+	case 'O': /* O key */ 
+		if(m_op != OBJ)
+			break;
+		m_obj_points.push_back(s_obj_points());
+		m_cur_obj = (int)(m_obj_points.size() - 1);
+		break;
+	case 'm':
+		m_op = MODEL;
+		break;
+	case 'o':
+		m_op = OBJ;
+		break;
+	case 'p':
+		m_op = POINT;
+		break;
 	default:
 		break;
 	}

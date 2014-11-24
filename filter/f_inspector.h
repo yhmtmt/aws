@@ -51,6 +51,39 @@ struct ModelVertex
     static const DWORD FVF;   
 };   
 
+
+struct s_model_points
+{
+	string name;
+	vector<Point3f> pt3d;
+	bool load(const char * fname)
+	{
+		return true;
+	}
+};
+
+struct s_obj_points
+{
+	vector<Point2f> pt2d;
+	int imodel; // model index
+	vector<int> pt3didx; // corresponding 3d point index
+	vector<bool> bvisible; // true if 2d point is visible in the image
+
+	int get_num_points(){
+		return (int) pt2d.size();
+	}
+
+	vector<Point2f> & get_pts(){
+		return pt2d;
+	}
+
+	void push_pt(Point2f & pt){
+		pt2d.push_back(pt);
+		pt3didx.push_back(-1);
+		bvisible.push_back(true);
+	}
+};
+
 class f_inspector: public f_ds_window
 {
 private:
@@ -70,7 +103,7 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		NORMAL, MODEL,
+		NORMAL, MODEL, OBJ, POINT, 
 		DET_CHSBD, SAVE_CHSBDS, LOAD_CHSBDS,CLEAR_CHSBDS,
 		CALIB, SAVE_CAMPAR, LOAD_CAMPAR, CLEAR_CAMPAR,
 		DET_POSE_CAM, DET_POSE_CAM_TBL, DET_POSE, UNKNOWN
@@ -121,12 +154,14 @@ private:
 	// model 
 	//
 	vector<string> m_name_model; // name of the model
-	vector<vector<vector<Point2f> > > m_point_2d;
-	vector<vector<Point3f > > m_point_3d; // model points in model coordinate
+	vector<vector<s_obj_points> > m_obj_points_trace;
+	vector<s_model_points> m_model_points;
 	vector<vector<vector<int> > > m_edge_model; // model edge list
 	int m_cur_model; // current selected model
+	int m_cur_obj; // current object selected
 	int m_cur_model_point; // current selected point of the model
-	vector<vector<Point2f > > m_cur_point_2d;
+	int m_cur_obj_point; // current selected point of the object
+	vector<s_obj_points> m_obj_points;
 
 	// model poses in each time frame
 	vector<long long> m_pose_time;		// times corresponding model pose
@@ -226,12 +261,27 @@ public:
 
 
 	enum e_mmode{
-		MM_NORMAL, MM_SCROLL
+		MM_NORMAL, MM_SCROLL, MM_POINT
 	} m_mm;
 
+	// UI behaviour 
+	//// Key board
+	// 'F' fits the image to the original scale
+	// 'm' changes mode to MODEL
+	// 'M' add MODEL 
+	// <- @MODEL selects previous model 
+	// -> @MODEL selects next model
+	// <- @POINT selects previous point
+	// -> @POINT selects next point
+
+	// 'p' changes mode to POINT (POINT mode enables adding 2d points)
+	//// Mouse
+	// Shift + L-drag scrolls image
+	// Shift + Wheel scales image
+	// 
 	Point2i m_mc; // mouse cursor
 	Point2i m_pt_sc_start; // scroll start
-	Point2i m_main_offset;
+	Point2f m_main_offset;
 	float m_main_scale;
 
 	virtual void handle_lbuttondown(WPARAM wParam, LPARAM lParam);

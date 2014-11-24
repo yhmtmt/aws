@@ -647,8 +647,8 @@ LRESULT CALLBACK f_ds_window::WindowProc(HWND hwnd, UINT uMsg,
 }
 
 void f_ds_window::extractPointlParam(LPARAM lParam, Point2i & pt){
-	pt.x = GET_X_LPARAM(lParam) - m_client_org.x;
-	pt.y = GET_Y_LPARAM(lParam) - m_client_org.y;
+	pt.x = GET_X_LPARAM(lParam)/* - m_client_org.x*/;
+	pt.y = GET_Y_LPARAM(lParam)/* - m_client_org.y*/;
 }
 
 ///////////////////////////////////////////////////////////////// f_sys_window
