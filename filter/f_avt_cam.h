@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with f_avt_cam.  If not, see <http://www.gnu.org/licenses/>. 
 
-#include "PvAPI.h"
+#include "PvApi.h"
 
 class f_avt_cam: public f_base
 {
