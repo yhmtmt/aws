@@ -21,10 +21,10 @@ aws depends on various libraries. You need to install them to the following path
 * curl (For Windows)
 * pthread for windows (For Windows)
 * libjpeg (for Windows)
-* OpenCV 2.4.9  
-Place headers and libs(so) in the following paths. (relative path)
+* OpenCV 2.4.9 (without OpenCL support)  
+ Place headers and libs(so) in the following paths. (relative path)
   * INCLUDE: `opencv/include"
-  * LIB: `opencv/$(CPU)/lib`
+  * LIB: `opencv/$(CPU)/lib`  
 * cminpack 
 Place headers and static libs(a) in the following paths.
   * INCLUDE: `cminpack/include`
