@@ -42,6 +42,7 @@ For Petalinux@Zynq, first configure environmental variables of Xilinx's tools, t
 
     make "ZYNQ=y"
     
+Note that the option only works for petalinux SDK v2013.04.  
 Remote commands are also built simultaneously.  The binaries can be installed by  
     make install
 
