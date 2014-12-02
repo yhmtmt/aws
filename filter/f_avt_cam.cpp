@@ -44,17 +44,34 @@ bool f_avt_cam::m_bready_api = false;
 #define _STDCALL
 #endif
 
+// enum is defined in PvApi.h
+static const char * strPvFmt[ePvFmtBayer12Packed+1] = {
+	"Mono8", "Mono16", "Bayer8", "Bayer16", "Rgb24", "Rgb48",
+	"Yuv411", "Yuv422", "Yuv444", "Bgr24", "Rgba32", "Bgra32"
+	"Mono12Packed",  "Bayer12Packed"
+};
+
+static const char * strBandwidthCtrlMode[Both+1] = {
+	"StreamBytesPerSecond", "SCPD", "Both"
+};
+
 void _STDCALL proc_frame(tPvFrame * pfrm)
 {
 	f_avt_cam * pcam = (f_avt_cam *) pfrm->Context[0];
 	pcam->set_new_frm(pfrm);
 }
 
-f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5), m_access(ePvAccessMaster),
-	m_frame(NULL)
+f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5), 
+	m_access(ePvAccessMaster), m_frame(NULL), 
+	m_PixelFormat(ePvFmtMono8), m_BandwidthCtrlMode(StreamBytesPerSecond),
+	m_StreamBytesPerSecond(115000000)
 {
 	register_fpar("host", m_host, 1024, "Network address of the camera to be opened.");
 	register_fpar("nbuf", &m_num_buf, "Number of image buffers.");
+	register_fpar("PixelFormat", (int*)&m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
+	register_fpar("BandwidthCtrlMode", (int*)&m_BandwidthCtrlMode, Both + 1, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
+	register_fpar("StreamBytesPerSecond", &m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
+
 }
 
 f_avt_cam::~f_avt_cam()
@@ -109,6 +126,39 @@ void f_avt_cam::destroy_interface(){
 	m_bready_api = false;
 }
 
+
+bool f_avt_cam::config_param()
+{
+	tPvErr err;
+
+	err = PvAttrEnumSet(m_hcam, "PixelFormat", strPvFmt[m_PixelFormat]);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set PiexelFomrat" << endl;
+		return false;
+	}
+
+	return config_param_dynamic();
+}
+
+bool f_avt_cam::config_param_dynamic()
+{
+	tPvErr err;
+	
+	err = PvAttrEnumSet(m_hcam, "BandwidthCtrlMode", strBandwidthCtrlMode[m_BandwidthCtrlMode]);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set BandwidthCtrlMode" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "StreamBytesPerSecond", (tPvUint32) m_StreamBytesPerSecond);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set StreamBytesPerSecond" << endl;
+		return false;
+	}
+	return true;
+}
+
+
 bool f_avt_cam::init_run()
 {
 	if(!m_chout.size()){
@@ -122,7 +172,6 @@ bool f_avt_cam::init_run()
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CH);
 		return false;
 	}
-
 
 	tPvErr err;
 
@@ -141,15 +190,18 @@ bool f_avt_cam::init_run()
 		return false;
 	}
 
+	if(!config_param()){
+		goto cam_close;
+	}
+
 	// getting frame size sent from camera
-	m_size_buf = 0;
+	int m_size_buf = 0;
 	err = PvAttrUint32Get(m_hcam, "TotalBytesPerFrame", (tPvUint32*)&m_size_buf);
 
 	if(err != ePvErrSuccess){
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_ALLOC);
 		goto cam_close;
 	}
-
 	// allocating image buffer
 	m_frame = new tPvFrame[m_num_buf];
 	if(m_frame == NULL){
@@ -161,7 +213,7 @@ bool f_avt_cam::init_run()
 	m_frm_done.resize(m_num_buf);
 
 	unsigned int ibuf;
-	for(ibuf = 0; ibuf < m_num_buf; ibuf++){
+	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
 		m_frm_done[ibuf] = false;
 		m_frame[ibuf].Context[0] = (void*) this;
 		m_frame[ibuf].Context[1] = (void*) ibuf;
@@ -187,7 +239,7 @@ bool f_avt_cam::init_run()
 	}
 
 	m_cur_frm = 0;
-	for(ibuf = 0; ibuf < m_num_buf; ibuf++){
+	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
 		PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
 	}
 
@@ -212,7 +264,7 @@ bool f_avt_cam::init_run()
 	return true;
 
 free_buf:
-	for(ibuf = 0; ibuf < m_num_buf; ibuf++){
+	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
 		delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
 	}
 	delete m_frame;
@@ -293,7 +345,7 @@ void f_avt_cam::set_new_frm(tPvFrame * pfrm)
 	m_cur_frm = pfrm->FrameCount;
 	m_frm_done[ibuf] = true;
 
-	for(ibuf = 0; ibuf < m_num_buf; ibuf++){
+	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
 		if(m_frm_done[ibuf]){
 			if(!pout->is_buf_in_use((const unsigned char*) m_frame[ibuf].ImageBuffer))
 				PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);

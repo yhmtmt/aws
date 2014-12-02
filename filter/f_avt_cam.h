@@ -16,6 +16,10 @@
 
 #include "PvApi.h"
 
+enum eBandwidthCtrlMode {
+	StreamBytesPerSecond=0, SCPD, Both
+};
+
 class f_avt_cam: public f_base
 {
 protected:
@@ -33,6 +37,16 @@ protected:
 
 	int m_cur_frm;
 	
+	///////////////////// parameters
+	// static parameters. these parameters should not be modified during running state
+	tPvImageFormat m_PixelFormat;
+	bool config_param();
+
+	// dynamic parameters. These parameters can be modified during running state
+	eBandwidthCtrlMode m_BandwidthCtrlMode;
+	unsigned int m_StreamBytesPerSecond;
+	bool config_param_dynamic();
+
 	virtual bool init_run();
 	virtual void destroy_run();
 public:
