@@ -298,6 +298,7 @@ bool f_avt_cam::config_param_dynamic()
 
 bool f_avt_cam::init_run()
 {
+	int m_size_buf = 0;
 	if(!m_chout.size()){
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CH);
 		return false;
@@ -332,7 +333,6 @@ bool f_avt_cam::init_run()
 	}
 
 	// getting frame size sent from camera
-	int m_size_buf = 0;
 	err = PvAttrUint32Get(m_hcam, "TotalBytesPerFrame", (tPvUint32*)&m_size_buf);
 
 	if(err != ePvErrSuccess){
