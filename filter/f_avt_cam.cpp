@@ -45,14 +45,26 @@ bool f_avt_cam::m_bready_api = false;
 #endif
 
 // enum is defined in PvApi.h
-static const char * strPvFmt[ePvFmtBayer12Packed+1] = {
+const char * f_avt_cam::strPvFmt[ePvFmtBayer12Packed+1] = {
 	"Mono8", "Mono16", "Bayer8", "Bayer16", "Rgb24", "Rgb48",
 	"Yuv411", "Yuv422", "Yuv444", "Bgr24", "Rgba32", "Bgra32"
 	"Mono12Packed",  "Bayer12Packed"
 };
 
-static const char * strBandwidthCtrlMode[Both+1] = {
+const char * f_avt_cam::strBandwidthCtrlMode[Both+1] = {
 	"StreamBytesPerSecond", "SCPD", "Both"
+};
+
+const char * f_avt_cam::strExposureMode[emExternal+1] = {
+	"Manual", "Auto", "AutoOnce", "External"
+};
+
+const char * f_avt_cam::strExposureAutoAlg[eaaFitRange+1] = {
+	"Mean", "FitRange"
+};
+
+const char * f_avt_cam::strGainMode[egmExternal+1] = {
+	"Manual", "Auto", "AutoOnce", "External"
 };
 
 void _STDCALL proc_frame(tPvFrame * pfrm)
@@ -64,13 +76,35 @@ void _STDCALL proc_frame(tPvFrame * pfrm)
 f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5), 
 	m_access(ePvAccessMaster), m_frame(NULL), 
 	m_PixelFormat(ePvFmtMono8), m_BandwidthCtrlMode(StreamBytesPerSecond),
-	m_StreamBytesPerSecond(115000000)
+	m_StreamBytesPerSecond(115000000), m_ExposureMode(emAuto), m_ExposureAutoAdjustTol(5),
+	m_ExposureAutoAlg(eaaMean), m_ExposureAutoMax(500000), m_ExposureAutoMin(1000),
+	m_ExposureAutoOutliers(0), m_ExposureAutoRate(100), m_ExposureAutoTarget(50),
+	m_ExposureValue(100), m_GainMode(egmAuto), m_GainAutoAdjustTol(5), m_GainAutoMax(30),
+	m_GainAutoMin(10), m_GainAutoOutliers(0), m_GainAutoRate(100), m_GainAutoTarget(50),
+	m_GainValue(100)
 {
 	register_fpar("host", m_host, 1024, "Network address of the camera to be opened.");
 	register_fpar("nbuf", &m_num_buf, "Number of image buffers.");
 	register_fpar("PixelFormat", (int*)&m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
 	register_fpar("BandwidthCtrlMode", (int*)&m_BandwidthCtrlMode, Both + 1, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
 	register_fpar("StreamBytesPerSecond", &m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
+	register_fpar("ExposureMode", (int*) &m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode (default Auto)");
+	register_fpar("ExposureAutoAdjustTol", &m_ExposureAutoAdjustTol, "ExposureAutoAdjusttol (default 5)");
+	register_fpar("ExposureAutoAlg", (int*)&m_ExposureAutoAlg, (int)eaaFitRange, strExposureAutoAlg, "ExposureAutoAlg (default Mean)");
+	register_fpar("ExposureAutomax", &m_ExposureAutoMax, "ExposureAutoMax (default 500000us)");
+	register_fpar("ExposureAutomin", &m_ExposureAutoMin, "ExposureAutoMin (default 1000us)");
+	register_fpar("ExposureAutoOutliers", &m_ExposureAutoOutliers, "ExposureAutoOutliers (default 0)");
+	register_fpar("ExposureAutoRate", &m_ExposureAutoRate, "ExposureAutoRate (default 100)");
+	register_fpar("ExposureAutoTarget", &m_ExposureAutoTarget, "ExposureAutoTarget (default 50)");
+	register_fpar("ExposureValue", &m_ExposureValue, "ExposureValue (default 100us)");
+	register_fpar("GainMode", (int*)&m_GainMode, (int)(egmExternal) + 1, strGainMode, "GainMode (default Auto)");
+	register_fpar("GainAutoAdjustTol", &m_GainAutoAdjustTol, "GainAutoAdjusttol (default 5)");
+	register_fpar("GainAutomax", &m_GainAutoMax, "GainAutoMax (default 30db)");
+	register_fpar("GainAutomin", &m_GainAutoMin, "GainAutoMin (default 5db)");
+	register_fpar("GainAutoOutliers", &m_GainAutoOutliers, "GainAutoOutliers (default 0)");
+	register_fpar("GainAutoRate", &m_GainAutoRate, "GainAutoRate (default 100)");
+	register_fpar("GainAutoTarget", &m_GainAutoTarget, "GainAutoTarget (default 50)");
+	register_fpar("GainValue", &m_GainValue, "GainValue (default 10db)");
 
 }
 
@@ -155,6 +189,109 @@ bool f_avt_cam::config_param_dynamic()
 		cerr << "Failed to set StreamBytesPerSecond" << endl;
 		return false;
 	}
+
+	err = PvAttrEnumSet(m_hcam, "ExposureMode", strExposureMode[m_ExposureMode]);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set ExposureMode" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "ExposureAutoAdjustTol", m_ExposureAutoAdjustTol);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set ExposureAutoAdjustTol" << endl;
+		return false;
+	}
+
+	err = PvAttrEnumSet(m_hcam, "ExposureAutoAlg", strExposureAutoAlg[m_ExposureAutoAlg]);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set ExposureAutoAlg" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "ExposureAutoMax", m_ExposureAutoMax);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set ExposureAutoMax" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "ExposureAutoMin", m_ExposureAutoMin);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set ExposureAutoMin" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "ExposureAutoOutliers", m_ExposureAutoOutliers);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set ExposureAutoOutliers" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "ExposureAutoRate", m_ExposureAutoRate);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set ExposureAutoRate" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "ExposureAutoTarget", m_ExposureAutoTarget);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set ExposureAutoTarget" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "ExposureValue", m_ExposureValue);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set ExposureValue" << endl;
+		return false;
+	}
+
+	err = PvAttrEnumSet(m_hcam, "GainMode", strGainMode[m_GainMode]);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set GainMode" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "GainAutoAdjustTol", m_GainAutoAdjustTol);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set GainAutoAdjustTol" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "GainAutoMax", m_GainAutoMax);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set GainAutoMax" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "GainAutoMin", m_GainAutoMin);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set GainAutoMin" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "GainAutoOutliers", m_GainAutoOutliers);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set GainAutoOutliers" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "GainAutoRate", m_GainAutoRate);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set GainAutoRate" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "GainAutoTarget", m_GainAutoTarget);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set GainAutoTarget" << endl;
+		return false;
+	}
+
+	err = PvAttrUint32Set(m_hcam, "GainValue", m_GainValue);
+	if(err != ePvErrSuccess){
+		cerr << "Failed to set GainValue" << endl;
+		return false;
+	}
+	
 	return true;
 }
 

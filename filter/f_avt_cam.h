@@ -16,13 +16,31 @@
 
 #include "PvApi.h"
 
-enum eBandwidthCtrlMode {
-	StreamBytesPerSecond=0, SCPD, Both
-};
 
 class f_avt_cam: public f_base
 {
+	enum eBandwidthCtrlMode {
+	StreamBytesPerSecond=0, SCPD, Both
+};
+
+	enum eExposureMode{
+		emManual, emAuto, emAutoOnce, emExternal
+	};
+
+	enum eExposureAutoAlg{
+		eaaMean, eaaFitRange
+	};
+
+	enum eGainMode{
+		egmManual, egmAuto, egmAutoOnce, egmExternal
+	};
 protected:
+	static const char * strPvFmt[ePvFmtBayer12Packed+1];
+	static const char * strBandwidthCtrlMode[Both+1];
+	static const char * strExposureMode[emExternal+1];
+	static const char * strExposureAutoAlg[eaaFitRange+1];
+	static const char * strGainMode[egmExternal+1];
+
 	vector<bool> m_frm_done;
 	ch_image_ref * pout;
 	static bool m_bready_api;
@@ -45,6 +63,24 @@ protected:
 	// dynamic parameters. These parameters can be modified during running state
 	eBandwidthCtrlMode m_BandwidthCtrlMode;
 	unsigned int m_StreamBytesPerSecond;
+	eExposureMode m_ExposureMode;
+	unsigned int m_ExposureAutoAdjustTol;
+	eExposureAutoAlg m_ExposureAutoAlg;
+	unsigned int m_ExposureAutoMax;
+	unsigned int m_ExposureAutoMin;
+	unsigned int m_ExposureAutoOutliers;
+	unsigned int m_ExposureAutoRate;
+	unsigned int m_ExposureAutoTarget;
+	unsigned int m_ExposureValue;
+	unsigned int m_GainMode;
+	unsigned int m_GainAutoAdjustTol;
+	unsigned int m_GainAutoMax;
+	unsigned int m_GainAutoMin;
+	unsigned int m_GainAutoOutliers;
+	unsigned int m_GainAutoRate;
+	unsigned int m_GainAutoTarget;
+	unsigned int m_GainValue;
+
 	bool config_param_dynamic();
 
 	virtual bool init_run();
