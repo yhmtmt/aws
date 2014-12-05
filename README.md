@@ -228,12 +228,15 @@ This filter sends packets to control Shiojimaru. The control values are given bo
    * PAR:
    * PRC:
 
-8. avt_cam
+8. avt_cam (beta)
    * IN:
-   * OUT: 
-   * PAR:
+   * OUT: imgr 
+   * PAR:  
+host: IP addres of the AVT camera  
+StreamBytesPerSecond: Bandwidth limitation. (default 15000000)  
+update: y updates dynamic parameters y or n
    * PRC:
-
+Grabber threads are invoked independent of proc().  proc() only updates dynamic parameters when update is commanded.
 9. imgs
    * IN:
    * OUT: 
@@ -327,7 +330,25 @@ qjpg: Jpeg quality [0-100]
 qpng: PNG quality [0-10]  
       * PRC:  
 First Connecting to trnimg instance. 
-After the connection established, images are received and transfered to output channel.
+After the connection established, images are received and transfered to output channel.  
+20. debayer (beta)
+    * IN: {imgc | imgr}
+    * OUT: {imgc | imgr}
+    * PAR:  
+type: Bayer type for both 8bit and 16bit. {BG8, GB8, RG8, GR8, BG16, GB16, RG16, GR16}  
+      * PROC:  
+The image in the input channel is converted to BGR, and stored to the output channel. Bit depth is not changed.
+
+21. imwrite (beta)
+    * IN: {imgc | imgr}
+    * OUT: 
+    * PAR:  
+type: Image format {tiff, jpg, png}  
+qjpg: Jpeg quality. [0-100]  
+qpng: Png quality. [0-10]  
+path: Storing path.  
+      * PRC:  
+Images in input channel is saved as files with specified image format. File name is the combination of the filter name and time record.  
 
 # Channels
 1. imgc  
