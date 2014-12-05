@@ -61,6 +61,7 @@ protected:
 	bool config_param();
 
 	// dynamic parameters. These parameters can be modified during running state
+	bool m_update;
 	eBandwidthCtrlMode m_BandwidthCtrlMode;
 	unsigned int m_StreamBytesPerSecond;
 	eExposureMode m_ExposureMode;

@@ -75,7 +75,9 @@ void _STDCALL proc_frame(tPvFrame * pfrm)
 
 f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5), 
 	m_access(ePvAccessMaster), m_frame(NULL), 
-	m_PixelFormat(ePvFmtMono8), m_BandwidthCtrlMode(StreamBytesPerSecond),
+	m_PixelFormat(ePvFmtMono8),
+	m_update(false),
+	m_BandwidthCtrlMode(StreamBytesPerSecond),
 	m_StreamBytesPerSecond(115000000), m_ExposureMode(emAuto), m_ExposureAutoAdjustTol(5),
 	m_ExposureAutoAlg(eaaMean), m_ExposureAutoMax(500000), m_ExposureAutoMin(1000),
 	m_ExposureAutoOutliers(0), m_ExposureAutoRate(100), m_ExposureAutoTarget(50),
@@ -291,7 +293,7 @@ bool f_avt_cam::config_param_dynamic()
 		cerr << "Failed to set GainValue" << endl;
 		return false;
 	}
-	
+
 	return true;
 }
 
@@ -475,6 +477,24 @@ void f_avt_cam::set_new_frm(tPvFrame * pfrm)
 			img = Mat(pfrm->Height, pfrm->Width, CV_16UC1, pfrm->ImageBuffer);
 			pout->set_img(img, m_cur_time);
 			break;
+		case ePvFmtRgb24:
+			img = Mat(pfrm->Height, pfrm->Width, CV_8UC3, pfrm->ImageBuffer);
+			pout->set_img(img, m_cur_time);
+			break;
+		case ePvFmtRgb48:
+			img = Mat(pfrm->Height, pfrm->Width, CV_16UC3, pfrm->ImageBuffer);
+			pout->set_img(img, m_cur_time);
+			break;
+		case ePvFmtYuv411:
+		case ePvFmtYuv422:
+		case ePvFmtYuv444:
+		case ePvFmtBgr24:
+		case ePvFmtRgba32:
+		case ePvFmtBgra32:
+		case ePvFmtMono12Packed:
+		case ePvFmtBayer12Packed:
+		default:
+			break;
 		}
 	}
 
@@ -493,6 +513,11 @@ void f_avt_cam::set_new_frm(tPvFrame * pfrm)
 bool f_avt_cam::proc()
 {
 	// if any, reconfigure camera
+	if(m_update){
+		config_param_dynamic();
+		m_update = false;
+	}
+
 	return true;
 }
 
