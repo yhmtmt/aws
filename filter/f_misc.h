@@ -43,36 +43,19 @@ protected:
 	enum e_bayer_type{
 		BG8, GB8, RG8, GR8, BG16, GB16, RG16, GR16, UNKNOWN
 	} m_type;
+	static const char * m_strBayer[e_bayer_type::UNKNOWN];
+
 	char m_type_str[16];
 public:
 	f_debayer(const char * name): f_misc(name), m_pin(NULL), m_pout(NULL), m_type(BG8)
 	{
-		register_fpar("type", m_type_str, 16, "Type of bayer pattern. {BG8, GB8, RG8, GR8, BG16, GB16, RG16, GR16}");
+		register_fpar("bayer", (int*)&m_type,
+			(int) e_bayer_type::UNKNOWN, m_strBayer,
+			"Type of bayer pattern. {BG8, GB8, RG8, GR8, BG16, GB16, RG16, GR16}");
 	}
 
 	virtual bool init_run()
-	{
-		if(strcmp(m_type_str, "BG8") == 0){
-			m_type = BG8;
-		}else if(strcmp(m_type_str, "GB8") == 0){
-			m_type = GB8;
-		}else if(strcmp(m_type_str, "RG8") == 0){
-			m_type = RG8;
-		}else if(strcmp(m_type_str, "GR8") == 0){
-			m_type = GR8;
-		}else if(strcmp(m_type_str, "BG16") == 0){
-			m_type = BG16;
-		}else if(strcmp(m_type_str, "GB16") == 0){
-			m_type = GB16;
-		}else if(strcmp(m_type_str, "RG16") == 0){
-			m_type = RG16;
-		}else if(strcmp(m_type_str, "GR16") == 0){
-			m_type = GR16;
-		}else{
-			m_type = UNKNOWN;
-			return false;
-		}
-		
+	{		
 		if(!m_chin.size()){
 			return false;
 		}
@@ -95,12 +78,51 @@ public:
 	virtual void destroy_run()
 	{
 		ch_image * pin = dynamic_cast<ch_image*>(m_chin[0]);
-
 	}
 
 	virtual bool proc();
 };
 
+class f_imwrite: public f_misc
+{
+protected:
+	ch_image * m_pin;
+	enum eImgType{
+		eitTIFF, eitJPG, eitPNG
+	} m_type;
+	static const char * m_strImgType[eitPNG+1];
+	int m_qjpg; // 0 to 100
+	int m_qpng; // 0 to 10
+	char m_path[1024];
+public:
+	f_imwrite(const char * name): f_misc(name), m_pin(NULL), m_type(eitJPG)
+	{
+		m_path[0] = '\0';
+		register_fpar("type", (int*)&m_type, (int)eitPNG+1, m_strImgType, "Image type in {jpg, png}");
+		register_fpar("qjpg", &m_qjpg, "Jpeg quality [0-100]");
+		register_fpar("qpng", &m_qpng, "PNG quality [0-10]");
+		register_fpar("path", m_path, 1024, "File path");
+	}
+
+	virtual bool init_run()
+	{
+		if(!m_chin.size()){
+			return false;
+		}
+
+		m_pin = dynamic_cast<ch_image*>(m_chin[0]);
+		if(!m_pin)
+			return false;
+
+		return true;
+	}
+
+	virtual void destroy_run()
+	{
+	}
+
+	virtual bool proc();
+};
 
 class f_gry: public f_misc
 {

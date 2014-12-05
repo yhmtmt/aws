@@ -42,6 +42,10 @@ using namespace cv;
 #include "f_base.h"
 #include "f_misc.h"
 
+////////////////////////////////////////////////////////// f_debayer members
+const char * f_debayer::m_strBayer[e_bayer_type::UNKNOWN] = {
+	"ebBG8", "ebGB8", "ebRG8", "ebBG16", "ebGB16", "ebRG16"
+};
 
 bool f_debayer::proc(){
 	long long timg;
@@ -78,6 +82,39 @@ bool f_debayer::proc(){
 	return true;
 }
 
+////////////////////////////////////////////////////////// f_imwrite members
+const char * f_imwrite::m_strImgType[eitPNG+1] = {
+	"tiff", "jpg", "png"
+};
+
+bool f_imwrite::proc()
+{
+	long long timg;
+	Mat img = m_pin->get_img(timg);
+	char buf[1024];
+	vector<int> param(2);
+	snprintf(buf, "%s/%s_%lld.%s", m_path, m_name, timg, m_strImgType[m_type]);
+
+	switch(m_type){
+	case eitTIFF:
+		imwrite(buf, img);
+		break;
+	case eitJPG:
+		param[0] = CV_IMWRITE_JPEG_QUALITY;
+		param[1] = m_qjpg;
+		imwrite(buf, img, param);
+		break;
+	case eitPNG:
+		param[0] = CV_IMWRITE_PNG_COMPRESSION;
+		param[1] = m_qpng;
+		imwrite(buf, img, param);
+		break;
+	}
+
+	return true;
+}
+
+////////////////////////////////////////////////////////// f_gauss members
 bool f_gauss::cmd_proc(s_cmd & cmd)
 {
 	int num_args = cmd.num_args;
