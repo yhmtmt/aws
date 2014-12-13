@@ -31,6 +31,7 @@ enum e_nd_type{
 };
 
 
+//s_binary_message helps generating AIS binary messages.
 struct s_binary_message{
 	int len; // bit length
 	int sq; // sequence id
@@ -155,7 +156,6 @@ public:
 	virtual ostream & show(ostream & out) = 0;
 	virtual e_nd_type get_type() = 0;
 };
-
 
 // class for $gga
 class c_gga: public c_nmea_dat
@@ -308,7 +308,7 @@ class c_vdm;
 
 struct s_vdm_pl
 {
-	static vector<s_vdm_pl*> m_tmp; // temporaly store multi fragments message
+	static list<s_vdm_pl*> m_tmp; // temporaly store multi fragments message
 	static s_vdm_pl * m_pool;
 	s_vdm_pl * m_pnext;
 

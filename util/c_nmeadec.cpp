@@ -21,7 +21,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-
+#include <list>
 #include "aws_sock.h"
 #include "thread_util.h"
 
@@ -1081,12 +1081,12 @@ c_nmea_dat * c_ttm::dec_ttm(const char * str)
 }
 
 //////////////////////////////////////////////// vdm decoder
-vector<s_vdm_pl*> s_vdm_pl::m_tmp;
+list<s_vdm_pl*> s_vdm_pl::m_tmp;
 s_vdm_pl * s_vdm_pl::m_pool = NULL;
 
 void s_vdm_pl::clear()
 {
-	for(vector<s_vdm_pl*>::iterator itr = m_tmp.begin(); itr != m_tmp.end(); itr++)
+	for(list<s_vdm_pl*>::iterator itr = m_tmp.begin(); itr != m_tmp.end(); itr++)
 		delete *itr;
 	m_tmp.clear();
 }
@@ -1142,7 +1142,7 @@ c_vdm * c_vdm::dec_vdm(const char * str)
 				ppl->m_seqmsgid = seqmsgid;
 			}else{
 				// finding same seqmsgid
-				vector<s_vdm_pl*>::iterator itr = s_vdm_pl::m_tmp.begin();
+				list<s_vdm_pl*>::iterator itr = s_vdm_pl::m_tmp.begin();
 				for(;itr != s_vdm_pl::m_tmp.end(); itr++)
 					if((*itr)->m_seqmsgid == seqmsgid)
 						break;
@@ -1170,6 +1170,13 @@ c_vdm * c_vdm::dec_vdm(const char * str)
 
 	if(!ppl->is_complete()){
 		s_vdm_pl::m_tmp.push_back(ppl);
+		if(s_vdm_pl::m_tmp.size() > 10){
+			s_vdm_pl::free(*s_vdm_pl::m_tmp.begin());
+			s_vdm_pl::m_tmp.pop_front();
+#ifdef _DEBUG
+			cerr << "Payload fragment exceeded 10." << endl;
+#endif
+		}
 		return NULL;
 	}
 
