@@ -38,16 +38,27 @@ struct s_binary_message{
 	int ch; // channel 0/*auto*/, 1 /*A*/, 2 /*B*/, 3 /*A and B*/
 	unsigned int mmsi; // for message 6 or 12
 	unsigned char msg[120]; // message up to 120 bytes
+	char nmea[86]; // nmea buffer
 	s_binary_message():len(0), sq(0), mmsi(0), id(0), ch(0){
 	}
 
 	~s_binary_message(){
 	}
 
+	// interpreting data in buf as hex data. The characters in buf should be 0 to 9 or a to f.
 	bool set_msg_hex(char * buf);
+
+	// interpreting data in buf as 6bit character string. The characters should be in the armoring table.
 	bool set_msg_c6(char * buf);
+
+	// interpreting data in buf as 8bit character string. Any data byte can be OK. 
 	bool set_msg_c8(char * buf);
+
+	// interpreting data in buf as binary string. The characters given in the buffer should be 0 or 1. 
 	bool set_msg_bin(char * buf);
+
+	// binary message pvc sends an absolue position and velosity as message 8
+	// This message does not care about DAC/FI/AckReq/TextSeq 
 	bool set_msg_pvc(
 					unsigned char id, /* 8bit */
 					unsigned short sog /* 10bit 0.1 knot / unit */,
@@ -60,6 +71,9 @@ struct s_binary_message{
 					unsigned short & cog,
 					int & lon, 
 					int & lat);
+
+	// pvc2 sends an absolute positon and velocity as message 8
+	// DAC/FI/AckReq/TextSeq are set as zero.
 	bool set_msg_pvc2(
 					unsigned char id, /* 8bit */
 					unsigned short sog /* 10bit 0.1 knot / unit */,
@@ -72,6 +86,9 @@ struct s_binary_message{
 					unsigned short & cog,
 					int & lon, 
 					int & lat);
+
+	// pvc3 sends a relative position to the own ship and the velocity
+	// DAC/FI/AckReq/TextSeq are set as zero
 	bool set_msg_pvc3(
 					unsigned char id, /* 8bit */
 					unsigned short sog /* 10bit 0.1 knot / unit */,
@@ -85,6 +102,8 @@ struct s_binary_message{
 					unsigned short & dist /* 10bit 0.1 mile / unit */,
 					unsigned short & bear /* 12bit 0.1 deg / unit */);
 
+	// pvc4 sends an absolute position, the velocity and UTC sec as message 8
+	// DAC/FI/AckReq/TextSeq are set as zero
 	bool set_msg_pvc4(
 					unsigned char id, /* 8bit */
 					unsigned short sog /* 10bit 0.1 knot / unit */,
@@ -92,7 +111,6 @@ struct s_binary_message{
 					int lon /* 28bit 10000 minutes  = 1/600000 deg /unit*/ , 
 					int lat /* 27bit 10000 minutes  = 1/600000 deg /unit*/,
 					unsigned char sec /* 6bit 1sec / unit */);
-
 	bool get_msg_pvc4(
 					unsigned char & id, /* 8bit */
 					unsigned short & sog,
@@ -101,6 +119,8 @@ struct s_binary_message{
 					int & lat,
 					unsigned char & sec /* 6bit 1sec / unit */);
 
+	// pvc5 sends an relative position, the velocity and UTC sec as message 8
+	// DAC/FI/AckReq/TextSeq are set as zero.
 	bool set_msg_pvc5(
 					unsigned char id, /* 8bit */
 					unsigned short sog /* 10bit 0.1 knot / unit */,
@@ -116,6 +136,9 @@ struct s_binary_message{
 					unsigned short & bear /* 12bit 0.1 deg / unit */,
 					unsigned char & sec /* 6bit 1sec / unit */);
 
+	// generating BBM or ABM nmea sentence. The results are stored in nmeas.
+	// Note that multiple sentences can be produced.
+	bool gen_nmea(const char * toker, vector<string> & nmeas);
 };
 
 const char * get_ship_type_name(unsigned char uc);

@@ -137,6 +137,7 @@ public:
 
 
 // f_nmea_proc decodes nmea 0183 sentences 
+// This class accesses global ship list. 
 class f_nmea_proc: public f_base
 {
 protected:
