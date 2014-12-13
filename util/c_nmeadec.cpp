@@ -572,7 +572,7 @@ bool s_binary_message::gen_nmea(const char * toker, vector<string> & nmeas)
 		return false;
 	}
 
-	if(id != 8 && id != 14 && id != 6 && id != 12){
+	if(type != 8 && type != 14 && type != 6 && type != 12){
 		cout << "Irregal message id in send_bbm." << endl;
 		return false;
 	}
@@ -585,7 +585,7 @@ bool s_binary_message::gen_nmea(const char * toker, vector<string> & nmeas)
 
 	int bit_lim;
 	// Message type "ABM," or "BBM," filled in the m_nmea buffer
-	if(id == 6 || id == 12){ //ABM
+	if(type == 6 || type == 12){ //ABM
 		nmea[3] = 'A';
 		bit_lim = 288;
 		sq %= 4;
@@ -615,11 +615,11 @@ bool s_binary_message::gen_nmea(const char * toker, vector<string> & nmeas)
 		int i;
 		nmea[9] = (1 + isend) + '0'; nmea[10] = ','; // sentense number (upto num_sends)
 		if(isend == 0){
-			if(id == 6 || id == 12){
+			if(type == 6 || type == 12){
 				sprintf(&nmea[13], "%09d", mmsi);
 				nmea[22] = ',';
 				nmea[23] = ch + '0'; nmea[24] = ',';
-				if(id == 6){
+				if(type == 6){
 					nmea[25] = '6';
 					i = 26;
 				}else{
@@ -628,7 +628,7 @@ bool s_binary_message::gen_nmea(const char * toker, vector<string> & nmeas)
 				}
 			}else{
 				nmea[13] = ch + '0'; nmea[14] = ',';
-				if(id == 8){
+				if(type == 8){
 					nmea[15] = '8';
 					i = 16;
 				}else{
@@ -640,7 +640,7 @@ bool s_binary_message::gen_nmea(const char * toker, vector<string> & nmeas)
 			i++;
 		}else{
 			nmea[13] = ','; nmea[14] = ',';
-			if(id == 6 || id == 12){
+			if(type == 6 || type == 12){
 				nmea[15] = ',';
 				i = 16;
 			}else
