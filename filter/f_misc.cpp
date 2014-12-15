@@ -93,7 +93,7 @@ bool f_imwrite::proc()
 	Mat img = m_pin->get_img(timg);
 	char buf[1024];
 	vector<int> param(2);
-	snprintf(buf, "%s/%s_%lld.%s", m_path, m_name, timg, m_strImgType[m_type]);
+	snprintf(buf, 1024, "%s/%s_%lld.%s", m_path, m_name, timg, m_strImgType[m_type]);
 
 	switch(m_type){
 	case eitTIFF:
