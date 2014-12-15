@@ -21,7 +21,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-
+#include <list>
 #include "aws_sock.h"
 #include "thread_util.h"
 
@@ -559,6 +559,176 @@ bool s_binary_message::get_msg_pvc(
 	return true;
 }
 
+
+bool s_binary_message::gen_nmea(const char * toker, vector<string> & nmeas)
+{
+	if(len > 952){
+		cout << "Irregal message length in send_bbm." << endl;
+		return false;
+	}
+
+	if(ch >= 4){
+		cout << "Irregal channel specification in send_bbm." << endl;
+		return false;
+	}
+
+	if(type != 8 && type != 14 && type != 6 && type != 12){
+		cout << "Irregal message id in send_bbm." << endl;
+		return false;
+	}
+
+	nmeas.clear();
+
+	int num_sends;
+
+	nmea[0] = '!'; nmea[1] = toker[0]; nmea[2] = toker[1];
+
+	int bit_lim;
+	// Message type "ABM," or "BBM," filled in the m_nmea buffer
+	if(type == 6 || type == 12){ //ABM
+		nmea[3] = 'A';
+		bit_lim = 288;
+		sq %= 4;
+	}else{ // BBM
+		nmea[3] = 'B'; 
+		bit_lim = 348;
+		sq %= 10;
+	}
+	nmea[4] = 'B'; nmea[5] = 'M'; nmea[6] = ',';
+
+	// calculating number of sentences needed 
+	if(len <= bit_lim){
+		num_sends = 1;
+	}else{
+		num_sends = 1 + (len - bit_lim) / 360 + (((len - bit_lim) % 360) == 0 ? 0 : 1);
+		num_sends = max(num_sends, 9);
+	}
+
+	nmea[7] = num_sends + '0'; nmea[8] = ',';  // Total number of sentences
+	nmea[11] = sq + '0'; nmea[12] = ','; // sequential message identifier
+	int ibit = 0;
+	int ibuf = 0;
+	int im = 0;
+	for(int isend = 0; isend < num_sends; isend++){
+		// first 58x6=348bit
+		// subsequent 60x6=360bit
+		int i;
+		nmea[9] = (1 + isend) + '0'; nmea[10] = ','; // sentense number (upto num_sends)
+		if(isend == 0){
+			if(type == 6 || type == 12){
+				sprintf(&nmea[13], "%09d", mmsi);
+				nmea[22] = ',';
+				nmea[23] = ch + '0'; nmea[24] = ',';
+				if(type == 6){
+					nmea[25] = '6';
+					i = 26;
+				}else{
+					nmea[25] = '1'; nmea[26] = '2';
+					i = 27;
+				}
+			}else{
+				nmea[13] = ch + '0'; nmea[14] = ',';
+				if(type == 8){
+					nmea[15] = '8';
+					i = 16;
+				}else{
+					nmea[15] = '1'; nmea[16] = '4';
+					i = 17;
+				}
+			}
+			nmea[i] = ',';
+			i++;
+		}else{
+			nmea[13] = ','; nmea[14] = ',';
+			if(type == 6 || type == 12){
+				nmea[15] = ',';
+				i = 16;
+			}else
+				i = 15;
+		}
+
+		// copy message
+		while(1){
+			unsigned char uc = 0;
+
+			switch(im){
+			case 0:
+				uc = (msg[ibuf] >> 2) & 0x3F;
+				ibit += 6;
+				im = 1;
+				break;
+			case 1:
+				uc = (msg[ibuf] << 4);
+				ibit += 2;
+				if(ibit < len){
+					ibuf++;
+					uc |= ((msg[ibuf] & 0xF0) >> 4); 
+					ibit += 4;
+				}
+				im = 2;
+				break;
+			case 2:
+				uc = (msg[ibuf] << 2);
+				ibit += 4;
+				if(ibit < len){
+					ibuf++;
+					uc |= (msg[ibuf] & 0xC0) >> 6;
+					ibit += 2;
+				}
+				im = 3;
+				break;
+			case 3:
+				uc = msg[ibuf];
+				ibit += 6;
+				ibuf++;
+				im = 0;
+				break;
+			}
+
+			nmea[i] = armor(uc & 0x3F);
+			i++;
+			if(ibit >= len || ibit >= bit_lim)
+				break;
+		}
+
+		nmea[i] = ',';
+		i++;
+		if(isend == num_sends - 1){
+			int pad = (len % 6);
+			if(pad)
+				pad = 6 - pad;
+
+			nmea[i] = pad + '0';	
+		}else{
+			nmea[i] = '0';
+		}
+		i++;
+		nmea[i] = '*';
+		unsigned char chksum = calc_nmea_chksum(nmea);
+		char c;
+		i++;
+		c = (chksum >> 4) & 0x0F;
+		nmea[i] = (c < 10 ? c + '0' : c - 10 + 'A');
+		i++;
+		c = chksum & 0x0F;
+		nmea[i] = (c < 10 ? c + '0' : c - 10 + 'A');
+
+		i++;
+		nmea[i] = 13; // cr
+		i++;
+		nmea[i] = 10; // lf
+		i++;
+		nmea[i] = '\0';
+
+		nmeas.push_back(string(nmea));
+
+		bit_lim += 360;
+	}
+	sq = sq + 1;
+
+	return true;
+}
+
 ///////////////////////////////////////////// navdat decoder
 c_nmea_dat * c_nmea_dat::dec_nmea_dat(const char * str)
 {
@@ -851,28 +1021,28 @@ c_nmea_dat * c_ttm::dec_ttm(const char * str)
 			pnd->m_id = atoi(buf);
 			break;
 		case 2:
-			pnd->m_dist = atof(buf);
+			pnd->m_dist = (float) atof(buf);
 			break;
 		case 3:
-			pnd->m_bear = atof(buf);
+			pnd->m_bear = (float) atof(buf);
 			break;
 		case 4:
 			pnd->m_is_bear_true = (buf[0] == 'T' ? true : false);
 			break;
 		case 5:
-			pnd->m_spd = atof(buf);
+			pnd->m_spd = (float) atof(buf);
 			break;
 		case 6:
-			pnd->m_crs = atof(buf);
+			pnd->m_crs = (float) atof(buf);
 			break;
 		case 7:
 			pnd->m_is_crs_true = (buf[0] == 'T' ? true : false);
 			break;
 		case 8:
-			pnd->m_dcpa = atof(buf);
+			pnd->m_dcpa = (float) atof(buf);
 			break;
 		case 9:
-			pnd->m_tcpa = atof(buf);
+			pnd->m_tcpa = (float) atof(buf);
 			break;
 		case 10:
 			pnd->m_dist_unit = buf[0];
@@ -911,12 +1081,12 @@ c_nmea_dat * c_ttm::dec_ttm(const char * str)
 }
 
 //////////////////////////////////////////////// vdm decoder
-vector<s_vdm_pl*> s_vdm_pl::m_tmp;
+list<s_vdm_pl*> s_vdm_pl::m_tmp;
 s_vdm_pl * s_vdm_pl::m_pool = NULL;
 
 void s_vdm_pl::clear()
 {
-	for(vector<s_vdm_pl*>::iterator itr = m_tmp.begin(); itr != m_tmp.end(); itr++)
+	for(list<s_vdm_pl*>::iterator itr = m_tmp.begin(); itr != m_tmp.end(); itr++)
 		delete *itr;
 	m_tmp.clear();
 }
@@ -972,7 +1142,7 @@ c_vdm * c_vdm::dec_vdm(const char * str)
 				ppl->m_seqmsgid = seqmsgid;
 			}else{
 				// finding same seqmsgid
-				vector<s_vdm_pl*>::iterator itr = s_vdm_pl::m_tmp.begin();
+				list<s_vdm_pl*>::iterator itr = s_vdm_pl::m_tmp.begin();
 				for(;itr != s_vdm_pl::m_tmp.end(); itr++)
 					if((*itr)->m_seqmsgid == seqmsgid)
 						break;
@@ -1000,6 +1170,13 @@ c_vdm * c_vdm::dec_vdm(const char * str)
 
 	if(!ppl->is_complete()){
 		s_vdm_pl::m_tmp.push_back(ppl);
+		if(s_vdm_pl::m_tmp.size() > 10){
+			s_vdm_pl::free(*s_vdm_pl::m_tmp.begin());
+			s_vdm_pl::m_tmp.pop_front();
+#ifdef _DEBUG
+			cerr << "Payload fragment exceeded 10." << endl;
+#endif
+		}
 		return NULL;
 	}
 

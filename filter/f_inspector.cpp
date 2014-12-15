@@ -208,6 +208,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true),
 	m_bcalib_rational_model(false),
+	m_badd_model(false),
 	m_num_chsbds_calib(120),
 	m_cur_model(-1), m_cur_obj(-1), m_cur_obj_point(-1), m_cur_model_point(-1),
 	m_op(NORMAL),
@@ -226,6 +227,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 	register_fpar("fchsbds", m_fname_chsbds, 1024, "File path of chessboard collections");
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
+	register_fpar("add_model", &m_badd_model, "If the flag is asserted, model is loaded from fmodel");
+
 	register_fpar("fcampar", m_fname_campar, 1024, "File path of camera parameter.");
 	register_fpar("op", (int*)&m_op, UNKNOWN, m_str_op,"Operation {normal, chsbd, svcb, ldcb, calib, svcp, ldcp, model, pose}");
 	register_fpar("sh", &m_sh, "Horizontal scaling value. Image size is multiplied by the value. (default 1.0)");
@@ -285,6 +288,28 @@ f_inspector::~f_inspector()
 {
 }
 
+bool f_inspector::alloc_d3dres()
+{
+	if(!f_ds_window::alloc_d3dres()){
+		return false;
+	}
+	if(!m_3dscene.init(m_pd3dev,
+		(float) m_ViewPort.Width, (float) m_ViewPort.Height, 
+		(float) m_ViewPort.Width, (float) m_ViewPort.Height, 
+		(float) m_ViewPort.Width, (float) m_ViewPort.Height))
+		return false;
+
+	return true;
+}
+
+void f_inspector::release_d3dres()
+{
+	f_ds_window::release_d3dres();
+
+	m_3dscene.release();
+	return;
+}
+
 bool f_inspector::proc()
 {
 	pthread_lock lock(m_d3d_mtx);
@@ -341,6 +366,14 @@ bool f_inspector::proc()
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height,
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height))
 			return false;
+	}
+
+	//////////////// load model //////////////////////////////////////
+	if(m_badd_model){
+		if(!load_model()){
+			cerr << "Failed to load model " << m_fname_model << endl;
+		}
+		m_badd_model = false;
 	}
 
 	//////////////// chess board detection ///////////////////////////
@@ -447,6 +480,7 @@ bool f_inspector::proc()
 	m_maincam.show(m_pd3dev, (float)(0. + m_main_offset.x),
 		(float) ((float) m_ViewPort.Height + m_main_offset.y), m_main_scale);
 
+	/*
 	switch(m_3dmode){
 	case SUB:
 		m_3dscene.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
@@ -457,11 +491,17 @@ bool f_inspector::proc()
 	default:
 		break;
 	}
+	*/
+
+	if(m_op == MODEL){
+		m_3dscene.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
+	}
 
 	char information[1024];
+
 	snprintf(information, 1023, 
 		"OP=%s, MM=%d, Models=%d, CurModel=%d, Objs=%d, CurObj=%d, CurPoints=%d, CurPoint=%d",
-		m_str_op[m_op], m_mm, m_model_points.size(),
+		m_str_op[m_op], m_mm, m_models.size(),
 		m_cur_model, m_obj_points.size(), 
 		m_cur_obj, 
 		(m_cur_obj < 0 ? m_cur_obj : m_obj_points[m_cur_obj].get_num_points()),
@@ -469,8 +509,8 @@ bool f_inspector::proc()
 	
 	m_d3d_txt.render(m_pd3dev, information, 0, 0, 1.0, 0, EDTC_LT);
 
-
 	snprintf(information, 1023, "MC(%d, %d)", m_mc.x, m_mc.y);
+
 	m_d3d_txt.render(m_pd3dev, information, 0, 20, 1.0, 0, EDTC_LT);
 	D3DXVECTOR2 v[2];
 	m_pline->Begin();
@@ -493,6 +533,17 @@ bool f_inspector::proc()
 			m_blost = true;
 	}
 
+/*
+	WCHAR winformation[1024];
+	snwprintf(winformation, 1023, L"MC(%d, %d)", m_mc.x, m_mc.y);
+	m_pD2DRndrTgt->BeginDraw();
+		m_pD2DRndrTgt->DrawText(winformation, ARRAYSIZE(winformation) -1,
+		m_pTextFormat, D2D1::RectF(100.f, 100.f, 500.f, 80.f),
+		m_pBlackBrush);
+	m_pD2DRndrTgt->DrawRectangle(D2D1::RectF(100.f, 100.f, 200.f, 200.f),
+		m_pBlackBrush, 5.0f);
+	m_pD2DRndrTgt->EndDraw();
+*/
 	return true;
 }
 
@@ -1087,6 +1138,17 @@ void f_inspector::clearCampar()
 
 	m_bcam_tbl_loaded = false;
 	m_bcampar_fixed = false;
+}
+
+bool f_inspector::load_model()
+{
+	s_model mdl;
+	if(mdl.load(m_fname_model)){
+		m_models.push_back(mdl);
+		m_cur_model = (int)(m_models.size() - 1);
+		return true;
+	}
+	return false;
 }
 
 void f_inspector::render3D(long long timg)

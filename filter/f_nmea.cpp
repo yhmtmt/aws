@@ -534,11 +534,21 @@ void f_nmea::destroy_run(){
 }
 
 ///////////////////////////////////////////////////////////// f_nmea_proc
+const char * f_nmea_proc::str_aibm_type[AIBM_HEX + 1] = {
+	"C6", "C8", "BIN", "HEX"
+};
+
 bool f_nmea_proc::init_run()
 {
 	for(int ich = 0; ich < f_base::m_chin.size(); ich++){
 		m_chin = dynamic_cast<ch_nmea*>(f_base::m_chin[ich]);
 		if(m_chin)
+			break;
+	}
+
+	for(int ich = 0; ich < f_base::m_chout.size(); ich++){
+		m_chout = dynamic_cast<ch_nmea*>(f_base::m_chout[ich]);
+		if(m_chout)
 			break;
 	}
 
@@ -554,6 +564,36 @@ bool f_nmea_proc::proc()
 {
 	if(!m_chin)
 		return false;
+
+	// sending phase
+	if(strlen(m_str_aibm)){
+		bool ret;
+		switch(m_aibm_type){
+		case AIBM_C6:
+			ret = m_aibm.set_msg_c6(m_str_aibm);
+			break;
+		case AIBM_C8:
+			ret = m_aibm.set_msg_c8(m_str_aibm);
+			break;
+		case AIBM_BIN:
+			ret = m_aibm.set_msg_bin(m_str_aibm);
+			break;
+		case AIBM_HEX:
+			ret = m_aibm.set_msg_hex(m_str_aibm);
+			break;
+		}
+		vector<string> nmeas;
+		if(ret){
+			ret = m_aibm.gen_nmea(m_toker, nmeas);
+		}
+
+		if(ret){
+			for(int i = 0; i < nmeas.size(); i++){
+				m_chout->push(nmeas[i].c_str());
+			}
+			m_str_aibm[0] = '\0';
+		}
+	}
 
 	c_ship::list_lock();
 	while(m_chin->pop(m_buf)){

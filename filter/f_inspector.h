@@ -52,12 +52,89 @@ struct ModelVertex
 };   
 
 
-struct s_model_points
+struct s_model
 {
+	struct s_edge{
+		int s, e;
+		s_edge():s(0), e(0){};
+	};
+
 	string name;
-	vector<Point3f> pt3d;
+	vector<Point3f> pts;
+	vector<s_edge> edges;
+
 	bool load(const char * fname)
 	{
+		FileStorage fs(fname, FileStorage::READ);
+		if(!fs.isOpened()){
+			return false;
+		}
+
+		FileNode fn;
+
+		fn = fs["ModelName"];
+		string nameModel;
+		if(fn.empty()){
+			cerr << "Cannot find node ModelName." << endl;
+			return false;
+		}
+		fn >> name;
+
+		int numPoints;
+		fn = fs["NumPoints"];
+		if(fn.empty()){
+			cerr << "Cannot find node NumPoints." << endl;
+			return false;
+		}
+		fn >> numPoints;
+
+		int numEdges; 
+		fn = fs["NumEdges"];
+		if(fn.empty()){
+			cerr << "Cannot find node NumEdges." << endl;
+			return false;
+		}
+		fn >> numEdges;
+
+		fn = fs["Points"];
+
+		if(fn.empty()){
+			cerr << "Cannot find node Points." << endl;
+			return false;
+		}
+
+		char buf[64];
+		pts.resize(numPoints);
+		for(int ip = 0; ip < numPoints; ip++){
+			snprintf(buf, 63, "Point%05d", ip);
+			FileNode fpt = fn[buf];
+			if(fpt.empty()){
+				cerr << "Cannot find node " << buf << "." << endl;
+				return false;
+			}
+			fpt["x"] >> pts[ip].x;
+			fpt["y"] >> pts[ip].y;
+			fpt["z"] >> pts[ip].z;
+		}
+
+		fn = fs["Edges"];
+		if(fn.empty()){
+			cerr << "Cannot find node Edges." << endl;
+			return false;
+		}
+
+		edges.resize(numEdges);
+		for(int ie =0; ie < numEdges; ie++){
+			snprintf(buf, 63, "Edge%05d", ie);
+			FileNode fe = fn[buf];
+			if(fe.empty()){
+				cerr << "Cannot find node " << buf << "." << endl;
+				return false;
+			}
+			fn["s"] >> edges[ie].s;
+			fn["e"] >> edges[ie].e;
+		}
+
 		return true;
 	}
 };
@@ -123,7 +200,6 @@ private:
 	// file name for read/write
 	//
 	char m_fname_chsbds[1024]; // name of chsbd collection
-	char m_fname_model[1024]; // name of model file
 	char m_fname_campar[1024]; // name of camera parameter file
 
 	//
@@ -153,10 +229,12 @@ private:
 	//
 	// model 
 	//
-	vector<string> m_name_model; // name of the model
+	char m_fname_model[1024]; // name of camera parameter file
+	bool m_badd_model;
+	bool load_model();
+
 	vector<vector<s_obj_points> > m_obj_points_trace;
-	vector<s_model_points> m_model_points;
-	vector<vector<vector<int> > > m_edge_model; // model edge list
+	vector<s_model> m_models;
 	int m_cur_model; // current selected model
 	int m_cur_obj; // current object selected
 	int m_cur_model_point; // current selected point of the model
@@ -214,6 +292,8 @@ private:
 
 	LPD3DXMESH m_pmesh_chsbd;
 	LPDIRECT3DTEXTURE9 m_ptex_chsbd;
+	virtual bool alloc_d3dres();
+	virtual void release_d3dres();
 
 	void render3D(long long timg);
 	void renderChsbd(long long timg);

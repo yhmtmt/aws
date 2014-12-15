@@ -16,7 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with command.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
-#include <error.h>
+#include <errno.h>
 
 #include <iostream>
 #include <fstream>
