@@ -9,15 +9,15 @@
 
 #ifdef _DEBUG
 
-// OpenCV 2.4.9
-#pragma comment(lib, "opencv_core249d.lib")
-#pragma comment(lib, "opencv_contrib249d.lib")
-#pragma comment(lib, "opencv_features2d249d.lib")
-#pragma comment(lib, "opencv_legacy249d.lib")
-#pragma comment(lib, "opencv_objdetect249d.lib")
-#pragma comment(lib, "opencv_highgui249d.lib")
-#pragma comment(lib, "opencv_imgproc249d.lib")
-#pragma comment(lib, "opencv_calib3d249d.lib")
+// OpenCV 2.4.10
+#pragma comment(lib, "opencv_core2410d.lib")
+#pragma comment(lib, "opencv_contrib2410d.lib")
+#pragma comment(lib, "opencv_features2d2410d.lib")
+#pragma comment(lib, "opencv_legacy2410d.lib")
+#pragma comment(lib, "opencv_objdetect2410d.lib")
+#pragma comment(lib, "opencv_highgui2410d.lib")
+#pragma comment(lib, "opencv_imgproc2410d.lib")
+#pragma comment(lib, "opencv_calib3d2410d.lib")
 
 #pragma comment(lib, "libcurld_imp.lib")
 #pragma comment(lib, "pthreadVC2.lib")
@@ -30,15 +30,15 @@
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "d2d1.lib")
 #else
-// OpenCV 2.4.9
-#pragma comment(lib, "opencv_core249.lib")
-#pragma comment(lib, "opencv_contrib249.lib")
-#pragma comment(lib, "opencv_features2d249.lib")
-#pragma comment(lib, "opencv_legacy249.lib")
-#pragma comment(lib, "opencv_objdetect249.lib")
-#pragma comment(lib, "opencv_highgui249.lib")
-#pragma comment(lib, "opencv_imgproc249.lib")
-#pragma comment(lib, "opencv_calib3d249.lib")
+// OpenCV 2.4.10
+#pragma comment(lib, "opencv_core2410.lib")
+#pragma comment(lib, "opencv_contrib2410.lib")
+#pragma comment(lib, "opencv_features2d2410.lib")
+#pragma comment(lib, "opencv_legacy2410.lib")
+#pragma comment(lib, "opencv_objdetect2410.lib")
+#pragma comment(lib, "opencv_highgui2410.lib")
+#pragma comment(lib, "opencv_imgproc2410.lib")
+#pragma comment(lib, "opencv_calib3d2410.lib")
 
 #pragma comment(lib, "libcurl_imp.lib")
 #pragma comment(lib, "pthreadVC2.lib")
@@ -52,4 +52,4 @@
 #pragma comment(lib, "d2d1.lib")
 #endif
 
-#pragma comment(lib, "PvAPI.lib");
+#pragma comment(lib, "PvAPI.lib")
