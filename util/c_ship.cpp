@@ -278,8 +278,8 @@ void c_ship::delete_ship_by_mmsi(unsigned int mmsi)
 
 void c_ship::set_own_rmc(c_rmc * prmc, long long cur_time)
 {
-	float lat = (prmc->m_lat_dir == EGP_N ? 1. : -1.) * prmc->m_lat_deg * PI / 180.;
-	float lon = (prmc->m_lon_dir == EGP_E ? 1. : -1.) * prmc->m_lon_deg * PI / 180.;
+	float lat = (float)((prmc->m_lat_dir == EGP_N ? 1. : -1.) * prmc->m_lat_deg * PI / 180.);
+	float lon = (float)((prmc->m_lon_dir == EGP_E ? 1. : -1.) * prmc->m_lon_deg * PI / 180.);
 
 	m_ship_own.m_Xbih.lat = lat;
 	m_ship_own.m_Xbih.lon = lon;
@@ -717,28 +717,28 @@ bool c_ship::load_std_model(LPDIRECT3DDEVICE9 pd3dev)
 	// we should invert sign of the x values at the time placing them onto
 	// world coordinate.
 	CUSTOMVERTEX4 vtx2[num_vtxs] = {
-		{0, 80, 11.54, 0, 0, -1},	// 0 top side
-		{-20, 60, 11.54, 0, 0, -1},	// 1
-		{20, 60, 11.54, 0, 0, -1},	// 2
-		{-20, -20, 11.54, 0, 0, -1},	// 3
-		{20, -20, 11.54, 0, 0, -1},  // 4
-		{-20, -20, 11.54, 0, 1, 0},// 5 back side
-		{20, -20, 11.54, 0, 1, 0}, // 6
-		{0, -20, -23.09, 0, 1, 0}, // 7
-		{-20, 60, 11.54, 0.865956528, 0, 0.500119277},	//8 left side
-		{-20, -20, 11.54, 0.865956528, 0, 0.500119277},	//9
-		{0, -20, -23.09, 0.865956528, 0, 0.500119277},	//10
-		{0, 60, -23.09, 0.865956528, 0, 0.500119277},	//11
-		{20, 60, 11.54, -0.865956528, 0, 0.500119277},	//12 right side
-		{20, -20, 11.54, -0.865956528, 0, 0.500119277},	//13
-		{0, -20, -23.09, -0.865956528, 0, 0.500119277},	//14
-		{0, 60, -23.09, -0.865956528, 0, 0.500119277},	//15
-		{0, 80, 11.54, 0.654623918, 0.654623918, 0.378067524},	//16 top left side
-		{-20, 60, 11.54, 0.654623918, 0.654623918, 0.378067524},//17
-		{0, 60, -23.09, 0.654623918, 0.654623918, 0.378067524},	//18
-		{0, 80, 11.54, -0.654623918, 0.654623918, 0.378067524}, //19 top right side
-		{20, 60, 11.54, -0.654623918, 0.654623918, 0.378067524},//20
-		{0, 60, -23.09, -0.654623918, 0.654623918, 0.378067524}	//21
+		{0.f, 80.f, 11.54f, 0.f, 0.f, -1.f},	// 0 top side
+		{-20.f, 60.f, 11.54f, 0.f, 0.f, -1.f},	// 1
+		{20.f, 60.f, 11.54f, 0.f, 0.f, -1.f},	// 2
+		{-20.f, -20.f, 11.54f, 0.f, 0.f, -1.f},	// 3
+		{20.f, -20.f, 11.54f, 0.f, 0.f, -1.f},  // 4
+		{-20.f, -20.f, 11.54f, 0.f, 1.f, 0.f},// 5 back side
+		{20.f, -20.f, 11.54f, 0.f, 1.f, 0.f}, // 6
+		{0.f, -20.f, -23.09f, 0.f, 1.f, 0.f}, // 7
+		{-20.f, 60.f, 11.54f, 0.865956528f, 0.f, 0.500119277f},	//8 left side
+		{-20.f, -20.f, 11.54f, 0.865956528f, 0.f, 0.500119277f},	//9
+		{0.f, -20.f, -23.09f, 0.865956528f, 0.f, 0.500119277f},	//10
+		{0.f, 60.f, -23.09f, 0.865956528f, 0.f, 0.500119277f},	//11
+		{20.f, 60.f, 11.54f, -0.865956528f, 0.f, 0.500119277f},	//12 right side
+		{20.f, -20.f, 11.54f, -0.865956528f, 0.f, 0.500119277f},	//13
+		{0.f, -20.f, -23.09f, -0.865956528f, 0.f, 0.500119277f},	//14
+		{0.f, 60.f, -23.09f, -0.865956528f, 0.f, 0.500119277f},	//15
+		{0.f, 80.f, 11.54f, 0.654623918f, 0.654623918f, 0.378067524f},	//16 top left side
+		{-20.f, 60.f, 11.54f, 0.654623918f, 0.654623918f, 0.378067524f},//17
+		{0.f, 60.f, -23.09f, 0.654623918f, 0.654623918f, 0.378067524f},	//18
+		{0.f, 80.f, 11.54f, -0.654623918f, 0.654623918f, 0.378067524f}, //19 top right side
+		{20.f, 60.f, 11.54f, -0.654623918f, 0.654623918f, 0.378067524f},//20
+		{0.f, 60.f, -23.09f, -0.654623918f, 0.654623918f, 0.378067524f}	//21
 	};
 
 	WORD idx2[num_tris * 3] = {
@@ -898,12 +898,12 @@ bool c_ship::render2d(LPDIRECT3DDEVICE9 pd3dev, ID3DXLine * pline,
 	}
 
 	D3DXVECTOR2 pt[2];	
-	pt[0].x = m_Xwrld.x * rat + cx;
-	pt[0].y = -m_Xwrld.y * rat + cy;
+	pt[0].x = (float)(m_Xwrld.x * rat + cx);
+	pt[0].y = (float)(-m_Xwrld.y * rat + cy);
 
 	// velocity vector
-	pt[1].x = (m_Xwrld.x + m_Vwrld.x * 180) * rat + cx;
-	pt[1].y = - (m_Xwrld.y + m_Vwrld.y * 180) * rat + cy;
+	pt[1].x = (float)((m_Xwrld.x + m_Vwrld.x * 180) * rat + cx);
+	pt[1].y = (float)(- (m_Xwrld.y + m_Vwrld.y * 180) * rat + cy);
 
 	pline->Draw(pt, 2, D3DCOLOR_RGBA(255, 255, 255, 255));
 
@@ -912,21 +912,21 @@ bool c_ship::render2d(LPDIRECT3DDEVICE9 pd3dev, ID3DXLine * pline,
 		Point3d x;
 		
 		int c = 255;
-		int c_step = 255 / (m_trail.size() + 1); 
+		int c_step = 255 / ((int) m_trail.size() + 1); 
 		if(m_trail_tail != m_trail_head){
 			int i = m_trail_tail - 1;
 			if(i < 0){
-				i = m_trail.size() - 1;
+				i = (int) m_trail.size() - 1;
 			}
 
 			for(int i = m_trail_tail - 1, j = 0;;j++){
 				bihtowrld(Xorg, Rwrld, m_trail[i], x);
 				if(j & 0x1){
-					pt[0].x = x.x * rat + cx;
-					pt[0].y = -x.y * rat + cy;
+					pt[0].x = (float)(x.x * rat + cx);
+					pt[0].y = (float)(-x.y * rat + cy);
 				}else{
-					pt[1].x = x.x * rat + cx;
-					pt[1].y = -x.y * rat + cy;
+					pt[1].x = (float)(x.x * rat + cx);
+					pt[1].y = (float)(-x.y * rat + cy);
 				}
 				pline->Draw(pt, 2, D3DCOLOR_RGBA(c, c, c, c));
 				c -= c_step;
@@ -936,7 +936,7 @@ bool c_ship::render2d(LPDIRECT3DDEVICE9 pd3dev, ID3DXLine * pline,
 
 				i--;
 				if(i < 0)
-					i = m_trail.size() - 1;
+					i = (int) m_trail.size() - 1;
 			}
 		}
 	}
@@ -959,15 +959,15 @@ bool c_ship::render3d(LPDIRECT3DDEVICE9 pd3dev)
 	if(m_to_bow != 0){
 		double sy = (double) (m_to_bow + m_to_stern) / 100.;
 		double sx = (double) (m_to_port + m_to_starboard) / 40.;
-		D3DXMatrixScaling(&Mwrld, sx, sy, sy);
+		D3DXMatrixScaling(&Mwrld, (float) sx, (float) sy, (float) sy);
 	}else
 		D3DXMatrixIdentity(&Mwrld);
 
 	D3DXMATRIX Mtemp;
-	D3DXMatrixRotationZ(&Mtemp, -m_cog);
+	D3DXMatrixRotationZ(&Mtemp, (float) -m_cog);
 //	D3DXMatrixRotationX(&Mtemp, -0.25 * PI);
 	Mwrld *= Mtemp;
-	D3DXMatrixTranslation(&Mtemp, m_Xwrld.x, m_Xwrld.y, m_Xwrld.z);
+	D3DXMatrixTranslation(&Mtemp, (float)m_Xwrld.x, (float)m_Xwrld.y, (float)m_Xwrld.z);
 	//D3DXMatrixTranslation(&Mtemp, 0, -120, 0);
 	Mwrld *= Mtemp;
 
