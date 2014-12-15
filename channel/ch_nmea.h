@@ -63,7 +63,7 @@ public:
 		return true;
 	}
 
-	bool push(char * buf)
+	bool push(const char * buf)
 	{
 		lock();
 		int next_tail = (m_tail + 1) % m_max_buf;
