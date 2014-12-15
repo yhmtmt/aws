@@ -14,7 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with c_d3d_2dobj.h.  If not, see <http://www.gnu.org/licenses/>. 
 
-
+#include <d2d1.h>
+#include <dwrite.h>
 #include <d3d9.h>
 #include <d3dx9.h>
 
