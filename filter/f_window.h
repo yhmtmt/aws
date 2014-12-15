@@ -176,6 +176,17 @@ protected:
 	void change_dispmode(); // change furll or window mode.
 	bool reset_d3dev();
 
+	////////////////////////////////// direct2d object
+	ID2D1Factory* m_pD2DFactory;
+	ID2D1HwndRenderTarget * m_pD2DRndrTgt;
+	ID2D1SolidColorBrush * m_pBlackBrush;
+	IDWriteFactory * m_pDWriteFactory;
+	IDWriteTextFormat * m_pTextFormat;
+
+	virtual bool init_d2d();
+	virtual void release_d2d();
+
+
 	/////////////////////////////////// for grabbing rendered surface
 	int m_num_grab_frms, m_num_grabbed_frms;
 	wchar_t * m_grab_name;
@@ -269,8 +280,25 @@ public:
 			cerr << "failed to create window." << endl;
 			return false;
 		}
-
+		/*
+		if(!init_d2d()){
+			release_d2d();
+			return false;
+		}
+		*/
 		if(!init_d3d()){
+			release_d3dres();
+
+			if(m_pd3dev != NULL){
+				m_pd3dev->Release();
+				m_pd3dev = NULL;
+			}
+
+			if(m_pd3d != NULL){
+				m_pd3d->Release();
+				m_pd3d = NULL;
+			}
+
 			cerr << "failed to initialize direct3d." << endl;
 			return false;
 		}
@@ -296,7 +324,9 @@ public:
 			m_pd3d->Release();
 			m_pd3d = NULL;
 		}
-
+		/*
+		release_d2d();
+		*/
 		rm_wnd(this, m_hwnd);
 
 		DestroyWindow(m_hwnd);
