@@ -27,7 +27,8 @@
 #pragma comment(lib, "Quartz.lib")
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "d3dx9d.lib")
-
+#pragma comment(lib, "dwrite.lib")
+#pragma comment(lib, "d2d1.lib")
 #else
 // OpenCV 2.4.9
 #pragma comment(lib, "opencv_core249.lib")
@@ -47,6 +48,8 @@
 #pragma comment(lib, "Quartz.lib")
 #pragma comment(lib, "d3d9.lib")
 #pragma comment(lib, "d3dx9.lib")
+#pragma comment(lib, "dwrite.lib")
+#pragma comment(lib, "d2d1.lib")
 #endif
 
 #pragma comment(lib, "PvAPI.lib");
