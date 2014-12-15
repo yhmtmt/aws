@@ -172,6 +172,9 @@ f_base* f_base::create(const char * tname, const char * fname)
 	if(strcmp("debayer", tname) == 0)
 		return new f_debayer(fname);
 
+	if(strcmp("imwrite", tname) == 0)
+		return new f_imwrite(fname);
+
 	if(strcmp("gry", tname) == 0)
 		return new f_gry(fname);
 
