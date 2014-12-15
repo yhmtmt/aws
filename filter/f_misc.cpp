@@ -44,7 +44,7 @@ using namespace cv;
 
 ////////////////////////////////////////////////////////// f_debayer members
 const char * f_debayer::m_strBayer[e_bayer_type::UNKNOWN] = {
-	"ebBG8", "ebGB8", "ebRG8", "ebBG16", "ebGB16", "ebRG16"
+	"BG8", "GB8", "RG8", "BG16", "GB16", "RG16"
 };
 
 bool f_debayer::proc(){

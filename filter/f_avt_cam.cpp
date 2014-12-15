@@ -441,12 +441,16 @@ void f_avt_cam::destroy_run()
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_STOP);
 	}
 
-	int ibuf;
-	for(ibuf = 0; ibuf < m_num_buf; ibuf++){
-		delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
+	if(m_frame != NULL){
+		int ibuf;
+		for(ibuf = 0; ibuf < m_num_buf; ibuf++){
+			if(m_frame[ibuf].ImageBuffer){
+				delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
+			}
+		}
+		delete[] m_frame;
+		m_frame = NULL;
 	}
-	delete[] m_frame;
-	m_frame = NULL;
 
 	err = PvCameraClose(m_hcam);
 
