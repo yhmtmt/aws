@@ -43,14 +43,14 @@ protected:
 	enum e_bayer_type{
 		BG8, GB8, RG8, GR8, BG16, GB16, RG16, GR16, UNKNOWN
 	} m_type;
-	static const char * m_strBayer[e_bayer_type::UNKNOWN];
+	static const char * m_strBayer[UNKNOWN];
 
 	char m_type_str[16];
 public:
 	f_debayer(const char * name): f_misc(name), m_pin(NULL), m_pout(NULL), m_type(BG8)
 	{
 		register_fpar("bayer", (int*)&m_type,
-			(int) e_bayer_type::UNKNOWN, m_strBayer,
+			(int) UNKNOWN, m_strBayer,
 			"Type of bayer pattern. {BG8, GB8, RG8, GR8, BG16, GB16, RG16, GR16}");
 	}
 
