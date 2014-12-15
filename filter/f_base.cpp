@@ -226,7 +226,7 @@ f_base* f_base::create(const char * tname, const char * fname)
 		return new f_clip(fname);
 
 #ifdef AVT_CAM
-	if(strcmp("avt_cam", tname) == 0)
+	if(strcmp("avtcam", tname) == 0)
 		return new f_avt_cam(fname);
 #endif
 
