@@ -51,6 +51,10 @@ bool f_debayer::proc(){
 	long long timg;
 	Mat img = m_pin->get_img(timg);
 	Mat bgr;
+	if(img.empty()){
+		return true;
+	}
+
 	switch(m_type){
 	case BG8:
 		cnvBayerBG8ToBGR8(img, bgr);
