@@ -107,7 +107,6 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	register_fpar("GainAutoRate", &m_GainAutoRate, "GainAutoRate (default 100)");
 	register_fpar("GainAutoTarget", &m_GainAutoTarget, "GainAutoTarget (default 50)");
 	register_fpar("GainValue", &m_GainValue, "GainValue (default 10db)");
-
 }
 
 f_avt_cam::~f_avt_cam()
