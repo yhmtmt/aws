@@ -67,7 +67,7 @@ void cnvBayerRG8ToBGR8(Mat & src, Mat & dst)
 
 	dst = Mat(src.rows - 2, src.cols - 2, CV_8UC3);
 
-	int step_size = (int) (src.step.p[0] / sizeof(unsigned short));
+	int step_size = (int) (src.step.p[0] / sizeof(unsigned char));
 	int next_skip = src.cols - step_size + 2;
 
 	unsigned char * psrc0, * psrc1, * psrc2, * pdst;
@@ -282,7 +282,7 @@ void cnvBayerGR8ToBGR8(Mat & src, Mat & dst)
 
 	dst = Mat(src.rows - 2, src.cols - 2, CV_8UC3);
 
-	int step_size = (int) (src.step.p[0] / sizeof(unsigned short));
+	int step_size = (int) (src.step.p[0] / sizeof(unsigned char));
 	int next_skip = src.cols - step_size + 2;
 
 	unsigned char * psrc0, * psrc1, * psrc2, * pdst;
@@ -498,7 +498,7 @@ void cnvBayerBG8ToBGR8(Mat & src, Mat & dst)
 
 	dst = Mat(src.rows - 2, src.cols - 2, CV_8UC3);
 
-	int step_size = (int) (src.step.p[0] / sizeof(unsigned short));
+	int step_size = (int) (src.step.p[0] / sizeof(unsigned char));
 	int next_skip = src.cols - step_size + 2;
 
 	unsigned char * psrc0, * psrc1, * psrc2, * pdst;
@@ -712,7 +712,7 @@ void cnvBayerGB8ToBGR8(Mat & src, Mat & dst)
 
 	dst = Mat(src.rows - 2, src.cols - 2, CV_8UC3);
 
-	int step_size = (int) (src.step.p[0] / sizeof(unsigned short));
+	int step_size = (int) (src.step.p[0] / sizeof(unsigned char));
 	int next_skip = src.cols - step_size + 2;
 
 	unsigned char * psrc0, * psrc1, * psrc2, * pdst;

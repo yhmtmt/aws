@@ -83,7 +83,7 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	m_ExposureAutoOutliers(0), m_ExposureAutoRate(100), m_ExposureAutoTarget(50),
 	m_ExposureValue(100), m_GainMode(egmAuto), m_GainAutoAdjustTol(5), m_GainAutoMax(30),
 	m_GainAutoMin(10), m_GainAutoOutliers(0), m_GainAutoRate(100), m_GainAutoTarget(50),
-	m_GainValue(100)
+	m_GainValue(10)
 {
 	register_fpar("host", m_host, 1024, "Network address of the camera to be opened.");
 	register_fpar("nbuf", &m_num_buf, "Number of image buffers.");
