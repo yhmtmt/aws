@@ -104,6 +104,7 @@ public:
 		lock();
 		m_bnew = true;
 		m_img[m_back] = img;
+		m_time[m_back] = t;
 		unlock();
 	}
 

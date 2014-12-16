@@ -40,6 +40,7 @@ class f_debayer: public f_misc
 {
 protected:
 	ch_image * m_pin, * m_pout;
+	long long m_timg;
 	enum e_bayer_type{
 		BG8, GB8, RG8, GR8, BG16, GB16, RG16, GR16, UNKNOWN
 	} m_type;
@@ -47,7 +48,7 @@ protected:
 
 	char m_type_str[16];
 public:
-	f_debayer(const char * name): f_misc(name), m_pin(NULL), m_pout(NULL), m_type(BG8)
+	f_debayer(const char * name): f_misc(name), m_pin(NULL), m_pout(NULL), m_type(BG8), m_timg(-1)
 	{
 		register_fpar("bayer", (int*)&m_type,
 			(int) UNKNOWN, m_strBayer,

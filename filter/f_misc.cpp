@@ -45,13 +45,23 @@ using namespace cv;
 
 ////////////////////////////////////////////////////////// f_debayer members
 const char * f_debayer::m_strBayer[e_bayer_type::UNKNOWN] = {
-	"ebBG8", "ebGB8", "ebRG8", "ebBG16", "ebGB16", "ebRG16"
+	"BG8", "GB8", "RG8", "GR8", "BG16", "GB16", "RG16", "GR16"
 };
 
 bool f_debayer::proc(){
 	long long timg;
 	Mat img = m_pin->get_img(timg);
+	if(m_timg == timg){
+		return true;
+	}
+
+	m_timg = timg;
 	Mat bgr;
+
+	if(img.empty()){
+		return true;
+	}
+
 	switch(m_type){
 	case BG8:
 		cnvBayerBG8ToBGR8(img, bgr);

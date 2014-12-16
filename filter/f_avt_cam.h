@@ -34,12 +34,18 @@ class f_avt_cam: public f_base
 	enum eGainMode{
 		egmManual, egmAuto, egmAutoOnce, egmExternal
 	};
+
+	enum eWhitebalMode{
+		ewmManual, ewmAuto, ewmAutoOnce
+	};
+
 protected:
 	static const char * strPvFmt[ePvFmtBayer12Packed+1];
 	static const char * strBandwidthCtrlMode[Both+1];
 	static const char * strExposureMode[emExternal+1];
 	static const char * strExposureAutoAlg[eaaFitRange+1];
 	static const char * strGainMode[egmExternal+1];
+	static const char * strWhitebalMode[ewmAutoOnce+1];
 
 	vector<bool> m_frm_done;
 	ch_image_ref * pout;
@@ -81,6 +87,11 @@ protected:
 	unsigned int m_GainAutoRate;
 	unsigned int m_GainAutoTarget;
 	unsigned int m_GainValue;
+	eWhitebalMode m_WhitebalMode;
+	unsigned int m_WhitebalAutoAdjustTol;
+	unsigned int m_WhitebalAutoRate;
+	unsigned int m_WhitebalValueRed;
+	unsigned int m_WhitebalValueBlue;
 
 	bool config_param_dynamic();
 

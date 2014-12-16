@@ -67,6 +67,10 @@ const char * f_avt_cam::strGainMode[egmExternal+1] = {
 	"Manual", "Auto", "AutoOnce", "External"
 };
 
+const char * f_avt_cam::strWhitebalMode[ewmAutoOnce+1] = {
+	"Manual", "Auto", "AutoOnce"
+};
+
 void _STDCALL proc_frame(tPvFrame * pfrm)
 {
 	f_avt_cam * pcam = (f_avt_cam *) pfrm->Context[0];
@@ -83,13 +87,18 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	m_ExposureAutoOutliers(0), m_ExposureAutoRate(100), m_ExposureAutoTarget(50),
 	m_ExposureValue(100), m_GainMode(egmAuto), m_GainAutoAdjustTol(5), m_GainAutoMax(30),
 	m_GainAutoMin(10), m_GainAutoOutliers(0), m_GainAutoRate(100), m_GainAutoTarget(50),
-	m_GainValue(100)
+	m_GainValue(10),
+	m_WhitebalMode(ewmAuto), m_WhitebalAutoAdjustTol(5), m_WhitebalAutoRate(100),
+	m_WhitebalValueRed(0), m_WhitebalValueBlue(0)
 {
 	register_fpar("host", m_host, 1024, "Network address of the camera to be opened.");
 	register_fpar("nbuf", &m_num_buf, "Number of image buffers.");
+	register_fpar("update", &m_update, "Update flag.");
 	register_fpar("PixelFormat", (int*)&m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
 	register_fpar("BandwidthCtrlMode", (int*)&m_BandwidthCtrlMode, Both + 1, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
 	register_fpar("StreamBytesPerSecond", &m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
+
+	// about exposure
 	register_fpar("ExposureMode", (int*) &m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode (default Auto)");
 	register_fpar("ExposureAutoAdjustTol", &m_ExposureAutoAdjustTol, "ExposureAutoAdjusttol (default 5)");
 	register_fpar("ExposureAutoAlg", (int*)&m_ExposureAutoAlg, (int)eaaFitRange, strExposureAutoAlg, "ExposureAutoAlg (default Mean)");
@@ -99,6 +108,8 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	register_fpar("ExposureAutoRate", &m_ExposureAutoRate, "ExposureAutoRate (default 100)");
 	register_fpar("ExposureAutoTarget", &m_ExposureAutoTarget, "ExposureAutoTarget (default 50)");
 	register_fpar("ExposureValue", &m_ExposureValue, "ExposureValue (default 100us)");
+
+	// about gain
 	register_fpar("GainMode", (int*)&m_GainMode, (int)(egmExternal) + 1, strGainMode, "GainMode (default Auto)");
 	register_fpar("GainAutoAdjustTol", &m_GainAutoAdjustTol, "GainAutoAdjusttol (default 5)");
 	register_fpar("GainAutomax", &m_GainAutoMax, "GainAutoMax (default 30db)");
@@ -107,6 +118,13 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	register_fpar("GainAutoRate", &m_GainAutoRate, "GainAutoRate (default 100)");
 	register_fpar("GainAutoTarget", &m_GainAutoTarget, "GainAutoTarget (default 50)");
 	register_fpar("GainValue", &m_GainValue, "GainValue (default 10db)");
+
+	// about white balance
+	register_fpar("WhitebalMode", (int*)&m_WhitebalMode, (int)ewmAutoOnce+1, strWhitebalMode, "WhitebalMode (default Auto)");
+	register_fpar("WhitebalAutoAdjustTol", &m_WhitebalAutoAdjustTol, "WhitebaAutoAdjustTol (percent, default 5)");
+	register_fpar("WhitebalAutoRate", &m_WhitebalAutoRate, "WhitebalAutoRate (percent, default 100)");
+	register_fpar("WhitebalValueRed", &m_WhitebalValueRed, "WhitebalValueRed (percent, default 0)");
+	register_fpar("WhitebalValueBlue", &m_WhitebalValueBlue, "WhitebalValueBlue (percent, default 0)");
 }
 
 f_avt_cam::~f_avt_cam()
@@ -440,12 +458,16 @@ void f_avt_cam::destroy_run()
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_STOP);
 	}
 
-	int ibuf;
-	for(ibuf = 0; ibuf < m_num_buf; ibuf++){
-		delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
+	if(m_frame != NULL){
+		int ibuf;
+		for(ibuf = 0; ibuf < m_num_buf; ibuf++){
+			if(m_frame[ibuf].ImageBuffer){
+				delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
+			}
+		}
+		delete[] m_frame;
+		m_frame = NULL;
 	}
-	delete[] m_frame;
-	m_frame = NULL;
 
 	err = PvCameraClose(m_hcam);
 
