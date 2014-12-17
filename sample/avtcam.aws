@@ -1,0 +1,21 @@
+#!/bin/sh
+
+channel imgr bayer
+channel imgr clr
+filter avtcam cam -i -o bayer
+fset cam host 172.18.1.128
+fset cam PixelFormat Bayer8
+filter debayer deb -i bayer -o clr
+fset deb bayer GR8
+# for windows dswin shows the images
+#filter dswin win -i clr -o 
+#fset win wmd yes
+#fset win Hwin 1376 Vwin 1100
+filter imwrite iw -i clr -o 
+fset iw type jpg
+fset iw qjpg 20
+go
+
+
+
+

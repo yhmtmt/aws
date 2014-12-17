@@ -31,7 +31,7 @@ public:
 
 	virtual bool check()
 	{
-		return m_chin[0] != NULL && m_chout[0] != NULL;
+		return true;
 	}
 
 };
@@ -98,7 +98,8 @@ protected:
 public:
 	f_imwrite(const char * name): f_misc(name), m_pin(NULL), m_type(eitJPG)
 	{
-		m_path[0] = '\0';
+		m_path[0] = '.';
+		m_path[1] = '\0';
 		register_fpar("type", (int*)&m_type, (int)eitPNG+1, m_strImgType, "Image type in {jpg, png}");
 		register_fpar("qjpg", &m_qjpg, "Jpeg quality [0-100]");
 		register_fpar("qpng", &m_qpng, "PNG quality [0-10]");
