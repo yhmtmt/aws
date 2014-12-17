@@ -54,7 +54,6 @@ bool f_debayer::proc(){
 	if(m_timg == timg){
 		return true;
 	}
-
 	m_timg = timg;
 	Mat bgr;
 

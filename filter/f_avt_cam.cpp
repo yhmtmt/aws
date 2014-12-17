@@ -23,6 +23,7 @@
 #include <vector>
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <list>
 
 using namespace std;
 
@@ -479,6 +480,7 @@ void f_avt_cam::destroy_run()
 void f_avt_cam::set_new_frm(tPvFrame * pfrm)
 {
 	unsigned int ibuf;
+l;
 	if(pfrm->Status == ePvErrSuccess){
 		Mat img;
 		switch(pfrm->Format){

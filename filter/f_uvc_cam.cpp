@@ -40,6 +40,7 @@
 
 #include <linux/videodev2.h>
 
+#include <list>
 #include <cmath>
 
 using namespace std;
