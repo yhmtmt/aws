@@ -479,8 +479,10 @@ void f_avt_cam::destroy_run()
 
 void f_avt_cam::set_new_frm(tPvFrame * pfrm)
 {
+  if(!m_bactive)
+    return;
+
 	unsigned int ibuf;
-l;
 	if(pfrm->Status == ePvErrSuccess){
 		Mat img;
 		switch(pfrm->Format){
