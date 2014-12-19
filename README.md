@@ -228,7 +228,8 @@ This filter sends packets to control Shiojimaru. The control values are given bo
    * PAR:
    * PRC:
 
-8. avt_cam (beta)
+8. avt_cam (beta)  
+This filter grabs images from AVT cameras. GT2750C and GT1920C are tested (Very thanks to Takeshi Ohkawa).  
    * IN:
    * OUT: imgr 
    * PAR:  
@@ -291,7 +292,7 @@ device: device number. (default 0)
    * PRC:
  
 17. uvcam
-This filter grabs images from USB camera compatible with UVC driver. Only for Linux.  
+This filter grabs images from USB camera compatible with UVC driver. Only for Linux. Logicool C270 is tested.   
    * IN:
    * OUT: {imgr or imgc}  
    * PAR:  
@@ -331,7 +332,7 @@ qpng: PNG quality [0-10]
       * PRC:  
 First Connecting to trnimg instance. 
 After the connection established, images are received and transfered to output channel.  
-20. debayer (beta)
+20. debayer 
     * IN: {imgc | imgr}
     * OUT: {imgc | imgr}
     * PAR:  
@@ -339,7 +340,7 @@ type: Bayer type for both 8bit and 16bit. {BG8, GB8, RG8, GR8, BG16, GB16, RG16,
       * PROC:  
 The image in the input channel is converted to BGR, and stored to the output channel. Bit depth is not changed.
 
-21. imwrite (beta)
+21. imwrite 
     * IN: {imgc | imgr}
     * OUT: 
     * PAR:  
