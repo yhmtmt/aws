@@ -24,5 +24,5 @@ clean:
 
 install:
 	for cmd in $(TGT); do \
-	 cp $$cmd $(INST_DIR)/; \
+	 cp $$cmd $(INST_DIR)/$$cmd; \
 	done

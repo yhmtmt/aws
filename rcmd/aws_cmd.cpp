@@ -1,24 +1,5 @@
 #include <iostream>
-#include <fstream>
-#include <vector>
-#include <stdio.h>
-#include <stdlib.h>
-using namespace std;
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <unistd.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string.h>
-#define SOCKET int
-
-#ifndef SOCKET_ERROR 
-#define SOCKET_ERROR (-1)
-#endif
-#define CMD_LEN 1024
-
+#include "aws_cmd.h"
 
 bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok)
 {
@@ -118,7 +99,15 @@ int aws_cmd(int argc, char ** argv, const char * cmd){
     return 1;
   }
   
+  // finish the command session ("eoc" command is sent) 
+  buf[0] = 'e'; buf[1] = 'o'; buf[2] = 'c'; buf[3] = '\0';
+  ret = send(sock, buf, CMD_LEN, 0);
+  if(ret == -1){
+    cerr << "Failed to send end of command message." << endl;
+    return 1;
+  }
   close(sock);
-
+  
   return 0;
 }
+

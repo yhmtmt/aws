@@ -268,27 +268,31 @@ void * c_rcmd::thrcmd(void * ptr)
 {
 	c_rcmd * prcmd = (c_rcmd*) ptr;
 
-
 	while(!prcmd->is_exit()){
 		SOCKET s;
 		if(!prcmd->wait_connection(s)){
 			continue;
 		}
 
-		int total = 0;
-		while(!prcmd->wait_receive(s, prcmd->m_buf_recv, total));
-
-		// push command 
-		bool stat = false;
-		if(total == CMD_LEN){
-			if(!prcmd->m_paws->push_command(prcmd->m_buf_recv, 
-				prcmd->m_buf_send, stat)){
-				cerr << "Unknown command " << prcmd->m_buf_recv << endl;
+		while(1){
+			int total = 0;
+			while(!prcmd->wait_receive(s, prcmd->m_buf_recv, total));
+			if(strcmp("eoc", prcmd->m_buf_recv) == 0){
+				break;
 			}
-		}
 
-		// return
-		while(!prcmd->wait_send(s, prcmd->m_buf_send));
+			// push command 
+			bool stat = false;
+			if(total == CMD_LEN){
+				if(!prcmd->m_paws->push_command(prcmd->m_buf_recv, 
+					prcmd->m_buf_send, stat)){
+						cerr << "Unknown command " << prcmd->m_buf_recv << endl;
+				}
+			}
+
+			// return
+			while(!prcmd->wait_send(s, prcmd->m_buf_send));
+		}
 		closesocket(s);
 	}
 
