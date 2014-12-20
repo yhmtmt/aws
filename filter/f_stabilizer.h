@@ -20,8 +20,17 @@ class f_stabilizer: public f_base
 {
 protected:
 	vector<Mat> m_pyrimg[2];
+	int m_num_itrs;
 	int m_num_pyr_level;
-
+	bool m_bclr;
+	bool m_bweight;
+	bool m_brobust;
+	double m_th_robust;
+	e_interpol_type m_interpol_type;
+	const static char * m_strIntlType[EIT_UNKNOWN];
+	e_warp_type m_warp_type;	
+	const static char * m_strWarpType[EWT_UNKNOWN];
+	Size m_sz_hblk;
 	Mat m_refimg;
 	bool m_bWinit;
 	Mat m_M; // Motion Matrix
@@ -42,20 +51,74 @@ protected:
 	int m_num_frms;
 
 	bool m_disp_inf;
-
+	char m_fname_log[1024];
+	char m_fname_mask[1024];
 public:
-	f_stabilizer(const char * name):f_base(name), 
-		m_beta(0.0001), m_disp_inf(true), 
-		m_num_pyr_level(4), m_roi(0,0,0,0), m_bWinit(false),
+	f_stabilizer(const char * name):f_base(name), m_bclr(false),
+		m_beta(0.0001), m_disp_inf(true), m_bweight(false), m_brobust(false),
+		m_th_robust(100.0), m_sz_hblk(4, 4),
+		m_num_pyr_level(4), m_num_itrs(10), m_roi(0,0,0,0), m_bWinit(false),
 		m_bmask(false), m_bthrough(false), m_num_conv_frms(0),
 		m_num_frms(0)
 	{
+		m_fname_log[0] = '\0';
+		m_fname_mask[0] = '\0';
 		set_alpha(0.1);
-		m_core.set_num_itrs(5);
+		register_fpar("rx", &m_roi.x, "x position of the ROI for motion tracking");
+		register_fpar("ry", &m_roi.y, "y position of the ROI for motion tracking");
+		register_fpar("rw", &m_roi.width, "Width of the ROI for motion tracking");
+		register_fpar("rh", &m_roi.height, "Height of the ROI for motion tracking");
+		register_fpar("plv", &m_num_pyr_level, "Number of pyramid levels");
+		register_fpar("itrs", &m_num_itrs, "Number of Gauss-Newton iteration");
+		register_fpar("bclear", &m_bclr, "Clear flag");
+		register_fpar("bweight",&m_bweight, "Weighted Gauss-Newton enable flag");
+		register_fpar("brobust", &m_brobust, "Robust Gauss-Newton enable flag");
+		register_fpar("throb", &m_th_robust, "Robustness threashold");
+		register_fpar("wtype", (int*) &m_warp_type, (int) EWT_UNKNOWN, m_strWarpType, "Warp type");
+		register_fpar("ipltype", (int*)&m_interpol_type, (int) EIT_UNKNOWN, m_strIntlType, "Interpolation type");
+		register_fpar("whblk", &m_sz_hblk.width, "Size of block for Hessian recalculation.");
+		register_fpar("hhblk", &m_sz_hblk.height, "Size of block for Hessian recalculation.");
+		register_fpar("beta", &m_beta, "Motion stabilization parameter");
+		register_fpar("alpha0", &m_alpha[0], "Motion stabilization parameter");
+		register_fpar("alpha1", &m_alpha[1], "Motion stabilization parameter");
+		register_fpar("alpha2", &m_alpha[2], "Motion stabilization parameter");
+		register_fpar("alpha3", &m_alpha[3], "Motion stabilization parameter");
+		register_fpar("alpha4", &m_alpha[4], "Motion stabilization parameter");
+		register_fpar("alpha5", &m_alpha[5], "Motion stabilization parameter");
+		register_fpar("alpha6", &m_alpha[6], "Motion stabilization parameter");
+		register_fpar("alpha7", &m_alpha[7], "Motion stabilization parameter");
+		register_fpar("alpha8", &m_alpha[8], "Motion stabilization parameter");
+		register_fpar("bthrough", &m_bthrough, "Flag for pass through the filter");
+		register_fpar("bdisp", &m_disp_inf, "Flag for displaying stabilizer's information.");
+		register_fpar("fmask", m_fname_mask, 1024, "File path of mask."); 
+
 	}
 
 	virtual ~f_stabilizer()
 	{
+	}
+
+	virtual bool init_run(){
+		m_core.set_num_itrs(m_num_itrs);
+		m_core.set_robust(m_brobust);
+		m_core.set_robust_th(m_th_robust);
+		m_core.set_wt(m_warp_type);
+		m_core.set_interpol_type(m_interpol_type);
+		m_core.set_wt(m_warp_type);
+		m_core.set_tmpl_sblk_sz(m_sz_hblk);
+		if(m_fname_mask[0] != '\0'){
+			m_mask = imread(m_fname_mask);
+			if(m_mask.type() != CV_8UC1){
+				cerr << "Error. Pixel mask should be gray scale image" << endl;
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	virtual void destroy_run(){
+
 	}
 
 	void set_alpha(double alpha){

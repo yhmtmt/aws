@@ -41,8 +41,20 @@ using namespace cv;
 #include "f_base.h"
 #include "f_stabilizer.h"
 
-////////////////////////////////////////////////////////////// f_stabilizer
 
+
+////////////////////////////////////////////////////////////// f_stabilizer
+const char * f_stabilizer::m_strIntlType[EIT_UNKNOWN] = 
+{
+	"nn", "bil"
+};
+
+const char * f_stabilizer::m_strWarpType[EWT_UNKNOWN] = 
+{
+	"trn", "rgd", "sim", "afn", "hmg"
+};
+
+// cmd_proc is discarded soon when I confirmed the fset/fget work sufficiently
 bool f_stabilizer::cmd_proc(s_cmd & cmd)
 {
 	int num_args = cmd.num_args;
