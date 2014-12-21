@@ -40,12 +40,6 @@
 
 #include "../command.h"
 
-#ifdef _MSC_VER
-#define snprintf sprintf_s
-#define snwprintf swprintf_s
-#define atoll _atoi64 
-#define strtoull _strtoui64
-#endif
 
 class f_base;
 
@@ -405,22 +399,32 @@ public:
 
 	void get_info(s_cmd & cmd, int ifilter){
 		// currentlly returning filter name, id, number of parameters, number of input channels and output channels.
-		snprintf(cmd.get_ret_str(), CMD_LEN, "%s %d %d %d %d", m_name, ifilter, m_pars.size(), m_chin.size(), m_chout.size());
+		snprintf(cmd.get_ret_str(), RET_LEN, "%s %d %d %d %d", m_name, ifilter, m_pars.size(), m_chin.size(), m_chout.size());
 	}
 
 	bool get_par_info(s_cmd & cmd){
 		if(cmd.num_args == 2){ // if parameter index is not specified, the number of parameters is returned.
-			snprintf(cmd.get_ret_str(), CMD_LEN, "%d", m_pars.size());
+			snprintf(cmd.get_ret_str(), RET_LEN, "%d", m_pars.size());
 			return false;
 		}
 		
 		int ipar = atoi(cmd.args[2]);
 		if(ipar >= m_pars.size()){
-			snprintf(cmd.get_ret_str(), CMD_LEN, "Filter %s does not have parameter id=%d", m_name, ipar);
+			snprintf(cmd.get_ret_str(), RET_LEN, "Filter %s does not have parameter id=%d", m_name, ipar);
 			return false;
 		}
 		m_pars[ipar].get_info(cmd);
 		return true;
+	}
+
+	bool get_par_info_by_fset(s_cmd & cmd){
+		int ipar = find_par(cmd.args[1]);
+		if(ipar < 0){		
+			snprintf(cmd.get_ret_str(), RET_LEN, "Filter %s does not have parameter %s", m_name, cmd.args[1]);
+			return false;
+		}
+		m_pars[ipar].get_info(cmd);
+		return true;	
 	}
 
 	void set_offset_time(long long offset)

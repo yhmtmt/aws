@@ -1,6 +1,8 @@
 #ifndef _COMMAND_H_
 #define _COMMAND_H_
 
+#include "util/aws_stdlib.h"
+
 void * cmd_proc(void * pasw);
 bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok);
 
@@ -11,8 +13,7 @@ bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok);
 
 enum e_cmd {
 	CMD_CHAN, CMD_FLTR, CMD_FCMD, CMD_FSET, CMD_FGET, 
-	CMD_FNUM, CMD_FINF, CMD_FPAR, 
-	CMD_CHNUM, CMD_CHINF, 
+	CMD_FINF, CMD_FPAR, CMD_CHINF, 
 	CMD_GO, CMD_STOP,	CMD_QUIT, CMD_STEP, CMD_CYC,
 	CMD_ONLINE, CMD_PAUSE, CMD_CLEAR, 
 	CMD_RCMD, CMD_TRAT, CMD_UNKNOWN

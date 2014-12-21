@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with ch_base.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#include "../command.h"
+
 class f_base;
 
 class ch_base
@@ -46,6 +48,11 @@ public:
 	}
 	
 	const char * get_name(){ return m_name;};
+
+	void get_info(s_cmd & rcmd, int ich)
+	{
+		snprintf(rcmd.get_ret_str(), RET_LEN, "%s %d", m_name, ich);
+	}
 
 	virtual void tran() = 0;
 };
