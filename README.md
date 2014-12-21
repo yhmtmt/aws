@@ -17,6 +17,7 @@ Then move to the direcotry "aws",
 ### for Windows  
 1. Install Visual Studio 2010 or later
 2. Install the libraries  
+
 * DirectX SDK
 * Windows SDK
 * pthread for windows
