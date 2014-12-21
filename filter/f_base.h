@@ -137,6 +137,9 @@ protected:
 		// function returns false if the length of return string exceeds
 		// sz.
 		bool get(char * valstr, size_t sz);
+
+		// get_info() returns parameter explanation.
+		void get_info(s_cmd & cmd);
 	};
 
 	vector<s_fpar> m_pars; // parameter table
@@ -398,6 +401,26 @@ public:
 
 	static const char * get_time_str(){
 		return m_time_str;
+	}
+
+	void get_info(s_cmd & cmd, int ifilter){
+		// currentlly returning filter name, id, number of parameters, number of input channels and output channels.
+		snprintf(cmd.get_ret_str(), CMD_LEN, "%s %d %d %d %d", m_name, ifilter, m_pars.size(), m_chin.size(), m_chout.size());
+	}
+
+	bool get_par_info(s_cmd & cmd){
+		if(cmd.num_args == 2){ // if parameter index is not specified, the number of parameters is returned.
+			snprintf(cmd.get_ret_str(), CMD_LEN, "%d", m_pars.size());
+			return false;
+		}
+		
+		int ipar = atoi(cmd.args[2]);
+		if(ipar >= m_pars.size()){
+			snprintf(cmd.get_ret_str(), CMD_LEN, "Filter %s does not have parameter id=%d", m_name, ipar);
+			return false;
+		}
+		m_pars[ipar].get_info(cmd);
+		return true;
 	}
 
 	void set_offset_time(long long offset)

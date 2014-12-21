@@ -124,6 +124,24 @@ bool f_base::s_fpar::get(char * valstr, size_t sz){
 	return n < sz;	
 }
 
+void f_base::s_fpar::get_info(s_cmd & cmd){
+	snprintf(cmd.get_ret_str(), CMD_LEN, "%s: %s", name, explanation);
+	if(type == ENUM){
+		int slen = strlen(cmd.get_ret_str());
+		char * ptr = cmd.get_ret_str() + slen;
+		*ptr = ' ';
+		snprintf(ptr, CMD_LEN - slen, " Vals in {");
+		ptr = cmd.get_ret_str();
+		slen = strlen(ptr);
+		for(int i = 0; i < len && slen < len; i++){
+			snprintf(ptr + len, CMD_LEN - slen, "%s,", str_enum[i]);
+			slen += strlen(str_enum[i] + 1);
+		}
+		slen = strlen(cmd.get_ret_str());
+		ptr[slen-1] = '}';
+	}
+}
+
 void f_base::s_ferr::dump_err(ostream & out)
 {
 	out << tstr << " "

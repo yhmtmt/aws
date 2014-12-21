@@ -41,6 +41,8 @@ using namespace cv;
 
 const char * c_aws::m_str_cmd[CMD_UNKNOWN] = {
 	"channel", "filter", "fcmd", "fset", "fget", 
+	"fnum", "finf", "fpar", 
+	"chnum", "chinf",
 	"go", "stop", "quit", "step","cyc","online",
 	"pause","clear", "rcmd", "trat" 
 };
@@ -384,6 +386,62 @@ void c_aws::proc_command()
 					pfilter->unlock_cmd(true);
 				}
 			}
+			break;
+		case CMD_FNUM:
+			sprintf(cmd.get_ret_str(), "%d", m_filters.size());
+			result = true;
+			break;
+		case CMD_FINF:
+			{
+				f_base * pfilter = NULL;
+				int ifilter;
+				if(cmd.num_args == 2){
+					pfilter = get_filter(cmd.args[1]);
+					if(pfilter == NULL){
+						sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
+					}else{
+						for(ifilter = 0; ifilter < m_filters.size(); ifilter++){
+							if(pfilter == m_filters[ifilter])
+								break;
+						}
+					}
+				}else if(cmd.num_args == 3 && cmd.args[1][0] == 'n'){
+					ifilter = atoi(cmd.args[2]);
+					if(ifilter >= m_filters.size()){
+						sprintf(cmd.get_ret_str(), "Filter id=%d does not exist.", ifilter);
+					}else{
+						pfilter = m_filters[ifilter];
+					}
+				}
+
+				if(pfilter == NULL){
+					result = false;
+				}else{
+					pfilter->get_info(cmd, ifilter);
+					result = true;
+				}
+			}
+			break;
+		case CMD_FPAR:
+			{
+				f_base * pfilter = get_filter(cmd.args[1]);
+				if(pfilter == NULL){
+					sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
+					result = false;
+				}else{
+					if(!pfilter->get_par_info(cmd)){
+						result = false;
+					}else{
+						result = true;
+					}
+				}
+			}
+			break;
+		case CMD_CHNUM:
+			sprintf(cmd.get_ret_str(), "%d", m_channels.size());
+			result = true;
+			break;
+		case CMD_CHINF:
 			break;
 		case CMD_GO:
 			handle_run(cmd);
