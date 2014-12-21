@@ -17,15 +17,14 @@ Then move to the direcotry "aws",
 ### for Windows  
 1. Install Visual Studio 2010 or later
 2. Install the libraries  
-
-* DirectX SDK
-* Windows SDK
-* pthread for windows
-* libjpeg (only if you need to use SANYO HD5400)
-* curl (only if you need to use SANYO HD5400)
-* OpenCV 2.4.10
-* cminpack
-* PvAPI  
+   * DirectX SDK
+   * Windows SDK
+   * pthread for windows
+   * libjpeg (only if you need to use SANYO HD5400)
+   * curl (only if you need to use SANYO HD5400)
+   * OpenCV 2.4.10
+   * cminpack
+   * PvAPI  
 3. Create New empty project for "console application"
 4. Add sources to the project obtained with git clone above explained.
 5. Configure VC++ "include" and "library" paths. 
