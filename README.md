@@ -16,7 +16,7 @@ Then move to the direcotry "aws",
 
 ### for Windows  
 1. Install Visual Studio 2010 or later
-2. Install the libraries  
+2. Install the libraries (NOTE: Basically, the libraries should be built with same version of VC++. vc2010, vc2012, and vc2013 are corresponding to vc10,vc11, and vc12 respectively. Of course, if you are targetting x64, the libraries should be the same.)  
    * DirectX SDK
    * Windows SDK
    * pthread for windows
@@ -24,12 +24,12 @@ Then move to the direcotry "aws",
    * curl (only if you need to use SANYO HD5400)
    * OpenCV 2.4.10
    * cminpack
-   * PvAPI  
-3. Create New empty project for "console application"
+   * PvAPI (note: need to execute installer, remove vimba from the system) 
+3. Create New empty project for "console application" (I recommend you to configure the compile target as x64 right after creating the project.)
 4. Add sources to the project obtained with git clone above explained.
 5. Configure VC++ "include" and "library" paths. 
 6. Install dlls of the libraries to your execution path.
-7. Add grobal preprocessor definitions, FWINDOW and AVT_CAM, if you use direct show based window filters and Allied Vision Technology's cams.
+7. Add grobal preprocessor definitions, FWINDOW and AVT_CAM, if you use direct show based window filters ("dswin" and the children) and Allied Vision Technology's cams ("avtcam"). If you use SANYO HD5400(filter "netcam"), you should define SANYO_HD5400. But, in this case, you need to install libjpeg and libcurl correctly.
 8. Build the project.
 9. Install cygwin with gcc.
 10. In the cygwin's shell, move to "rcmd" directory in the source tree, then type 'make" and 'make install "INST_DIR=~/bin". Of course you should create directory "~/bin" preliminary. 
@@ -37,7 +37,12 @@ Then move to the direcotry "aws",
 12. Execute aws
 13. Execute sample.aws on the cygwin's shell.  
 
-If finally you could see the sample filter reports its internal parameter values periodically, aws is correctly working.
+Finally you could see the sample filter reports its internal parameter values periodically. If you need to play your video sources following software would be helpful.   
+
+* Haali Media Splitter
+* ffdshow  
+
+All video codecs supported by ffdshow can be used through filter "vfile". Note that you need to install x64 ffdshow if you are building aws for x64 environment.
 
 
 ### for Linux  
