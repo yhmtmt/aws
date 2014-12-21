@@ -42,6 +42,7 @@ using namespace cv;
 #include "f_cam.h"
 #include "f_netcam.h"
 
+#ifdef SANYO_HD5400
 ///////////////////// write_data callback function for libcurl to write file 
 static size_t write_data(void * ptr, size_t size,
 	size_t nmemb, void * stream)
@@ -851,3 +852,4 @@ bool f_netcam::cmdp_dcmd(char ** args, int num_args)
 
 	return cmd_direct(args[3]);
 }
+#endif

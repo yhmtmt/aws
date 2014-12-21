@@ -14,7 +14,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with my_jsrc_mgr.  If not, see <http://www.gnu.org/licenses/>. 
-
+#ifdef SANYO_HD5400
 #include <iostream>
 using namespace std;
 
@@ -85,3 +85,5 @@ GLOBAL (void)
 	psrc->pub.bytes_in_buffer = 0;
 	psrc->pub.next_input_byte = NULL;
 }
+
+#endif

@@ -13,6 +13,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_netcam.h.  If not, see <http://www.gnu.org/licenses/>. 
+#ifdef SANYO_HD5400
 #define XMD_H
 #include <jpeglib.h>
 #include <curl/curl.h>
@@ -200,3 +201,5 @@ public:
 		return true;
 	}
 };
+
+#endif
