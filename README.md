@@ -15,6 +15,7 @@ Then move to the direcotry "aws",
     git clone https://github.com/yhmtmt/CmdAppBase.git
 
 ### for Windows  
+Windows version is useful if you need to play the videos or render the 3D graphics. Filter "vfile" plays various video files by using Haali Media Splitter and ffdshow. Filter "dswin" creates a window with Direct3D surface and shows the video frames. You can create Direct3D application simply inheriting the f_ds_window class, the class of "dswin", and overriding input handler and the proc() function.  
 1. Install Visual Studio 2010 or later
 2. Install the libraries (NOTE: Basically, the libraries should be built with same version of VC++. vc2010, vc2012, and vc2013 are corresponding to vc10,vc11, and vc12 respectively. Of course, if you are targetting x64, the libraries should be the same.)  
    * DirectX SDK
@@ -24,7 +25,7 @@ Then move to the direcotry "aws",
    * curl (only if you need to use SANYO HD5400)
    * OpenCV 2.4.10
    * cminpack
-   * PvAPI (note: need to execute installer, remove vimba from the system) 
+   * PvAPI (NOTE: Need to execute installer. Remove vimba from the system) 
 3. Create New empty project for "console application" (I recommend you to configure the compile target as x64 right after creating the project.)
 4. Add sources to the project obtained with git clone above explained.
 5. Configure VC++ "include" and "library" paths. 
