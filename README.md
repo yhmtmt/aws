@@ -1,7 +1,7 @@
 # aws - Automatic Watch System
 ## Yohei Matsumoto. 
 
-"aws" is  a concurrent processing midle designed for Autonomouse Watch System.
+"aws" is  a concurrent processing midleware designed for Autonomouse Watch System.
 
 aws is actually providing only the filter based concurrent processing model and the execution frame work. Many filters with various functions are defined in the system, the filters can be instantiated, connected and executed flexibly by shell script based command system. You can add new filters by inheriting filter base class, implementing initialization/destruction/processing methods and configuring input/output channels. 
 
@@ -14,14 +14,38 @@ Then move to the direcotry "aws",
  
     git clone https://github.com/yhmtmt/CmdAppBase.git
 
-aws depends on various libraries. You need to install them to the following paths to use attached Makefile. Here `$(CPU)` is one of `{arm, x86, x64}`.
+### for Windows  
+1. Install Visual Studio 2010 or later
+2. Install the libraries 
 
-* DirectX SDK (For Windows)
-* Windows SDK (For Windows)
-* curl (For Windows)
-* pthread for windows (For Windows)
-* libjpeg (for Windows)
-* OpenCV 2.4.9 (without OpenCL support)  
+* DirectX SDK
+* Windows SDK
+* pthread for windows
+* libjpeg (only if you need to use SANYO HD5400)
+* curl (only if you need to use SANYO HD5400)
+* OpenCV 2.4.10
+* cminpack
+* PvAPI  
+
+3. Create New empty project for "console application"
+4. Add sources to the project obtained with git clone above explained.
+5. Configure VC++ "include" and "library" paths. 
+6. Install dlls of the libraries to your execution path.
+7. Add grobal preprocessor definitions, FWINDOW and AVT_CAM, if you use direct show based window filters and Allied Vision Technology's cams.
+8. Build the project.
+9. Install cygwin with gcc.
+10. In the cygwin's shell, move to "rcmd" directory in the source tree, then type 'make" and 'make install "INST_DIR=~/bin". Of course you should create directory "~/bin" preliminary. 
+11. Move to the "sample" directory on the cygwin's shell.
+12. Execute aws
+13. Execute sample.aws on the cygwin's shell.  
+
+If finally you could see the sample filter reports its internal parameter values periodically, aws is correctly working.
+
+
+### for Linux  
+1. Install the libraries. You need to install them to the following paths relative to the source path to use attached Makefile. Here `$(CPU)` is one of `{arm, x86, x64}`.  
+
+* OpenCV 2.4.10   
  Place headers and libs(so) in the following paths. (relative path)
   * INCLUDE: `opencv/include"
   * LIB: `opencv/$(CPU)/lib`  
@@ -33,7 +57,7 @@ Place headers and static libs(a) in the following paths.
 Place headers and libs(so) in the following paths.
       * INCLUDE: `PvAPI/include`
       * LIB: `PvAPI/bin/$(CPU)`  
-  
+
 For linux, you can build binary simply typing make.  
 
     make
