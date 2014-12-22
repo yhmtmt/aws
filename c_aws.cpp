@@ -46,6 +46,49 @@ const char * c_aws::m_str_cmd[CMD_UNKNOWN] = {
 	"pause","clear", "rcmd", "trat" 
 };
 
+// Command explanation
+// * channel <type> <name>
+// Creating an channel instance of <type> with <name> 
+// * filter <type> <name> -i <input list> -o <output list>
+// Creating an filter instance of <type> with <name>. In <input list> and <output list>, users can specify names of the channel instances.
+// * fcmd <filter name> <filter command>
+// Executing filter commands defined in each filter.  
+// * fset <filter name> <parameter and value list>
+// Setting the values to their specified parameters. If only a parameter name is specified as <parameter and value list>, an explanation to the parameter is returned.
+// * fget <filter name> <parameter list>
+// Getting the values of the parameters specified.
+// * finf | finf <filter name> | finf n <filter id>
+// This will be hidden command. The first case, the number of filters are returned.
+// The second and third case, filter name, filter id, number of parameters, number of input channels, number of output channels, are returned  
+// * fpar <filter name> <parameter id>
+// An explanatio of the parameter of the filter is returned.
+// * chinf | chinf <channel name> | chinf n <channel id>
+// This will be hidden command. The first case, the number of channels are returned. 
+// The second and third cases, channel name and id are returned.
+// * go | go <start time> | go <start time> <end time> | go to <end time>
+// start the filter graph's threads from <start time> to <end time> if specified. Filter graph moves the state "stop" to "run".
+// Start and end times are not allowed for online mode. In the online mode, the filter graph's start and end time should be controled in script.
+// * stop 
+// stop the filter graph's threads.
+// * quit
+// shutdown the aws process
+// * step | step <time> | step c <cycle>
+// In pause state, first usage proceeds one cycle, second one proceeds to the specified <time>, and third one proceeds specified cycles.
+// * cyc <sec>
+// Setting cycle time 
+// * online {yes | no}
+// Setting execution mode. In the offline mode, pause and step is allowed. 
+// * pause
+// The filter graph moves the sate "run" to "pause".
+// * clear
+// All filters and channels are discarded.
+// * rcmd <port number>
+// Invoking reciever thread of rcmd with <port number>
+// * trat <int >= 1>
+// Setting trat. trat enables the faster time clocking. For example, the time goes twice as fast as usual with trat of 2. 
+// Not that, trat is only allowed for offline mode.
+
+
 c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 	m_cmd_port(20000), m_working_path(NULL), m_bonline(true), m_exit(false),
 	m_cycle_time(166667), m_time(0), m_time_zone_minute(540), m_time_rate(1)
@@ -98,11 +141,13 @@ c_aws::~c_aws()
 
 void c_aws::clear()
 {
-	for(vector<f_base*>::iterator itr = m_filters.begin(); itr != m_filters.end(); itr++)
+	for(vector<f_base*>::iterator itr = m_filters.begin(); 
+		itr != m_filters.end(); itr++)
 		delete (*itr);
 	m_filters.clear();
 
-	for(vector<ch_base*>::iterator itr = m_channels.begin(); itr != m_channels.end(); itr++)
+	for(vector<ch_base*>::iterator itr = m_channels.begin();
+		itr != m_channels.end(); itr++)
 		delete (*itr);
 	m_channels.clear();
 }
@@ -217,7 +262,8 @@ bool c_aws::handle_stop()
 	bool stopped = false;
 	while(!stopped){
 		stopped = true;
-		for(vector<f_base*>::iterator fitr = m_filters.begin(); fitr != m_filters.end(); fitr++)
+		for(vector<f_base*>::iterator fitr = m_filters.begin(); 
+			fitr != m_filters.end(); fitr++)
 			stopped = stopped && (*fitr)->stop();
 		f_base::clock(-1);
 	}
@@ -229,7 +275,8 @@ bool c_aws::handle_chan(s_cmd & cmd)
 {
 	bool result;
 	if(!(result = add_channel(cmd)))
-		sprintf(cmd.get_ret_str(), "Failed to create channel %s of %s.", cmd.args[2], cmd.args[1]);
+		sprintf(cmd.get_ret_str(), "Failed to create channel %s of %s.",
+			cmd.args[2], cmd.args[1]);
 	return result;
 }
 
@@ -237,7 +284,8 @@ bool c_aws::handle_fltr(s_cmd & cmd)
 {
 	bool result;
 	if(!(result = add_filter(cmd)))
-		sprintf(cmd.get_ret_str(), "Failed to create filter %s of %s.",  cmd.args[2], cmd.args[1]);
+		sprintf(cmd.get_ret_str(), "Failed to create filter %s of %s.", 
+			cmd.args[2], cmd.args[1]);
 	return result;
 }
 
@@ -332,7 +380,9 @@ bool c_aws::handle_finf(s_cmd & cmd)
 					break;
 			}
 		}
-	}else if(cmd.num_args == 3 && cmd.args[1][0] == 'n'){ // if n is specified as the second argument, the filter id is used as the argument.
+	}else if(cmd.num_args == 3 && cmd.args[1][0] == 'n'){ 
+		// if n is specified as the second argument, the filter id is used as 
+		// the argument.
 		ifilter = atoi(cmd.args[2]);
 		if(ifilter >= m_filters.size()){
 			sprintf(cmd.get_ret_str(), "Filter id=%d does not exist.", ifilter);
@@ -355,7 +405,6 @@ bool c_aws::handle_finf(s_cmd & cmd)
 	return result;
 }
 
-
 bool c_aws::handle_fpar(s_cmd & cmd)
 {
 	bool result;
@@ -377,7 +426,8 @@ bool c_aws::handle_chinf(s_cmd & cmd)
 {
 	bool result;
 
-	// This command retrieves channel information the codes below are almost same as FINF
+	// This command retrieves channel information the codes below are almost
+	// same as FINF
 	ch_base * pch = NULL;
 	int ich;
 	if(cmd.num_args == 2){
@@ -479,7 +529,8 @@ bool c_aws::handle_online(s_cmd & cmd)
 {
 	bool result;
 	if(!f_base::m_clk.is_stop()){
-		sprintf(cmd.get_ret_str(), "Online/offline mode cannot be changed during execution.");
+		sprintf(cmd.get_ret_str(), 
+			"Online/offline mode cannot be changed during execution.");
 		result = false;
 	}else{
 		if(strcmp(cmd.args[1], "yes") == 0)
@@ -561,7 +612,8 @@ bool c_aws::handle_run(s_cmd & cmd)
 		// in pause mode only 
 		if(cmd.num_args == 3){
 			if(cmd.args[1][0] != 't' || cmd.args[1][1] != 'o'){
-				sprintf(cmd.get_ret_str(), "In pause state, \"go [to <later absolute time>]\"");
+				sprintf(cmd.get_ret_str(), 
+					"In pause state, \"go [to <later absolute time>]\"");
 				return false;
 			}
 			tmex tm;
@@ -582,22 +634,29 @@ bool c_aws::handle_run(s_cmd & cmd)
 	}
 
 	if(!check_graph()){
-		sprintf(cmd.get_ret_str(), "Failed to run filter graph.");
+		snprintf(cmd.get_ret_str(), RET_LEN, "ERROR: Failed to run filter graph.");
 		return false;
 	}
 
 	// if the starting time is given the time is decoded and stored into m_start_time 
 	if(cmd.num_args >= 2){
+		if(m_bonline){
+			snprintf(cmd.get_ret_str(), RET_LEN, 
+				"ERROR: Online mode does not support time specification.");
+			return false;
+		}
+
 		tmex tm;
 		if(decTmStr(cmd.args[1], tm))
 			m_start_time = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
 		else
 			m_start_time = (long long) atol(cmd.args[1]) * (long long) SEC;
 	}else{
+		// if no time specified, current time is used as the start time.
 		m_start_time = (long long) time(NULL) * SEC; 
 	}
 
-	// ifthe end time is given, decoded and stored into m_end_time.
+	// if the end time is given, decoded and stored into m_end_time.
 	if(cmd.num_args >= 3){
 		tmex tm;
 		if(decTmStr(cmd.args[2], tm))
@@ -609,16 +668,19 @@ bool c_aws::handle_run(s_cmd & cmd)
 	}
 
 	f_base::m_clk.start((unsigned) m_cycle_time, 
-		(unsigned) m_cycle_time, m_start_time, m_bonline, m_time_rate);
+		(unsigned) m_cycle_time, m_start_time, 
+		m_bonline, m_time_rate);
 	m_time = f_base::m_clk.get_time();
 
 	f_base::init_run_all();
 	f_base::clock(m_start_time);
 
 	// check filter's status. 
-	for(vector<f_base*>::iterator fitr = m_filters.begin(); fitr != m_filters.end(); fitr++){
+	for(vector<f_base*>::iterator fitr = m_filters.begin();
+		fitr != m_filters.end(); fitr++){
 		if(!(*fitr)->run(m_start_time, m_end_time)){
-			snprintf(cmd.get_ret_str(),  RET_LEN, "Error in starting filter %s.", (*fitr)->get_name());
+			snprintf(cmd.get_ret_str(),  RET_LEN, 
+				"Error in starting filter %s.", (*fitr)->get_name());
 			return false;
 		}
 	}
@@ -778,7 +840,9 @@ bool c_aws::add_filter(s_cmd & cmd){
 	try{
 		itok = 3;
 		if(strcmp(tok[itok], "-i") != 0){
-			sprintf(cmd.get_ret_str(), "\"-i\" is expected for the %d th argument in declaring filter %s", itok, tok[2]);
+			snprintf(cmd.get_ret_str(), RET_LEN, 
+				"\"-i\" is expected for the %d th argument in declaring filter %s", 
+				itok, tok[2]);
 			throw cmd.ret;
 		}
 		itok++;
@@ -786,7 +850,9 @@ bool c_aws::add_filter(s_cmd & cmd){
 		for(; strcmp(tok[itok], "-o") != 0 && itok < cmd.num_args; itok++){
 			ch_base * pchan = get_channel(tok[itok]);
 			if(pchan == NULL){ // no channel found.
-				sprintf(cmd.get_ret_str(), "Channel %s not found for connecting filter %s", tok[itok], tok[2]);
+				snprintf(cmd.get_ret_str(), RET_LEN, 
+					"Channel %s not found for connecting filter %s", 
+					tok[itok], tok[2]);
 				throw cmd.ret;
 			}
 
@@ -798,7 +864,9 @@ bool c_aws::add_filter(s_cmd & cmd){
 		for(; itok < cmd.num_args; itok++){
 			ch_base * pchan = get_channel(tok[itok]);
 			if(pchan == NULL){ // no channel found.
-				sprintf(cmd.get_ret_str(), "Channel %s not found for connecting filter %s", tok[itok], tok[2]);
+				snprintf(cmd.get_ret_str(), RET_LEN,
+					"Channel %s not found for connecting filter %s",
+					tok[itok], tok[2]);
 				throw cmd.ret;
 			}
 			pfilter->set_ochan(pchan);
@@ -849,11 +917,13 @@ bool c_aws::main(){
 	while(!m_exit){
 		proc_command();
 		if(!f_base::m_clk.is_stop()){
-
+			// wait the time specified in cyc command.
 			f_base::m_clk.wait();
+
+			// getting current time
 			m_time = f_base::m_clk.get_time();
 
-			// sending clock signal to each filters. 
+			// sending clock signal to each filters. The time string for current time is generated simultaneously
 			f_base::clock(m_time);
 
 			// checking activity of filters. 
@@ -867,12 +937,8 @@ bool c_aws::main(){
 			}
 
 			// Time is exceeded over m_end_time, automatically pause.
-			if(m_time >= m_end_time){
-				if(!m_bonline){
-					f_base::m_clk.pause();
-				}else{
-					f_base::m_clk.stop();
-				}
+			if(!m_bonline && m_time >= m_end_time){
+				f_base::m_clk.pause();
 			}
 
 			if(f_base::m_clk.is_stop()){
