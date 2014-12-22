@@ -225,6 +225,329 @@ bool c_aws::handle_stop()
 }
 
 // handle_run runs all the filters in the graph.
+bool c_aws::handle_chan(s_cmd & cmd)
+{
+	bool result;
+	if(!(result = add_channel(cmd)))
+		sprintf(cmd.get_ret_str(), "Failed to create channel %s of %s.", cmd.args[2], cmd.args[1]);
+	return result;
+}
+
+bool c_aws::handle_fltr(s_cmd & cmd)
+{
+	bool result;
+	if(!(result = add_filter(cmd)))
+		sprintf(cmd.get_ret_str(), "Failed to create filter %s of %s.",  cmd.args[2], cmd.args[1]);
+	return result;
+}
+
+bool c_aws::handle_fcmd(s_cmd & cmd)
+{
+	bool result;
+	f_base * pfilter = get_filter(cmd.args[1]);
+	if(pfilter == NULL){
+		sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
+		result = false;
+	}else{
+		pfilter->lock_cmd(true);
+		if(!pfilter->cmd_proc(m_cmd)){
+			result = false;
+		}else{
+			result = true;
+		}
+		pfilter->unlock_cmd(true);
+	}
+	return result;
+}
+
+bool c_aws::handle_fset(s_cmd & cmd)
+{
+	bool result;
+
+	if(cmd.num_args >= 2){
+		result = false;
+		return result;
+	}
+
+	f_base * pfilter = get_filter(cmd.args[1]);
+
+	if(pfilter == NULL){
+		sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
+		result = false;
+	}else{
+		if(cmd.num_args == 2){ // no value present
+			result = pfilter->get_par_info(cmd);
+		}else{
+			pfilter->lock_cmd(true);
+			if(!pfilter->set_par(cmd)){
+				result = false;
+			}else{
+				result = true;
+			}
+			pfilter->unlock_cmd(true);
+		}
+	}
+
+	return result;
+}
+
+bool c_aws::handle_fget(s_cmd & cmd)
+{
+	bool result;
+	if(cmd.num_args < 2){
+		result = false;
+		return result;
+	}
+
+	f_base * pfilter = get_filter(cmd.args[1]);
+	if(pfilter == NULL){
+		sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
+		result = false;
+	}else{
+		pfilter->lock_cmd(true);
+		if(!pfilter->get_par(cmd)){
+			result = false;
+		}else{
+			result = true;
+		}
+		pfilter->unlock_cmd(true);
+	}
+
+	return result;
+}
+
+bool c_aws::handle_finf(s_cmd & cmd)
+{
+	bool result;
+	// This command retrieves filter information
+	f_base * pfilter = NULL;
+	int ifilter;
+	if(cmd.num_args == 2){ // The second argument is filter name
+		pfilter = get_filter(cmd.args[1]);
+		if(pfilter == NULL){
+			sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
+		}else{
+			for(ifilter = 0; ifilter < m_filters.size(); ifilter++){
+				if(pfilter == m_filters[ifilter])
+					break;
+			}
+		}
+	}else if(cmd.num_args == 3 && cmd.args[1][0] == 'n'){ // if n is specified as the second argument, the filter id is used as the argument.
+		ifilter = atoi(cmd.args[2]);
+		if(ifilter >= m_filters.size()){
+			sprintf(cmd.get_ret_str(), "Filter id=%d does not exist.", ifilter);
+		}else{
+			pfilter = m_filters[ifilter];
+		}
+	}else{ // if there is no argument, the number of filters is returned
+		sprintf(cmd.get_ret_str(), "%d", m_filters.size());
+		result = true;
+		return result;
+	}
+
+	if(pfilter == NULL){
+		result = false;
+	}else{
+		pfilter->get_info(cmd, ifilter);
+		result = true;
+	}
+
+	return result;
+}
+
+
+bool c_aws::handle_fpar(s_cmd & cmd)
+{
+	bool result;
+	f_base * pfilter = get_filter(cmd.args[1]);
+	if(pfilter == NULL){
+		sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
+		result = false;
+	}else{
+		if(!pfilter->get_par_info(cmd)){
+			result = false;
+		}else{
+			result = true;
+		}
+	}
+	return result;
+}
+
+bool c_aws::handle_chinf(s_cmd & cmd)
+{
+	bool result;
+
+	// This command retrieves channel information the codes below are almost same as FINF
+	ch_base * pch = NULL;
+	int ich;
+	if(cmd.num_args == 2){
+		pch = get_channel(cmd.args[1]);
+		if(pch == NULL){
+			sprintf(cmd.get_ret_str(), "Channel %s was not found.", cmd.args[1]);
+		}else{
+			for(ich = 0; ich < m_filters.size(); ich++){
+				if(pch == m_channels[ich])
+					break;
+			}
+		}
+	}else if(cmd.num_args == 3 && cmd.args[1][0] == 'n'){
+		ich = atoi(cmd.args[2]);
+		if(ich >= m_filters.size()){
+			sprintf(cmd.get_ret_str(), "Filter id=%d does not exist.", ich);
+		}else{
+			pch = m_channels[ich];
+		}
+	}else{
+		sprintf(cmd.get_ret_str(), "%d", m_channels.size());
+		result = true;
+		return result;
+	}
+
+	if(pch == NULL){
+		result = false;
+	}else{
+		pch->get_info(cmd, ich);
+		result = true;
+	}
+	
+	return result;
+}
+
+bool c_aws::handle_quit(s_cmd & cmd)
+{
+	bool result = true;
+	m_exit = true;
+	return result;
+}
+
+bool c_aws::handle_step(s_cmd & cmd)
+{
+	bool result;
+	if(!f_base::m_clk.is_pause()){
+		sprintf(cmd.get_ret_str(), "Step can only  be used in pause state.");
+		result = false;
+	}else{
+		// parsing argument 
+		int cycle;
+		if(cmd.num_args == 1){
+			cycle = 1;
+			f_base::m_clk.step(cycle);
+			result = true;
+		}else if(cmd.num_args == 2){
+			// step to absolute time
+			long long tabs;
+			tmex tm;
+			if(decTmStr(cmd.args[1], tm)){
+				tabs = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
+			}else{
+				tabs = (long long) atol(cmd.args[1]) * (long long) SEC;
+			}
+			f_base::m_clk.step(tabs);
+			result = true;
+		}else if(cmd.num_args == 3){
+			if(cmd.args[1][0] != 'c'){
+				result = false;
+			}else{
+				cycle = atoi(cmd.args[2]);
+				f_base::m_clk.step(cycle);
+				result = true;
+			}
+		}
+	}
+
+	return result;
+}
+
+bool c_aws::handle_cyc(s_cmd & cmd)
+{
+	bool result;
+	if(!f_base::m_clk.is_stop()){
+		cout << "stop:" << f_base::m_clk.is_stop() << endl;
+		cout << "run:" << f_base::m_clk.is_run() << endl;
+		cout << "pause:" << f_base::m_clk.is_pause() << endl;
+
+		sprintf(cmd.get_ret_str(), "Cycle cannot be changed during execution");
+		result = false;
+	}else{
+		m_cycle_time = (long long) (atof(cmd.args[1]) * 1e7);
+		result = true;
+	}
+	return result;
+}
+
+bool c_aws::handle_online(s_cmd & cmd)
+{
+	bool result;
+	if(!f_base::m_clk.is_stop()){
+		sprintf(cmd.get_ret_str(), "Online/offline mode cannot be changed during execution.");
+		result = false;
+	}else{
+		if(strcmp(cmd.args[1], "yes") == 0)
+			m_bonline = true;
+		else
+			m_bonline = false;
+		result = true;
+	}
+	return result;
+}
+
+bool c_aws::handle_pause(s_cmd & cmd)
+{
+	bool result;
+	if(!f_base::m_clk.is_run() || m_bonline){
+		sprintf(cmd.get_ret_str(), "Pause command should be used in run state.");
+		result = false;
+	}else{
+		if(!f_base::m_clk.pause()){
+			result = false;
+		}else{
+			result = true;
+		}
+	}
+	return result;
+}
+
+bool c_aws::handle_clear(s_cmd & cmd)
+{
+	bool result;
+	if(!f_base::m_clk.is_run()){
+		sprintf(cmd.get_ret_str(), "Graph cannot be cleared during execution.");
+		result = false;
+	}else{
+		clear();
+		result = true;
+	}
+	return result;
+}
+
+bool c_aws::handle_rcmd(s_cmd & cmd)
+{
+	bool result;
+	if(cmd.num_args == 2){	
+		c_rcmd * pcmd = new c_rcmd(this, atoi(cmd.args[1]));
+		if(!pcmd->is_exit()){
+			m_rcmds.push_back(pcmd);
+			result = true;
+		}else{
+			delete pcmd;
+		}
+	}
+	return result;
+}
+
+bool c_aws::handle_trat(s_cmd & cmd)
+{
+	bool result;
+	if(!f_base::m_clk.is_stop()){
+		sprintf(cmd.get_ret_str(), "Trat cannot be changed during execution");
+		result = false;
+	}else{
+		m_time_rate = (int) atoi(cmd.args[1]);
+		result = true;
+	}
+	return result;
+}
+
 bool c_aws::handle_run(s_cmd & cmd)
 {
 	f_base::set_tz(m_time_zone_minute);
@@ -328,165 +651,28 @@ void c_aws::proc_command()
 		bool result = false;
 		switch(cmd.type){
 		case CMD_CHAN:
-			if(!(result = add_channel(cmd)))
-				sprintf(cmd.get_ret_str(), "Failed to create channel %s of %s.", cmd.args[2], cmd.args[1]);
+			result = handle_chan(cmd);
 			break;
 		case CMD_FLTR:
-			if(!(result = add_filter(cmd)))
-				sprintf(cmd.get_ret_str(), "Failed to create filter %s of %s.",  cmd.args[2], cmd.args[1]);
+			result = handle_fltr(cmd);
 			break;
 		case CMD_FCMD:
-			{
-				f_base * pfilter = get_filter(cmd.args[1]);
-				if(pfilter == NULL){
-					sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
-					result = false;
-				}else{
-					pfilter->lock_cmd(true);
-					if(!pfilter->cmd_proc(m_cmd)){
-						result = false;
-					}else{
-						result = true;
-					}
-					pfilter->unlock_cmd(true);
-				}
-			}
+			result = handle_fcmd(cmd);
 			break;
 		case CMD_FSET:
-			{
-				if(cmd.num_args >= 2){
-					result = false;
-					break;
-				}
-
-				f_base * pfilter = get_filter(cmd.args[1]);
-
-				if(pfilter == NULL){
-					sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
-					result = false;
-				}else{
-					if(cmd.num_args == 2){ // no value present
-						result = pfilter->get_par_info(cmd);
-					}else{
-						pfilter->lock_cmd(true);
-						if(!pfilter->set_par(cmd)){
-							result = false;
-						}else{
-							result = true;
-						}
-						pfilter->unlock_cmd(true);
-					}
-				}
-			}
+			result = handle_fset(cmd);
 			break;
 		case CMD_FGET:
-			{
-				if(cmd.num_args < 2){
-					result = false;
-					break;
-				}
-
-				f_base * pfilter = get_filter(cmd.args[1]);
-				if(pfilter == NULL){
-					sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
-					result = false;
-				}else{
-					pfilter->lock_cmd(true);
-					if(!pfilter->get_par(cmd)){
-						result = false;
-					}else{
-						result = true;
-					}
-					pfilter->unlock_cmd(true);
-				}
-			}
+			result = handle_fget(cmd);
 			break;
 		case CMD_FINF:
-			{
-				// This command retrieves filter information
-				f_base * pfilter = NULL;
-				int ifilter;
-				if(cmd.num_args == 2){ // The second argument is filter name
-					pfilter = get_filter(cmd.args[1]);
-					if(pfilter == NULL){
-						sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
-					}else{
-						for(ifilter = 0; ifilter < m_filters.size(); ifilter++){
-							if(pfilter == m_filters[ifilter])
-								break;
-						}
-					}
-				}else if(cmd.num_args == 3 && cmd.args[1][0] == 'n'){ // if n is specified as the second argument, the filter id is used as the argument.
-					ifilter = atoi(cmd.args[2]);
-					if(ifilter >= m_filters.size()){
-						sprintf(cmd.get_ret_str(), "Filter id=%d does not exist.", ifilter);
-					}else{
-						pfilter = m_filters[ifilter];
-					}
-				}else{ // if there is no argument, the number of filters is returned
-					sprintf(cmd.get_ret_str(), "%d", m_filters.size());
-					result = true;
-					break;
-				}
-
-				if(pfilter == NULL){
-					result = false;
-				}else{
-					pfilter->get_info(cmd, ifilter);
-					result = true;
-				}
-			}
+			result = handle_finf(cmd);
 			break;
 		case CMD_FPAR:
-			{
-				f_base * pfilter = get_filter(cmd.args[1]);
-				if(pfilter == NULL){
-					sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
-					result = false;
-				}else{
-					if(!pfilter->get_par_info(cmd)){
-						result = false;
-					}else{
-						result = true;
-					}
-				}
-			}
+			result = handle_fpar(cmd);
 			break;
 		case CMD_CHINF:
-			{
-				// This command retrieves channel information the codes below are almost same as FINF
-				ch_base * pch = NULL;
-				int ich;
-				if(cmd.num_args == 2){
-					pch = get_channel(cmd.args[1]);
-					if(pch == NULL){
-						sprintf(cmd.get_ret_str(), "Channel %s was not found.", cmd.args[1]);
-					}else{
-						for(ich = 0; ich < m_filters.size(); ich++){
-							if(pch == m_channels[ich])
-								break;
-						}
-					}
-				}else if(cmd.num_args == 3 && cmd.args[1][0] == 'n'){
-					ich = atoi(cmd.args[2]);
-					if(ich >= m_filters.size()){
-						sprintf(cmd.get_ret_str(), "Filter id=%d does not exist.", ich);
-					}else{
-						pch = m_channels[ich];
-					}
-				}else{
-					sprintf(cmd.get_ret_str(), "%d", m_channels.size());
-					result = true;
-					break;
-				}
-
-				if(pch == NULL){
-					result = false;
-				}else{
-					pch->get_info(cmd, ich);
-					result = true;
-				}
-			}
+			result = handle_chinf(cmd);
 			break;
 		case CMD_GO:
 			handle_run(cmd);
@@ -501,103 +687,25 @@ void c_aws::proc_command()
 			result = true;
 			break;
 		case CMD_STEP:
-			if(!f_base::m_clk.is_pause()){
-				sprintf(cmd.get_ret_str(), "Step can only  be used in pause state.");
-				result = false;
-			}else{
-				// parsing argument 
-				int cycle;
-				if(cmd.num_args == 1){
-					cycle = 1;
-					f_base::m_clk.step(cycle);
-					result = true;
-				}else if(cmd.num_args == 2){
-					// step to absolute time
-					long long tabs;
-					tmex tm;
-					if(decTmStr(cmd.args[1], tm)){
-						tabs = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
-					}else{
-						tabs = (long long) atol(cmd.args[1]) * (long long) SEC;
-					}
-					f_base::m_clk.step(tabs);
-					result = true;
-				}else if(cmd.num_args == 3){
-					if(cmd.args[1][0] != 'c'){
-						result = false;
-					}else{
-						cycle = atoi(cmd.args[2]);
-						f_base::m_clk.step(cycle);
-						result = true;
-					}
-				}
-			}
+			result = handle_step(cmd);
 			break;
 		case CMD_CYC:
-			if(!f_base::m_clk.is_stop()){
-				cout << "stop:" << f_base::m_clk.is_stop() << endl;
-				cout << "run:" << f_base::m_clk.is_run() << endl;
-				cout << "pause:" << f_base::m_clk.is_pause() << endl;
-
-				sprintf(cmd.get_ret_str(), "Cycle cannot be changed during execution");
-				result = false;
-			}else{
-				m_cycle_time = (long long) (atof(cmd.args[1]) * 1e7);
-				result = true;
-			}
+			result = handle_cyc(cmd);
 			break;
 		case CMD_ONLINE:
-			if(!f_base::m_clk.is_stop()){
-				sprintf(cmd.get_ret_str(), "Online/offline mode cannot be changed during execution.");
-				result = false;
-			}else{
-				if(strcmp(cmd.args[1], "yes") == 0)
-					m_bonline = true;
-				else
-					m_bonline = false;
-				result = true;
-			}
+			result = handle_online(cmd);
 			break;
 		case CMD_PAUSE:
-			if(!f_base::m_clk.is_run() || m_bonline){
-				sprintf(cmd.get_ret_str(), "Pause command should be used in run state.");
-				result = false;
-			}else{
-				if(!f_base::m_clk.pause()){
-					result = false;
-				}else{
-					result = true;
-				}
-			}
+			result = handle_pause(cmd);
 			break;
 		case CMD_CLEAR:
-			if(!f_base::m_clk.is_run()){
-				sprintf(cmd.get_ret_str(), "Graph cannot be cleared during execution.");
-				result = false;
-			}else{
-				clear();
-				result = true;
-			}
+			result = handle_clear(cmd);
 			break;
 		case CMD_RCMD:
-			if(cmd.num_args == 2){	
-				c_rcmd * pcmd = new c_rcmd(this, atoi(cmd.args[1]));
-				if(!pcmd->is_exit()){
-					m_rcmds.push_back(pcmd);
-					result = true;
-				}else{
-					delete pcmd;
-				}
-			}
+			result = handle_rcmd(cmd);
 			break;
 		case CMD_TRAT:
-			if(!f_base::m_clk.is_stop()){
-				sprintf(cmd.get_ret_str(), "Trat cannot be changed during execution");
-				result = false;
-			}else{
-				m_time_rate = (int) atoi(cmd.args[1]);
-				result = true;
-			}
+			result = handle_trat(cmd);
 			break;
 		}
 

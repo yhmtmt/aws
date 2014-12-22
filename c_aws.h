@@ -64,6 +64,23 @@ protected:
 	// check filter graph
 	bool check_graph();
 
+	// command handlers
+	bool handle_chan(s_cmd & cmd);
+	bool handle_fltr(s_cmd & cmd);
+	bool handle_fcmd(s_cmd & cmd);
+	bool handle_fset(s_cmd & cmd);
+	bool handle_fget(s_cmd & cmd);
+	bool handle_finf(s_cmd & cmd);
+	bool handle_fpar(s_cmd & cmd);
+	bool handle_chinf(s_cmd & cmd);
+	bool handle_quit(s_cmd & cmd);
+	bool handle_step(s_cmd & cmd);
+	bool handle_cyc(s_cmd & cmd);
+	bool handle_online(s_cmd & cmd);
+	bool handle_pause(s_cmd & cmd);
+	bool handle_clear(s_cmd & cmd);
+	bool handle_rcmd(s_cmd & cmd);
+	bool handle_trat(s_cmd & cmd);
 	bool handle_run(s_cmd & cmd);
 	bool handle_stop();
 
