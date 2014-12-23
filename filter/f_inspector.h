@@ -61,83 +61,16 @@ struct s_model
 
 	string name;
 	vector<Point3f> pts;
+	vector<Point2f> pt2ds;
 	vector<s_edge> edges;
 
-	bool load(const char * fname)
-	{
-		FileStorage fs;
-		fs.open(fname, FileStorage::READ);
-		if(!fs.isOpened()){
-			return false;
-		}
+	void render(
+		LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+		Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
+		Mat & rvec_obj, Mat & tvec_obj, 
+		int pttype, int state, int cur_point);
 
-		FileNode fn;
-
-		fn = fs["ModelName"];
-		string nameModel;
-		if(fn.empty()){
-			cerr << "Cannot find node ModelName." << endl;
-			return false;
-		}
-		fn >> name;
-
-		int numPoints;
-		fn = fs["NumPoints"];
-		if(fn.empty()){
-			cerr << "Cannot find node NumPoints." << endl;
-			return false;
-		}
-		fn >> numPoints;
-
-		int numEdges; 
-		fn = fs["NumEdges"];
-		if(fn.empty()){
-			cerr << "Cannot find node NumEdges." << endl;
-			return false;
-		}
-		fn >> numEdges;
-
-		fn = fs["Points"];
-
-		if(fn.empty()){
-			cerr << "Cannot find node Points." << endl;
-			return false;
-		}
-
-		char buf[64];
-		pts.resize(numPoints);
-		for(int ip = 0; ip < numPoints; ip++){
-			snprintf(buf, 63, "Point%05d", ip);
-			FileNode fpt = fn[buf];
-			if(fpt.empty()){
-				cerr << "Cannot find node " << buf << "." << endl;
-				return false;
-			}
-			fpt["x"] >> pts[ip].x;
-			fpt["y"] >> pts[ip].y;
-			fpt["z"] >> pts[ip].z;
-		}
-
-		fn = fs["Edges"];
-		if(fn.empty()){
-			cerr << "Cannot find node Edges." << endl;
-			return false;
-		}
-
-		edges.resize(numEdges);
-		for(int ie =0; ie < numEdges; ie++){
-			snprintf(buf, 63, "Edge%05d", ie);
-			FileNode fe = fn[buf];
-			if(fe.empty()){
-				cerr << "Cannot find node " << buf << "." << endl;
-				return false;
-			}
-			fe["s"] >> edges[ie].s;
-			fe["e"] >> edges[ie].e;
-		}
-
-		return true;
-	}
+	bool load(const char * fname);
 };
 
 struct s_obj_points

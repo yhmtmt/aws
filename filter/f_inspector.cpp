@@ -189,6 +189,197 @@ int prj_pause(void * p, int m, int n, const __cminpack_real__ *x,
 	return 0;
 }
 
+/////////////////////////////////////////////////////////////////// struct s_model
+void s_model::render(
+	LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+	Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
+	Mat & rvec_obj, Mat & tvec_obj, 
+	int pttype, int state, int cur_point)
+{
+	// state 0: NORMAL -> 127
+	// state 1: STRONG -> 255
+	// state 2: GRAY -> 127,127,127
+	// state 3: WHITE -> 255,255,255
+
+	pttype %= 12; // {sq, dia, x, cross} x {red, green, blue}
+	int shape = pttype % 4;
+	int val;
+	if(state == 0 || state == 2){
+		val = 128;
+	}else if(state == 1 || state == 3){
+		val = 255;
+	}
+
+	D3DCOLOR color;
+	if(state < 2){
+		switch(pttype / 4){
+		case 0:
+			color = D3DCOLOR_RGBA(val, 0, 0, 255);
+			break;
+		case 1:
+			color = D3DCOLOR_RGBA(0, val, 0, 255);
+			break;
+		case 2:
+			color = D3DCOLOR_RGBA(0, 0, val, 255);
+			break;
+		}
+	}else{
+		color = D3DCOLOR_RGBA(val, val, val, 255);
+	}
+
+	Mat rvec, tvec;
+	composeRT(rvec_cam, tvec_cam, rvec_obj, tvec_obj, rvec, tvec);
+	projectPoints(pts, rvec, tvec, cam_int, cam_dist, pt2ds);		
+	pline->Begin();
+	for(int iedge = 0; iedge < edges.size(); iedge++){
+		D3DXVECTOR2 v[2];
+		Point2f & pt1 = pt2ds[edges[iedge].s];
+		Point2f & pt2 = pt2ds[edges[iedge].e];
+		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
+		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
+		pline->Draw(v, 2, color);
+	}
+	D3DXVECTOR2 v[5];
+	int size = 5;
+	for(int ipt = 0; ipt < pt2ds.size(); ipt++){
+		Point2f & pt = pt2ds[ipt];
+		if(ipt == cur_point){
+			v[0] = D3DXVECTOR2((float)(pt.x - 1.0), (float)(pt.y));
+			v[1] = D3DXVECTOR2((float)(pt.x - 3.0), (float)(pt.y));
+			pline->Draw(v, 2, color);
+			v[0].x += 4.0;
+			v[1].x += 4.0;
+			pline->Draw(v, 2, color);
+			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 1.0));
+			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 3.0));
+			pline->Draw(v, 2, color);
+			v[0].y += 4.0;
+			v[1].y += 4.0;
+			pline->Draw(v, 2, color);
+			continue;
+		}
+
+		switch(shape){
+		case 0: // square
+			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
+			v[2] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
+			v[4] = v[0];
+			pline->Draw(v, 5, color);
+			break;
+		case 1: // diamond
+			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
+			v[2] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
+			v[4] = v[0];
+			pline->Draw(v, 5, color);
+			break;
+		case 2: // X
+			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
+			pline->Draw(v, 2, color);
+			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
+			pline->Draw(&v[2], 2, color);
+			break;
+		case 3:
+			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
+			pline->Draw(v, 2, color);
+			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
+			pline->Draw(&v[2], 2, color);
+			break;
+		}
+
+		if(ptxt != NULL){
+			char buf[10];
+			sprintf(buf, "%d", ipt);
+			ptxt->render(pd3dev, buf, pt.x, (float)(pt.y + 3.0), 1.0, 0.0, EDTC_CB, color); 
+		}
+	}
+	pline->End();
+}
+
+bool s_model::load(const char * fname)
+{
+	FileStorage fs;
+	fs.open(fname, FileStorage::READ);
+	if(!fs.isOpened()){
+		return false;
+	}
+
+	FileNode fn;
+
+	fn = fs["ModelName"];
+	string nameModel;
+	if(fn.empty()){
+		cerr << "Cannot find node ModelName." << endl;
+		return false;
+	}
+	fn >> name;
+
+	int numPoints;
+	fn = fs["NumPoints"];
+	if(fn.empty()){
+		cerr << "Cannot find node NumPoints." << endl;
+		return false;
+	}
+	fn >> numPoints;
+
+	int numEdges; 
+	fn = fs["NumEdges"];
+	if(fn.empty()){
+		cerr << "Cannot find node NumEdges." << endl;
+		return false;
+	}
+	fn >> numEdges;
+
+	fn = fs["Points"];
+
+	if(fn.empty()){
+		cerr << "Cannot find node Points." << endl;
+		return false;
+	}
+
+	char buf[64];
+	pts.resize(numPoints);
+	for(int ip = 0; ip < numPoints; ip++){
+		snprintf(buf, 63, "Point%05d", ip);
+		FileNode fpt = fn[buf];
+		if(fpt.empty()){
+			cerr << "Cannot find node " << buf << "." << endl;
+			return false;
+		}
+		fpt["x"] >> pts[ip].x;
+		fpt["y"] >> pts[ip].y;
+		fpt["z"] >> pts[ip].z;
+	}
+
+	fn = fs["Edges"];
+	if(fn.empty()){
+		cerr << "Cannot find node Edges." << endl;
+		return false;
+	}
+
+	edges.resize(numEdges);
+	for(int ie =0; ie < numEdges; ie++){
+		snprintf(buf, 63, "Edge%05d", ie);
+		FileNode fe = fn[buf];
+		if(fe.empty()){
+			cerr << "Cannot find node " << buf << "." << endl;
+			return false;
+		}
+		fe["s"] >> edges[ie].s;
+		fe["e"] >> edges[ie].e;
+	}
+
+	return true;
+}
+
+//////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[f_inspector::UNKNOWN]
 = {"normal", "model", "obj", "point", "chsbd", "svcb", "ldcb", "clcb",
 	"calib", "svcp", "ldcp", "clcp", "pscp", "pscptbl", "ps"};
