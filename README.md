@@ -167,7 +167,15 @@ Stopping filter graphs.
 
 * `quit`  
 Shutdown aws process. 
-    
+
+* `finf [{n <filter id> | <filter name>}]`  
+Getting fitler information. If no argument specified, the nubmer of filters registerd in the process is returned. If `n <filter id>` is specified, the filter information is returned according to the id. If `<filter name>` is specified the filter information is returned according to the name. The filter information is currently set as `<name> <id> <num params> <num input chans> <num output chans>`. Using this information, you can enumerate further information related to the filter. Of course, I'm planning to implement new commands as they are.  
+* `fpar <filter name> <parameter id>`
+Getting parameter information of the filter specified with the name. <parameter id> should be less than the number of parameters in the filter. The number of parameters in the filter can ge got by finf.  
+* `chinf [{n <channel id> | <channel name>}]`  
+Getting channel information. If no argument specified, the number of channels defined in the process is returned. Otherwise, the channel information is returned according to the specified <channel id> or <channel name>. The information of the channel is currently set as `<channel name> <channel id>`.   
+
+
 ## Fitlers
 Here I describe the filter classes currently included in the system. 
 
