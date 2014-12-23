@@ -29,7 +29,9 @@ int aws_cmd(int argc, char ** argv, const char * cmd){
   char buf[CMD_LEN];
   sockaddr_in addr;
   SOCKET sock;
-
+  int res;
+  
+  res = 0;
   if(!cf.is_open()){
     cerr << "Configuration file \".aws\" does not found." << endl; 
     return 1;
@@ -96,7 +98,7 @@ int aws_cmd(int argc, char ** argv, const char * cmd){
     cerr << "\"" << endl;
     if(buf[1])
       cerr << "Message: " << buf+1 << endl;
-    return 1;
+    res = 1;
   }
   
   // finish the command session ("eoc" command is sent) 
@@ -108,6 +110,6 @@ int aws_cmd(int argc, char ** argv, const char * cmd){
   }
   close(sock);
   
-  return 0;
+  return res;
 }
 
