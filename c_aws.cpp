@@ -312,7 +312,7 @@ bool c_aws::handle_fset(s_cmd & cmd)
 {
 	bool result;
 
-	if(cmd.num_args >= 2){
+	if(cmd.num_args <= 2){
 		result = false;
 		return result;
 	}
@@ -323,7 +323,7 @@ bool c_aws::handle_fset(s_cmd & cmd)
 		sprintf(cmd.get_ret_str(), "Filter %s was not found.", cmd.args[1]);
 		result = false;
 	}else{
-		if(cmd.num_args == 2){ // no value present
+		if(cmd.num_args == 3){ // no value present
 			result = pfilter->get_par_info(cmd);
 		}else{
 			pfilter->lock_cmd(true);
@@ -342,7 +342,7 @@ bool c_aws::handle_fset(s_cmd & cmd)
 bool c_aws::handle_fget(s_cmd & cmd)
 {
 	bool result;
-	if(cmd.num_args < 2){
+	if(cmd.num_args <= 2){
 		result = false;
 		return result;
 	}
