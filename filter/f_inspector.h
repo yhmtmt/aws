@@ -65,7 +65,8 @@ struct s_model
 
 	bool load(const char * fname)
 	{
-		FileStorage fs(fname, FileStorage::READ);
+		FileStorage fs;
+		fs.open(fname, FileStorage::READ);
 		if(!fs.isOpened()){
 			return false;
 		}
@@ -131,8 +132,8 @@ struct s_model
 				cerr << "Cannot find node " << buf << "." << endl;
 				return false;
 			}
-			fn["s"] >> edges[ie].s;
-			fn["e"] >> edges[ie].e;
+			fe["s"] >> edges[ie].s;
+			fe["e"] >> edges[ie].e;
 		}
 
 		return true;
