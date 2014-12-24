@@ -658,20 +658,27 @@ bool f_inspector::proc()
 					obj.get_pts(), iobj, 0);
 			}			
 		}
+
+		if(m_obj_model[iobj] != -1){
+			m_models[m_obj_model[iobj]].render(m_pd3dev, NULL, m_pline, 
+				m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam,
+				m_rvecs_obj[iobj], m_tvecs_obj[iobj], 
+				iobj, 0, m_cur_obj_point);
+		}
 	}
+
 
 	m_maincam.ResetRenderTarget(m_pd3dev);
 	////////////////////// render 3d scene ///////////////////////////
-	if(m_3dmode != NONE3D && m_bcampar_fixed){
-		render3D(timg);
-	}
+	m_3dscene.SetAsRenderTarget(m_pd3dev);
+	renderModel(timg);
+	m_3dscene.ResetRenderTarget(m_pd3dev);
 
 	//////////////////// render total view port /////////////////////
 
 	m_maincam.show(m_pd3dev, (float)(0. + m_main_offset.x),
 		(float) ((float) m_ViewPort.Height + m_main_offset.y), m_main_scale);
 
-	/*
 	switch(m_3dmode){
 	case SUB:
 		m_3dscene.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
@@ -682,7 +689,6 @@ bool f_inspector::proc()
 	default:
 		break;
 	}
-	*/
 
 	if(m_op == MODEL){
 		m_3dscene.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
@@ -1455,10 +1461,33 @@ void f_inspector::renderChsbd(long long timg)
 
 void f_inspector::renderModel(long long timg)
 {
+	if(m_cur_model != -1){
+	}
 }
 
-
 ///////////////////////////////////////////////////////// message handler
+// Planed features
+// * Main window shows video image
+// * Selected model is shown in subwindow (projected at the center, rotating around y-axis)
+// * op = OBJ, enables to add new points. Points are drawn. A selected point is highlighted. If a certaine model is assigned, the model instance is also rendered.
+// * op = MODEL, enables model selection
+// * op = POINT, enables point selection by left and right keys for current object.
+// * op = OBJ3D, for selected object, enables rotating and translating in 3D space, and enable point matching between 2d and 3d. Drawings are the same as op=OBJ
+// * op = POINT3D, enables point selection by left and right keys for current assigned 3D object.
+// Current Implementation
+// SHIFT + Drag : Scroll Video Image
+// SHIFT + Wheel: Scaling
+// L Click : Point add cur_obj
+// Left Key: op=OBJ cur_obj--, op=POINT cur_obj_point--
+// Right Key: op=OBJ cur_ob++, op=POINT cur_obj_point++
+// F: Reset scale at original
+// O: op=OBJ Add New Object 
+// I: op=OBJ The current mdoel is assigned to the current object, then op<=OBJ3D
+// m: op <= MODEL
+// o: op <= OBJ
+// p: op <= POINT
+// q: op <= OBJ3D
+// r: op <= POINT3D
 
 void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 {
@@ -1491,6 +1520,7 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 		pt.y *= (float) iscale;
 		pt.y += (float) m_ViewPort.Height;
 		m_obj_points[m_cur_obj].push_pt(pt);
+		m_model_points.push_back(-1);
 		break;
 	}
 };
@@ -1534,16 +1564,20 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 	}
 }
 
-
 void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 {
 	switch(wParam){
 	case VK_LEFT:
 		switch(m_op){
-		case MODEL:
+		case OBJ:
+		case OBJ3D:
 			m_cur_obj = m_cur_obj - 1;
 			if(m_cur_obj < 0){
 				m_cur_obj += (int) m_obj_points.size();
+			}
+			m_cur_obj_point = m_obj_points[m_cur_obj].get_num_points() - 1;
+			if(m_obj_model[m_cur_obj] != -1){
+				m_cur_obj_point3d = m_models[m_obj_model[m_cur_obj]].get_num_pts() - 1;
 			}
 			break;
 		case POINT:
@@ -1551,18 +1585,52 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 			if(m_cur_obj_point < 0){
 				m_cur_obj_point += (int) m_obj_points[m_cur_obj].get_num_points();
 			}
+
+			if(m_cur_obj_point != -1){
+				m_cur_obj_point3d = m_model_points[m_cur_obj_point];
+			}
+			break;
+		case MODEL:
+			m_cur_model = m_cur_model - 1;
+			if(m_cur_model < 0){
+				m_cur_model += (int) m_models.size();
+			}
+			break;
+		case POINT3D:
+			m_cur_obj_point3d = m_cur_obj_point3d - 1;
+			if(m_cur_obj_point3d < 0){
+				m_cur_obj_point3d += (int) m_models[m_obj_model[m_cur_obj]].get_num_pts();
+			}
 			break;
 		}
 		break;
 	case VK_RIGHT:
 		switch(m_op){
-		case MODEL:
+		case OBJ:
+		case OBJ3D:
 			m_cur_obj = m_cur_obj + 1;
-			m_cur_obj %= (int) m_obj_points.size();;
+			m_cur_obj %= (int) m_obj_points.size();
+			m_cur_obj_point = m_obj_points[m_cur_obj].get_num_points() - 1;
+
+			if(m_obj_model[m_cur_obj] != -1){
+				m_cur_obj_point3d = m_models[m_obj_model[m_cur_obj]].get_num_pts() - 1;
+			}
 			break;
 		case POINT:
 			m_cur_obj_point = m_cur_obj_point + 1;
 			m_cur_obj_point %= (int) m_obj_points[m_cur_obj].get_num_points();
+
+			if(m_cur_obj_point != -1){
+				m_cur_obj_point3d = m_model_points[m_cur_obj_point];
+			}
+			break;
+		case MODEL:
+			m_cur_model = m_cur_model + 1;
+			m_cur_model %= (int) m_models.size();
+			break;
+		case POINT3D:
+			m_cur_obj_point3d = m_cur_obj_point3d + 1;
+			m_cur_obj_point3d %= (int) m_models[m_obj_model[m_cur_obj]].get_num_pts();
 			break;
 		}
 		break;
@@ -1582,7 +1650,10 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		if(m_op != OBJ)
 			break;
 		m_obj_points.push_back(s_obj_points());
+		m_obj_model.push_back(-1);
 		m_cur_obj = (int)(m_obj_points.size() - 1);
+		m_cur_obj_point = (int)(m_obj_points[m_cur_obj].get_num_points() - 1);
+		m_cur_obj_point3d = -1;
 		break;
 	case 'm':
 		m_op = MODEL;
@@ -1592,6 +1663,12 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case 'p':
 		m_op = POINT;
+		break;
+	case 'q':
+		m_op = OBJ3D;
+		break;
+	case 'r':
+		m_op = POINT3D;
 		break;
 	default:
 		break;

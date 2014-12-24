@@ -64,6 +64,11 @@ struct s_model
 	vector<Point2f> pt2ds;
 	vector<s_edge> edges;
 
+	int get_num_pts()
+	{
+		return pts.size();
+	}
+
 	void render(
 		LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 		Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
@@ -114,7 +119,7 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		NORMAL, MODEL, OBJ, POINT, 
+		NORMAL, MODEL, OBJ, OBJ3D, POINT, POINT3D,
 		DET_CHSBD, SAVE_CHSBDS, LOAD_CHSBDS,CLEAR_CHSBDS,
 		CALIB, SAVE_CAMPAR, LOAD_CAMPAR, CLEAR_CAMPAR,
 		DET_POSE_CAM, DET_POSE_CAM_TBL, DET_POSE, UNKNOWN
@@ -173,8 +178,13 @@ private:
 	int m_cur_obj; // current object selected
 	int m_cur_model_point; // current selected point of the model
 	int m_cur_obj_point; // current selected point of the object
-	vector<s_obj_points> m_obj_points;
-
+	int m_cur_obj_point3d; // current selected 3d point of the object
+	vector<s_obj_points> m_obj_points; // object points
+	vector<int> m_model_points; // indices of corresponding model points
+	vector<int> m_obj_model; // model corresponding to the object.
+	vector<Mat> m_rvecs_obj; // Rotation of the object in the frame
+	vector<Mat> m_tvecs_obj; // Translation of the object in the frame
+	
 	// model poses in each time frame
 	vector<long long> m_pose_time;		// times corresponding model pose
 	vector<bool> m_bmodel_pose_fixed;	// true if model pose is fixed
@@ -193,8 +203,11 @@ private:
 	bool m_bcam_tbl_loaded;
 	vector<Mat> m_cam_int_tbl;
 	vector<Mat> m_cam_dist_tbl;
-	vector<double> m_cam_erep;
+	Mat m_rvec_cam;
+	Mat m_tvec_cam;
 
+	vector<double> m_cam_erep;
+	
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
 	bool m_bcalib_use_intrinsic_guess;
 	bool m_bcalib_fix_principal_point;
