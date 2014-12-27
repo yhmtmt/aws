@@ -190,6 +190,31 @@ int prj_pause(void * p, int m, int n, const __cminpack_real__ *x,
 }
 
 /////////////////////////////////////////////////////////////////// struct s_model
+// get_max_dist calculates size of the bounding box of the model and 
+// returns its diagonal length.
+double s_model::get_max_dist()
+{
+	float xmin, ymin, zmin, xmax, ymax, zmax;
+	xmin = ymin = zmin = FLT_MAX;
+	xmax = ymax = zmax = -FLT_MAX;
+	for(int i = 0; i < pts.size(); i++){
+		xmin = min(xmin, pts[i].x);
+		xmax = max(xmax, pts[i].x);
+
+		ymin = min(ymin, pts[i].y);
+		ymax = max(ymax, pts[i].y);
+
+		zmin = min(zmin, pts[i].z);
+		zmax = max(ymax, pts[i].z);
+	}
+
+	float dx = (float)(xmax - xmin);
+	float dy = (float)(ymax - ymin);
+	float dz = (float)(zmax - zmin);
+
+	return sqrt(dz * dz + dy * dy + dx * dx);
+}
+
 void s_model::render(
 	LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 	Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
@@ -406,7 +431,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_3dmode(NONE3D),
 	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
 	m_mm(MM_NORMAL),
-	m_main_offset(0, 0), m_main_scale(1.0)
+	m_main_offset(0, 0), m_main_scale(1.0),
+	m_theta_z(0.0)
 	
 {
 	m_fname_model[0] = '\0';
@@ -1461,7 +1487,55 @@ void f_inspector::renderChsbd(long long timg)
 
 void f_inspector::renderModel(long long timg)
 {
+	// 3D model is rotated in the model view with the angle speed of 1 deg/sec
+	// Camera parameter is set as 
 	if(m_cur_model != -1){
+		m_theta_z += (1./60.) * CV_PI / 180.;
+		// calculating rotation vector
+		Mat rvec = Mat(1, 3, CV_64F);
+		double * ptr = rvec.ptr<double>();
+		ptr[0] = 0.;
+		ptr[1] = 0.;
+		ptr[2] = m_theta_z;
+
+		// twice the maximum length of the model
+		double dist = 2 * m_models[m_cur_model].get_max_dist(); 
+		
+		// calculating translation vector
+		Mat tvec = Mat(1, 3, CV_64F);
+		ptr = tvec.ptr<double>();
+		ptr[0] = 0;
+		ptr[1] = 0;
+		ptr[2] = dist;
+
+		// calculating camera matrix 
+		// set at the model at distance "dist" can be completely inside the view port
+		// fov should be larger than 2*atan(0.5)
+		// fov_w = atan(wpix * pitch / f)
+		// fov_h = atan(hpix * pitch / f)
+		// f = min((wpix * pitch)/tan(fov), (hpix * pitch)/tan(fov))
+		// fpix = min(wpix, hpix) / tan(fov)
+		float wpix = m_3dscene.get_surface_width();
+		float hpix = m_3dscene.get_surface_height();
+		float fpix = (double)(min(wpix, hpix) / tan(atan(0.5)));
+		Mat cam_int = Mat(3, 3, CV_64F);
+		cam_int.at<double>(0, 0) = fpix;
+		cam_int.at<double>(1, 1) = fpix;
+		cam_int.at<double>(0, 2) = 0.5 * wpix;
+		cam_int.at<double>(1, 2) = 0.5 * hpix;
+
+		// calculating camera distortion (set at zero)
+		Mat cam_dist = Mat::zeros(8, 1, CV_64FC1);
+
+		// calculating camera rotation
+		Mat rvec_cam = Mat::zeros(1, 3, CV_64FC1);
+
+		// calculating camera translation (set as zero)
+		Mat tvec_cam = Mat::zeros(1, 3, CV_64FC1);
+		
+		m_models[m_cur_model].render(m_pd3dev, NULL, m_pline, cam_int, cam_dist,
+			rvec_cam, tvec_cam, rvec, tvec, m_cur_model, 0, -1);
+
 	}
 }
 
@@ -1469,14 +1543,19 @@ void f_inspector::renderModel(long long timg)
 // Planed features
 // * Main window shows video image
 // * Selected model is shown in subwindow (projected at the center, rotating around y-axis)
-// * op = OBJ, enables to add new points. Points are drawn. A selected point is highlighted. If a certaine model is assigned, the model instance is also rendered.
+// * op = OBJ, enables adding new points.
+//				Points are drawn. A selected point is highlighted. 
+//				If a certaine model is assigned, the model instance is also rendered.
 // * op = MODEL, enables model selection
 // * op = POINT, enables point selection by left and right keys for current object.
 // * op = OBJ3D, for selected object, enables rotating and translating in 3D space, and enable point matching between 2d and 3d. Drawings are the same as op=OBJ
 // * op = POINT3D, enables point selection by left and right keys for current assigned 3D object.
+
 // Current Implementation
-// SHIFT + Drag : Scroll Video Image
-// SHIFT + Wheel: Scaling
+// SHIFT + Drag : op=OBJ Scroll Video Image, op=OBJ3D x-y translation
+// SHIFT + Wheel: op=OBJ Scaling, op=OBJ3D z translation
+// Ctrl + Drag: op=OBJ3D x, y rotation
+// Ctrl + Wheel: op=OBJ3D z rotation
 // L Click : Point add cur_obj
 // Left Key: op=OBJ cur_obj--, op=POINT cur_obj_point--
 // Right Key: op=OBJ cur_ob++, op=POINT cur_obj_point++
@@ -1570,17 +1649,18 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 	case VK_LEFT:
 		switch(m_op){
 		case OBJ:
-		case OBJ3D:
+		case OBJ3D: // decrement current object index
 			m_cur_obj = m_cur_obj - 1;
 			if(m_cur_obj < 0){
 				m_cur_obj += (int) m_obj_points.size();
 			}
+			// the current object point index is initialized
 			m_cur_obj_point = m_obj_points[m_cur_obj].get_num_points() - 1;
-			if(m_obj_model[m_cur_obj] != -1){
+			if(m_obj_model[m_cur_obj] != -1){ // if model is assigned, the 3d-object point index is initialized.
 				m_cur_obj_point3d = m_models[m_obj_model[m_cur_obj]].get_num_pts() - 1;
 			}
 			break;
-		case POINT:
+		case POINT: // decrement current object point. 3d-object point is also. 
 			m_cur_obj_point = m_cur_obj_point  - 1;
 			if(m_cur_obj_point < 0){
 				m_cur_obj_point += (int) m_obj_points[m_cur_obj].get_num_points();
@@ -1590,13 +1670,13 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 				m_cur_obj_point3d = m_model_points[m_cur_obj_point];
 			}
 			break;
-		case MODEL:
+		case MODEL: // decrement the current model index
 			m_cur_model = m_cur_model - 1;
 			if(m_cur_model < 0){
 				m_cur_model += (int) m_models.size();
 			}
 			break;
-		case POINT3D:
+		case POINT3D: // increment the current 3d-object point index.
 			m_cur_obj_point3d = m_cur_obj_point3d - 1;
 			if(m_cur_obj_point3d < 0){
 				m_cur_obj_point3d += (int) m_models[m_obj_model[m_cur_obj]].get_num_pts();
@@ -1607,7 +1687,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 	case VK_RIGHT:
 		switch(m_op){
 		case OBJ:
-		case OBJ3D:
+		case OBJ3D: // increment the current object index.
 			m_cur_obj = m_cur_obj + 1;
 			m_cur_obj %= (int) m_obj_points.size();
 			m_cur_obj_point = m_obj_points[m_cur_obj].get_num_points() - 1;
@@ -1616,7 +1696,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 				m_cur_obj_point3d = m_models[m_obj_model[m_cur_obj]].get_num_pts() - 1;
 			}
 			break;
-		case POINT:
+		case POINT: // increment the current object point index. The 3d-object point index as well.
 			m_cur_obj_point = m_cur_obj_point + 1;
 			m_cur_obj_point %= (int) m_obj_points[m_cur_obj].get_num_points();
 
@@ -1624,11 +1704,11 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 				m_cur_obj_point3d = m_model_points[m_cur_obj_point];
 			}
 			break;
-		case MODEL:
+		case MODEL: // increment the current model index.
 			m_cur_model = m_cur_model + 1;
 			m_cur_model %= (int) m_models.size();
 			break;
-		case POINT3D:
+		case POINT3D: // increment the current 3d-object point index
 			m_cur_obj_point3d = m_cur_obj_point3d + 1;
 			m_cur_obj_point3d %= (int) m_models[m_obj_model[m_cur_obj]].get_num_pts();
 			break;
@@ -1654,6 +1734,8 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		m_cur_obj = (int)(m_obj_points.size() - 1);
 		m_cur_obj_point = (int)(m_obj_points[m_cur_obj].get_num_points() - 1);
 		m_cur_obj_point3d = -1;
+		break;
+	case 'I':
 		break;
 	case 'm':
 		m_op = MODEL;

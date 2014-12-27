@@ -69,6 +69,7 @@ struct s_model
 		return pts.size();
 	}
 
+	double get_max_dist();
 	void render(
 		LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 		Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
@@ -244,6 +245,8 @@ private:
 
 	void render3D(long long timg);
 	void renderChsbd(long long timg);
+
+	double m_theta_z;
 	void renderModel(long long timg);
 public:
 	f_inspector(const char * name);
