@@ -50,7 +50,8 @@ struct ModelVertex
    
     static const DWORD FVF;   
 };   
-
+// finding closest 2d point for given (x, y), and returning the index and distance.
+void get_cursor_point(vector<Point2f> & pt2ds, int x, int y, int & idx, double & dist);
 
 struct s_model
 {
@@ -69,7 +70,16 @@ struct s_model
 		return pts.size();
 	}
 
+	// getting the nearest point and the distance to (x, y)
+	void get_cursor_point(int x, int y, int & idx, double & dist){
+		::get_cursor_point(pt2ds, x, y, idx, dist);
+	}
+
+	// get_max_dist calculates size of the bounding box of the model and	
+	// returns its diagonal length.
 	double get_max_dist();
+
+	// renders wire frame of the model by given camera parameters
 	void render(
 		LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 		Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
@@ -79,15 +89,24 @@ struct s_model
 	bool load(const char * fname);
 };
 
-struct s_obj_points
+struct s_obj
 {
 	vector<Point2f> pt2d;
 	int imodel; // model index
 	vector<int> pt3didx; // corresponding 3d point index
 	vector<bool> bvisible; // true if 2d point is visible in the image
 
+	s_obj():imodel(-1){
+	};
+
 	int get_num_points(){
 		return (int) pt2d.size();
+	}
+
+	// getting the nearest point and the distance to (x, y)
+	void get_cursor_point(int x, int y, int & idx, double & dist)
+	{
+		::get_cursor_point(pt2d, x, y, idx, dist);
 	}
 
 	vector<Point2f> & get_pts(){
@@ -98,6 +117,14 @@ struct s_obj_points
 		pt2d.push_back(pt);
 		pt3didx.push_back(-1);
 		bvisible.push_back(true);
+	}
+
+	void set_model(int aimodel){
+		imodel = aimodel;
+	}
+
+	int get_model(){
+		return imodel;
 	}
 };
 
@@ -125,6 +152,7 @@ private:
 		CALIB, SAVE_CAMPAR, LOAD_CAMPAR, CLEAR_CAMPAR,
 		DET_POSE_CAM, DET_POSE_CAM_TBL, DET_POSE, UNKNOWN
 	};
+
 	static const char * m_str_op[UNKNOWN]; 
 	e_operation m_op;
 
@@ -140,7 +168,6 @@ private:
 	// file name for read/write
 	//
 	char m_fname_chsbds[1024]; // name of chsbd collection
-	char m_fname_campar[1024]; // name of camera parameter file
 
 	//
 	// chessboard
@@ -169,20 +196,20 @@ private:
 	//
 	// model 
 	//
-	char m_fname_model[1024]; // name of camera parameter file
+	char m_fname_model[1024]; // name of the model file
 	bool m_badd_model;
+	vector<s_model> m_models; // storing models
+	// loading model when m_badd_model is asserted
 	bool load_model();
 
-	vector<vector<s_obj_points> > m_obj_points_trace;
-	vector<s_model> m_models;
+	vector<vector<s_obj> > m_obj_trace;
 	int m_cur_model; // current selected model
 	int m_cur_obj; // current object selected
 	int m_cur_model_point; // current selected point of the model
 	int m_cur_obj_point; // current selected point of the object
 	int m_cur_obj_point3d; // current selected 3d point of the object
-	vector<s_obj_points> m_obj_points; // object points
+	vector<s_obj> m_obj; // object points
 	vector<int> m_model_points; // indices of corresponding model points
-	vector<int> m_obj_model; // model corresponding to the object.
 	vector<Mat> m_rvecs_obj; // Rotation of the object in the frame
 	vector<Mat> m_tvecs_obj; // Translation of the object in the frame
 	
@@ -197,6 +224,10 @@ private:
 	//
 	// Camera Parameter
 	//
+	bool m_bload_campar;
+	bool m_bload_campar_tbl;
+	char m_fname_campar[1024]; // name of camera parameter file
+	char m_fname_campar_tbl[1024]; // name of camera parameter table for multiple magnifications
 	Mat m_cam_int, m_cam_dist;// current camera parameter.	
 	double m_erep;		// reprojection error of last current camera parameter.
 
@@ -228,6 +259,9 @@ private:
 	bool saveCampar();
 	bool loadCampar();
 	void clearCampar();
+	bool saveCamparTbl();
+	bool loadCamparTbl();
+	void clearCamparTbl();
 
 	// 
 	// 3D view 
@@ -246,7 +280,11 @@ private:
 	void render3D(long long timg);
 	void renderChsbd(long long timg);
 
-	double m_theta_z;
+	// for rendering 3D model on the model window.
+	double m_theta_z_mdl, m_dist_mdl;
+	Mat m_rvec_mdl, m_tvec_mdl;
+	Mat m_rvec_cam_mdl, m_tvec_cam_mdl;
+	Mat m_cam_int_mdl, m_cam_dist_mdl;
 	void renderModel(long long timg);
 public:
 	f_inspector(const char * name);
@@ -289,26 +327,11 @@ public:
 
 	virtual bool proc();
 
-
+	////////////////////////////////////////////////////////// UI related members
 	enum e_mmode{
-		MM_NORMAL, MM_SCROLL, MM_POINT
+		MM_NORMAL, MM_SCROLL, MM_POINT, MM_OBJTRAN, MM_OBJROT, MM_POINT3D
 	} m_mm;
 
-	// UI behaviour 
-	//// Key board
-	// 'F' fits the image to the original scale
-	// 'm' changes mode to MODEL
-	// 'M' add MODEL 
-	// <- @MODEL selects previous model 
-	// -> @MODEL selects next model
-	// <- @POINT selects previous point
-	// -> @POINT selects next point
-
-	// 'p' changes mode to POINT (POINT mode enables adding 2d points)
-	//// Mouse
-	// Shift + L-drag scrolls image
-	// Shift + Wheel scales image
-	// 
 	Point2i m_mc; // mouse cursor
 	Point2i m_pt_sc_start; // scroll start
 	Point2f m_main_offset;
@@ -316,8 +339,7 @@ public:
 
 	virtual void handle_lbuttondown(WPARAM wParam, LPARAM lParam);
 	virtual void handle_lbuttonup(WPARAM wParam, LPARAM lParam);
-
-	virtual void handle_lbuttondblclk(WPARAM wParam, LPARAM lParam);
+	virtual void handle_lbuttondblclk(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_rbuttondown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_rbuttonup(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_rbuttondblclk(WPARAM wParam, LPARAM lParam){};

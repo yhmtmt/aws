@@ -45,6 +45,24 @@ using namespace cv;
 
 const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  
 
+//////////////////////////////////////////////////////////////// helper function
+void get_cursor_point(vector<Point2f> & pt2ds, int x, int y, int & idx, double & dist)
+{
+	dist = DBL_MAX;
+	for(int i = 0; i < pt2ds.size(); i++)
+	{
+		Point2f & pt = pt2ds[i];
+		double dx = pt.x - (float) x;
+		double dy = pt.y - (float) y;
+		double d = dx * dx + dy * dy;
+		if(d < dist){
+			dist = d;
+			idx = i;
+		}
+	}
+}
+
+///////////////////////////////////////////////////////////////// for cminpack
 struct s_package {
 	int num_models;
 	vector<int> & num_pts;
@@ -190,8 +208,8 @@ int prj_pause(void * p, int m, int n, const __cminpack_real__ *x,
 }
 
 /////////////////////////////////////////////////////////////////// struct s_model
-// get_max_dist calculates size of the bounding box of the model and 
-// returns its diagonal length.
+
+
 double s_model::get_max_dist()
 {
 	float xmin, ymin, zmin, xmax, ymax, zmax;
@@ -406,7 +424,8 @@ bool s_model::load(const char * fname)
 
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[f_inspector::UNKNOWN]
-= {"normal", "model", "obj", "point", "chsbd", "svcb", "ldcb", "clcb",
+= {"normal", "model", "obj", "obj3d", "point", "point3d", 
+	"chsbd", "svcb", "ldcb", "clcb",
 	"calib", "svcp", "ldcp", "clcp", "pscp", "pscptbl", "ps"};
 
 const char * f_inspector::m_str_3dmode[f_inspector::UNKNOWN3D]
@@ -417,6 +436,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bpttrack(false), m_bcbtrack(false), m_bchsbd_found(false),
 	m_sz_chsbd(6, 9), m_pitch_chsbd(0.0254f/*meter*/), m_bshow_chsbd(false),
 	m_bpose_fixed(false), m_bcampar_fixed(false), m_bcam_tbl_loaded(false),
+	m_bload_campar(false), m_bload_campar_tbl(false),
 	m_bcalib_use_intrinsic_guess(false),
 	m_bcalib_fix_principal_point(false),
 	m_bcalib_fix_aspect_ratio(false),
@@ -432,11 +452,12 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
 	m_mm(MM_NORMAL),
 	m_main_offset(0, 0), m_main_scale(1.0),
-	m_theta_z(0.0)
+	m_theta_z_mdl(0.0), m_dist_mdl(0.0)
 	
 {
 	m_fname_model[0] = '\0';
 	m_fname_campar[0] = '\0';
+	m_fname_campar_tbl[0] = '\0';
 	m_fname_chsbds[0] = '\0';
 	m_cam_int = Mat::zeros(3, 3, CV_64FC1);
 	m_cam_int.at<double>(2, 2) = 1.0;
@@ -445,8 +466,10 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("fchsbds", m_fname_chsbds, 1024, "File path of chessboard collections");
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
 	register_fpar("add_model", &m_badd_model, "If the flag is asserted, model is loaded from fmodel");
-
-	register_fpar("fcampar", m_fname_campar, 1024, "File path of camera parameter.");
+	register_fpar("ldcp", &m_bload_campar, "Load a camera parameter.");
+	register_fpar("ldcptbl", &m_bload_campar_tbl, "Load the table of camera parameters with multiple magnifications."); 
+	register_fpar("fcp", m_fname_campar, 1024, "File path of camera parameter.");
+	register_fpar("fcptbl", m_fname_campar_tbl, 1024, "File path of table of the camera parameters with multiple magnifications.");
 	register_fpar("op", (int*)&m_op, UNKNOWN, m_str_op,"Operation {normal, chsbd, svcb, ldcb, calib, svcp, ldcp, model, pose}");
 	register_fpar("sh", &m_sh, "Horizontal scaling value. Image size is multiplied by the value. (default 1.0)");
 	register_fpar("sv", &m_sv, "Vertical scaling value. Image size is multiplied by the value. (default 1.0)");	
@@ -661,8 +684,8 @@ bool f_inspector::proc()
 	m_maincam.blt_offsrf(m_pd3dev, img_s);
 
 	// rendering 2d points
-	for(int iobj = 0; iobj < m_obj_points.size(); iobj++){
-		s_obj_points & obj = m_obj_points[iobj];
+	for(int iobj = 0; iobj < m_obj.size(); iobj++){
+		s_obj & obj = m_obj[iobj];
 		if(m_op == OBJ){
 			if(iobj == m_cur_obj){
 				m_maincam.render_point2d(m_pd3dev, 
@@ -684,9 +707,9 @@ bool f_inspector::proc()
 					obj.get_pts(), iobj, 0);
 			}			
 		}
-
-		if(m_obj_model[iobj] != -1){
-			m_models[m_obj_model[iobj]].render(m_pd3dev, NULL, m_pline, 
+		int imodel = m_obj[iobj].get_model();
+		if(imodel != -1){
+			m_models[imodel].render(m_pd3dev, NULL, m_pline, 
 				m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam,
 				m_rvecs_obj[iobj], m_tvecs_obj[iobj], 
 				iobj, 0, m_cur_obj_point);
@@ -725,9 +748,9 @@ bool f_inspector::proc()
 	snprintf(information, 1023, 
 		"OP=%s, MM=%d, Models=%d, CurModel=%d, Objs=%d, CurObj=%d, CurPoints=%d, CurPoint=%d",
 		m_str_op[m_op], m_mm, m_models.size(),
-		m_cur_model, m_obj_points.size(), 
+		m_cur_model, m_obj.size(), 
 		m_cur_obj, 
-		(m_cur_obj < 0 ? m_cur_obj : m_obj_points[m_cur_obj].get_num_points()),
+		(m_cur_obj < 0 ? m_cur_obj : m_obj[m_cur_obj].get_num_points()),
 		m_cur_obj_point);
 	
 	m_d3d_txt.render(m_pd3dev, information, 0, 0, 1.0, 0, EDTC_LT);
@@ -1284,6 +1307,19 @@ bool f_inspector::saveCampar()
 	if(!fs.isOpened())
 		return false;
 
+	fs << "CamPar" << "{";
+	fs << "Int" << m_cam_int;
+	fs << "Dist" << m_cam_dist;
+	fs << "Err" << m_erep;
+	return true;
+}
+
+bool f_inspector::saveCamparTbl()
+{
+	FileStorage fs(m_fname_campar_tbl, FileStorage::WRITE);
+	if(!fs.isOpened())
+		return false;
+
 	fs << "CamPars" << (int) m_cam_int_tbl.size();
 	fs << "Pars" << "{";
 	for(int ipar = 0; ipar < m_cam_int_tbl.size(); ipar++){
@@ -1305,6 +1341,34 @@ bool f_inspector::loadCampar()
 	clearCampar();
 
 	FileStorage fs(m_fname_campar, FileStorage::READ);
+	if(!fs.isOpened())
+		return false;
+	FileNode fn = fs["CamPar"];
+	if(fn.empty())
+		return false;
+
+	FileNode fnsub;
+	fnsub = fn["Int"];
+	if(fnsub.empty())
+		return false;
+	fnsub >> m_cam_int;
+
+	fnsub = fn["Dist"];
+	if(fnsub.empty())
+		return false;
+	fnsub >> m_cam_dist;
+
+	fnsub = fn["Err"];
+	if(!fnsub.empty())
+		fnsub >> m_erep;
+	return true;
+}
+
+bool f_inspector::loadCamparTbl()
+{
+	clearCamparTbl();
+
+	FileStorage fs(m_fname_campar_tbl, FileStorage::READ);
 	if(!fs.isOpened())
 		return false;
 
@@ -1354,6 +1418,14 @@ bool f_inspector::loadCampar()
 }
 
 void f_inspector::clearCampar()
+{
+	m_cam_int.release();
+	m_cam_dist.release();
+	m_erep = 0.0;
+	m_bcampar_fixed = false;
+}
+
+void f_inspector::clearCamparTbl()
 {
 	m_cam_int_tbl.clear();
 	m_cam_dist_tbl.clear();
@@ -1482,7 +1554,6 @@ void f_inspector::renderChsbd(long long timg)
 	Mtrn(3, 3) = 1.0;
 	m_pd3dev->SetTransform(D3DTS_WORLD, &Mtrn);
 	m_pmesh_chsbd->DrawSubset(0);
-	//		}
 }
 
 void f_inspector::renderModel(long long timg)
@@ -1490,26 +1561,26 @@ void f_inspector::renderModel(long long timg)
 	// 3D model is rotated in the model view with the angle speed of 1 deg/sec
 	// Camera parameter is set as 
 	if(m_cur_model != -1){
-		m_theta_z += (1./60.) * CV_PI / 180.;
+		m_theta_z_mdl += (1./60.) * CV_PI / 180.;
 		// calculating rotation vector
-		Mat rvec = Mat(1, 3, CV_64F);
-		double * ptr = rvec.ptr<double>();
+		m_rvec_mdl = Mat(1, 3, CV_64F);
+		double * ptr = m_rvec_mdl.ptr<double>();
 		ptr[0] = 0.;
 		ptr[1] = 0.;
-		ptr[2] = m_theta_z;
+		ptr[2] = m_theta_z_mdl;
 
 		// twice the maximum length of the model
-		double dist = 2 * m_models[m_cur_model].get_max_dist(); 
+		m_dist_mdl = 2 * m_models[m_cur_model].get_max_dist(); 
 		
 		// calculating translation vector
-		Mat tvec = Mat(1, 3, CV_64F);
-		ptr = tvec.ptr<double>();
+		m_tvec_mdl = Mat(1, 3, CV_64F);
+		ptr = m_tvec_mdl.ptr<double>();
 		ptr[0] = 0;
 		ptr[1] = 0;
-		ptr[2] = dist;
+		ptr[2] = m_dist_mdl;
 
 		// calculating camera matrix 
-		// set at the model at distance "dist" can be completely inside the view port
+		// set the model at distance "dist" can be completely inside the view port
 		// fov should be larger than 2*atan(0.5)
 		// fov_w = atan(wpix * pitch / f)
 		// fov_h = atan(hpix * pitch / f)
@@ -1517,25 +1588,24 @@ void f_inspector::renderModel(long long timg)
 		// fpix = min(wpix, hpix) / tan(fov)
 		float wpix = m_3dscene.get_surface_width();
 		float hpix = m_3dscene.get_surface_height();
-		float fpix = (double)(min(wpix, hpix) / tan(atan(0.5)));
-		Mat cam_int = Mat(3, 3, CV_64F);
-		cam_int.at<double>(0, 0) = fpix;
-		cam_int.at<double>(1, 1) = fpix;
-		cam_int.at<double>(0, 2) = 0.5 * wpix;
-		cam_int.at<double>(1, 2) = 0.5 * hpix;
+		float fpix = (float)(min(wpix, hpix) / tan(atan(0.5)));
+		m_cam_int_mdl = Mat(3, 3, CV_64F);
+		m_cam_int_mdl.at<double>(0, 0) = fpix;
+		m_cam_int_mdl.at<double>(1, 1) = fpix;
+		m_cam_int_mdl.at<double>(0, 2) = 0.5 * wpix;
+		m_cam_int_mdl.at<double>(1, 2) = 0.5 * hpix;
 
 		// calculating camera distortion (set at zero)
-		Mat cam_dist = Mat::zeros(8, 1, CV_64FC1);
+		m_cam_dist_mdl = Mat::zeros(8, 1, CV_64FC1);
 
 		// calculating camera rotation
-		Mat rvec_cam = Mat::zeros(1, 3, CV_64FC1);
+		m_rvec_cam_mdl = Mat::zeros(1, 3, CV_64FC1);
 
 		// calculating camera translation (set as zero)
-		Mat tvec_cam = Mat::zeros(1, 3, CV_64FC1);
+		m_tvec_cam_mdl = Mat::zeros(1, 3, CV_64FC1);
 		
-		m_models[m_cur_model].render(m_pd3dev, NULL, m_pline, cam_int, cam_dist,
-			rvec_cam, tvec_cam, rvec, tvec, m_cur_model, 0, -1);
-
+		m_models[m_cur_model].render(m_pd3dev, NULL, m_pline, m_cam_int_mdl, m_cam_dist_mdl,
+			m_rvec_cam_mdl, m_tvec_cam_mdl, m_rvec_mdl, m_tvec_mdl, m_cur_model, 0, -1);
 	}
 }
 
@@ -1556,6 +1626,8 @@ void f_inspector::renderModel(long long timg)
 // SHIFT + Wheel: op=OBJ Scaling, op=OBJ3D z translation
 // Ctrl + Drag: op=OBJ3D x, y rotation
 // Ctrl + Wheel: op=OBJ3D z rotation
+// Shift + Drag: op=OBJ3D x, y translation
+// Shift + Wheel: op=OBJ3D z translation
 // L Click : Point add cur_obj
 // Left Key: op=OBJ cur_obj--, op=POINT cur_obj_point--
 // Right Key: op=OBJ cur_ob++, op=POINT cur_obj_point++
@@ -1571,11 +1643,30 @@ void f_inspector::renderModel(long long timg)
 void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 {
 	extractPointlParam(lParam, m_mc);
-	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){ // scroll
-		m_mm = MM_SCROLL;
-		m_pt_sc_start = m_mc;
-	}else{
-		m_mm = MM_POINT;
+	switch(m_op){
+	case OBJ:
+	case POINT:
+		if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){ // scroll
+			m_mm = MM_SCROLL;
+			m_pt_sc_start = m_mc;
+		}else{
+			m_mm = MM_POINT;
+		}
+		break;
+	case OBJ3D:
+	case POINT3D:
+		if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
+			// object translation mode
+			m_mm = MM_OBJTRAN;
+		}else if(GET_KEYSTATE_WPARAM(wParam) & MK_CONTROL){
+			// object rotation mode
+			m_mm = MM_OBJROT;
+		}else{
+			m_mm = MM_POINT3D;
+		}
+		break;
+	case MODEL:
+		break;
 	}
 }
 
@@ -1589,29 +1680,26 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 		m_mm = MM_NORMAL;
 		break;
 	case MM_POINT:
-		if(m_obj_points.size() == 0)
-			break;
+		{
+			if(m_obj.size() == 0)
+				break;
 
-		Point2f pt;
-		double iscale = 1.0 / m_main_scale;
-		pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
-		pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
-		pt.y *= (float) iscale;
-		pt.y += (float) m_ViewPort.Height;
-		m_obj_points[m_cur_obj].push_pt(pt);
-		m_model_points.push_back(-1);
+			Point2f pt;
+			double iscale = 1.0 / m_main_scale;
+			pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
+			pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
+			pt.y *= (float) iscale;
+			pt.y += (float) m_ViewPort.Height;
+			m_obj[m_cur_obj].push_pt(pt);
+			m_model_points.push_back(-1);
+		}
+		break;
+	case MM_OBJROT:
+	case MM_OBJTRAN:
+	case MM_POINT3D:
 		break;
 	}
 };
-
-void f_inspector::handle_lbuttondblclk(WPARAM wParam, LPARAM lParam)
-{
-	extractPointlParam(lParam, m_mc);
-	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
-		m_main_offset = Point2f(0, 0);
-		m_main_scale = 0.;
-	}
-}
 
 void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 {
@@ -1650,20 +1738,23 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 		switch(m_op){
 		case OBJ:
 		case OBJ3D: // decrement current object index
-			m_cur_obj = m_cur_obj - 1;
-			if(m_cur_obj < 0){
-				m_cur_obj += (int) m_obj_points.size();
-			}
-			// the current object point index is initialized
-			m_cur_obj_point = m_obj_points[m_cur_obj].get_num_points() - 1;
-			if(m_obj_model[m_cur_obj] != -1){ // if model is assigned, the 3d-object point index is initialized.
-				m_cur_obj_point3d = m_models[m_obj_model[m_cur_obj]].get_num_pts() - 1;
+			{
+				m_cur_obj = m_cur_obj - 1;
+				if(m_cur_obj < 0){
+					m_cur_obj += (int) m_obj.size();
+				}
+				// the current object point index is initialized
+				m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
+				int imodel = m_obj[m_cur_obj].get_model();
+				if(imodel != -1){ // if model is assigned, the 3d-object point index is initialized.
+					m_cur_obj_point3d = m_models[imodel].get_num_pts() - 1;
+				}
 			}
 			break;
 		case POINT: // decrement current object point. 3d-object point is also. 
 			m_cur_obj_point = m_cur_obj_point  - 1;
 			if(m_cur_obj_point < 0){
-				m_cur_obj_point += (int) m_obj_points[m_cur_obj].get_num_points();
+				m_cur_obj_point += (int) m_obj[m_cur_obj].get_num_points();
 			}
 
 			if(m_cur_obj_point != -1){
@@ -1679,7 +1770,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 		case POINT3D: // increment the current 3d-object point index.
 			m_cur_obj_point3d = m_cur_obj_point3d - 1;
 			if(m_cur_obj_point3d < 0){
-				m_cur_obj_point3d += (int) m_models[m_obj_model[m_cur_obj]].get_num_pts();
+				m_cur_obj_point3d += (int) m_models[m_obj[m_cur_obj].get_model()].get_num_pts();
 			}
 			break;
 		}
@@ -1688,17 +1779,19 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 		switch(m_op){
 		case OBJ:
 		case OBJ3D: // increment the current object index.
-			m_cur_obj = m_cur_obj + 1;
-			m_cur_obj %= (int) m_obj_points.size();
-			m_cur_obj_point = m_obj_points[m_cur_obj].get_num_points() - 1;
-
-			if(m_obj_model[m_cur_obj] != -1){
-				m_cur_obj_point3d = m_models[m_obj_model[m_cur_obj]].get_num_pts() - 1;
+			{
+				m_cur_obj = m_cur_obj + 1;
+				m_cur_obj %= (int) m_obj.size();
+				m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
+				int imodel = m_obj[m_cur_obj].get_model();
+				if(imodel != -1){
+					m_cur_obj_point3d = m_models[imodel].get_num_pts() - 1;
+				}
 			}
 			break;
 		case POINT: // increment the current object point index. The 3d-object point index as well.
 			m_cur_obj_point = m_cur_obj_point + 1;
-			m_cur_obj_point %= (int) m_obj_points[m_cur_obj].get_num_points();
+			m_cur_obj_point %= (int) m_obj[m_cur_obj].get_num_points();
 
 			if(m_cur_obj_point != -1){
 				m_cur_obj_point3d = m_model_points[m_cur_obj_point];
@@ -1710,7 +1803,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 			break;
 		case POINT3D: // increment the current 3d-object point index
 			m_cur_obj_point3d = m_cur_obj_point3d + 1;
-			m_cur_obj_point3d %= (int) m_models[m_obj_model[m_cur_obj]].get_num_pts();
+			m_cur_obj_point3d %= (int) m_models[m_obj[m_cur_obj].get_model()].get_num_pts();
 			break;
 		}
 		break;
@@ -1729,10 +1822,11 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'O': /* O key */ 
 		if(m_op != OBJ)
 			break;
-		m_obj_points.push_back(s_obj_points());
-		m_obj_model.push_back(-1);
-		m_cur_obj = (int)(m_obj_points.size() - 1);
-		m_cur_obj_point = (int)(m_obj_points[m_cur_obj].get_num_points() - 1);
+		m_obj.push_back(s_obj());
+		m_rvecs_obj.push_back(Mat::zeros(3, 1, CV_64FC1));
+		m_tvecs_obj.push_back(Mat::zeros(3, 1, CV_64FC1));
+		m_cur_obj = (int)(m_obj.size() - 1);
+		m_cur_obj_point = (int)(m_obj[m_cur_obj].get_num_points() - 1);
 		m_cur_obj_point3d = -1;
 		break;
 	case 'I':
