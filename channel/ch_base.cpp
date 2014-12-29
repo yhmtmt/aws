@@ -48,58 +48,41 @@ using namespace cv;
 #include "../channel.h"
 #include "../filter.h"
 
-ch_base * ch_base::create(const char * type_name, const char * chan_name)
+CHMap ch_base::m_chmap;
+
+void ch_base::init()
 {
-	if(strcmp(type_name, "imgc")==0){
-		return new ch_image_cln(chan_name);
-	}	
+	register_factory();
+}
 
-	if(strcmp(type_name, "imgr") == 0){
-		return new ch_image_ref(chan_name);
-	}
+void ch_base::uninit()
+{
+}
 
-	if(strcmp(type_name, "pvt") == 0){
-		return new ch_pvt(chan_name);
-	}
+void ch_base::register_factory()
+{
+	register_factory<ch_image_cln>("imgc");
+	register_factory<ch_image_ref>("imgr");
+	register_factory<ch_pvt>("pvt");
+	register_factory<ch_nmea>("nmea");
+	register_factory<ch_ais>("ais");
+	register_factory<ch_vector<s_binary_message> >("bmsg");
+	register_factory<ch_navdat>("ship");
+	register_factory<ch_ship_ctrl>("ship_ctrl");
+	register_factory<ch_vector<Rect>>("vrect");
+	register_factory<ch_vector<c_track_obj>>("trck");
+	register_factory<ch_ptz>("ptz");
+	register_factory<ch_ptzctrl>("ptzc");
+	register_factory<ch_campar>("campar");
+}
 
-	if(strcmp(type_name, "nmea") == 0){
-		return new ch_nmea(chan_name);
+ch_base * ch_base::create(const char * type_name, const char * chan_name)
+{	
+	ch_base * ptr = NULL;
+	try{
+		ptr = m_chmap[type_name](chan_name);
+	}catch(...){
+		ptr = NULL;
 	}
-
-	if(strcmp(type_name, "ais") == 0){
-		return new ch_ais(chan_name);
-	}
-
-	if(strcmp(type_name, "bmsg") == 0){
-		return new ch_vector<s_binary_message>(chan_name);
-	}
-
-	if(strcmp(type_name, "ship") == 0){
-		return new ch_navdat(chan_name);
-	}
-
-	if(strcmp(type_name, "ship_ctrl") == 0){
-		return new ch_ship_ctrl(chan_name);
-	}
-
-	if(strcmp(type_name, "vrect") == 0){
-		return new ch_vector<Rect>(chan_name);
-	}
-
-	if(strcmp(type_name, "trck") == 0){
-		return new ch_vector<c_track_obj>(chan_name);
-	}
-
-	if(strcmp(type_name, "ptz") == 0){
-		return new ch_ptz(chan_name);
-	}
-
-	if(strcmp(type_name, "ptzc") == 0){
-		return new ch_ptzctrl(chan_name);
-	}
-
-	if(strcmp(type_name, "campar") == 0){
-		return new ch_campar(chan_name);
-	}
-	return NULL;
+	return ptr;
 }

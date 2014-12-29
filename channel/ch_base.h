@@ -15,17 +15,45 @@
 // along with ch_base.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "../command.h"
+#include "../util/util.h"
 
 class f_base;
+class ch_base;
+
+typedef ch_base * (*CreateChannel)(const char * name);
+template <class T> ch_base * createChannel(const char * name)
+{
+	return reinterpret_cast<ch_base*>(new T(name));
+}
+
+typedef map<const char *, CreateChannel, cmp> CHMap;
 
 class ch_base
 {
 protected:
+	static CHMap m_chmap;
+	// calling register_factor<T>(tname) to register all filters to be used.
+	static void register_factory();
+
+	// registering filter classes to the factory
+	template <class T> static void register_factory(const char * tname)
+	{
+		m_chmap.insert(CHMap::value_type(tname, createChannel<T>));
+	}
+
+public:
+	// factory function
+	static ch_base * create(const char * tname, const char * fname);
+
+	// initialize mutex and signal objects. this is called by the c_aws constructor
+	static void init();
+
+	// uninitialize mutex and signal objects. called by the c_aws destoractor
+	static void uninit();
+protected:
 	char * m_name;
 	pthread_mutex_t m_mtx;
 public:
-	static ch_base * create(const char * type_name, const char * chan_name);
-
 	ch_base(const char * name):m_name(NULL){
 		m_name = new char[strlen(name) + 1];
 		strcpy(m_name, name);
