@@ -67,8 +67,40 @@ class f_base;
 #define FERR_TRN_IMG_SOCK_SVR (FERR_TRN_IMG + 2)
 #define FERR_TRN_IMG_SOCK_SVR_CON (FERR_TRN_IMG + 3)
 
+#include "../util/util.h"
+class f_base;
+
+typedef f_base * (*CreateFilter)(const char * name);
+template <class T> f_base * createFilter(const char * name)
+{
+	return reinterpret_cast<f_base*>(new T(name));
+}
+
+typedef map<const char *, CreateFilter, cmp> FMap;
+
 class f_base
 {
+protected:
+	static FMap m_fmap;
+	// calling register_factor<T>(tname) to register all filters to be used.
+	static void register_factory();
+
+	// registering filter classes to the factory
+	template <class T> static void register_factory(const char * tname)
+	{
+		m_fmap.insert(FMap::value_type(tname, createFilter<T>));
+	}
+
+public:
+	// factory function
+	static f_base * create(const char * tname, const char * fname);
+
+	// initialize mutex and signal objects. this is called by the c_aws constructor
+	static void init();
+
+	// uninitialize mutex and signal objects. called by the c_aws destoractor
+	static void uninit();
+		
 protected:
 	char * m_name; // filter name
 public:
@@ -470,17 +502,8 @@ public:
 	}
 
 public:
-	// factory function
-	static f_base * create(const char * tname, const char * fname);
-
 	f_base(const char * name);
 	virtual ~f_base();
-
-	// initialize mutex and signal objects. this is called by the c_aws constructor
-	static void init();
-
-	// uninitialize mutex and signal objects. called by the c_aws destoractor
-	static void uninit();
 
 	////////////////////////////////////////////////// command and the methods
 protected:

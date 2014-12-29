@@ -13,7 +13,8 @@
 
 // You should have received a copy of the GNU General Public License
 // along with util.h.  If not, see <http://www.gnu.org/licenses/>. 
-
+#ifndef _UTIL_H_
+#define _UTIL_H_
 bool synth_afn(Mat & l, Mat & r, Mat & res);
 
 void cnvBayerRG8ToBGR8(Mat & src, Mat & dst);
@@ -28,3 +29,12 @@ void cnvBayerBG16ToBGR16(Mat & src, Mat & dst);
 // box-muller random normal variable
 double nrand(double u, double s);
 
+// comparison function used in the map 
+struct cmp { 
+	bool operator () (const char *a,const char *b) const 
+	{
+		return strcmp(a,b) < 0;
+	} 
+};
+
+#endif

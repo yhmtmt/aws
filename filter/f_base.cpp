@@ -24,6 +24,7 @@
 #include <fstream>
 #include <vector>
 #include <list>
+#include <map>
 #include <cmath>
 using namespace std;
 
@@ -36,7 +37,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 #include "../util/aws_sock.h"
-
 #include "../util/thread_util.h"
 #include "../util/c_clock.h"
 #include "../util/coord.h"
@@ -45,6 +45,102 @@ using namespace cv;
 #include "../channel.h"
 #include "../filter.h"
 
+/////////////////////////////////////////////////////////////// filter factory
+FMap f_base::m_fmap;
+
+void f_base::register_factory()
+{
+	register_factory<f_sample>("sample");
+	register_factory<f_nmea>("nmea");
+	register_factory<f_nmea_proc>("nmea_proc");
+
+	// image processing
+	register_factory<f_imgshk>("imgshk");
+	register_factory<f_debayer>("debayer");
+	register_factory<f_gry>("gry");
+	register_factory<f_edge>("edge");
+	register_factory<f_imreg>("imreg");
+	register_factory<f_bkgsub>("bkgsub");
+	register_factory<f_houghp>("hough");
+	register_factory<f_gauss>("gauss");
+	register_factory<f_clip>("clip");
+	register_factory<f_stabilizer>("stab");
+	register_factory<f_tracker>("trck");
+	register_factory<f_ship_detector>("shipdet");
+	register_factory<f_camcalib>("camcalib");
+
+	register_factory<f_imwrite>("imwrite");
+
+	// windows
+#ifdef FWINDOW
+	register_factory<f_window>("window");
+	register_factory<f_mark_window>("mwin");
+#ifdef _WIN32
+	register_factory<f_ds_window>("dswin");
+	register_factory<f_sys_window>("syswin");
+	register_factory<f_sprot_window>("spwin");
+	register_factory<f_ptz_window>("ptzwin");
+	register_factory<f_inspector>("inspector");
+#endif
+#endif
+	// video sources
+#ifdef SANYO_HD5400
+	register_factory<f_netcam>("hd5400");
+#endif
+
+#ifdef AVT_CAM
+	register_factory<f_avt_cam>("avtcam");
+#endif
+#ifdef UVC_CAM
+	register_factory<f_uvc_cam>("uvcam");
+#endif
+
+#ifdef _WIN32
+	register_factory<f_ds_vfile>("vfile");
+	register_factory<f_ds_vdev>("vdev");
+#endif
+	// communication
+	register_factory<f_trn_img>("trnimg");
+	register_factory<f_rcv_img>("rcvimg");
+	register_factory<f_trn>("trn");
+	register_factory<f_rcv>("rcv");
+}
+
+f_base* f_base::create(const char * tname, const char * fname)
+{
+	return m_fmap[tname](fname);
+}
+
+void f_base::init(){
+	pthread_mutex_init(&m_mutex, NULL);
+	pthread_cond_init(&m_cond,  NULL);
+	pthread_mutex_init(&m_err_mtx, NULL);
+	m_err_head = 0;
+	m_err_tail = 0;
+	m_file_err.open(FILE_FERR_LOG);
+
+	f_base::register_factory();
+
+#ifdef AVT_CAM
+	f_avt_cam::init_interface();
+#endif
+}
+
+void f_base::uninit(){
+
+#ifdef AVT_CAM
+	f_avt_cam::destroy_interface();
+#endif
+
+	flush_err_buf();
+	m_file_err.close();
+
+	pthread_mutex_destroy(&m_mutex);
+	pthread_cond_destroy(&m_cond);
+	pthread_mutex_destroy(&m_err_mtx);
+}
+
+//////////////////////////////////////////////////// filter parameter
 bool f_base::s_fpar::set(const char * valstr){	
 	switch(type){
 	case F64:
@@ -153,6 +249,7 @@ void f_base::s_ferr::dump_err(ostream & out)
 	out << endl;
 }
 
+////////////////////////////////////////////////////// f_base members
 pthread_mutex_t f_base::m_mutex;
 pthread_cond_t f_base::m_cond;
 long long f_base::m_cur_time = 0;
@@ -167,138 +264,6 @@ f_base::s_ferr f_base::m_err_buf[SIZE_FERR_BUF];
 int f_base::m_err_head = 0;
 int f_base::m_err_tail = 0;
 pthread_mutex_t f_base::m_err_mtx;
-
-f_base* f_base::create(const char * tname, const char * fname)
-{
-	if(strcmp("sample", tname) == 0)
-		return new f_sample(fname);
-
-	if(strcmp("nmea", tname) == 0)
-		return new f_nmea(fname);
-
-	if(strcmp("nmea_proc", tname) == 0)
-		return new f_nmea_proc(fname);
-
-#ifdef SANYO_HD5400
-	if(strcmp("hd5400", tname) == 0)
-		return new f_netcam(fname);
-#endif
-
-	if(strcmp("imgshk", tname) == 0)
-		return new f_imgshk(fname);
-
-	if(strcmp("debayer", tname) == 0)
-		return new f_debayer(fname);
-
-	if(strcmp("imwrite", tname) == 0)
-		return new f_imwrite(fname);
-
-	if(strcmp("gry", tname) == 0)
-		return new f_gry(fname);
-
-	if(strcmp("edge", tname) == 0)
-		return new f_edge(fname);
-
-	if(strcmp("reg", tname) == 0)
-		return new f_imreg(fname);
-
-	if(strcmp("hough", tname) == 0)
-		return new f_houghp(tname);
-
-	if(strcmp("bkgsub", tname) == 0)
-		return new f_bkgsub(tname);
-
-	if(strcmp("stab", tname) == 0)
-		return new f_stabilizer(fname);
-
-#ifdef FWINDOW
-	if(strcmp("window", tname) == 0)
-		return new f_window(fname);
-
-	if(strcmp("mwin", tname) == 0)
-		return new f_mark_window(fname);
-#endif
-
-	if(strcmp("shioji_ctrl_rcv", tname) == 0)
-		return new f_shioji_ctrl_rcv(fname);
-
-	if(strcmp("shioji_ctrl", tname) == 0)
-		return new f_shioji_ctrl(fname);
-
-	if(strcmp("shioji", tname) == 0)
-		return new f_shioji(fname);
-
-	if(strcmp("shipdet", tname) == 0)
-		return new f_ship_detector(fname);
-
-	if(strcmp("trck", tname) == 0)
-		return new f_tracker(fname);
-
-	if(strcmp("gauss", tname) == 0)
-		return new f_gauss(fname);
-
-	if(strcmp("camcalib", tname) == 0)
-		return new f_camcalib(fname);
-
-	if(strcmp("clip", tname) == 0)
-		return new f_clip(fname);
-
-#ifdef AVT_CAM
-	if(strcmp("avtcam", tname) == 0)
-		return new f_avt_cam(fname);
-#endif
-
-#ifdef _WIN32
-	if(strcmp("imgs", tname) == 0)
-		return new f_imgs(fname);
-
-#ifdef FWINDOW
-	/* DirectX based filters*/
-	if(strcmp("dswin", tname) == 0)
-		return new f_ds_window(fname);
-
-	if(strcmp("syswin", tname) == 0)
-		return new f_sys_window(fname);
-
-	if(strcmp("spwin", tname) == 0)
-		return new f_sprot_window(fname);
-
-	if(strcmp("ptzwin", tname) == 0)
-		return new f_ptz_window(fname);
-
-	if(strcmp("inspector", tname) == 0)
-		return new f_inspector(fname);
-#endif
-
-	/* DirectDraw based filters */
-	if(strcmp("vfile", tname) == 0)
-		return new f_ds_vfile(fname);
-
-	if(strcmp("vdev", tname) == 0)
-		return new f_ds_vdev(fname);
-
-#else /* for LINUX only */
-	if(strcmp("uvcam", tname) == 0)
-		return new f_uvc_cam(fname);
-#endif
-
-	// filter for communication
-	if(strcmp("trnimg", tname) == 0)
-		return new f_trn_img(fname);
-
-	if(strcmp("rcvimg", tname) == 0){
-		return new f_rcv_img(fname);
-	}
-
-	if(strcmp("trn", tname) == 0)
-		return new f_trn(fname);
-
-	if(strcmp("rcv", tname) == 0)
-		return new f_rcv(fname);
-
-
-	return NULL;
-}
 
 void * f_base::fthread(void * ptr)
 {
@@ -345,34 +310,6 @@ void * f_base::fthread(void * ptr)
 
 	filter->m_bstopped = true;
 	return NULL;
-}
-
-void f_base::init(){
-	pthread_mutex_init(&m_mutex, NULL);
-	pthread_cond_init(&m_cond,  NULL);
-	pthread_mutex_init(&m_err_mtx, NULL);
-	m_err_head = 0;
-	m_err_tail = 0;
-	m_file_err.open(FILE_FERR_LOG);
-
-#ifdef AVT_CAM
-	f_avt_cam::init_interface();
-#endif
-
-}
-
-void f_base::uninit(){
-
-#ifdef AVT_CAM
-	f_avt_cam::destroy_interface();
-#endif
-
-	flush_err_buf();
-	m_file_err.close();
-
-	pthread_mutex_destroy(&m_mutex);
-	pthread_cond_destroy(&m_cond);
-	pthread_mutex_destroy(&m_err_mtx);
 }
 
 void f_base::flush_err_buf(){
