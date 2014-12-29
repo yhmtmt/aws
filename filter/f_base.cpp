@@ -108,7 +108,13 @@ void f_base::register_factory()
 
 f_base* f_base::create(const char * tname, const char * fname)
 {
-	return m_fmap[tname](fname);
+	f_base * ptr = NULL;
+	try{
+		ptr = m_fmap[tname](fname);
+	}catch(...){
+		ptr = NULL;
+	}
+	return ptr;
 }
 
 void f_base::init(){
