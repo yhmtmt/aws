@@ -233,16 +233,23 @@ double s_model::get_max_dist()
 	return sqrt(dz * dz + dy * dy + dx * dx);
 }
 
-void s_model::render(
+void s_model::proj(vector<Point2f> & pt2ds,  Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
+		Mat & rvec_obj, Mat & tvec_obj)
+{
+	Mat rvec, tvec;
+	composeRT(rvec_cam, tvec_cam, rvec_obj, tvec_obj, rvec, tvec);
+	projectPoints(pts, rvec, tvec, cam_int, cam_dist, pt2ds);
+}
+
+void s_obj::render(s_model & mdl,
 	LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-	Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
-	Mat & rvec_obj, Mat & tvec_obj, 
 	int pttype, int state, int cur_point)
 {
 	// state 0: NORMAL -> 127
 	// state 1: STRONG -> 255
 	// state 2: GRAY -> 127,127,127
 	// state 3: WHITE -> 255,255,255
+	vector<s_edge> & edges = mdl.edges;
 
 	pttype %= 12; // {sq, dia, x, cross} x {red, green, blue}
 	int shape = pttype % 4;
@@ -270,22 +277,19 @@ void s_model::render(
 		color = D3DCOLOR_RGBA(val, val, val, 255);
 	}
 
-	Mat rvec, tvec;
-	composeRT(rvec_cam, tvec_cam, rvec_obj, tvec_obj, rvec, tvec);
-	projectPoints(pts, rvec, tvec, cam_int, cam_dist, pt2ds);		
 	pline->Begin();
 	for(int iedge = 0; iedge < edges.size(); iedge++){
 		D3DXVECTOR2 v[2];
-		Point2f & pt1 = pt2ds[edges[iedge].s];
-		Point2f & pt2 = pt2ds[edges[iedge].e];
+		Point2f & pt1 = pt2dprj[edges[iedge].s];
+		Point2f & pt2 = pt2dprj[edges[iedge].e];
 		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
 		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
 		pline->Draw(v, 2, color);
 	}
 	D3DXVECTOR2 v[5];
 	int size = 5;
-	for(int ipt = 0; ipt < pt2ds.size(); ipt++){
-		Point2f & pt = pt2ds[ipt];
+	for(int ipt = 0; ipt < pt2dprj.size(); ipt++){
+		Point2f & pt = pt2dprj[ipt];
 		if(ipt == cur_point){
 			v[0] = D3DXVECTOR2((float)(pt.x - 1.0), (float)(pt.y));
 			v[1] = D3DXVECTOR2((float)(pt.x - 3.0), (float)(pt.y));
@@ -707,15 +711,17 @@ bool f_inspector::proc()
 					obj.get_pts(), iobj, 0);
 			}			
 		}
+
 		int imodel = m_obj[iobj].get_model();
 		if(imodel != -1){
-			m_models[imodel].render(m_pd3dev, NULL, m_pline, 
+			m_models[imodel].proj(m_obj[iobj].pt2dprj,
 				m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam,
-				m_rvecs_obj[iobj], m_tvecs_obj[iobj], 
+				m_obj[iobj].rvec, m_obj[iobj].tvec);
+
+			m_obj[iobj].render(m_models[imodel], m_pd3dev, NULL, m_pline, 
 				iobj, 0, m_cur_obj_point);
 		}
 	}
-
 
 	m_maincam.ResetRenderTarget(m_pd3dev);
 	////////////////////// render 3d scene ///////////////////////////
@@ -1634,6 +1640,7 @@ void f_inspector::renderModel(long long timg)
 // F: Reset scale at original
 // O: op=OBJ Add New Object 
 // I: op=OBJ The current mdoel is assigned to the current object, then op<=OBJ3D
+// C: op=OBJ The current point is assigned to the current 3d point.
 // m: op <= MODEL
 // o: op <= OBJ
 // p: op <= POINT
@@ -1691,7 +1698,6 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 			pt.y *= (float) iscale;
 			pt.y += (float) m_ViewPort.Height;
 			m_obj[m_cur_obj].push_pt(pt);
-			m_model_points.push_back(-1);
 		}
 		break;
 	case MM_OBJROT:
@@ -1758,7 +1764,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 			}
 
 			if(m_cur_obj_point != -1){
-				m_cur_obj_point3d = m_model_points[m_cur_obj_point];
+				m_cur_obj_point3d = m_obj[m_cur_obj].get_3dpoint_idx(m_cur_obj_point);
 			}
 			break;
 		case MODEL: // decrement the current model index
@@ -1794,7 +1800,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 			m_cur_obj_point %= (int) m_obj[m_cur_obj].get_num_points();
 
 			if(m_cur_obj_point != -1){
-				m_cur_obj_point3d = m_model_points[m_cur_obj_point];
+				m_cur_obj_point3d = m_obj[m_cur_obj].get_3dpoint_idx(m_cur_obj_point);
 			}
 			break;
 		case MODEL: // increment the current model index.
@@ -1823,13 +1829,19 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		if(m_op != OBJ)
 			break;
 		m_obj.push_back(s_obj());
-		m_rvecs_obj.push_back(Mat::zeros(3, 1, CV_64FC1));
-		m_tvecs_obj.push_back(Mat::zeros(3, 1, CV_64FC1));
 		m_cur_obj = (int)(m_obj.size() - 1);
 		m_cur_obj_point = (int)(m_obj[m_cur_obj].get_num_points() - 1);
 		m_cur_obj_point3d = -1;
 		break;
 	case 'I':
+		if(m_cur_obj != -1 && m_cur_model != -1){
+			m_obj[m_cur_obj].set_model(m_cur_model);
+		}
+		break;
+	case 'C':
+		if(m_cur_obj_point != -1 && m_cur_obj_point3d != -1){
+			m_obj[m_cur_obj].set_3dpoint_idx(m_cur_obj_point, m_cur_obj_point3d);
+		}
 		break;
 	case 'm':
 		m_op = MODEL;

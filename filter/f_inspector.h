@@ -53,50 +53,51 @@ struct ModelVertex
 // finding closest 2d point for given (x, y), and returning the index and distance.
 void get_cursor_point(vector<Point2f> & pt2ds, int x, int y, int & idx, double & dist);
 
+struct s_edge{
+	int s, e;
+	s_edge():s(0), e(0){};
+};
+
 struct s_model
 {
-	struct s_edge{
-		int s, e;
-		s_edge():s(0), e(0){};
-	};
 
 	string name;
 	vector<Point3f> pts;
-	vector<Point2f> pt2ds;
 	vector<s_edge> edges;
 
 	int get_num_pts()
 	{
-		return pts.size();
-	}
-
-	// getting the nearest point and the distance to (x, y)
-	void get_cursor_point(int x, int y, int & idx, double & dist){
-		::get_cursor_point(pt2ds, x, y, idx, dist);
+		return (int) pts.size();
 	}
 
 	// get_max_dist calculates size of the bounding box of the model and	
 	// returns its diagonal length.
 	double get_max_dist();
 
+	void proj(vector<Point2f> & pt2d, Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
+		Mat & rvec_obj, Mat & tvec_obj);
+
 	// renders wire frame of the model by given camera parameters
 	void render(
 		LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-		Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
-		Mat & rvec_obj, Mat & tvec_obj, 
 		int pttype, int state, int cur_point);
 
 	bool load(const char * fname);
 };
 
+
 struct s_obj
 {
 	vector<Point2f> pt2d;
+	vector<Point2f> pt2dprj;
 	int imodel; // model index
 	vector<int> pt3didx; // corresponding 3d point index
 	vector<bool> bvisible; // true if 2d point is visible in the image
+	Mat tvec, rvec;
 
 	s_obj():imodel(-1){
+		tvec = Mat::zeros(3, 1, CV_64FC1);
+		rvec = Mat::zeros(3, 1, CV_64FC1);
 	};
 
 	int get_num_points(){
@@ -107,6 +108,11 @@ struct s_obj
 	void get_cursor_point(int x, int y, int & idx, double & dist)
 	{
 		::get_cursor_point(pt2d, x, y, idx, dist);
+	}
+
+	void get_cursor_point_prj(int x, int y, int & idx, double & dist)
+	{
+		::get_cursor_point(pt2dprj, x, y, idx, dist);
 	}
 
 	vector<Point2f> & get_pts(){
@@ -126,6 +132,17 @@ struct s_obj
 	int get_model(){
 		return imodel;
 	}
+
+	void set_3dpoint_idx(int apt2didx, int apt3didx){
+		pt3didx[apt2didx] = apt3didx;
+	}
+
+	int get_3dpoint_idx(int apt2didx){
+		return pt3didx[apt2didx];
+	}
+
+	void render(s_model & mdl, LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+		int pttype, int state, int cur_point);
 };
 
 class f_inspector: public f_ds_window
@@ -209,10 +226,7 @@ private:
 	int m_cur_obj_point; // current selected point of the object
 	int m_cur_obj_point3d; // current selected 3d point of the object
 	vector<s_obj> m_obj; // object points
-	vector<int> m_model_points; // indices of corresponding model points
-	vector<Mat> m_rvecs_obj; // Rotation of the object in the frame
-	vector<Mat> m_tvecs_obj; // Translation of the object in the frame
-	
+
 	// model poses in each time frame
 	vector<long long> m_pose_time;		// times corresponding model pose
 	vector<bool> m_bmodel_pose_fixed;	// true if model pose is fixed
