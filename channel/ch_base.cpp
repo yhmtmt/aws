@@ -50,32 +50,6 @@ using namespace cv;
 
 CHMap ch_base::m_chmap;
 
-void ch_base::init()
-{
-	register_factory();
-}
-
-void ch_base::uninit()
-{
-}
-
-void ch_base::register_factory()
-{
-	register_factory<ch_image_cln>("imgc");
-	register_factory<ch_image_ref>("imgr");
-	register_factory<ch_pvt>("pvt");
-	register_factory<ch_nmea>("nmea");
-	register_factory<ch_ais>("ais");
-	register_factory<ch_vector<s_binary_message> >("bmsg");
-	register_factory<ch_navdat>("ship");
-	register_factory<ch_ship_ctrl>("ship_ctrl");
-	register_factory<ch_vector<Rect>>("vrect");
-	register_factory<ch_vector<c_track_obj>>("trck");
-	register_factory<ch_ptz>("ptz");
-	register_factory<ch_ptzctrl>("ptzc");
-	register_factory<ch_campar>("campar");
-}
-
 ch_base * ch_base::create(const char * type_name, const char * chan_name)
 {	
 	ch_base * ptr = NULL;

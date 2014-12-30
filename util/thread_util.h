@@ -1,4 +1,5 @@
-
+#ifndef _AWS_THREAD_H_
+#define _AWS_THREAD_H_
 #include <pthread.h>
 
 class pthread_lock{
@@ -13,3 +14,4 @@ public:
 	}
 };
 
+#endif

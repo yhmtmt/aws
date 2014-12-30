@@ -107,11 +107,18 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 
 	add_arg("-tzm", "Time Zone in minutes.");
 	add_val(&m_time_zone_minute, "int");
+
+	// Initializing filter globals
 	f_base::init();
+
+	// Initializing channel globals
+	ch_base::init();
+
 	// mutex for main thread and command thread
 	pthread_mutex_init(&m_mtx, NULL);
 	pthread_cond_init(&m_cnd_ret, NULL);
 	pthread_cond_init(&m_cnd_none, NULL);
+
 #ifdef _WIN32
 	// initialize winsock2
 	WSAStartup(MAKEWORD(2, 0), &m_wsad);
@@ -126,6 +133,7 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 c_aws::~c_aws()
 {
 	f_base::uninit();
+	ch_base::uninit();
 	clear();
 
 #ifdef WIN32

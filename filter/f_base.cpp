@@ -15,11 +15,6 @@
 // You should have received a copy of the GNU General Public License
 // along with f_base.  If not, see <http://www.gnu.org/licenses/>. 
 
-#include <cstdio>
-#ifndef _WIN32
-#include <linux/videodev2.h>
-#endif
-
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -28,83 +23,14 @@
 #include <cmath>
 using namespace std;
 
-#define XMD_H
-#ifdef SANYO_HD5400
-#include <jpeglib.h>
-#include <curl/curl.h>
-#endif
-
 #include <opencv2/opencv.hpp>
 using namespace cv;
-#include "../util/aws_sock.h"
-#include "../util/thread_util.h"
+
 #include "../util/c_clock.h"
-#include "../util/coord.h"
-#include "../util/c_ship.h"
-#include "../util/c_imgalign.h"
-#include "../channel.h"
-#include "../filter.h"
+#include "f_base.h"
 
 /////////////////////////////////////////////////////////////// filter factory
 FMap f_base::m_fmap;
-
-void f_base::register_factory()
-{
-	register_factory<f_sample>("sample");
-	register_factory<f_nmea>("nmea");
-	register_factory<f_nmea_proc>("nmea_proc");
-
-	// image processing
-	register_factory<f_imgshk>("imgshk");
-	register_factory<f_debayer>("debayer");
-	register_factory<f_gry>("gry");
-	register_factory<f_edge>("edge");
-	register_factory<f_imreg>("imreg");
-	register_factory<f_bkgsub>("bkgsub");
-	register_factory<f_houghp>("hough");
-	register_factory<f_gauss>("gauss");
-	register_factory<f_clip>("clip");
-	register_factory<f_stabilizer>("stab");
-	register_factory<f_tracker>("trck");
-	register_factory<f_ship_detector>("shipdet");
-	register_factory<f_camcalib>("camcalib");
-
-	register_factory<f_imwrite>("imwrite");
-
-	// windows
-#ifdef FWINDOW
-	register_factory<f_window>("window");
-	register_factory<f_mark_window>("mwin");
-#ifdef _WIN32
-	register_factory<f_ds_window>("dswin");
-	register_factory<f_sys_window>("syswin");
-	register_factory<f_sprot_window>("spwin");
-	register_factory<f_ptz_window>("ptzwin");
-	register_factory<f_inspector>("inspector");
-#endif
-#endif
-	// video sources
-#ifdef SANYO_HD5400
-	register_factory<f_netcam>("hd5400");
-#endif
-
-#ifdef AVT_CAM
-	register_factory<f_avt_cam>("avtcam");
-#endif
-#ifdef UVC_CAM
-	register_factory<f_uvc_cam>("uvcam");
-#endif
-
-#ifdef _WIN32
-	register_factory<f_ds_vfile>("vfile");
-	register_factory<f_ds_vdev>("vdev");
-#endif
-	// communication
-	register_factory<f_trn_img>("trnimg");
-	register_factory<f_rcv_img>("rcvimg");
-	register_factory<f_trn>("trn");
-	register_factory<f_rcv>("rcv");
-}
 
 f_base* f_base::create(const char * tname, const char * fname)
 {
@@ -116,36 +42,6 @@ f_base* f_base::create(const char * tname, const char * fname)
 	}
 	return ptr;
 }
-
-void f_base::init(){
-	pthread_mutex_init(&m_mutex, NULL);
-	pthread_cond_init(&m_cond,  NULL);
-	pthread_mutex_init(&m_err_mtx, NULL);
-	m_err_head = 0;
-	m_err_tail = 0;
-	m_file_err.open(FILE_FERR_LOG);
-
-	f_base::register_factory();
-
-#ifdef AVT_CAM
-	f_avt_cam::init_interface();
-#endif
-}
-
-void f_base::uninit(){
-
-#ifdef AVT_CAM
-	f_avt_cam::destroy_interface();
-#endif
-
-	flush_err_buf();
-	m_file_err.close();
-
-	pthread_mutex_destroy(&m_mutex);
-	pthread_cond_destroy(&m_cond);
-	pthread_mutex_destroy(&m_err_mtx);
-}
-
 //////////////////////////////////////////////////// filter parameter
 bool f_base::s_fpar::set(const char * valstr){	
 	switch(type){

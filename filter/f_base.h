@@ -38,8 +38,9 @@
 // you should implement this function if you assume that the filter is used 
 // in the offline mode.
 
+#include "../util/util.h"
 #include "../command.h"
-
+#include "../channel/ch_base.h"
 
 class f_base;
 
@@ -66,9 +67,6 @@ class f_base;
 #define FERR_TRN_IMG_CHAN (FERR_TRN_IMG + 1)
 #define FERR_TRN_IMG_SOCK_SVR (FERR_TRN_IMG + 2)
 #define FERR_TRN_IMG_SOCK_SVR_CON (FERR_TRN_IMG + 3)
-
-#include "../util/util.h"
-class f_base;
 
 typedef f_base * (*CreateFilter)(const char * name);
 template <class T> f_base * createFilter(const char * name)

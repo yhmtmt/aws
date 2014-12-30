@@ -1,3 +1,5 @@
+#ifndef _CH_BASE_H_
+#define _CH_BASE_H_
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -84,3 +86,5 @@ public:
 
 	virtual void tran() = 0;
 };
+
+#endif

@@ -97,12 +97,12 @@ endif
 FOBJS = $(addsuffix .o,$(FILTER))
 COBJS = $(addsuffix .o,$(CHANNEL))
 UOBJS = $(addsuffix .o,$(UTIL))
-OBJS = command.o c_aws.o aws.o 
+OBJS = command.o c_aws.o aws.o factory.o
 
 FSRCS = $(addsuffix .cpp,$(FILTER))
 CSRCS = $(addsuffix .cpp,$(CHANNEL))
 USRCS = $(addsuffix .cpp,$(UTIL))
-SRCS = command.cpp c_aws.cpp aws.cpp
+SRCS = command.cpp c_aws.cpp aws.cpp factory.cpp
 
 EXE = aws
 FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS)
