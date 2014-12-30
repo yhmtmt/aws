@@ -15,7 +15,7 @@
 // along with f_avt_cam.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "PvApi.h"
-
+#include "../channel/ch_image.h"
 
 class f_avt_cam: public f_base
 {

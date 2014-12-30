@@ -39,7 +39,6 @@ using namespace cv;
 #include "../util/c_clock.h"
 
 #include "../util/util.h"
-#include "../channel.h"
 #include "f_base.h"
 #include "f_misc.h"
 

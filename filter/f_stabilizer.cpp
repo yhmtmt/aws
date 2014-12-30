@@ -41,8 +41,6 @@ using namespace cv;
 #include "f_base.h"
 #include "f_stabilizer.h"
 
-
-
 ////////////////////////////////////////////////////////////// f_stabilizer
 const char * f_stabilizer::m_strIntlType[EIT_UNKNOWN] = 
 {

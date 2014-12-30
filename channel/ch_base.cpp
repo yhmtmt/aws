@@ -45,8 +45,7 @@ using namespace cv;
 
 #include "../util/c_ship.h"
 #include "../util/c_imgalign.h"
-#include "../channel.h"
-#include "../filter.h"
+#include "ch_base.h"
 
 CHMap ch_base::m_chmap;
 

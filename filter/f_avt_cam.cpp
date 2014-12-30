@@ -34,7 +34,6 @@ using namespace cv;
 #include "../util/thread_util.h"
 #include "../util/c_clock.h"
 #include "../util/util.h"
-#include "../channel.h"
 #include "f_base.h"
 #include "f_avt_cam.h"
 

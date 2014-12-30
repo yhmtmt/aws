@@ -13,6 +13,8 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_cam.h.  If not, see <http://www.gnu.org/licenses/>. 
+#include "../channel/ch_image.h"
+#include "../channel/ch_campar.h"
 
 enum e_frm_state{
 	EFS_NONE, EFS_NEW, EFS_SHOW,

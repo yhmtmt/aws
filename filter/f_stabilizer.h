@@ -57,7 +57,7 @@ public:
 	f_stabilizer(const char * name):f_base(name), m_bclr(false),
 		m_beta(0.0001), m_disp_inf(true), m_bweight(false), m_brobust(false),
 		m_th_robust(100.0), m_sz_hblk(4, 4),
-		m_num_pyr_level(4), m_num_itrs(10), m_roi(0,0,0,0), m_bWinit(false),
+		m_num_pyr_level(4), m_num_itrs(5), m_roi(0,0,0,0), m_bWinit(false),
 		m_bmask(false), m_bthrough(false), m_num_conv_frms(0),
 		m_num_frms(0)
 	{

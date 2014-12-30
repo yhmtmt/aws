@@ -13,6 +13,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_misc.h.  If not, see <http://www.gnu.org/licenses/>. 
+#include "../channel/ch_image.h"
 
 class f_misc: public f_base
 {
