@@ -419,14 +419,12 @@ Ovverride if you need to destroy something before stopping it.
 * `virtual bool proc()`  
 The main function of the filter. The function is iteratively called by the framework during running state. If you return false, the filter graph is stopped totally.
 
-#### Insert your filter to the factory function.
-To instantiate your filter with "filter" command, you need to insert the instantiation code to the factory function. Factory function "f_base * f_base::create(const char * tname, const char * fname)" is in "filter/f_base.cpp". You should add following code,
+#### Register your filter to the system.
+To instantiate your filter with "filter" command, you need to register it to the system by inserting a registration code. In the file "factory.cpp", first, you need to include a header file includes your filter class. Then, please insert the following code to f_base::register_factory().
  
-    if(strcmp("filter", tname) == 0){
-      return new f_filter(tname);
-    }
+    register_factory<f_filter>("filter")
      
-Where "filter" is the name of the filter class. Of course, "f_filter" should be defined in this scope, you need to include your header file at "filter/f_base.h". Also, your filter source code should be placed in the directory "filter".
+Where "filter" is the name of the filter class. 
 
 #### Declare parameters and register them if you need to get or set their values from outside the process.
 You can expose most of the types of parameters to outside of the system easily by calling "register_fpar()" series inside the constructor "f_filter(const char*)". For most of the  parameter types, "register_fpar()" is called as follow,
@@ -479,11 +477,9 @@ You may need to design new channels to connect your own filters.
 The constructor has a "const char * " argument, and the initialization list has ch_base initialization.  
 
 #### Insert instantiation code to the factory function
-Include your definition to "ch_base.h" and insert following code to "ch_base::create(const char * type_name, const char * chan_name)"  
+Include your header file defines your own channel in "factory.cpp" and insert following code to "ch_base::register_factory()"  
      
-    if(strcmp("channel", type_name) == 0){
-      return new ch_channel(chan_name);
-    }
+    register_factory<ch_channel>("channel");
      
 #### Define and implement your setter/getter with mutual exclusion.
 You can add your own setter/getter function. Be careful that the channel can be accessed from multiple filters simultaneously. The setter/getter should correctly use the mutual exclusion methods "lock()" and "unlock()" prepared in ch_base().
