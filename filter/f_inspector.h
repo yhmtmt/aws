@@ -51,7 +51,12 @@ struct ModelVertex
     static const DWORD FVF;   
 };   
 // finding closest 2d point for given (x, y), and returning the index and distance.
-void get_cursor_point(vector<Point2f> & pt2ds, int x, int y, int & idx, double & dist);
+void get_cursor_point(vector<Point2f> & pt2ds, float x, float y, int & idx, double & dist);
+
+struct s_model;
+void render_prjpts(s_model & mdl, vector<Point2f> & pts,
+	LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+	int pttype, int state, int cur_point);
 
 struct s_edge{
 	int s, e;
@@ -77,11 +82,6 @@ struct s_model
 	void proj(vector<Point2f> & pt2d, Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
 		Mat & rvec_obj, Mat & tvec_obj);
 
-	// renders wire frame of the model by given camera parameters
-	void render(
-		LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-		int pttype, int state, int cur_point);
-
 	bool load(const char * fname);
 };
 
@@ -105,12 +105,12 @@ struct s_obj
 	}
 
 	// getting the nearest point and the distance to (x, y)
-	void get_cursor_point(int x, int y, int & idx, double & dist)
+	void get_cursor_point(float x, float y, int & idx, double & dist)
 	{
 		::get_cursor_point(pt2d, x, y, idx, dist);
 	}
 
-	void get_cursor_point_prj(int x, int y, int & idx, double & dist)
+	void get_cursor_point_3d(float x, float y, int & idx, double & dist)
 	{
 		::get_cursor_point(pt2dprj, x, y, idx, dist);
 	}

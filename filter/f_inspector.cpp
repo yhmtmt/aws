@@ -46,22 +46,131 @@ using namespace cv;
 const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  
 
 //////////////////////////////////////////////////////////////// helper function
-void get_cursor_point(vector<Point2f> & pt2ds, int x, int y, int & idx, double & dist)
+void get_cursor_point(vector<Point2f> & pt2ds, float x, float y, int & idx, double & dist)
 {
 	dist = DBL_MAX;
 	for(int i = 0; i < pt2ds.size(); i++)
 	{
 		Point2f & pt = pt2ds[i];
-		double dx = pt.x - (float) x;
-		double dy = pt.y - (float) y;
+		double dx = pt.x -  x;
+		double dy = pt.y -  y;
 		double d = dx * dx + dy * dy;
 		if(d < dist){
 			dist = d;
 			idx = i;
 		}
 	}
+	dist = sqrt(dist);
 }
 
+void render_prjpts(s_model & mdl, vector<Point2f> & pt2dprj,
+	LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+	int pttype, int state, int cur_point)
+{
+	// state 0: NORMAL -> 127
+	// state 1: STRONG -> 255
+	// state 2: GRAY -> 127,127,127
+	// state 3: WHITE -> 255,255,255
+	vector<s_edge> & edges = mdl.edges;
+
+	pttype %= 12; // {sq, dia, x, cross} x {red, green, blue}
+	int shape = pttype % 4;
+	int val;
+	if(state == 0 || state == 2){
+		val = 128;
+	}else if(state == 1 || state == 3){
+		val = 255;
+	}
+
+	D3DCOLOR color;
+	if(state < 2){
+		switch(pttype / 4){
+		case 0:
+			color = D3DCOLOR_RGBA(val, 0, 0, 255);
+			break;
+		case 1:
+			color = D3DCOLOR_RGBA(0, val, 0, 255);
+			break;
+		case 2:
+			color = D3DCOLOR_RGBA(0, 0, val, 255);
+			break;
+		}
+	}else{
+		color = D3DCOLOR_RGBA(val, val, val, 255);
+	}
+
+	pline->Begin();
+	for(int iedge = 0; iedge < edges.size(); iedge++){
+		D3DXVECTOR2 v[2];
+		Point2f & pt1 = pt2dprj[edges[iedge].s];
+		Point2f & pt2 = pt2dprj[edges[iedge].e];
+		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
+		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
+		pline->Draw(v, 2, color);
+	}
+	D3DXVECTOR2 v[5];
+	int size = 5;
+	for(int ipt = 0; ipt < pt2dprj.size(); ipt++){
+		Point2f & pt = pt2dprj[ipt];
+		if(ipt == cur_point){
+			v[0] = D3DXVECTOR2((float)(pt.x - 1.0), (float)(pt.y));
+			v[1] = D3DXVECTOR2((float)(pt.x - 3.0), (float)(pt.y));
+			pline->Draw(v, 2, color);
+			v[0].x += 4.0;
+			v[1].x += 4.0;
+			pline->Draw(v, 2, color);
+			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 1.0));
+			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 3.0));
+			pline->Draw(v, 2, color);
+			v[0].y += 4.0;
+			v[1].y += 4.0;
+			pline->Draw(v, 2, color);
+			continue;
+		}
+
+		switch(shape){
+		case 0: // square
+			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
+			v[2] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
+			v[4] = v[0];
+			pline->Draw(v, 5, color);
+			break;
+		case 1: // diamond
+			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
+			v[2] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
+			v[4] = v[0];
+			pline->Draw(v, 5, color);
+			break;
+		case 2: // X
+			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
+			pline->Draw(v, 2, color);
+			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
+			pline->Draw(&v[2], 2, color);
+			break;
+		case 3:
+			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
+			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
+			pline->Draw(v, 2, color);
+			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
+			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
+			pline->Draw(&v[2], 2, color);
+			break;
+		}
+
+		if(ptxt != NULL){
+			char buf[10];
+			sprintf(buf, "%d", ipt);
+			ptxt->render(pd3dev, buf, pt.x, (float)(pt.y + 3.0), 1.0, 0.0, EDTC_CB, color); 
+		}
+	}
+	pline->End();
+}
 ///////////////////////////////////////////////////////////////// for cminpack
 struct s_package {
 	int num_models;
@@ -241,115 +350,6 @@ void s_model::proj(vector<Point2f> & pt2ds,  Mat & cam_int, Mat & cam_dist, Mat 
 	projectPoints(pts, rvec, tvec, cam_int, cam_dist, pt2ds);
 }
 
-void s_obj::render(s_model & mdl,
-	LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-	int pttype, int state, int cur_point)
-{
-	// state 0: NORMAL -> 127
-	// state 1: STRONG -> 255
-	// state 2: GRAY -> 127,127,127
-	// state 3: WHITE -> 255,255,255
-	vector<s_edge> & edges = mdl.edges;
-
-	pttype %= 12; // {sq, dia, x, cross} x {red, green, blue}
-	int shape = pttype % 4;
-	int val;
-	if(state == 0 || state == 2){
-		val = 128;
-	}else if(state == 1 || state == 3){
-		val = 255;
-	}
-
-	D3DCOLOR color;
-	if(state < 2){
-		switch(pttype / 4){
-		case 0:
-			color = D3DCOLOR_RGBA(val, 0, 0, 255);
-			break;
-		case 1:
-			color = D3DCOLOR_RGBA(0, val, 0, 255);
-			break;
-		case 2:
-			color = D3DCOLOR_RGBA(0, 0, val, 255);
-			break;
-		}
-	}else{
-		color = D3DCOLOR_RGBA(val, val, val, 255);
-	}
-
-	pline->Begin();
-	for(int iedge = 0; iedge < edges.size(); iedge++){
-		D3DXVECTOR2 v[2];
-		Point2f & pt1 = pt2dprj[edges[iedge].s];
-		Point2f & pt2 = pt2dprj[edges[iedge].e];
-		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
-		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
-		pline->Draw(v, 2, color);
-	}
-	D3DXVECTOR2 v[5];
-	int size = 5;
-	for(int ipt = 0; ipt < pt2dprj.size(); ipt++){
-		Point2f & pt = pt2dprj[ipt];
-		if(ipt == cur_point){
-			v[0] = D3DXVECTOR2((float)(pt.x - 1.0), (float)(pt.y));
-			v[1] = D3DXVECTOR2((float)(pt.x - 3.0), (float)(pt.y));
-			pline->Draw(v, 2, color);
-			v[0].x += 4.0;
-			v[1].x += 4.0;
-			pline->Draw(v, 2, color);
-			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 1.0));
-			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 3.0));
-			pline->Draw(v, 2, color);
-			v[0].y += 4.0;
-			v[1].y += 4.0;
-			pline->Draw(v, 2, color);
-			continue;
-		}
-
-		switch(shape){
-		case 0: // square
-			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
-			v[2] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
-			v[4] = v[0];
-			pline->Draw(v, 5, color);
-			break;
-		case 1: // diamond
-			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
-			v[2] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
-			v[4] = v[0];
-			pline->Draw(v, 5, color);
-			break;
-		case 2: // X
-			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
-			pline->Draw(v, 2, color);
-			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
-			pline->Draw(&v[2], 2, color);
-			break;
-		case 3:
-			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
-			pline->Draw(v, 2, color);
-			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
-			pline->Draw(&v[2], 2, color);
-			break;
-		}
-
-		if(ptxt != NULL){
-			char buf[10];
-			sprintf(buf, "%d", ipt);
-			ptxt->render(pd3dev, buf, pt.x, (float)(pt.y + 3.0), 1.0, 0.0, EDTC_CB, color); 
-		}
-	}
-	pline->End();
-}
-
 bool s_model::load(const char * fname)
 {
 	FileStorage fs;
@@ -425,6 +425,14 @@ bool s_model::load(const char * fname)
 
 	return true;
 }
+
+void s_obj::render(s_model & mdl,
+	LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+	int pttype, int state, int cur_point)
+{
+	render_prjpts(mdl, pt2dprj, pd3dev, ptxt, pline, pttype, state, cur_point);
+}
+
 
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[f_inspector::UNKNOWN]
@@ -1610,8 +1618,9 @@ void f_inspector::renderModel(long long timg)
 		// calculating camera translation (set as zero)
 		m_tvec_cam_mdl = Mat::zeros(1, 3, CV_64FC1);
 		
-		m_models[m_cur_model].render(m_pd3dev, NULL, m_pline, m_cam_int_mdl, m_cam_dist_mdl,
-			m_rvec_cam_mdl, m_tvec_cam_mdl, m_rvec_mdl, m_tvec_mdl, m_cur_model, 0, -1);
+		vector<Point2f> pts;
+		m_models[m_cur_model].proj(pts, m_cam_int_mdl, m_cam_dist_mdl, m_rvec_cam_mdl, m_tvec_cam_mdl, m_rvec_mdl, m_tvec_mdl);
+		render_prjpts(m_models[m_cur_model], pts, m_pd3dev, NULL, m_pline, m_cur_model, 0, -1);	
 	}
 }
 
@@ -1697,12 +1706,41 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 			pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
 			pt.y *= (float) iscale;
 			pt.y += (float) m_ViewPort.Height;
-			m_obj[m_cur_obj].push_pt(pt);
+			int idx;
+			double dist;
+			m_obj[m_cur_obj].get_cursor_point(pt.x, pt.y, idx, dist);
+			if(idx < 0 && dist < 1.0){
+				m_obj[m_cur_obj].push_pt(pt);
+				m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
+			}else{
+				m_cur_obj_point = idx;
+			}
 		}
 		break;
 	case MM_OBJROT:
+		break;
 	case MM_OBJTRAN:
+		break;
 	case MM_POINT3D:
+		{
+			if(m_obj.size() == 0)
+				break;
+
+			Point2f pt;
+			double iscale = 1.0 / m_main_scale;
+			pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
+			pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
+			pt.y *= (float) iscale;
+			pt.y += (float) m_ViewPort.Height;
+			int idx;
+			double dist;
+			m_obj[m_cur_obj].get_cursor_point_3d(pt.x, pt.y, idx, dist);
+			if(idx < 0 && dist < 1.0){
+				m_cur_obj_point3d = idx;
+			}else{
+				m_cur_obj_point3d = -1;
+			}
+		}
 		break;
 	}
 };
