@@ -20,7 +20,7 @@ bool c_fls::send_cmd(int argc, char ** argv)
     cerr << "Filter List cannot be enumerated." << endl;
     return false;
   }
-  cout << "#Filter List (" << num_filters << " filters found." << endl;
+  cout << "#Filter List (" << num_filters << ") filters found." << endl;
 
   for(int ifilter = 0; ifilter < num_filters; ifilter++){
     if(!get_filter_inf(ifilter)){
@@ -54,6 +54,12 @@ int c_fls::get_num_filters()
 bool c_fls::get_filter_inf(int ifilter)
 {
   sprintf(buf, "finf n %d", ifilter);
+  int ret = send(sock, buf, CMD_LEN, 0);
+  if(ret == -1){
+    cerr << "Failed to send command." << endl;
+    return -1;
+  }
+
   const char * res;
   if(res = recv_result()){
     cout << res << endl;
