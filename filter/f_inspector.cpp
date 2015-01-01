@@ -1691,167 +1691,234 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 	extractPointlParam(lParam, m_mc);
 	switch(m_mm){
 	case MM_SCROLL:
-		m_main_offset.x += (float)(m_mc.x - m_pt_sc_start.x);
-		m_main_offset.y += (float)(m_mc.y - m_pt_sc_start.y);
-		m_mm = MM_NORMAL;
+		scroll_screen();
 		break;
 	case MM_POINT:
-		{
-			if(m_obj.size() == 0)
-				break;
-
-			Point2f pt;
-			double iscale = 1.0 / m_main_scale;
-			pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
-			pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
-			pt.y *= (float) iscale;
-			pt.y += (float) m_ViewPort.Height;
-			int idx;
-			double dist;
-			m_obj[m_cur_obj].get_cursor_point(pt.x, pt.y, idx, dist);
-			if(idx < 0 && dist < 1.0){
-				m_obj[m_cur_obj].push_pt(pt);
-				m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
-			}else{
-				m_cur_obj_point = idx;
-			}
-		}
+		select_or_add_point2d();
 		break;
 	case MM_OBJROT:
+		rotate_xy();
 		break;
 	case MM_OBJTRAN:
+		translate_xy();
 		break;
 	case MM_POINT3D:
-		{
-			if(m_obj.size() == 0)
-				break;
-
-			Point2f pt;
-			double iscale = 1.0 / m_main_scale;
-			pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
-			pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
-			pt.y *= (float) iscale;
-			pt.y += (float) m_ViewPort.Height;
-			int idx;
-			double dist;
-			m_obj[m_cur_obj].get_cursor_point_3d(pt.x, pt.y, idx, dist);
-			if(idx < 0 && dist < 1.0){
-				m_cur_obj_point3d = idx;
-			}else{
-				m_cur_obj_point3d = -1;
-			}
-		}
+		select_point3d();
 		break;
 	}
+	m_mm = MM_NORMAL;
 };
+
+void f_inspector::select_or_add_point2d()
+{
+	if(m_obj.size() == 0)
+		return;
+
+	Point2f pt;
+	double iscale = 1.0 / m_main_scale;
+	pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
+	pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
+	pt.y *= (float) iscale;
+	pt.y += (float) m_ViewPort.Height;
+	int idx;
+	double dist;
+	m_obj[m_cur_obj].get_cursor_point(pt.x, pt.y, idx, dist);
+	if(idx < 0 && dist < 1.0){
+		m_obj[m_cur_obj].push_pt(pt);
+		m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
+	}else{
+		m_cur_obj_point = idx;
+	}
+}
+
+void f_inspector::select_point3d()
+{
+	if(m_obj.size() == 0)
+		return;
+
+	Point2f pt;
+	double iscale = 1.0 / m_main_scale;
+	pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
+	pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
+	pt.y *= (float) iscale;
+	pt.y += (float) m_ViewPort.Height;
+	int idx;
+	double dist;
+	m_obj[m_cur_obj].get_cursor_point_3d(pt.x, pt.y, idx, dist);
+	if(idx < 0 && dist < 1.0){
+		m_cur_obj_point3d = idx;
+	}else{
+		m_cur_obj_point3d = -1;
+	}
+}
 
 void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 {
 	extractPointlParam(lParam, m_mc);
 	switch(m_mm){
 	case MM_SCROLL:
+		scroll_screen();
+		break;
+	case MM_OBJTRAN:
+		translate_xy();
+		break;
+	case MM_OBJROT:
+		rotate_xy();
+		break;
+	}
+}
+
+void f_inspector::scroll_screen()
+{
 		m_main_offset.x += (float)(m_mc.x - m_pt_sc_start.x);
 		m_main_offset.y += (float)(m_mc.y - m_pt_sc_start.y);
 		m_pt_sc_start = m_mc;
-	}
+}
+
+void f_inspector::translate_xy()
+{
+}
+
+void f_inspector::rotate_xy()
+{
 }
 
 void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 {
+	// Notice: Screen coordinate in WM_MOUSEWHEEL is different from other 
+	// mouse related message. We need to subtract origin of the client screen
+	// from the point sent by the message. 
 	extractPointlParam(lParam, m_mc);
 	m_mc.x -= m_client_org.x;
 	m_mc.y -= m_client_org.y;
 
 	short delta = GET_WHEEL_DELTA_WPARAM(wParam);
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
-			short step = delta / WHEEL_DELTA;
-			float scale = (float) pow(1.1, (double) step);
-			m_main_scale *=  scale;
-			float x, y;
-			x = (float)(m_main_offset.x - m_mc.x) * scale;
-			y = (float)((int) m_ViewPort.Height + m_main_offset.y - m_mc.y) * scale;
-			m_main_offset.x =  (float)(x + (double) m_mc.x);
-			m_main_offset.y =  (float)(y + (double) m_mc.y - (double) m_ViewPort.Height);
+		switch(m_op){
+		case OBJ:
+		case POINT:
+			zoom_screen(delta);
+		case OBJ3D:
+		case POINT3D:
+			translate_z(delta);
+		}
+		zoom_screen(delta);
+	}else if(GET_KEYSTATE_WPARAM(wParam) & MK_CONTROL){
+		switch(m_op){
+		case OBJ3D:
+		case POINT3D:
+			rotate_z(delta);
+		}
 	}
+}
+
+void f_inspector::zoom_screen(short delta)
+{
+	short step = delta / WHEEL_DELTA;
+	float scale = (float) pow(1.1, (double) step);
+	m_main_scale *=  scale;
+	float x, y;
+	x = (float)(m_main_offset.x - m_mc.x) * scale;
+	y = (float)((int) m_ViewPort.Height + m_main_offset.y - m_mc.y) * scale;
+	m_main_offset.x =  (float)(x + (double) m_mc.x);
+	m_main_offset.y =  (float)(y + (double) m_mc.y - (double) m_ViewPort.Height);
+}
+
+void f_inspector::translate_z(short delta)
+{
+}
+
+void f_inspector::rotate_z(short delta)
+{
 }
 
 void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 {
 	switch(wParam){
 	case VK_LEFT:
-		switch(m_op){
-		case OBJ:
-		case OBJ3D: // decrement current object index
-			{
-				m_cur_obj = m_cur_obj - 1;
-				if(m_cur_obj < 0){
-					m_cur_obj += (int) m_obj.size();
-				}
-				// the current object point index is initialized
-				m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
-				int imodel = m_obj[m_cur_obj].get_model();
-				if(imodel != -1){ // if model is assigned, the 3d-object point index is initialized.
-					m_cur_obj_point3d = m_models[imodel].get_num_pts() - 1;
-				}
-			}
-			break;
-		case POINT: // decrement current object point. 3d-object point is also. 
-			m_cur_obj_point = m_cur_obj_point  - 1;
-			if(m_cur_obj_point < 0){
-				m_cur_obj_point += (int) m_obj[m_cur_obj].get_num_points();
-			}
-
-			if(m_cur_obj_point != -1){
-				m_cur_obj_point3d = m_obj[m_cur_obj].get_3dpoint_idx(m_cur_obj_point);
-			}
-			break;
-		case MODEL: // decrement the current model index
-			m_cur_model = m_cur_model - 1;
-			if(m_cur_model < 0){
-				m_cur_model += (int) m_models.size();
-			}
-			break;
-		case POINT3D: // increment the current 3d-object point index.
-			m_cur_obj_point3d = m_cur_obj_point3d - 1;
-			if(m_cur_obj_point3d < 0){
-				m_cur_obj_point3d += (int) m_models[m_obj[m_cur_obj].get_model()].get_num_pts();
-			}
-			break;
-		}
+		handle_vk_left();
 		break;
 	case VK_RIGHT:
-		switch(m_op){
-		case OBJ:
-		case OBJ3D: // increment the current object index.
-			{
-				m_cur_obj = m_cur_obj + 1;
-				m_cur_obj %= (int) m_obj.size();
-				m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
-				int imodel = m_obj[m_cur_obj].get_model();
-				if(imodel != -1){
-					m_cur_obj_point3d = m_models[imodel].get_num_pts() - 1;
-				}
-			}
-			break;
-		case POINT: // increment the current object point index. The 3d-object point index as well.
-			m_cur_obj_point = m_cur_obj_point + 1;
-			m_cur_obj_point %= (int) m_obj[m_cur_obj].get_num_points();
-
-			if(m_cur_obj_point != -1){
-				m_cur_obj_point3d = m_obj[m_cur_obj].get_3dpoint_idx(m_cur_obj_point);
-			}
-			break;
-		case MODEL: // increment the current model index.
-			m_cur_model = m_cur_model + 1;
-			m_cur_model %= (int) m_models.size();
-			break;
-		case POINT3D: // increment the current 3d-object point index
-			m_cur_obj_point3d = m_cur_obj_point3d + 1;
-			m_cur_obj_point3d %= (int) m_models[m_obj[m_cur_obj].get_model()].get_num_pts();
-			break;
-		}
+		handle_vk_right();
 		break;
 	default:
+		break;
+	}
+}
+
+void f_inspector::handle_vk_left()
+{
+	switch(m_op){
+	case OBJ:
+	case OBJ3D: // decrement current object index
+		{
+			m_cur_obj = m_cur_obj - 1;
+			if(m_cur_obj < 0){
+				m_cur_obj += (int) m_obj.size();
+			}
+			// the current object point index is initialized
+			m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
+			int imodel = m_obj[m_cur_obj].get_model();
+			if(imodel != -1){ // if model is assigned, the 3d-object point index is initialized.
+				m_cur_obj_point3d = m_models[imodel].get_num_pts() - 1;
+			}
+		}
+		break;
+	case POINT: // decrement current object point. 3d-object point is also. 
+		m_cur_obj_point = m_cur_obj_point  - 1;
+		if(m_cur_obj_point < 0){
+			m_cur_obj_point += (int) m_obj[m_cur_obj].get_num_points();
+		}
+
+		if(m_cur_obj_point != -1){
+			m_cur_obj_point3d = m_obj[m_cur_obj].get_3dpoint_idx(m_cur_obj_point);
+		}
+		break;
+	case MODEL: // decrement the current model index
+		m_cur_model = m_cur_model - 1;
+		if(m_cur_model < 0){
+			m_cur_model += (int) m_models.size();
+		}
+		break;
+	case POINT3D: // increment the current 3d-object point index.
+		m_cur_obj_point3d = m_cur_obj_point3d - 1;
+		if(m_cur_obj_point3d < 0){
+			m_cur_obj_point3d += (int) m_models[m_obj[m_cur_obj].get_model()].get_num_pts();
+		}
+		break;
+	}
+}
+
+void f_inspector::handle_vk_right()
+{
+	switch(m_op){
+	case OBJ:
+	case OBJ3D: // increment the current object index.
+		{
+			m_cur_obj = m_cur_obj + 1;
+			m_cur_obj %= (int) m_obj.size();
+			m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
+			int imodel = m_obj[m_cur_obj].get_model();
+			if(imodel != -1){
+				m_cur_obj_point3d = m_models[imodel].get_num_pts() - 1;
+			}
+		}
+		break;
+	case POINT: // increment the current object point index. The 3d-object point index as well.
+		m_cur_obj_point = m_cur_obj_point + 1;
+		m_cur_obj_point %= (int) m_obj[m_cur_obj].get_num_points();
+
+		if(m_cur_obj_point != -1){
+			m_cur_obj_point3d = m_obj[m_cur_obj].get_3dpoint_idx(m_cur_obj_point);
+		}
+		break;
+	case MODEL: // increment the current model index.
+		m_cur_model = m_cur_model + 1;
+		m_cur_model %= (int) m_models.size();
+		break;
+	case POINT3D: // increment the current 3d-object point index
+		m_cur_obj_point3d = m_cur_obj_point3d + 1;
+		m_cur_obj_point3d %= (int) m_models[m_obj[m_cur_obj].get_model()].get_num_pts();
 		break;
 	}
 }

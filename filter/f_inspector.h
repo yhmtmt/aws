@@ -58,11 +58,15 @@ void render_prjpts(s_model & mdl, vector<Point2f> & pts,
 	LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 	int pttype, int state, int cur_point);
 
+// s_edge represents the edge between points defined in the s_model
+// This is used for drawing the wire frame model. 
 struct s_edge{
 	int s, e;
 	s_edge():s(0), e(0){};
 };
 
+// s_model represents a 3D model tracked in the scene by f_inspector.
+// It contains points and edges, and their projection method.
 struct s_model
 {
 
@@ -85,7 +89,9 @@ struct s_model
 	bool load(const char * fname);
 };
 
-
+// s_obj represents the object in the scene.
+// User can specify its feature points, find the correspondance between the model
+// and the points. 
 struct s_obj
 {
 	vector<Point2f> pt2d;
@@ -104,12 +110,13 @@ struct s_obj
 		return (int) pt2d.size();
 	}
 
-	// getting the nearest point and the distance to (x, y)
+	// getting the nearest object point and the distance to (x, y)
 	void get_cursor_point(float x, float y, int & idx, double & dist)
 	{
 		::get_cursor_point(pt2d, x, y, idx, dist);
 	}
 
+	// getting the nearest point of the projected model and the distance.
 	void get_cursor_point_3d(float x, float y, int & idx, double & dist)
 	{
 		::get_cursor_point(pt2dprj, x, y, idx, dist);
@@ -141,6 +148,7 @@ struct s_obj
 		return pt3didx[apt2didx];
 	}
 
+	// draw the wire frame model
 	void render(s_model & mdl, LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 		int pttype, int state, int cur_point);
 };
@@ -350,9 +358,11 @@ public:
 	Point2i m_pt_sc_start; // scroll start
 	Point2f m_main_offset;
 	float m_main_scale;
-
 	virtual void handle_lbuttondown(WPARAM wParam, LPARAM lParam);
 	virtual void handle_lbuttonup(WPARAM wParam, LPARAM lParam);
+	void select_point3d();
+	void select_or_add_point2d();
+
 	virtual void handle_lbuttondblclk(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_rbuttondown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_rbuttonup(WPARAM wParam, LPARAM lParam){};
@@ -361,8 +371,19 @@ public:
 	virtual void handle_mbuttonup(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_mbuttondblclk(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_mousewheel(WPARAM wParam, LPARAM lParam);
+	void zoom_screen(short delta);
+	void translate_z(short delta);
+	void rotate_z(short delta);
+
 	virtual void handle_mousemove(WPARAM wParam, LPARAM lParam);
+	void scroll_screen();
+	void translate_xy();
+	void rotate_xy();
+
 	virtual void handle_keydown(WPARAM wParam, LPARAM lParam);
+	void handle_vk_left();
+	void handle_vk_right();
+
 	virtual void handle_syskeydown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_keyup(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_char(WPARAM wParam, LPARAM lParam);
