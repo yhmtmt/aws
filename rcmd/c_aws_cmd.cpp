@@ -1,7 +1,32 @@
 #include <iostream>
+#include "c_aws_cmd.h"
+
+////////////////////////////////////////////////// helper function
+bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok)
+{
+  int i = 0;
+  bool seek_head = true;
+  cmd_tok.clear();
+  
+  while(cmd[i] != '\0'){
+    if(i == CMD_LEN) // no termination character found
+      return false;
+    if(cmd[i] == ' ' || cmd[i] == '\t'){ // space and tab is a delimiter
+      cmd[i] = '\0';
+      seek_head = true;
+    }else if(seek_head){
+      cmd_tok.push_back(&cmd[i]);
+      seek_head = false;
+    }
+    
+    i++;
+  }
+  
+  return true;
+}
 
 //////////////////////////////////////////////////// c_aws_cmd
-c_asw_cmd::c_aws_cmd()
+c_aws_cmd::c_aws_cmd()
 {
   cf.open(".aws");
   if(!cf.is_open()){
@@ -39,5 +64,12 @@ c_asw_cmd::c_aws_cmd()
 
 c_aws_cmd::~c_aws_cmd()
 {
-  close(sock);  
+  int ret;
+  // finish the command session ("eoc" command is sent")
+  buf[0] = 'e'; buf[1] = 'o'; buf[2] = 'c'; buf[3] = '\0';
+  ret = send(sock, buf, CMD_LEN, 0);
+  if(ret == -1){
+    cerr << "Failed to send end of command message." << endl;
+  }
+  close(sock);
 }

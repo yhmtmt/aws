@@ -23,7 +23,7 @@ int aws_cmd(int argc, char ** argv, const char * cmd);
 
 class c_aws_cmd
 {
- private:
+ protected:
   ifstream cf;
   char buf[CMD_LEN];
   sockaddr_in addr;
@@ -32,5 +32,12 @@ class c_aws_cmd
   c_aws_cmd();
   ~c_aws_cmd();
 
-  virtual bool send_cmd(int argc, const char * argv) = 0;
+  virtual bool send_cmd(int argc, char ** argv) = 0;
+  const char * recv_result(){
+    memset(buf, 0, CMD_LEN);
+    recv(sock, buf, CMD_LEN, 0);
+    if(buf[0])
+      return &buf[1];
+    return NULL;
+  }
 };
