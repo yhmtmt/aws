@@ -18,7 +18,7 @@ using namespace std;
 #endif
 
 #define CMD_LEN 1024
-
+bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok);
 int aws_cmd(int argc, char ** argv, const char * cmd);
 
 class c_aws_cmd
@@ -33,7 +33,7 @@ class c_aws_cmd
   ~c_aws_cmd();
 
   virtual bool send_cmd(int argc, char ** argv) = 0;
-  const char * recv_result(){
+  char * recv_result(){
     memset(buf, 0, CMD_LEN);
     recv(sock, buf, CMD_LEN, 0);
     if(buf[0])
