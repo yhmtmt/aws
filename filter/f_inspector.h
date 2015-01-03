@@ -172,7 +172,7 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		NORMAL, MODEL, OBJ, OBJ3D, POINT, POINT3D,
+		NORMAL, MODEL, OBJ, OBJ3D, POINT, POINT3D, CAMINT, CAMEXT,
 		DET_CHSBD, SAVE_CHSBDS, LOAD_CHSBDS,CLEAR_CHSBDS,
 		CALIB, SAVE_CAMPAR, LOAD_CAMPAR, CLEAR_CAMPAR,
 		DET_POSE_CAM, DET_POSE_CAM_TBL, DET_POSE, UNKNOWN
@@ -351,8 +351,18 @@ public:
 
 	////////////////////////////////////////////////////////// UI related members
 	enum e_mmode{
-		MM_NORMAL, MM_SCROLL, MM_POINT, MM_OBJTRAN, MM_OBJROT, MM_POINT3D
+		MM_NORMAL, MM_SCROLL, MM_POINT, MM_POINT3D, MM_CAMINT
 	} m_mm;
+
+	// The filter rotates and translates objects around and toward the axis.
+	// initially set at AX_X
+	enum e_axis{
+		AX_X, AX_Y, AX_Z
+	} m_axis;
+	static const char * m_axis_str[AX_Z + 1];
+	double m_rot_step;
+	double m_trn_step;
+	double m_zoom_step;
 
 	Point2i m_mc; // mouse cursor
 	Point2i m_pt_sc_start; // scroll start
@@ -372,13 +382,15 @@ public:
 	virtual void handle_mbuttondblclk(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_mousewheel(WPARAM wParam, LPARAM lParam);
 	void zoom_screen(short delta);
-	void translate_z(short delta);
-	void rotate_z(short delta);
+	void translate_obj(short delta);
+	void rotate_obj(short delta);
+	void translate_cam(short delta);
+	void rotate_cam(short delta);
+	void zoom_cam(short delta);
 
 	virtual void handle_mousemove(WPARAM wParam, LPARAM lParam);
 	void scroll_screen();
-	void translate_xy();
-	void rotate_xy();
+	void shift_cam_center();
 
 	virtual void handle_keydown(WPARAM wParam, LPARAM lParam);
 	void handle_vk_left();

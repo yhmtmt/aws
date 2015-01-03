@@ -437,11 +437,16 @@ void s_obj::render(s_model & mdl,
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[f_inspector::UNKNOWN]
 = {"normal", "model", "obj", "obj3d", "point", "point3d", 
-	"chsbd", "svcb", "ldcb", "clcb",
+	"camint", "camext", "chsbd", "svcb", "ldcb", "clcb",
 	"calib", "svcp", "ldcp", "clcp", "pscp", "pscptbl", "ps"};
 
 const char * f_inspector::m_str_3dmode[f_inspector::UNKNOWN3D]
 = {"sub", "full", "ovly", "none"};
+
+const char * f_inspector::m_axis_str[AX_Z + 1] = {
+	"x", "y", "z"
+};
+
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_bundistort(false), 
@@ -462,7 +467,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_op(NORMAL),
 	m_3dmode(NONE3D),
 	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
-	m_mm(MM_NORMAL),
+	m_mm(MM_NORMAL), m_axis(AX_X), m_rot_step(1.0), m_trn_step(1.0), m_zoom_step(1.1),
 	m_main_offset(0, 0), m_main_scale(1.0),
 	m_theta_z_mdl(0.0), m_dist_mdl(0.0)
 	
@@ -534,6 +539,12 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	// state flag
 	register_fpar("cpfix", &m_bcampar_fixed, "Camera parameter fixed flag");
 	register_fpar("cbdet", &m_bchsbd_found, "Chessboard found flag");
+
+	// object/camera manipulation
+	register_fpar("axis", (int*)&m_axis, (int)AX_Z + 1, m_axis_str, "Axis for rotation and translation. {x, y, z}");
+	register_fpar("srot", &m_rot_step, "Rotation step for the camera and objects. (degree)");
+	register_fpar("strn", &m_trn_step, "Translation step for the camera and objects. (meter)");
+	register_fpar("szm", &m_zoom_step, "Zooming step for the camera and screen. (default 1.1)");
 }
 
 f_inspector::~f_inspector()
@@ -1635,14 +1646,13 @@ void f_inspector::renderModel(long long timg)
 // * op = POINT, enables point selection by left and right keys for current object.
 // * op = OBJ3D, for selected object, enables rotating and translating in 3D space, and enable point matching between 2d and 3d. Drawings are the same as op=OBJ
 // * op = POINT3D, enables point selection by left and right keys for current assigned 3D object.
-
+// * op = CAMINT. manipulating camera interinsics displaying cimaging grid
+// * op = CAMEXT manipulating camera extrinsic displaying world grid
 // Current Implementation
 // SHIFT + Drag : op=OBJ Scroll Video Image, op=OBJ3D x-y translation
 // SHIFT + Wheel: op=OBJ Scaling, op=OBJ3D z translation
-// Ctrl + Drag: op=OBJ3D x, y rotation
-// Ctrl + Wheel: op=OBJ3D z rotation
-// Shift + Drag: op=OBJ3D x, y translation
-// Shift + Wheel: op=OBJ3D z translation
+// Ctrl + Wheel: op=OBJ3D obj rotation for selected axis, op=CAMEXT camera rotation for selected axis
+// Shift + Wheel: op=OBJ3D obj translation for selected axis, op=CAMEXT camera translation for selected axis
 // L Click : Point add cur_obj
 // Left Key: op=OBJ cur_obj--, op=POINT cur_obj_point--
 // Right Key: op=OBJ cur_ob++, op=POINT cur_obj_point++
@@ -1655,6 +1665,11 @@ void f_inspector::renderModel(long long timg)
 // p: op <= POINT
 // q: op <= OBJ3D
 // r: op <= POINT3D
+// e: op <= CAMEXT
+// i: op <= CAMINT
+// x: m_axis <= AX_X
+// y: m_axis <= AX_Y
+// z: m_axis <= AX_Z
 
 void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 {
@@ -1671,15 +1686,10 @@ void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 		break;
 	case OBJ3D:
 	case POINT3D:
-		if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
-			// object translation mode
-			m_mm = MM_OBJTRAN;
-		}else if(GET_KEYSTATE_WPARAM(wParam) & MK_CONTROL){
-			// object rotation mode
-			m_mm = MM_OBJROT;
-		}else{
 			m_mm = MM_POINT3D;
-		}
+		break;
+	case CAMINT:
+		m_mm = MM_CAMINT;
 		break;
 	case MODEL:
 		break;
@@ -1693,14 +1703,11 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 	case MM_SCROLL:
 		scroll_screen();
 		break;
+	case MM_CAMINT:
+		shift_cam_center();
+		break;
 	case MM_POINT:
 		select_or_add_point2d();
-		break;
-	case MM_OBJROT:
-		rotate_xy();
-		break;
-	case MM_OBJTRAN:
-		translate_xy();
 		break;
 	case MM_POINT3D:
 		select_point3d();
@@ -1759,28 +1766,25 @@ void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 	case MM_SCROLL:
 		scroll_screen();
 		break;
-	case MM_OBJTRAN:
-		translate_xy();
+	case MM_CAMINT:
+		shift_cam_center();
 		break;
-	case MM_OBJROT:
-		rotate_xy();
+	default:
 		break;
 	}
 }
 
 void f_inspector::scroll_screen()
 {
-		m_main_offset.x += (float)(m_mc.x - m_pt_sc_start.x);
-		m_main_offset.y += (float)(m_mc.y - m_pt_sc_start.y);
-		m_pt_sc_start = m_mc;
+	m_main_offset.x += (float)(m_mc.x - m_pt_sc_start.x);
+	m_main_offset.y += (float)(m_mc.y - m_pt_sc_start.y);
+	m_pt_sc_start = m_mc;
 }
 
-void f_inspector::translate_xy()
+void f_inspector::shift_cam_center()
 {
-}
-
-void f_inspector::rotate_xy()
-{
+	m_cam_int.at<double>(0, 2) += (float)(m_mc.x - m_pt_sc_start.x);
+	m_cam_int.at<double>(1, 2)  += (float)(m_mc.y - m_pt_sc_start.y);
 }
 
 void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
@@ -1798,16 +1802,25 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 		case OBJ:
 		case POINT:
 			zoom_screen(delta);
+			break;
 		case OBJ3D:
 		case POINT3D:
-			translate_z(delta);
+			translate_obj(delta);
+			break;
+		case CAMEXT:
+			translate_cam(delta);
+			break;
 		}
 		zoom_screen(delta);
 	}else if(GET_KEYSTATE_WPARAM(wParam) & MK_CONTROL){
 		switch(m_op){
 		case OBJ3D:
 		case POINT3D:
-			rotate_z(delta);
+			rotate_obj(delta);
+			break;
+		case CAMEXT:
+			rotate_cam(delta);
+			break;
 		}
 	}
 }
@@ -1815,7 +1828,7 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 void f_inspector::zoom_screen(short delta)
 {
 	short step = delta / WHEEL_DELTA;
-	float scale = (float) pow(1.1, (double) step);
+	float scale = (float) pow(m_zoom_step, (double) step);
 	m_main_scale *=  scale;
 	float x, y;
 	x = (float)(m_main_offset.x - m_mc.x) * scale;
@@ -1824,12 +1837,102 @@ void f_inspector::zoom_screen(short delta)
 	m_main_offset.y =  (float)(y + (double) m_mc.y - (double) m_ViewPort.Height);
 }
 
-void f_inspector::translate_z(short delta)
+void f_inspector::translate_obj(short delta)
 {
+	if(m_obj[m_cur_obj].imodel < 0)
+		return;
+	double step = (double)(delta / WHEEL_DELTA) * m_trn_step;
+	Mat tvec = Mat::zeros(3, 1, CV_64FC1);
+	switch(m_axis){
+	case AX_X:
+		tvec.at<double>(0, 0) = step;
+		break;
+	case AX_Y:
+		tvec.at<double>(1, 0) = step;
+		break;
+	case AX_Z:
+		tvec.at<double>(2, 0) = step;
+		break;
+	}
+
+	m_obj[m_cur_obj].tvec += tvec;
 }
 
-void f_inspector::rotate_z(short delta)
+void f_inspector::rotate_obj(short delta)
 {
+	if(m_obj[m_cur_obj].imodel < 0)
+		return;
+
+	// m_rot_step degree per wheel step
+	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_rot_step;
+	Mat rvec = Mat::zeros(3, 1, CV_64FC1);
+	switch(m_axis){
+	case AX_X:
+		rvec.at<double>(0, 0) = step;
+		break;
+	case AX_Y:
+		rvec.at<double>(1, 0) = step;
+		break;
+	case AX_Z:
+		rvec.at<double>(2, 0) = step;
+		break;
+	}
+	Mat R1, R2;
+	Rodrigues(m_obj[m_cur_obj].rvec, R1);
+	Rodrigues(rvec, R2);
+	Mat R = R2 * R1;
+	Rodrigues(R, m_obj[m_cur_obj].rvec);
+}
+
+void f_inspector::translate_cam(short delta)
+{
+	double step = (double)(delta / WHEEL_DELTA) * m_trn_step;
+	Mat tvec = Mat::zeros(3, 1, CV_64FC1);
+	switch(m_axis){
+	case AX_X:
+		tvec.at<double>(0, 0) = step;
+		break;
+	case AX_Y:
+		tvec.at<double>(1, 0) = step;
+		break;
+	case AX_Z:
+		tvec.at<double>(2, 0) = step;
+		break;
+	}
+
+	m_tvec_cam += tvec;
+}
+
+void f_inspector::rotate_cam(short delta)
+{
+	// m_rot_step degree per wheel step
+	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_rot_step;
+	Mat rvec = Mat::zeros(3, 1, CV_64FC1);
+	switch(m_axis){
+	case AX_X:
+		rvec.at<double>(0, 0) = step;
+		break;
+	case AX_Y:
+		rvec.at<double>(1, 0) = step;
+		break;
+	case AX_Z:
+		rvec.at<double>(2, 0) = step;
+		break;
+	}
+	Mat R1, R2;
+	Rodrigues(m_rvec_cam, R1);
+	Rodrigues(rvec, R2);
+	Mat R = R2 * R1;
+	Rodrigues(R, m_rvec_cam);
+}
+
+void f_inspector::zoom_cam(short delta)
+{
+	short step = delta / WHEEL_DELTA;
+	float scale = (float) pow(m_zoom_step, (double) step);
+
+	m_cam_int.at<double>(0, 0) *= scale;
+	m_cam_int.at<double>(1, 1) *= scale;
 }
 
 void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
@@ -1962,6 +2065,21 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case 'r':
 		m_op = POINT3D;
+		break;
+	case 'e':
+		m_op = CAMEXT;
+		break;
+	case 'i':
+		m_op = CAMINT;
+		break;
+	case 'x':
+		m_axis = AX_X;
+		break;
+	case 'y':
+		m_axis = AX_Y;
+		break;
+	case 'z':
+		m_axis = AX_Z;
 		break;
 	default:
 		break;
