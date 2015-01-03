@@ -433,6 +433,39 @@ void s_obj::render(s_model & mdl,
 	render_prjpts(mdl, pt2dprj, pd3dev, ptxt, pline, pttype, state, cur_point);
 }
 
+void s_obj::render_vector(s_model & mdl, Point3f & vec, 
+	Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
+	LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline)
+{
+	// calculating scale factor
+	double fac = mdl.get_max_dist() / sqrt(vec.x * vec.x + vec.y * vec.y + vec.z * vec.z);
+	vec *= fac;
+
+	// projection 
+	vector<Point3f> vec3d(2);
+	vector<Point2f> vec2d;
+	vec3d[0] = Point3f(0, 0, 0);
+	vec3d[1] = vec;
+	Mat rvec_comp, tvec_comp;
+	composeRT(rvec_cam, tvec_cam, rvec, tvec, rvec_comp, tvec_comp);
+	projectPoints(vec3d, rvec_comp, tvec_comp, cam_int, cam_dist, vec2d);
+	pline->Begin();
+	D3DCOLOR color = D3DCOLOR_RGBA(255, 255, 255, 255);
+
+	D3DXVECTOR2 v[2];
+	v[0] = D3DXVECTOR2(vec2d[0].x, vec2d[0].y);
+	v[1] = D3DXVECTOR2(vec2d[1].x, vec2d[1].y);
+	pline->Draw(v, 2, color);
+
+	// draw cross at the origin 
+	v[0] = D3DXVECTOR2((float)(vec2d[0].x - 3.0), (float)(vec2d[0].y - 3.0));
+	v[1] = D3DXVECTOR2((float)(vec2d[0].x + 3.0), (float)(vec2d[0].y + 3.0));
+	pline->Draw(v, 2, color);
+	v[2] = D3DXVECTOR2((float)(vec2d[0].x - 3.0), (float)(vec2d[0].y + 3.0));
+	v[3] = D3DXVECTOR2((float)(vec2d[0].x + 3.0), (float)(vec2d[0].y - 3.0));
+	pline->Draw(v, 2, color);
+	pline->End();
+}
 
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[f_inspector::UNKNOWN]
@@ -706,7 +739,7 @@ bool f_inspector::proc()
 
 	m_maincam.blt_offsrf(m_pd3dev, img_s);
 
-	// rendering 2d points
+	// Drawing object (2d points and 3d object)
 	for(int iobj = 0; iobj < m_obj.size(); iobj++){
 		s_obj & obj = m_obj[iobj];
 		if(m_op == OBJ){
@@ -733,12 +766,29 @@ bool f_inspector::proc()
 
 		int imodel = m_obj[iobj].get_model();
 		if(imodel != -1){
+			// rendering 3d object
 			m_models[imodel].proj(m_obj[iobj].pt2dprj,
 				m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam,
 				m_obj[iobj].rvec, m_obj[iobj].tvec);
 
 			m_obj[iobj].render(m_models[imodel], m_pd3dev, NULL, m_pline, 
 				iobj, 0, m_cur_obj_point);
+			 
+			// render selected axis
+			Point3f vec(0, 0, 0);
+			switch(m_axis){
+			case AX_X:
+				vec.x = 1.0;
+				break;
+			case AX_Y:
+				vec.y = 1.0;
+				break;
+			case AX_Z:
+				vec.z = 1.0;
+			}
+			m_obj[iobj].render_vector(m_models[imodel], 
+				vec, m_rvec_cam, m_tvec_cam, m_cam_int, m_cam_dist,
+				m_pd3dev, m_pline);
 		}
 	}
 
@@ -749,7 +799,6 @@ bool f_inspector::proc()
 	m_3dscene.ResetRenderTarget(m_pd3dev);
 
 	//////////////////// render total view port /////////////////////
-
 	m_maincam.show(m_pd3dev, (float)(0. + m_main_offset.x),
 		(float) ((float) m_ViewPort.Height + m_main_offset.y), m_main_scale);
 

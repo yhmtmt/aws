@@ -151,6 +151,11 @@ struct s_obj
 	// draw the wire frame model
 	void render(s_model & mdl, LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 		int pttype, int state, int cur_point);
+
+	// render vector in comparable size to the object  
+	void render_vector(s_model & mdl, Point3f & vec,
+		Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
+		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline);
 };
 
 class f_inspector: public f_ds_window
