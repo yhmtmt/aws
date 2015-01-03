@@ -433,6 +433,56 @@ void s_obj::render(s_model & mdl,
 	render_prjpts(mdl, pt2dprj, pd3dev, ptxt, pline, pttype, state, cur_point);
 }
 
+void s_obj::render_axis(s_model & mdl, Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
+	LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis)
+{
+	double fac = mdl.get_max_dist();
+
+	vector<Point3f> p3d(4, Point3f(0.f, 0.f, 0.f));
+	vector<Point2f> p2d;
+
+	p3d[1].x = fac; // pt3d[1] is x axis
+	p3d[2].y = fac; // pt3d[2] is y axis
+	p3d[3].z = fac; // pt3d[3] is z axis
+
+	Mat rvec_comp, tvec_comp;
+	composeRT(rvec_cam, tvec_cam, rvec, tvec, rvec_comp, tvec_comp);
+	projectPoints(p3d, rvec_comp, tvec_comp, cam_int, cam_dist, pt2d);
+	pline->Begin();
+	D3DXVECTOR2 v[2];
+	D3DCOLOR color;
+	int arpha = (axis < 0 ? 255 : 128);
+
+	// origin of the axis
+	v[0] = D3DXVECTOR2(p2d[0].x, p2d[0].y);
+
+	// x axis
+	v[1] = D3DXVECTOR2(p2d[1].x, p2d[1].y);
+	if(axis == 0)
+		color = D3DCOLOR_RGBA(255, 0, 0, arpha);
+	else
+		color = D3DCOLOR_RGBA(255, 0, 0, 255);
+	pline->Draw(v, 2, color);
+
+	// y axis
+	v[1] = D3DXVECTOR2(p2d[2].x, p2d[2].y);
+	if(axis == 1)
+		color = D3DCOLOR_RGBA(0, 255, 0, arpha);
+	else
+		color = D3DCOLOR_RGBA(0, 255, 0, 255);
+	pline->Draw(v, 2, color);
+
+	// z axis
+	v[1] = D3DXVECTOR2(p2d[3].x, p2d[3].y);
+	if(axis == 2)
+		color = D3DCOLOR_RGBA(0, 0, 255, arpha);
+	else
+		color = D3DCOLOR_RGBA(0, 0, 255, 255);
+	pline->Draw(v, 2, color);
+
+	pline->End();
+}
+
 void s_obj::render_vector(s_model & mdl, Point3f & vec, 
 	Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 	LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline)
@@ -775,20 +825,9 @@ bool f_inspector::proc()
 				iobj, 0, m_cur_obj_point);
 			 
 			// render selected axis
-			Point3f vec(0, 0, 0);
-			switch(m_axis){
-			case AX_X:
-				vec.x = 1.0;
-				break;
-			case AX_Y:
-				vec.y = 1.0;
-				break;
-			case AX_Z:
-				vec.z = 1.0;
-			}
-			m_obj[iobj].render_vector(m_models[imodel], 
-				vec, m_rvec_cam, m_tvec_cam, m_cam_int, m_cam_dist,
-				m_pd3dev, m_pline);
+			m_obj[iobj].render_axis(m_models[imodel], 
+				m_rvec_cam, m_tvec_cam, m_cam_int, m_cam_dist,
+				m_pd3dev, m_pline, (int) m_axis);
 		}
 	}
 

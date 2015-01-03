@@ -156,6 +156,10 @@ struct s_obj
 	void render_vector(s_model & mdl, Point3f & vec,
 		Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline);
+
+	// render axis in three direction
+	void render_axis(s_model & mdl,	Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
+		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis = -1);
 };
 
 class f_inspector: public f_ds_window
