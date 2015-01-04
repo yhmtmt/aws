@@ -132,36 +132,16 @@ void render_prjpts(s_model & mdl, vector<Point2f> & pt2dprj,
 
 		switch(shape){
 		case 0: // square
-			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
-			v[2] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
-			v[4] = v[0];
-			pline->Draw(v, 5, color);
+			xsquare(pline, pt, 2, color);
 			break;
 		case 1: // diamond
-			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
-			v[2] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
-			v[4] = v[0];
-			pline->Draw(v, 5, color);
+			xdiamond(pline, pt, 2, color);
 			break;
 		case 2: // X
-			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
-			pline->Draw(v, 2, color);
-			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
-			pline->Draw(&v[2], 2, color);
+			xdiagonal(pline, pt, 2, color);
 			break;
 		case 3:
-			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
-			pline->Draw(v, 2, color);
-			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
-			pline->Draw(&v[2], 2, color);
+			xcross(pline, pt, 2, color);
 			break;
 		}
 
@@ -508,12 +488,7 @@ void s_obj::render_vector(s_model & mdl, Point3f & vec,
 	pline->Draw(v, 2, color);
 
 	// draw cross at the origin 
-	v[0] = D3DXVECTOR2((float)(vec2d[0].x - 3.0), (float)(vec2d[0].y - 3.0));
-	v[1] = D3DXVECTOR2((float)(vec2d[0].x + 3.0), (float)(vec2d[0].y + 3.0));
-	pline->Draw(v, 2, color);
-	v[0] = D3DXVECTOR2((float)(vec2d[0].x - 3.0), (float)(vec2d[0].y + 3.0));
-	v[1] = D3DXVECTOR2((float)(vec2d[0].x + 3.0), (float)(vec2d[0].y - 3.0));
-	pline->Draw(v, 2, color);
+	xcross(pline, vec2d[0], 3.0, color);
 	pline->End();
 }
 

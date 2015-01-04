@@ -377,3 +377,11 @@ public:
 		}
 	}
 };
+
+/////////////////////////////////////////////////// D3DXLINE based librarys
+// These functions should be used inside the Begin()/End()
+
+void xsquare(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color);
+void xcross(LPD3DXLINE pline,  Point2f & pt, float radius, D3DCOLOR color);
+void xdiamond(LPD3DXLINE pline,  Point2f & pt, float radius, D3DCOLOR color);
+void xdiagonal(LPD3DXLINE pline,  Point2f & pt, float radius, D3DCOLOR color);

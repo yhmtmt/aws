@@ -1046,38 +1046,19 @@ bool c_d3d_camview::render_point2d(LPDIRECT3DDEVICE9 pd3dev,
 			continue;
 		}
 
+
 		switch(shape){
 		case 0: // square
-			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
-			v[2] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
-			v[4] = v[0];
-			pline->Draw(v, 5, color);
+			xsquare(pline, pt, 2, color);
 			break;
 		case 1: // diamond
-			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
-			v[2] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
-			v[4] = v[0];
-			pline->Draw(v, 5, color);
+			xdiamond(pline, pt, 2, color);
 			break;
 		case 2: // X
-			v[0] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y + 2.0));
-			pline->Draw(v, 2, color);
-			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y + 2.0));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y - 2.0));
-			pline->Draw(&v[2], 2, color);
+			xdiagonal(pline, pt, 2, color);
 			break;
 		case 3:
-			v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - 2.0));
-			v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + 2.0));
-			pline->Draw(v, 2, color);
-			v[2] = D3DXVECTOR2((float)(pt.x - 2.0), (float)(pt.y));
-			v[3] = D3DXVECTOR2((float)(pt.x + 2.0), (float)(pt.y));
-			pline->Draw(&v[2], 2, color);
+			xcross(pline, pt, 2, color);
 			break;
 		}
 
@@ -1091,3 +1072,49 @@ bool c_d3d_camview::render_point2d(LPDIRECT3DDEVICE9 pd3dev,
 
 	return true;
 }
+
+/////////////////////////////////////////////////////////////////D3DXLINE based libraries
+void xsquare(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color)
+{
+	D3DXVECTOR2 v[5];
+	v[0] = D3DXVECTOR2((float)(pt.x - radius), (float)(pt.y - radius));
+	v[1] = D3DXVECTOR2((float)(pt.x - radius), (float)(pt.y + radius));
+	v[2] = D3DXVECTOR2((float)(pt.x + radius), (float)(pt.y + radius));
+	v[3] = D3DXVECTOR2((float)(pt.x + radius), (float)(pt.y - radius));
+	v[4] = v[0];
+	pline->Draw(v, 5, color);
+}
+
+void xcross(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color)
+{
+	D3DXVECTOR2 v[5];
+	v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - radius));
+	v[1] = D3DXVECTOR2((float)(pt.x - radius), (float)(pt.y));
+	v[2] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + radius));
+	v[3] = D3DXVECTOR2((float)(pt.x + radius), (float)(pt.y));
+	v[4] = v[0];
+	pline->Draw(v, 5, color);
+}
+
+void xdiamond(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color)
+{
+	D3DXVECTOR2 v[2];
+	v[0] = D3DXVECTOR2((float)(pt.x - radius), (float)(pt.y - radius));
+	v[1] = D3DXVECTOR2((float)(pt.x + radius), (float)(pt.y + radius));
+	pline->Draw(v, 2, color);
+	v[0] = D3DXVECTOR2((float)(pt.x - radius), (float)(pt.y + radius));
+	v[1] = D3DXVECTOR2((float)(pt.x + radius), (float)(pt.y - radius));
+	pline->Draw(&v[2], 2, color);
+}
+
+void xdiagonal(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color)
+{		
+	D3DXVECTOR2 v[2];
+	v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - radius));
+	v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + radius));
+	pline->Draw(v, 2, color);
+	v[2] = D3DXVECTOR2((float)(pt.x - radius), (float)(pt.y));
+	v[3] = D3DXVECTOR2((float)(pt.x + radius), (float)(pt.y));
+	pline->Draw(&v[2], 2, color);
+}
+
