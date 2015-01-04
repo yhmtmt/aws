@@ -49,6 +49,7 @@ const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
 void get_cursor_point(vector<Point2f> & pt2ds, float x, float y, int & idx, double & dist)
 {
 	dist = DBL_MAX;
+	idx = -1;
 	for(int i = 0; i < pt2ds.size(); i++)
 	{
 		Point2f & pt = pt2ds[i];
@@ -98,6 +99,7 @@ void render_prjpts(s_model & mdl, vector<Point2f> & pt2dprj,
 	}else{
 		color = D3DCOLOR_RGBA(val, val, val, 255);
 	}
+	pline->SetAntialias(TRUE);
 
 	pline->Begin();
 	for(int iedge = 0; iedge < edges.size(); iedge++){
@@ -1595,19 +1597,18 @@ void f_inspector::render(Mat & imgs, long long timg)
 	m_maincam.show(m_pd3dev, (float)(0. + m_main_offset.x),
 		(float) ((float) m_ViewPort.Height + m_main_offset.y), m_main_scale);
 
-	switch(m_3dmode){
-	case SUB:
-		m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
-		break;
-	case FULL:
-		m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height);
-		break;
-	default:
-		break;
-	}
-
 	if(m_op == MODEL){
-		m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
+		switch(m_3dmode){
+		case SUB:
+			m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
+			break;
+		case FULL:
+			m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height);
+			break;
+		default:
+			m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
+			break;
+		}
 	}
 
 	renderInfo();
@@ -1711,23 +1712,24 @@ void f_inspector::renderObj()
 void f_inspector::renderModel(long long timg)
 {
 	m_model_view.SetAsRenderTarget(m_pd3dev);
-
+	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
+		D3DCOLOR_COLORVALUE(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
 	// 3D model is rotated in the model view with the angle speed of 1 deg/sec
 	// Camera parameter is set as 
 	if(m_cur_model != -1){
-		m_theta_z_mdl += (1./60.) * CV_PI / 180.;
+		m_theta_z_mdl += (1./6.) * CV_PI / 180.;
 		// calculating rotation vector
-		m_rvec_mdl = Mat(1, 3, CV_64F);
+		m_rvec_mdl = Mat(3, 1, CV_64F);
 		double * ptr = m_rvec_mdl.ptr<double>();
 		ptr[0] = 0.;
-		ptr[1] = 0.;
-		ptr[2] = m_theta_z_mdl;
+		ptr[1] = m_theta_z_mdl;
+		ptr[2] = 0.;
 
 		// twice the maximum length of the model
 		m_dist_mdl = 2 * m_models[m_cur_model].get_max_dist(); 
 		
 		// calculating translation vector
-		m_tvec_mdl = Mat(1, 3, CV_64F);
+		m_tvec_mdl = Mat(3, 1, CV_64F);
 		ptr = m_tvec_mdl.ptr<double>();
 		ptr[0] = 0;
 		ptr[1] = 0;
@@ -1753,10 +1755,10 @@ void f_inspector::renderModel(long long timg)
 		m_cam_dist_mdl = Mat::zeros(8, 1, CV_64FC1);
 
 		// calculating camera rotation
-		m_rvec_cam_mdl = Mat::zeros(1, 3, CV_64FC1);
+		m_rvec_cam_mdl = Mat::zeros(3, 1, CV_64FC1);
 
 		// calculating camera translation (set as zero)
-		m_tvec_cam_mdl = Mat::zeros(1, 3, CV_64FC1);
+		m_tvec_cam_mdl = Mat::zeros(3, 1, CV_64FC1);
 		
 		vector<Point2f> pts;
 		m_models[m_cur_model].proj(pts, m_cam_int_mdl, m_cam_dist_mdl, m_rvec_cam_mdl, m_tvec_cam_mdl, m_rvec_mdl, m_tvec_mdl);
@@ -1860,7 +1862,7 @@ void f_inspector::select_or_add_point2d()
 	int idx;
 	double dist;
 	m_obj[m_cur_obj].get_cursor_point(pt.x, pt.y, idx, dist);
-	if(idx < 0 && dist < 1.0){
+	if(idx < 0 || dist > 1.0){
 		m_obj[m_cur_obj].push_pt(pt);
 		m_cur_obj_point = m_obj[m_cur_obj].get_num_points() - 1;
 	}else{
