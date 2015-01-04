@@ -126,24 +126,29 @@ struct s_obj
 		return pt2d;
 	}
 
+	// adding new 2d feature point
 	void push_pt(Point2f & pt){
 		pt2d.push_back(pt);
 		pt3didx.push_back(-1);
 		bvisible.push_back(true);
 	}
 
+	// bind a model to the object
 	void set_model(int aimodel){
 		imodel = aimodel;
 	}
 
+	// get model index bound to the object
 	int get_model(){
 		return imodel;
 	}
 
+	// binding 3d point in the model to the 2d feature point
 	void set_3dpoint_idx(int apt2didx, int apt3didx){
 		pt3didx[apt2didx] = apt3didx;
 	}
 
+	// get 3d point index bound to the 2d point
 	int get_3dpoint_idx(int apt2didx){
 		return pt3didx[apt2didx];
 	}
@@ -162,6 +167,17 @@ struct s_obj
 		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis = -1);
 };
 
+// The functions of the filter
+// 2D object annotation 
+//	- manually specify feature point 
+//  - manually bind 3d model
+//  - manually bind 2d point to 3d model point
+// Optimization for camera parameters and object attitude
+// Finding chessboard and calibrating camera
+// Table based handling of camera parameters with various magnifications
+// load and save camera parameters for each time frame
+// load and save object information for each time frame
+ 
 class f_inspector: public f_ds_window
 {
 private:
@@ -177,13 +193,22 @@ private:
 	Mat m_img;			// image frame
 	double m_sh, m_sv; // horizontal and vertical scale. 
 
+
+	// Rendering method for whole view
+	void render(Mat & imgs, long long timg);
+	void renderInfo();
+	void renderCursor();
+
+	// Parameter calibration
+	void calibrate(Mat & img_s, long long timg);
+
 	//
 	// operation mode
 	//
 	enum e_operation {
 		NORMAL, MODEL, OBJ, OBJ3D, POINT, POINT3D, CAMINT, CAMEXT,
-		DET_CHSBD, SAVE_CHSBDS, LOAD_CHSBDS,CLEAR_CHSBDS,
-		CALIB, SAVE_CAMPAR, LOAD_CAMPAR, CLEAR_CAMPAR,
+		DET_CHSBD, SAVE_CHSBDS, LOAD_CHSBDS,CLEAR_CHSBDS, CALIB, 
+		SAVE_CAMPAR, LOAD_CAMPAR, CLEAR_CAMPAR,
 		DET_POSE_CAM, DET_POSE_CAM_TBL, DET_POSE, UNKNOWN
 	};
 
@@ -198,14 +223,10 @@ private:
 	bool m_bpose_fixed;		// indicates the model pause is fixed in this frame
 	bool m_bchsbd_found;	// indicates chessboard is found in this frame
 
-	// 
-	// file name for read/write
-	//
-	char m_fname_chsbds[1024]; // name of chsbd collection
-
 	//
 	// chessboard
 	//
+	char m_fname_chsbds[1024]; // name of chsbd collection
 	double m_pitch_chsbd;	// chesboard pitch
 	Size m_sz_chsbd;		// chesboard size
 	vector<Point3f> m_3dchsbd;				// chessboard corners in the world coordinate, automatically constructed by the pitch and size.
@@ -228,14 +249,8 @@ private:
 	bool loadChsbds();
 
 	//
-	// model 
-	//
-	char m_fname_model[1024]; // name of the model file
-	bool m_badd_model;
-	vector<s_model> m_models; // storing models
-	// loading model when m_badd_model is asserted
-	bool load_model();
-
+	// Object
+	// 
 	vector<vector<s_obj> > m_obj_trace;
 	int m_cur_model; // current selected model
 	int m_cur_obj; // current object selected
@@ -243,6 +258,17 @@ private:
 	int m_cur_obj_point; // current selected point of the object
 	int m_cur_obj_point3d; // current selected 3d point of the object
 	vector<s_obj> m_obj; // object points
+
+	void renderObj();
+
+	//
+	// model 
+	//
+	char m_fname_model[1024]; // name of the model file
+	bool m_badd_model;
+	vector<s_model> m_models; // storing models
+	// loading model when m_badd_model is asserted
+	bool load_model();
 
 	// model poses in each time frame
 	vector<long long> m_pose_time;		// times corresponding model pose
@@ -252,23 +278,44 @@ private:
 
 	void seekModelTime(long long time){};
 
+	// 
+	// model view 
+	//
+	c_d3d_camview m_model_view; // rendering surface
+	// 3D model in the model view
+	double m_theta_z_mdl, m_dist_mdl;
+	Mat m_rvec_mdl, m_tvec_mdl;
+	Mat m_rvec_cam_mdl, m_tvec_cam_mdl;
+	Mat m_cam_int_mdl, m_cam_dist_mdl;
+
+	enum e_3dmode{
+		SUB, FULL, OVLY, NONE3D, UNKNOWN3D
+	} m_3dmode;
+
+	static const char * m_str_3dmode[UNKNOWN3D];
+
+	LPD3DXMESH m_pmesh_chsbd;
+	LPDIRECT3DTEXTURE9 m_ptex_chsbd;
+
+	void renderModel(long long timg);
+
 	//
 	// Camera Parameter
 	//
 	bool m_bload_campar;
 	bool m_bload_campar_tbl;
+
 	char m_fname_campar[1024]; // name of camera parameter file
 	char m_fname_campar_tbl[1024]; // name of camera parameter table for multiple magnifications
-	Mat m_cam_int, m_cam_dist;// current camera parameter.	
+	Mat m_cam_int, m_cam_dist; // Intrinsic camera parameter.	
+	Mat m_rvec_cam, m_tvec_cam; // Extrinsic camera parameter.
+
 	double m_erep;		// reprojection error of last current camera parameter.
 
 	// master camera parameter (increasing order in f_x)
 	bool m_bcam_tbl_loaded;
 	vector<Mat> m_cam_int_tbl;
 	vector<Mat> m_cam_dist_tbl;
-	Mat m_rvec_cam;
-	Mat m_tvec_cam;
-
 	vector<double> m_cam_erep;
 	
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
@@ -294,29 +341,11 @@ private:
 	bool loadCamparTbl();
 	void clearCamparTbl();
 
-	// 
-	// 3D view 
-	//
-	c_d3d_camview m_3dscene; // rendering surface
-	enum e_3dmode{
-		SUB, FULL, OVLY, NONE3D, UNKNOWN3D
-	} m_3dmode;
-	static const char * m_str_3dmode[UNKNOWN3D];
-
-	LPD3DXMESH m_pmesh_chsbd;
-	LPDIRECT3DTEXTURE9 m_ptex_chsbd;
-	virtual bool alloc_d3dres();
-	virtual void release_d3dres();
-
 	void render3D(long long timg);
 	void renderChsbd(long long timg);
 
-	// for rendering 3D model on the model window.
-	double m_theta_z_mdl, m_dist_mdl;
-	Mat m_rvec_mdl, m_tvec_mdl;
-	Mat m_rvec_cam_mdl, m_tvec_cam_mdl;
-	Mat m_cam_int_mdl, m_cam_dist_mdl;
-	void renderModel(long long timg);
+	virtual bool alloc_d3dres();
+	virtual void release_d3dres();
 public:
 	f_inspector(const char * name);
 	virtual ~f_inspector();
@@ -353,7 +382,7 @@ public:
 		if(m_pmesh_chsbd)
 			m_pmesh_chsbd->Release();
 		f_ds_window::destroy_run();
-		m_3dscene.release();
+		m_model_view.release();
 	}
 
 	virtual bool proc();

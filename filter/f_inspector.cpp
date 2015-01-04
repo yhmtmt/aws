@@ -436,7 +436,7 @@ void s_obj::render(s_model & mdl,
 void s_obj::render_axis(s_model & mdl, Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 	LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis)
 {
-	double fac = mdl.get_max_dist();
+	float fac = (float) mdl.get_max_dist();
 
 	vector<Point3f> p3d(4, Point3f(0.f, 0.f, 0.f));
 	vector<Point2f> p2d;
@@ -511,8 +511,8 @@ void s_obj::render_vector(s_model & mdl, Point3f & vec,
 	v[0] = D3DXVECTOR2((float)(vec2d[0].x - 3.0), (float)(vec2d[0].y - 3.0));
 	v[1] = D3DXVECTOR2((float)(vec2d[0].x + 3.0), (float)(vec2d[0].y + 3.0));
 	pline->Draw(v, 2, color);
-	v[2] = D3DXVECTOR2((float)(vec2d[0].x - 3.0), (float)(vec2d[0].y + 3.0));
-	v[3] = D3DXVECTOR2((float)(vec2d[0].x + 3.0), (float)(vec2d[0].y - 3.0));
+	v[0] = D3DXVECTOR2((float)(vec2d[0].x - 3.0), (float)(vec2d[0].y + 3.0));
+	v[1] = D3DXVECTOR2((float)(vec2d[0].x + 3.0), (float)(vec2d[0].y - 3.0));
 	pline->Draw(v, 2, color);
 	pline->End();
 }
@@ -529,7 +529,6 @@ const char * f_inspector::m_str_3dmode[f_inspector::UNKNOWN3D]
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
 };
-
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_bundistort(false), 
@@ -570,20 +569,20 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("ldcptbl", &m_bload_campar_tbl, "Load the table of camera parameters with multiple magnifications."); 
 	register_fpar("fcp", m_fname_campar, 1024, "File path of camera parameter.");
 	register_fpar("fcptbl", m_fname_campar_tbl, 1024, "File path of table of the camera parameters with multiple magnifications.");
-	register_fpar("op", (int*)&m_op, UNKNOWN, m_str_op,"Operation {normal, chsbd, svcb, ldcb, calib, svcp, ldcp, model, pose}");
+	register_fpar("op", (int*)&m_op, UNKNOWN, m_str_op,"Operation ");
 	register_fpar("sh", &m_sh, "Horizontal scaling value. Image size is multiplied by the value. (default 1.0)");
 	register_fpar("sv", &m_sv, "Vertical scaling value. Image size is multiplied by the value. (default 1.0)");	
 
 	// chessboard related parameters
-	register_fpar("cbtrack", &m_bcbtrack, "yes: Chessboard tracking enabled.");
+	register_fpar("cbtrack", &m_bcbtrack, "Chessboard tracking enabled.");
 	register_fpar("pcb", &m_pitch_chsbd, "Pitch of the chesboard (0.0254m default)");
-	register_fpar("vcb", &(m_sz_chsbd.height), "Number of vertical grids in the chessboard (6 default");
+	register_fpar("vcb", &(m_sz_chsbd.height), "Number of vertical grids in the chessboard (6 default)");
 	register_fpar("hcb", &(m_sz_chsbd.width), "Number of horizontal grids in the chessboard (9 default)");
-	register_fpar("showcb", &m_bshow_chsbd, "Yes: show detected chessboard.");
+	register_fpar("showcb", &m_bshow_chsbd, "Show detected chessboard.");
 	// model related parameters
-	register_fpar("pttrack", &m_bpttrack, "yes: model point tracking enabled.");
+	register_fpar("pttrack", &m_bpttrack, "Model point tracking enabled.");
 	register_fpar("mdl", &m_cur_model, "Model with specified index is selected.");
-	register_fpar("mpt", &m_cur_model_point, "Model point of specified index is selected..");
+	register_fpar("mpt", &m_cur_model_point, "Model point of specified index is selected.");
 
 	// camera calibration and parameter
 	register_fpar("fx", m_cam_int.ptr<double>(0, 0), "x-directional focal length in milimeter");
@@ -592,27 +591,27 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("cy", m_cam_int.ptr<double>(1, 2), "y-coordinate of camera center in pixel.");
 	register_fpar("px", m_cam_dist.ptr<double>(0) + 2, "x coefficient of tangential distortion.");
 	register_fpar("py", m_cam_dist.ptr<double>(0) + 3, "y coefficient of tangential distortion.");
-	register_fpar("k1", m_cam_dist.ptr<double>(0), "radial distortion coefficient k1.");
-	register_fpar("k2", m_cam_dist.ptr<double>(0) + 1, "radial distortion coefficient k2.");
-	register_fpar("k3", m_cam_dist.ptr<double>(0) + 4, "radial distortion coefficient k3.");
-	register_fpar("k4", m_cam_dist.ptr<double>(0) + 5, "radial distortion coefficient k4.");
-	register_fpar("k5", m_cam_dist.ptr<double>(0) + 6, "radial distortion coefficient k5.");
-	register_fpar("k6", m_cam_dist.ptr<double>(0) + 7, "radial distortion coefficient k6.");
+	register_fpar("k1", m_cam_dist.ptr<double>(0), "Radial distortion coefficient k1.");
+	register_fpar("k2", m_cam_dist.ptr<double>(0) + 1, "Radial distortion coefficient k2.");
+	register_fpar("k3", m_cam_dist.ptr<double>(0) + 4, "Radial distortion coefficient k3.");
+	register_fpar("k4", m_cam_dist.ptr<double>(0) + 5, "Radial distortion coefficient k4.");
+	register_fpar("k5", m_cam_dist.ptr<double>(0) + 6, "Radial distortion coefficient k5.");
+	register_fpar("k6", m_cam_dist.ptr<double>(0) + 7, "Radial distortion coefficient k6.");
 	register_fpar("erep", &m_erep, "Reprojection error.");
 
-	register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Yes: use intrinsic guess.");
-	register_fpar("fix_principal_point", &m_bcalib_fix_principal_point, "Yes: fix camera center as specified (cx, cy)");
-	register_fpar("fix_aspect_ratio", &m_bcalib_fix_aspect_ratio, "Yes: fix aspect ratio as specified fx/fy. Only fy is optimized.");
-	register_fpar("zero_tangent_dist", &m_bcalib_zero_tangent_dist, "Yes: zeroify tangential distortion (px, py)");
-	register_fpar("fix_k1", &m_bcalib_fix_k1, "Yes: fix k1 as specified.");
-	register_fpar("fix_k2", &m_bcalib_fix_k2, "Yes: fix k2 as specified.");
-	register_fpar("fix_k3", &m_bcalib_fix_k3, "Yes: fix k3 as specified.");
-	register_fpar("fix_k4", &m_bcalib_fix_k4, "Yes: fix k4 as specified.");
-	register_fpar("fix_k5", &m_bcalib_fix_k5, "Yes: fix k5 as specified.");
-	register_fpar("fix_k6", &m_bcalib_fix_k6, "Yes: fix k6 as specified.");
-	register_fpar("rational_model", &m_bcalib_rational_model, "Yes: enable rational model (k4, k5, k6)");
+	register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Use intrinsic guess.");
+	register_fpar("fix_principal_point", &m_bcalib_fix_principal_point, "Fix camera center as specified (cx, cy)");
+	register_fpar("fix_aspect_ratio", &m_bcalib_fix_aspect_ratio, "Fix aspect ratio as specified fx/fy. Only fy is optimized.");
+	register_fpar("zero_tangent_dist", &m_bcalib_zero_tangent_dist, "Zeroify tangential distortion (px, py)");
+	register_fpar("fix_k1", &m_bcalib_fix_k1, "Fix k1 as specified.");
+	register_fpar("fix_k2", &m_bcalib_fix_k2, "Fix k2 as specified.");
+	register_fpar("fix_k3", &m_bcalib_fix_k3, "Fix k3 as specified.");
+	register_fpar("fix_k4", &m_bcalib_fix_k4, "Fix k4 as specified.");
+	register_fpar("fix_k5", &m_bcalib_fix_k5, "Fix k5 as specified.");
+	register_fpar("fix_k6", &m_bcalib_fix_k6, "Fix k6 as specified.");
+	register_fpar("rational_model", &m_bcalib_rational_model, "Enable rational model (k4, k5, k6)");
 
-	register_fpar("undist", &m_bundistort, "Yes: undistort source image according to the camera parameter.");
+	register_fpar("undist", &m_bundistort, "Undistort source image according to the camera parameter.");
 
 	register_fpar("chsbds", &m_num_chsbds_calib, "Number of chessboards used for calibration.");
 
@@ -639,7 +638,7 @@ bool f_inspector::alloc_d3dres()
 	if(!f_ds_window::alloc_d3dres()){
 		return false;
 	}
-	if(!m_3dscene.init(m_pd3dev,
+	if(!m_model_view.init(m_pd3dev,
 		(float) m_ViewPort.Width, (float) m_ViewPort.Height, 
 		(float) m_ViewPort.Width, (float) m_ViewPort.Height, 
 		(float) m_ViewPort.Width, (float) m_ViewPort.Height))
@@ -652,7 +651,7 @@ void f_inspector::release_d3dres()
 {
 	f_ds_window::release_d3dres();
 
-	m_3dscene.release();
+	m_model_view.release();
 	return;
 }
 
@@ -667,8 +666,8 @@ bool f_inspector::proc()
 		img = m_pin->get_img(timg);
 		if(img.empty())
 			return true;
+
 		if(m_timg != timg){
-			cout << m_timg << ": new image" << endl;
 			m_bchsbd_found = false;
 			m_bpose_fixed = false;
 		}
@@ -678,19 +677,23 @@ bool f_inspector::proc()
 		timg = m_timg;
 		img = m_img;
 	}
+
+	// input source is not ready. but it tends to happen usually.
 	if(img.empty())
 		return true;
 
 	Mat img_s;
 	resize(img, img_s, Size(), m_sh, m_sv);
 
+	// fit the viewport size to the image
 	if(img_s.cols != m_ViewPort.Width ||
 		img_s.rows != m_ViewPort.Height){
-			if(!init_viewport(img_s)){
-				return false;
-			}
+		if(!init_viewport(img_s)){
+			return false;
+		}
 	}
 
+	// fit the direct 3d surface to the image
 	if(img_s.cols != m_maincam.get_surface_width() ||
 		img_s.rows != m_maincam.get_surface_height())
 	{
@@ -702,19 +705,20 @@ bool f_inspector::proc()
 			return false;
 	}
 
+	// fit the direct 3d surface of the model view to the image
 	if(m_3dmode != NONE3D && 
-		(img_s.cols != m_3dscene.get_surface_width() || 
-		img_s.rows != m_3dscene.get_surface_height()))
+		(img_s.cols != m_model_view.get_surface_width() || 
+		img_s.rows != m_model_view.get_surface_height()))
 	{
-		m_3dscene.release();
-		if(!m_3dscene.init(m_pd3dev,
+		m_model_view.release();
+		if(!m_model_view.init(m_pd3dev,
 			(float) img_s.cols, (float) img_s.rows,
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height,
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height))
 			return false;
 	}
 
-	//////////////// load model //////////////////////////////////////
+	//////////////// Model related code //////////////////////////////
 	if(m_badd_model){
 		if(!load_model()){
 			cerr << "Failed to load model " << m_fname_model << endl;
@@ -722,187 +726,39 @@ bool f_inspector::proc()
 		m_badd_model = false;
 	}
 
-	//////////////// chess board detection ///////////////////////////
-	if(m_op == DET_CHSBD && !m_bchsbd_found)
-	{
+	//////////////// Chessboard related code /////////////////////////
+	switch(m_op){
+	case DET_CHSBD:
 		if(!m_bchsbd_found)
 			findChsbd(img_s, timg);
-	}else if(m_op == SAVE_CHSBDS){
+		break;
+	case SAVE_CHSBDS:
 		if(!saveChsbds()){
 			cerr << "Failed to save Chess boards." << endl;
 		}else{
 			cout << "Chessboards successfully saved." << endl;
 		}
 		m_op = NORMAL;
-	}else if(m_op == LOAD_CHSBDS){
+		break;
+	case LOAD_CHSBDS:
 		if(!loadChsbds()){
 			cerr << "Failed to load Chessboards." << endl;
 		}else{
 			cout << "Chessboards successfully loaded." << endl;
 		}
 		m_op = NORMAL;
-	}else if(m_op == CLEAR_CHSBDS){
+		break;
+	case CLEAR_CHSBDS:
 		clearChsbds();
-	}
-
-	if(m_bshow_chsbd && m_bchsbd_found){
-		drawChessboardCorners(img_s, m_sz_chsbd, 
-			m_2dchsbd[m_cur_chsbd], m_bchsbd_found);
-	}
-
-	//////////////////////////////// camera calibration with chess board /////
-	if(m_op == CALIB && !m_bcampar_fixed){
-		calibChsbd(img_s);
-	}else if(m_op == SAVE_CAMPAR){
-		if(!saveCampar())
-			cerr << "Failed to save camera parameter" << endl;
-		m_op = NORMAL;
-	}else if(m_op == LOAD_CAMPAR){
-		if(!loadCampar())
-			cerr << "Failed to load camera parameter" << endl;
-		m_op = NORMAL;
-	}else if(m_op == CLEAR_CAMPAR){
-		clearCampar();
-		m_op = NORMAL;
-	}
-
-	///////////////////////////// pose and camera parameter estimation /////
-	if(m_op == DET_POSE || m_op == DET_POSE_CAM || m_op == DET_POSE_CAM_TBL){
-		guessCamparPauseChsbd(timg);
-		guessCamparPauseModel(timg);
-		m_op = NORMAL;
-	}
-
-	// undistort if the flag is enabled.
-	if(m_bundistort){
-		undistort(img_s, img, m_cam_int, m_cam_dist);
-		img_s = img;
-	}
-
-	m_pd3dev->BeginScene();
-	//////////////////// clear back buffer ///////////////////////////
-	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
-		D3DCOLOR_COLORVALUE(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
-
-	/////////////////////// render main view //////////////////////////
-	m_maincam.SetAsRenderTarget(m_pd3dev);
-
-	m_maincam.blt_offsrf(m_pd3dev, img_s);
-
-	// Drawing object (2d points and 3d object)
-	for(int iobj = 0; iobj < m_obj.size(); iobj++){
-		s_obj & obj = m_obj[iobj];
-		if(m_op == OBJ){
-			if(iobj == m_cur_obj){
-				m_maincam.render_point2d(m_pd3dev, 
-					NULL, m_pline,
-					obj.get_pts(), iobj, 1);
-			}else{
-				m_maincam.render_point2d(m_pd3dev, 
-					NULL, m_pline,
-					obj.get_pts(), iobj, 0);
-			}
-		}else if(m_op == POINT){
-			if(iobj == m_cur_obj){
-				m_maincam.render_point2d(m_pd3dev, 
-					NULL, m_pline,
-					obj.get_pts(), iobj, 1, m_cur_obj_point);
-			}else{
-				m_maincam.render_point2d(m_pd3dev, 
-					NULL, m_pline,
-					obj.get_pts(), iobj, 0);
-			}			
-		}
-
-		int imodel = m_obj[iobj].get_model();
-		if(imodel != -1){
-			// rendering 3d object
-			m_models[imodel].proj(m_obj[iobj].pt2dprj,
-				m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam,
-				m_obj[iobj].rvec, m_obj[iobj].tvec);
-
-			m_obj[iobj].render(m_models[imodel], m_pd3dev, NULL, m_pline, 
-				iobj, 0, m_cur_obj_point);
-			 
-			// render selected axis
-			m_obj[iobj].render_axis(m_models[imodel], 
-				m_rvec_cam, m_tvec_cam, m_cam_int, m_cam_dist,
-				m_pd3dev, m_pline, (int) m_axis);
-		}
-	}
-
-	m_maincam.ResetRenderTarget(m_pd3dev);
-	////////////////////// render 3d scene ///////////////////////////
-	m_3dscene.SetAsRenderTarget(m_pd3dev);
-	renderModel(timg);
-	m_3dscene.ResetRenderTarget(m_pd3dev);
-
-	//////////////////// render total view port /////////////////////
-	m_maincam.show(m_pd3dev, (float)(0. + m_main_offset.x),
-		(float) ((float) m_ViewPort.Height + m_main_offset.y), m_main_scale);
-
-	switch(m_3dmode){
-	case SUB:
-		m_3dscene.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
-		break;
-	case FULL:
-		m_3dscene.show(m_pd3dev, 0, (float) m_ViewPort.Height);
-		break;
-	default:
 		break;
 	}
 
-	if(m_op == MODEL){
-		m_3dscene.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
-	}
+	// calibration
+	calibrate(img_s, timg);
 
-	char information[1024];
+	// rendering main view
+	render(img_s, timg);
 
-	snprintf(information, 1023, 
-		"OP=%s, MM=%d, Models=%d, CurModel=%d, Objs=%d, CurObj=%d, CurPoints=%d, CurPoint=%d",
-		m_str_op[m_op], m_mm, m_models.size(),
-		m_cur_model, m_obj.size(), 
-		m_cur_obj, 
-		(m_cur_obj < 0 ? m_cur_obj : m_obj[m_cur_obj].get_num_points()),
-		m_cur_obj_point);
-	
-	m_d3d_txt.render(m_pd3dev, information, 0, 0, 1.0, 0, EDTC_LT);
-
-	snprintf(information, 1023, "MC(%d, %d)", m_mc.x, m_mc.y);
-
-	m_d3d_txt.render(m_pd3dev, information, 0, 20, 1.0, 0, EDTC_LT);
-	D3DXVECTOR2 v[2];
-	m_pline->Begin();
-	v[0] = D3DXVECTOR2((float) 0, (float) m_mc.y);
-	v[1] = D3DXVECTOR2((float)m_ViewPort.Width - 1, (float) m_mc.y);
-	m_pline->Draw(v, 2, D3DCOLOR_RGBA(0, 255, 0, 255));
-	v[0] = D3DXVECTOR2((float) m_mc.x, (float) m_ViewPort.Height - 1);
-	v[1] = D3DXVECTOR2((float) m_mc.x, (float) 0);
-	m_pline->Draw(v, 2, D3DCOLOR_RGBA(0, 255, 0, 255));
-	m_pline->End();
-	m_pd3dev->EndScene();
-	////////////////////// grab rendered back surface ////////////////
-	if(m_grab_name)
-		grab();
-
-	////////////////////// presentation //////////////////////////////
-	if(m_pd3dev->Present(NULL, NULL, 
-		NULL, NULL) == D3DERR_DEVICELOST){
-			cerr << "device lost" << endl;
-			m_blost = true;
-	}
-
-/*
-	WCHAR winformation[1024];
-	snwprintf(winformation, 1023, L"MC(%d, %d)", m_mc.x, m_mc.y);
-	m_pD2DRndrTgt->BeginDraw();
-		m_pD2DRndrTgt->DrawText(winformation, ARRAYSIZE(winformation) -1,
-		m_pTextFormat, D2D1::RectF(100.f, 100.f, 500.f, 80.f),
-		m_pBlackBrush);
-	m_pD2DRndrTgt->DrawRectangle(D2D1::RectF(100.f, 100.f, 200.f, 200.f),
-		m_pBlackBrush, 5.0f);
-	m_pD2DRndrTgt->EndDraw();
-*/
 	return true;
 }
 
@@ -1559,17 +1415,47 @@ bool f_inspector::load_model()
 	return false;
 }
 
+void f_inspector::calibrate(Mat & img_s, long long timg)
+{
+	switch(m_op){
+	case CALIB:
+		if(!m_bcampar_fixed)
+			calibChsbd(img_s);
+		break;
+	case SAVE_CAMPAR:
+		if(!saveCampar())
+			cerr << "Failed to save camera parameter" << endl;
+		m_op = NORMAL;
+		break;
+	case LOAD_CAMPAR:
+		if(!loadCampar())
+			cerr << "Failed to load camera parameter" << endl;
+		m_op = NORMAL;
+		break;
+	case CLEAR_CAMPAR:
+		clearCampar();
+		m_op = NORMAL;
+		break;
+	case DET_POSE:
+	case DET_POSE_CAM:
+	case DET_POSE_CAM_TBL:
+		guessCamparPauseChsbd(timg);
+		guessCamparPauseModel(timg);
+		m_op = NORMAL;
+	}
+}
+
 void f_inspector::render3D(long long timg)
 {
-	m_3dscene.SetAsRenderTarget(m_pd3dev);
+	m_model_view.SetAsRenderTarget(m_pd3dev);
 	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
 		D3DCOLOR_COLORVALUE(0.f, 0.f, 0.f, 1.0f), 1.0f, 0);
 	// rendering chessboard
 	D3DXMATRIX Mprj, Mviewcam, Mview;
 	D3DXMatrixIdentity(&Mprj);
 	double w, h;
-	w = (double) m_3dscene.get_surface_width();
-	h = (double) m_3dscene.get_surface_height();
+	w = (double) m_model_view.get_surface_width();
+	h = (double) m_model_view.get_surface_height();
 
 	float zn = 0.1f, zf = 100.f;
 	float q = (float)(zf / (zf - zn));
@@ -1611,7 +1497,7 @@ void f_inspector::render3D(long long timg)
 	// rendering 3d mdoel
 	renderModel(timg);
 
-	m_3dscene.ResetRenderTarget(m_pd3dev);
+	m_model_view.ResetRenderTarget(m_pd3dev);
 }
 
 void f_inspector::renderChsbd(long long timg)
@@ -1669,8 +1555,163 @@ void f_inspector::renderChsbd(long long timg)
 	m_pmesh_chsbd->DrawSubset(0);
 }
 
+void f_inspector::render(Mat & imgs, long long timg)
+{
+	// Image level rendering
+	if(m_bshow_chsbd && m_bchsbd_found){
+		drawChessboardCorners(imgs, m_sz_chsbd, 
+			m_2dchsbd[m_cur_chsbd], m_bchsbd_found);
+	}
+
+	// undistort if the flag is enabled.
+	if(m_bundistort){
+		Mat img;
+		undistort(imgs, img, m_cam_int, m_cam_dist);
+		imgs = img;
+	}
+
+	////////////////////// Direct 3D based renderer //////////////////
+
+	m_pd3dev->BeginScene();
+
+	//////////////////// clear back buffer ///////////////////////////
+	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
+		D3DCOLOR_COLORVALUE(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
+
+	/////////////////////// render main view //////////////////////////
+	m_maincam.SetAsRenderTarget(m_pd3dev);
+
+	m_maincam.blt_offsrf(m_pd3dev, imgs);
+
+	renderObj();
+
+	m_maincam.ResetRenderTarget(m_pd3dev);
+
+	////////////////////// render 3D model ///////////////////////////
+
+	renderModel(timg);
+
+	//////////////////// render total view port /////////////////////
+	m_maincam.show(m_pd3dev, (float)(0. + m_main_offset.x),
+		(float) ((float) m_ViewPort.Height + m_main_offset.y), m_main_scale);
+
+	switch(m_3dmode){
+	case SUB:
+		m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
+		break;
+	case FULL:
+		m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height);
+		break;
+	default:
+		break;
+	}
+
+	if(m_op == MODEL){
+		m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height, 0.25);
+	}
+
+	renderInfo();
+
+	renderCursor();
+
+	////////////////////// grab rendered back surface ////////////////
+	if(m_grab_name)
+		grab();
+
+	////////////////////// presentation //////////////////////////////
+	if(m_pd3dev->Present(NULL, NULL, 
+		NULL, NULL) == D3DERR_DEVICELOST){
+			cerr << "device lost" << endl;
+			m_blost = true;
+	}
+}
+
+// Drawing text based information to show filter state
+void f_inspector::renderInfo()
+{
+	char information[1024];
+
+	snprintf(information, 1023, 
+		"OP=%s, MM=%d, Models=%d, CurModel=%d, Objs=%d, CurObj=%d, CurPoints=%d, CurPoint=%d",
+		m_str_op[m_op], m_mm, m_models.size(),
+		m_cur_model, m_obj.size(), 
+		m_cur_obj, 
+		(m_cur_obj < 0 ? m_cur_obj : m_obj[m_cur_obj].get_num_points()),
+		m_cur_obj_point);
+	
+	m_d3d_txt.render(m_pd3dev, information, 0, 0, 1.0, 0, EDTC_LT);
+
+	snprintf(information, 1023, "MC(%d, %d)", m_mc.x, m_mc.y);
+
+	m_d3d_txt.render(m_pd3dev, information, 0, 20, 1.0, 0, EDTC_LT);
+}
+
+// Decorating mouse cursor
+void f_inspector::renderCursor()
+{
+	// vertial and horizontal lines are drawn as crossing at mouse cursor
+	D3DXVECTOR2 v[2];
+	m_pline->Begin();
+	v[0] = D3DXVECTOR2((float) 0, (float) m_mc.y);
+	v[1] = D3DXVECTOR2((float)m_ViewPort.Width - 1, (float) m_mc.y);
+	m_pline->Draw(v, 2, D3DCOLOR_RGBA(0, 255, 0, 255));
+	v[0] = D3DXVECTOR2((float) m_mc.x, (float) m_ViewPort.Height - 1);
+	v[1] = D3DXVECTOR2((float) m_mc.x, (float) 0);
+	m_pline->Draw(v, 2, D3DCOLOR_RGBA(0, 255, 0, 255));
+	m_pline->End();
+	m_pd3dev->EndScene();
+}
+
+
+void f_inspector::renderObj()
+{
+	// Drawing object (2d points and 3d object)
+	for(int iobj = 0; iobj < m_obj.size(); iobj++){
+		s_obj & obj = m_obj[iobj];
+		if(m_op == OBJ){
+			if(iobj == m_cur_obj){
+				m_maincam.render_point2d(m_pd3dev, 
+					NULL, m_pline,
+					obj.get_pts(), iobj, 1);
+			}else{
+				m_maincam.render_point2d(m_pd3dev, 
+					NULL, m_pline,
+					obj.get_pts(), iobj, 0);
+			}
+		}else if(m_op == POINT){
+			if(iobj == m_cur_obj){
+				m_maincam.render_point2d(m_pd3dev, 
+					NULL, m_pline,
+					obj.get_pts(), iobj, 1, m_cur_obj_point);
+			}else{
+				m_maincam.render_point2d(m_pd3dev, 
+					NULL, m_pline,
+					obj.get_pts(), iobj, 0);
+			}			
+		}
+
+		int imodel = m_obj[iobj].get_model();
+		if(imodel != -1){
+			// rendering 3d object
+			m_models[imodel].proj(m_obj[iobj].pt2dprj,
+				m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam,
+				m_obj[iobj].rvec, m_obj[iobj].tvec);
+
+			m_obj[iobj].render(m_models[imodel], m_pd3dev, NULL, m_pline, 
+				iobj, 0, m_cur_obj_point);
+
+			// render selected axis
+			m_obj[iobj].render_axis(m_models[imodel], 
+				m_rvec_cam, m_tvec_cam, m_cam_int, m_cam_dist,
+				m_pd3dev, m_pline, (int) m_axis);
+		}
+	}
+}
+
 void f_inspector::renderModel(long long timg)
 {
+	m_model_view.SetAsRenderTarget(m_pd3dev);
+
 	// 3D model is rotated in the model view with the angle speed of 1 deg/sec
 	// Camera parameter is set as 
 	if(m_cur_model != -1){
@@ -1699,8 +1740,8 @@ void f_inspector::renderModel(long long timg)
 		// fov_h = atan(hpix * pitch / f)
 		// f = min((wpix * pitch)/tan(fov), (hpix * pitch)/tan(fov))
 		// fpix = min(wpix, hpix) / tan(fov)
-		float wpix = m_3dscene.get_surface_width();
-		float hpix = m_3dscene.get_surface_height();
+		float wpix = m_model_view.get_surface_width();
+		float hpix = m_model_view.get_surface_height();
 		float fpix = (float)(min(wpix, hpix) / tan(atan(0.5)));
 		m_cam_int_mdl = Mat(3, 3, CV_64F);
 		m_cam_int_mdl.at<double>(0, 0) = fpix;
@@ -1721,6 +1762,7 @@ void f_inspector::renderModel(long long timg)
 		m_models[m_cur_model].proj(pts, m_cam_int_mdl, m_cam_dist_mdl, m_rvec_cam_mdl, m_tvec_cam_mdl, m_rvec_mdl, m_tvec_mdl);
 		render_prjpts(m_models[m_cur_model], pts, m_pd3dev, NULL, m_pline, m_cur_model, 0, -1);	
 	}
+	m_model_view.ResetRenderTarget(m_pd3dev);
 }
 
 ///////////////////////////////////////////////////////// message handler
