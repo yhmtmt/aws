@@ -323,20 +323,6 @@ int prj_pause(void * p, int m, int n, const __cminpack_real__ *x,
 
 double s_model::get_max_dist()
 {
-	float xmin, ymin, zmin, xmax, ymax, zmax;
-	xmin = ymin = zmin = FLT_MAX;
-	xmax = ymax = zmax = -FLT_MAX;
-	for(int i = 0; i < pts.size(); i++){
-		xmin = min(xmin, pts[i].x);
-		xmax = max(xmax, pts[i].x);
-
-		ymin = min(ymin, pts[i].y);
-		ymax = max(ymax, pts[i].y);
-
-		zmin = min(zmin, pts[i].z);
-		zmax = max(ymax, pts[i].z);
-	}
-
 	float dx = (float)(xmax - xmin);
 	float dy = (float)(ymax - ymin);
 	float dz = (float)(zmax - zmin);
@@ -425,6 +411,18 @@ bool s_model::load(const char * fname)
 		fe["e"] >> edges[ie].e;
 	}
 
+	xmin = ymin = zmin = FLT_MAX;
+	xmax = ymax = zmax = -FLT_MAX;
+	for(int i = 0; i < pts.size(); i++){
+		xmin = min(xmin, pts[i].x);
+		xmax = max(xmax, pts[i].x);
+
+		ymin = min(ymin, pts[i].y);
+		ymax = max(ymax, pts[i].y);
+
+		zmin = min(zmin, pts[i].z);
+		zmax = max(ymax, pts[i].z);
+	}
 	return true;
 }
 
@@ -449,7 +447,7 @@ void s_obj::render_axis(s_model & mdl, Mat & rvec_cam, Mat & tvec_cam, Mat & cam
 
 	Mat rvec_comp, tvec_comp;
 	composeRT(rvec_cam, tvec_cam, rvec, tvec, rvec_comp, tvec_comp);
-	projectPoints(p3d, rvec_comp, tvec_comp, cam_int, cam_dist, pt2d);
+	projectPoints(p3d, rvec_comp, tvec_comp, cam_int, cam_dist, p2d);
 	pline->Begin();
 	D3DXVECTOR2 v[2];
 	D3DCOLOR color;
@@ -536,7 +534,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_sh(1.0), m_sv(1.0), m_bundistort(false), 
 	m_bpttrack(false), m_bcbtrack(false), m_bchsbd_found(false),
 	m_sz_chsbd(6, 9), m_pitch_chsbd(0.0254f/*meter*/), m_bshow_chsbd(false),
-	m_bpose_fixed(false), m_bcampar_fixed(false), m_bcam_tbl_loaded(false),
+	m_bpose_fixed(true), m_bcampar_fixed(true), m_bcam_tbl_loaded(false),
 	m_bload_campar(false), m_bload_campar_tbl(false),
 	m_bcalib_use_intrinsic_guess(false),
 	m_bcalib_fix_principal_point(false),
@@ -560,9 +558,10 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_fname_campar[0] = '\0';
 	m_fname_campar_tbl[0] = '\0';
 	m_fname_chsbds[0] = '\0';
-	m_cam_int = Mat::zeros(3, 3, CV_64FC1);
-	m_cam_int.at<double>(2, 2) = 1.0;
+	m_cam_int = Mat::eye(3, 3, CV_64FC1);
 	m_cam_dist = Mat::zeros(1, 8, CV_64FC1);
+	m_rvec_cam = Mat::zeros(3, 1, CV_64FC1);
+	m_tvec_cam = Mat::zeros(3, 1, CV_64FC1);
 
 	register_fpar("fchsbds", m_fname_chsbds, 1024, "File path of chessboard collections");
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
@@ -1943,7 +1942,6 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 			translate_cam(delta);
 			break;
 		}
-		zoom_screen(delta);
 	}else if(GET_KEYSTATE_WPARAM(wParam) & MK_CONTROL){
 		switch(m_op){
 		case OBJ3D:
@@ -2176,6 +2174,29 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'I':
 		if(m_cur_obj != -1 && m_cur_model != -1){
 			m_obj[m_cur_obj].set_model(m_cur_model);
+			
+			// initialize rvec and tvec as visible quantities for current camera parameters.
+			// Initially, the object is not rotated. Thus we need to calculate only the x-y range of the object.
+			s_model & mdl = m_models[m_cur_model];
+
+			double xsize = mdl.get_xsize();
+			double ysize = mdl.get_ysize();
+			double zsize = mdl.get_zsize();
+
+			// To fit inside the window, z should be determined 
+			// to satisfy both fpix * xsize / z < width and  fpix * ysize / z < height
+			// This means z > fpix * xsize / width and z > fpix * ysize / height.
+			// Actually the z should be
+			double fpix_x = m_cam_int.at<double>(0, 0);
+			double fpix_y = m_cam_int.at<double>(1, 1);
+			double width = (double) m_maincam.get_surface_width();
+			double height = (double) m_maincam.get_surface_height();
+			double dist_z = max(fpix_x * xsize / width, fpix_y * ysize / height);
+
+			// now rvec is zero and tvec is (0, 0, dist_z)
+			m_obj[m_cur_obj].rvec = Mat::zeros(3, 1, CV_64FC1);
+			m_obj[m_cur_obj].tvec = Mat::zeros(3, 1, CV_64FC1);
+			m_obj[m_cur_obj].tvec.at<double>(2, 0) = dist_z;
 		}
 		break;
 	case 'C':

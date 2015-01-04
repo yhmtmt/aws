@@ -73,6 +73,12 @@ struct s_model
 	string name;
 	vector<Point3f> pts;
 	vector<s_edge> edges;
+	float xmin, ymin, zmin, xmax, ymax, zmax;
+
+	s_model():xmin(FLT_MAX), ymin(FLT_MAX), zmin(FLT_MAX),
+		xmax(-FLT_MAX), ymax(-FLT_MAX), zmax(-FLT_MAX)
+	{
+	}
 
 	int get_num_pts()
 	{
@@ -82,6 +88,21 @@ struct s_model
 	// get_max_dist calculates size of the bounding box of the model and	
 	// returns its diagonal length.
 	double get_max_dist();
+
+	double get_xsize()
+	{
+		return xmax - xmin;
+	}
+
+	double get_ysize()
+	{
+		return ymax - ymin;
+	}
+
+	double get_zsize()
+	{
+		return zmax - zmin;
+	}
 
 	void proj(vector<Point2f> & pt2d, Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
 		Mat & rvec_obj, Mat & tvec_obj);
