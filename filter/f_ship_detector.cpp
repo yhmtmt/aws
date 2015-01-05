@@ -35,7 +35,7 @@ using namespace std;
 using namespace cv;
 
 #include "../util/aws_sock.h"
-#include "../util/thread_util.h"
+#include "../util/aws_thread.h"
 #include "../util/c_clock.h"
 
 #include "../channel/ch_base.h"

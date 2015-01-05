@@ -29,7 +29,7 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/thread_util.h"
+#include "../util/aws_thread.h"
 
 #include "../util/c_clock.h"
 

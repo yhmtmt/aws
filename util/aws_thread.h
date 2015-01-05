@@ -3,14 +3,14 @@
 #include <pthread.h>
 
 class pthread_lock{
-	pthread_mutex_t mtx;
+	pthread_mutex_t * pmtx;
 public:
-	pthread_lock(pthread_mutex_t & t):mtx(t){
-		pthread_mutex_lock(&mtx);
+	pthread_lock(pthread_mutex_t * p):pmtx(p){
+		pthread_mutex_lock(p);
 	}
 
 	~pthread_lock(){
-		pthread_mutex_unlock(&mtx);
+		pthread_mutex_unlock(pmtx);
 	}
 };
 

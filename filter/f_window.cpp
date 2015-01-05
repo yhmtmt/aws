@@ -28,7 +28,7 @@ using namespace std;
 using namespace cv;
 
 #include "../util/aws_sock.h"
-#include "../util/thread_util.h"
+#include "../util/aws_thread.h"
 
 #include "../util/coord.h"
 #include "../util/c_ship.h"
@@ -461,7 +461,7 @@ bool f_ds_window::is_active()
 			Sleep(10);
 			return true;
 		}
-		pthread_lock lock(m_d3d_mtx);
+		pthread_lock lock(&m_d3d_mtx);
 		if(!reset_d3dev())
 			return m_bactive = false;
 		m_blost = false;
@@ -567,7 +567,7 @@ bool f_ds_window::cmd_proc(s_cmd & cmd)
 
 bool f_ds_window::proc()
 {
-	pthread_lock lock(m_d3d_mtx);
+	pthread_lock lock(&m_d3d_mtx);
 	
 	////////////////// updating pvt information ///////////////////////
 	ch_image * pin = dynamic_cast<ch_image*>(m_chin[0]);
@@ -922,7 +922,7 @@ bool f_sys_window::check()
 
 bool f_sys_window::proc()
 {
-	pthread_lock lock(m_d3d_mtx);
+	pthread_lock lock(&m_d3d_mtx);
 
 	float dt = (float) ((m_cur_time - m_prev_time) * 1e-7);
 	m_avg_cycle_time = ALPHA * dt + (1 - ALPHA) * m_avg_cycle_time;
@@ -1687,7 +1687,7 @@ bool f_ptz_window::check()
 
 bool f_ptz_window::proc()
 {
-	pthread_lock lock(m_d3d_mtx);
+	pthread_lock lock(&m_d3d_mtx);
 
 	float dt = (float) ((m_cur_time - m_prev_time) * 1e-7);
 	m_avg_cycle_time = ALPHA * dt + (1 - ALPHA) * m_avg_cycle_time;

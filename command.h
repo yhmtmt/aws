@@ -1,8 +1,6 @@
 #ifndef _COMMAND_H_
 #define _COMMAND_H_
 
-#include "util/aws_stdlib.h"
-
 void * cmd_proc(void * pasw);
 bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok);
 

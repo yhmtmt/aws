@@ -28,7 +28,7 @@ using namespace std;
 using namespace cv;
 
 #include "../util/aws_sock.h"
-#include "../util/thread_util.h"
+#include "../util/aws_thread.h"
 
 #include "../util/aws_cminpack.h"
 #include "../util/coord.h"
@@ -633,7 +633,7 @@ void f_inspector::release_d3dres()
 
 bool f_inspector::proc()
 {
-	pthread_lock lock(m_d3d_mtx);
+	pthread_lock lock(&m_d3d_mtx);
 
 	////////////////// updating pvt information ///////////////////////
 	long long timg;	
