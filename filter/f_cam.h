@@ -1,3 +1,5 @@
+#ifndef _F_CAM_H_
+#define _F_CAM_H_
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -15,6 +17,8 @@
 // along with f_cam.h.  If not, see <http://www.gnu.org/licenses/>. 
 #include "../channel/ch_image.h"
 #include "../channel/ch_campar.h"
+
+#include "f_base.h"
 
 enum e_frm_state{
 	EFS_NONE, EFS_NEW, EFS_SHOW,
@@ -66,3 +70,4 @@ public:
 };
 
 
+#endif

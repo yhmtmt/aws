@@ -1,3 +1,5 @@
+#ifndef _F_MISC_H_
+#define _F_MISC_H_
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -444,3 +446,5 @@ public:
 		return true;
 	}
 };
+
+#endif

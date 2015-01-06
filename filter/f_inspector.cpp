@@ -39,8 +39,6 @@ using namespace cv;
 #include "../channel/ch_base.h"
 #include "../channel/ch_image.h"
 
-#include "f_base.h"
-#include "f_window.h"
 #include "f_inspector.h"
 
 const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  

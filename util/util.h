@@ -16,7 +16,7 @@
 #ifndef _UTIL_H_
 #define _UTIL_H_
 #include "aws_sock.h"
-#include "thread_util.h"
+#include "aws_thread.h"
 #include "aws_stdlib.h"
 
 bool synth_afn(Mat & l, Mat & r, Mat & res);

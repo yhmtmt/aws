@@ -1,3 +1,5 @@
+#ifndef _F_AVT_CAM_H_
+#define _F_AVT_CAM_H_
 // Copyright(c) 2013 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -108,3 +110,4 @@ public:
 
 	void set_new_frm(tPvFrame * pfrm);
 };
+#endif

@@ -23,7 +23,7 @@
 #include <vector>
 #include <list>
 #include "aws_sock.h"
-#include "thread_util.h"
+#include "aws_thread.h"
 
 using namespace std;
 

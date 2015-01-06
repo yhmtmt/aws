@@ -1,4 +1,5 @@
-
+#ifndef _F_INSPECTOR_H_
+#define _F_INSPECTOR_H_
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -15,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with f_inspector.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#include "f_ds_window.h"
 ////////////////// procedure for model pose estimation
 // for calibration phase
 // 1. load lens parameter table
@@ -459,3 +461,5 @@ public:
 	virtual void handle_keyup(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_char(WPARAM wParam, LPARAM lParam);
 };
+
+#endif

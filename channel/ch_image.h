@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with ch_image.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#include "ch_base.h"
 
 class ch_image: public ch_base
 {

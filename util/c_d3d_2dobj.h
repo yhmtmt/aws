@@ -1,3 +1,5 @@
+#ifndef _C_D3D_2DOBJ_H_
+#define _C_D3D_2DOBJ_H_
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -13,6 +15,9 @@
 
 // You should have received a copy of the GNU General Public License
 // along with c_d3d_2dobj.h.  If not, see <http://www.gnu.org/licenses/>. 
+
+
+#include "../util/coord.h"
 
 #include <d2d1.h>
 #include <dwrite.h>
@@ -385,3 +390,5 @@ void xsquare(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color);
 void xcross(LPD3DXLINE pline,  Point2f & pt, float radius, D3DCOLOR color);
 void xdiamond(LPD3DXLINE pline,  Point2f & pt, float radius, D3DCOLOR color);
 void xdiagonal(LPD3DXLINE pline,  Point2f & pt, float radius, D3DCOLOR color);
+
+#endif

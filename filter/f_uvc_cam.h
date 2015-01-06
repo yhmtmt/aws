@@ -1,3 +1,5 @@
+#ifndef _F_UVC_CAM_H_
+#define _F_UVC_CAM_H_
 // Copyright(c) 2014 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -59,3 +61,5 @@ public:
 	virtual void destroy_run();
 	virtual bool grab(Mat & img);
 };
+
+#endif

@@ -28,7 +28,7 @@ using namespace std;
 using namespace cv;
 
 #include "../util/aws_sock.h"
-#include "../util/thread_util.h"
+#include "../util/aws_thread.h"
 
 #include "c_nmeadec.h"
 #include "c_ship.h"

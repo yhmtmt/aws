@@ -14,9 +14,10 @@
 // You should have received a copy of the GNU General Public License
 // along with f_imgs.h.  If not, see <http://www.gnu.org/licenses/>. 
 
-
+#ifndef _F_IMGS_H_
+#define _F_IMGS_H_
 // Alert: This module is written only for Windows. 
-
+#ifdef _WIN32
 
 #include <wchar.h>
 
@@ -44,3 +45,6 @@ public:
 	virtual bool grab(Mat & img);
 	virtual bool cmd_proc(s_cmd & cmd);
 };
+
+#endif
+#endif
