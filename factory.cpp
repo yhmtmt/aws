@@ -96,6 +96,7 @@ void ch_base::register_factory()
 // include file list. If you add newly designed your filter, please insert
 // your filter's header file here. 
 #include "filter/f_base.h"
+#include "filter/f_sample.h"
 #include "filter/f_misc.h"
 #include "filter/f_stabilizer.h"
 #include "filter/f_cam.h"
@@ -108,12 +109,17 @@ void ch_base::register_factory()
 #include "filter/f_imgshk.h"
 #ifdef _WIN32
 #include "filter/f_imgs.h"
-#include "filter/f_ds_video.h"
+#include "filter/f_ds_vdev.h"
+#include "filter/f_ds_vfile.h"
 #else
 #include "filter/f_uvc_cam.h"
 #endif
 #ifdef FWINDOW
 #include "filter/f_window.h"
+#include "filter/f_ds_window.h"
+#include "filter/f_sprot_window.h"
+#include "filter/f_sys_window.h"
+#include "filter/f_ptz_window.h"
 #include "filter/f_inspector.h"
 #endif
 #include "filter/f_nmea.h"
