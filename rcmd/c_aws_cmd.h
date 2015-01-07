@@ -11,6 +11,7 @@ using namespace std;
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <string.h>
+#include "../command.h"
 #define SOCKET int
 
 #ifndef SOCKET_ERROR 
@@ -18,8 +19,7 @@ using namespace std;
 #endif
 
 #define CMD_LEN 1024
-bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok);
-int aws_cmd(int argc, char ** argv, const char * cmd);
+//bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok);
 
 class c_aws_cmd
 {

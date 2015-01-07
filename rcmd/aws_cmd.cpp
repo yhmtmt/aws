@@ -1,6 +1,7 @@
 #include <iostream>
 #include "aws_cmd.h"
 
+/*
 bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok)
 {
   int i = 0;
@@ -23,6 +24,7 @@ bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok)
   
   return true;
 }
+*/
 
 int aws_cmd(int argc, char ** argv, const char * cmd){
   ifstream cf(".aws");

@@ -2,6 +2,7 @@
 #include "c_aws_cmd.h"
 
 ////////////////////////////////////////////////// helper function
+/*
 bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok)
 {
   int i = 0;
@@ -24,6 +25,7 @@ bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok)
   
   return true;
 }
+*/
 
 //////////////////////////////////////////////////// c_aws_cmd
 c_aws_cmd::c_aws_cmd()
