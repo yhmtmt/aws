@@ -19,7 +19,7 @@ Windows version is useful if you need to play the videos or render the 3D graphi
 
 1. Install Visual Studio 2010 or later
 2. Install the libraries (NOTE: Basically, the libraries should be built with same version of VC++. vc2010, vc2012, and vc2013 are corresponding to vc10,vc11, and vc12 respectively. Of course, if you are targetting x64, the libraries should be the same.)
-   * DirectX SDK
+   * DirectX SDK (required even if your WindowsSDK may have DirectX libraries)
    * Windows SDK
    * pthread for windows
    * libjpeg (only if you need to use SANYO HD5400)
@@ -28,7 +28,7 @@ Windows version is useful if you need to play the videos or render the 3D graphi
    * cminpack
    * PvAPI (NOTE: Need to execute installer. Remove vimba from the system)
 3. Create New empty project for "console application" (I recommend you to configure the compile target as x64 right after creating the project.)
-4. Add sources to the project obtained with git clone above explained.
+4. Add sources to the project obtained with git clone above explained.(Notice: Files under "rcmd/" should not be imported. The remote commands can only be built with cygwin and Linux.)
 5. Configure VC++ "include" and "library" paths. 
 6. Install dlls of the libraries to your execution path.
 7. Add grobal preprocessor definitions, FWINDOW and AVT_CAM, if you use direct show based window filters ("dswin" and the children) and Allied Vision Technology's cams ("avtcam"). If you use SANYO HD5400(filter "netcam"), you should define SANYO_HD5400. But, in this case, you need to install libjpeg and libcurl correctly.
