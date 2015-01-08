@@ -36,7 +36,8 @@ f_base* f_base::create(const char * tname, const char * fname)
 {
 	f_base * ptr = NULL;
 	try{
-		ptr = m_fmap[tname](fname);
+		ptr = m_fmap[tname].cf(fname);
+		ptr->set_filter_thread(m_fmap[tname].ft);
 	}catch(...){
 		ptr = NULL;
 	}
@@ -166,53 +167,6 @@ f_base::s_ferr f_base::m_err_buf[SIZE_FERR_BUF];
 int f_base::m_err_head = 0;
 int f_base::m_err_tail = 0;
 pthread_mutex_t f_base::m_err_mtx;
-
-void * f_base::fthread(void * ptr)
-{
-	f_base * filter = (f_base *) ptr;
-	filter->m_count_proc =  0;	
-	filter->m_max_cycle = 0;
-	long long count_pre, count_post;
-	int cycle;
-	cycle = 0;
-	count_pre = count_post = filter->m_count_clock;
-	while(filter->m_bactive){
-		count_pre = filter->m_count_clock;
-
-		while(cycle < (int) filter->m_intvl){
-			filter->clock_wait();
-			cycle++;
-		}
-
-		filter->lock_cmd();
-		
-		filter->tran_chout();
-		filter->calc_time_diff();
-
-		if (!filter->proc()){
-			filter->m_bactive = false;
-		}
-
-		if(filter->m_clk.is_run()){
-			filter->m_count_proc++;
-			filter->m_max_cycle = max(cycle, filter->m_max_cycle);
-			count_post = filter->m_count_clock;
-			cycle = (int)(count_post - count_pre);
-			cycle -= filter->m_intvl;
-			filter->m_proc_rate = (double)  filter->m_count_proc / (double) filter->m_count_clock;
-		}
-
-		filter->unlock_cmd();
-	}
-
-	cout << filter->get_name() << " stopped." << endl;
-	cout << "Processing rate was " << filter->m_proc_rate;
-	cout << "(" << filter->m_count_proc << "/" << filter->m_count_clock << ")" << endl;
-	cout << "Number of max cycles was " << filter->m_max_cycle << endl;
-
-	filter->m_bstopped = true;
-	return NULL;
-}
 
 void f_base::flush_err_buf(){
 	pthread_mutex_lock(&m_err_mtx);

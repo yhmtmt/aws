@@ -71,36 +71,55 @@ class f_base;
 #define FERR_TRN_IMG_SOCK_SVR_CON (FERR_TRN_IMG + 3)
 
 typedef f_base * (*CreateFilter)(const char * name);
-template <class T> f_base * createFilter(const char * name)
-{
-	return reinterpret_cast<f_base*>(new T(name));
-}
+template <class T> f_base * createFilter(const char * name);
 
-typedef map<const char *, CreateFilter, cmp> FMap;
+typedef void * (*FilterThread)(void * ptr);
+template<class T> static void * fthread(void * ptr);
+
+struct s_filter_basis{
+	CreateFilter cf;
+	FilterThread ft;
+	s_filter_basis():cf(NULL), ft(NULL)
+	{
+	}
+
+	s_filter_basis(CreateFilter acf, FilterThread aft):cf(acf),ft(aft)
+	{
+	}
+};
+
+typedef map<const char *, s_filter_basis, cmp> FMap;
 
 class f_base
 {
 protected:
 	static FMap m_fmap;
+
 	// calling register_factor<T>(tname) to register all filters to be used.
 	static void register_factory();
+
+	// thread body. 
 
 	// registering filter classes to the factory
 	template <class T> static void register_factory(const char * tname)
 	{
-		m_fmap.insert(FMap::value_type(tname, createFilter<T>));
+		s_filter_basis fb(createFilter<T>, fthread<T>);
+		m_fmap.insert(FMap::value_type(tname, fb));
 	}
 
 public:
 	// factory function
 	static f_base * create(const char * tname, const char * fname);
+	void set_filter_thread(FilterThread ft){
+		m_ft = ft;
+	}
 
 	// initialize mutex and signal objects. this is called by the c_aws constructor
 	static void init();
 
 	// uninitialize mutex and signal objects. called by the c_aws destoractor
 	static void uninit();
-		
+	
 protected:
 	char * m_name; // filter name
 public:
@@ -286,8 +305,7 @@ protected:
 protected:
 	// thread object.
 	pthread_t m_fthread;
-	// thread body. called with m_fthread
-	static void * fthread(void * ptr);
+	FilterThread m_ft;
 
 	bool m_bactive; // if it is true, filter thread continues to loop
 	bool m_bstopped; //true indicates filter is stopped. 
@@ -299,16 +317,6 @@ protected:
 	// mutex and signal for clocking
 	static pthread_mutex_t m_mutex; 
 	static pthread_cond_t m_cond;	
-
-	// swap back buffer of output channels by calling ch_base::tran function.
-	// some channel uses back buffer and the swapping timing is immediately after the proc function end.
-	void tran_chout(){
-		for(vector<ch_base*>::iterator itr = m_chout.begin(); itr != m_chout.end(); itr++){
-			if(*itr == NULL)
-				continue;
-			(*itr)->tran();
-		}
-	}
 
 	virtual bool init_run()
 	{
@@ -345,8 +353,58 @@ public:
 
 		m_bactive = true;
 		m_bstopped = false;
-		pthread_create(&m_fthread, NULL, fthread, (void*) this);
+		m_count_proc =  0;	
+		m_max_cycle = 0;
+		pthread_create(&m_fthread, NULL, m_ft, (void*) this);
 		return true;
+	}
+
+	int get_intvl(){
+		return m_intvl;
+	}
+
+	long long get_count_clock(){
+		return m_count_clock;
+	}
+
+	void set_stopped(){
+		m_bstopped = true;
+	}
+
+	void set_inactive(){
+		m_bactive = false;
+	}
+
+	// swap back buffer of output channels by calling ch_base::tran function.
+	// some channel uses back buffer and the swapping timing is immediately after the proc function end.
+	void tran_chout(){
+		for(vector<ch_base*>::iterator itr = m_chout.begin(); itr != m_chout.end(); itr++){
+			if(*itr == NULL)
+				continue;
+			(*itr)->tran();
+		}
+	}
+
+	// calculate processing stat
+	void calc_proc_stat(long long & count_post, long long & count_pre, int cycle)
+	{
+		if(m_clk.is_run()){
+			m_count_proc++;
+			m_max_cycle = max(cycle, m_max_cycle);
+			count_post = m_count_clock;
+			cycle = (int)(count_post - count_pre);
+			cycle -= m_intvl;
+			m_proc_rate = (double)  m_count_proc / (double) m_count_clock;
+		}
+	}
+
+	// dump stat
+	void dump_proc_stat()
+	{
+		cout << get_name() << " stopped." << endl;
+		cout << "Processing rate was " << m_proc_rate;
+		cout << "(" << m_count_proc << "/" << m_count_clock << ")" << endl;
+		cout << "Number of max cycles was " << m_max_cycle << endl;
 	}
 
 	// stop main thread. the function is called from c_aws until the thread stops.
@@ -398,6 +456,11 @@ protected:
 	// clock counter
 	static long long m_count_clock;
 
+public:
+	// reference clock 
+	static c_clock m_clk;
+	static int m_time_zone_minute;
+	
 	// wait signal from aws main loop clocked with hardware timer.
 	void clock_wait(){
 		pthread_mutex_lock(&m_mutex);
@@ -405,10 +468,6 @@ protected:
 		pthread_mutex_unlock(&m_mutex);
 	}
 
-public:
-	// reference clock 
-	static c_clock m_clk;
-	static int m_time_zone_minute;
 	static int get_tz(){
 		return m_time_zone_minute;
 	}
@@ -544,5 +603,46 @@ public:
 	// function returns false if the return values exceed run out the buffer cmd.ret.
 	bool get_par(s_cmd & cmd);
 };
+
+template <class T> f_base * createFilter(const char * name)
+{
+	return reinterpret_cast<f_base*>(new T(name));
+}
+
+
+template<class T> static void * fthread(void * ptr)
+{
+	T * filter = (T*)(ptr);
+
+	long long count_pre, count_post;
+	int cycle;
+	int intvl = filter->get_intvl();
+	cycle = 0;
+	count_pre = count_post = filter->get_count_clock();
+	while(filter->is_active()){
+		count_pre = filter->get_count_clock();
+
+		while(cycle < intvl){
+			filter->clock_wait();
+			cycle++;
+		}
+
+		filter->lock_cmd();
+
+		filter->tran_chout();
+		filter->calc_time_diff();
+
+		if (!filter->proc()){
+			filter->set_inactive();
+		}
+
+		filter->calc_proc_stat(count_post, count_pre, cycle);
+		filter->unlock_cmd();
+	}
+
+	filter->dump_proc_stat();
+	filter->set_stopped();
+	return NULL;
+}
 
 #endif
