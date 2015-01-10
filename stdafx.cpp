@@ -18,10 +18,11 @@
 #pragma comment(lib, "opencv_highgui2410d.lib")
 #pragma comment(lib, "opencv_imgproc2410d.lib")
 #pragma comment(lib, "opencv_calib3d2410d.lib")
-
-#pragma comment(lib, "libcurld_imp.lib")
-#pragma comment(lib, "pthreadVC2.lib")
+#ifdef SANYO_HD5400
 #pragma comment(lib, "libjpegd.lib")
+#pragma comment(lib, "libcurld_imp.lib")
+#endif
+#pragma comment(lib, "pthreadVC2.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Strmiids.lib")
 #pragma comment(lib, "Quartz.lib")
@@ -40,9 +41,11 @@
 #pragma comment(lib, "opencv_imgproc2410.lib")
 #pragma comment(lib, "opencv_calib3d2410.lib")
 
+#ifdef SANYO_HD5400
 #pragma comment(lib, "libcurl_imp.lib")
-#pragma comment(lib, "pthreadVC2.lib")
 #pragma comment(lib, "libjpeg.lib")
+#endif
+#pragma comment(lib, "pthreadVC2.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Strmiids.lib")
 #pragma comment(lib, "Quartz.lib")
