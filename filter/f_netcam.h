@@ -17,6 +17,8 @@
 #define XMD_H
 #include <jpeglib.h>
 #include <curl/curl.h>
+#include "f_cam.h"
+#include "../channel/ch_scalar.h"
 #include "../util/my_jsrc_mgr.h"
 
 #define STR_SIZE 128

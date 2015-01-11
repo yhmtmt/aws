@@ -15,7 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with ch_campar.h.  If not, see <http://www.gnu.org/licenses/>. 
-
+#include "ch_base.h"
 #include "../util/coord.h"
 
 class ch_campar:public ch_base

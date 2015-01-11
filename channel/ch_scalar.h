@@ -1,3 +1,5 @@
+#ifndef _CH_SCALAR_H_
+#define _CH_SCALAR_H_
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -13,6 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with ch_scalar.h.  If not, see <http://www.gnu.org/licenses/>. 
+#include "ch_base.h"
 
 class ch_ptz: public ch_base
 {
@@ -120,3 +123,5 @@ public:
 	{
 	}
 };
+
+#endif
