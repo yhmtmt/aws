@@ -34,13 +34,11 @@ FMap f_base::m_fmap;
 
 f_base* f_base::create(const char * tname, const char * fname)
 {
-	f_base * ptr = NULL;
-	try{
-		ptr = m_fmap[tname](fname);
-	}catch(...){
-		ptr = NULL;
-	}
-	return ptr;
+	FMap::iterator itr = m_fmap.find(tname);
+	if(itr == m_fmap.end())
+		return NULL;
+	CreateFilter creator = itr->second;
+	return (f_base*) creator(fname);
 }
 //////////////////////////////////////////////////// filter parameter
 bool f_base::s_fpar::set(const char * valstr){	

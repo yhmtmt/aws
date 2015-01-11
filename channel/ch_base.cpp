@@ -51,11 +51,11 @@ CHMap ch_base::m_chmap;
 
 ch_base * ch_base::create(const char * type_name, const char * chan_name)
 {	
-	ch_base * ptr = NULL;
-	try{
-		ptr = m_chmap[type_name](chan_name);
-	}catch(...){
-		ptr = NULL;
-	}
-	return ptr;
+	CHMap::iterator itr = m_chmap.find(type_name);
+	if(itr == m_chmap.end())
+		return NULL;
+
+	CreateChannel creator = itr->second;
+
+	return (ch_base*) creator(chan_name);
 }
