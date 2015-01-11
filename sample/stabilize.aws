@@ -1,0 +1,27 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]; then
+   echo "video.aws <file name>"
+   exit
+fi
+
+channel imgr clr #original color image
+channel imgr clr_d #original color image 
+channel imgr gry #original grayscale image
+channel imgr clrs #stabilized color image
+channel imgr grys #stabilized grayscale image
+filter vfile video -i -o clr
+fset video file $1
+fset video abs_time "[Sun Jan 11 15:00:00.000 2015]"
+filter gry fgry -i clr -o gry clr_d
+filter stab fstb -i gry clr_d -o grys clrs
+fset fstb rx 448 ry 310 rw 1024 rh 128
+fset fstb beta 0.0001
+fset fstb plv 2
+fset fstb alpha0 0.001 alpha2 0.9 alpha5 0.001 beta 0.00001 # setting control parameters
+fset fstb bdisp yes #display stabilizer infromation
+filter dswin win -i clrs -o
+fset win Hwin 1920 Vwin 1080 Hfull 1920 Vfull 1080
+online no
+cyc 0.0344827
+go "[Sun Jan 11 15:00:00.000 2015]"

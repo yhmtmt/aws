@@ -1,3 +1,5 @@
+#ifndef _F_STABILIZER_H_
+#define _F_STABILIZER_H_
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -15,6 +17,7 @@
 // along with f_stabilizer.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 #define STAB_STR_SIZE 512
+#include "f_base.h"
 
 class f_stabilizer: public f_base
 {
@@ -56,7 +59,7 @@ protected:
 public:
 	f_stabilizer(const char * name):f_base(name), m_bclr(false),
 		m_beta(0.0001), m_disp_inf(true), m_bweight(false), m_brobust(false),
-		m_th_robust(100.0), m_sz_hblk(4, 4),
+		m_th_robust(100.0), m_sz_hblk(4, 4), m_interpol_type(EIT_BIL), m_warp_type(EWT_RGD),
 		m_num_pyr_level(4), m_num_itrs(5), m_roi(0,0,0,0), m_bWinit(false),
 		m_bmask(false), m_bthrough(false), m_num_conv_frms(0),
 		m_num_frms(0)
@@ -180,3 +183,5 @@ public:
 	virtual bool proc();
 
 };
+
+#endif
