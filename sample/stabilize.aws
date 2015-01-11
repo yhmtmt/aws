@@ -1,27 +1,63 @@
 #!/bin/sh
 
+# Notice: The aws script takes an argument the path for the video file.
+# The file path you specify should be the path that the aws process can access.
+# Before using this script, ffdshow and Haali splitter are to be installed.
 if [ $# -ne 1 ]; then
-   echo "video.aws <file name>"
+   echo "stabilize.aws <file name>"
    exit
 fi
 
+# Instantiate channels
 channel imgr clr #original color image
 channel imgr clr_d #original color image 
 channel imgr gry #original grayscale image
 channel imgr clrs #stabilized color image
 channel imgr grys #stabilized grayscale image
-filter vfile video -i -o clr
-fset video file $1
-fset video abs_time "[Sun Jan 11 15:00:00.000 2015]"
-filter gry fgry -i clr -o gry clr_d
-filter stab fstb -i gry clr_d -o grys clrs
-fset fstb rx 448 ry 310 rw 1024 rh 128
-fset fstb beta 0.0001
-fset fstb plv 2
-fset fstb alpha0 0.001 alpha2 0.9 alpha5 0.001 beta 0.00001 # setting control parameters
-fset fstb bdisp yes #display stabilizer infromation
-filter dswin win -i clrs -o
-fset win Hwin 1920 Vwin 1080 Hfull 1920 Vfull 1080
+
+#Instantiate filter "vfile"
+if filter vfile video -i -o clr; then
+    fset video file $1
+# The time epoch of the video file should be defined. aws uses absolute time to seek the frame. 
+    fset video abs_time "[Sun Jan 11 15:00:00.000 2015]" 
+else
+    echo "Failed to instantiate video"
+    exit 1
+fi
+
+### Instantiate filter "gry"
+# grayscale filter outputs both grayscale image and original color image
+if ! filter gry fgry -i clr -o gry clr_d; then
+    echo "Failed to instantiate filter fgry"
+    exit 1
+fi
+
+### Instantiate filter "stab"
+# stabilizer takes grayscale image for calculation, then stabilized color and grayscale images are sat as outputs
+if filter stab fstb -i gry clr_d -o grys clrs; then
+# setting ROI for the stabilizer
+    fset fstb rx 448 ry 310 rw 1024 rh 64
+# setting pyramid level for the stabilizer
+    fset fstb plv 2
+# alpha0: rotation angle control rate, alpha2: x translation cotnrol rate
+# alpha5: y translation control rate, beta: total control rate (affect on all parameters)
+    fset fstb alpha0 0.001 alpha2 0.9 alpha5 0.001 beta 0.00001 # setting control parameters
+    fset fstb bdisp yes #display stabilizer infromation
+else
+    echo "Failed to instantiate filter fstb"
+    exit 1
+fi
+
+#### Instantiate filter "dswin"
+if filter dswin win -i clrs -o; then 
+    fset win Hwin 1920 Vwin 1080 Hfull 1920 Vfull 1080
+else 
+    echo "Failed to instantiate filter win"
+    exit 1
+fi
+
 online no
+# define the cycle time
 cyc 0.0344827
+# Specify the time to go
 go "[Sun Jan 11 15:00:00.000 2015]"
