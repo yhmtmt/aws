@@ -385,7 +385,7 @@ bool c_aws::handle_fset(s_cmd & cmd)
 		result = false;
 	}else{
 		if(cmd.num_args == 3){ // no value present
-			result = pfilter->get_par_info(cmd);
+			result = pfilter->get_par_info_by_fset(cmd);
 		}else{
 			pfilter->lock_cmd(true);
 			if(!pfilter->set_par(cmd)){
