@@ -1,0 +1,16 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]; then
+   echo "video.aws <file name>"
+   exit
+fi
+
+channel imgc clr
+filter vfile video -i -o clr
+filter dswin win -i clr -o
+fset win Hwin 1920 Vwin 1080 Hfull 1920 Vfull 1080
+fset video file $1
+fset video abs_time "[Sun Jan 11 15:00:00.000 2015]"
+online no
+cyc 0.0344827
+go "[Sun Jan 11 15:00:00.000 2015]"
