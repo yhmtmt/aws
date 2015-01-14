@@ -80,7 +80,7 @@ to the directory "bin". The directory should be prepared by yourself. Otherwise,
     make install "INST_DIR=/usr/local/bin"
 
 
-## Building commadnds 
+## Building commands 
 aws can only be controled by dedicated remote commands. The remote commands connect to the aws process with TCP socket and play their roles.  You can build them at directory rcmd.  
  
     cd rcmd
@@ -181,7 +181,7 @@ Getting the list of channels instantiated in the process.
 * `fpls <filter name>`
 Getting the list of parameters in the filter instance named `<filter name>`.
 
-## Fitlers
+## Filters
 Here I describe the filter classes currently included in the system. 
 
 1. sample  
@@ -496,7 +496,7 @@ You can add your own setter/getter function. Be careful that the channel can be 
 
 * In the framework, time specification is in the form of `[<week day> <month> <day> <hour>:<minute>:<second>:<millisecond> <year>]`. `<week day>` is in { Sun, Mon, Tue, Wed, Thr, Fri, Sat }, <month> is in { Jan, Feb, Mar, Apr, May, Jun, Jul, Aug, Sep, Nov, Dec}, `<day>`, `<hour>`, `<minute>` and `<second>` are two digits (means zero should be padded for the single digit day.),  `<millisecond>` is three digits, and <year> is four digits. Here is the example,  
     
-    [Sun Aug 17 21:07:38:072 2014]
+    [Sun Aug 17 21:07:38.072 2014]
      
 This format is actually the same as TeraTerm time stamp. So you can use TeraTerm for loggin Serial communications such as NMEA0183. 
 
