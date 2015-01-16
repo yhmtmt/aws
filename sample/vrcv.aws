@@ -1,0 +1,9 @@
+#!/bin/sh
+
+channel imgr img
+filter rcvimg vrcv -i -o img
+filter dswin win -i img -o
+fset win Hwin 640 Vwin 480
+fset vrcv addr 172.18.1.8
+cyc 3
+go

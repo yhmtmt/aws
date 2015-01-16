@@ -1,0 +1,9 @@
+#!/bin/sh
+
+channel imgr img
+filter uvcam cam -i -o img
+filter trnimg vtrn -i img -o
+fset vtrn qjpg 50
+cyc 0.03333
+
+go
