@@ -244,6 +244,17 @@ bool f_stabilizer::proc(){
 		return true;
 	}
 
+	if(m_bclr)
+	{
+		long long timg;
+		Mat img = pgryin->get_img(timg);
+		pgryout->set_img(img, timg);
+		m_num_conv_frms = m_num_frms = 0;
+		m_bWinit = false;
+		m_bclr = false;
+		return true;
+	}
+
 	if(tgry != tclr)
 		return true;
 
