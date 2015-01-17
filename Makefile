@@ -29,6 +29,7 @@ DEFS = -D_$(CPU) -D_$(OS)
 # module selection switch
 SANYO_HD5400 = n
 AVT_CAM = y
+UVC_CAM = y
 FWINDOW = n
 
 #directory settings 
@@ -92,6 +93,10 @@ ifeq ($(AVT_CAM),y)
 	LIB += -L$(CUR_DIR)/PvAPI/bin/$(CPU) -lPvAPI
 	FILTER += f_avt_cam
 	DEFS += -DAVT_CAM
+endif
+
+ifeq ($(UVC_CAM),y)
+	DEFS += -DUVC_CAM
 endif
 
 FOBJS = $(addsuffix .o,$(FILTER))
