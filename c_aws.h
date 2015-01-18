@@ -15,6 +15,7 @@
 // along with c_aws.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 class c_rcmd;
+
 //////////////////////////////////////////////////////////// class c_aws
 // c_aws is the main class of automatic watch system.
 // main() instantiate a c_aws objects and runs c_aws::run(). 
