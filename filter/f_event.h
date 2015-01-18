@@ -28,6 +28,7 @@ class f_event: public f_base
 protected:
 	static const char * m_evt_str[EVT_POS + 1];
 	e_evt_type m_evt_type;
+	char m_tstr[1024];
 	char m_host[1024];
 	unsigned short m_port;
 	int m_num_itrs;
@@ -35,7 +36,11 @@ protected:
 
 	struct s_event
 	{
+		e_evt_type m_evt_type;
+		
 		long long tabs;
+		long long period;
+
 		SOCKET m_sock;
 		int m_num_itrs;
 	};
@@ -50,6 +55,7 @@ public:
 		register_fpar("type", (int*)&m_evt_type, (int)EVT_POS + 1, m_evt_str, "Event type.");
 		register_fpar("host", m_host, 1024, "Host address for event notification.");
 		register_fpar("port", &m_port, "Number of port for event notification.");
+		register_fpar("tstr", m_tstr, 1024, "Time string for specifying time and period event.");
 		register_fpar("breg", &m_bregister, "Register the event.");
 	}
 
@@ -70,8 +76,25 @@ public:
 				s_event evt;
 				evt.m_num_itrs = m_num_itrs;
 				evt.m_sock = socket(AF_INET, SOCK_DGRAM, 0);
-				m_host[0] = '\0';
-				m_event.push_back(evt);
+				tmex tm;
+				switch(m_evt_type){
+				case EVT_TIME:
+					if(!decTmStr(m_tstr, tm))
+						break;
+					evt.tabs = mkgmtimeex(tm);
+					m_host[0] = '\0';
+					m_event.push_back(evt);
+					break;
+				case EVT_PERIOD:
+					evt.tabs = m_cur_time;
+					evt.period = (long long) (atof(m_tstr) * SEC);
+					evt.tabs += evt.period;
+					m_host[0] = '\0';
+					m_event.push_back(evt);
+					break;
+				case EVT_POS:
+					break;
+				}
 			}
 			m_bregister = false;
 		}
@@ -85,6 +108,9 @@ public:
 					int res = send(itr->m_sock, m_time_str, len, 0);
 					if(len == res){
 						itr->m_num_itrs--;
+						if(itr->m_evt_type == EVT_PERIOD){
+							itr->tabs += itr->period;
+						}
 					}
 				}else{
 					// delete event
