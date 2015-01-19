@@ -1597,28 +1597,33 @@ void c_vdm_msg6::dec_payload(s_vdm_pl * ppl)
 	m_fid = ((dat[13] & 0x03) << 4) |
 		((dat[14] & 0x3C) >> 2);
 
-	// 40 to end
-	for(int i = 0, byte=6;;){
-		m_msg.msg[i] =  ((dat[byte] & 0x03) << 6); byte++;
+	m_msg_size = ppl->m_pl_size * 6 /* 6bit per char */
+		- 72 - ppl->m_num_padded_zeros;
+	// 72 to end
+
+	for(int i = 0, byte=12;;){
+		m_msg.msg[i] =  ((dat[byte] & 0x3F) << 2); byte++;
 		if(byte >= ppl->m_pl_size)
 			break;
-		m_msg.msg[i] |= (dat[byte] & 0x3F); byte++;
+
+		m_msg.msg[i] |= (dat[byte] & 0x30 >> 4);
 
 		if(byte >= ppl->m_pl_size)
 			break;
+
 		i++; 
-		m_msg.msg[i] = ((dat[byte] & 0x3F) << 2); byte++;
-		if(byte >= ppl->m_pl_size)
-			break;
-
-		m_msg.msg[i] |= ((dat[byte] & 0x30) >> 4);
-
-		i++;
 		m_msg.msg[i] = ((dat[byte] & 0x0F) << 4); byte++;
 		if(byte >= ppl->m_pl_size)
 			break;
 
 		m_msg.msg[i] |= ((dat[byte] & 0x3C) >> 2);
+
+		i++;
+		m_msg.msg[i] = ((dat[byte] & 0x03) << 6); byte++;
+		if(byte >= ppl->m_pl_size)
+			break;
+
+		m_msg.msg[i] |= ((dat[byte] & 0x3F) >> 2); byte++;
 		i++;
 	}
 }
