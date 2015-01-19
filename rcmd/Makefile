@@ -24,7 +24,7 @@ $(TGTv2): $(OBJv2)
 	$(CC) -c $< -o $@
 
 clean:
-	rm $(OBJ) $(TGT) $(OBJv2) $(TGTv2)
+	rm $(OBJ) $(TGT) $(OBJv2) $(TGTv2) aws_cmd.o c_aws_cmd.o
 install:
 	for cmd in $(TGT); do \
 	 cp $$cmd $(INST_DIR)/$$cmd; \

@@ -98,6 +98,8 @@ protected:
 	bool handle_trat(s_cmd & cmd);
 	bool handle_run(s_cmd & cmd);
 	bool handle_stop();
+	bool handle_frm(s_cmd & cmd);
+	bool handle_chrm(s_cmd & cmd);
 
 public:
 	c_aws(int argc, char ** argv);

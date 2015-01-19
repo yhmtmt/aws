@@ -749,6 +749,40 @@ bool c_aws::handle_run(s_cmd & cmd)
 	return true;
 }
 
+bool c_aws::handle_frm(s_cmd & cmd)
+{
+	if(cmd.num_args != 2){
+		return false;
+	}
+
+	for(vector<f_base*>::iterator itr = m_filters.begin();
+		itr != m_filters.end(); itr++){
+		if(strcmp(cmd.args[1], (*itr)->get_name()) == 0){
+			m_filters.erase(itr);
+			break;
+		}
+	}
+
+	return true;
+}
+
+bool c_aws::handle_chrm(s_cmd & cmd)
+{
+	if(cmd.num_args != 2){
+		return false;
+	}
+
+	for(vector<ch_base*>::iterator itr = m_channels.begin();
+		itr != m_channels.end(); itr++){
+		if(strcmp(cmd.args[1], (*itr)->get_name()) == 0){
+			m_channels.erase(itr);
+			break;
+		}
+	}
+
+	return true;
+}
+
 void c_aws::proc_command()
 {
 	// message loop for the system window
@@ -829,6 +863,12 @@ void c_aws::proc_command()
 			break;
 		case CMD_TRAT:
 			result = handle_trat(cmd);
+			break;
+		case CMD_CHRM:
+			result = handle_chrm(cmd);
+			break;
+		case CMD_FRM:
+			result = handle_frm(cmd);
 			break;
 		}
 
