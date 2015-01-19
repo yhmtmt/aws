@@ -172,7 +172,7 @@ public:
 		register_fpar("aibm_type", &m_aibm.type, "Binary message type. 6 and 12 is ABM, 8 and 14 is BBM");
 		m_toker[0] = 'A';
 		m_toker[1] = 'W';
-		register_fpar("toker", m_toker, 2, "Toker string. (2 characters)");
+		register_fpar("toker", m_toker, 3, "Toker string. (2 characters)");
 	}
 
 	~f_nmea_proc(){

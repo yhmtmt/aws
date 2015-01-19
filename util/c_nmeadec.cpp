@@ -92,6 +92,7 @@ bool s_binary_message::set_msg_hex(char * buf)
 bool s_binary_message::set_msg_bin(char * buf)
 {
 	int imsg = 0;
+	len = 0;
 	int mask = 0x80;
 	msg[imsg] = 0;
 	while(*buf){
