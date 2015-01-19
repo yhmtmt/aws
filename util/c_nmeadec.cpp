@@ -1579,6 +1579,55 @@ ostream & c_vdm_msg5::show(ostream & out)
 
 	return out;
 }
+////////////////////////////////////// c_vdm_msg6
+void c_vdm_msg6::dec_payload(s_vdm_pl * ppl)
+{
+	char * dat = ppl->m_payload;
+	c_vdm::dec_payload(ppl); // 0-37 bit consumed
+	// 40-69 destination MMSI
+	m_mmsi_dst = ((dat[6] & 0x03) << 28) |
+		((dat[7] & 0x3F) << 22) |
+		((dat[8] & 0x3F) << 16) |
+		((dat[9] & 0x3F) << 10) |
+		((dat[10] & 0x3F) << 4) |
+		((dat[11] & 0x3C) >> 2);
+
+	m_dac = ((dat[12] & 0x3F) << 4) |
+		((dat[13] & 0x3C) >> 2);
+	m_fid = ((dat[13] & 0x03) << 4) |
+		((dat[14] & 0x3C) >> 2);
+
+	// 40 to end
+	for(int i = 0, byte=6;;){
+		m_msg.msg[i] =  ((dat[byte] & 0x03) << 6); byte++;
+		if(byte >= ppl->m_pl_size)
+			break;
+		m_msg.msg[i] |= (dat[byte] & 0x3F); byte++;
+
+		if(byte >= ppl->m_pl_size)
+			break;
+		i++; 
+		m_msg.msg[i] = ((dat[byte] & 0x3F) << 2); byte++;
+		if(byte >= ppl->m_pl_size)
+			break;
+
+		m_msg.msg[i] |= ((dat[byte] & 0x30) >> 4);
+
+		i++;
+		m_msg.msg[i] = ((dat[byte] & 0x0F) << 4); byte++;
+		if(byte >= ppl->m_pl_size)
+			break;
+
+		m_msg.msg[i] |= ((dat[byte] & 0x3C) >> 2);
+		i++;
+	}
+}
+
+ostream & c_vdm_msg6::show(ostream & out)
+{
+	return out;
+}
+
 ////////////////////////////////////// c_vdm_msg8
 void c_vdm_msg8::dec_payload(s_vdm_pl * ppl)
 {

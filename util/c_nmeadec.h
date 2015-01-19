@@ -25,7 +25,7 @@ enum e_gp_fix_stat{
 enum e_nd_type{
 	ENDT_GGA, ENDT_RMC, ENDT_ZDA,
 	ENDT_TTM,
-	ENDT_VDM, ENDT_VDM1, ENDT_VDM4, ENDT_VDM5,
+	ENDT_VDM, ENDT_VDM1, ENDT_VDM4, ENDT_VDM5, ENDT_VDM6,
 	ENDT_VDM8, ENDT_VDM18, ENDT_VDM19, ENDT_VDM24,
 	ENDT_ABK
 };
@@ -459,6 +459,21 @@ public:
 	static c_vdm_msg5 * dec_msg5(const char * str);
 	virtual e_nd_type get_type()
 	{return ENDT_VDM5;};
+};
+
+class c_vdm_msg6: public c_vdm
+{
+public:
+	unsigned int m_mmsi_dst;
+	unsigned short m_dac;
+	unsigned short m_fid;
+	s_binary_message m_msg;
+	unsigned short m_msg_size;
+	virtual void dec_payload(s_vdm_pl * ppl);
+	virtual ostream & show(ostream & out);
+	static c_vdm_msg6 * dec_msg6(const char * str);
+	virtual e_nd_type get_type()
+	{return ENDT_VDM6;}
 };
 
 class c_vdm_msg8: public c_vdm
