@@ -1,30 +1,6 @@
 #include <iostream>
 #include "aws_cmd.h"
 
-/*
-bool split_cmd_tok(char * cmd, vector<char *> & cmd_tok)
-{
-  int i = 0;
-  bool seek_head = true;
-  cmd_tok.clear();
-  
-  while(cmd[i] != '\0'){
-    if(i == CMD_LEN) // no termination character found
-      return false;
-    if(cmd[i] == ' ' || cmd[i] == '\t'){ // space and tab is a delimiter
-      cmd[i] = '\0';
-      seek_head = true;
-    }else if(seek_head){
-      cmd_tok.push_back(&cmd[i]);
-      seek_head = false;
-    }
-    
-    i++;
-  }
-  
-  return true;
-}
-*/
 
 int aws_cmd(int argc, char ** argv, const char * cmd){
   ifstream cf(".aws");

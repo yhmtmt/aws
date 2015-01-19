@@ -22,7 +22,6 @@ enum e_evt_type
 	EVT_TIME, EVT_PERIOD, EVT_POS
 };
 
-
 class f_event: public f_base
 {
 protected:
