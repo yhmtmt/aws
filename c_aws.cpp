@@ -503,8 +503,8 @@ bool c_aws::handle_chinf(s_cmd & cmd)
 		}
 	}else if(cmd.num_args == 3 && cmd.args[1][0] == 'n'){
 		ich = atoi(cmd.args[2]);
-		if(ich >= m_filters.size()){
-			sprintf(cmd.get_ret_str(), "Filter id=%d does not exist.", ich);
+		if(ich >= m_channels.size()){
+			sprintf(cmd.get_ret_str(), "Channel id=%d does not exist.", ich);
 		}else{
 			pch = m_channels[ich];
 		}

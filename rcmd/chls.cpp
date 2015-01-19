@@ -57,7 +57,7 @@ bool c_chls::get_channel_inf(int ichannel)
   int ret = send(sock, buf, CMD_LEN, 0);
   if(ret == -1){
     cerr << "Failed to send command." << endl;
-    return -1;
+    return false;
   }
 
   const char * res;
