@@ -180,7 +180,12 @@ Getting the list of filters instantiated in the process.
 Getting the list of channels instantiated in the process.
 * `fpls <filter name>`
 Getting the list of parameters in the filter instance named `<filter name>`.
-
+* `frm <filter name>`  
+Removing the filter specified.
+* `chrm <channel name>`  
+Removing the filter specified.
+* `awsevt [-f <event filter>] [-t <time>] [-to <time out>] [-sock <host> <port>]
+Register and wait a timer event. The command need a event filter `evt` to be instantiated as `<event filter>`. `<time>` is the absolute time format described below.Even if the event is not arrived, the command returns after `<time out>` passed. Here `<time out>` should be specified in second and is 5 seconds in default. `<host>` and `<port>` are the destination UDP socket of the event notification.
 ## Filters
 Here I describe the filter classes currently included in the system. 
 
