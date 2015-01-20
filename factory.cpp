@@ -127,6 +127,7 @@ void ch_base::register_factory()
 #include "filter/f_ship_detector.h"
 #include "filter/f_camcalib.h"
 #include "filter/f_com.h"
+#include "filter/f_event.h"
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
@@ -231,4 +232,7 @@ void f_base::register_factory()
 	register_factory<f_rcv_img>("rcvimg");
 	register_factory<f_trn>("trn");
 	register_factory<f_rcv>("rcv");
+
+	// event 
+	register_factory<f_event>("evt");
 }

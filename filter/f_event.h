@@ -41,6 +41,7 @@ protected:
 		long long period;
 
 		SOCKET m_sock;
+		sockaddr_in m_saddr;
 		int m_num_itrs;
 	};
 
@@ -56,6 +57,7 @@ public:
 		register_fpar("port", &m_port, "Number of port for event notification.");
 		register_fpar("tstr", m_tstr, 1024, "Time string for specifying time and period event.");
 		register_fpar("breg", &m_bregister, "Register the event.");
+		register_fpar("itrs", &m_num_itrs, "Number of event notifications.");
 	}
 
 	virtual bool init_run()
@@ -75,12 +77,15 @@ public:
 				s_event evt;
 				evt.m_num_itrs = m_num_itrs;
 				evt.m_sock = socket(AF_INET, SOCK_DGRAM, 0);
+				evt.m_saddr.sin_family = AF_INET;
+				evt.m_saddr.sin_port = htons(m_port);
+				set_sockaddr_addr(evt.m_saddr, m_host);
 				tmex tm;
 				switch(m_evt_type){
 				case EVT_TIME:
 					if(!decTmStr(m_tstr, tm))
 						break;
-					evt.tabs = mkgmtimeex(tm);
+					evt.tabs = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
 					m_host[0] = '\0';
 					m_event.push_back(evt);
 					break;
@@ -98,13 +103,15 @@ public:
 			m_bregister = false;
 		}
 
-		list<s_event>::iterator itr;
+		list<s_event>::iterator itr = m_event.begin();
 		while(itr != m_event.end()){
 			if(itr->tabs < m_cur_time){
 				if(itr->m_num_itrs){
 					// event occur
-					int len = (int) strlen(m_time_str) + 1;
-					int res = send(itr->m_sock, m_time_str, len, 0);
+						int len = (int) strlen(m_time_str) + 1;
+						int res = sendto(itr->m_sock, m_time_str, len,
+							0, (sockaddr*)&(itr->m_saddr), sizeof(itr->m_saddr));
+
 					if(len == res){
 						itr->m_num_itrs--;
 						if(itr->m_evt_type == EVT_PERIOD){
