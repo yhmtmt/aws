@@ -105,7 +105,7 @@ public:
 
 		list<s_event>::iterator itr = m_event.begin();
 		while(itr != m_event.end()){
-			if(itr->tabs < m_cur_time){
+			if(itr->tabs <= m_cur_time){
 				if(itr->m_num_itrs){
 					// event occur
 						int len = (int) strlen(m_time_str) + 1;

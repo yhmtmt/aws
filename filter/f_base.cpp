@@ -176,7 +176,7 @@ void * f_base::fthread(void * ptr)
 	count_pre = count_post = filter->m_count_clock;
 	while(filter->m_bactive){
 		count_pre = filter->m_count_clock;
-
+		
 		while(cycle < (int) filter->m_intvl){
 			filter->clock_wait();
 			cycle++;

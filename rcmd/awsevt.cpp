@@ -148,7 +148,7 @@ bool c_awsevt::send_cmd(int argc, char ** argv)
   }
   sprintf(buf, "fset %s type %s tstr %s itrs %d host %s port %d breg y", 
 	  fname, evtstr, tstr, num_itrs, host, (int)port);
-  cout << buf << endl;
+  //  cout << buf << endl;
   int ret = send(sock, buf, CMD_LEN, 0);
   if(ret == -1){
     cerr << "Failed to send command." << endl;
@@ -158,10 +158,11 @@ bool c_awsevt::send_cmd(int argc, char ** argv)
 
   const char * res = recv_result();
   if(res == NULL){
+    close_session();
     pthread_join(thwait, NULL);
     return false;
   }
-
+  close_session();
   pthread_join(thwait, NULL);
   cout << buf << endl;
   return true;

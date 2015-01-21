@@ -1155,7 +1155,6 @@ bool c_rcmd::wait_receive(SOCKET & s, char * buf, int & total){
 			return false;
 		}
 	}	
-	cout << "wait_receive exit" << endl;
 
 	return false;
 }
