@@ -108,15 +108,37 @@ public:
 			if(itr->tabs <= m_cur_time){
 				if(itr->m_num_itrs){
 					// event occur
-						int len = (int) strlen(m_time_str) + 1;
-						int res = sendto(itr->m_sock, m_time_str, len,
-							0, (sockaddr*)&(itr->m_saddr), sizeof(itr->m_saddr));
+					fd_set dw;
+					fd_set de;
+					FD_ZERO(&dw);
+					FD_ZERO(&de);
+					FD_SET(itr->m_sock, &dw);
+					FD_SET(itr->m_sock, &de);
+					timeval tout;
+					tout.tv_sec = 10;
+					tout.tv_usec = 0;
+					int n = select((int)itr->m_sock + 1, NULL, &dw, &de, &tout);
+					if(n > 0){
+						if(FD_ISSET(itr->m_sock, &dw)){
+							int len = (int) strlen(m_time_str) + 1;
+							int res = sendto(itr->m_sock, m_time_str, len,
+								0, (sockaddr*)&(itr->m_saddr), sizeof(itr->m_saddr));
 
-					if(len == res){
-						itr->m_num_itrs--;
-						if(itr->m_evt_type == EVT_PERIOD){
-							itr->tabs += itr->period;
+							if(len == res){
+								itr->m_num_itrs--;
+								if(itr->m_evt_type == EVT_PERIOD){
+									itr->tabs += itr->period;
+								}
+							}else{
+								cerr << "Failed to send event." << endl;
+								itr->m_num_itrs = 0;
+							}
+						}else if(FD_ISSET(itr->m_sock, &de)){
+							cerr << "Socket error in sending event." << endl;
+							itr->m_num_itrs = 0;
 						}
+					}else{
+						cerr << "Event notification timeout." << endl;
 					}
 				}else{
 					// delete event

@@ -8,6 +8,7 @@ private:
   pthread_t thwait;
   const char * fname; // filter name
   bool bsuccess;
+  char evt[1024];
   const char * evtstr;
   unsigned short port;
   const char * host;
@@ -53,7 +54,7 @@ private:
       
       if(n > 0){
 	if(FD_ISSET(sock, &dread)){
-	  len += recv(sock, pawsevt->buf + len, 32 - len, 0);
+	  len += recv(sock, pawsevt->evt + len, 32 - len, 0);
 	}else if(FD_ISSET(sock, &derr)){
 	  return NULL;
 	}
@@ -164,7 +165,7 @@ bool c_awsevt::send_cmd(int argc, char ** argv)
   }
   close_session();
   pthread_join(thwait, NULL);
-  cout << buf << endl;
+  cout << evt << endl;
   return true;
 }
 
