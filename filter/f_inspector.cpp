@@ -43,6 +43,60 @@ using namespace cv;
 
 const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  
 
+//About the parameter estimation
+//m: 2d point projected
+//M: 3d point in object coordinate
+//r: rotation params (including world/camera rotation)
+//   vector in R^3 
+//t: translation params (including world/camera translation)
+//   vector in R^3
+//p: projection params
+//   vector in R^4 (focal length and principal point for both x,y direction)
+//k: distortion params
+//   vector in R^6
+//
+//The projection function is
+//
+//m = D(P(T(R(M;r);t),p),k)
+//
+//Here I ommit the indices of the points and objects
+//
+//The estimation of parameters of camera and objects means the optimization,
+//
+//    min Sum(m-m')^2
+// [r, t, p, k]^T for all points
+//
+//First, to enable iterative minimization, linearize the function D around [r,t,p,k]^T
+//
+//D(P(T(R(M;r+dr);t+dt);p+dp)k+dk) 
+//  <=> J[dr, dt, dp, dk]^T + D(P(T(R(M;r);t);p)k)
+//
+//J is the Jacobian. Then we minimize
+//
+//     min Sum{m - J[dr, dt, dp, dk]^T - D(P(T(R(M;r);t);p)k)}^2
+// [dr, dt, dp, dk]^T for all points
+//
+//and update parameters with
+//
+//[r, t, p, k]^T <= [r, t, p, k]^T + [dr, dt, dp, dk]^T
+//
+//The [dr ,dt, dp, dk]^T is actually,
+//
+//Sum{2J^T{m - J[dr, dt, dp, dk]^T - D(P(T(R(M;r);t);p)k)}=0 (the derivative equals zero)
+//Sum {J^TJ [dr, dt, dp, dk]^T} = Sum {J^Tm - D(P(T(R(M;r);t);p)k)}
+//[dr, dt, dp, dk]^T = Sum {J^TJ}^(-1) Sum J^T{m - D(P(T(R(M;r);t);p)k)} 
+//
+//yes,it's Gauss-Newton method. And the Jacobian can be calculated as,
+//
+//J=dD/d[r, t, p, k]^T = [dD/dr, dD/dt, dD/dp, dD/dk]
+//
+//dD/dr=dD/dP * dP/dT * dT/dR * dR/dr
+//dD/dt=dD/dP * dP/dT * dT/dt
+//dD/dp=dD/dP * dP/dp
+//dD/dk=dD/dk
+//
+//The Jacobian can also be calculated with cv::projectPoints
+
 //////////////////////////////////////////////////////////////// helper function
 void get_cursor_point(vector<Point2f> & pt2ds, float x, float y, int & idx, double & dist)
 {
