@@ -164,8 +164,8 @@ bool f_nmea::open_com()
 
 #else // for Linux 
 	char buf[64];
-	sprintf(buf, "/dev/tty%d", m_port);
-	m_hcom = ::open(buf, O_RDWR | O_NOCTTY | O_NDELAY);
+	//sprintf(buf, "/dev/tty%d", m_port);
+	m_hcom = ::open(m_fname, O_RDWR | O_NOCTTY /*| O_NDELAY*/);
 	if(m_hcom == -1){
 		return false;
 	}
