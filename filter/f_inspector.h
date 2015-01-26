@@ -52,6 +52,7 @@ struct ModelVertex
    
     static const DWORD FVF;   
 };   
+
 // finding closest 2d point for given (x, y), and returning the index and distance.
 void get_cursor_point(vector<Point2f> & pt2ds, float x, float y, int & idx, double & dist);
 
@@ -69,15 +70,17 @@ struct s_edge{
 
 // s_model represents a 3D model tracked in the scene by f_inspector.
 // It contains points and edges, and their projection method.
+struct s_obj;
 struct s_model
 {
-
+	const char * fname;
+	int ref;
 	string name;
 	vector<Point3f> pts;
 	vector<s_edge> edges;
 	float xmin, ymin, zmin, xmax, ymax, zmax;
 
-	s_model():xmin(FLT_MAX), ymin(FLT_MAX), zmin(FLT_MAX),
+	s_model():ref(0), xmin(FLT_MAX), ymin(FLT_MAX), zmin(FLT_MAX),
 		xmax(-FLT_MAX), ymax(-FLT_MAX), zmax(-FLT_MAX)
 	{
 	}
@@ -109,7 +112,11 @@ struct s_model
 	void proj(vector<Point2f> & pt2d, Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
 		Mat & rvec_obj, Mat & tvec_obj);
 
-	bool load(const char * fname);
+	bool load(const char * afname);
+
+	s_obj * instObj(Mat & camint, Mat & camdist, 
+		const double width /*image width in pixel*/, 
+		const double height /*image height in pixel*/);
 };
 
 // s_obj represents the object in the scene.
@@ -117,17 +124,26 @@ struct s_model
 // and the points. 
 struct s_obj
 {
+	s_model * pmdl;
+	const char * fname;
 	vector<Point2f> pt2d;
 	vector<Point2f> pt2dprj;
-	int imodel; // model index
-	vector<int> pt3didx; // corresponding 3d point index
 	vector<bool> bvisible; // true if 2d point is visible in the image
+	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
-	s_obj():imodel(-1){
+	s_obj(): pmdl(NULL), fname(NULL), is_attitude_fixed(false){
 		tvec = Mat::zeros(3, 1, CV_64FC1);
 		rvec = Mat::zeros(3, 1, CV_64FC1);
 	};
+
+	~s_obj()
+	{
+		pmdl->ref--;
+	}
+
+	s_obj(s_model * apmdl, const Mat & camint, const Mat & camdist, 
+		const double width, const double height);
 
 	int get_num_points(){
 		return (int) pt2d.size();
@@ -149,45 +165,27 @@ struct s_obj
 		return pt2d;
 	}
 
-	// adding new 2d feature point
-	void push_pt(Point2f & pt){
-		pt2d.push_back(pt);
-		pt3didx.push_back(-1);
-		bvisible.push_back(true);
-	}
-
-	// bind a model to the object
-	void set_model(int aimodel){
-		imodel = aimodel;
-	}
-
-	// get model index bound to the object
-	int get_model(){
-		return imodel;
-	}
-
-	// binding 3d point in the model to the 2d feature point
-	void set_3dpoint_idx(int apt2didx, int apt3didx){
-		pt3didx[apt2didx] = apt3didx;
-	}
-
-	// get 3d point index bound to the 2d point
-	int get_3dpoint_idx(int apt2didx){
-		return pt3didx[apt2didx];
-	}
-
 	// draw the wire frame model
-	void render(s_model & mdl, LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+	void render(
+		Mat & camint, Mat & camdist, Mat & rvec_cam, Mat & tvec_cam,
+		LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 		int pttype, int state, int cur_point);
 
 	// render vector in comparable size to the object  
-	void render_vector(s_model & mdl, Point3f & vec,
+	void render_vector(Point3f & vec,
 		Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline);
 
 	// render axis in three direction
-	void render_axis(s_model & mdl,	Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
+	void render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis = -1);
+
+	bool load(const char * afname, vector<s_model> & mdls);
+	bool save(const char * afname);
+
+	void fixAttitude(bool val){
+		is_attitude_fixed = val;
+	}
 };
 
 // The functions of the filter
@@ -229,27 +227,26 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		NORMAL, MODEL, OBJ, OBJ3D, POINT, POINT3D, CAMINT, CAMEXT,
-		DET_CHSBD, SAVE_CHSBDS, LOAD_CHSBDS,CLEAR_CHSBDS, CALIB, 
-		SAVE_CAMPAR, LOAD_CAMPAR, CLEAR_CAMPAR,
-		DET_POSE_CAM, DET_POSE_CAM_TBL, DET_POSE, UNKNOWN
+		MODEL, OBJ, POINT, CAMERA, ESTIMATE
 	};
 
-	static const char * m_str_op[UNKNOWN]; 
+	static const char * m_str_op[ESTIMATE+1]; 
 	e_operation m_op;
 
 	bool m_bundistort;	// undistort flag. it cant be used with model handling mode.
 	bool m_bpttrack;	// point tracking flag
-	bool m_bcbtrack;	// chessboard tracking
-	bool m_bshow_chsbd; // chessboard detected in current frame is marked.
 	bool m_bcampar_fixed;	// indicates the condition of the camera parameter in this frame
 	bool m_bpose_fixed;		// indicates the model pause is fixed in this frame
-	bool m_bchsbd_found;	// indicates chessboard is found in this frame
 
 	//
 	// chessboard
-	//
+	// 
+	/* now chessboard handling codes are unified into object handling codes
 	char m_fname_chsbds[1024]; // name of chsbd collection
+	bool m_bcbtrack;	// chessboard tracking
+	bool m_bshow_chsbd; // chessboard detected in current frame is marked.
+	bool m_bchsbd_found;	// indicates chessboard is found in this frame
+
 	double m_pitch_chsbd;	// chesboard pitch
 	Size m_sz_chsbd;		// chesboard size
 	vector<Point3f> m_3dchsbd;				// chessboard corners in the world coordinate, automatically constructed by the pitch and size.
@@ -271,17 +268,23 @@ private:
 	bool saveChsbds();
 	bool loadChsbds();
 
+	int m_num_chsbds_calib;
+	bool chooseChsbds(vector<vector<Point2f > > & chsbds, vector<int> & id_chsbd);
+	void calibChsbd(Mat & img); // calibration is done with chessboard stocked
+	void guessCamparPauseChsbd(long long timg);
+	*/
+
 	//
 	// Object
 	// 
+	char m_fname_obj[1024]; // name of the object file.
 	vector<vector<s_obj> > m_obj_trace;
 	int m_cur_model; // current selected model
 	int m_cur_obj; // current object selected
-	int m_cur_model_point; // current selected point of the model
-	int m_cur_obj_point; // current selected point of the object
-	int m_cur_obj_point3d; // current selected 3d point of the object
+	int m_cur_point; // current selected point of the model
 	vector<s_obj> m_obj; // object points
-
+	void load_obj();
+	void save_obj();
 	void renderObj();
 
 	//
@@ -310,12 +313,6 @@ private:
 	Mat m_rvec_mdl, m_tvec_mdl;
 	Mat m_rvec_cam_mdl, m_tvec_cam_mdl;
 	Mat m_cam_int_mdl, m_cam_dist_mdl;
-
-	enum e_3dmode{
-		SUB, FULL, OVLY, NONE3D, UNKNOWN3D
-	} m_3dmode;
-
-	static const char * m_str_3dmode[UNKNOWN3D];
 
 	LPD3DXMESH m_pmesh_chsbd;
 	LPDIRECT3DTEXTURE9 m_ptex_chsbd;
@@ -351,12 +348,6 @@ private:
 		m_bcalib_fix_k5, m_bcalib_fix_k6;
 	bool m_bcalib_rational_model;
 
-	int m_num_chsbds_calib;
-	bool chooseChsbds(vector<vector<Point2f > > & chsbds, vector<int> & id_chsbd);
-	void calibChsbd(Mat & img); // calibration is done with chessboard stocked
-	void guessCamparPauseChsbd(long long timg);
-	void guessCamparPauseModel(long long timg);
-
 	bool saveCampar();
 	bool loadCampar();
 	void clearCampar();
@@ -385,11 +376,13 @@ public:
 		if(!f_ds_window::init_run())
 			return false;
 
+		/*
 		initChsbd3D();
 
 		if(strlen(m_fname_chsbds)){
 			loadChsbds();
 		}
+		*/
 
 		if(strlen(m_fname_campar)){
 			loadCampar();
@@ -412,7 +405,7 @@ public:
 
 	////////////////////////////////////////////////////////// UI related members
 	enum e_mmode{
-		MM_NORMAL, MM_SCROLL, MM_POINT, MM_POINT3D, MM_CAMINT
+		MM_NORMAL, MM_SCROLL, MM_POINT, MM_CAMINT
 	} m_mm;
 
 	// The filter rotates and translates objects around and toward the axis.
@@ -431,8 +424,7 @@ public:
 	float m_main_scale;
 	virtual void handle_lbuttondown(WPARAM wParam, LPARAM lParam);
 	virtual void handle_lbuttonup(WPARAM wParam, LPARAM lParam);
-	void select_point3d();
-	void select_or_add_point2d();
+	void assign_point2d();
 
 	virtual void handle_lbuttondblclk(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_rbuttondown(WPARAM wParam, LPARAM lParam){};
@@ -461,5 +453,79 @@ public:
 	virtual void handle_keyup(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_char(WPARAM wParam, LPARAM lParam);
 };
+
+// Function definition
+// * Main window shows always video image
+// * Main window can be scrolled and scaled at any operation state
+//  Shift+LDrag: scroll
+//  Shift+Wheel: scaling
+//  R: Reset Window
+//
+// State {Model, Obj, Point, Camera}
+// State transition (always it can work)
+// <input>: <Action>
+//  M: op <= Model
+//  O: op <= Obj
+//  E: op <= Estimate
+//  C: op <= Camera
+//  P: op <= Point
+// 
+// op = Model
+//  * Show the model in full screen
+//	I: Instantiate and initialize New Object, op <= Obj, cur_obj = new_obj
+//  L: Load Model (need to specify model file), cur_model = new_model
+//  ->: cur_model++
+//  <-: cur_model--
+//  Del: Delete the model
+//
+// op = Obj
+//  * Show the bounded model in the sub window
+//  * overlay the bounded model with the given attitude
+//  L: Load Obj (need to specify object file), cur_obj = new_obj
+//  S: Save Obj (need to specify object file)
+//  ->: cur_obj++
+//  <-: cur_obj--
+//  x: axis <= x
+//  y: axis <= y
+//  z: axis <= z
+//  Ctrl+Wheel: rotation around axis
+//  Wheel: translation along axis
+//  f: fix attitude[cur_obj]
+//  Del: Delete the object
+// 
+// op = Point
+//  * overlay the bounded model with the given attitude, and highlight the selected point
+//  ->: cur_point++
+//  <-: cur_point--
+//  LB: point[cur_point] = mc
+//  x: axis <= x
+//  y: axis <= y
+//  z: axis <= z
+//  Ctrl+Wheel: rotation around axis
+//  Wheel: translation along axis
+//  f: fix attitude[cur_obj]
+//  Del: Delete the point assigned
+// 
+// op = Camera
+// * show camera center and the distortion grid
+//  L: Load Camera Parameter (need to specify parameter file)
+//  S: Save Camera Parameter (need to specify parameter file)
+//  ->: cur_par++
+//  <-: cur_par--
+//  Wheel: Change focal length
+//  LDrag: Move Principal Point
+//  f : fix par[cur_par]
+//  Del: Delete the camera parameter
+//
+// op = Estimate
+//  E: Estimate
+//
+// render : render whole screen with correct scroll and scale
+// renderObj : render overlay model, corresponding points, highlight selected point
+// renderModel : render model window
+// renderInfo : render Information of the filter state
+// instObj : initialize new object instance by a model 
+// estimate: 
+
 
 #endif
