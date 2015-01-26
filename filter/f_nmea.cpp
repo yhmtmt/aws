@@ -163,42 +163,21 @@ bool f_nmea::rcv_file()
 	return true;
 }
 
-//------------- this routine is very complexed. need to be clarify
 bool f_nmea::rcv_com()
 {
-#ifdef _WIN32
-	COMSTAT stat;
-	DWORD err;
-	int ninq = 0;
-	ClearCommError(m_hcom, &err, &stat);
-	ninq = stat.cbInQue;
-
-	while(ninq != 0){
-		if(!ReadFile(m_hcom, m_buf, 
-			(DWORD) min(ninq, SIZE_NMEA_BUF), 
-			(DWORD*) &m_buf_tail, NULL)){
-			return false;
-		}
-#else
 	int nrcv;
-	while(nrcv = read(m_hcom, &m_buf[m_buf_head], SIZE_NMEA_BUF)){
-#endif
+	while(nrcv = read_serial(m_hcom, &m_buf[m_buf_head], SIZE_NMEA_BUF - m_buf_head)){
+		m_buf_tail += nrcv;
 		extract_nmea_from_buffer();
-#ifdef _WIN32
-		ClearCommError(m_hcom, &err, &stat);
-		ninq = stat.cbInQue;
-#endif
 	}
 	return true;
 }
 
 bool f_nmea::rcv_udp()
 {
-	while(1){
-		m_buf_tail = recv(m_sock, m_buf + m_buf_head, SIZE_NMEA_BUF, 0);
-		if(!m_buf_tail)
-			break;
-
+	int nrcv;
+	while(nrcv = recv(m_sock, m_buf + m_buf_head, SIZE_NMEA_BUF - m_buf_head, 0)){
+		m_buf_tail += nrcv;
 		extract_nmea_from_buffer();
 	}
 	return true;
@@ -300,7 +279,7 @@ int f_nmea::send_nmea()
 			len = (int) strlen(m_buf_send);
 			break;
 		case COM:
-			len = write_serial(m_hcom, m_buf_send, strlen(m_buf_send));
+			len = write_serial(m_hcom, m_buf_send, (int) strlen(m_buf_send));
 			break;
 		case UDP:
 			len = send(m_sock_out, m_buf_send, (int) sizeof(m_buf_send), 0);
