@@ -945,7 +945,6 @@ bool c_d3d_camview::render_ship(LPDIRECT3DDEVICE9 pd3dev,
 	return true;
 }
 
-
 bool c_d3d_camview::render_hrzn(LPDIRECT3DDEVICE9 pd3dev,
 	c_d3d_dynamic_text & txt, LPD3DXLINE pline)
 {
@@ -989,9 +988,11 @@ bool c_d3d_camview::render_hrzn(LPDIRECT3DDEVICE9 pd3dev,
 	return true;
 }
 
-bool c_d3d_camview::render_point2d(LPDIRECT3DDEVICE9 pd3dev,	
+/////////////////////////////////////////////////////////////////D3DXLINE based libraries
+void drawPoint2d(LPDIRECT3DDEVICE9 pd3dev,	
 		c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-		vector<Point2f> & points, int pttype, int state, int cur_point)
+		vector<Point2f> & points, vector<bool> & bvalid, 
+		int pttype, const int state, const int cur_point)
 {
 	// state 0: NORMAL -> 127
 	// state 1: STRONG -> 255
@@ -1029,6 +1030,8 @@ bool c_d3d_camview::render_point2d(LPDIRECT3DDEVICE9 pd3dev,
 	int size = 5;
 	pline->Begin();
 	for(int ipt = 0; ipt < points.size(); ipt++){
+		if(!bvalid[ipt])
+			continue;
 		Point2f & pt = points[ipt];
 		if(ipt == cur_point){
 			v[0] = D3DXVECTOR2((float)(pt.x - 1.0), (float)(pt.y));
@@ -1069,11 +1072,9 @@ bool c_d3d_camview::render_point2d(LPDIRECT3DDEVICE9 pd3dev,
 		}
 	}
 	pline->End();
-
-	return true;
 }
 
-/////////////////////////////////////////////////////////////////D3DXLINE based libraries
+
 void xsquare(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color)
 {
 	D3DXVECTOR2 v[5];
@@ -1109,7 +1110,7 @@ void xdiamond(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color)
 
 void xdiagonal(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color)
 {		
-	D3DXVECTOR2 v[2];
+	D3DXVECTOR2 v[4];
 	v[0] = D3DXVECTOR2((float)(pt.x), (float)(pt.y - radius));
 	v[1] = D3DXVECTOR2((float)(pt.x), (float)(pt.y + radius));
 	pline->Draw(v, 2, color);

@@ -1758,28 +1758,28 @@ void f_inspector::renderCursor()
 
 void f_inspector::renderObj()
 {
-	// Drawing object (2d points and 3d object)
+	// Drawing object (2d and 3d)
 	for(int iobj = 0; iobj < m_obj.size(); iobj++){
 		s_obj & obj = m_obj[iobj];
 		if(m_op == OBJ){
 			if(iobj == m_cur_obj){
-				m_maincam.render_point2d(m_pd3dev, 
+				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.get_pts(), iobj, 1);
+					obj.get_pts(), obj.bvisible, iobj, 1);
 			}else{
-				m_maincam.render_point2d(m_pd3dev, 
+				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.get_pts(), iobj, 0);
+					obj.get_pts(), obj.bvisible, 0);
 			}
 		}else if(m_op == POINT){
 			if(iobj == m_cur_obj){
-				m_maincam.render_point2d(m_pd3dev, 
+				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.get_pts(), iobj, 1, m_cur_point);
+					obj.get_pts(), obj.bvisible, 1, m_cur_point);
 			}else{
-				m_maincam.render_point2d(m_pd3dev, 
+				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.get_pts(), iobj, 0);
+					obj.get_pts(), obj.bvisible, 0);
 			}			
 		}
 

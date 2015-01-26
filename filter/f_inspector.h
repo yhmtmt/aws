@@ -308,6 +308,7 @@ private:
 	// model view 
 	//
 	c_d3d_camview m_model_view; // rendering surface
+
 	// 3D model in the model view
 	double m_theta_z_mdl, m_dist_mdl;
 	Mat m_rvec_mdl, m_tvec_mdl;

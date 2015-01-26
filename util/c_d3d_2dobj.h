@@ -322,10 +322,6 @@ public:
 	virtual bool render_ship(LPDIRECT3DDEVICE9 pd3dev, 
 		const list<c_ship*> & ships, double range);
 
-	virtual bool render_point2d(LPDIRECT3DDEVICE9 pd3dev,
-		c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-		vector<Point2f> & points, int pttype, int state = 0, int cur_point = -1);
-
 	virtual bool set_campar(s_rotpar & rot, bool bptz = false)
 	{	
 		if(bptz){
@@ -386,6 +382,10 @@ public:
 /////////////////////////////////////////////////// D3DXLINE based librarys
 // These functions should be used inside the Begin()/End()
 
+void drawPoint2d(LPDIRECT3DDEVICE9 pd3dev,	
+		c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+		vector<Point2f> & points, vector<bool> & bvalid, 
+		int pttype, const int state = 0, const int cur_point = -1);
 void xsquare(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color);
 void xcross(LPD3DXLINE pline,  Point2f & pt, float radius, D3DCOLOR color);
 void xdiamond(LPD3DXLINE pline,  Point2f & pt, float radius, D3DCOLOR color);
