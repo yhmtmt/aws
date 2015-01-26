@@ -128,6 +128,7 @@ void ch_base::register_factory()
 #include "filter/f_camcalib.h"
 #include "filter/f_com.h"
 #include "filter/f_event.h"
+#include "filter/f_fep01.h"
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
