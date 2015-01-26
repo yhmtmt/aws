@@ -34,157 +34,19 @@ using namespace cv;
 #include "../channel/ch_ais.h"
 #include "../channel/ch_vector.h"
 #include "../channel/ch_nmea.h"
-#include "f_base.h"
 #include "f_nmea.h"
-
-#ifndef _WIN32 // for Linux
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/time.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <termios.h>
-#endif
-
-
-int enc_cbr(int cbr)
-{
-#ifdef _WIN32
-	switch(cbr){
-	case 110:
-		return CBR_110;     //  baud rate
-	case 300:
-		return CBR_300;     //  baud rate
-	case 600:
-		return CBR_600;     //  baud rate
-	case 1200:
-		return CBR_1200;     //  baud rate
-	case 2400:
-		return CBR_2400;     //  baud rate
-	case 4800:
-		return CBR_4800;     //  baud rate
-	case 9600:
-		return CBR_9600;     //  baud rate
-	case 14400:
-		return CBR_14400;     //  baud rate
-	case 19200:
-		return CBR_19200;     //  baud rate
-	case 38400:
-		return CBR_38400;     //  baud rate
-	case 56000:
-		return CBR_56000;     //  baud rate
-	case 57600:
-		return CBR_57600;     //  baud rate
-	case 115200:
-		return CBR_115200;     //  baud rate
-	case 128000:
-		return CBR_128000;     //  baud rate
-	case 256000:
-		return CBR_256000;     //  baud rate
-	}
-#else
-	switch(cbr){
-	case 110:
-		return B110;     //  baud rate
-	case 300:
-		return B300;     //  baud rate
-	case 600:
-		return B600;     //  baud rate
-	case 1200:
-		return B1200;     //  baud rate
-	case 2400:
-		return B2400;     //  baud rate
-	case 4800:
-		return B4800;     //  baud rate
-	case 9600:
-		return B9600;     //  baud rate
-	case 19200:
-		return B19200;     //  baud rate
-	case 38400:
-		return B38400;     //  baud rate
-	case 57600:
-		return B57600;     //  baud rate
-	case 115200:
-		return B115200;     //  baud rate
-	}
-
-#endif
-	return -1;
-}
-
 
 ///////////////////////////////////////////////////////////// f_nmea
 bool f_nmea::open_com()
 {
-	if(m_port <= 0 || m_port > 256)
-		return false;
-	if(enc_cbr(m_cbr) < 0)
-		return false;
-
 #ifdef _WIN32 // for windows
-	wchar_t com_path[32];
-	swprintf(com_path, 32, L"\\\\.\\COM%d", m_port);
-	BOOL fSuccess;
-
-	m_hcom = CreateFile( com_path,
-		GENERIC_READ | GENERIC_WRITE,
-		0,      //  must be opened with exclusive-access
-		NULL,   //  default security attributes
-		OPEN_EXISTING, //  must use OPEN_EXISTING
-		0,      //  not overlapped I/O
-		NULL ); //  hTemplate must be NULL for comm devices
-
-	if(m_hcom == INVALID_HANDLE_VALUE){
-		return false;
-	}
-
-	SecureZeroMemory(&m_dcb, sizeof(DCB));
-	m_dcb.DCBlength = sizeof(DCB);
-	m_dcb.ByteSize = 8;             //  data size, xmit and rcv
-	m_dcb.BaudRate = enc_cbr(m_cbr);
-	m_dcb.Parity   = NOPARITY;      //  parity bit
-	m_dcb.StopBits = ONESTOPBIT;    //  stop bit
-
-	fSuccess = SetCommState(m_hcom, &m_dcb);
-	if(!fSuccess){
-		CloseHandle(m_hcom);
-		return false;
-	}
-
-	m_timeout.ReadIntervalTimeout = 500;
-	m_timeout.ReadTotalTimeoutMultiplier = 0;
-	m_timeout.ReadTotalTimeoutConstant = 500;
-	m_timeout.WriteTotalTimeoutMultiplier = 0;
-	m_timeout.WriteTotalTimeoutConstant = 500;
-	fSuccess = SetCommTimeouts(m_hcom, &m_timeout);
-	if(!fSuccess){
-		CloseHandle(m_hcom);
-		return false;
-	}
-
+	m_hcom = open_serial(m_port, m_cbr);
 #else // for Linux 
-	char buf[64];
-	//sprintf(buf, "/dev/tty%d", m_port);
-	m_hcom = ::open(m_fname, O_RDWR | O_NOCTTY /*| O_NDELAY*/);
-	if(m_hcom == -1){
-		return false;
-	}
-	tcgetattr(m_hcom, &m_copt);
-	cfsetispeed(&m_copt, enc_cbr(m_cbr));
-	cfsetospeed(&m_copt, enc_cbr(m_cbr));
-	m_copt.c_cflag &= ~PARENB;
-	m_copt.c_cflag &= ~CSTOPB;
-	m_copt.c_cflag &= ~CSIZE;
-	m_copt.c_cflag |= CS8;
-	m_copt.c_cc[VMIN] = 0;
-	m_copt.c_cc[VTIME] = 1;
-	m_copt.c_cflag |= (CLOCAL | CREAD);
-
-	if(tcsetattr(m_hcom, TCSANOW, &m_copt) != 0){
-		::close(m_hcom);
-		return false;
-	}
+	m_hcom = open_serial(m_fname, m_cbr);
 #endif	
+	if(m_hcom == NULL_SERIAL){
+		return false;
+	}
 	return true;
 
 }
@@ -301,6 +163,7 @@ bool f_nmea::rcv_file()
 	return true;
 }
 
+//------------- this routine is very complexed. need to be clarify
 bool f_nmea::rcv_com()
 {
 #ifdef _WIN32
@@ -437,19 +300,7 @@ int f_nmea::send_nmea()
 			len = (int) strlen(m_buf_send);
 			break;
 		case COM:
-#ifdef _WIN32
-			if(m_hcom == NULL)
-				return 0;
-			if(!WriteFile(m_hcom, (LPVOID) m_buf_send, (DWORD) strlen(m_buf_send),
-				(DWORD*) &len, NULL))
-				cout << "WriteFile failed." << endl;
-			else
-				cout << strlen(m_buf_send) << "/" << len << " wrote." << endl;
-#else
-			if(m_hcom == 0)
-				return 0;
-			len = write(m_hcom, m_buf_send, strlen(m_buf_send));
-#endif
+			len = write_serial(m_hcom, m_buf_send, strlen(m_buf_send));
 			break;
 		case UDP:
 			len = send(m_sock_out, m_buf_send, (int) sizeof(m_buf_send), 0);

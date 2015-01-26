@@ -15,11 +15,8 @@
 // along with f_nmea.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 #define SIZE_NMEA_BUF 166 // for two NMEA
-
-#ifndef _WIN32
-#include <termios.h>
-#endif 
-int enc_cbr(int cbr);
+#include "../util/aws_serial.h"
+#include "f_base.h"
 
 class f_nmea: public f_base
 {
@@ -50,14 +47,7 @@ protected:
 	unsigned short m_port;
 	unsigned int m_cbr;
 
-#ifdef _WIN32
-	HANDLE m_hcom;
-	DCB m_dcb;
-	COMMTIMEOUTS m_timeout;
-#else /* linux */
-	int m_hcom;
-	termios m_copt;
-#endif
+	AWS_SERIAL m_hcom;
 
 	// for network source
 	SOCKET m_sock;
@@ -109,7 +99,8 @@ protected:
 	}
 
 public:
-	f_nmea(const char * name): f_base(name), m_chin(NULL), m_chout(NULL), m_blog(false), m_nmea_src(NONE){
+	f_nmea(const char * name): f_base(name), m_chin(NULL), m_chout(NULL), m_blog(false),
+		m_hcom(NULL_SERIAL), m_nmea_src(NONE){
 		m_fname[0] = '\0';
 
 		m_filter[0] = m_filter[1] = m_filter[2] = m_filter[3] = m_filter[4] = '*';

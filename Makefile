@@ -47,7 +47,7 @@ FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 CHANNEL = ch_base
 
 # listing utility module
-UTIL =  c_clock c_imgalign c_nmeadec c_ship coord util 
+UTIL =  c_clock c_imgalign c_nmeadec c_ship coord util aws_serial
 
 # listing include path 
 INC = -I/usr/local/include  -I$(CUR_DIR)/opencv/include 
