@@ -50,7 +50,7 @@ f_fep01::f_fep01(const char * name):f_base(name),
 	m_bcn(0), m_tlp_wait_ex(0), m_lp_wait(0), m_flw(0), m_tlp_wait(0x0F), m_crlf(0), m_delim(1), m_tlp_slp(0x0F),
 	m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF),
 	m_rbuf_len(0), m_wbuf_len(0), m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), 
-	m_parse_pow(false), m_cur_cmd(NUL)
+	m_parse_pow(false), m_cur_cmd(NUL), m_cmd_stat(0)
 {
 	m_dname[0] = '\0';
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
@@ -123,7 +123,7 @@ bool f_fep01::parse_rbuf()
 {
 	char * rbuf = m_rbuf;
 	char * pbuf = m_pbuf + m_pbuf_tail;
-	for(int i = 0; i < m_rbuf_len; i++, rbuf++){
+	for(int i = 0; i < m_rbuf_len && m_pbuf_tail < 512; i++, rbuf++){
 		*pbuf = *rbuf;
 		if(*pbuf == 0x0D){
 			m_parse_cr = 1;
@@ -133,20 +133,47 @@ bool f_fep01::parse_rbuf()
 
 		if(m_parse_cr && m_parse_lf){
 			// parse m_pbuf
-			if(m_cur_cmd == NUL){
+			if(m_cur_cmd != NUL){
 				// try to process as a command ressponse
-				// P/N response? process and clear m_pbuf_tail zero
-				// value? process and clear m_pbuf_tail zero
+				bool is_response = false;
+				if(m_pbuf_tail == 2){
+					is_response = true;
+					// P/N response? process and clear m_pbuf_tail zero
+					switch(m_pbuf[0]){
+					case 'P':
+						switch(m_pbuf[1]){
+						case '0':
+						case '1':
+						default:
+							is_response = false;
+						}
+					case 'N':
+						switch(m_pbuf[2]){
+						case '0':
+						case '1':
+						case '3':
+						default:
+							is_response = false;
+						}
+					}
+				}
+				if(!is_response){
+					// value? process and clear m_pbuf_tail zero
+				}
 			}
-			if(m_pbuf_tail){ // m_pbuf is not processed as command response
+
+			if(m_pbuf_tail != 0){ // m_pbuf is not processed as command response
 				// try to process as a recieved message
 				// if not header less mode and matched m_rec_str? process the message as recieved data
 				// if header less mode, and if power info enabled, set parse_count as 3 and m_parse_pow as true
 			}
+
 			// clear cr lf flags
+			m_parse_cr = m_parse_lf = 0;
 		}else if(m_parse_pow){
 			if(*pbuf < '0' || *pbuf > '9'){
 				// discard all parser state 
+				init_parser();
 				return false;
 			}
 			m_parse_count--;
@@ -157,5 +184,20 @@ bool f_fep01::parse_rbuf()
 			m_pbuf_tail++;
 		}
 	}
+	if(m_pbuf_tail == 512){
+		// discard all parse state
+		init_parser();
+		return false;
+	}
 	return true;
+}
+
+void f_fep01::init_parser()
+{
+	m_pbuf_tail = 0;
+	m_parse_cr = m_parse_lf = 0;
+	m_parse_pow = false;
+	m_parse_count = 0;
+	m_cur_cmd = NUL;
+	m_cmd_stat = 0;
 }

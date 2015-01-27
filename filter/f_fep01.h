@@ -37,7 +37,7 @@ protected:
 	};
 
 	enum e_cmd_stat{
-		P0 = 0x01, P1 = 0x02, N0 = 0x04, N1 = 0x08, N2 = 0x10, N3 = 0x20
+		NRES=0x00, P0 = 0x01, P1 = 0x02, N0 = 0x04, N1 = 0x08, N2 = 0x10, N3 = 0x20
 	};
 
 	static const char * m_rec_str[6];
@@ -97,10 +97,11 @@ protected:
 	char m_rbuf[512];
 	int m_wbuf_len;
 	char m_wbuf[512];
+
+	// parameters used by parser
 	int m_pbuf_tail;
 	char m_pbuf[512]; // buffer used by parser
 
-	// parameters used by parser
 	unsigned char m_parse_cr; // CR=0x0D
 	unsigned char m_parse_lf; // LF=0x0A
 	bool m_parse_pow;
@@ -108,9 +109,9 @@ protected:
 	bool parse_rbuf();
 
 	e_cmd m_cur_cmd;
-	e_cmd_stat m_cmd_stat;
+	unsigned int m_cmd_stat;
 	e_msg_rcv m_cur_rcv;
-
+	void init_parser();
 
 public:
 	f_fep01(const char * name);
