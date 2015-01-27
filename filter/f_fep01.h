@@ -49,14 +49,15 @@ protected:
 	unsigned char m_tint_cmd;	// interval to recognize command in header less mode (0 to 255) [msec]
 	unsigned char m_fband;		// frequency band (0:L or 1:H)
 	unsigned char m_tbclr;		// interval to clear reciver buffer (1 to 255) [msec]
-	unsigned char m_wait_freq;  // time for waiting requency response (0 to 7) corresponding to (120 to 50) [msec]
+	unsigned char m_fwait;  // time for waiting requency response (0 to 7) corresponding to (120 to 50) [msec]
 	unsigned char m_chk_group;  // check group addres (0: no or 1: yes)
 	unsigned char m_chk_addr;	// check destination address (0: no or 1: yes)
 	unsigned char m_int_bcn;	// beacon interval (0 to 7) correspondint to (800 to 100) [msec]
-	unsigned char m_bcn_freq;	// beacon frequency (0: var or 1: fix)
+	unsigned char m_fbcn;		// beacon frequency (0: var or 1: fix)
 	unsigned char m_bcn;		// beacon (0: no or 1: yes)
 	unsigned char m_ser_dlen;	// serial data length (0: 8bit or 1: 7bit)
 	unsigned char m_ser_par;	// serial com parity (0: no or 1: yes)
+	unsigned char m_ser_br;		// serial baud rate (0 to 3) corresponding to {9600, 19200, 384000, 115200}
 	unsigned char m_ser_stp;	// serial com stop (0: 1bit or 1: 2bit)
 	unsigned char m_tlp_wait_ex;// low power waiting time extension (0 to 15) corresponding to (100 to 1500) [msec]
 	unsigned char m_lp_wait;	// low power waiting mode (0: no or 1: yes)
@@ -69,20 +70,12 @@ protected:
 	unsigned char m_addr_rep0;	// address for repeater 0 in header less mode (0 to 255)
 	unsigned char m_addr_rep1;  // address for repeater 1 in header less mode (0 to 255)
 
+	unsigned char m_reg[29];	// register
+	bool read_reg();			// load register values to our m_reg
+	bool write_reg();			// write m_reg values to m_reg
+	bool pack_reg();			// pack filter parameters to the regs
 public:
-	f_fep01(const char * name):f_base(name), m_port(0), m_br(9600), m_hcom(NULL_SERIAL),
-		m_addr(0x00), m_addr_group(0xF0), m_addr_dst(0x00), m_header_less(0),
-		m_scramble_0(0xFF), m_scramble_1(0xFF), m_num_freqs(0x03), m_freq0(0x18), m_freq1(0x2A), m_freq2(0x3C),
-		m_ant(0), m_div(1), m_num_reps(0x0A), m_th_roam(0x50), m_rep_power(0), m_rep_err(0), m_rep_suc(0), m_rep(0),
-		m_tint_cmd(0x00), m_fband(0), m_tbclr(0x64), m_wait_freq(4), m_chk_group(1), m_int_bcn(0), m_bcn_freq(0),
-		m_bcn(0), m_tlp_wait_ex(0), m_lp_wait(0), m_flw(0), m_tlp_wait(0x0F), m_crlf(0), m_delim(1), m_tlp_slp(0x0F),
-		m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF)
-	{
-		m_dname[0] = '\0';
-		register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
-		register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
-		register_fpar("br", &m_br, "Baud rate.");
-	}
+	f_fep01(const char * name);
 
 	virtual bool init_run()
 	{
