@@ -23,7 +23,7 @@ $(TGT): $(OBJ)
 $(TGTv2): $(OBJv2)
 	$(CC) c_aws_cmd.o ../command.o $@.o -o $@
 $(TGTv3): $(OBJv3)
-	$(CC) c_aws_cmd.o ../command.o $@.o -o $@
+	$(CC) c_aws_cmd.o ../command.o $@.o -o $@ -lpthread
 %.o: %.cpp
 	$(CC) -c $< -o $@
 
