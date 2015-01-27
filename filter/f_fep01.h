@@ -21,13 +21,31 @@
 class f_fep01: public f_base
 {
 protected:
+	enum e_cmd{
+		NUL, ARG,  BAN, BCL, DAS,
+		DBM, DVS, FCN, FRQ, IDR,
+		IDW, INI, PAS, POF, PON, 
+		PTE, PTN, PTS, ROF, RON,
+		REG, RID, RST, TBN, TBR,
+		TB2, TID, TS2, TXT, TXR,
+		TX2, VER
+	};
 	static const char * m_cmd_str[32];
+
+	enum e_msg_rcv{
+		RBN, RBR, RB2, RXT, RXR, RX2
+	};
+
+	enum e_cmd_stat{
+		P0 = 0x01, P1 = 0x02, N0 = 0x04, N1 = 0x08, N2 = 0x10, N3 = 0x20
+	};
+
+	static const char * m_rec_str[6];
 
 	char m_dname[1024];
 	unsigned short m_port;
 	unsigned int m_br;
 	AWS_SERIAL m_hcom;
-
 	unsigned char m_addr;		// own address (0 to 255)
 	unsigned char m_addr_group; // group address (0 to 255)
 	unsigned char m_addr_dst;	// destination address (0 to 255), header less mode only.
@@ -74,6 +92,26 @@ protected:
 	bool read_reg();			// load register values to our m_reg
 	bool write_reg();			// write m_reg values to m_reg
 	bool pack_reg();			// pack filter parameters to the regs
+
+	int m_rbuf_len;
+	char m_rbuf[512];
+	int m_wbuf_len;
+	char m_wbuf[512];
+	int m_pbuf_tail;
+	char m_pbuf[512]; // buffer used by parser
+
+	// parameters used by parser
+	unsigned char m_parse_cr; // CR=0x0D
+	unsigned char m_parse_lf; // LF=0x0A
+	bool m_parse_pow;
+	int m_parse_count;
+	bool parse_rbuf();
+
+	e_cmd m_cur_cmd;
+	e_cmd_stat m_cmd_stat;
+	e_msg_rcv m_cur_rcv;
+
+
 public:
 	f_fep01(const char * name);
 
@@ -100,6 +138,42 @@ public:
 
 	virtual bool proc()
 	{
+		// read phase
+		m_rbuf_len = read_serial(m_hcom, m_rbuf, 512);
+		if(m_rbuf_len < 0){
+			cerr << "Read operation failed." << endl;
+		}else{
+			// Parser
+			// 1. copy a character rbuf pointer to pbuf's tail
+			// 2. If CRLF is found or counter equals zero
+			//		2-1. P/N response for current command
+			//			process response according to the command, 
+			//		2-2. Value for current command
+			//			process value according to the command
+			//		2-3. message recieved (m_rec_str matching or no header)
+			//			if header less mode, 
+			//				if rep_power enabled, counter is set to 3, parse_pow set to true, and go back to 1.
+			//			if header matched process message according to the header information 
+			//		2-4. if parse_pow is enabled
+			//			process message
+			//      2-5. clear pbuf
+			// 3. increment rbuf pointer and exit if rbuf tail reached.
+
+			if(!parse_rbuf()){
+				cerr << "Failed to parse read buffer." << endl;
+			}
+		}
+
+		// write phase
+		m_wbuf_len = (int) strlen(m_wbuf);
+
+		int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+		if(m_wbuf_len != wlen){
+			cerr << "Write operation failed." << endl;
+		}
+
+		m_wbuf[0] = '\0';
+
 		return true;
 	}
 };

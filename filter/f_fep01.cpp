@@ -37,13 +37,20 @@ const char * f_fep01::m_cmd_str[32] = {
 	"TX2", "VER"
 };
 
+const char * f_fep01::m_rec_str[] = {
+	"RBN" /* binary */, "RBR" /* binary 1 stage repeat */, "RB2" /* binary 2 stage repeat */,
+	"RXT" /* text */, "RXR" /* text 1 stage repeat */, "RX2" /* text 2 stage repeat */
+};
+
 f_fep01::f_fep01(const char * name):f_base(name), 
 	m_port(0), m_br(9600), m_hcom(NULL_SERIAL), m_addr(0x00), m_addr_group(0xF0), m_addr_dst(0x00), m_header_less(0),
 	m_scramble_0(0xFF), m_scramble_1(0xFF), m_num_freqs(0x03), m_freq0(0x18), m_freq1(0x2A), m_freq2(0x3C),
 	m_ant(0), m_div(1), m_num_reps(0x0A), m_th_roam(0x50), m_rep_power(0), m_rep_err(0), m_rep_suc(0), m_rep(0),
 	m_tint_cmd(0x00), m_fband(0), m_tbclr(0x64), m_fwait(4), m_chk_group(1), m_int_bcn(0), m_fbcn(0),
 	m_bcn(0), m_tlp_wait_ex(0), m_lp_wait(0), m_flw(0), m_tlp_wait(0x0F), m_crlf(0), m_delim(1), m_tlp_slp(0x0F),
-	m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF)
+	m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF),
+	m_rbuf_len(0), m_wbuf_len(0), m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), 
+	m_parse_pow(false), m_cur_cmd(NUL)
 {
 	m_dname[0] = '\0';
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
@@ -91,6 +98,10 @@ f_fep01::f_fep01(const char * name):f_base(name),
 	register_fpar("to_hlss", &m_to_hlss, "time interval to transmit in header less mode (1 to 255) [10msec]");
 	register_fpar("addr_rep0", &m_addr_rep0, "address for repeater 0 in header less mode (0 to 255)");
 	register_fpar("addr_rep1", &m_addr_rep1, "address for repeater 1 in header less mode (0 to 255)");
+
+	register_fpar("rbuf", m_rbuf, 1024, "Read buffer.");
+	register_fpar("wbuf", m_wbuf, 1024, "Write buffer.");
+	m_rbuf[0] = m_wbuf[0] = '\0';
 }
 
 bool f_fep01::read_reg()
@@ -105,5 +116,46 @@ bool f_fep01::write_reg()
 
 bool f_fep01::pack_reg()
 {
+	return true;
+}
+
+bool f_fep01::parse_rbuf()
+{
+	char * rbuf = m_rbuf;
+	char * pbuf = m_pbuf + m_pbuf_tail;
+	for(int i = 0; i < m_rbuf_len; i++, rbuf++){
+		*pbuf = *rbuf;
+		if(*pbuf == 0x0D){
+			m_parse_cr = 1;
+		}else if(*pbuf == 0x0A){
+			m_parse_lf = 1;
+		}
+
+		if(m_parse_cr && m_parse_lf){
+			// parse m_pbuf
+			if(m_cur_cmd == NUL){
+				// try to process as a command ressponse
+				// P/N response? process and clear m_pbuf_tail zero
+				// value? process and clear m_pbuf_tail zero
+			}
+			if(m_pbuf_tail){ // m_pbuf is not processed as command response
+				// try to process as a recieved message
+				// if not header less mode and matched m_rec_str? process the message as recieved data
+				// if header less mode, and if power info enabled, set parse_count as 3 and m_parse_pow as true
+			}
+			// clear cr lf flags
+		}else if(m_parse_pow){
+			if(*pbuf < '0' || *pbuf > '9'){
+				// discard all parser state 
+				return false;
+			}
+			m_parse_count--;
+			if(m_parse_count == 0){
+				// parse header less message with power info
+			}
+		}else{
+			m_pbuf_tail++;
+		}
+	}
 	return true;
 }
