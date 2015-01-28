@@ -43,7 +43,7 @@ using namespace cv;
 #include "f_misc.h"
 
 ////////////////////////////////////////////////////////// f_debayer members
-const char * f_debayer::m_strBayer[e_bayer_type::UNKNOWN] = {
+const char * f_debayer::m_strBayer[UNKNOWN] = {
 	"BG8", "GB8", "RG8", "GR8", "BG16", "GB16", "RG16", "GR16"
 };
 

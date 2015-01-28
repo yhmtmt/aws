@@ -87,7 +87,6 @@ public:
 			return true;
 
 		m_time_shot = m_cur_time;
-		cout << m_cur_time << " grab." << endl;
 		pout->set_img(img, m_cur_time);
 		return true;
 	}
