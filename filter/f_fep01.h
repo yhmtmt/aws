@@ -15,6 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_fep01.h.  If not, see <http://www.gnu.org/licenses/>. 
+#include "../util/util.h"
 #include "../util/aws_serial.h"
 #include "f_base.h"
 
@@ -37,10 +38,11 @@ protected:
 	};
 
 	enum e_cmd_stat{
-		NRES=0x00, P0 = 0x01, P1 = 0x02, N0 = 0x04, N1 = 0x08, N2 = 0x10, N3 = 0x20
+		NRES=0x00, P0 = 0x01, P1 = 0x02, N0 = 0x04, N1 = 0x08, N2 = 0x10, N3 = 0x20, EOC = 0x40
 	};
 
 	static const char * m_rec_str[6];
+	static const char * m_ret_str[6];
 
 	char m_dname[1024];
 	unsigned short m_port;
@@ -77,7 +79,7 @@ protected:
 	unsigned char m_ser_par;	// serial com parity (0: no or 1: yes)
 	unsigned char m_ser_br;		// serial baud rate (0 to 3) corresponding to {9600, 19200, 384000, 115200}
 	unsigned char m_ser_stp;	// serial com stop (0: 1bit or 1: 2bit)
-	unsigned char m_tlp_wait_ex;// low power waiting time extension (0 to 15) corresponding to (100 to 1500) [msec]
+	unsigned char m_tlp_wait_ex;// low power waiting time extension (1 to 15) corresponding to (100 to 1500) [msec]
 	unsigned char m_lp_wait;	// low power waiting mode (0: no or 1: yes)
 	unsigned char m_flw;		// RTS/CTS flow control (0: no or 1: yes)
 	unsigned char m_tlp_wait;	// low power waiting time (0 to 255) [100msec]
@@ -85,10 +87,14 @@ protected:
 	unsigned char m_delim;		// sending delimiter for header less mode (0: time out or 1: cr,lf)
 	unsigned char m_tlp_slp;	// sleep time for low power waiting mode (0 to 255) [100msec]
 	unsigned char m_to_hlss;	// time interval to transmit in header less mode (1 to 255) [10msec]
-	unsigned char m_addr_rep0;	// address for repeater 0 in header less mode (0 to 255)
-	unsigned char m_addr_rep1;  // address for repeater 1 in header less mode (0 to 255)
+	unsigned char m_addr_rep0;	// address for repeater 0 in header less mode (0 to 254), 255 means no use.
+	unsigned char m_addr_rep1;  // address for repeater 1 in header less mode (0 to 254), 255 means no use.
 
 	unsigned char m_reg[29];	// register
+	unsigned char m_dbm;		// dbm command result
+	unsigned int m_rid;			// recieved id
+	unsigned char m_ver;		// main version
+	unsigned short m_sub_ver;	// sub version 
 	bool read_reg();			// load register values to our m_reg
 	bool write_reg();			// write m_reg values to m_reg
 	bool pack_reg();			// pack filter parameters to the regs
@@ -109,6 +115,9 @@ protected:
 	bool parse_rbuf();
 
 	e_cmd m_cur_cmd;
+	unsigned char m_cmd_arg1, m_cmd_arg2;
+	bool m_ts2_mode;
+	ofstream m_flog_ts2;
 	unsigned int m_cmd_stat;
 	e_msg_rcv m_cur_rcv;
 	void init_parser();

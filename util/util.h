@@ -41,4 +41,14 @@ struct cmp {
 	} 
 };
 
+// HEX char to integer
+
+inline unsigned char h2i(char h){
+	unsigned char i;
+	i = h - '0';
+	if(i < 10)
+		return i;
+	i = h - 'F';
+	return i;
+}
 #endif
