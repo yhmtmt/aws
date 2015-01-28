@@ -205,11 +205,10 @@ bool f_fep01::parse_response_value()
 	bool is_proc = true;
 	switch(m_cur_cmd){
 	case ARG: // REGxx:yyH
-		if(m_pbuf[0] == 'R' && m_pbuf[1] == 'E' 
-			&& m_pbuf[2] == 'G' && m_pbuf[4] == ':'
-			&& m_pbuf[7] == 'H'){
-				unsigned char ireg = (unsigned char)((m_pbuf[3] - '0') * 10 + m_pbuf[4] - '0');
-				unsigned char reg = (unsigned char)(h2i(m_pbuf[5]) * 16 + h2i(m_pbuf[6]));
+		if(m_pbuf_tail == 11 && m_pbuf[0] == 'R' && m_pbuf[1] == 'E' 
+			&& m_pbuf[2] == 'G' && m_pbuf[4] == ':' && m_pbuf[7] == 'H'){
+				unsigned char ireg = str2DigitDecimal(m_pbuf + 3);
+				unsigned char reg = str2DigitHex(m_pbuf + 5);
 				m_reg[ireg] = reg;
 				if(ireg == 28){ // end of command 
 					m_cmd_stat |= EOC;
@@ -219,6 +218,10 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case BAN: // L or H
+		if(m_pbuf_tail != 3){
+			is_proc = false;
+			break;
+		}
 		switch(m_pbuf[0]){
 		case 'L':
 			m_fband = 0;
@@ -231,8 +234,10 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case DAS:
-		{
-			int das = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+		if(m_pbuf_tail != 5){
+			is_proc = false;
+		}else{
+			int das = str3DigitDecimal(m_pbuf);
 			if(das > 0 && das < 256)
 				m_addr = das;
 			else
@@ -240,8 +245,10 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case DBM:
-		{
-			int dbm = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+		if(m_pbuf_tail != 5){
+			is_proc = false;
+		}else{
+			int dbm = str3DigitDecimal(m_pbuf);
 			if(dbm > 0 && dbm < 256)
 				m_dbm = dbm;
 			else
@@ -249,6 +256,10 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case DVS:
+		if(m_pbuf_tail != 3){
+			is_proc = false;
+			break;
+		}
 		switch(m_pbuf[0]){
 		case 'A':
 			m_ant = 0;
@@ -266,7 +277,9 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case FCN:
-		{ 
+		if(m_pbuf_tail != 3){
+			is_proc = false;
+		}else{
 			int nfreqs = m_pbuf[0] - '0';
 			if(nfreqs > 0 && nfreqs < 4)
 				m_num_freqs = (unsigned char) nfreqs;
@@ -275,8 +288,10 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case FRQ:
-		{
-			int freq = (int) m_pbuf[0] * 10 + (int) m_pbuf[1];
+		if(m_pbuf_tail != 4){
+			is_proc = false;
+		}else{
+			int freq = str2DigitDecimal(m_pbuf);
 			if(freq < 24 || (freq > 60 && freq < 62) || freq > 77){
 				is_proc = false;
 				break;
@@ -297,10 +312,10 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case IDR:
-		{
+		if(m_pbuf_tail == 7 && m_pbuf[4] == 'H'){
 			int scid0, scid1;
-			scid0 = h2i(m_pbuf[0]) * 16 + h2i(m_pbuf[1]);
-			scid1 = h2i(m_pbuf[2]) * 16 + h2i(m_pbuf[3]);
+			scid0 = str2DigitHex(m_pbuf);
+			scid1 = str2DigitHex(m_pbuf+2);
 			if(scid0 < 0 || scid0 > 255){
 				is_proc = false;
 				break;
@@ -311,6 +326,8 @@ bool f_fep01::parse_response_value()
 			}
 			m_scramble_0 = scid0;
 			m_scramble_1 = scid1;
+		}else{
+			is_proc = false;
 		}
 		break;
 	case IDW:
@@ -318,9 +335,9 @@ bool f_fep01::parse_response_value()
 	case INI:
 		break;
 	case PAS:
-		if(m_pbuf[3] == ':'){
-			int rep0 = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
-			int rep1 = (((int)m_pbuf[4] - '0') * 100 + ((int)m_pbuf[5] - '0') * 10  + ((int)m_pbuf[6] - '0'));
+		if(m_pbuf_tail == 9 && m_pbuf[3] == ':'){
+			int rep0 = str3DigitDecimal(m_pbuf);
+			int rep1 = str3DigitDecimal(m_pbuf+4);
 			if(rep0 < 0 || rep0 > 255){
 				is_proc = false;
 				break;
@@ -333,7 +350,6 @@ bool f_fep01::parse_response_value()
 			m_addr_rep1 = (unsigned char) rep1;
 		}else{
 			is_proc = false;
-			break;
 		}
 		break;
 	case POF:
@@ -341,8 +357,10 @@ bool f_fep01::parse_response_value()
 	case PON:
 		break;
 	case PTE:
-		{
-			int pte = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+		if(m_pbuf_tail != 5){
+			is_proc = false;
+		}else{
+			int pte = str3DigitDecimal(m_pbuf);
 			if(pte < 0 || pte > 15){
 				is_proc = false;
 				break;
@@ -350,8 +368,10 @@ bool f_fep01::parse_response_value()
 			m_tlp_wait_ex = (unsigned char) pte;
 		}
 	case PTN:
-		{
-			int ptn = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+		if(m_pbuf_tail != 5){
+			is_proc = false;
+		}else{
+			int ptn = str3DigitDecimal(m_pbuf);
 			if(ptn < 0 || ptn > 255){
 				is_proc = false;
 				break;
@@ -360,8 +380,10 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case PTS:
-		{
-			int pts = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+		if(m_pbuf_tail != 5){
+			is_proc = false;
+		}else{
+			int pts = str3DigitDecimal(m_pbuf);
 			if(pts < 0 || pts > 255){
 				is_proc = false;
 				break;
@@ -374,8 +396,8 @@ bool f_fep01::parse_response_value()
 	case RON:
 		break;
 	case REG:
-		if(m_pbuf[2] == 'H'){
-			int reg = (int) h2i(m_pbuf[0]) * 16 + (int) h2i(m_pbuf[1]);
+		if(m_pbuf_tail == 5 && m_pbuf[2] == 'H'){
+			int reg = str2DigitHex(m_pbuf);
 			if(m_cmd_arg1 < 0 || m_cmd_arg1 > 28){
 				is_proc = false;
 				break;
@@ -383,7 +405,6 @@ bool f_fep01::parse_response_value()
 			m_reg[m_cmd_arg1] = (unsigned char) reg;
 		}else{
 			is_proc = false;
-			break;
 		}
 		break;
 	case RID:
@@ -392,7 +413,6 @@ bool f_fep01::parse_response_value()
 			m_rid = (unsigned int) atoi(m_pbuf);
 		}else{
 			is_proc = false;
-			break;
 		}
 		break;
 	case RST:
@@ -411,17 +431,24 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case TS2:
-		m_pbuf[m_pbuf_tail] = '\0';
-		m_flog_ts2 << m_time_str << " " << m_pbuf << endl;
+		if(m_pbuf_tail == 22){
+			m_pbuf[m_pbuf_tail] = '\0';
+			if(m_cmd_stat & P0 && m_flog_ts2.is_open())
+				m_flog_ts2 << m_time_str << " " << m_pbuf << endl;
+		}else{
+			is_proc = false;
+		}
 		break;
 	case TXT:
 	case TXR:
 	case TX2:
 		break;
 	case VER:
-		if(m_pbuf[1] == '.'){
+		if(m_pbuf_tail == 7 && m_pbuf[1] == '.'){
 			m_ver = m_pbuf[0] - '0';
-			m_sub_ver = (unsigned short) (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+			m_sub_ver = str3DigitDecimal(m_pbuf + 2);
+		}else{
+			is_proc = false;
 		}
 		break;
 	default:

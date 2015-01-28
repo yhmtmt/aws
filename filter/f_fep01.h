@@ -198,5 +198,18 @@ public:
 	}
 };
 
+inline int str3DigitDecimal(const char * str)
+{
+	return (((int)str[0] - '0') * 100 + ((int)str[1] - '0') * 10  + ((int)str[2] - '0'));
+}
 
+inline int str2DigitDecimal(const char * str)
+{
+	return ((int)str[0] - '0') * 10  + ((int)str[1] - '0');
+}
+
+inline int str2DigitHex(const char * str)
+{
+	return h2i(str[0]) * 16 + h2i(str[1]);
+}
 #endif
