@@ -132,522 +132,50 @@ bool f_fep01::parse_rbuf()
 			m_parse_lf = 1;
 		}
 
-		if(m_parse_cr && m_parse_lf){
-			// parse m_pbuf
-			bool is_proc = false;
-			if(m_cur_cmd != NUL && m_cmd_stat & EOC){
-				// try to process as a command ressponse
-				if(m_pbuf_tail == 4){
-					is_proc = true;
-					// P/N response? process and clear m_pbuf_tail zero
-					switch(m_pbuf[0]){
-					case 'P':
-						switch(m_pbuf[1]){
-						case '0':
-							m_cmd_stat |= P0;
-							break;
-						case '1':
-							m_cmd_stat |= P1;
-							break;
-						default:
-							is_proc = false;
-						}
-					case 'N':
-						switch(m_pbuf[2]){
-						case '0':
-							m_cmd_stat |= N0;
-							break;
-						case '1':
-							m_cmd_stat |= N1;
-							break;
-						case '3':
-							m_cmd_stat |= N3;
-							break;
-						default:
-							is_proc = false;
-						}
-					default:
-						is_proc = false;
-					}
-					if(is_proc){
-						switch(m_cur_cmd){
-						case ARG: // N0
-							if(m_cmd_stat & N0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case BAN: // P0 or N0 
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case BCL: // P0 or N0 
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case DAS: // P0 or N0 
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case DBM: // N0
-							if(m_cmd_stat & N0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case DVS:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case FCN:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case FRQ:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case IDR:
-							break;
-						case IDW:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case INI:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case PAS:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case POF:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case PON:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case PTE:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case PTN:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case PTS:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case ROF:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case RON:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case REG:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case RID:
-							if(m_cmd_stat & N0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case RST:
-							if(m_cmd_stat & N0 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-								if(m_ts2_mode && (m_cmd_stat & P0)){
-									m_flog_ts2.close();
-								}
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case TBN:
-						case TBR:
-						case TB2:
-							if(m_cmd_stat & N0 | m_cmd_stat & N1 | m_cmd_stat & N3 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else if(m_cmd_stat & P1){
-								// sending 
-								break;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case TID:
-							if(m_cmd_stat & N0){
-								m_cmd_stat |= EOC;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case TS2:
-							if(m_cmd_stat & N0){
-								m_cmd_stat |= EOC;
-							}else if(m_cmd_stat & P0){
-							
-								snprintf(m_pbuf, "%s_ts2.log", m_name);
-								m_flog_ts2.open(m_pbuf, ios_base::app);
-								m_ts2_mode = true;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case TXT:
-						case TXR:
-						case TX2:
-							if(m_cmd_stat & N0 | m_cmd_stat & N1 | m_cmd_stat & N3 | m_cmd_stat & P0){
-								m_cmd_stat |= EOC;
-							}else if(m_cmd_stat & P1){
-								// sending 
-								break;
-							}else{
-								init_parser();
-								return false;
-							}
-							break;
-						case VER:
-						default:
-							is_proc = false;
-						}
+		try{
+			if(m_parse_cr && m_parse_lf){
+				// parse m_pbuf
+				bool is_proc = false;
+				if(m_cur_cmd != NUL && m_cmd_stat & EOC){
+					// try to process as a command ressponse
+					if(m_pbuf_tail == 4){
+						is_proc = parse_response();
 					}
 				}
 
 				if(!is_proc){
-					// value? process and clear m_pbuf_tail zero
-					is_proc = true;
-					switch(m_cur_cmd){
-					case ARG: // REGxx:yyH
-						if(m_pbuf[0] == 'R' && m_pbuf[1] == 'E' 
-							&& m_pbuf[2] == 'G' && m_pbuf[4] == ':'
-							&& m_pbuf[7] == 'H'){
-							unsigned char ireg = (unsigned char)((m_pbuf[3] - '0') * 10 + m_pbuf[4] - '0');
-							unsigned char reg = (unsigned char)(h2i(m_pbuf[5]) * 16 + h2i(m_pbuf[6]));
-							m_reg[ireg] = reg;
-							if(ireg == 28){ // end of command 
-								m_cmd_stat |= EOC;
-							}
-						}else{
-							is_proc = false;
-						}
-						break;
-					case BAN: // L or H
-						switch(m_pbuf[0]){
-						case 'L':
-							m_fband = 0;
-							break;
-						case 'H':
-							m_fband = 1;
-							break;
-						default:
-							is_proc = false;
-						}
-						break;
-					case DAS:
-						{
-							int das = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
-							if(das > 0 && das < 256)
-								m_addr = das;
-							else
-								is_proc = false;
-						}
-						break;
-					case DBM:
-						{
-							int dbm = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
-							if(dbm > 0 && dbm < 256)
-								m_dbm = dbm;
-							else
-								is_proc = false;
-						}
-						break;
-					case DVS:
-						switch(m_pbuf[0]){
-						case 'A':
-							m_ant = 0;
-							m_div = 0;
-							break;
-						case 'B':
-							m_ant = 1;
-							m_div = 0;
-							break;
-						case 'D':
-							m_div = 1;
-							break;
-						default:
-							is_proc = false;
-						}
-						break;
-					case FCN:
-						{ 
-							int nfreqs = m_pbuf[0] - '0';
-							if(nfreqs > 0 && nfreqs < 4)
-								m_num_freqs = (unsigned char) nfreqs;
-							else
-								is_proc = false;
-						}
-						break;
-					case FRQ:
-						{
-							int freq = (int) m_pbuf[0] * 10 + (int) m_pbuf[1];
-							if(freq < 24 || (freq > 60 && freq < 62) || freq > 77){
-								is_proc = false;
-								break;
-							}
-
-							switch(m_cmd_arg1){
-							case 1:
-								m_freq0 = (unsigned char) freq;
-								break;
-							case 2:
-								m_freq1 = (unsigned char) freq;
-								break;
-							case 3:
-								m_freq1 = (unsigned char) freq;
-							default:
-								is_proc = false;
-							}
-						}
-						break;
-					case IDR:
-						{
-							int scid0, scid1;
-							scid0 = h2i(m_pbuf[0]) * 16 + h2i(m_pbuf[1]);
-							scid1 = h2i(m_pbuf[2]) * 16 + h2i(m_pbuf[3]);
-							if(scid0 < 0 || scid0 > 255){
-								is_proc = false;
-								break;
-							}
-							if(scid1 < 0 || scid1 > 255){
-								is_proc = false;
-								break;
-							}
-							m_scramble_0 = scid0;
-							m_scramble_1 = scid1;
-						}
-						break;
-					case IDW:
-						break;
-					case INI:
-						break;
-					case PAS:
-						if(m_pbuf[3] == ':'){
-							int rep0 = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
-							int rep1 = (((int)m_pbuf[4] - '0') * 100 + ((int)m_pbuf[5] - '0') * 10  + ((int)m_pbuf[6] - '0'));
-							if(rep0 < 0 || rep0 > 255){
-								is_proc = false;
-								break;
-							}
-							if(rep1 < 0 || rep1 > 255){
-								is_proc = false;
-								break;
-							}
-							m_addr_rep0 = (unsigned char) rep0;
-							m_addr_rep1 = (unsigned char) rep1;
-						}else{
-							is_proc = false;
-							break;
-						}
-						break;
-					case POF:
-						break;
-					case PON:
-						break;
-					case PTE:
-						{
-							int pte = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
-							if(pte < 0 || pte > 15){
-								is_proc = false;
-								break;
-							}
-							m_tlp_wait_ex = (unsigned char) pte;
-						}
-					case PTN:
-						{
-							int ptn = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
-							if(ptn < 0 || ptn > 255){
-								is_proc = false;
-								break;
-							}
-							m_tlp_wait = (unsigned char) ptn;
-						}
-						break;
-					case PTS:
-						{
-							int pts = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
-							if(pts < 0 || pts > 255){
-								is_proc = false;
-								break;
-							}
-							m_tlp_slp = (unsigned char) pts;
-						}
-						break;
-					case ROF:
-						break;
-					case RON:
-						break;
-					case REG:
-						if(m_pbuf[2] == 'H'){
-							int reg = (int) h2i(m_pbuf[0]) * 16 + (int) h2i(m_pbuf[1]);
-							if(m_cmd_arg1 < 0 || m_cmd_arg1 > 28){
-								is_proc = false;
-								break;
-							}
-							m_reg[m_cmd_arg1] = (unsigned char) reg;
-						}else{
-							is_proc = false;
-							break;
-						}
-						break;
-					case RID:
-						if(m_pbuf_tail == 14){
-							m_pbuf[m_pbuf_tail - 2] = '\0';
-							m_rid = (unsigned int) atoi(m_pbuf);
-						}else{
-							is_proc = false;
-							break;
-						}
-						break;
-					case RST:
-						break;
-					case TBN:
-					case TBR:
-					case TB2:
-						break;
-					case TID:
-						if(m_pbuf_tail == 14){
-							m_pbuf[m_pbuf_tail - 2] = '\0';
-							m_rid = (unsigned int) atoi(m_pbuf);
-						}else{
-							is_proc = false;
-							break;
-						}
-						break;
-					case TS2:
-						m_pbuf[m_pbuf_tail] = '\0';
-						m_flog_ts2 << m_time_str << " " << m_pbuf << endl;
-						break;
-					case TXT:
-					case TXR:
-					case TX2:
-						break;
-					case VER:
-						if(m_pbuf[1] == '.'){
-							m_ver = m_pbuf[0] - '0';
-							m_sub_ver = (unsigned short) (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
-						}
-						break;
-					default:
-						is_proc = false;
-					}
+					is_proc = parse_response_value();
 				}
-			}
 
-			if(!is_proc){ // m_pbuf is not processed as command response
-				// try to process as a recieved message
-				// if not header less mode and matched m_rec_str? process the message as recieved data
-				// if header less mode, and if power info enabled, set parse_count as 3 and m_parse_pow as true
-			}
+				if(!is_proc){ // m_pbuf is not processed as command response
+					// try to process as a recieved message
+					// if not header less mode and matched m_rec_str? process the message as recieved data
+					// if header less mode, and if power info enabled, set parse_count as 3 and m_parse_pow as true
+				}
 
-			// clear cr lf flags
-			m_parse_cr = m_parse_lf = 0;
-		}else if(m_parse_pow){
-			if(*pbuf < '0' || *pbuf > '9'){
-				// discard all parser state 
-				init_parser();
-				return false;
+				// clear cr lf flags
+				m_parse_cr = m_parse_lf = 0;
+			}else if(m_parse_pow){
+				if(*pbuf < '0' || *pbuf > '9'){
+					// discard all parser state 
+					init_parser();
+					return false;
+				}
+				m_parse_count--;
+				if(m_parse_count == 0){
+					// parse header less message with power info
+				}
+			}else{
+				m_pbuf_tail++;
 			}
-			m_parse_count--;
-			if(m_parse_count == 0){
-				// parse header less message with power info
-			}
-		}else{
-			m_pbuf_tail++;
+		}catch(const c_parse_exception & e){
+			m_pbuf[m_pbuf_tail] = '\0';
+			cerr << "Error: during parsing response to " << m_cmd_str[e.cmd] << " line = " << e.line << "." << endl;
+			cerr << "Value:" << m_pbuf << endl;
+			cerr << "State P0:P1:N0:N1:N3:" << (P0 & e.stat ? 1 : 0) << ":" << (P1 & e.stat ? 1 : 0) << 
+				":" << (N0 & e.stat ? 1 : 0) << ":" << (N1 & e.stat ? 1 : 0) << ":" << (N3 & e.stat ? 1 : 0) << endl;
+			init_parser();
+			return false;
 		}
 	}
 
@@ -669,4 +197,474 @@ void f_fep01::init_parser()
 	m_cmd_arg1 = m_cmd_arg2 = 0;
 	m_cmd_stat = 0;
 	m_ts2_mode = false;
+}
+
+bool f_fep01::parse_response_value()
+{
+	// value? process and clear m_pbuf_tail zero
+	bool is_proc = true;
+	switch(m_cur_cmd){
+	case ARG: // REGxx:yyH
+		if(m_pbuf[0] == 'R' && m_pbuf[1] == 'E' 
+			&& m_pbuf[2] == 'G' && m_pbuf[4] == ':'
+			&& m_pbuf[7] == 'H'){
+				unsigned char ireg = (unsigned char)((m_pbuf[3] - '0') * 10 + m_pbuf[4] - '0');
+				unsigned char reg = (unsigned char)(h2i(m_pbuf[5]) * 16 + h2i(m_pbuf[6]));
+				m_reg[ireg] = reg;
+				if(ireg == 28){ // end of command 
+					m_cmd_stat |= EOC;
+				}
+		}else{
+			is_proc = false;
+		}
+		break;
+	case BAN: // L or H
+		switch(m_pbuf[0]){
+		case 'L':
+			m_fband = 0;
+			break;
+		case 'H':
+			m_fband = 1;
+			break;
+		default:
+			is_proc = false;
+		}
+		break;
+	case DAS:
+		{
+			int das = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+			if(das > 0 && das < 256)
+				m_addr = das;
+			else
+				is_proc = false;
+		}
+		break;
+	case DBM:
+		{
+			int dbm = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+			if(dbm > 0 && dbm < 256)
+				m_dbm = dbm;
+			else
+				is_proc = false;
+		}
+		break;
+	case DVS:
+		switch(m_pbuf[0]){
+		case 'A':
+			m_ant = 0;
+			m_div = 0;
+			break;
+		case 'B':
+			m_ant = 1;
+			m_div = 0;
+			break;
+		case 'D':
+			m_div = 1;
+			break;
+		default:
+			is_proc = false;
+		}
+		break;
+	case FCN:
+		{ 
+			int nfreqs = m_pbuf[0] - '0';
+			if(nfreqs > 0 && nfreqs < 4)
+				m_num_freqs = (unsigned char) nfreqs;
+			else
+				is_proc = false;
+		}
+		break;
+	case FRQ:
+		{
+			int freq = (int) m_pbuf[0] * 10 + (int) m_pbuf[1];
+			if(freq < 24 || (freq > 60 && freq < 62) || freq > 77){
+				is_proc = false;
+				break;
+			}
+
+			switch(m_cmd_arg1){
+			case 1:
+				m_freq0 = (unsigned char) freq;
+				break;
+			case 2:
+				m_freq1 = (unsigned char) freq;
+				break;
+			case 3:
+				m_freq1 = (unsigned char) freq;
+			default:
+				is_proc = false;
+			}
+		}
+		break;
+	case IDR:
+		{
+			int scid0, scid1;
+			scid0 = h2i(m_pbuf[0]) * 16 + h2i(m_pbuf[1]);
+			scid1 = h2i(m_pbuf[2]) * 16 + h2i(m_pbuf[3]);
+			if(scid0 < 0 || scid0 > 255){
+				is_proc = false;
+				break;
+			}
+			if(scid1 < 0 || scid1 > 255){
+				is_proc = false;
+				break;
+			}
+			m_scramble_0 = scid0;
+			m_scramble_1 = scid1;
+		}
+		break;
+	case IDW:
+		break;
+	case INI:
+		break;
+	case PAS:
+		if(m_pbuf[3] == ':'){
+			int rep0 = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+			int rep1 = (((int)m_pbuf[4] - '0') * 100 + ((int)m_pbuf[5] - '0') * 10  + ((int)m_pbuf[6] - '0'));
+			if(rep0 < 0 || rep0 > 255){
+				is_proc = false;
+				break;
+			}
+			if(rep1 < 0 || rep1 > 255){
+				is_proc = false;
+				break;
+			}
+			m_addr_rep0 = (unsigned char) rep0;
+			m_addr_rep1 = (unsigned char) rep1;
+		}else{
+			is_proc = false;
+			break;
+		}
+		break;
+	case POF:
+		break;
+	case PON:
+		break;
+	case PTE:
+		{
+			int pte = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+			if(pte < 0 || pte > 15){
+				is_proc = false;
+				break;
+			}
+			m_tlp_wait_ex = (unsigned char) pte;
+		}
+	case PTN:
+		{
+			int ptn = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+			if(ptn < 0 || ptn > 255){
+				is_proc = false;
+				break;
+			}
+			m_tlp_wait = (unsigned char) ptn;
+		}
+		break;
+	case PTS:
+		{
+			int pts = (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+			if(pts < 0 || pts > 255){
+				is_proc = false;
+				break;
+			}
+			m_tlp_slp = (unsigned char) pts;
+		}
+		break;
+	case ROF:
+		break;
+	case RON:
+		break;
+	case REG:
+		if(m_pbuf[2] == 'H'){
+			int reg = (int) h2i(m_pbuf[0]) * 16 + (int) h2i(m_pbuf[1]);
+			if(m_cmd_arg1 < 0 || m_cmd_arg1 > 28){
+				is_proc = false;
+				break;
+			}
+			m_reg[m_cmd_arg1] = (unsigned char) reg;
+		}else{
+			is_proc = false;
+			break;
+		}
+		break;
+	case RID:
+		if(m_pbuf_tail == 14){
+			m_pbuf[m_pbuf_tail - 2] = '\0';
+			m_rid = (unsigned int) atoi(m_pbuf);
+		}else{
+			is_proc = false;
+			break;
+		}
+		break;
+	case RST:
+		break;
+	case TBN:
+	case TBR:
+	case TB2:
+		break;
+	case TID:
+		if(m_pbuf_tail == 14){
+			m_pbuf[m_pbuf_tail - 2] = '\0';
+			m_rid = (unsigned int) atoi(m_pbuf);
+		}else{
+			is_proc = false;
+			break;
+		}
+		break;
+	case TS2:
+		m_pbuf[m_pbuf_tail] = '\0';
+		m_flog_ts2 << m_time_str << " " << m_pbuf << endl;
+		break;
+	case TXT:
+	case TXR:
+	case TX2:
+		break;
+	case VER:
+		if(m_pbuf[1] == '.'){
+			m_ver = m_pbuf[0] - '0';
+			m_sub_ver = (unsigned short) (((int)m_pbuf[0] - '0') * 100 + ((int)m_pbuf[1] - '0') * 10  + ((int)m_pbuf[2] - '0'));
+		}
+		break;
+	default:
+		is_proc = false;
+	}	
+	return is_proc;
+}
+
+bool f_fep01::parse_response()
+{
+	bool is_proc = true;
+	// P/N response? process and clear m_pbuf_tail zero
+	switch(m_pbuf[0]){
+	case 'P':
+		switch(m_pbuf[1]){
+		case '0':
+			m_cmd_stat |= P0;
+			break;
+		case '1':
+			m_cmd_stat |= P1;
+			break;
+		default:
+			is_proc = false;
+		}
+	case 'N':
+		switch(m_pbuf[2]){
+		case '0':
+			m_cmd_stat |= N0;
+			break;
+		case '1':
+			m_cmd_stat |= N1;
+			break;
+		case '3':
+			m_cmd_stat |= N3;
+			break;
+		default:
+			is_proc = false;
+		}
+	default:
+		is_proc = false;
+	}
+
+	if(is_proc){
+		switch(m_cur_cmd){
+		case ARG: // N0
+			if(m_cmd_stat & N0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case BAN: // P0 or N0 
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case BCL: // P0 or N0 
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case DAS: // P0 or N0 
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case DBM: // N0
+			if(m_cmd_stat & N0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case DVS:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case FCN:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case FRQ:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case IDR:
+			break;
+		case IDW:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case INI:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case PAS:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case POF:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case PON:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case PTE:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case PTN:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case PTS:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case ROF:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case RON:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case REG:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case RID:
+			if(m_cmd_stat & N0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case RST:
+			if(m_cmd_stat & N0 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+				if(m_ts2_mode && (m_cmd_stat & P0)){
+					m_flog_ts2.close();
+				}
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case TBN:
+		case TBR:
+		case TB2:
+			if(m_cmd_stat & N0 | m_cmd_stat & N1 | m_cmd_stat & N3 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else if(m_cmd_stat & P1){
+				// sending 
+				break;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case TID:
+			if(m_cmd_stat & N0){
+				m_cmd_stat |= EOC;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case TS2:
+			if(m_cmd_stat & N0){
+				m_cmd_stat |= EOC;
+			}else if(m_cmd_stat & P0){
+				// if TS2 succeeded, log file is opened.
+				snprintf(m_pbuf, "%s_ts2.log", m_name);
+				m_flog_ts2.open(m_pbuf, ios_base::app);
+				m_ts2_mode = true;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case TXT:
+		case TXR:
+		case TX2:
+			if(m_cmd_stat & N0 | m_cmd_stat & N1 | m_cmd_stat & N3 | m_cmd_stat & P0){
+				m_cmd_stat |= EOC;
+			}else if(m_cmd_stat & P1){
+				// sending 
+				break;
+			}else{
+				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+			}
+			break;
+		case VER:
+		default:
+			is_proc = false;
+		}
+	}
+	return is_proc;
 }

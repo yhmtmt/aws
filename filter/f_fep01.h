@@ -107,21 +107,31 @@ protected:
 	// parameters used by parser
 	int m_pbuf_tail;
 	char m_pbuf[512]; // buffer used by parser
-
+	bool parse_rbuf();
+	void init_parser();
+	bool parse_response_value();
+	bool parse_response();
+	
+	e_cmd m_cur_cmd;
+	unsigned char m_cmd_arg1, m_cmd_arg2;
 	unsigned char m_parse_cr; // CR=0x0D
 	unsigned char m_parse_lf; // LF=0x0A
 	bool m_parse_pow;
 	int m_parse_count;
-	bool parse_rbuf();
-
-	e_cmd m_cur_cmd;
-	unsigned char m_cmd_arg1, m_cmd_arg2;
 	bool m_ts2_mode;
 	ofstream m_flog_ts2;
 	unsigned int m_cmd_stat;
 	e_msg_rcv m_cur_rcv;
-	void init_parser();
 
+	struct c_parse_exception
+	{
+		e_cmd cmd;
+		int stat;
+		int line;
+		c_parse_exception(e_cmd acmd, int astat, int aline): cmd(acmd), stat(astat), line(aline)
+		{
+		}
+	};
 public:
 	f_fep01(const char * name);
 
@@ -187,5 +197,6 @@ public:
 		return true;
 	}
 };
+
 
 #endif
