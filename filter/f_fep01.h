@@ -19,6 +19,12 @@
 #include "../util/aws_serial.h"
 #include "f_base.h"
 
+
+// Note:  HEADER LESS MODE IS PROHIBITED
+// I do not support header less mode. Because the recieved packets cannot be distinguished from some
+// device responses. For example, if the header less mode and power reporting mode are enabled simultaneously,
+// We cannot distinguish the 9 byte packet "test<cr><lf>080" from 6 byte packet"test<cr><lf>".
+
 class f_fep01: public f_base
 {
 protected:
@@ -34,7 +40,7 @@ protected:
 	static const char * m_cmd_str[32];
 
 	enum e_msg_rcv{
-		RBN, RBR, RB2, RXT, RXR, RX2
+		RBN, RBR, RB2, RXT, RXR, RX2, RNUL
 	};
 
 	enum e_cmd_stat{
@@ -42,7 +48,6 @@ protected:
 	};
 
 	static const char * m_rec_str[6];
-	static const char * m_ret_str[6];
 
 	char m_dname[1024];
 	unsigned short m_port;
@@ -111,18 +116,21 @@ protected:
 	void init_parser();
 	bool parse_response_value();
 	bool parse_response();
-	
+	bool parse_message_type();
+	bool parse_message_header();
+	bool parse_message();
+
 	e_cmd m_cur_cmd;
 	unsigned char m_cmd_arg1, m_cmd_arg2;
 	unsigned char m_parse_cr; // CR=0x0D
 	unsigned char m_parse_lf; // LF=0x0A
-	bool m_parse_pow;
 	int m_parse_count;
 	bool m_ts2_mode;
 	ofstream m_flog_ts2;
 	unsigned int m_cmd_stat;
 	e_msg_rcv m_cur_rcv;
-
+	bool m_rcv_header;
+	unsigned char m_rcv_rep0, m_rcv_rep1;
 	struct c_parse_exception
 	{
 		e_cmd cmd;
@@ -171,8 +179,6 @@ public:
 			//		2-2. Value for current command
 			//			process value according to the command
 			//		2-3. message recieved (m_rec_str matching or no header)
-			//			if header less mode, 
-			//				if rep_power enabled, counter is set to 3, parse_pow set to true, and go back to 1.
 			//			if header matched process message according to the header information 
 			//		2-4. if parse_pow is enabled
 			//			process message

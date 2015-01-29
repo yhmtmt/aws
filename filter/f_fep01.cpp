@@ -50,7 +50,7 @@ f_fep01::f_fep01(const char * name):f_base(name),
 	m_bcn(0), m_tlp_wait_ex(0), m_lp_wait(0), m_flw(0), m_tlp_wait(0x0F), m_crlf(0), m_delim(1), m_tlp_slp(0x0F),
 	m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF),
 	m_rbuf_len(0), m_wbuf_len(0), m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), 
-	m_parse_pow(false), m_cur_cmd(NUL), m_cmd_stat(0)
+	m_cur_cmd(NUL), m_cmd_stat(0), m_cur_rcv(RNUL)
 {
 	m_dname[0] = '\0';
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
@@ -133,6 +133,18 @@ bool f_fep01::parse_rbuf()
 		}
 
 		try{
+			if(m_pbuf_tail == 3){
+				if(parse_message_type())
+					continue; // entering message recieve mode
+			}else if(m_cur_rcv != RNUL && !m_rcv_header && m_parse_count == 0){
+				if(parse_message_header())
+					continue;
+			}else{
+				if(parse_message()){
+					continue;
+				}
+			}
+
 			if(m_parse_cr && m_parse_lf){
 				// parse m_pbuf
 				if(m_cur_cmd != NUL && !(m_cmd_stat & EOC)){
@@ -151,24 +163,7 @@ bool f_fep01::parse_rbuf()
 						continue;
 					}
 				}
-
-				// try to process as a recieved message
-				// if not header less mode and matched m_rec_str? process the message as recieved data
-				// if header less mode, and if power info enabled, set parse_count as 3 and m_parse_pow as true
-				if(m_header_less){
-				}
-				// clear cr lf flags
-				m_parse_cr = m_parse_lf = 0;
-			}else if(m_parse_pow){
-				if(*pbuf < '0' || *pbuf > '9'){
-					// discard all parser state 
-					init_parser();
-					return false;
-				}
-				m_parse_count--;
-				if(m_parse_count == 0){
-					// parse header less message with power info
-				}
+				throw c_parse_exception(NUL, m_cmd_stat, __LINE__);
 			}else{
 				m_pbuf_tail++;
 			}
@@ -195,11 +190,12 @@ void f_fep01::init_parser()
 {
 	m_pbuf_tail = 0;
 	m_parse_cr = m_parse_lf = 0;
-	m_parse_pow = false;
 	m_parse_count = 0;
 	m_cur_cmd = NUL;
 	m_cmd_arg1 = m_cmd_arg2 = 0;
 	m_cmd_stat = 0;
+	m_cur_rcv = RNUL;
+	m_rcv_header = false;
 	m_ts2_mode = false;
 }
 
@@ -698,4 +694,78 @@ bool f_fep01::parse_response()
 		}
 	}
 	return is_proc;
+}
+
+bool f_fep01::parse_message_type()
+{
+	if(m_pbuf[0] != 'R'){ 
+		// This is not the received data.
+		return false;
+	}
+
+	e_msg_rcv ercv = RNUL;
+	for(int i = 0; i < 6; i++){
+		if(m_pbuf[1] == m_rec_str[i][1] && m_pbuf[2] == m_rec_str[i][2]){
+			ercv = (e_msg_rcv) i;
+		}
+	}
+	m_cur_rcv = ercv;
+
+	if(ercv == RNUL)
+		return false;
+	switch(m_cur_rcv){
+	case RBN:
+		m_parse_count = 6;
+		break;
+	case RBR:
+		m_parse_count = 9;
+		break;
+	case RB2:
+		m_parse_count = 12;
+		break;
+	case RXT:
+		m_parse_count = 3;
+		break;
+	case RXR:
+		m_parse_count = 6;
+		break;
+	case RX2:
+		m_parse_count = 9;
+		break;
+	default:
+		// this is not the recieved message
+		return false;
+	}
+
+	return true;
+}
+
+bool f_fep01::parse_message_header()
+{
+	switch(m_cur_rcv){
+	case RBN:
+		break;
+	case RBR:
+		break;
+	case RB2:
+		break;
+	case RXT:
+		break;
+	case RXR:
+		break;
+	case RX2:
+		break;
+	default:
+		// this is not the recieved message
+		return false;
+	}
+	m_rcv_header = true;
+	return true;
+}
+
+bool f_fep01::parse_message()
+{
+	m_rcv_header = false;
+	m_cur_rcv = RNUL;
+	return true;
 }
