@@ -135,24 +135,28 @@ bool f_fep01::parse_rbuf()
 		try{
 			if(m_parse_cr && m_parse_lf){
 				// parse m_pbuf
-				bool is_proc = false;
-				if(m_cur_cmd != NUL && m_cmd_stat & EOC){
+				if(m_cur_cmd != NUL && !(m_cmd_stat & EOC)){
 					// try to process as a command ressponse
-					if(m_pbuf_tail == 4){
-						is_proc = parse_response();
+					if(m_pbuf_tail == 4){ // P0<cr><lf> etc.
+						if(parse_response()){
+							m_pbuf_tail = 0;
+							m_parse_cr = m_parse_lf = 0;
+							continue;
+						}
+					}
+					// try to process as a command's return value
+					if(parse_response_value()){
+						m_pbuf_tail = 0;
+						m_parse_cr = m_parse_lf = 0;
+						continue;
 					}
 				}
 
-				if(!is_proc){
-					is_proc = parse_response_value();
+				// try to process as a recieved message
+				// if not header less mode and matched m_rec_str? process the message as recieved data
+				// if header less mode, and if power info enabled, set parse_count as 3 and m_parse_pow as true
+				if(m_header_less){
 				}
-
-				if(!is_proc){ // m_pbuf is not processed as command response
-					// try to process as a recieved message
-					// if not header less mode and matched m_rec_str? process the message as recieved data
-					// if header less mode, and if power info enabled, set parse_count as 3 and m_parse_pow as true
-				}
-
 				// clear cr lf flags
 				m_parse_cr = m_parse_lf = 0;
 			}else if(m_parse_pow){
