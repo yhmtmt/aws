@@ -126,11 +126,14 @@ protected:
 	unsigned char m_parse_lf; // LF=0x0A
 	int m_parse_count;
 	bool m_ts2_mode;
+	bool m_msg_bin;
 	ofstream m_flog_ts2;
 	unsigned int m_cmd_stat;
 	e_msg_rcv m_cur_rcv;
 	bool m_rcv_header;
-	unsigned char m_rcv_rep0, m_rcv_rep1;
+	unsigned char m_rcv_src, m_rcv_rep0, m_rcv_rep1, m_rcv_len;
+	char m_rcv_msg[256];
+
 	struct c_parse_exception
 	{
 		e_cmd cmd;
@@ -171,20 +174,6 @@ public:
 		if(m_rbuf_len < 0){
 			cerr << "Read operation failed." << endl;
 		}else{
-			// Parser
-			// 1. copy a character rbuf pointer to pbuf's tail
-			// 2. If CRLF is found or counter equals zero
-			//		2-1. P/N response for current command
-			//			process response according to the command, 
-			//		2-2. Value for current command
-			//			process value according to the command
-			//		2-3. message recieved (m_rec_str matching or no header)
-			//			if header matched process message according to the header information 
-			//		2-4. if parse_pow is enabled
-			//			process message
-			//      2-5. clear pbuf
-			// 3. increment rbuf pointer and exit if rbuf tail reached.
-
 			if(!parse_rbuf()){
 				cerr << "Failed to parse read buffer." << endl;
 			}
@@ -218,4 +207,5 @@ inline int str2DigitHex(const char * str)
 {
 	return h2i(str[0]) * 16 + h2i(str[1]);
 }
+
 #endif

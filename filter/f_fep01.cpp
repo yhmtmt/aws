@@ -125,7 +125,7 @@ bool f_fep01::parse_rbuf()
 	char * pbuf = m_pbuf + m_pbuf_tail;
 	for(int i = 0; i < m_rbuf_len && m_pbuf_tail < 512; i++, rbuf++){
 		*pbuf = *rbuf;
-
+		m_pbuf_tail++;
 		if(*pbuf == 0x0D){
 			m_parse_cr = 1;
 		}else if(*pbuf == 0x0A){
@@ -133,20 +133,30 @@ bool f_fep01::parse_rbuf()
 		}
 
 		try{
-			if(m_pbuf_tail == 3){
+			// parsing recieved message
+			if(m_pbuf_tail == 3){ // depending on the first three characters, recieved message parser is activated.
 				if(parse_message_type())
 					continue; // entering message recieve mode
-			}else if(m_cur_rcv != RNUL && !m_rcv_header && m_parse_count == 0){
-				if(parse_message_header())
-					continue;
-			}else{
-				if(parse_message()){
-					continue;
+			}else if(m_cur_rcv != RNUL){
+				if(!m_rcv_header){
+					if(m_parse_count == 0){
+						if(parse_message_header())
+							continue;
+					}
+				}else{
+					if(m_msg_bin){
+						if((m_msg_bin && m_parse_count == 0) || (!m_msg_bin && m_parse_cr && m_parse_lf)){
+							if(parse_message()){
+								continue;
+							}
+						}
+					}
 				}
+				continue;
 			}
 
+			// parsing command response
 			if(m_parse_cr && m_parse_lf){
-				// parse m_pbuf
 				if(m_cur_cmd != NUL && !(m_cmd_stat & EOC)){
 					// try to process as a command ressponse
 					if(m_pbuf_tail == 4){ // P0<cr><lf> etc.
@@ -164,8 +174,6 @@ bool f_fep01::parse_rbuf()
 					}
 				}
 				throw c_parse_exception(NUL, m_cmd_stat, __LINE__);
-			}else{
-				m_pbuf_tail++;
 			}
 		}catch(const c_parse_exception & e){
 			m_pbuf[m_pbuf_tail] = '\0';
@@ -715,21 +723,27 @@ bool f_fep01::parse_message_type()
 		return false;
 	switch(m_cur_rcv){
 	case RBN:
+		m_msg_bin = true;
 		m_parse_count = 6;
 		break;
 	case RBR:
+		m_msg_bin = true;
 		m_parse_count = 9;
 		break;
 	case RB2:
+		m_msg_bin = true;
 		m_parse_count = 12;
 		break;
 	case RXT:
+		m_msg_bin = false;
 		m_parse_count = 3;
 		break;
 	case RXR:
+		m_msg_bin = false;
 		m_parse_count = 6;
 		break;
 	case RX2:
+		m_msg_bin = false;
 		m_parse_count = 9;
 		break;
 	default:
@@ -743,17 +757,32 @@ bool f_fep01::parse_message_type()
 bool f_fep01::parse_message_header()
 {
 	switch(m_cur_rcv){
-	case RBN:
+	case RBN: // src, length 
+		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
+		m_rcv_len = str3DigitDecimal(&m_pbuf[6]);
 		break;
-	case RBR:
+	case RBR: // src, rep, length
+		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
+		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[6]);
+		m_rcv_len = str3DigitDecimal(&m_pbuf[9]);
 		break;
-	case RB2:
+	case RB2: // src, rep0, rep1, length
+		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
+		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[6]);
+		m_rcv_rep1 = str3DigitDecimal(&m_pbuf[9]);
+		m_rcv_len = str3DigitDecimal(&m_pbuf[12]);
 		break;
-	case RXT:
+	case RXT: // src
+		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
 		break;
-	case RXR:
+	case RXR: // src, rep0
+		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
+		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[6]);
 		break;
-	case RX2:
+	case RX2: // src, rep0, rep1
+		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
+		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[6]);
+		m_rcv_rep1 = str3DigitDecimal(&m_pbuf[9]);
 		break;
 	default:
 		// this is not the recieved message
@@ -765,6 +794,40 @@ bool f_fep01::parse_message_header()
 
 bool f_fep01::parse_message()
 {
+	char * ptr, * ptr_end;
+	ptr_end = &m_pbuf[m_pbuf_tail];
+
+	switch(m_cur_rcv){
+	case RBN: // src, length 
+		ptr = &m_pbuf[9];
+		break;
+	case RBR: // src, rep, length
+		ptr = &m_pbuf[12];
+		break;
+	case RB2: // src, rep0, rep1, length
+		ptr = &m_pbuf[15];
+		break;
+	case RXT: // src
+		ptr = &m_pbuf[6];
+		break;
+	case RXR: // src, rep0
+		ptr = &m_pbuf[9];
+		break;
+	case RX2: // src, rep0, rep1
+		ptr = &m_pbuf[12];
+		break;
+	default:
+		// this is not the recieved message
+		return false;
+	}
+
+	char * pmsg;
+	for(pmsg = m_rcv_msg; ptr != ptr_end; pmsg++, ptr++){
+		*pmsg = *ptr;
+	}
+	*pmsg = '\0';
+
+	m_msg_bin = false;
 	m_rcv_header = false;
 	m_cur_rcv = RNUL;
 	return true;
