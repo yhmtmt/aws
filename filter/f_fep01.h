@@ -120,6 +120,29 @@ protected:
 	bool parse_message_header();
 	bool parse_message();
 
+	struct s_cmd{
+		e_cmd type;
+		char msg[129];
+		union{
+			int iarg1;
+			char carg1[2];
+		};
+		union{
+			int iarg2;
+			char carg2[2];
+		};
+
+		int iarg3, iarg4;
+
+		s_cmd():type(NUL), iarg1(-1), iarg2(-1), iarg3(-1), iarg4(-1){
+			msg[0] = '\0';
+		}
+	};
+	bool m_bpush_cmd;
+	s_cmd m_cmd;
+	list<s_cmd> m_cmd_queue;
+	bool set_cmd();
+
 	e_cmd m_cur_cmd;
 	unsigned char m_cmd_arg1, m_cmd_arg2;
 	unsigned char m_parse_cr; // CR=0x0D
@@ -131,6 +154,7 @@ protected:
 	unsigned int m_cmd_stat;
 	e_msg_rcv m_cur_rcv;
 	bool m_rcv_header;
+	bool m_rcv_done;
 	unsigned char m_rcv_src, m_rcv_rep0, m_rcv_rep1, m_rcv_len;
 	char m_rcv_msg[256];
 
@@ -169,7 +193,32 @@ public:
 
 	virtual bool proc()
 	{
-		// read phase
+		// push a command to the command queue from a fset command
+		if(m_bpush_cmd){
+			m_cmd_queue.push_back(m_cmd);
+			m_cmd = s_cmd();
+		}
+
+		// pop a command from queue and set to write buffer
+		if(m_cmd_queue.size() != 0){
+			set_cmd();
+		}
+
+		// handling recieved message. this code is temporal and simply dumping to stdout. 
+		if(m_rcv_done){
+			m_rcv_msg[m_rcv_len] = '\0';
+			cout << "Recieve: " << m_rcv_msg << endl;
+			m_rcv_done = true;
+		}
+
+		// handling processed command 
+		if(m_cur_cmd != NUL && m_cmd_stat & EOC){
+			cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
+			m_cur_cmd = NUL;
+			m_cmd_stat = NRES;
+		}
+
+		// parsing read buffer. The read buffer is possible to contain both command response and recieved messages.
 		m_rbuf_len = read_serial(m_hcom, m_rbuf, 512);
 		if(m_rbuf_len < 0){
 			cerr << "Read operation failed." << endl;
@@ -179,7 +228,7 @@ public:
 			}
 		}
 
-		// write phase
+		// writing a command if it is in the write buffer
 		m_wbuf_len = (int) strlen(m_wbuf);
 
 		int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);

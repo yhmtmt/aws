@@ -98,9 +98,16 @@ f_fep01::f_fep01(const char * name):f_base(name),
 	register_fpar("to_hlss", &m_to_hlss, "time interval to transmit in header less mode (1 to 255) [10msec]");
 	register_fpar("addr_rep0", &m_addr_rep0, "address for repeater 0 in header less mode (0 to 255), 255 means no use.");
 	register_fpar("addr_rep1", &m_addr_rep1, "address for repeater 1 in header less mode (0 to 255), 255 means no use.");
-
 	register_fpar("rbuf", m_rbuf, 1024, "Read buffer.");
 	register_fpar("wbuf", m_wbuf, 1024, "Write buffer.");
+
+	register_fpar("push_cmd", &m_bpush_cmd, "Push command flag.");
+	register_fpar("cmd", (int*)&m_cmd.type, VER+1, m_cmd_str, "Command to be queued.");
+	register_fpar("iarg1", &m_cmd.iarg1, "Command argument 1 (an integer value)");
+	register_fpar("iarg2", &m_cmd.iarg2, "Command argument 2 (an integer value)");
+	register_fpar("carg1", m_cmd.carg1, 2, "Command argument 1 (a char value)");
+	register_fpar("carg2", m_cmd.carg2, 2, "Command argument 2 (a char value)");
+	register_fpar("msg", m_cmd.msg, 129, "Message to be sent");
 	m_rbuf[0] = m_wbuf[0] = '\0';
 }
 
@@ -161,6 +168,7 @@ bool f_fep01::parse_rbuf()
 					// try to process as a command ressponse
 					if(m_pbuf_tail == 4){ // P0<cr><lf> etc.
 						if(parse_response()){
+							cout << "Response: " << m_pbuf << endl;
 							m_pbuf_tail = 0;
 							m_parse_cr = m_parse_lf = 0;
 							continue;
@@ -168,6 +176,8 @@ bool f_fep01::parse_rbuf()
 					}
 					// try to process as a command's return value
 					if(parse_response_value()){
+						m_pbuf[m_pbuf_tail] = '\0';
+						cout << "Response: " << m_pbuf << endl;
 						m_pbuf_tail = 0;
 						m_parse_cr = m_parse_lf = 0;
 						continue;
@@ -188,6 +198,7 @@ bool f_fep01::parse_rbuf()
 
 	if(m_pbuf_tail == 512){
 		// discard all parse state
+		cerr << "Buffer over flow." << endl;
 		init_parser();
 		return false;
 	}
@@ -761,28 +772,28 @@ bool f_fep01::parse_message_header()
 		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
 		m_rcv_len = str3DigitDecimal(&m_pbuf[6]);
 		break;
-	case RBR: // src, rep, length
-		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
-		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[6]);
+	case RBR: // rep, src, length
+		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[3]);
+		m_rcv_src = str3DigitDecimal(&m_pbuf[6]);
 		m_rcv_len = str3DigitDecimal(&m_pbuf[9]);
 		break;
-	case RB2: // src, rep0, rep1, length
-		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
-		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[6]);
-		m_rcv_rep1 = str3DigitDecimal(&m_pbuf[9]);
+	case RB2: // rep0, rep1, src, length
+		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[3]);
+		m_rcv_rep1 = str3DigitDecimal(&m_pbuf[6]);
+		m_rcv_src = str3DigitDecimal(&m_pbuf[9]);
 		m_rcv_len = str3DigitDecimal(&m_pbuf[12]);
 		break;
 	case RXT: // src
 		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
 		break;
-	case RXR: // src, rep0
-		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
-		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[6]);
+	case RXR: // rep0, src
+		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[3]);
+		m_rcv_src = str3DigitDecimal(&m_pbuf[6]);
 		break;
-	case RX2: // src, rep0, rep1
-		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
-		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[6]);
-		m_rcv_rep1 = str3DigitDecimal(&m_pbuf[9]);
+	case RX2: // rep0, rep1, src
+		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[3]);
+		m_rcv_rep1 = str3DigitDecimal(&m_pbuf[6]);
+		m_rcv_src = str3DigitDecimal(&m_pbuf[9]);
 		break;
 	default:
 		// this is not the recieved message
@@ -827,8 +838,188 @@ bool f_fep01::parse_message()
 	}
 	*pmsg = '\0';
 
+	m_rcv_done = true;
 	m_msg_bin = false;
 	m_rcv_header = false;
 	m_cur_rcv = RNUL;
+	return true;
+}
+
+
+bool f_fep01::set_cmd()
+{
+	list<s_cmd>::iterator itr = m_cmd_queue.begin();
+
+	switch(itr->type){
+	case ARG:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case BAN:
+		if(itr->carg1[0] == 'L' || itr->carg1[0] == 'H'){
+			snprintf(m_wbuf, 512, "@%s%s\r\n", m_cmd_str[itr->type], itr->carg1);
+		}else{
+			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		}
+		break;
+	case BCL:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case DAS:
+		if(itr->iarg1 != -1){
+			snprintf(m_wbuf, 512, "@%s%03d\r\n", m_cmd_str[itr->type], (int) itr->iarg1);
+		}else{
+			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		}
+		break;
+	case DBM:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case DVS:
+		if(itr->carg1[0] == 'A' || itr->carg1[0] == 'B' || itr->carg1[0] == 'D'){
+			snprintf(m_wbuf, 512, "@%s%s\r\n", m_cmd_str[itr->type], itr->carg1);
+		}else{
+			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		}
+		break;
+	case FCN:
+		if(itr->iarg1 < 4 && itr->iarg1 > 0){
+			snprintf(m_wbuf, 512, "@%s%d\r\n", m_cmd_str[itr->type], itr->iarg1);
+		}else{
+			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		}
+		break;
+	case FRQ:
+		if(itr->iarg1 < 4 && itr->iarg1 > 0){
+			if((itr->iarg2 < 61 && itr->iarg2 > 23  || 
+			itr->iarg2 < 78 && itr->iarg2 > 61)){
+				snprintf(m_wbuf, 512, "@%s%d:%d\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2);
+			}else{
+				snprintf(m_wbuf, 512, "@%s%d\r\n", m_cmd_str[itr->type], itr->iarg1);
+			}
+		}
+		break;
+	case IDR:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case IDW:
+		if(itr->iarg1 <= 0x0000FFFF && itr->iarg1 >= 0){
+			snprintf(m_wbuf, 512, "@%s%4d\r\n", m_cmd_str[itr->type], itr->iarg1);
+		}else{
+			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		}
+		break;
+	case INI:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case PAS:
+		if(itr->iarg1 < 256 && itr->iarg1 >= 0 && itr->iarg2 < 256 && itr->iarg2 >= 0){
+			snprintf(m_wbuf, 512, "@%s%03d:%03d\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2);
+		}else{
+			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		}
+		break;
+	case POF:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case PON:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case PTE:
+		if(itr->iarg1 >= 0 && itr->iarg1 < 16){
+			snprintf(m_wbuf, 512, "@%s%03d\r\n", m_cmd_str[itr->type], itr->iarg1);
+		}else{
+			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		}
+		break;
+	case PTN:
+		if(itr->iarg1 > 0 && itr->iarg1 < 256){
+			snprintf(m_wbuf, 512, "@%s%03d\r\n", m_cmd_str[itr->type], itr->iarg1);
+		}else{
+			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		}
+		break;
+	case PTS:
+		if(itr->iarg1 > 0 && itr->iarg1 < 256){
+			snprintf(m_wbuf, 512, "@%s%03d\r\n", m_cmd_str[itr->type], itr->iarg1);
+		}else{
+			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		}
+		break;
+	case ROF:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case RON:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case REG:
+		if(itr->iarg1 < 29 && itr->iarg1 >= 0){
+			if(itr->iarg2 < 256 && itr->iarg2 >= 0){
+				snprintf(m_wbuf, 512, "@%s%02d:%03d\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2);
+			}else{
+				snprintf(m_wbuf, 512, "@%s%02d\r\n", m_cmd_str[itr->type], itr->iarg1);
+			}
+		}
+		break;
+	case RID:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case RST:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case TBN:
+		if(itr->iarg1 >= 0 && itr->iarg1 < 255 && itr->iarg2 > 0 && itr->iarg2 <129 && 
+			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
+			snprintf(m_wbuf, 512, "@%s%03d%03d%s", itr->iarg1, itr->iarg2, itr->msg);
+		}
+		break;
+	case TBR:
+		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
+			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
+			&& itr->iarg3 > 0 && itr->iarg3 <129 && 
+			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
+			snprintf(m_wbuf, 512, "@%s%03d%03d03d%s", itr->iarg1, itr->iarg2, itr->iarg3, itr->msg);
+		}
+		break;
+	case TB2:
+		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
+			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
+			&& itr->iarg3 >= 0 && itr->iarg3 < 255 
+			&& itr->iarg4 > 0 && itr->iarg4 <129 && 
+			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
+			snprintf(m_wbuf, 512, "@%s%03d%03d03d03d%s", itr->iarg1, itr->iarg2, itr->iarg3, itr->msg);
+		}
+		break;
+	case TID:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case TS2:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	case TXT:
+		if(itr->iarg1 >= 0 && itr->iarg1 < 255 && 
+			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
+			snprintf(m_wbuf, 512, "@%s%03d%s", itr->iarg1, itr->msg);
+		}
+		break;
+	case TXR:
+		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
+			&& itr->iarg2 >= 0 && itr->iarg2 < 255 &&
+			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
+				snprintf(m_wbuf, 512, "@%s%03d03d%s", itr->iarg1, itr->iarg2, itr->msg);
+		}
+	case TX2:
+		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
+			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
+			&& itr->iarg3 >= 0 && itr->iarg3 < 255 && 
+			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
+			snprintf(m_wbuf, 512, "@%s%03d%03d03d03d%s", itr->iarg1, itr->iarg2, itr->msg);
+		}
+		break;
+	case VER:
+		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		break;
+	}
+
+	m_cmd_queue.pop_front();
 	return true;
 }
