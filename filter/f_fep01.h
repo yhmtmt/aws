@@ -28,6 +28,15 @@
 class f_fep01: public f_base
 {
 protected:
+	// state transition
+	// ST_INIT load all register (queue commands,last comand return, call unpack_reg -> ST_OP)
+	// ST_RST set all register (pack_reg, queue commands, last command return, re-open device -> ST_OP 
+	// ST_OP ordinal operation (recieve data stream from channel)
+	// ST_TEST Invoke TS2 
+	enum e_state{
+		ST_INIT, ST_RST, ST_OP, ST_DBG, ST_TEST
+	};
+
 	enum e_cmd{
 		NUL, ARG,  BAN, BCL, DAS,
 		DBM, DVS, FCN, FRQ, IDR,
@@ -121,6 +130,15 @@ protected:
 	bool parse_message_type();
 	bool parse_message_header();
 	bool parse_message();
+	struct c_parse_exception
+	{
+		e_cmd cmd;
+		int stat;
+		int line;
+		c_parse_exception(e_cmd acmd, int astat, int aline): cmd(acmd), stat(astat), line(aline)
+		{
+		}
+	};
 
 	struct s_cmd{
 		e_cmd type;
@@ -160,15 +178,6 @@ protected:
 	unsigned char m_rcv_src, m_rcv_rep0, m_rcv_rep1, m_rcv_len;
 	char m_rcv_msg[256];
 
-	struct c_parse_exception
-	{
-		e_cmd cmd;
-		int stat;
-		int line;
-		c_parse_exception(e_cmd acmd, int astat, int aline): cmd(acmd), stat(astat), line(aline)
-		{
-		}
-	};
 public:
 	f_fep01(const char * name);
 
@@ -181,6 +190,9 @@ public:
 #endif
 		if(m_hcom == NULL_SERIAL)
 			return false;
+
+		init_parser();
+
 		return true;
 	}
 
