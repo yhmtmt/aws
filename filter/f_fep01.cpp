@@ -154,7 +154,7 @@ void f_fep01::unpack_reg()
 	m_ser_dlen = (m_reg[20] & 0x80) >> 7;
 	m_ser_par = (m_reg[20] & 0x40) >> 6;
 	m_ser_sig = (m_reg[20] & 0x20) >> 5;
-	m_ser_br = (m_reg[20] & 0x02);
+	m_ser_br = (m_reg[20] & 0x03);
 	switch(m_ser_br){
 	case 0:
 		m_br = 9600;
@@ -184,6 +184,70 @@ void f_fep01::unpack_reg()
 
 bool f_fep01::pack_reg()
 {
+	if(m_addr > 239){
+		return false;
+	}
+	m_reg[0] = m_addr;
+
+	if(m_addr < 240){
+		return false;
+	}
+	m_reg[1] = m_addr_group;
+
+	m_reg[2] = m_addr_dst;
+	m_reg[3] = (m_header_less ? 0xFF : 0xF0);
+	m_reg[4] = m_scramble_0;
+	m_reg[5] = m_scramble_1;
+	if(m_num_freqs < 0 || m_num_freqs >3){
+		return false;
+	}
+	m_reg[6] = m_num_freqs;
+
+	if(m_freq0 < 0x18 || (m_freq0 > 0x3C && m_freq0 < 0x3E) || m_freq0 > 0x45)
+		return false;
+	m_reg[7] = m_freq0;
+
+	if(m_freq1 < 0x18 || (m_freq1 > 0x3C && m_freq1 < 0x3E) || m_freq1 > 0x45)
+		return false;
+	m_reg[8] = m_freq1;
+
+	if(m_freq2 < 0x18 || (m_freq2 > 0x3C && m_freq2 < 0x3E) || m_freq2 > 0x45)
+		return false;
+	m_reg[9] = m_freq2;
+	m_reg[10] = (m_ant << 1) | (m_div);
+	m_reg[11] = m_num_reps;
+	if(m_th_roam < 70 && m_th_roam > 100)
+		return false;
+	m_reg[12] = m_th_roam;
+	m_reg[13] = (m_rep_power << 7) | (m_rep_err << 2) | (m_rep_suc << 1) | m_rep;
+	m_reg[15] = m_tint_cmd;
+	m_reg[16] = m_fband;
+
+	if(m_tbclr == 0)
+		return false;
+	m_reg[17] = m_tbclr;
+
+	m_reg[18] = (m_fwait << 5) | (m_chk_group << 1) | m_chk_addr;
+	m_reg[19] = (m_int_bcn << 5) | (m_fbcn << 2) | (m_bcn << 1);
+	m_reg[20] = (m_ser_dlen << 7) | (m_ser_par << 6) | (m_ser_sig << 5) | (m_ser_stp << 3) | (m_ser_br);
+	m_reg[21] = (m_tlp_wait_ex << 4) | (m_lp_wait << 2) | (m_flw << 1);
+	m_reg[22] = m_tlp_wait;
+	m_reg[23] = m_crlf << 4;
+	m_reg[24] = m_delim << 6;
+	m_reg[25] = m_tlp_slp;
+	if(m_to_hlss == 0)
+		return false;
+
+	m_reg[26] = m_to_hlss;
+
+	if(m_addr_rep0 > 239)
+		return false;
+	m_reg[27] = m_addr_rep0;
+
+	if(m_addr_rep1 > 239)
+		return false;
+	m_reg[28] = m_addr_rep1;
+
 	return true;
 }
 
@@ -951,8 +1015,8 @@ bool f_fep01::set_cmd()
 		break;
 	case FRQ:
 		if(itr->iarg1 < 4 && itr->iarg1 > 0){
-			if((itr->iarg2 < 61 && itr->iarg2 > 23  || 
-			itr->iarg2 < 78 && itr->iarg2 > 61)){
+			if((itr->iarg2 < 61 && itr->iarg2 > 23)  || 
+			(itr->iarg2 < 78 && itr->iarg2 > 61)){
 				snprintf(m_wbuf, 512, "@%s%d:%d\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2);
 			}else{
 				snprintf(m_wbuf, 512, "@%s%d\r\n", m_cmd_str[itr->type], itr->iarg1);
