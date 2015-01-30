@@ -57,8 +57,8 @@ f_fep01::f_fep01(const char * name):f_base(name),
 	register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
 	register_fpar("br", &m_br, "Baud rate.");
 
-	register_fpar("addr", &m_addr, "own address (0 to 255)");
-	register_fpar("addr_group", &m_addr_group, "group address (0 to 255)");
+	register_fpar("addr", &m_addr, "own address (0 to 239)");
+	register_fpar("addr_group", &m_addr_group, "group address (240 to 254)");
 	register_fpar("addr_dst", &m_addr_dst, "destination address (0 to 255), header less mode only.");
 	register_fpar("header_less", &m_header_less, "header less packet mode (0: no -> 0xF0 or 1: yes -> 0xFF)");
 	register_fpar("scramble0", &m_scramble_0, "scramble code 0 (0 to 255)");
@@ -86,6 +86,7 @@ f_fep01::f_fep01(const char * name):f_base(name),
 	register_fpar("bcn", &m_bcn, "beacon (0: no or 1: yes)");
 	register_fpar("ser_dlen", &m_ser_dlen, "serial data length (0: 8bit or 1: 7bit)");
 	register_fpar("ser_par", &m_ser_par, "serial com parity (0: no or 1: yes)");
+	register_fpar("ser_sig", &m_ser_sig, "serial parity sign (0: even or 1: odd)");
 	register_fpar("ser_br", &m_ser_br, "serial baud rate (0 to 3) corresponding to {9600, 19200, 384000, 115200}");
 	register_fpar("ser_stp", &m_ser_stp, "serial com stop (0: 1bit or 1: 2bit)");
 	register_fpar("tlp_wait_ex", &m_tlp_wait_ex, "low power waiting time extension (0 to 15) corresponding to (100 to 1500) [msec]");
@@ -119,6 +120,66 @@ bool f_fep01::read_reg()
 bool f_fep01::write_reg()
 {
 	return true;
+}
+
+void f_fep01::unpack_reg()
+{
+	m_addr = m_reg[0];
+	m_addr_group = m_reg[1];
+	m_addr_dst = m_reg[2];
+	m_header_less = (m_reg[3] ==0xF0 ? 0 : 1);
+	m_scramble_0 = m_reg[4];
+	m_scramble_1 = m_reg[5];
+	m_num_freqs = m_reg[6];
+	m_freq0 = m_reg[7];
+	m_freq1 = m_reg[8];
+	m_freq2 = m_reg[9];
+	m_ant = (m_reg[10] & 0x02) >> 1;
+	m_div = (m_reg[10] & 0x01);
+	m_num_reps = m_reg[11];
+	m_th_roam = m_reg[12];
+	m_rep_power = (m_reg[13] & 0x80) >> 7;
+	m_rep_err = (m_reg[13] & 0x4) >> 2;
+	m_rep_suc = (m_reg[13] & 0x2) >> 1;
+	m_rep = (m_reg[13] & 0x1);
+	m_tint_cmd =m_reg[15];
+	m_fband = m_reg[16];
+	m_tbclr = m_reg[17];
+	m_fwait = (m_reg[18] & 0xE0) >> 5;
+	m_chk_group = (m_reg[18] & 0x02) >> 1;
+	m_chk_addr = (m_reg[18] & 0x01);
+	m_int_bcn = (m_reg[19] & 0xE0) >> 5;
+	m_fbcn = (m_reg[19] & 0x03) >> 2;
+	m_bcn = (m_reg[19] & 0x02) >> 1;
+	m_ser_dlen = (m_reg[20] & 0x80) >> 7;
+	m_ser_par = (m_reg[20] & 0x40) >> 6;
+	m_ser_sig = (m_reg[20] & 0x20) >> 5;
+	m_ser_br = (m_reg[20] & 0x02);
+	switch(m_ser_br){
+	case 0:
+		m_br = 9600;
+		break;
+	case 1:	
+		m_br = 19200;
+		break;
+	case 2:
+		m_br = 38400;
+		break;
+	case 3:
+		m_br = 115200;
+		break;
+	}
+	m_ser_stp = (m_reg[20] & 0x08) >> 3;
+	m_tlp_wait_ex = (m_reg[21] & 0xF0) >> 4;
+	m_lp_wait = (m_reg[21] & 0x04) >> 2;
+	m_flw = (m_reg[21] & 0x02) >> 1;
+	m_tlp_wait = m_reg[22];
+	m_crlf = (m_reg[23] & 0x10) >> 4;
+	m_delim = (m_reg[24] & 0x40) >> 6;
+	m_tlp_slp = m_reg[25];
+	m_to_hlss = m_reg[26];
+	m_addr_rep0 = m_reg[27];
+	m_addr_rep1 = m_reg[28];
 }
 
 bool f_fep01::pack_reg()
@@ -1023,3 +1084,4 @@ bool f_fep01::set_cmd()
 	m_cmd_queue.pop_front();
 	return true;
 }
+

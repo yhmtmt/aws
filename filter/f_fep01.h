@@ -82,6 +82,7 @@ protected:
 	unsigned char m_bcn;		// beacon (0: no or 1: yes)
 	unsigned char m_ser_dlen;	// serial data length (0: 8bit or 1: 7bit)
 	unsigned char m_ser_par;	// serial com parity (0: no or 1: yes)
+	unsigned char m_ser_sig;	// serial parity sign
 	unsigned char m_ser_br;		// serial baud rate (0 to 3) corresponding to {9600, 19200, 384000, 115200}
 	unsigned char m_ser_stp;	// serial com stop (0: 1bit or 1: 2bit)
 	unsigned char m_tlp_wait_ex;// low power waiting time extension (1 to 15) corresponding to (100 to 1500) [msec]
@@ -103,6 +104,7 @@ protected:
 	bool read_reg();			// load register values to our m_reg
 	bool write_reg();			// write m_reg values to m_reg
 	bool pack_reg();			// pack filter parameters to the regs
+	void unpack_reg();			// unpack regs to filter parameters
 
 	int m_rbuf_len;
 	char m_rbuf[512];
