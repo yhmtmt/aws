@@ -1722,21 +1722,75 @@ void f_inspector::render(Mat & imgs, long long timg)
 // Drawing text based information to show filter state
 void f_inspector::renderInfo()
 {
+	// <mode> Mode Transition Info
+	// Allowed key list
+	// Cursor position
 	char information[1024];
-
-	snprintf(information, 1023, 
-		"OP=%s, MM=%d, Models=%d, CurModel=%d, Objs=%d, CurObj=%d, CurPoints=%d, CurPoint=%d",
-		m_str_op[m_op], m_mm, m_models.size(),
-		m_cur_model, m_obj.size(), 
-		m_cur_obj, 
-		(m_cur_obj < 0 ? m_cur_obj : m_obj[m_cur_obj].get_num_points()),
-		m_cur_point);
+	int y = 0;
+	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (E)->Estimate (C)->Camera", m_str_op[m_op]);
+	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
+	y += 20;
+	snprintf(information, 1023, "%d Objects %d Models", m_obj.size(), m_models.size());
+	m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+	switch(m_op){
+	case MODEL:
+		if(m_cur_model < 0)
+			snprintf(information, 1023, "Model[]=NULL");
+		else
+			snprintf(information, 1023, "Model[%d]=%s (%d Points, %d Edges)", m_cur_model, 
+			m_models[m_cur_model].fname,
+			m_models[m_cur_model].pts.size(), m_models[m_cur_model].edges.size());
+		break;
+	case OBJ:
+		if(m_cur_obj < 0)
+			snprintf(information, 1023, "Obj[]=NULL");
+		else{
+			snprintf(information, 1023, "Obj[%d]=%s (Model=%s)", m_cur_obj, m_obj[m_cur_obj].fname, m_obj[m_cur_obj].pmdl->fname);
+		}
+	case POINT:
+		if(m_cur_obj < 0)
+			snprintf(information, 1023, "Obj[]=NULL");
+		else{
+			if(m_cur_point < 0){
+				snprintf(information, 1023, "Obj[%d]=%s (Model=%s), Point[%d]=(%f,%f,%f)->(%f,%f)", 
+				m_cur_obj, m_obj[m_cur_obj].fname, m_obj[m_cur_obj].pmdl->fname,
+				m_cur_point);
+			}else{
+				Point3f & pt3d = m_obj[m_cur_obj].pmdl->pts[m_cur_point];
+				Point2f & pt2d = m_obj[m_cur_obj].pt2d[m_cur_point];
+				bool matched = m_obj[m_cur_obj].bvisible[m_cur_point];
+				if(matched){
+					snprintf(information, 1023, "Obj[%d]=%s (Model=%s), Point[%d]=(%f,%f,%f)->(%f,%f)", 
+						m_cur_obj, m_obj[m_cur_obj].fname, m_obj[m_cur_obj].pmdl->fname, 
+						m_cur_point, pt3d.x, pt3d.y, pt3d.z, pt2d.x, pt2d.y);
+				}else{
+					snprintf(information, 1023, "Obj[%d]=%s (Model=%s), Point[%d]=(%f,%f,%f)->NULL", 
+						m_cur_obj, m_obj[m_cur_obj].fname, m_obj[m_cur_obj].pmdl->fname, 
+						m_cur_point, pt3d.x, pt3d.y, pt3d.z);
+				}
+			}
+		}
+		break;
+	case CAMERA:
+		// camera intrinsics, fx,fy,cx,cy,p0,p1,k1-k6 
+		snprintf(information, 1023, "Camera fx=%f fy=%f cx=%f cy=%f k1=%f k2=%f p1=%f p2=%f k3=%f k4=%f k5=%f k6=%f",
+			(float)m_cam_int.at<double>(0, 0), (float)m_cam_int.at<double>(1, 1), 
+			(float)m_cam_int.at<double>(0, 2), (float)m_cam_int.at<double>(1, 2),
+			(float)m_cam_dist.at<double>(0, 0), (float)m_cam_dist.at<double>(0, 1), 
+			(float)m_cam_dist.at<double>(0, 2), (float)m_cam_dist.at<double>(0, 3), 
+			(float)m_cam_dist.at<double>(0, 4), (float)m_cam_dist.at<double>(0, 5), 
+			(float)m_cam_dist.at<double>(0, 6), (float)m_cam_dist.at<double>(0, 7));
+		break;
+	case ESTIMATE:
+		break;
+	}
 	
-	m_d3d_txt.render(m_pd3dev, information, 0, 0, 1.0, 0, EDTC_LT);
+	m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 
-	snprintf(information, 1023, "MC(%d, %d)", m_mc.x, m_mc.y);
+	snprintf(information, 1023, "(%d, %d)", m_mc.x, m_mc.y);
 
-	m_d3d_txt.render(m_pd3dev, information, 0, 20, 1.0, 0, EDTC_LT);
+	m_d3d_txt.render(m_pd3dev, information, (float)(m_mc.x + 20), (float)(m_mc.y + 20), 1.0, 0, EDTC_LT);
 }
 
 // Decorating mouse cursor
@@ -1755,7 +1809,6 @@ void f_inspector::renderCursor()
 	m_pd3dev->EndScene();
 }
 
-
 void f_inspector::renderObj()
 {
 	// Drawing object (2d and 3d)
@@ -1765,21 +1818,21 @@ void f_inspector::renderObj()
 			if(iobj == m_cur_obj){
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.get_pts(), obj.bvisible, iobj, 1);
+					obj.pt2d, obj.bvisible, iobj, 1);
 			}else{
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.get_pts(), obj.bvisible, 0);
+					obj.pt2d, obj.bvisible, 0);
 			}
 		}else if(m_op == POINT){
 			if(iobj == m_cur_obj){
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.get_pts(), obj.bvisible, 1, m_cur_point);
+					obj.pt2d, obj.bvisible, 1, m_cur_point);
 			}else{
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.get_pts(), obj.bvisible, 0);
+					obj.pt2d, obj.bvisible, 0);
 			}			
 		}
 

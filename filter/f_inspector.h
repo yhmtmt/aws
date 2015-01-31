@@ -1,6 +1,6 @@
 #ifndef _F_INSPECTOR_H_
 #define _F_INSPECTOR_H_
-// Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
+// Copyright(c) 2014 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
 // f_inspector.h is free software: you can redistribute it and/or modify
@@ -323,6 +323,7 @@ private:
 	//
 	// Camera Parameter
 	//
+
 	bool m_bload_campar;
 	bool m_bload_campar_tbl;
 
