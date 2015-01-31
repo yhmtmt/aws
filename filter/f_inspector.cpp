@@ -1943,32 +1943,50 @@ void f_inspector::renderObj()
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
 					obj.pt2d, obj.bvisible, iobj, 1);
+				m_obj[iobj].render(m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam, 
+					m_pd3dev, NULL, m_pline, 
+					iobj, 0, m_cur_point);
 			}else{
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
 					obj.pt2d, obj.bvisible, 0);
+				m_obj[iobj].render(m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam, 
+					m_pd3dev, NULL, m_pline, 
+					iobj, 0);
 			}
-		}else if(m_op == POINT){
-			if(iobj == m_cur_obj){
-				drawPoint2d(m_pd3dev, 
-					NULL, m_pline,
-					obj.pt2d, obj.bvisible, 1, m_cur_point);
-			}else{
-				drawPoint2d(m_pd3dev, 
-					NULL, m_pline,
-					obj.pt2d, obj.bvisible, 0);
-			}			
 		}
 
-		m_obj[iobj].render(m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam, 
-			m_pd3dev, NULL, m_pline, 
-			iobj, 0, m_cur_point);
+		vector<Point2f> & pt2d = m_obj[iobj].pt2d;
+		vector<Point2f> & pt2dprj = m_obj[iobj].pt2dprj;
+		vector<bool> & matched = m_obj[iobj].bvisible;
+		D3DXVECTOR2 v[2];
+		m_pline->Begin();
+		for(int i = 0; i < pt2d.size(); i++){
+			if(!matched[i]){
+				continue;
+			}
+			v[0] = D3DXVECTOR2(pt2d[i].x, pt2d[i].y);
+			v[1] = D3DXVECTOR2(pt2dprj[i].x, pt2dprj[i].y);
+			m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 128, 128, 128));
+		}
+		m_pline->End();
 
 		// render selected axis
 		m_obj[iobj].render_axis(
 			m_rvec_cam, m_tvec_cam, m_cam_int, m_cam_dist,
 			m_pd3dev, m_pline, (int) m_axis);
 	}
+
+	m_pline->Begin();
+	if(m_op == POINT && m_cur_obj != -1 && m_cur_point != -1){
+		D3DXVECTOR2 v[2];
+		Point2f & pt1 = m_obj[m_cur_obj].pt2d[m_cur_point];
+		Point2f & pt2 = m_obj[m_cur_obj].pt2dprj[m_cur_point];
+		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
+		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
+		m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 0, 0, 0));
+	}
+	m_pline->End();
 }
 
 void f_inspector::renderModel(long long timg)
