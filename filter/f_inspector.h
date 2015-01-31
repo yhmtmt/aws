@@ -125,20 +125,23 @@ struct s_model
 struct s_obj
 {
 	s_model * pmdl;
-	const char * fname;
+	long long t;
+	char * name;
 	vector<Point2f> pt2d;
 	vector<Point2f> pt2dprj;
 	vector<bool> bvisible; // true if 2d point is visible in the image
 	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
-	s_obj(): pmdl(NULL), fname(NULL), is_attitude_fixed(false){
+	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false){
 		tvec = Mat::zeros(3, 1, CV_64FC1);
 		rvec = Mat::zeros(3, 1, CV_64FC1);
 	};
 
 	~s_obj()
 	{
+		delete[] name;
+		name = NULL;
 		pmdl->ref--;
 	}
 
@@ -161,10 +164,6 @@ struct s_obj
 		::get_cursor_point(pt2dprj, x, y, idx, dist);
 	}
 
-	vector<Point2f> & get_pts(){
-		return pt2d;
-	}
-
 	// draw the wire frame model
 	void render(
 		Mat & camint, Mat & camdist, Mat & rvec_cam, Mat & tvec_cam,
@@ -180,8 +179,8 @@ struct s_obj
 	void render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis = -1);
 
-	bool load(const char * afname, vector<s_model> & mdls);
-	bool save(const char * afname);
+	bool load(const char * aname, long long at, vector<s_model> & mdls);
+	bool save();
 
 	void fixAttitude(bool val){
 		is_attitude_fixed = val;
@@ -277,7 +276,7 @@ private:
 	//
 	// Object
 	// 
-	char m_fname_obj[1024]; // name of the object file.
+	char m_name_obj[1024]; // name of the object file.
 	vector<vector<s_obj> > m_obj_trace;
 	int m_cur_model; // current selected model
 	int m_cur_obj; // current object selected

@@ -493,14 +493,130 @@ s_obj::s_obj(s_model * apmdl, const Mat & camint, const Mat & camdist,
 	apmdl->ref++;
 }
 
-bool s_obj::load(const char * afname, vector<s_model> & mdls)
+bool s_obj::load(const char * aname, long long at, vector<s_model> & mdls)
 {
-	fname = afname;
+	char fname[1024];
+	snprintf(fname, 1024, "%s_%lld.yml", aname, at);
+	FileStorage fs(fname, FileStorage::READ);
+	if(!fs.isOpened()){
+		return false;
+	}
+
+	FileNode fn;
+
+	fn = fs["ObjName"];
+	if(fn.empty())
+		return false;
+
+	string str;
+	fn >> str;
+	if(str != name)
+		return false;
+
+	fn = fs["Model"];
+	if(fn.empty())
+		return false;
+
+	fn >> str;
+	pmdl = NULL;
+	for(int i = 0; i < mdls.size(); i++){
+		if(mdls[i].fname == str){
+			pmdl = &mdls[i];
+			break;
+		}
+	}
+	if(pmdl == NULL){
+		mdls.push_back(s_model());
+		vector<s_model>::iterator itr = mdls.end() - 1;
+		if(!itr->load(str.c_str())){
+			mdls.pop_back();
+			cerr << "Failed to load model " << str << endl;
+			return false;
+		}
+		pmdl = &(*itr);
+	}
+	
+	// allocating memories
+	int num_points = (int) pmdl->pts.size();
+	pt2d.resize(num_points);
+	pt2dprj.resize(num_points);
+	bvisible.resize(num_points);
+
+	fn = fs["rvec"];
+	if(fn.empty()){
+		return false;
+	}
+	fn >> rvec;
+
+	fn = fs["tvec"];
+	if(fn.empty()){
+		return false;
+	}
+	fn >> tvec;
+
+	fn = fs["Matched"];
+	if(fn.empty())
+		return false;
+	FileNodeIterator itr = fn.begin();
+	for(int i = 0; i < num_points; i++){
+		if((*itr).empty())
+			return false;
+		int b;
+		(*itr) >> b;
+		if(b){
+			bvisible[i] = true;
+		}else{
+			bvisible[i] = false;
+		}
+	}
+
+	fn = fs["Points"];
+	if(fn.empty())
+		return false;
+	itr = fn.begin();
+	for(int i = 0; i < num_points; i++){
+		if((*itr).empty())
+			return false;
+		(*itr) >> pt2d[i];
+	}
+
+
+	if(name)
+		delete[] name;
+	name = new char[strlen(aname)+1];
+	strcpy(name, aname);
+	t = at;
+
 	return true;
 }
 
-bool s_obj::save(const char * afname)
+bool s_obj::save()
 {
+	char fname[1024];
+	snprintf(fname, 1024, "%s_%lld.yml", name, t);
+	FileStorage fs(fname, FileStorage::WRITE);
+	if(!fs.isOpened()){
+		return false;
+	}
+
+	// time, model file
+	fs << "ObjName" << name;
+	fs << "Model" << pmdl->fname;
+	fs << "rvec" << rvec;
+	fs << "tvec" << tvec;
+
+	// piont correspondance
+	fs << "Matched" << "[";
+	for(int i = 0; i < bvisible.size(); i++){
+		fs << (bvisible[i] ? 1 : 0);
+	}
+	fs << "]";
+
+	fs << "Points" << "[";
+	for(int i = 0; i < pt2d.size(); i++){
+		fs << pt2d[i];
+	}
+	fs << "]";
 	return true;
 }
 
@@ -622,6 +738,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_theta_z_mdl(0.0), m_dist_mdl(0.0)
 	
 {
+	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
 	m_fname_campar[0] = '\0';
 	m_fname_campar_tbl[0] = '\0';
@@ -630,6 +747,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_cam_dist = Mat::zeros(1, 8, CV_64FC1);
 	m_rvec_cam = Mat::zeros(3, 1, CV_64FC1);
 	m_tvec_cam = Mat::zeros(3, 1, CV_64FC1);
+	register_fpar("name_obj", m_name_obj, 1024, "Name of object interested.");
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
 	register_fpar("add_model", &m_badd_model, "If the flag is asserted, model is loaded from fmodel");
 	register_fpar("ldcp", &m_bload_campar, "Load a camera parameter.");
@@ -1568,14 +1686,20 @@ void f_inspector::load_obj()
 {	
 	vector<s_obj>::iterator itr =  m_obj.begin();
 	for(;itr != m_obj.end(); itr++){
-		if(itr->fname == m_fname_obj){
-			return;
+		if(itr->name == m_name_obj){
+			if(itr->t == m_cur_time)
+				return;
+			else{
+				if(!itr->load(itr->name, m_cur_time, m_models)){
+					cerr << "No saved object " << itr->name << " in the frame." << endl;
+				}
+			}
 		}
 	}
 
 	m_obj.push_back(s_obj());
 	itr = m_obj.end() - 1;
-	if(!itr->load(m_fname_obj, m_models)){
+	if(!itr->load(itr->name, m_cur_time, m_models)){
 		m_obj.pop_back();
 	}
 }
@@ -1585,7 +1709,7 @@ void f_inspector::save_obj()
 	if(m_cur_obj < 0){
 		return;
 	}
-	m_obj[m_cur_obj].save(m_fname_obj);
+	m_obj[m_cur_obj].save();
 }
 
 void f_inspector::render3D(long long timg)
@@ -1746,7 +1870,7 @@ void f_inspector::renderInfo()
 		if(m_cur_obj < 0)
 			snprintf(information, 1023, "Obj[]=NULL");
 		else{
-			snprintf(information, 1023, "Obj[%d]=%s (Model=%s)", m_cur_obj, m_obj[m_cur_obj].fname, m_obj[m_cur_obj].pmdl->fname);
+			snprintf(information, 1023, "Obj[%d]=%s (Model=%s)", m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname);
 		}
 	case POINT:
 		if(m_cur_obj < 0)
@@ -1754,7 +1878,7 @@ void f_inspector::renderInfo()
 		else{
 			if(m_cur_point < 0){
 				snprintf(information, 1023, "Obj[%d]=%s (Model=%s), Point[%d]=(%f,%f,%f)->(%f,%f)", 
-				m_cur_obj, m_obj[m_cur_obj].fname, m_obj[m_cur_obj].pmdl->fname,
+				m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname,
 				m_cur_point);
 			}else{
 				Point3f & pt3d = m_obj[m_cur_obj].pmdl->pts[m_cur_point];
@@ -1762,11 +1886,11 @@ void f_inspector::renderInfo()
 				bool matched = m_obj[m_cur_obj].bvisible[m_cur_point];
 				if(matched){
 					snprintf(information, 1023, "Obj[%d]=%s (Model=%s), Point[%d]=(%f,%f,%f)->(%f,%f)", 
-						m_cur_obj, m_obj[m_cur_obj].fname, m_obj[m_cur_obj].pmdl->fname, 
+						m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname, 
 						m_cur_point, pt3d.x, pt3d.y, pt3d.z, pt2d.x, pt2d.y);
 				}else{
 					snprintf(information, 1023, "Obj[%d]=%s (Model=%s), Point[%d]=(%f,%f,%f)->NULL", 
-						m_cur_obj, m_obj[m_cur_obj].fname, m_obj[m_cur_obj].pmdl->fname, 
+						m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname, 
 						m_cur_point, pt3d.x, pt3d.y, pt3d.z);
 				}
 			}
