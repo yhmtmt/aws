@@ -344,9 +344,11 @@ private:
 		m_bcalib_fix_k5, m_bcalib_fix_k6;
 	bool m_bcalib_rational_model;
 
+	void update_campar();
 	bool saveCampar();
 	bool loadCampar();
 	void clearCampar();
+
 	bool saveCamparTbl();
 	bool loadCamparTbl();
 	void clearCamparTbl();

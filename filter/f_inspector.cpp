@@ -870,6 +870,7 @@ bool f_inspector::proc()
 	}
 
 	update_obj();
+	update_campar();
 
 	// input source is not ready. but it tends to happen usually.
 	if(img.empty())
@@ -1580,6 +1581,11 @@ bool f_inspector::saveCamparTbl()
 
 	fs << "}";
 	return true;
+}
+
+void f_inspector::update_campar()
+{
+	snprintf(m_fname_campar, "%s_campar_%lld.yml", m_name, m_timg);
 }
 
 bool f_inspector::loadCampar()
@@ -2480,6 +2486,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			load_obj();
 			break;
 		case CAMERA:
+			loadCampar();
 			//load camera intrinsics
 			break;
 		}
@@ -2491,6 +2498,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			save_obj();
 			break;
 		case CAMERA:
+			saveCampar();
 			//load camera intrinsics
 			break;
 		}
