@@ -1907,6 +1907,7 @@ void f_inspector::renderInfo()
 			(float)m_cam_dist.at<double>(0, 6), (float)m_cam_dist.at<double>(0, 7));
 		break;
 	case ESTIMATE:
+		snprintf(information, 1023, "Estimate");
 		break;
 	}
 	
@@ -2448,8 +2449,14 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'O': /* O key */ 
 		m_op = OBJ;
 		break;
+	case 'M':
+		m_op = MODEL;
+		break;
 	case 'P':
 		m_op = POINT;
+		break;
+	case 'E':
+		m_op = ESTIMATE;
 		break;
 	case 'I':
 		if(m_op != MODEL){

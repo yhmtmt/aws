@@ -452,7 +452,7 @@ public:
 	bool get_par_info_by_fset(s_cmd & cmd){
 		int ipar = find_par(cmd.args[2]);
 		if(ipar < 0){		
-			snprintf(cmd.get_ret_str(), RET_LEN, "Filter %s does not have parameter %s", m_name, cmd.args[1]);
+			snprintf(cmd.get_ret_str(), RET_LEN, "Filter %s does not have parameter %s", m_name, cmd.args[2]);
 			return false;
 		}
 		m_pars[ipar].get_info(cmd);
