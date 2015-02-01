@@ -458,17 +458,18 @@ bool s_model::load(const char * afname)
 	return true;
 }
 
-s_obj * s_model::instObj(Mat & camint, Mat & camdist, const double width, const double height)
-{
-	// instantiate object with the model
-	s_obj * pobj = new s_obj(this, camint, camdist, width, height);
-	return pobj;
-}
-
 //////////////////////////////////////////////////////////////////////////// s_obj member
-s_obj::s_obj(s_model * apmdl, const Mat & camint, const Mat & camdist,
-	const double width, const double height):pmdl(apmdl)
+bool s_obj::init(s_model * apmdl, long long t, const Mat & camint, const Mat & camdist,
+		const double width, const double height)
 {
+	pmdl = apmdl;
+	int len_name = strlen(apmdl->name.c_str()) + 3 /* three digit */ + 1 /* termination character */;
+
+	name = new char[len_name];
+	if(name == NULL)
+		return false;
+	snprintf(name, len_name, "%s%03d", apmdl->name.c_str(), apmdl->ref);
+
 	double xsize = pmdl->get_xsize();
 	double ysize = pmdl->get_ysize();
 	double zsize = pmdl->get_zsize();
@@ -491,6 +492,7 @@ s_obj::s_obj(s_model * apmdl, const Mat & camint, const Mat & camdist,
 	bvisible.resize(pmdl->pts.size(), false);
 
 	apmdl->ref++;
+	return true;
 }
 
 bool s_obj::load(const char * aname, long long at, vector<s_model> & mdls)
@@ -2459,16 +2461,21 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		m_op = ESTIMATE;
 		break;
 	case 'I':
-		if(m_op != MODEL){
+		if(m_op == MODEL){
 			if(m_cur_model < 0){
 				break;
 			}
 
 			double width =(double) m_maincam.get_surface_width();
 			double height = (double) m_maincam.get_surface_height();
-			m_obj.push_back(s_obj(&m_models[m_cur_model], m_cam_int, m_cam_dist, width, height));
+			m_obj.push_back(s_obj());
 			m_cur_obj = (int) m_obj.size() - 1;
-			m_op = OBJ;
+			if(!m_obj[m_cur_obj].init(&m_models[m_cur_model], m_cur_time, m_cam_int, m_cam_dist, width, height)){
+				m_obj.pop_back();
+				cerr << "Failed to create an instance of model " << m_models[m_cur_model].name << endl;		
+			}else{
+				m_op = OBJ;
+			}
 			break;
 		}
 		break;

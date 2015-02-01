@@ -113,10 +113,6 @@ struct s_model
 		Mat & rvec_obj, Mat & tvec_obj);
 
 	bool load(const char * afname);
-
-	s_obj * instObj(Mat & camint, Mat & camdist, 
-		const double width /*image width in pixel*/, 
-		const double height /*image height in pixel*/);
 };
 
 // s_obj represents the object in the scene.
@@ -142,11 +138,9 @@ struct s_obj
 	{
 		delete[] name;
 		name = NULL;
-		pmdl->ref--;
+		if(pmdl)
+			pmdl->ref--;
 	}
-
-	s_obj(s_model * apmdl, const Mat & camint, const Mat & camdist, 
-		const double width, const double height);
 
 	int get_num_points(){
 		return (int) pt2d.size();
@@ -179,6 +173,8 @@ struct s_obj
 	void render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis = -1);
 
+	bool init(s_model * apmdl, long long t, const Mat & camint, const Mat & camdist,
+		const double width, const double height);
 	bool load(const char * aname, long long at, vector<s_model> & mdls);
 	bool save();
 
