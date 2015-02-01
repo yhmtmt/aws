@@ -459,16 +459,17 @@ bool s_model::load(const char * afname)
 }
 
 //////////////////////////////////////////////////////////////////////////// s_obj member
-bool s_obj::init(s_model * apmdl, long long t, const Mat & camint, const Mat & camdist,
+bool s_obj::init(s_model * apmdl, long long at, const Mat & camint, const Mat & camdist,
 		const double width, const double height)
 {
-	pmdl = apmdl;
-	int len_name = strlen(apmdl->name.c_str()) + 3 /* three digit */ + 1 /* termination character */;
-
+	pmdl = apmdl;	
+	t = at;
+	int len_name = (int) strlen(apmdl->name.c_str()) + 4 /* under bar and three digit */ + 1 /* termination character */;
+	
 	name = new char[len_name];
 	if(name == NULL)
 		return false;
-	snprintf(name, len_name, "%s%03d", apmdl->name.c_str(), apmdl->ref);
+	snprintf(name, len_name, "%s_%03d", apmdl->name.c_str(), apmdl->ref);
 
 	double xsize = pmdl->get_xsize();
 	double ysize = pmdl->get_ysize();
@@ -560,7 +561,7 @@ bool s_obj::load(const char * aname, long long at, vector<s_model> & mdls)
 	if(fn.empty())
 		return false;
 	FileNodeIterator itr = fn.begin();
-	for(int i = 0; i < num_points; i++){
+	for(int i = 0; i < num_points; i++, itr++){
 		if((*itr).empty())
 			return false;
 		int b;
@@ -576,7 +577,7 @@ bool s_obj::load(const char * aname, long long at, vector<s_model> & mdls)
 	if(fn.empty())
 		return false;
 	itr = fn.begin();
-	for(int i = 0; i < num_points; i++){
+	for(int i = 0; i < num_points; i++, itr++){
 		if((*itr).empty())
 			return false;
 		(*itr) >> pt2d[i];
@@ -732,7 +733,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true),
 	m_bcalib_rational_model(false),
 	m_badd_model(false),
-	m_cur_model(-1), m_cur_obj(-1), 
+	m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1),
 	m_op(OBJ),
 	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
 	m_mm(MM_NORMAL), m_axis(AX_X), m_rot_step(1.0), m_trn_step(1.0), m_zoom_step(1.1),
@@ -862,6 +863,8 @@ bool f_inspector::proc()
 		timg = m_timg;
 		img = m_img;
 	}
+
+	update_obj();
 
 	// input source is not ready. but it tends to happen usually.
 	if(img.empty())
@@ -1686,22 +1689,36 @@ bool f_inspector::load_model()
 
 void f_inspector::load_obj()
 {	
-	vector<s_obj>::iterator itr =  m_obj.begin();
-	for(;itr != m_obj.end(); itr++){
-		if(itr->name == m_name_obj){
-			if(itr->t == m_cur_time)
+	if(m_name_obj[0] == '\0'){
+		if(m_cur_obj != -1){
+			if(m_obj[m_cur_obj].t == m_cur_time)
 				return;
 			else{
-				if(!itr->load(itr->name, m_cur_time, m_models)){
-					cerr << "No saved object " << itr->name << " in the frame." << endl;
+				if(m_obj[m_cur_obj].load(m_obj[m_cur_obj].name, m_cur_time, m_models)){
+					return;
+				}else{
+					cerr << "No saved object " << m_obj[m_cur_obj].name << " in the frame." << endl;
 				}
 			}
+		}
+		return;
+	}
+
+	vector<s_obj>::iterator itr =  m_obj.begin();
+	for(;itr != m_obj.end(); itr++){
+		if(strcmp(itr->name, m_name_obj) == 0){
+			if(itr->load(itr->name, m_cur_time, m_models)){
+				return;
+			}else{
+				cerr << "No saved object " << itr->name << " in the frame." << endl;
+			}
+			return;
 		}
 	}
 
 	m_obj.push_back(s_obj());
 	itr = m_obj.end() - 1;
-	if(!itr->load(itr->name, m_cur_time, m_models)){
+	if(!itr->load(m_name_obj, m_cur_time, m_models)){
 		m_obj.pop_back();
 	}
 }
@@ -1712,6 +1729,14 @@ void f_inspector::save_obj()
 		return;
 	}
 	m_obj[m_cur_obj].save();
+}
+
+void f_inspector::update_obj()
+{
+	// object time is updated. in the future, point tracking is implemented.
+	for(int i = 0; i < m_obj.size(); i++){
+		m_obj[i].t = m_timg;
+	}
 }
 
 void f_inspector::render3D(long long timg)
@@ -1853,6 +1878,9 @@ void f_inspector::renderInfo()
 	// Cursor position
 	char information[1024];
 	int y = 0;
+	snprintf(information, 1023, "%s (%lld)", m_time_str, m_cur_time);
+	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
+	y += 20;
 	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (E)->Estimate (C)->Camera", m_str_op[m_op]);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
@@ -1957,6 +1985,15 @@ void f_inspector::renderObj()
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0);
 			}
+		}else if(m_op == POINT){
+			if(iobj == m_cur_obj){
+				drawPoint2d(m_pd3dev, 
+					NULL, m_pline,
+					obj.pt2d, obj.bvisible, iobj, 1);
+				m_obj[iobj].render(m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam, 
+					m_pd3dev, NULL, m_pline, 
+					iobj, 0, m_cur_point);
+			}
 		}
 
 		vector<Point2f> & pt2d = m_obj[iobj].pt2d;
@@ -1983,11 +2020,11 @@ void f_inspector::renderObj()
 	m_pline->Begin();
 	if(m_op == POINT && m_cur_obj != -1 && m_cur_point != -1){
 		D3DXVECTOR2 v[2];
-		Point2f & pt1 = m_obj[m_cur_obj].pt2d[m_cur_point];
+		Point2f pt1 = Point2f((float) m_mc.x, (float) m_mc.y);
 		Point2f & pt2 = m_obj[m_cur_obj].pt2dprj[m_cur_point];
 		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
 		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
-		m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 0, 0, 0));
+		m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 0, 0, 255));
 	}
 	m_pline->End();
 }
@@ -2091,6 +2128,11 @@ void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 	extractPointlParam(lParam, m_mc);
 	switch(m_op){
 	case OBJ:
+		if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){ // scroll
+			m_mm = MM_SCROLL;
+			m_pt_sc_start = m_mc;
+		}
+		break;
 	case POINT:
 		if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){ // scroll
 			m_mm = MM_SCROLL;
@@ -2470,6 +2512,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			double height = (double) m_maincam.get_surface_height();
 			m_obj.push_back(s_obj());
 			m_cur_obj = (int) m_obj.size() - 1;
+			m_cur_point = 0;
 			if(!m_obj[m_cur_obj].init(&m_models[m_cur_model], m_cur_time, m_cam_int, m_cam_dist, width, height)){
 				m_obj.pop_back();
 				cerr << "Failed to create an instance of model " << m_models[m_cur_model].name << endl;		

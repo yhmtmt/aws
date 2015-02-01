@@ -173,7 +173,7 @@ struct s_obj
 	void render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis = -1);
 
-	bool init(s_model * apmdl, long long t, const Mat & camint, const Mat & camdist,
+	bool init(s_model * apmdl, long long at, const Mat & camint, const Mat & camdist,
 		const double width, const double height);
 	bool load(const char * aname, long long at, vector<s_model> & mdls);
 	bool save();
@@ -281,6 +281,7 @@ private:
 	void load_obj();
 	void save_obj();
 	void renderObj();
+	void update_obj();
 
 	//
 	// model 
