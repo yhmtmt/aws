@@ -858,9 +858,16 @@ bool f_inspector::proc()
 		if(img.empty())
 			return true;
 
-		if(m_timg != timg){
+		if(m_timg != timg){ // new frame arrived
 //			m_bchsbd_found = false;
 			m_bpose_fixed = false;
+			// auto save camera parameter and objects
+			saveCampar();
+			for(int i = 0; i < m_obj.size(); i++)
+				m_obj[i].save();
+
+			update_obj();
+			update_campar();
 		}
 		m_timg = timg;
 		m_img = img;
@@ -868,9 +875,6 @@ bool f_inspector::proc()
 		timg = m_timg;
 		img = m_img;
 	}
-
-	update_obj();
-	update_campar();
 
 	// input source is not ready. but it tends to happen usually.
 	if(img.empty())
