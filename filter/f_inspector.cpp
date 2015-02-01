@@ -583,12 +583,17 @@ bool s_obj::load(const char * aname, long long at, vector<s_model> & mdls)
 		(*itr) >> pt2d[i];
 	}
 
-
-	if(name)
-		delete[] name;
-	name = new char[strlen(aname)+1];
-	strcpy(name, aname);
 	t = at;
+	if(name){
+		if(strcmp(name, aname) == 0){
+			return true;
+		}
+		delete[] name;
+		name = new char[strlen(aname)+1];
+		if(!name)
+			return false;
+		strcpy(name, aname);
+	}
 
 	return true;
 }
