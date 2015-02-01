@@ -633,6 +633,8 @@ void s_obj::render(Mat & camint, Mat & camdist, Mat & rvec_cam, Mat & tvec_cam,
 	int pttype, int state, int cur_point)
 {
 	pmdl->proj(pt2dprj, camint, camdist, rvec_cam, tvec_cam, rvec, tvec);
+	calc_ssd();
+	calc_num_matched_points();
 	render_prjpts(*pmdl, pt2dprj, pd3dev, ptxt, pline, pttype, state, cur_point);
 }
 
@@ -868,6 +870,12 @@ bool f_inspector::proc()
 
 			update_obj();
 			update_campar();
+
+			// auto load camera parameter and objects if exists
+			loadCampar();
+			for(int i = 0; i < m_obj.size(); i++){
+				m_obj[i].load(m_obj[i].name, m_timg, m_models);
+			}
 		}
 		m_timg = timg;
 		m_img = img;
@@ -1915,7 +1923,9 @@ void f_inspector::renderInfo()
 		if(m_cur_obj < 0)
 			snprintf(information, 1023, "Obj[]=NULL");
 		else{
-			snprintf(information, 1023, "Obj[%d]=%s (Model=%s)", m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname);
+			s_obj & obj = m_obj[m_cur_obj];
+			snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f", m_cur_obj,
+				obj.name, obj.pmdl->fname, obj.match_count, obj.ssd);
 		}
 	case POINT:
 		if(m_cur_obj < 0)

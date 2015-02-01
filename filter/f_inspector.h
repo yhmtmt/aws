@@ -129,6 +129,9 @@ struct s_obj
 	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
+	double ssd;
+	int match_count;
+
 	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false){
 		tvec = Mat::zeros(3, 1, CV_64FC1);
 		rvec = Mat::zeros(3, 1, CV_64FC1);
@@ -138,6 +141,26 @@ struct s_obj
 	{
 		delete[] name;
 		name = NULL;
+	}
+
+	int calc_num_matched_points(){
+		match_count = 0;
+		for(int i = 0; i < bvisible.size(); i++)
+			if(bvisible[i])
+				match_count++;
+		return match_count;
+	}
+
+	double calc_ssd(){
+		ssd = 0;
+		for(int i = 0; i < bvisible.size(); i++){
+			if(bvisible[i]){
+				double diff = pt2d[i].x - pt2dprj[i].x;
+				diff += pt2d[i].y - pt2dprj[i].y;
+				ssd += diff * diff;
+			}
+		}
+		return ssd;
 	}
 
 	int get_num_points(){
