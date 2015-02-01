@@ -138,8 +138,6 @@ struct s_obj
 	{
 		delete[] name;
 		name = NULL;
-		if(pmdl)
-			pmdl->ref--;
 	}
 
 	int get_num_points(){

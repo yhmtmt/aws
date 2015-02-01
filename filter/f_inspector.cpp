@@ -1699,7 +1699,7 @@ void f_inspector::load_obj()
 			if(m_obj[m_cur_obj].t == m_cur_time)
 				return;
 			else{
-				if(m_obj[m_cur_obj].load(m_obj[m_cur_obj].name, m_cur_time, m_models)){
+				if(m_obj[m_cur_obj].load(m_obj[m_cur_obj].name, m_timg, m_models)){
 					return;
 				}else{
 					cerr << "No saved object " << m_obj[m_cur_obj].name << " in the frame." << endl;
@@ -1712,7 +1712,7 @@ void f_inspector::load_obj()
 	vector<s_obj>::iterator itr =  m_obj.begin();
 	for(;itr != m_obj.end(); itr++){
 		if(strcmp(itr->name, m_name_obj) == 0){
-			if(itr->load(itr->name, m_cur_time, m_models)){
+			if(itr->load(itr->name, m_timg, m_models)){
 				return;
 			}else{
 				cerr << "No saved object " << itr->name << " in the frame." << endl;
@@ -1883,7 +1883,7 @@ void f_inspector::renderInfo()
 	// Cursor position
 	char information[1024];
 	int y = 0;
-	snprintf(information, 1023, "%s (%lld)", m_time_str, m_cur_time);
+	snprintf(information, 1023, "AWS Time %s (Image Time %lld)", m_time_str, m_timg);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
 	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (E)->Estimate (C)->Camera", m_str_op[m_op]);
@@ -2466,7 +2466,7 @@ void f_inspector::handle_vk_right()
 void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 {
 	switch(wParam){
-	case 'R': /* F key*/
+	case 'R': // reset window
 		m_main_offset = Point2f(0., 0.);
 		m_main_scale = 1.0;
 		break;
