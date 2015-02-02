@@ -223,6 +223,12 @@ void f_ds_vfile::close()
 	if(m_pSrcF != NULL)
 		m_pSrcF->Release();
 
+	if(m_phsplt != NULL)
+		m_phsplt->Release();
+
+	if(m_pffdec != NULL)
+		m_pffdec->Release();
+
 	if(m_pControl != NULL)
 		m_pControl->Release();
 
@@ -239,6 +245,8 @@ void f_ds_vfile::close()
 	if(m_pGraph != NULL)
 		m_pGraph->Release();
 
+	m_phsplt = NULL;
+	m_pffdec = NULL;
 	m_pGrabberF = NULL;
 	m_pGrabber = NULL;
 	m_pNullF = NULL;
