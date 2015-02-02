@@ -490,7 +490,7 @@ bool s_obj::init(s_model * apmdl, long long at, const Mat & camint, const Mat & 
 
 	pt2d.resize(pmdl->pts.size());
 	pt2dprj.resize(pmdl->pts.size());
-	bvisible.resize(pmdl->pts.size(), false);
+	visible.resize(pmdl->pts.size(), false);
 
 	apmdl->ref++;
 	return true;
@@ -543,7 +543,7 @@ bool s_obj::load(const char * aname, long long at, vector<s_model> & mdls)
 	int num_points = (int) pmdl->pts.size();
 	pt2d.resize(num_points);
 	pt2dprj.resize(num_points);
-	bvisible.resize(num_points);
+	visible.resize(num_points);
 
 	fn = fs["rvec"];
 	if(fn.empty()){
@@ -566,11 +566,7 @@ bool s_obj::load(const char * aname, long long at, vector<s_model> & mdls)
 			return false;
 		int b;
 		(*itr) >> b;
-		if(b){
-			bvisible[i] = true;
-		}else{
-			bvisible[i] = false;
-		}
+		visible[i] = b;
 	}
 
 	fn = fs["Points"];
@@ -615,8 +611,8 @@ bool s_obj::save()
 
 	// piont correspondance
 	fs << "Matched" << "[";
-	for(int i = 0; i < bvisible.size(); i++){
-		fs << (bvisible[i] ? 1 : 0);
+	for(int i = 0; i < visible.size(); i++){
+		fs << visible[i];
 	}
 	fs << "]";
 
@@ -1932,8 +1928,10 @@ void f_inspector::renderInfo()
 			snprintf(information, 1023, "Obj[]=NULL");
 		else{
 			s_obj & obj = m_obj[m_cur_obj];
-			snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f", m_cur_obj,
-				obj.name, obj.pmdl->fname, obj.match_count, obj.ssd);
+			snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f rvec=(%f,%f,%f) tvec=(%f,%f,%f)",
+				m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd,
+				obj.rvec.at<double>(0), obj.rvec.at<double>(1), obj.rvec.at<double>(2),
+				obj.tvec.at<double>(0), obj.tvec.at<double>(1), obj.tvec.at<double>(2));
 		}
 		break;
 	case POINT:
@@ -1947,7 +1945,7 @@ void f_inspector::renderInfo()
 			}else{
 				Point3f & pt3d = m_obj[m_cur_obj].pmdl->pts[m_cur_point];
 				Point2f & pt2d = m_obj[m_cur_obj].pt2d[m_cur_point];
-				bool matched = m_obj[m_cur_obj].bvisible[m_cur_point];
+				int matched = m_obj[m_cur_obj].visible[m_cur_point];
 				if(matched){
 					snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->(%f,%f)", 
 						m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname, 
@@ -2009,14 +2007,14 @@ void f_inspector::renderObj()
 			if(iobj == m_cur_obj){
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.pt2d, obj.bvisible, iobj, 1);
+					obj.pt2d, obj.visible, iobj, 1);
 				m_obj[iobj].render(
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0, m_cur_point);
 			}else{
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.pt2d, obj.bvisible, 0);
+					obj.pt2d, obj.visible, 0);
 				m_obj[iobj].render(
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0);
@@ -2025,7 +2023,7 @@ void f_inspector::renderObj()
 			if(iobj == m_cur_obj){
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
-					obj.pt2d, obj.bvisible, iobj, 1);
+					obj.pt2d, obj.visible, iobj, 1);
 				m_obj[iobj].render(
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0, m_cur_point);
@@ -2034,7 +2032,7 @@ void f_inspector::renderObj()
 
 		vector<Point2f> & pt2d = m_obj[iobj].pt2d;
 		vector<Point2f> & pt2dprj = m_obj[iobj].pt2dprj;
-		vector<bool> & matched = m_obj[iobj].bvisible;
+		vector<int> & matched = m_obj[iobj].visible;
 		D3DXVECTOR2 v[2];
 		m_pline->Begin();
 		for(int i = 0; i < pt2d.size(); i++){
@@ -2122,6 +2120,33 @@ void f_inspector::renderModel(long long timg)
 		render_prjpts(m_models[m_cur_model], pts, m_pd3dev, NULL, m_pline, m_cur_model, 0, -1);	
 	}
 	m_model_view.ResetRenderTarget(m_pd3dev);
+}
+
+void f_inspector::estimate()
+{
+	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
+	for(int i = 0; i < m_obj.size(); i++){
+		s_obj & obj = m_obj[i];
+		// accumulating camera intrinsic part of hessians of all objects
+		Hcamint += m_obj[i].hessian(Rect(6, 6, 12, 12));
+	}
+
+	for(int i = 0; i < m_obj.size(); i++){
+		s_obj & obj = m_obj[i];
+		Hcamint.copyTo(m_obj[i].hessian(Rect(6, 6, 12, 12)));
+	}
+
+	for(int i = 0; i < m_obj.size(); i++){
+		s_obj & obj = m_obj[i];
+		m_obj[i].dp = m_obj[i].hessian.inv() * m_obj[i].jacobian.t() * m_obj[i].err;
+		m_obj[i].rvec += m_obj[i].dp(Rect(0, 0, 1, 3));
+		m_obj[i].tvec += m_obj[i].dp(Rect(0, 3, 1, 3));
+		m_cam_int.at<double>(0, 0) += m_obj[i].dp.at<double>(6);
+		m_cam_int.at<double>(1, 1) += m_obj[i].dp.at<double>(7);
+		m_cam_int.at<double>(0, 2) += m_obj[i].dp.at<double>(8);
+		m_cam_int.at<double>(1, 2) += m_obj[i].dp.at<double>(9);
+		m_cam_dist += m_obj[i].dp(Rect(0, 10, 0, 8));
+	}
 }
 
 ///////////////////////////////////////////////////////// message handler
@@ -2219,7 +2244,7 @@ void f_inspector::assign_point2d()
 	pt.y += (float) m_ViewPort.Height;
 
 	m_obj[m_cur_obj].pt2d[m_cur_point] = pt;
-	m_obj[m_cur_obj].bvisible[m_cur_point] = true;
+	m_obj[m_cur_obj].visible[m_cur_point] = 1;
 }
 
 void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
@@ -2281,6 +2306,7 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 			translate_obj(delta);
 			break;
 		case CAMERA:
+			zoom_cam(delta);
 			// change the focal length of the camera
 			break;
 		}
@@ -2341,10 +2367,15 @@ void f_inspector::rotate_obj(short delta)
 		break;
 	}
 	Mat R1, R2;
+	cout << m_obj[m_cur_obj].rvec << endl;
 	Rodrigues(m_obj[m_cur_obj].rvec, R1);
 	Rodrigues(rvec, R2);
+	cout << R1 << endl;
+	cout << R2 << endl;
 	Mat R = R2 * R1;
+	cout << R << endl;
 	Rodrigues(R, m_obj[m_cur_obj].rvec);
+	cout << m_obj[m_cur_obj].rvec << endl;
 }
 
 void f_inspector::translate_cam(short delta)
@@ -2422,7 +2453,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 			if(m_cur_obj >= 0 && m_cur_point >= 0){
 				s_obj & obj = m_obj[m_cur_obj];
 				if(m_cur_point < obj.get_num_points())
-					obj.bvisible[m_cur_point] = false;
+					obj.visible[m_cur_point] = 0;
 			}
 			break;
 		case CAMERA:

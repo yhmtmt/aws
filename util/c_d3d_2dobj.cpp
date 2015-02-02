@@ -991,7 +991,7 @@ bool c_d3d_camview::render_hrzn(LPDIRECT3DDEVICE9 pd3dev,
 /////////////////////////////////////////////////////////////////D3DXLINE based libraries
 void drawPoint2d(LPDIRECT3DDEVICE9 pd3dev,	
 		c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-		vector<Point2f> & points, vector<bool> & bvalid, 
+		vector<Point2f> & points, vector<int> & valid, 
 		int pttype, const int state, const int cur_point)
 {
 	// state 0: NORMAL -> 127
@@ -1030,7 +1030,7 @@ void drawPoint2d(LPDIRECT3DDEVICE9 pd3dev,
 	int size = 5;
 	pline->Begin();
 	for(int ipt = 0; ipt < points.size(); ipt++){
-		if(!bvalid[ipt])
+		if(!valid[ipt])
 			continue;
 		Point2f & pt = points[ipt];
 		if(ipt == cur_point){

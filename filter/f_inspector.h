@@ -125,12 +125,14 @@ struct s_obj
 	char * name;
 	vector<Point2f> pt2d;
 	vector<Point2f> pt2dprj;
-	vector<bool> bvisible; // true if 2d point is visible in the image
+	vector<int> visible; // true if 2d point is visible in the image
 	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
 	Mat jacobian;
 	Mat hessian;
+	Mat dp;
+	Mat err;
 	double ssd;
 	int match_count;
 
@@ -147,20 +149,20 @@ struct s_obj
 
 	int calc_num_matched_points(){
 		match_count = 0;
-		for(int i = 0; i < bvisible.size(); i++)
-			if(bvisible[i])
+		for(int i = 0; i < visible.size(); i++)
+			if(visible[i])
 				match_count++;
 		return match_count;
 	}
 
 	double calc_ssd(){
 		ssd = 0;
-		for(int i = 0; i < bvisible.size(); i++){
-			if(bvisible[i]){
-				double diff = pt2d[i].x - pt2dprj[i].x;
-				diff += pt2d[i].y - pt2dprj[i].y;
-				ssd += diff * diff;
-			}
+		err = Mat::zeros((int) visible.size(), 2, CV_64FC1);
+		double * ptr = err.ptr<double>(0);
+		for(int i = 0; i < visible.size(); i++){
+			ptr[0] = pt2d[i].x - pt2dprj[i].x;
+			ptr[1] = pt2d[i].y - pt2dprj[i].y;
+			ssd += (double) visible[i] * (ptr[0] * ptr[0] + ptr[1] * ptr[1]);
 		}
 		return ssd;
 	}
@@ -381,6 +383,8 @@ private:
 
 	void render3D(long long timg);
 	void renderChsbd(long long timg);
+
+	void estimate();
 
 	virtual bool alloc_d3dres();
 	virtual void release_d3dres();

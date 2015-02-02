@@ -384,7 +384,7 @@ public:
 
 void drawPoint2d(LPDIRECT3DDEVICE9 pd3dev,	
 		c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-		vector<Point2f> & points, vector<bool> & bvalid, 
+		vector<Point2f> & points, vector<int> & valid, 
 		int pttype, const int state = 0, const int cur_point = -1);
 void xsquare(LPD3DXLINE pline, Point2f & pt, float radius, D3DCOLOR color);
 void xcross(LPD3DXLINE pline,  Point2f & pt, float radius, D3DCOLOR color);
