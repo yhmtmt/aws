@@ -57,43 +57,43 @@ const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;
 //
 //The projection function is
 //
-//m = D(P(T(R(M;r);t),p),k)
+//m = P(D(T(R(M;r);t),k),p)
 //
 //Here I ommit the indices of the points and objects
 //
 //The estimation of parameters of camera and objects means the optimization,
 //
 //    min Sum(m-m')^2
-// [r, t, p, k]^T for all points
+// [r, t, k, k]^T for all points
 //
 //First, to enable iterative minimization, linearize the function D around [r,t,p,k]^T
 //
 //D(P(T(R(M;r+dr);t+dt);p+dp)k+dk) 
-//  <=> J[dr, dt, dp, dk]^T + D(P(T(R(M;r);t);p)k)
+//  <=> J[dr, dt, dk, dp]^T + P(D(T(R(M;r);t);k)p)
 //
 //J is the Jacobian. Then we minimize
 //
-//     min Sum{m - J[dr, dt, dp, dk]^T - D(P(T(R(M;r);t);p)k)}^2
-// [dr, dt, dp, dk]^T for all points
+//     min Sum{m - J[dr, dt, dk, dp]^T - D(P(T(R(M;r);t);k)p)}^2
+// [dr, dt, dk, dp]^T for all points
 //
 //and update parameters with
 //
-//[r, t, p, k]^T <= [r, t, p, k]^T + [dr, dt, dp, dk]^T
+//[r, t, k, p]^T <= [r, t, k, p]^T + [dr, dt, dk, dp]^T
 //
-//The [dr ,dt, dp, dk]^T is actually,
+//The [dr ,dt, dk, dp]^T is actually,
 //
-//Sum{2J^T{m - J[dr, dt, dp, dk]^T - D(P(T(R(M;r);t);p)k)}=0 (the derivative equals zero)
-//Sum {J^TJ [dr, dt, dp, dk]^T} = Sum {J^Tm - D(P(T(R(M;r);t);p)k)}
-//[dr, dt, dp, dk]^T = Sum {J^TJ}^(-1) Sum J^T{m - D(P(T(R(M;r);t);p)k)} 
+//Sum{2J^T{m - J[dr, dt, dk, dp]^T - P(D(T(R(M;r);t);k)p)}=0 (the derivative equals zero)
+//Sum {J^TJ [dr, dt, dk, dp]^T} = Sum {J^Tm - P(D(T(R(M;r);t);k)p)}
+//[dr, dt, dk, dp]^T = Sum {J^TJ}^(-1) Sum J^T{m - P(D(T(R(M;r);t);k)p)} 
 //
 //yes,it's Gauss-Newton method. And the Jacobian can be calculated as,
 //
-//J=dD/d[r, t, p, k]^T = [dD/dr, dD/dt, dD/dp, dD/dk]
+//J=dD/d[r, t, k, p]^T = [dD/dr, dD/dt, dD/dk, dD/dp]
 //
-//dD/dr=dD/dP * dP/dT * dT/dR * dR/dr
-//dD/dt=dD/dP * dP/dT * dT/dt
-//dD/dp=dD/dP * dP/dp
-//dD/dk=dD/dk
+//dP/dr=dP/dD * dD/dT * dT/dR * dR/dr
+//dP/dt=dP/dD * dD/dT * dT/dt
+//dP/dp=dP/dD * dD/dT
+//dP/dk=dP/dk
 //
 //The Jacobian can also be calculated with cv::projectPoints
 
@@ -628,13 +628,17 @@ bool s_obj::save()
 	return true;
 }
 
-void s_obj::render(Mat & camint, Mat & camdist, Mat & rvec_cam, Mat & tvec_cam,
-	LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
-	int pttype, int state, int cur_point)
+void s_obj::proj(Mat & camint, Mat & camdist)
 {
-	pmdl->proj(pt2dprj, camint, camdist, rvec_cam, tvec_cam, rvec, tvec);
+	projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian);
+	mulTransposed(jacobian, hessian, false);
 	calc_ssd();
 	calc_num_matched_points();
+}
+
+void s_obj::render(LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+	int pttype, int state, int cur_point)
+{
 	render_prjpts(*pmdl, pt2dprj, pd3dev, ptxt, pline, pttype, state, cur_point);
 }
 
@@ -873,6 +877,7 @@ bool f_inspector::proc()
 
 			// auto load camera parameter and objects if exists
 			loadCampar();
+			load_obj();
 			for(int i = 0; i < m_obj.size(); i++){
 				m_obj[i].load(m_obj[i].name, m_timg, m_models);
 			}
@@ -882,6 +887,11 @@ bool f_inspector::proc()
 	}else{
 		timg = m_timg;
 		img = m_img;
+	}
+
+	// projection 
+	for(int i = 0; i < m_obj.size(); i++){
+		m_obj[i].proj(m_cam_int, m_cam_dist);
 	}
 
 	// input source is not ready. but it tends to happen usually.
@@ -1602,8 +1612,6 @@ void f_inspector::update_campar()
 
 bool f_inspector::loadCampar()
 {
-	clearCampar();
-
 	FileStorage fs(m_fname_campar, FileStorage::READ);
 	if(!fs.isOpened())
 		return false;
@@ -1714,7 +1722,7 @@ void f_inspector::load_obj()
 {	
 	if(m_name_obj[0] == '\0'){
 		if(m_cur_obj != -1){
-			if(m_obj[m_cur_obj].t == m_cur_time)
+			if(m_obj[m_cur_obj].t == m_timg)
 				return;
 			else{
 				if(m_obj[m_cur_obj].load(m_obj[m_cur_obj].name, m_timg, m_models)){
@@ -1927,25 +1935,28 @@ void f_inspector::renderInfo()
 			snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f", m_cur_obj,
 				obj.name, obj.pmdl->fname, obj.match_count, obj.ssd);
 		}
+		break;
 	case POINT:
 		if(m_cur_obj < 0)
 			snprintf(information, 1023, "Obj[]=NULL");
 		else{
+			s_obj & obj = m_obj[m_cur_obj];
 			if(m_cur_point < 0){
-				snprintf(information, 1023, "Obj[%d]=%s (Model=%s), Point[%d]=(%f,%f,%f)->(%f,%f)", 
-				m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname,
-				m_cur_point);
+				snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f", 
+				m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname, obj.match_count, obj.ssd);
 			}else{
 				Point3f & pt3d = m_obj[m_cur_obj].pmdl->pts[m_cur_point];
 				Point2f & pt2d = m_obj[m_cur_obj].pt2d[m_cur_point];
 				bool matched = m_obj[m_cur_obj].bvisible[m_cur_point];
 				if(matched){
-					snprintf(information, 1023, "Obj[%d]=%s (Model=%s), Point[%d]=(%f,%f,%f)->(%f,%f)", 
+					snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->(%f,%f)", 
 						m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname, 
+						obj.match_count, obj.ssd,
 						m_cur_point, pt3d.x, pt3d.y, pt3d.z, pt2d.x, pt2d.y);
 				}else{
-					snprintf(information, 1023, "Obj[%d]=%s (Model=%s), Point[%d]=(%f,%f,%f)->NULL", 
+					snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->NULL", 
 						m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname, 
+						obj.match_count, obj.ssd,
 						m_cur_point, pt3d.x, pt3d.y, pt3d.z);
 				}
 			}
@@ -1999,14 +2010,14 @@ void f_inspector::renderObj()
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
 					obj.pt2d, obj.bvisible, iobj, 1);
-				m_obj[iobj].render(m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam, 
+				m_obj[iobj].render(
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0, m_cur_point);
 			}else{
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
 					obj.pt2d, obj.bvisible, 0);
-				m_obj[iobj].render(m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam, 
+				m_obj[iobj].render(
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0);
 			}
@@ -2015,7 +2026,7 @@ void f_inspector::renderObj()
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
 					obj.pt2d, obj.bvisible, iobj, 1);
-				m_obj[iobj].render(m_cam_int, m_cam_dist, m_rvec_cam, m_tvec_cam, 
+				m_obj[iobj].render(
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0, m_cur_point);
 			}
@@ -2045,7 +2056,8 @@ void f_inspector::renderObj()
 	m_pline->Begin();
 	if(m_op == POINT && m_cur_obj != -1 && m_cur_point != -1){
 		D3DXVECTOR2 v[2];
-		Point2f pt1 = Point2f((float) m_mc.x, (float) m_mc.y);
+		Point2f pt1 = Point2f((float) (m_mc.x - m_main_offset.x) / m_main_scale, 
+			(float) (m_mc.y - (int) m_ViewPort.Height -m_main_offset.y) / m_main_scale + m_ViewPort.Height);
 		Point2f & pt2 = m_obj[m_cur_obj].pt2dprj[m_cur_point];
 		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
 		v[1] = D3DXVECTOR2(pt2.x, pt2.y);

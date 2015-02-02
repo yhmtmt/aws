@@ -129,6 +129,8 @@ struct s_obj
 	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
+	Mat jacobian;
+	Mat hessian;
 	double ssd;
 	int match_count;
 
@@ -179,10 +181,11 @@ struct s_obj
 		::get_cursor_point(pt2dprj, x, y, idx, dist);
 	}
 
+	// calculate projection
+	void proj(Mat & camint, Mat & camdist);
+
 	// draw the wire frame model
-	void render(
-		Mat & camint, Mat & camdist, Mat & rvec_cam, Mat & tvec_cam,
-		LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
+	void render(LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 		int pttype, int state, int cur_point = -1);
 
 	// render vector in comparable size to the object  
