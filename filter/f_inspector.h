@@ -68,6 +68,7 @@ struct s_edge{
 	s_edge():s(0), e(0){};
 };
 
+///////////////////////////////////////////////////////////////// s_model
 // s_model represents a 3D model tracked in the scene by f_inspector.
 // It contains points and edges, and their projection method.
 struct s_obj;
@@ -115,6 +116,7 @@ struct s_model
 	bool load(const char * afname);
 };
 
+///////////////////////////////////////////////////////////////// s_obj
 // s_obj represents the object in the scene.
 // User can specify its feature points, find the correspondance between the model
 // and the points. 
@@ -140,6 +142,9 @@ struct s_obj
 		tvec = Mat::zeros(3, 1, CV_64FC1);
 		rvec = Mat::zeros(3, 1, CV_64FC1);
 	};
+
+	s_obj(const s_obj & obj){
+	}
 
 	~s_obj()
 	{
@@ -201,12 +206,28 @@ struct s_obj
 
 	bool init(s_model * apmdl, long long at, const Mat & camint, const Mat & camdist,
 		const double width, const double height);
+
+	bool init(const s_obj & obj);
+
 	bool load(const char * aname, long long at, vector<s_model> & mdls);
 	bool save();
 
 	void fixAttitude(bool val){
 		is_attitude_fixed = val;
 	}
+};
+
+///////////////////////////////////////////////////////////////// s_frame_obj
+struct s_frame_obj{
+	long long tfrm;
+	vector<s_obj> objs;
+	Mat camint, camdist;
+	s_frame_obj()
+	{
+	}
+
+	bool init(const long long atfrm, const vector<s_obj> & aobjs, 
+		const Mat & acamint, const Mat & acamdist);
 };
 
 // The functions of the filter
@@ -310,7 +331,7 @@ private:
 	int m_cur_model; // current selected model
 	int m_cur_obj; // current object selected
 	int m_cur_point; // current selected point of the model
-	vector<s_obj> m_obj; // object points
+	vector<s_obj> m_objs; // object points
 	void load_obj();
 	void save_obj();
 	void renderObj();
@@ -391,7 +412,67 @@ private:
 	void render3D(long long timg);
 	void renderChsbd(long long timg);
 
+
+	void proj_objs(vector<s_obj> & objs){
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = objs[iobj];
+			obj.proj(m_cam_int, m_cam_dist);
+		}
+	}
+
+	void acc_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = objs[iobj];
+		// accumulating camera intrinsic part of hessians of all objects
+			Hcamint += obj.hessian(Rect(6, 6, 12, 12));
+		}
+	}
+
+	void copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = objs[iobj];
+			Hcamint.copyTo(obj.hessian(Rect(6, 6, 12, 12)));
+		}
+	}
+
+	void update_params(vector<s_obj> & objs){
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = objs[iobj];
+			Mat Hinv, eigenval, eigenvec;
+			double det = determinant(obj.hessian);
+			eigen(obj.hessian, eigenval, eigenvec);
+			invert(obj.hessian, Hinv, DECOMP_CHOLESKY);
+			Mat Grad = obj.jacobian.t() * obj.err;;
+			obj.dp = Hinv * Grad;
+			double * ptr_dp = obj.dp.ptr<double>(0);
+			double * ptr; 
+			ptr = obj.rvec.ptr<double>(0);
+			ptr[0] += ptr_dp[0]; // rx
+			ptr[1] += ptr_dp[1]; // ry
+			ptr[2] += ptr_dp[2]; // rz
+			ptr = obj.tvec.ptr<double>(0);
+			ptr[0] += ptr_dp[3]; // tx
+			ptr[1] += ptr_dp[4]; // ty
+			ptr[2] += ptr_dp[5]; // tz
+			ptr = m_cam_int.ptr<double>(0);
+			ptr[0] += ptr_dp[6]; // fx
+			ptr[2] += ptr_dp[8]; // cx
+			ptr[4] += ptr_dp[7]; // fy
+			ptr[5] += ptr_dp[9]; // cy
+			// Updating distortion parameters
+			ptr = m_cam_dist.ptr<double>(0);
+			ptr_dp += 10;
+			for(int i = 0; i < 8; i++, ptr++, ptr_dp++){
+				*ptr += *ptr_dp;
+			}
+		}
+	}
+
 	void estimate();
+	void estimate_fulltime();
+
+	// frame objects
+	vector<s_frame_obj> m_fobjs;
 
 	virtual bool alloc_d3dres();
 	virtual void release_d3dres();

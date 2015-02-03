@@ -222,13 +222,13 @@ struct s_package {
 		vector<Mat> & acam_dist_tbl,
 		Mat & acam_int, Mat & acam_dist): 
 	num_models(anum_models), num_pts(anum_pts), p2d(ap2d), p3d(ap3d),
-	cam_int_tbl(acam_int_tbl), cam_dist_tbl(acam_dist_tbl), 
-	cam_int(acam_int), cam_dist(acam_dist){
+		cam_int_tbl(acam_int_tbl), cam_dist_tbl(acam_dist_tbl), 
+		cam_int(acam_int), cam_dist(acam_dist){
 	}
 };
 
 int prj_pause_and_cam(void * p, int m, int n, const __cminpack_real__ *x,
-			__cminpack_real__ *fvec, int iflag)
+	__cminpack_real__ *fvec, int iflag)
 {
 	// input layout
 	// x[0] : fx, x[1] : fy, x[2] : cx, x[3] : cy
@@ -276,7 +276,7 @@ int prj_pause_and_cam(void * p, int m, int n, const __cminpack_real__ *x,
 }
 
 int prj_pause_and_cam_with_tbl(void * p, int m, int n, const __cminpack_real__ *x,
-			__cminpack_real__ *fvec, int iflag)
+	__cminpack_real__ *fvec, int iflag)
 {
 	// input layout
 	// x[0] : camera parameter table index
@@ -308,7 +308,7 @@ int prj_pause_and_cam_with_tbl(void * p, int m, int n, const __cminpack_real__ *
 	for(int i = 0; i < 8; i++){
 		ptr[i] = rat_i * ptr_l[i] + rat * ptr_u[i];; // k1
 	}
-	
+
 	const double * px = &(x[1]);
 	double * pf = fvec;
 	for(int im = 0; im < pkg->num_models; im++){
@@ -327,7 +327,7 @@ int prj_pause_and_cam_with_tbl(void * p, int m, int n, const __cminpack_real__ *
 }
 
 int prj_pause(void * p, int m, int n, const __cminpack_real__ *x,
-			__cminpack_real__ *fvec, int iflag)
+	__cminpack_real__ *fvec, int iflag)
 {
 	s_package * pkg = (s_package *) p;
 	Mat & cam_int = pkg->cam_int;
@@ -362,7 +362,7 @@ double s_model::get_max_dist()
 }
 
 void s_model::proj(vector<Point2f> & pt2ds,  Mat & cam_int, Mat & cam_dist, Mat & rvec_cam, Mat & tvec_cam, 
-		Mat & rvec_obj, Mat & tvec_obj)
+	Mat & rvec_obj, Mat & tvec_obj)
 {
 	Mat rvec, tvec;
 	composeRT(rvec_cam, tvec_cam, rvec_obj, tvec_obj, rvec, tvec);
@@ -460,12 +460,12 @@ bool s_model::load(const char * afname)
 
 //////////////////////////////////////////////////////////////////////////// s_obj member
 bool s_obj::init(s_model * apmdl, long long at, const Mat & camint, const Mat & camdist,
-		const double width, const double height)
+	const double width, const double height)
 {
 	pmdl = apmdl;	
 	t = at;
 	int len_name = (int) strlen(apmdl->name.c_str()) + 4 /* under bar and three digit */ + 1 /* termination character */;
-	
+
 	name = new char[len_name];
 	if(name == NULL)
 		return false;
@@ -493,6 +493,31 @@ bool s_obj::init(s_model * apmdl, long long at, const Mat & camint, const Mat & 
 	visible.resize(pmdl->pts.size(), false);
 
 	apmdl->ref++;
+	return true;
+}
+
+bool s_obj::init(const s_obj & obj)
+{
+	pmdl = obj.pmdl;
+	t = obj.t;
+
+	name = new char[strlen(obj.name) + 1];
+	if(name == NULL)
+		return false;
+	strcpy(name, obj.name);
+
+	pt2d = obj.pt2d;
+	pt2dprj = obj.pt2dprj;
+	visible = obj.visible;
+	is_attitude_fixed = obj.is_attitude_fixed;
+	obj.tvec.copyTo(tvec);
+	obj.rvec.copyTo(rvec);
+	obj.jacobian.copyTo(jacobian);
+	obj.hessian.copyTo(hessian);
+	obj.dp.copyTo(dp);
+	obj.err.copyTo(err);
+	ssd = obj.ssd;
+	match_count = obj.match_count;
 	return true;
 }
 
@@ -538,7 +563,7 @@ bool s_obj::load(const char * aname, long long at, vector<s_model> & mdls)
 		}
 		pmdl = &(*itr);
 	}
-	
+
 	// allocating memories
 	int num_points = (int) pmdl->pts.size();
 	pt2d.resize(num_points);
@@ -716,7 +741,21 @@ void s_obj::render_vector(Point3f & vec,
 	xcross(pline, vec2d[0], 3.0, color);
 	pline->End();
 }
+//////////////////////////////////////////////////////////////////// s_frame_obj
 
+bool s_frame_obj::init(const long long atfrm, const vector<s_obj> & aobjs, const Mat & acamint, const Mat & acamdist)
+{
+	tfrm = atfrm;
+	objs.resize(aobjs.size());
+	for(int i = 0; i < aobjs.size(); i++){
+		if(!objs[i].init(aobjs[i])){
+			return false;
+		}
+	}
+	acamint.copyTo(camint);
+	acamdist.copyTo(camdist);
+	return true;
+}
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[ESTIMATE+1]
 = {"model", "obj", "point", "camera", "estimate"};
@@ -727,31 +766,31 @@ const char * f_inspector::m_axis_str[AX_Z + 1] = {
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_bundistort(false), m_bpttrack(false),/* m_bcbtrack(false), m_bchsbd_found(false),
-	m_sz_chsbd(6, 9), m_pitch_chsbd(0.0254f), m_bshow_chsbd(false),
-	m_num_chsbds_calib(120),*/
-	m_bpose_fixed(true), m_bcampar_fixed(true), m_bcam_tbl_loaded(false),
-	m_bload_campar(false), m_bload_campar_tbl(false),
-	m_bcalib_use_intrinsic_guess(false),
-	m_bcalib_fix_principal_point(false),
-	m_bcalib_fix_aspect_ratio(false),
-	m_bcalib_zero_tangent_dist(true),
-	m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
-	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true),
-	m_bcalib_rational_model(false),
-	m_badd_model(false),
-	m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1),
-	m_op(OBJ), m_sop(SOP_NULL),
-	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
-	m_mm(MM_NORMAL), m_axis(AX_X), m_rot_step(1.0), m_trn_step(1.0), m_zoom_step(1.1),
-	m_main_offset(0, 0), m_main_scale(1.0),
-	m_theta_z_mdl(0.0), m_dist_mdl(0.0)
-	
+																 m_sz_chsbd(6, 9), m_pitch_chsbd(0.0254f), m_bshow_chsbd(false),
+																 m_num_chsbds_calib(120),*/
+																 m_bpose_fixed(true), m_bcampar_fixed(true), m_bcam_tbl_loaded(false),
+																 m_bload_campar(false), m_bload_campar_tbl(false),
+																 m_bcalib_use_intrinsic_guess(false),
+																 m_bcalib_fix_principal_point(false),
+																 m_bcalib_fix_aspect_ratio(false),
+																 m_bcalib_zero_tangent_dist(true),
+																 m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
+																 m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true),
+																 m_bcalib_rational_model(false),
+																 m_badd_model(false),
+																 m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1),
+																 m_op(OBJ), m_sop(SOP_NULL),
+																 m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
+																 m_mm(MM_NORMAL), m_axis(AX_X), m_rot_step(1.0), m_trn_step(1.0), m_zoom_step(1.1),
+																 m_main_offset(0, 0), m_main_scale(1.0),
+																 m_theta_z_mdl(0.0), m_dist_mdl(0.0)
+
 {
 	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
 	m_fname_campar[0] = '\0';
 	m_fname_campar_tbl[0] = '\0';
-//	m_fname_chsbds[0] = '\0';
+	//	m_fname_chsbds[0] = '\0';
 	m_cam_int = Mat::eye(3, 3, CV_64FC1);
 	m_cam_dist = Mat::zeros(1, 8, CV_64FC1);
 	m_rvec_cam = Mat::zeros(3, 1, CV_64FC1);
@@ -768,14 +807,14 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("sv", &m_sv, "Vertical scaling value. Image size is multiplied by the value. (default 1.0)");	
 
 	// chessboard related parameters
-//	register_fpar("fchsbds", m_fname_chsbds, 1024, "File path of chessboard collections");
-//	register_fpar("cbtrack", &m_bcbtrack, "Chessboard tracking enabled.");
-//	register_fpar("pcb", &m_pitch_chsbd, "Pitch of the chesboard (0.0254m default)");
-//	register_fpar("vcb", &(m_sz_chsbd.height), "Number of vertical grids in the chessboard (6 default)");
-//	register_fpar("hcb", &(m_sz_chsbd.width), "Number of horizontal grids in the chessboard (9 default)");
-//	register_fpar("showcb", &m_bshow_chsbd, "Show detected chessboard.");
-//	register_fpar("cbdet", &m_bchsbd_found, "Chessboard found flag");
-// 	register_fpar("chsbds", &m_num_chsbds_calib, "Number of chessboards used for calibration.");
+	//	register_fpar("fchsbds", m_fname_chsbds, 1024, "File path of chessboard collections");
+	//	register_fpar("cbtrack", &m_bcbtrack, "Chessboard tracking enabled.");
+	//	register_fpar("pcb", &m_pitch_chsbd, "Pitch of the chesboard (0.0254m default)");
+	//	register_fpar("vcb", &(m_sz_chsbd.height), "Number of vertical grids in the chessboard (6 default)");
+	//	register_fpar("hcb", &(m_sz_chsbd.width), "Number of horizontal grids in the chessboard (9 default)");
+	//	register_fpar("showcb", &m_bshow_chsbd, "Show detected chessboard.");
+	//	register_fpar("cbdet", &m_bchsbd_found, "Chessboard found flag");
+	// 	register_fpar("chsbds", &m_num_chsbds_calib, "Number of chessboards used for calibration.");
 
 	// model related parameters
 	register_fpar("pttrack", &m_bpttrack, "Model point tracking enabled.");
@@ -860,12 +899,17 @@ bool f_inspector::proc()
 			return true;
 
 		if(m_timg != timg){ // new frame arrived
-//			m_bchsbd_found = false;
+			//			m_bchsbd_found = false;
 			m_bpose_fixed = false;
 			// auto save camera parameter and objects
 			saveCampar();
-			for(int i = 0; i < m_obj.size(); i++)
-				m_obj[i].save();
+			for(int i = 0; i < m_objs.size(); i++)
+				m_objs[i].save();
+			m_fobjs.push_back(s_frame_obj());
+			int iend = (int) m_fobjs.size() - 1;
+
+			// save frame objects
+			m_fobjs[iend].init(m_timg, m_objs, m_cam_int, m_cam_dist);
 
 			update_obj();
 			update_campar();
@@ -873,8 +917,8 @@ bool f_inspector::proc()
 			// auto load camera parameter and objects if exists
 			loadCampar();
 			load_obj();
-			for(int i = 0; i < m_obj.size(); i++){
-				m_obj[i].load(m_obj[i].name, m_timg, m_models);
+			for(int i = 0; i < m_objs.size(); i++){
+				m_objs[i].load(m_objs[i].name, m_timg, m_models);
 			}
 		}
 		m_timg = timg;
@@ -889,9 +933,7 @@ bool f_inspector::proc()
 	}
 
 	// projection 
-	for(int i = 0; i < m_obj.size(); i++){
-		m_obj[i].proj(m_cam_int, m_cam_dist);
-	}
+	proj_objs(m_objs);
 
 	// estimate
 	if(m_op == ESTIMATE){
@@ -907,9 +949,9 @@ bool f_inspector::proc()
 	// fit the viewport size to the image
 	if(img_s.cols != m_ViewPort.Width ||
 		img_s.rows != m_ViewPort.Height){
-		if(!init_viewport(img_s)){
-			return false;
-		}
+			if(!init_viewport(img_s)){
+				return false;
+			}
 	}
 
 	// fit the direct 3d surface to the image
@@ -948,34 +990,34 @@ bool f_inspector::proc()
 	/*
 	switch(m_op){
 	case DET_CHSBD:
-		if(!m_bchsbd_found)
-			findChsbd(img_s, timg);
-		break;
+	if(!m_bchsbd_found)
+	findChsbd(img_s, timg);
+	break;
 	case SAVE_CHSBDS:
-		if(!saveChsbds()){
-			cerr << "Failed to save Chess boards." << endl;
-		}else{
-			cout << "Chessboards successfully saved." << endl;
-		}
-		m_op = NORMAL;
-		break;
+	if(!saveChsbds()){
+	cerr << "Failed to save Chess boards." << endl;
+	}else{
+	cout << "Chessboards successfully saved." << endl;
+	}
+	m_op = NORMAL;
+	break;
 	case LOAD_CHSBDS:
-		if(!loadChsbds()){
-			cerr << "Failed to load Chessboards." << endl;
-		}else{
-			cout << "Chessboards successfully loaded." << endl;
-		}
-		m_op = NORMAL;
-		break;
+	if(!loadChsbds()){
+	cerr << "Failed to load Chessboards." << endl;
+	}else{
+	cout << "Chessboards successfully loaded." << endl;
+	}
+	m_op = NORMAL;
+	break;
 	case CLEAR_CHSBDS:
-		clearChsbds();
-		break;
+	clearChsbds();
+	break;
 	}
 	*/
 
 	// calibration
 	//calibrate(img_s, timg);
-	
+
 	// rendering main view
 	render(img_s, timg);
 
@@ -985,590 +1027,590 @@ bool f_inspector::proc()
 /* now chessboard handling codes are unified into object handling codes
 void f_inspector::initChsbd3D()
 {
-	HRESULT hr;
-	m_3dchsbd.resize(m_sz_chsbd.height*m_sz_chsbd.width);
-	for(int i= 0; i < m_sz_chsbd.height; i++){
-		for(int j = 0; j < m_sz_chsbd.width; j++){
-			int ipt = m_sz_chsbd.width * i + j;
-			m_3dchsbd[ipt].x = (float) (m_pitch_chsbd * i);
-			m_3dchsbd[ipt].y = (float)(m_pitch_chsbd * j);
-			m_3dchsbd[ipt].z = 0.f;
-		}
-	}
+HRESULT hr;
+m_3dchsbd.resize(m_sz_chsbd.height*m_sz_chsbd.width);
+for(int i= 0; i < m_sz_chsbd.height; i++){
+for(int j = 0; j < m_sz_chsbd.width; j++){
+int ipt = m_sz_chsbd.width * i + j;
+m_3dchsbd[ipt].x = (float) (m_pitch_chsbd * i);
+m_3dchsbd[ipt].y = (float)(m_pitch_chsbd * j);
+m_3dchsbd[ipt].z = 0.f;
+}
+}
 
-	// creating chessboard model
-	D3DXCreateMeshFVF(2, 4, D3DXMESH_MANAGED, 
-		ModelVertex::FVF, m_pd3dev, &m_pmesh_chsbd);
-	// set vertex buffer
-	ModelVertex * v;
-	m_pmesh_chsbd->LockVertexBuffer(0, (void**) &v);
-	v[0] = ModelVertex((float)(-m_pitch_chsbd), (float)(-m_pitch_chsbd), 0.f, 
-		0.f, 0.f, 1.f,
-		0.f, 0.f);
-	v[1] = ModelVertex((float)(m_pitch_chsbd * 9), (float)(-m_pitch_chsbd), 0.f, 
-		0.f, 0.f, 1.f, 
-		1.f, 0.f);
-	v[2] = ModelVertex((float)(m_pitch_chsbd * 9), (float)(m_pitch_chsbd * 6), 0.f, 
-		0.f, 0.f, 0.f, 
-		1.f, 1.f);
-	v[3] = ModelVertex((float)(-m_pitch_chsbd), (float)(m_pitch_chsbd * 6), 0.f, 
-		0.f, 0.f, 0.f, 
-		0.f, 1.f);
-	m_pmesh_chsbd->UnlockVertexBuffer();
+// creating chessboard model
+D3DXCreateMeshFVF(2, 4, D3DXMESH_MANAGED, 
+ModelVertex::FVF, m_pd3dev, &m_pmesh_chsbd);
+// set vertex buffer
+ModelVertex * v;
+m_pmesh_chsbd->LockVertexBuffer(0, (void**) &v);
+v[0] = ModelVertex((float)(-m_pitch_chsbd), (float)(-m_pitch_chsbd), 0.f, 
+0.f, 0.f, 1.f,
+0.f, 0.f);
+v[1] = ModelVertex((float)(m_pitch_chsbd * 9), (float)(-m_pitch_chsbd), 0.f, 
+0.f, 0.f, 1.f, 
+1.f, 0.f);
+v[2] = ModelVertex((float)(m_pitch_chsbd * 9), (float)(m_pitch_chsbd * 6), 0.f, 
+0.f, 0.f, 0.f, 
+1.f, 1.f);
+v[3] = ModelVertex((float)(-m_pitch_chsbd), (float)(m_pitch_chsbd * 6), 0.f, 
+0.f, 0.f, 0.f, 
+0.f, 1.f);
+m_pmesh_chsbd->UnlockVertexBuffer();
 
-	// set index buffer
-	WORD * i;
-	m_pmesh_chsbd->LockIndexBuffer(0, (void**) &i);
-	// Direct3D assumes counter clockwise vertex ordering in culling.
-	// however, we flip the coordinate from right-hand to left-hand 
-	// during view transformation. so the vertex ordering is now in clockwise
-	// ordering.
-	i[0] = 0; i[1] = 1; i[2] = 2;
-	i[3] = 0; i[4] = 2; i[5] = 3;
-	m_pmesh_chsbd->UnlockIndexBuffer();
+// set index buffer
+WORD * i;
+m_pmesh_chsbd->LockIndexBuffer(0, (void**) &i);
+// Direct3D assumes counter clockwise vertex ordering in culling.
+// however, we flip the coordinate from right-hand to left-hand 
+// during view transformation. so the vertex ordering is now in clockwise
+// ordering.
+i[0] = 0; i[1] = 1; i[2] = 2;
+i[3] = 0; i[4] = 2; i[5] = 3;
+m_pmesh_chsbd->UnlockIndexBuffer();
 
-	// set attribute buffer
-	DWORD * a;
-	m_pmesh_chsbd->LockAttributeBuffer(0, (DWORD**) &a);
-	a[0] = 0;
-	a[1] = 0;
-	m_pmesh_chsbd->UnlockAttributeBuffer();
+// set attribute buffer
+DWORD * a;
+m_pmesh_chsbd->LockAttributeBuffer(0, (DWORD**) &a);
+a[0] = 0;
+a[1] = 0;
+m_pmesh_chsbd->UnlockAttributeBuffer();
 
-	// 
-	vector<DWORD> ajbuf(m_pmesh_chsbd->GetNumFaces() * 3);
-	m_pmesh_chsbd->GenerateAdjacency(0.f, &ajbuf[0]);
-	m_pmesh_chsbd->OptimizeInplace(
-		D3DXMESHOPT_ATTRSORT | D3DXMESHOPT_COMPACT | D3DXMESHOPT_VERTEXCACHE,           
-		&ajbuf[0], 0, 0, 0);   
+// 
+vector<DWORD> ajbuf(m_pmesh_chsbd->GetNumFaces() * 3);
+m_pmesh_chsbd->GenerateAdjacency(0.f, &ajbuf[0]);
+m_pmesh_chsbd->OptimizeInplace(
+D3DXMESHOPT_ATTRSORT | D3DXMESHOPT_COMPACT | D3DXMESHOPT_VERTEXCACHE,           
+&ajbuf[0], 0, 0, 0);   
 
-	// set texture buffer	
-	hr = D3DXCreateTextureFromFile(m_pd3dev, 
-		_T("7x10calib-checkerboard_trimed.png"), &m_ptex_chsbd);
+// set texture buffer	
+hr = D3DXCreateTextureFromFile(m_pd3dev, 
+_T("7x10calib-checkerboard_trimed.png"), &m_ptex_chsbd);
 
-	if(hr != D3D_OK){
-		cerr << "Failed to load Chessboard texture" << endl;
-		m_ptex_chsbd = NULL;
-	}
+if(hr != D3D_OK){
+cerr << "Failed to load Chessboard texture" << endl;
+m_ptex_chsbd = NULL;
+}
 
-	m_cur_chsbd = 0;
+m_cur_chsbd = 0;
 }
 
 void f_inspector::seekChsbdTime(long long timg)
 {
-	m_bchsbd_found = false;
-	// seraching for current chessboard
-	for(; m_cur_chsbd < m_2dchsbd.size(); m_cur_chsbd++){
-		if(m_time_chsbd[m_cur_chsbd] == timg){
-			m_bchsbd_found = true;
-			cout << "Chessboard found in stock" << endl;
-			break;
-		}
+m_bchsbd_found = false;
+// seraching for current chessboard
+for(; m_cur_chsbd < m_2dchsbd.size(); m_cur_chsbd++){
+if(m_time_chsbd[m_cur_chsbd] == timg){
+m_bchsbd_found = true;
+cout << "Chessboard found in stock" << endl;
+break;
+}
 
-		if(m_time_chsbd[m_cur_chsbd] > timg){
-			break;
-		}
-	}
+if(m_time_chsbd[m_cur_chsbd] > timg){
+break;
+}
+}
 }
 
 void f_inspector::findChsbd(Mat & img, long long timg)
 {
-	// seraching for current chessboard
-	seekChsbdTime(timg);
-	if(m_bchsbd_found)
-		return;
+// seraching for current chessboard
+seekChsbdTime(timg);
+if(m_bchsbd_found)
+return;
 
-	m_corners_chsbd.clear();
-	Mat gry;
-	cvtColor(img, gry, CV_RGB2GRAY);
-	if(m_bchsbd_found = findChessboardCorners(gry, m_sz_chsbd, m_corners_chsbd)){
-		cornerSubPix(gry, m_corners_chsbd, Size(11, 11), Size(-1, -1),
-			TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
-		m_2dchsbd.insert(m_2dchsbd.begin() + m_cur_chsbd, m_corners_chsbd);
-		m_time_chsbd.insert(m_time_chsbd.begin() + m_cur_chsbd, m_timg);
-		m_rvecs_chsbd.insert(m_rvecs_chsbd.begin() + m_cur_chsbd, Mat(3, 1, CV_64FC1));
-		m_tvecs_chsbd.insert(m_tvecs_chsbd.begin() + m_cur_chsbd, Mat(3, 1, CV_64FC1));
-		cout << "Chessboard newly added." << endl;
-		cout << m_time_chsbd.size() << " chessboard stocked." << endl;
-	}else{
-		cerr <<  "Failed to find chessboard." << endl;
-	}
-	m_bcampar_fixed = false;
+m_corners_chsbd.clear();
+Mat gry;
+cvtColor(img, gry, CV_RGB2GRAY);
+if(m_bchsbd_found = findChessboardCorners(gry, m_sz_chsbd, m_corners_chsbd)){
+cornerSubPix(gry, m_corners_chsbd, Size(11, 11), Size(-1, -1),
+TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
+m_2dchsbd.insert(m_2dchsbd.begin() + m_cur_chsbd, m_corners_chsbd);
+m_time_chsbd.insert(m_time_chsbd.begin() + m_cur_chsbd, m_timg);
+m_rvecs_chsbd.insert(m_rvecs_chsbd.begin() + m_cur_chsbd, Mat(3, 1, CV_64FC1));
+m_tvecs_chsbd.insert(m_tvecs_chsbd.begin() + m_cur_chsbd, Mat(3, 1, CV_64FC1));
+cout << "Chessboard newly added." << endl;
+cout << m_time_chsbd.size() << " chessboard stocked." << endl;
+}else{
+cerr <<  "Failed to find chessboard." << endl;
+}
+m_bcampar_fixed = false;
 }
 
 void f_inspector::clearChsbds()
 {
-	m_2dchsbd.clear();
-	m_time_chsbd.clear();
-	m_bchsbd_found = false;
+m_2dchsbd.clear();
+m_time_chsbd.clear();
+m_bchsbd_found = false;
 }
 
 bool f_inspector::saveChsbds()
 {
-	FileStorage fs(m_fname_chsbds, FileStorage::WRITE);
-	if(!fs.isOpened()){
-		return false;
-	}
+FileStorage fs(m_fname_chsbds, FileStorage::WRITE);
+if(!fs.isOpened()){
+return false;
+}
 
-	int num_chsbds = (int) m_2dchsbd.size();
-	int num_pts = m_sz_chsbd.width * m_sz_chsbd.height;
-	fs << "ChsbdSize" << m_sz_chsbd;
-	fs << "ChsbdPitch" << m_pitch_chsbd;
-	fs << "NumChsbds" << num_chsbds;
-	fs << "Chsbds" << "{";
-	for(int icb = 0; icb < num_chsbds; icb++){
-		char buf[128];
-		snprintf(buf, 128, "Chsbd%04d", icb);
-		fs << buf << "{";
-		long long t = m_time_chsbd[icb];
-		fs << "TimeU" <<  *((int*) &t + 1);
-		fs << "TimeL" << *((int*) &t);
-		if(m_bchsbd_pose_fixed.size() == num_chsbds && 
-			m_bchsbd_pose_fixed[icb]){
-				fs << "Err" << m_ereps_chsbd[icb];
-				fs << "Pose" << m_bchsbd_pose_fixed[icb];
-				fs << "Rvec" << m_rvecs_chsbd[icb];
-				fs << "Tvec" << m_tvecs_chsbd[icb];
-		}
-		fs << "Pts" << "[";
-		vector<Point2f> & chsbd2d = m_2dchsbd[icb];
-		for(int ipt = 0; ipt < num_pts; ipt++){
-			fs << chsbd2d[ipt];
-		}
-		fs << "]";
-		fs << "}";
-	}
-	fs << "}";
+int num_chsbds = (int) m_2dchsbd.size();
+int num_pts = m_sz_chsbd.width * m_sz_chsbd.height;
+fs << "ChsbdSize" << m_sz_chsbd;
+fs << "ChsbdPitch" << m_pitch_chsbd;
+fs << "NumChsbds" << num_chsbds;
+fs << "Chsbds" << "{";
+for(int icb = 0; icb < num_chsbds; icb++){
+char buf[128];
+snprintf(buf, 128, "Chsbd%04d", icb);
+fs << buf << "{";
+long long t = m_time_chsbd[icb];
+fs << "TimeU" <<  *((int*) &t + 1);
+fs << "TimeL" << *((int*) &t);
+if(m_bchsbd_pose_fixed.size() == num_chsbds && 
+m_bchsbd_pose_fixed[icb]){
+fs << "Err" << m_ereps_chsbd[icb];
+fs << "Pose" << m_bchsbd_pose_fixed[icb];
+fs << "Rvec" << m_rvecs_chsbd[icb];
+fs << "Tvec" << m_tvecs_chsbd[icb];
+}
+fs << "Pts" << "[";
+vector<Point2f> & chsbd2d = m_2dchsbd[icb];
+for(int ipt = 0; ipt < num_pts; ipt++){
+fs << chsbd2d[ipt];
+}
+fs << "]";
+fs << "}";
+}
+fs << "}";
 
-	return true;
+return true;
 }
 
 bool f_inspector::loadChsbds()
 {
-	clearChsbds();
+clearChsbds();
 
-	FileStorage fs(m_fname_chsbds, FileStorage::READ);
-	if(!fs.isOpened()){
-		return false;
-	}
+FileStorage fs(m_fname_chsbds, FileStorage::READ);
+if(!fs.isOpened()){
+return false;
+}
 
-	FileNode fn;
+FileNode fn;
 
-	fn = fs["ChsbdSize"];
+fn = fs["ChsbdSize"];
 
-	if(fn.empty()){
-		return false;
-	}
-	fn >> m_sz_chsbd;
+if(fn.empty()){
+return false;
+}
+fn >> m_sz_chsbd;
 
-	int num_pts = m_sz_chsbd.width * m_sz_chsbd.height;
-	initChsbd3D();
+int num_pts = m_sz_chsbd.width * m_sz_chsbd.height;
+initChsbd3D();
 
-	fn = fs["ChsbdPitch"];
+fn = fs["ChsbdPitch"];
 
-	if(fn.empty()){
-		return false;
-	}
+if(fn.empty()){
+return false;
+}
 
-	fn >> m_pitch_chsbd;
+fn >> m_pitch_chsbd;
 
-	int num_chsbds;
+int num_chsbds;
 
-	fn = fs["NumChsbds"];
+fn = fs["NumChsbds"];
 
-	if(fn.empty()){
-		return true;
-	}
+if(fn.empty()){
+return true;
+}
 
-	fn >> num_chsbds;
+fn >> num_chsbds;
 
-	m_2dchsbd.resize(num_chsbds);
-	m_time_chsbd.resize(num_chsbds);
-	m_rvecs_chsbd.resize(num_chsbds);
-	m_tvecs_chsbd.resize(num_chsbds);
-	m_ereps_chsbd.resize(num_chsbds, 0.);
-	m_bchsbd_pose_fixed.resize(num_chsbds, false);
+m_2dchsbd.resize(num_chsbds);
+m_time_chsbd.resize(num_chsbds);
+m_rvecs_chsbd.resize(num_chsbds);
+m_tvecs_chsbd.resize(num_chsbds);
+m_ereps_chsbd.resize(num_chsbds, 0.);
+m_bchsbd_pose_fixed.resize(num_chsbds, false);
 
-	fn = fs["Chsbds"];
-	if(fn.empty()){
-		return false;
-	}
+fn = fs["Chsbds"];
+if(fn.empty()){
+return false;
+}
 
-	for(int icb = 0; icb < num_chsbds; icb++){
-		m_2dchsbd[icb].resize(num_pts);
-		char buf[128];
-		snprintf(buf, 128, "Chsbd%04d", icb);
-		FileNode fnchsbd = fn[buf];
-		FileNode fnsub;
+for(int icb = 0; icb < num_chsbds; icb++){
+m_2dchsbd[icb].resize(num_pts);
+char buf[128];
+snprintf(buf, 128, "Chsbd%04d", icb);
+FileNode fnchsbd = fn[buf];
+FileNode fnsub;
 
-		if(fnchsbd.empty())
-			return false;
+if(fnchsbd.empty())
+return false;
 
-		fnsub = fnchsbd["TimeU"];
-		long long t;
-		if(fnsub.empty())
-			return false;
-		fnsub >> *((int*) &t + 1);
+fnsub = fnchsbd["TimeU"];
+long long t;
+if(fnsub.empty())
+return false;
+fnsub >> *((int*) &t + 1);
 
-		fnsub = fnchsbd["TimeL"];
-		if(fnsub.empty())
-			return false;
-		fnsub >> *((int*) &t);
-		m_time_chsbd[icb] = t;
+fnsub = fnchsbd["TimeL"];
+if(fnsub.empty())
+return false;
+fnsub >> *((int*) &t);
+m_time_chsbd[icb] = t;
 
-		fnsub = fnchsbd["Err"];
-		if(!fnsub.empty()){
-			fnsub >> m_ereps_chsbd[icb];
-			m_bchsbd_pose_fixed[icb] = true;
-		}
+fnsub = fnchsbd["Err"];
+if(!fnsub.empty()){
+fnsub >> m_ereps_chsbd[icb];
+m_bchsbd_pose_fixed[icb] = true;
+}
 
-		fnsub = fnchsbd["Rvec"];
-		if(!fnsub.empty())
-			fnsub >> m_rvecs_chsbd[icb];
+fnsub = fnchsbd["Rvec"];
+if(!fnsub.empty())
+fnsub >> m_rvecs_chsbd[icb];
 
-		fnsub = fnchsbd["Tvec"];
-		if(!fnsub.empty())
-			fnsub >> m_tvecs_chsbd[icb];
+fnsub = fnchsbd["Tvec"];
+if(!fnsub.empty())
+fnsub >> m_tvecs_chsbd[icb];
 
-		fnsub = fnchsbd["Pts"];
-		if(fnsub.empty())
-			return false;
+fnsub = fnchsbd["Pts"];
+if(fnsub.empty())
+return false;
 
-		FileNodeIterator itr_pt = fnsub.begin();
-		vector<Point2f> & chsbd2d = m_2dchsbd[icb];
-		for(int ipt = 0; ipt < num_pts; ipt++, itr_pt++){
-			if((*itr_pt).empty())
-				return false;
-			(*itr_pt) >> chsbd2d[ipt];			
-		}
-	}
+FileNodeIterator itr_pt = fnsub.begin();
+vector<Point2f> & chsbd2d = m_2dchsbd[icb];
+for(int ipt = 0; ipt < num_pts; ipt++, itr_pt++){
+if((*itr_pt).empty())
+return false;
+(*itr_pt) >> chsbd2d[ipt];			
+}
+}
 
-	return true;
+return true;
 }
 
 
 bool f_inspector::chooseChsbds(vector<vector<Point2f > > & chsbd2d, vector<int> & id_chsbd)
 {
-	if(m_2dchsbd.size() < m_num_chsbds_calib)
-		return false;
+if(m_2dchsbd.size() < m_num_chsbds_calib)
+return false;
 
-	int step = (int) ((double) m_2dchsbd.size() / (double) m_num_chsbds_calib);
-	for(int i = 0, id = 0; i < m_num_chsbds_calib; i++, id += step){
-		chsbd2d.push_back(m_2dchsbd[id]);
-		id_chsbd.push_back(id);
-	}
+int step = (int) ((double) m_2dchsbd.size() / (double) m_num_chsbds_calib);
+for(int i = 0, id = 0; i < m_num_chsbds_calib; i++, id += step){
+chsbd2d.push_back(m_2dchsbd[id]);
+id_chsbd.push_back(id);
+}
 
-	return true;
+return true;
 }
 
 void f_inspector::calibChsbd(Mat & img)
 {
-	vector<vector<Point3f > > chsbds3d;
-	vector<vector<Point2f > > chsbds2d;
-	vector<int> id_chsbd;
-	vector<Mat> tvecs, rvecs;
+vector<vector<Point3f > > chsbds3d;
+vector<vector<Point2f > > chsbds2d;
+vector<int> id_chsbd;
+vector<Mat> tvecs, rvecs;
 
-	// initializing resulting data structure
-	m_rvecs_chsbd.clear();
-	m_tvecs_chsbd.clear();
-	m_bchsbd_pose_fixed.clear();
-	m_ereps_chsbd.clear();
+// initializing resulting data structure
+m_rvecs_chsbd.clear();
+m_tvecs_chsbd.clear();
+m_bchsbd_pose_fixed.clear();
+m_ereps_chsbd.clear();
 
-	m_rvecs_chsbd.resize(m_2dchsbd.size());
-	m_tvecs_chsbd.resize(m_2dchsbd.size());
-	m_bchsbd_pose_fixed.resize(m_2dchsbd.size(), false);
-	m_ereps_chsbd.resize(m_2dchsbd.size(), DBL_MAX);
+m_rvecs_chsbd.resize(m_2dchsbd.size());
+m_tvecs_chsbd.resize(m_2dchsbd.size());
+m_bchsbd_pose_fixed.resize(m_2dchsbd.size(), false);
+m_ereps_chsbd.resize(m_2dchsbd.size(), DBL_MAX);
 
-	cout << "Selecting " << m_num_chsbds_calib << " chessboards." << endl;
-	if(!chooseChsbds(chsbds2d, id_chsbd))
-		return;
+cout << "Selecting " << m_num_chsbds_calib << " chessboards." << endl;
+if(!chooseChsbds(chsbds2d, id_chsbd))
+return;
 
-	int flag = 0;
-	flag |= (m_bcalib_use_intrinsic_guess ? CV_CALIB_USE_INTRINSIC_GUESS : 0);
-	flag |= (m_bcalib_fix_principal_point ? CV_CALIB_FIX_PRINCIPAL_POINT : 0);
-	flag |= (m_bcalib_fix_aspect_ratio ? CV_CALIB_FIX_ASPECT_RATIO : 0);
-	flag |= (m_bcalib_zero_tangent_dist ? CV_CALIB_ZERO_TANGENT_DIST : 0);
-	flag |= (m_bcalib_fix_k1 ? CV_CALIB_FIX_K1 : 0);
-	flag |= (m_bcalib_fix_k2 ? CV_CALIB_FIX_K2 : 0);
-	flag |= (m_bcalib_fix_k3 ? CV_CALIB_FIX_K3 : 0);
-	flag |= (m_bcalib_fix_k4 ? CV_CALIB_FIX_K4 : 0);
-	flag |= (m_bcalib_fix_k5 ? CV_CALIB_FIX_K5 : 0);
-	flag |= (m_bcalib_fix_k6 ? CV_CALIB_FIX_K6 : 0);
-	flag |= (m_bcalib_rational_model ? CV_CALIB_RATIONAL_MODEL : 0);
+int flag = 0;
+flag |= (m_bcalib_use_intrinsic_guess ? CV_CALIB_USE_INTRINSIC_GUESS : 0);
+flag |= (m_bcalib_fix_principal_point ? CV_CALIB_FIX_PRINCIPAL_POINT : 0);
+flag |= (m_bcalib_fix_aspect_ratio ? CV_CALIB_FIX_ASPECT_RATIO : 0);
+flag |= (m_bcalib_zero_tangent_dist ? CV_CALIB_ZERO_TANGENT_DIST : 0);
+flag |= (m_bcalib_fix_k1 ? CV_CALIB_FIX_K1 : 0);
+flag |= (m_bcalib_fix_k2 ? CV_CALIB_FIX_K2 : 0);
+flag |= (m_bcalib_fix_k3 ? CV_CALIB_FIX_K3 : 0);
+flag |= (m_bcalib_fix_k4 ? CV_CALIB_FIX_K4 : 0);
+flag |= (m_bcalib_fix_k5 ? CV_CALIB_FIX_K5 : 0);
+flag |= (m_bcalib_fix_k6 ? CV_CALIB_FIX_K6 : 0);
+flag |= (m_bcalib_rational_model ? CV_CALIB_RATIONAL_MODEL : 0);
 
-	for(int i = 0; i < chsbds2d.size(); i++)
-		chsbds3d.push_back(m_3dchsbd);
+for(int i = 0; i < chsbds2d.size(); i++)
+chsbds3d.push_back(m_3dchsbd);
 
-	Mat Cdist;
-	Cdist = m_cam_dist.clone();
-	m_erep = calibrateCamera(chsbds3d, chsbds2d, 
-		Size(img.cols, img.rows), m_cam_int, Cdist,
-		rvecs, tvecs, flag);
+Mat Cdist;
+Cdist = m_cam_dist.clone();
+m_erep = calibrateCamera(chsbds3d, chsbds2d, 
+Size(img.cols, img.rows), m_cam_int, Cdist,
+rvecs, tvecs, flag);
 
-	for(int i = 0; i < chsbds2d.size(); i++){
-		int id = id_chsbd[i];
-		m_rvecs_chsbd[id] = rvecs[i];
-		m_tvecs_chsbd[id] = tvecs[i];
-		m_bchsbd_pose_fixed[id] = true;
-	}
+for(int i = 0; i < chsbds2d.size(); i++){
+int id = id_chsbd[i];
+m_rvecs_chsbd[id] = rvecs[i];
+m_tvecs_chsbd[id] = tvecs[i];
+m_bchsbd_pose_fixed[id] = true;
+}
 
-	MatIterator_<double> src_itr, src_end;
-	MatIterator_<double> dst_itr;
+MatIterator_<double> src_itr, src_end;
+MatIterator_<double> dst_itr;
 
-	for(src_itr = Cdist.begin<double>(), dst_itr = m_cam_dist.begin<double>(),
-		src_end = Cdist.end<double>();
-		src_itr != src_end; src_itr++, dst_itr++)
-		*dst_itr = *src_itr;
+for(src_itr = Cdist.begin<double>(), dst_itr = m_cam_dist.begin<double>(),
+src_end = Cdist.end<double>();
+src_itr != src_end; src_itr++, dst_itr++)
+*dst_itr = *src_itr;
 
-	cout << "Calibration done with reprojection error of " << m_erep << endl;
-	cout << "Mcam = " << m_cam_int << endl;
-	cout << "Cdist = " << m_cam_dist << endl;
+cout << "Calibration done with reprojection error of " << m_erep << endl;
+cout << "Mcam = " << m_cam_int << endl;
+cout << "Cdist = " << m_cam_dist << endl;
 
-	// calculate reprojection error
-	m_ereps_chsbd.resize(m_2dchsbd.size());
-	m_bchsbd_pose_fixed.resize(m_2dchsbd.size());
-	for(int icb = 0; icb < m_2dchsbd.size(); icb++){
-		if(!m_bchsbd_pose_fixed[icb])
-			continue;
+// calculate reprojection error
+m_ereps_chsbd.resize(m_2dchsbd.size());
+m_bchsbd_pose_fixed.resize(m_2dchsbd.size());
+for(int icb = 0; icb < m_2dchsbd.size(); icb++){
+if(!m_bchsbd_pose_fixed[icb])
+continue;
 
-		m_ereps_chsbd[icb] = 0.;
-		vector<Point2f> impts;
-		vector<Point2f> & chsbd2d = m_2dchsbd[icb];
-		projectPoints(m_3dchsbd, m_rvecs_chsbd[icb], m_tvecs_chsbd[icb],
-			m_cam_int, m_cam_dist, impts);
-		for(int ipt = 0; ipt < impts.size(); ipt++){
-			Point2f pd, pp;
-			pd = impts[ipt];
-			pp = chsbd2d[ipt];
-			double dx = pp.x - pd.x;
-			double dy = pp.y - pd.y;
-			m_ereps_chsbd[icb] += dx * dx + dy * dy;
-		}
-		m_ereps_chsbd[icb] = sqrt(m_ereps_chsbd[icb] / (double) impts.size());
-		m_bchsbd_pose_fixed[icb] = true;
-	}
+m_ereps_chsbd[icb] = 0.;
+vector<Point2f> impts;
+vector<Point2f> & chsbd2d = m_2dchsbd[icb];
+projectPoints(m_3dchsbd, m_rvecs_chsbd[icb], m_tvecs_chsbd[icb],
+m_cam_int, m_cam_dist, impts);
+for(int ipt = 0; ipt < impts.size(); ipt++){
+Point2f pd, pp;
+pd = impts[ipt];
+pp = chsbd2d[ipt];
+double dx = pp.x - pd.x;
+double dy = pp.y - pd.y;
+m_ereps_chsbd[icb] += dx * dx + dy * dy;
+}
+m_ereps_chsbd[icb] = sqrt(m_ereps_chsbd[icb] / (double) impts.size());
+m_bchsbd_pose_fixed[icb] = true;
+}
 
-	// inserting to the table. Table is sorted in descending order for focal length.
-	vector<Mat>::iterator itr_int = m_cam_int_tbl.begin();
-	vector<Mat>::iterator itr_int_end = m_cam_int_tbl.end();
-	vector<Mat>::iterator itr_dist = m_cam_dist_tbl.begin();
-	vector<double>::iterator itr_erep = m_cam_erep.begin();
-	for(;itr_int != itr_int_end; itr_int++, itr_dist++, itr_erep++){
-		double fx_0 = (*itr_int).at<double>(0, 0);
-		double fx_1 = m_cam_int.at<double>(0, 0);
-		if(fx_1 < fx_0){
-			break;
-		}
-	}
-	m_cam_int_tbl.insert(itr_int, m_cam_int.clone());
-	m_cam_dist_tbl.insert(itr_dist, m_cam_dist.clone());
-	m_cam_erep.insert(itr_erep, m_erep);
+// inserting to the table. Table is sorted in descending order for focal length.
+vector<Mat>::iterator itr_int = m_cam_int_tbl.begin();
+vector<Mat>::iterator itr_int_end = m_cam_int_tbl.end();
+vector<Mat>::iterator itr_dist = m_cam_dist_tbl.begin();
+vector<double>::iterator itr_erep = m_cam_erep.begin();
+for(;itr_int != itr_int_end; itr_int++, itr_dist++, itr_erep++){
+double fx_0 = (*itr_int).at<double>(0, 0);
+double fx_1 = m_cam_int.at<double>(0, 0);
+if(fx_1 < fx_0){
+break;
+}
+}
+m_cam_int_tbl.insert(itr_int, m_cam_int.clone());
+m_cam_dist_tbl.insert(itr_dist, m_cam_dist.clone());
+m_cam_erep.insert(itr_erep, m_erep);
 
-	m_bcampar_fixed = true;
+m_bcampar_fixed = true;
 }
 
 void f_inspector::guessCamparPauseChsbd(long long timg)
 {
-	int num_models = 1;
-	seekChsbdTime(timg);
-	vector<int> num_pts;
-	num_pts.push_back((int)m_3dchsbd.size());
-	vector<vector<Point3f> > p3d;
-	p3d.push_back(m_3dchsbd);
-	vector<vector<Point2f> > p2d;
-	p2d.push_back(m_2dchsbd[m_cur_chsbd]);
+int num_models = 1;
+seekChsbdTime(timg);
+vector<int> num_pts;
+num_pts.push_back((int)m_3dchsbd.size());
+vector<vector<Point3f> > p3d;
+p3d.push_back(m_3dchsbd);
+vector<vector<Point2f> > p2d;
+p2d.push_back(m_2dchsbd[m_cur_chsbd]);
 
-	if(m_cam_int.cols != 3 || m_cam_int.rows != 3 || m_cam_int.type() != CV_64FC1){
-		m_cam_int = Mat::eye(3, 3, CV_64FC1);
-		m_cam_dist = Mat::zeros(8, 1, CV_64FC1);
-	}
+if(m_cam_int.cols != 3 || m_cam_int.rows != 3 || m_cam_int.type() != CV_64FC1){
+m_cam_int = Mat::eye(3, 3, CV_64FC1);
+m_cam_dist = Mat::zeros(8, 1, CV_64FC1);
+}
 
-	s_package pkg(num_models, num_pts, p2d, p3d,
-		m_cam_int_tbl, m_cam_dist_tbl, 
-		m_cam_int, m_cam_dist);
+s_package pkg(num_models, num_pts, p2d, p3d,
+m_cam_int_tbl, m_cam_dist_tbl, 
+m_cam_int, m_cam_dist);
 
-	int m = pkg.num_models * 6; // rvecs and tvecs (6degree of freedom for each model.)
-	switch(m_op){
-	case DET_POSE_CAM:
-		m += 11;
-		break;
-	case DET_POSE_CAM_TBL:
-		m += 1;
-		if(!m_bcam_tbl_loaded){
-			cerr << "Estimation using camera parameter table requires the table should be loaded." << endl;
-			return;
-		}
-		break;
-	case DET_POSE:
-		if(!m_bcampar_fixed){
-			cerr << "Estimating only pose requires camera intrinsics to be fixed" << endl;
-			return;
-		}
-		break;
-	}
+int m = pkg.num_models * 6; // rvecs and tvecs (6degree of freedom for each model.)
+switch(m_op){
+case DET_POSE_CAM:
+m += 11;
+break;
+case DET_POSE_CAM_TBL:
+m += 1;
+if(!m_bcam_tbl_loaded){
+cerr << "Estimation using camera parameter table requires the table should be loaded." << endl;
+return;
+}
+break;
+case DET_POSE:
+if(!m_bcampar_fixed){
+cerr << "Estimating only pose requires camera intrinsics to be fixed" << endl;
+return;
+}
+break;
+}
 
-	c_aws_lmdif lm((int)(p2d.size() * 2), m);
-	int info;
-	switch(m_op){
-	case DET_POSE_CAM:
-		info = lm.optimize(prj_pause_and_cam, (void*)&pkg, 1.);
-		m_cam_int.at<double>(0, 0) = lm.x(0);
-		m_cam_int.at<double>(1, 1) = lm.x(1);
-		m_cam_int.at<double>(0, 2) = lm.x(2);
-		m_cam_int.at<double>(1, 2) = lm.x(3);
-		Mat(8, 1, CV_64FC1, (void*) &lm.x(4)).copyTo(m_cam_dist);
-		Mat(3, 1, CV_64FC1, (void*) &lm.x(12)).copyTo(m_rvecs_chsbd[m_cur_chsbd]);
-		Mat(3, 1, CV_64FC1, (void*) &lm.x(15)).copyTo(m_tvecs_chsbd[m_cur_chsbd]);
-		break;
-	case DET_POSE_CAM_TBL:
-		info = lm.optimize(prj_pause_and_cam_with_tbl, (void*)&pkg, 1.);
-		m_cam_int_tbl[(int)(lm.x(0) + 0.5)].copyTo(m_cam_int);
-		m_cam_dist_tbl[(int)(lm.x(0) + 0.5)].copyTo(m_cam_dist);
-		Mat(3, 1, CV_64FC1, (void*) &lm.x(1)).copyTo(m_rvecs_chsbd[m_cur_chsbd]);
-		Mat(3, 1, CV_64FC1, (void*) &lm.x(4)).copyTo(m_tvecs_chsbd[m_cur_chsbd]);
-		break;
-	case DET_POSE:
-		info = lm.optimize(prj_pause, (void*)&pkg, 1.);
-		Mat(3, 1, CV_64FC1, (void*) &lm.x(0)).copyTo(m_rvecs_chsbd[m_cur_chsbd]);
-		Mat(3, 1, CV_64FC1, (void*) &lm.x(3)).copyTo(m_tvecs_chsbd[m_cur_chsbd]);
-		break;
-	}
+c_aws_lmdif lm((int)(p2d.size() * 2), m);
+int info;
+switch(m_op){
+case DET_POSE_CAM:
+info = lm.optimize(prj_pause_and_cam, (void*)&pkg, 1.);
+m_cam_int.at<double>(0, 0) = lm.x(0);
+m_cam_int.at<double>(1, 1) = lm.x(1);
+m_cam_int.at<double>(0, 2) = lm.x(2);
+m_cam_int.at<double>(1, 2) = lm.x(3);
+Mat(8, 1, CV_64FC1, (void*) &lm.x(4)).copyTo(m_cam_dist);
+Mat(3, 1, CV_64FC1, (void*) &lm.x(12)).copyTo(m_rvecs_chsbd[m_cur_chsbd]);
+Mat(3, 1, CV_64FC1, (void*) &lm.x(15)).copyTo(m_tvecs_chsbd[m_cur_chsbd]);
+break;
+case DET_POSE_CAM_TBL:
+info = lm.optimize(prj_pause_and_cam_with_tbl, (void*)&pkg, 1.);
+m_cam_int_tbl[(int)(lm.x(0) + 0.5)].copyTo(m_cam_int);
+m_cam_dist_tbl[(int)(lm.x(0) + 0.5)].copyTo(m_cam_dist);
+Mat(3, 1, CV_64FC1, (void*) &lm.x(1)).copyTo(m_rvecs_chsbd[m_cur_chsbd]);
+Mat(3, 1, CV_64FC1, (void*) &lm.x(4)).copyTo(m_tvecs_chsbd[m_cur_chsbd]);
+break;
+case DET_POSE:
+info = lm.optimize(prj_pause, (void*)&pkg, 1.);
+Mat(3, 1, CV_64FC1, (void*) &lm.x(0)).copyTo(m_rvecs_chsbd[m_cur_chsbd]);
+Mat(3, 1, CV_64FC1, (void*) &lm.x(3)).copyTo(m_tvecs_chsbd[m_cur_chsbd]);
+break;
+}
 
-	if(info < 4 && info > 0)
-		m_bcampar_fixed = true;
+if(info < 4 && info > 0)
+m_bcampar_fixed = true;
 
-	switch(info){
-	case 0:
-		cout << "Improper input parameters" << endl;
-		break;
-	case 1:
-		cout << "Sum of error squares is at most tol" << endl;
-		break;
-	case 2:
-		cout << "Error in solution is at most tol" << endl;
-		break;
-	case 3:
-		cout << "Both sum of error squares and error in solution is at most tol" << endl;
-		break;
-	case 4:
-		cout << "fvec is orthogonal to the column of the Jacobian." << endl;
-		break;
-	case 5:
-		cout << "Number of iterations exceeds " << 200 * (m + 1) << endl; 
-		break;
-	case 6:
-		cout << "Tol is too small for sum of error squares." << endl;
-		break;
-	case 7:
-		cout << "Tol is too small for error in solution." << endl;
-		break;
-	}
+switch(info){
+case 0:
+cout << "Improper input parameters" << endl;
+break;
+case 1:
+cout << "Sum of error squares is at most tol" << endl;
+break;
+case 2:
+cout << "Error in solution is at most tol" << endl;
+break;
+case 3:
+cout << "Both sum of error squares and error in solution is at most tol" << endl;
+break;
+case 4:
+cout << "fvec is orthogonal to the column of the Jacobian." << endl;
+break;
+case 5:
+cout << "Number of iterations exceeds " << 200 * (m + 1) << endl; 
+break;
+case 6:
+cout << "Tol is too small for sum of error squares." << endl;
+break;
+case 7:
+cout << "Tol is too small for error in solution." << endl;
+break;
+}
 
-	// store results
+// store results
 
-	// constants passed as p
-	// camint: 
-	// n : the number of models
-	// m_1, ..., m_n: the number of corresponding points
-	// 2D-3D model points
-	// (x11, y11)-(X11, Y11, Z11), ...., (x1m_1,y1m_1)-(X1m_1, Y1m_1, Z1m_1)
-	// ...
-	// (xn1, yn1)-(Xn1, Yn1, Zn1), ....., (xnm_n, ynm_n)-(Xnm_n, Ynm_n, Znm_n)
+// constants passed as p
+// camint: 
+// n : the number of models
+// m_1, ..., m_n: the number of corresponding points
+// 2D-3D model points
+// (x11, y11)-(X11, Y11, Z11), ...., (x1m_1,y1m_1)-(X1m_1, Y1m_1, Z1m_1)
+// ...
+// (xn1, yn1)-(Xn1, Yn1, Zn1), ....., (xnm_n, ynm_n)-(Xnm_n, Ynm_n, Znm_n)
 
-	// 1. optimize campar and pause
-	// parameters optimized
-	// fx,fy,cx,cy,px,py,k1, ,,, k6, 
-	// rvec_1, tvec_1, rvec2, tvec2, ..., rvec_n, tvec_n
-	// 2. optimize campar and pause using table
-	// parameters optimized
-	// f_pos
-	// rvec_1, tvec_1, rvec2, tvec2, ..., rvec_n, tvec_n
-	// 3. Optimize pause using fixed intrinsic campar
+// 1. optimize campar and pause
+// parameters optimized
+// fx,fy,cx,cy,px,py,k1, ,,, k6, 
+// rvec_1, tvec_1, rvec2, tvec2, ..., rvec_n, tvec_n
+// 2. optimize campar and pause using table
+// parameters optimized
+// f_pos
+// rvec_1, tvec_1, rvec2, tvec2, ..., rvec_n, tvec_n
+// 3. Optimize pause using fixed intrinsic campar
 }
 
 void f_inspector::calibrate(Mat & img_s, long long timg)
 {
-	switch(m_op){
-	case CALIB:
-		if(!m_bcampar_fixed)
-			calibChsbd(img_s);
-		break;
-	case SAVE_CAMPAR:
-		if(!saveCampar())
-			cerr << "Failed to save camera parameter" << endl;
-		m_op = NORMAL;
-		break;
-	case LOAD_CAMPAR:
-		if(!loadCampar())
-			cerr << "Failed to load camera parameter" << endl;
-		m_op = NORMAL;
-		break;
-	case CLEAR_CAMPAR:
-		clearCampar();
-		m_op = NORMAL;
-		break;
-	case DET_POSE:
-	case DET_POSE_CAM:
-	case DET_POSE_CAM_TBL:
-		guessCamparPauseChsbd(timg);
-		guessCamparPauseModel(timg);
-		m_op = NORMAL;
-	}
+switch(m_op){
+case CALIB:
+if(!m_bcampar_fixed)
+calibChsbd(img_s);
+break;
+case SAVE_CAMPAR:
+if(!saveCampar())
+cerr << "Failed to save camera parameter" << endl;
+m_op = NORMAL;
+break;
+case LOAD_CAMPAR:
+if(!loadCampar())
+cerr << "Failed to load camera parameter" << endl;
+m_op = NORMAL;
+break;
+case CLEAR_CAMPAR:
+clearCampar();
+m_op = NORMAL;
+break;
+case DET_POSE:
+case DET_POSE_CAM:
+case DET_POSE_CAM_TBL:
+guessCamparPauseChsbd(timg);
+guessCamparPauseModel(timg);
+m_op = NORMAL;
+}
 }
 
 
 void f_inspector::renderChsbd(long long timg)
 {	
-	D3DXMATRIX Mtrn;
+D3DXMATRIX Mtrn;
 
-	// if chesbord is not there, return without rendering
-	seekChsbdTime(timg);
+// if chesbord is not there, return without rendering
+seekChsbdTime(timg);
 
-	// chess board is found 
-	if(!m_bchsbd_found)
-		return;
+// chess board is found 
+if(!m_bchsbd_found)
+return;
 
-	// the camera parameter is fixed
-	if(!m_bcampar_fixed)
-		return;
+// the camera parameter is fixed
+if(!m_bcampar_fixed)
+return;
 
-	// the chesboard pose is fixed
-	if(m_rvecs_chsbd.size() <= m_cur_chsbd)
-		return;
+// the chesboard pose is fixed
+if(m_rvecs_chsbd.size() <= m_cur_chsbd)
+return;
 
-	//		for(int icb = 0; icb < m_2dchsbd.size(); icb++){
-	int icb = m_cur_chsbd;
-	m_pd3dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);   
-	m_pd3dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);   
-	m_pd3dev->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_POINT);      
-	m_pd3dev->SetRenderState(D3DRS_LIGHTING, false);   
-	m_pd3dev->SetTexture(0, m_ptex_chsbd);
+//		for(int icb = 0; icb < m_2dchsbd.size(); icb++){
+int icb = m_cur_chsbd;
+m_pd3dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);   
+m_pd3dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);   
+m_pd3dev->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_POINT);      
+m_pd3dev->SetRenderState(D3DRS_LIGHTING, false);   
+m_pd3dev->SetTexture(0, m_ptex_chsbd);
 
-	Mat tvec = m_tvecs_chsbd[icb];
-	Mat rmat;
-	Rodrigues(m_rvecs_chsbd[icb], rmat);
-	double * prot = rmat.ptr<double>(0);
-	double * ptvec = tvec.ptr<double>(0);
-	Mtrn(0, 0) = (float) prot[0];
-	Mtrn(1, 0) = (float) prot[1];
-	Mtrn(2, 0) = (float) prot[2];
-	Mtrn(3, 0) = (float) ptvec[0];
+Mat tvec = m_tvecs_chsbd[icb];
+Mat rmat;
+Rodrigues(m_rvecs_chsbd[icb], rmat);
+double * prot = rmat.ptr<double>(0);
+double * ptvec = tvec.ptr<double>(0);
+Mtrn(0, 0) = (float) prot[0];
+Mtrn(1, 0) = (float) prot[1];
+Mtrn(2, 0) = (float) prot[2];
+Mtrn(3, 0) = (float) ptvec[0];
 
-	Mtrn(0, 1) = (float) prot[3];
-	Mtrn(1, 1) = (float) prot[4];
-	Mtrn(2, 1) = (float) prot[5];
-	Mtrn(3, 1) = (float) ptvec[1];
+Mtrn(0, 1) = (float) prot[3];
+Mtrn(1, 1) = (float) prot[4];
+Mtrn(2, 1) = (float) prot[5];
+Mtrn(3, 1) = (float) ptvec[1];
 
-	Mtrn(0, 2) = (float) prot[6];
-	Mtrn(1, 2) = (float) prot[7];
-	Mtrn(2, 2) = (float) prot[8];
-	Mtrn(3, 2) = (float) ptvec[2];
+Mtrn(0, 2) = (float) prot[6];
+Mtrn(1, 2) = (float) prot[7];
+Mtrn(2, 2) = (float) prot[8];
+Mtrn(3, 2) = (float) ptvec[2];
 
-	Mtrn(0, 3) = 0.;
-	Mtrn(1, 3) = 0.;
-	Mtrn(2, 3) = 0.;
-	Mtrn(3, 3) = 1.0;
-	m_pd3dev->SetTransform(D3DTS_WORLD, &Mtrn);
-	m_pmesh_chsbd->DrawSubset(0);
+Mtrn(0, 3) = 0.;
+Mtrn(1, 3) = 0.;
+Mtrn(2, 3) = 0.;
+Mtrn(3, 3) = 1.0;
+m_pd3dev->SetTransform(D3DTS_WORLD, &Mtrn);
+m_pmesh_chsbd->DrawSubset(0);
 }
 
 */
@@ -1725,17 +1767,17 @@ void f_inspector::load_obj()
 {	
 	if(m_name_obj[0] == '\0'){
 		if(m_cur_obj != -1){
-			if(m_obj[m_cur_obj].load(m_obj[m_cur_obj].name, m_timg, m_models)){
+			if(m_objs[m_cur_obj].load(m_objs[m_cur_obj].name, m_timg, m_models)){
 				return;
 			}else{
-				cerr << "No saved object " << m_obj[m_cur_obj].name << " in the frame." << endl;
+				cerr << "No saved object " << m_objs[m_cur_obj].name << " in the frame." << endl;
 			}
 		}
 		return;
 	}
 
-	vector<s_obj>::iterator itr =  m_obj.begin();
-	for(;itr != m_obj.end(); itr++){
+	vector<s_obj>::iterator itr =  m_objs.begin();
+	for(;itr != m_objs.end(); itr++){
 		if(strcmp(itr->name, m_name_obj) == 0){
 			if(itr->load(itr->name, m_timg, m_models)){
 				return;
@@ -1746,10 +1788,10 @@ void f_inspector::load_obj()
 		}
 	}
 
-	m_obj.push_back(s_obj());
-	itr = m_obj.end() - 1;
+	m_objs.push_back(s_obj());
+	itr = m_objs.end() - 1;
 	if(!itr->load(m_name_obj, m_cur_time, m_models)){
-		m_obj.pop_back();
+		m_objs.pop_back();
 	}
 }
 
@@ -1758,14 +1800,14 @@ void f_inspector::save_obj()
 	if(m_cur_obj < 0){
 		return;
 	}
-	m_obj[m_cur_obj].save();
+	m_objs[m_cur_obj].save();
 }
 
 void f_inspector::update_obj()
 {
 	// object time is updated. in the future, point tracking is implemented.
-	for(int i = 0; i < m_obj.size(); i++){
-		m_obj[i].t = m_timg;
+	for(int i = 0; i < m_objs.size(); i++){
+		m_objs[i].t = m_timg;
 	}
 }
 
@@ -1816,7 +1858,7 @@ void f_inspector::render3D(long long timg)
 	m_pd3dev->SetTransform(D3DTS_VIEW, &Mviewcam);
 
 	// rendering chessboard
-//	renderChsbd(timg);
+	//	renderChsbd(timg);
 
 	// rendering 3d mdoel
 	renderModel(timg);
@@ -1830,8 +1872,8 @@ void f_inspector::render(Mat & imgs, long long timg)
 	// Image level rendering
 	/*
 	if(m_bshow_chsbd && m_bchsbd_found){
-		drawChessboardCorners(imgs, m_sz_chsbd, 
-			m_2dchsbd[m_cur_chsbd], m_bchsbd_found);
+	drawChessboardCorners(imgs, m_sz_chsbd, 
+	m_2dchsbd[m_cur_chsbd], m_bchsbd_found);
 	}
 	*/
 
@@ -1913,7 +1955,7 @@ void f_inspector::renderInfo()
 	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (E)->Estimate (C)->Camera", m_str_op[m_op]);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
-	snprintf(information, 1023, "%d Objects %d Models", m_obj.size(), m_models.size());
+	snprintf(information, 1023, "%d Objects %d Models", m_objs.size(), m_models.size());
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 	switch(m_op){
@@ -1929,7 +1971,7 @@ void f_inspector::renderInfo()
 		if(m_cur_obj < 0)
 			snprintf(information, 1023, "Obj[]=NULL");
 		else{
-			s_obj & obj = m_obj[m_cur_obj];
+			s_obj & obj = m_objs[m_cur_obj];
 			snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f rvec=(%f,%f,%f) tvec=(%f,%f,%f)",
 				m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd,
 				obj.rvec.at<double>(0), obj.rvec.at<double>(1), obj.rvec.at<double>(2),
@@ -1940,22 +1982,22 @@ void f_inspector::renderInfo()
 		if(m_cur_obj < 0)
 			snprintf(information, 1023, "Obj[]=NULL");
 		else{
-			s_obj & obj = m_obj[m_cur_obj];
+			s_obj & obj = m_objs[m_cur_obj];
 			if(m_cur_point < 0){
 				snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f", 
-				m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname, obj.match_count, obj.ssd);
+					m_cur_obj, m_objs[m_cur_obj].name, m_objs[m_cur_obj].pmdl->fname, obj.match_count, obj.ssd);
 			}else{
-				Point3f & pt3d = m_obj[m_cur_obj].pmdl->pts[m_cur_point];
-				Point2f & pt2d = m_obj[m_cur_obj].pt2d[m_cur_point];
-				int matched = m_obj[m_cur_obj].visible[m_cur_point];
+				Point3f & pt3d = m_objs[m_cur_obj].pmdl->pts[m_cur_point];
+				Point2f & pt2d = m_objs[m_cur_obj].pt2d[m_cur_point];
+				int matched = m_objs[m_cur_obj].visible[m_cur_point];
 				if(matched){
 					snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->(%f,%f)", 
-						m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname, 
+						m_cur_obj, m_objs[m_cur_obj].name, m_objs[m_cur_obj].pmdl->fname, 
 						obj.match_count, obj.ssd,
 						m_cur_point, pt3d.x, pt3d.y, pt3d.z, pt2d.x, pt2d.y);
 				}else{
 					snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->NULL", 
-						m_cur_obj, m_obj[m_cur_obj].name, m_obj[m_cur_obj].pmdl->fname, 
+						m_cur_obj, m_objs[m_cur_obj].name, m_objs[m_cur_obj].pmdl->fname, 
 						obj.match_count, obj.ssd,
 						m_cur_point, pt3d.x, pt3d.y, pt3d.z);
 				}
@@ -1976,7 +2018,7 @@ void f_inspector::renderInfo()
 		snprintf(information, 1023, "Estimate");
 		break;
 	}
-	
+
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 
 	snprintf(information, 1023, "(%d, %d)", m_mc.x, m_mc.y);
@@ -2003,14 +2045,14 @@ void f_inspector::renderCursor()
 void f_inspector::renderObj()
 {
 	// Drawing object (2d and 3d)
-	for(int iobj = 0; iobj < m_obj.size(); iobj++){
-		s_obj & obj = m_obj[iobj];
+	for(int iobj = 0; iobj < m_objs.size(); iobj++){
+		s_obj & obj = m_objs[iobj];
 		if(m_op == OBJ){
 			if(iobj == m_cur_obj){
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
 					obj.pt2d, obj.visible, iobj, 1);
-				m_obj[iobj].render(
+				m_objs[iobj].render(
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0, m_cur_point);
 			}
@@ -2019,7 +2061,7 @@ void f_inspector::renderObj()
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
 					obj.pt2d, obj.visible, iobj, 1);
-				m_obj[iobj].render(
+				m_objs[iobj].render(
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0, m_cur_point);
 			}
@@ -2027,14 +2069,14 @@ void f_inspector::renderObj()
 			drawPoint2d(m_pd3dev, 
 				NULL, m_pline,
 				obj.pt2d, obj.visible, 0);
-			m_obj[iobj].render(
+			m_objs[iobj].render(
 				m_pd3dev, NULL, m_pline, 
 				iobj, 0);
 		}
 
-		vector<Point2f> & pt2d = m_obj[iobj].pt2d;
-		vector<Point2f> & pt2dprj = m_obj[iobj].pt2dprj;
-		vector<int> & matched = m_obj[iobj].visible;
+		vector<Point2f> & pt2d = m_objs[iobj].pt2d;
+		vector<Point2f> & pt2dprj = m_objs[iobj].pt2dprj;
+		vector<int> & matched = m_objs[iobj].visible;
 		D3DXVECTOR2 v[2];
 		m_pline->Begin();
 		for(int i = 0; i < pt2d.size(); i++){
@@ -2048,7 +2090,7 @@ void f_inspector::renderObj()
 		m_pline->End();
 
 		// render selected axis
-		m_obj[iobj].render_axis(
+		m_objs[iobj].render_axis(
 			m_rvec_cam, m_tvec_cam, m_cam_int, m_cam_dist,
 			m_pd3dev, m_pline, (int) m_axis);
 	}
@@ -2058,7 +2100,7 @@ void f_inspector::renderObj()
 		D3DXVECTOR2 v[2];
 		Point2f pt1 = Point2f((float) (m_mc.x - m_main_offset.x) / m_main_scale, 
 			(float) (m_mc.y - (int) m_ViewPort.Height -m_main_offset.y) / m_main_scale + m_ViewPort.Height);
-		Point2f & pt2 = m_obj[m_cur_obj].pt2dprj[m_cur_point];
+		Point2f & pt2 = m_objs[m_cur_obj].pt2dprj[m_cur_point];
 		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
 		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
 		m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 0, 0, 255));
@@ -2084,7 +2126,7 @@ void f_inspector::renderModel(long long timg)
 
 		// twice the maximum length of the model
 		m_dist_mdl = 2 * m_models[m_cur_model].get_max_dist(); 
-		
+
 		// calculating translation vector
 		m_tvec_mdl = Mat(3, 1, CV_64F);
 		ptr = m_tvec_mdl.ptr<double>();
@@ -2116,7 +2158,7 @@ void f_inspector::renderModel(long long timg)
 
 		// calculating camera translation (set as zero)
 		m_tvec_cam_mdl = Mat::zeros(3, 1, CV_64FC1);
-		
+
 		vector<Point2f> pts;
 		m_models[m_cur_model].proj(pts, m_cam_int_mdl, m_cam_dist_mdl, m_rvec_cam_mdl, m_tvec_cam_mdl, m_rvec_mdl, m_tvec_mdl);
 		render_prjpts(m_models[m_cur_model], pts, m_pd3dev, NULL, m_pline, m_cur_model, 0, -1);	
@@ -2127,21 +2169,21 @@ void f_inspector::renderModel(long long timg)
 void f_inspector::estimate()
 {
 	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
-	for(int i = 0; i < m_obj.size(); i++){
-		s_obj & obj = m_obj[i];
+	for(int i = 0; i < m_objs.size(); i++){
+		s_obj & obj = m_objs[i];
 		cout << "obj[" << i << "].hessian=" << obj.hessian << endl;
 		// accumulating camera intrinsic part of hessians of all objects
-		Hcamint += m_obj[i].hessian(Rect(6, 6, 12, 12));
+		Hcamint += m_objs[i].hessian(Rect(6, 6, 12, 12));
 	}
 	cout << "Hcamint=" << Hcamint << endl;
-	for(int i = 0; i < m_obj.size(); i++){
-		s_obj & obj = m_obj[i];
+	for(int i = 0; i < m_objs.size(); i++){
+		s_obj & obj = m_objs[i];
 		// copy a part of hessian corresponding to the camera intrinsics 
 		Hcamint.copyTo(obj.hessian(Rect(6, 6, 12, 12)));
 	}
 
-	for(int i = 0; i < m_obj.size(); i++){
-		s_obj & obj = m_obj[i];
+	for(int i = 0; i < m_objs.size(); i++){
+		s_obj & obj = m_objs[i];
 		cout << "Accumulated obj[" << i << "].hessian=" << obj.hessian << endl;
 		cout << "Previous params" << endl;
 		cout << "rvec=" << obj.rvec << endl;
@@ -2186,6 +2228,32 @@ void f_inspector::estimate()
 	}
 	cout << "camint=" << m_cam_int << endl;
 	cout << "camdist=" << m_cam_dist << endl;
+}
+
+void f_inspector::estimate_fulltime()
+{
+	// full projection with current camera parameters
+	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+		vector<s_obj> & objs = m_fobjs[ifrm].objs;
+		proj_objs(m_fobjs[ifrm].objs);
+	}
+
+	// accumulating camera intrinsics part of the hessian
+	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
+	acc_Hcamint(Hcamint, m_objs);
+	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+		acc_Hcamint(Hcamint, m_fobjs[ifrm].objs);
+	}
+
+	// copying camera intrinsic part 
+	copy_Hcamint(Hcamint, m_objs);
+	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+		copy_Hcamint(Hcamint, m_fobjs[ifrm].objs);
+	}
+
+	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+		update_params(m_fobjs[ifrm].objs);
+	}	
 }
 
 ///////////////////////////////////////////////////////// message handler
@@ -2269,7 +2337,7 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 
 void f_inspector::assign_point2d()
 {
-	if(m_obj.size() == 0)
+	if(m_objs.size() == 0)
 		return;
 
 	if(m_cur_point < 0)
@@ -2282,8 +2350,8 @@ void f_inspector::assign_point2d()
 	pt.y *= (float) iscale;
 	pt.y += (float) m_ViewPort.Height;
 
-	m_obj[m_cur_obj].pt2d[m_cur_point] = pt;
-	m_obj[m_cur_obj].visible[m_cur_point] = 1;
+	m_objs[m_cur_obj].pt2d[m_cur_point] = pt;
+	m_objs[m_cur_obj].visible[m_cur_point] = 1;
 }
 
 void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
@@ -2383,7 +2451,7 @@ void f_inspector::translate_obj(short delta)
 		break;
 	}
 
-	m_obj[m_cur_obj].tvec += tvec;
+	m_objs[m_cur_obj].tvec += tvec;
 }
 
 void f_inspector::rotate_obj(short delta)
@@ -2406,10 +2474,10 @@ void f_inspector::rotate_obj(short delta)
 		break;
 	}
 	Mat R1, R2;
-	Rodrigues(m_obj[m_cur_obj].rvec, R1);
+	Rodrigues(m_objs[m_cur_obj].rvec, R1);
 	Rodrigues(rvec, R2);
 	Mat R = R2 * R1;
-	Rodrigues(R, m_obj[m_cur_obj].rvec);
+	Rodrigues(R, m_objs[m_cur_obj].rvec);
 }
 
 void f_inspector::translate_cam(short delta)
@@ -2492,15 +2560,15 @@ void f_inspector::handle_sop_delete(){
 	case OBJ:
 		// delete current object
 		if(m_cur_obj >= 0){
-			vector<s_obj>::iterator itr = m_obj.begin() + m_cur_obj;
-			m_obj.erase(itr);
+			vector<s_obj>::iterator itr = m_objs.begin() + m_cur_obj;
+			m_objs.erase(itr);
 			m_cur_obj = -1;
 		}
 		break;
 	case POINT:
 		//reset current point
 		if(m_cur_obj >= 0 && m_cur_point >= 0){
-			s_obj & obj = m_obj[m_cur_obj];
+			s_obj & obj = m_objs[m_cur_obj];
 			if(m_cur_point < obj.get_num_points())
 				obj.visible[m_cur_point] = 0;
 		}
@@ -2519,16 +2587,16 @@ void f_inspector::handle_vk_left()
 		{
 			m_cur_obj = m_cur_obj - 1;
 			if(m_cur_obj < 0){
-				m_cur_obj += (int) m_obj.size();
+				m_cur_obj += (int) m_objs.size();
 			}
 			// the current object point index is initialized
-			m_cur_point = m_obj[m_cur_obj].get_num_points() - 1;
+			m_cur_point = m_objs[m_cur_obj].get_num_points() - 1;
 		}
 		break;
 	case POINT: // decrement current object point. 3d-object point is also. 
 		m_cur_point = m_cur_point  - 1;
 		if(m_cur_point < 0){
-			m_cur_point += (int) m_obj[m_cur_obj].get_num_points();
+			m_cur_point += (int) m_objs[m_cur_obj].get_num_points();
 		}
 
 		break;
@@ -2549,13 +2617,13 @@ void f_inspector::handle_vk_right()
 	case OBJ:
 		{
 			m_cur_obj = m_cur_obj + 1;
-			m_cur_obj %= (int) m_obj.size();
-			m_cur_point = m_obj[m_cur_obj].get_num_points() - 1;
+			m_cur_obj %= (int) m_objs.size();
+			m_cur_point = m_objs[m_cur_obj].get_num_points() - 1;
 		}
 		break;
 	case POINT: // increment the current object point index. The 3d-object point index as well.
 		m_cur_point = m_cur_point + 1;
-		m_cur_point %= (int) m_obj[m_cur_obj].get_num_points();
+		m_cur_point %= (int) m_objs[m_cur_obj].get_num_points();
 		break;
 	case MODEL: // increment the current model index.
 		m_cur_model = m_cur_model + 1;
@@ -2620,11 +2688,11 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 
 			double width =(double) m_maincam.get_surface_width();
 			double height = (double) m_maincam.get_surface_height();
-			m_obj.push_back(s_obj());
-			m_cur_obj = (int) m_obj.size() - 1;
+			m_objs.push_back(s_obj());
+			m_cur_obj = (int) m_objs.size() - 1;
 			m_cur_point = 0;
-			if(!m_obj[m_cur_obj].init(&m_models[m_cur_model], m_timg, m_cam_int, m_cam_dist, width, height)){
-				m_obj.pop_back();
+			if(!m_objs[m_cur_obj].init(&m_models[m_cur_model], m_timg, m_cam_int, m_cam_dist, width, height)){
+				m_objs.pop_back();
 				cerr << "Failed to create an instance of model " << m_models[m_cur_model].name << endl;		
 			}else{
 				m_op = OBJ;
