@@ -1725,14 +1725,10 @@ void f_inspector::load_obj()
 {	
 	if(m_name_obj[0] == '\0'){
 		if(m_cur_obj != -1){
-			if(m_obj[m_cur_obj].t == m_timg)
+			if(m_obj[m_cur_obj].load(m_obj[m_cur_obj].name, m_timg, m_models)){
 				return;
-			else{
-				if(m_obj[m_cur_obj].load(m_obj[m_cur_obj].name, m_timg, m_models)){
-					return;
-				}else{
-					cerr << "No saved object " << m_obj[m_cur_obj].name << " in the frame." << endl;
-				}
+			}else{
+				cerr << "No saved object " << m_obj[m_cur_obj].name << " in the frame." << endl;
 			}
 		}
 		return;
@@ -2150,23 +2146,43 @@ void f_inspector::estimate()
 		cout << "Previous params" << endl;
 		cout << "rvec=" << obj.rvec << endl;
 		cout << "tvec=" << obj.tvec << endl;
-		Mat Hinv;
+		Mat Hinv, eigenval, eigenvec;
+		double det = determinant(obj.hessian);
+		eigen(obj.hessian, eigenval, eigenvec);
+		cout << "eigenval=" << eigenval << endl;
+		//cout << "eigenvec=" << eigenvec << endl;
+		cout << "detH=" << det << endl;
 		invert(obj.hessian, Hinv, DECOMP_CHOLESKY);
 		cout << "Hinv=" << Hinv << endl;
 		cout << "Err=" << obj.err << endl;
 		Mat Grad = obj.jacobian.t() * obj.err;;
 		cout << "Grad=" << Grad << endl;
 		obj.dp = Hinv * Grad;
-		obj.rvec += obj.dp(Rect(0, 0, 1, 3));
-		obj.tvec += obj.dp(Rect(0, 3, 1, 3));
+		double * ptr_dp = obj.dp.ptr<double>(0);
+		double * ptr; 
+		ptr = obj.rvec.ptr<double>(0);
+		ptr[0] += ptr_dp[0]; // rx
+		ptr[1] += ptr_dp[1]; // ry
+		ptr[2] += ptr_dp[2]; // rz
+		ptr = obj.tvec.ptr<double>(0);
+		ptr[0] += ptr_dp[3]; // tx
+		ptr[1] += ptr_dp[4]; // ty
+		ptr[2] += ptr_dp[5]; // tz
+		ptr = m_cam_int.ptr<double>(0);
+		ptr[0] += ptr_dp[6]; // fx
+		ptr[2] += ptr_dp[8]; // cx
+		ptr[4] += ptr_dp[7]; // fy
+		ptr[5] += ptr_dp[9]; // cy
+		// Updating distortion parameters
+		ptr = m_cam_dist.ptr<double>(0);
+		ptr_dp += 10;
+		for(int i = 0; i < 8; i++, ptr++, ptr_dp++){
+			*ptr += *ptr_dp;
+		}
+
 		cout << "New params" << endl;
 		cout << "rvec=" << obj.rvec << endl;
 		cout << "tvec=" << obj.tvec << endl;
-		m_cam_int.at<double>(0, 0) += obj.dp.at<double>(6);
-		m_cam_int.at<double>(1, 1) += obj.dp.at<double>(7);
-		m_cam_int.at<double>(0, 2) += obj.dp.at<double>(8);
-		m_cam_int.at<double>(1, 2) += obj.dp.at<double>(9);
-		m_cam_dist += obj.dp(Rect(10, 0, 8, 1));
 	}
 	cout << "camint=" << m_cam_int << endl;
 	cout << "camdist=" << m_cam_dist << endl;
@@ -2607,7 +2623,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			m_obj.push_back(s_obj());
 			m_cur_obj = (int) m_obj.size() - 1;
 			m_cur_point = 0;
-			if(!m_obj[m_cur_obj].init(&m_models[m_cur_model], m_cur_time, m_cam_int, m_cam_dist, width, height)){
+			if(!m_obj[m_cur_obj].init(&m_models[m_cur_model], m_timg, m_cam_int, m_cam_dist, width, height)){
 				m_obj.pop_back();
 				cerr << "Failed to create an instance of model " << m_models[m_cur_model].name << endl;		
 			}else{
