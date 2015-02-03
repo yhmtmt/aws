@@ -157,12 +157,12 @@ struct s_obj
 
 	double calc_ssd(){
 		ssd = 0;
-		err = Mat::zeros((int) visible.size(), 2, CV_64FC1);
+		err = Mat::zeros((int) visible.size() * 2, 1, CV_64FC1);
 		double * ptr = err.ptr<double>(0);
 		for(int i = 0; i < visible.size(); i++){
-			ptr[0] = pt2d[i].x - pt2dprj[i].x;
-			ptr[1] = pt2d[i].y - pt2dprj[i].y;
-			ssd += (double) visible[i] * (ptr[0] * ptr[0] + ptr[1] * ptr[1]);
+			ptr[0] = (double) visible[i] * (pt2d[i].x - pt2dprj[i].x);
+			ptr[1] = (double) visible[i] * (pt2d[i].y - pt2dprj[i].y);
+			ssd += (ptr[0] * ptr[0] + ptr[1] * ptr[1]);
 		}
 		return ssd;
 	}

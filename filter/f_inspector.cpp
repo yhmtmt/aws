@@ -627,7 +627,7 @@ bool s_obj::save()
 void s_obj::proj(Mat & camint, Mat & camdist)
 {
 	projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian);
-	mulTransposed(jacobian, hessian, false);
+	mulTransposed(jacobian, hessian, true);
 	calc_ssd();
 	calc_num_matched_points();
 }
@@ -890,6 +890,10 @@ bool f_inspector::proc()
 		m_obj[i].proj(m_cam_int, m_cam_dist);
 	}
 
+	// estimate
+	if(m_op == ESTIMATE){
+		estimate();
+	}
 	// input source is not ready. but it tends to happen usually.
 	if(img.empty())
 		return true;
@@ -1840,7 +1844,6 @@ void f_inspector::render(Mat & imgs, long long timg)
 	}
 
 	////////////////////// Direct 3D based renderer //////////////////
-
 	m_pd3dev->BeginScene();
 
 	//////////////////// clear back buffer ///////////////////////////
@@ -2011,13 +2014,6 @@ void f_inspector::renderObj()
 				m_obj[iobj].render(
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0, m_cur_point);
-			}else{
-				drawPoint2d(m_pd3dev, 
-					NULL, m_pline,
-					obj.pt2d, obj.visible, 0);
-				m_obj[iobj].render(
-					m_pd3dev, NULL, m_pline, 
-					iobj, 0);
 			}
 		}else if(m_op == POINT){
 			if(iobj == m_cur_obj){
@@ -2028,6 +2024,13 @@ void f_inspector::renderObj()
 					m_pd3dev, NULL, m_pline, 
 					iobj, 0, m_cur_point);
 			}
+		}else{
+			drawPoint2d(m_pd3dev, 
+				NULL, m_pline,
+				obj.pt2d, obj.visible, 0);
+			m_obj[iobj].render(
+				m_pd3dev, NULL, m_pline, 
+				iobj, 0);
 		}
 
 		vector<Point2f> & pt2d = m_obj[iobj].pt2d;
@@ -2127,26 +2130,42 @@ void f_inspector::estimate()
 	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
 	for(int i = 0; i < m_obj.size(); i++){
 		s_obj & obj = m_obj[i];
+		cout << "obj[" << i << "].hessian=" << obj.hessian << endl;
 		// accumulating camera intrinsic part of hessians of all objects
 		Hcamint += m_obj[i].hessian(Rect(6, 6, 12, 12));
 	}
-
+	cout << "Hcamint=" << Hcamint << endl;
 	for(int i = 0; i < m_obj.size(); i++){
 		s_obj & obj = m_obj[i];
-		Hcamint.copyTo(m_obj[i].hessian(Rect(6, 6, 12, 12)));
+		// copy a part of hessian corresponding to the camera intrinsics 
+		Hcamint.copyTo(obj.hessian(Rect(6, 6, 12, 12)));
 	}
 
 	for(int i = 0; i < m_obj.size(); i++){
 		s_obj & obj = m_obj[i];
-		m_obj[i].dp = m_obj[i].hessian.inv() * m_obj[i].jacobian.t() * m_obj[i].err;
-		m_obj[i].rvec += m_obj[i].dp(Rect(0, 0, 1, 3));
-		m_obj[i].tvec += m_obj[i].dp(Rect(0, 3, 1, 3));
-		m_cam_int.at<double>(0, 0) += m_obj[i].dp.at<double>(6);
-		m_cam_int.at<double>(1, 1) += m_obj[i].dp.at<double>(7);
-		m_cam_int.at<double>(0, 2) += m_obj[i].dp.at<double>(8);
-		m_cam_int.at<double>(1, 2) += m_obj[i].dp.at<double>(9);
-		m_cam_dist += m_obj[i].dp(Rect(0, 10, 0, 8));
+		cout << "Accumulated obj[" << i << "].hessian=" << obj.hessian << endl;
+		cout << "Previous params" << endl;
+		cout << "rvec=" << obj.rvec << endl;
+		cout << "tvec=" << obj.tvec << endl;
+		Mat Hinv = obj.hessian.inv(DECOMP_CHOLESKY);
+		cout << "Hinv=" << Hinv << endl;
+		cout << "Err=" << obj.err << endl;
+		Mat Grad = obj.jacobian.t() * obj.err;;
+		cout << "Grad=" << Grad << endl;
+		obj.dp = Hinv * Grad;
+		obj.rvec += obj.dp(Rect(0, 0, 1, 3));
+		obj.tvec += obj.dp(Rect(0, 3, 1, 3));
+		cout << "New params" << endl;
+		cout << "rvec=" << obj.rvec << endl;
+		cout << "tvec=" << obj.tvec << endl;
+		m_cam_int.at<double>(0, 0) += obj.dp.at<double>(6);
+		m_cam_int.at<double>(1, 1) += obj.dp.at<double>(7);
+		m_cam_int.at<double>(0, 2) += obj.dp.at<double>(8);
+		m_cam_int.at<double>(1, 2) += obj.dp.at<double>(9);
+		m_cam_dist += obj.dp(Rect(0, 10, 1, 8));
 	}
+	cout << "camint=" << m_cam_int << endl;
+	cout << "camdist=" << m_cam_dist << endl;
 }
 
 ///////////////////////////////////////////////////////// message handler
@@ -2367,15 +2386,10 @@ void f_inspector::rotate_obj(short delta)
 		break;
 	}
 	Mat R1, R2;
-	cout << m_obj[m_cur_obj].rvec << endl;
 	Rodrigues(m_obj[m_cur_obj].rvec, R1);
 	Rodrigues(rvec, R2);
-	cout << R1 << endl;
-	cout << R2 << endl;
 	Mat R = R2 * R1;
-	cout << R << endl;
 	Rodrigues(R, m_obj[m_cur_obj].rvec);
-	cout << m_obj[m_cur_obj].rvec << endl;
 }
 
 void f_inspector::translate_cam(short delta)
