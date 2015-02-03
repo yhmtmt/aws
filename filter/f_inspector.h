@@ -159,7 +159,7 @@ struct s_obj
 		ssd = 0;
 		err = Mat::zeros((int) visible.size() * 2, 1, CV_64FC1);
 		double * ptr = err.ptr<double>(0);
-		for(int i = 0; i < visible.size(); i++){
+		for(int i = 0; i < visible.size(); i++, ptr+=2){
 			ptr[0] = (double) visible[i] * (pt2d[i].x - pt2dprj[i].x);
 			ptr[1] = (double) visible[i] * (pt2d[i].y - pt2dprj[i].y);
 			ssd += (ptr[0] * ptr[0] + ptr[1] * ptr[1]);
@@ -251,6 +251,13 @@ private:
 		MODEL, OBJ, POINT, CAMERA, ESTIMATE
 	};
 
+	enum e_sub_operation{
+		SOP_NULL, SOP_DELETE
+	};
+
+	void handle_sop_delete();
+
+	e_sub_operation m_sop;
 	static const char * m_str_op[ESTIMATE+1]; 
 	e_operation m_op;
 

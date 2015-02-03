@@ -726,8 +726,7 @@ const char * f_inspector::m_axis_str[AX_Z + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_bundistort(false), 
-	m_bpttrack(false),/* m_bcbtrack(false), m_bchsbd_found(false),
+	m_sh(1.0), m_sv(1.0), m_bundistort(false), m_bpttrack(false),/* m_bcbtrack(false), m_bchsbd_found(false),
 	m_sz_chsbd(6, 9), m_pitch_chsbd(0.0254f), m_bshow_chsbd(false),
 	m_num_chsbds_calib(120),*/
 	m_bpose_fixed(true), m_bcampar_fixed(true), m_bcam_tbl_loaded(false),
@@ -741,7 +740,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_rational_model(false),
 	m_badd_model(false),
 	m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1),
-	m_op(OBJ),
+	m_op(OBJ), m_sop(SOP_NULL),
 	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
 	m_mm(MM_NORMAL), m_axis(AX_X), m_rot_step(1.0), m_trn_step(1.0), m_zoom_step(1.1),
 	m_main_offset(0, 0), m_main_scale(1.0),
@@ -883,6 +882,10 @@ bool f_inspector::proc()
 	}else{
 		timg = m_timg;
 		img = m_img;
+	}
+
+	if(m_sop == SOP_DELETE){
+		handle_sop_delete();
 	}
 
 	// projection 
@@ -2147,7 +2150,8 @@ void f_inspector::estimate()
 		cout << "Previous params" << endl;
 		cout << "rvec=" << obj.rvec << endl;
 		cout << "tvec=" << obj.tvec << endl;
-		Mat Hinv = obj.hessian.inv(DECOMP_CHOLESKY);
+		Mat Hinv;
+		invert(obj.hessian, Hinv, DECOMP_CHOLESKY);
 		cout << "Hinv=" << Hinv << endl;
 		cout << "Err=" << obj.err << endl;
 		Mat Grad = obj.jacobian.t() * obj.err;;
@@ -2162,7 +2166,7 @@ void f_inspector::estimate()
 		m_cam_int.at<double>(1, 1) += obj.dp.at<double>(7);
 		m_cam_int.at<double>(0, 2) += obj.dp.at<double>(8);
 		m_cam_int.at<double>(1, 2) += obj.dp.at<double>(9);
-		m_cam_dist += obj.dp(Rect(0, 10, 1, 8));
+		m_cam_dist += obj.dp(Rect(10, 0, 8, 1));
 	}
 	cout << "camint=" << m_cam_int << endl;
 	cout << "camdist=" << m_cam_dist << endl;
@@ -2447,33 +2451,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 {
 	switch(wParam){
 	case VK_DELETE:
-		switch(m_op){
-		case MODEL:
-			// delete current Model
-			if(m_cur_model >= 0){
-				vector<s_model>::iterator itr = m_models.begin() + m_cur_model;
-				m_models.erase(itr);
-			}
-			break;
-		case OBJ:
-			// delete current object
-			if(m_cur_obj >= 0){
-				vector<s_obj>::iterator itr = m_obj.begin() + m_cur_obj;
-				m_obj.erase(itr);
-			}
-			break;
-		case POINT:
-			//reset current point
-			if(m_cur_obj >= 0 && m_cur_point >= 0){
-				s_obj & obj = m_obj[m_cur_obj];
-				if(m_cur_point < obj.get_num_points())
-					obj.visible[m_cur_point] = 0;
-			}
-			break;
-		case CAMERA:
-			// delete current camera parameter
-			break;
-		}
+		m_sop = SOP_DELETE;
 		break;
 	case VK_LEFT:
 		handle_vk_left();
@@ -2484,6 +2462,38 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 	default:
 		break;
 	}
+}
+
+void f_inspector::handle_sop_delete(){
+	switch(m_op){
+	case MODEL:
+		// delete current Model
+		if(m_cur_model >= 0){
+			vector<s_model>::iterator itr = m_models.begin() + m_cur_model;
+			m_models.erase(itr);
+		}
+		break;
+	case OBJ:
+		// delete current object
+		if(m_cur_obj >= 0){
+			vector<s_obj>::iterator itr = m_obj.begin() + m_cur_obj;
+			m_obj.erase(itr);
+			m_cur_obj = -1;
+		}
+		break;
+	case POINT:
+		//reset current point
+		if(m_cur_obj >= 0 && m_cur_point >= 0){
+			s_obj & obj = m_obj[m_cur_obj];
+			if(m_cur_point < obj.get_num_points())
+				obj.visible[m_cur_point] = 0;
+		}
+		break;
+	case CAMERA:
+		// delete current camera parameter
+		break;
+	}
+	m_sop = SOP_NULL;
 }
 
 void f_inspector::handle_vk_left()
