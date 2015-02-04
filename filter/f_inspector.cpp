@@ -913,14 +913,15 @@ bool f_inspector::proc()
 			//			m_bchsbd_found = false;
 			m_bpose_fixed = false;
 			// auto save camera parameter and objects
-			saveCampar();
-			for(int i = 0; i < m_objs.size(); i++)
-				m_objs[i].save();
-			m_fobjs.push_back(s_frame_obj());
-			int iend = (int) m_fobjs.size() - 1;
-
-			// save frame objects
-			m_fobjs[iend].init(m_timg, m_objs, m_cam_int, m_cam_dist);
+			if(m_timg > 0){
+				saveCampar();
+				for(int i = 0; i < m_objs.size(); i++)
+					m_objs[i].save();
+				m_fobjs.push_back(s_frame_obj());
+				int iend = (int) m_fobjs.size() - 1;
+				// save frame objects
+				m_fobjs[iend].init(m_timg, m_objs, m_cam_int, m_cam_dist);
+			}
 
 			// update time and image.
 			m_timg = timg;
@@ -941,8 +942,16 @@ bool f_inspector::proc()
 		img = m_img;
 	}
 
-	if(m_sop == SOP_DELETE){
+	switch(m_sop){
+	case SOP_LOAD:
+		handle_sop_load();
+		break;
+	case SOP_SAVE:
+		handle_sop_save();
+		break;
+	case SOP_DELETE:
 		handle_sop_delete();
+		break;
 	}
 
 	// projection 
@@ -2507,7 +2516,7 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 void f_inspector::zoom_screen(short delta)
 {
 	short step = delta / WHEEL_DELTA;
-	float scale = (float) pow(m_zoom_step, (double) step);
+	float scale = (float) pow(1.1, (double) step);
 	m_main_scale *=  scale;
 	float x, y;
 	x = (float)(m_main_offset.x - m_mc.x) * scale;
@@ -2633,38 +2642,6 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 	}
 }
 
-void f_inspector::handle_sop_delete(){
-	switch(m_op){
-	case MODEL:
-		// delete current Model
-		if(m_cur_model >= 0){
-			vector<s_model>::iterator itr = m_models.begin() + m_cur_model;
-			m_models.erase(itr);
-		}
-		break;
-	case OBJ:
-		// delete current object
-		if(m_cur_obj >= 0){
-			vector<s_obj>::iterator itr = m_objs.begin() + m_cur_obj;
-			m_objs.erase(itr);
-			m_cur_obj = -1;
-		}
-		break;
-	case POINT:
-		//reset current point
-		if(m_cur_obj >= 0 && m_cur_point >= 0){
-			s_obj & obj = m_objs[m_cur_obj];
-			if(m_cur_point < obj.get_num_points())
-				obj.visible[m_cur_point] = 0;
-		}
-		break;
-	case CAMERA:
-		// delete current camera parameter
-		break;
-	}
-	m_sop = SOP_NULL;
-}
-
 void f_inspector::handle_vk_left()
 {
 	switch(m_op){
@@ -2727,31 +2704,10 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		m_main_scale = 1.0;
 		break;
 	case 'L':
-		switch(m_op){
-		case MODEL:
-			load_model();
-			break;
-		case OBJ:
-		case POINT:
-			load_obj();
-			break;
-		case CAMERA:
-			loadCampar();
-			//load camera intrinsics
-			break;
-		}
+		m_sop = SOP_LOAD;
 		break;
 	case 'S':
-		switch(m_op){
-		case OBJ:
-		case POINT:
-			save_obj();
-			break;
-		case CAMERA:
-			saveCampar();
-			//load camera intrinsics
-			break;
-		}
+		m_sop = SOP_SAVE;
 		break;
 	case 'O': /* O key */ 
 		m_op = OBJ;
@@ -2813,4 +2769,71 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	default:
 		break;
 	}
+}
+
+
+void f_inspector::handle_sop_delete(){
+	switch(m_op){
+	case MODEL:
+		// delete current Model
+		if(m_cur_model >= 0){
+			vector<s_model>::iterator itr = m_models.begin() + m_cur_model;
+			m_models.erase(itr);
+			m_cur_model = m_models.size() - 1;
+		}
+		break;
+	case OBJ:
+		// delete current object
+		if(m_cur_obj >= 0){
+			vector<s_obj>::iterator itr = m_objs.begin() + m_cur_obj;
+			m_objs.erase(itr);
+			m_cur_obj = m_objs.size() - 1;
+		}
+		break;
+	case POINT:
+		//reset current point
+		if(m_cur_obj >= 0 && m_cur_point >= 0){
+			s_obj & obj = m_objs[m_cur_obj];
+			if(m_cur_point < obj.get_num_points())
+				obj.visible[m_cur_point] = 0;
+		}
+		break;
+	case CAMERA:
+		// delete current camera parameter
+		break;
+	}
+	m_sop = SOP_NULL;
+}
+
+void f_inspector::handle_sop_save()
+{
+	switch(m_op){
+	case OBJ:
+	case POINT:
+		save_obj();
+		break;
+	case CAMERA:
+		saveCampar();
+		//load camera intrinsics
+		break;
+	}	
+	m_sop = SOP_NULL;
+}
+
+void f_inspector::handle_sop_load()
+{
+	switch(m_op){
+	case MODEL:
+		load_model();
+		break;
+	case OBJ:
+	case POINT:
+		load_obj();
+		break;
+	case CAMERA:
+		loadCampar();
+		//load camera intrinsics
+		break;
+	}
+	m_sop = SOP_NULL;
 }

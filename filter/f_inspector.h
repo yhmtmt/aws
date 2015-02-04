@@ -274,10 +274,12 @@ private:
 	};
 
 	enum e_sub_operation{
-		SOP_NULL, SOP_DELETE
+		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_DELETE
 	};
 
 	void handle_sop_delete();
+	void handle_sop_save();
+	void handle_sop_load();
 
 	e_sub_operation m_sop;
 	static const char * m_str_op[ESTIMATE+1]; 
