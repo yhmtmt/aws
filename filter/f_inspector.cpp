@@ -776,6 +776,10 @@ const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
 };
 
+const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
+	"fx", "fy", "cx", "cy", "k1", "k2", "c1", "c2", "k3", "k4", "k5", "k6"
+};
+
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_bundistort(false), m_bpttrack(false),
 	/* m_bcbtrack(false), m_bchsbd_found(false),
@@ -789,7 +793,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_zero_tangent_dist(true),
 	m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true),
-	m_bcalib_rational_model(false),
+	m_bcalib_rational_model(false), m_cur_campar(0),
 	m_badd_model(false), m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1),
 	m_op(OBJ), m_sop(SOP_NULL),
 	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
@@ -845,6 +849,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("k4", m_cam_dist.ptr<double>(0) + 5, "Radial distortion coefficient k4.");
 	register_fpar("k5", m_cam_dist.ptr<double>(0) + 6, "Radial distortion coefficient k5.");
 	register_fpar("k6", m_cam_dist.ptr<double>(0) + 7, "Radial distortion coefficient k6.");
+	register_fpar("campar", &m_cur_campar, ECP_K6+1, m_str_campar, "Current camera parameter selected.");
 	register_fpar("erep", &m_erep, "Reprojection error.");
 
 	register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Use intrinsic guess.");
@@ -2038,6 +2043,10 @@ void f_inspector::renderInfo()
 			(float)m_cam_dist.at<double>(0, 2), (float)m_cam_dist.at<double>(0, 3), 
 			(float)m_cam_dist.at<double>(0, 4), (float)m_cam_dist.at<double>(0, 5), 
 			(float)m_cam_dist.at<double>(0, 6), (float)m_cam_dist.at<double>(0, 7));
+			m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+			y += 20;
+		snprintf(information, 1023, "Current Parameter %s J=%f", 
+			m_str_campar[m_cur_campar], m_jcam_max.at<double>(m_cur_campar));
 		break;
 	case ESTIMATE:
 		snprintf(information, 1023, "Estimate");
@@ -2337,14 +2346,14 @@ void f_inspector::update_params(vector<s_obj> & objs){
 }
 
 void f_inspector::calc_jcam_max(){
-	jcam_max = Mat::zeros(1, 12, CV_64FC1);
+	m_jcam_max = Mat::zeros(1, 12, CV_64FC1);
 	double * ptr_max, * ptr;
-	ptr_max = jcam_max.ptr<double>(0);
 	for(int iobj = 0; iobj < m_objs.size(); iobj++){
 		s_obj & obj = m_objs[iobj];
 		Mat & jmax = obj.jmax;
 		ptr = jmax.ptr<double>(0) + 6;
-		for(int i = 0; i < 12; i++){
+		ptr_max = m_jcam_max.ptr<double>(0);
+		for(int i = 0; i < 12; i++, ptr++, ptr_max++){
 			*ptr_max = max(*ptr_max, *ptr);
 		}
 	}
@@ -2620,11 +2629,34 @@ void f_inspector::rotate_cam(short delta)
 void f_inspector::zoom_cam(short delta)
 {
 	short step = delta / WHEEL_DELTA;
-
+	double * ptr = m_jcam_max.ptr<double>(0);
 	//float scale = (float) pow(m_zoom_step, (double) step);
-	double * ptr = jcam_max.ptr<double>(0);
-	m_cam_int.at<double>(0, 0) += m_adj_step * step / ptr[0];
-	m_cam_int.at<double>(1, 1) += m_adj_step * step / ptr[0];
+	switch(m_cur_campar){
+	case ECP_FX:
+	case ECP_FY:
+		m_cam_int.at<double>(0, 0) += m_adj_step * step / ptr[m_cur_campar];
+		m_cam_int.at<double>(1, 1) += m_adj_step * step / ptr[m_cur_campar];
+		break;
+	case ECP_CX:
+		m_cam_int.at<double>(0, 2) += m_adj_step * step / ptr[m_cur_campar];
+		break;
+	case ECP_CY:
+		m_cam_int.at<double>(1, 2) += m_adj_step * step / ptr[m_cur_campar];
+		break;
+	case ECP_K1:
+	case ECP_K2:
+	case ECP_P1:
+	case ECP_P2:
+	case ECP_K3:
+	case ECP_K4:
+	case ECP_K5:
+	case ECP_K6:
+		{
+			double * ptr_dist = m_cam_dist.ptr<double>(0);
+			ptr_dist[m_cur_campar - ECP_K1] += m_adj_step * step / ptr[m_cur_campar];
+		}
+		break;
+	}
 }
 
 void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
@@ -2689,6 +2721,10 @@ void f_inspector::handle_vk_left()
 		}
 		break;
 	case CAMERA:
+		m_cur_campar = m_cur_campar - 1;
+		if(m_cur_campar < 0){
+			m_cur_campar = ECP_K6;
+		}
 		break;
 	}
 }
@@ -2712,6 +2748,8 @@ void f_inspector::handle_vk_right()
 		m_cur_model %= (int) m_models.size();
 		break;
 	case CAMERA:
+		m_cur_campar = m_cur_campar + 1;
+		m_cur_campar %= (ECP_K6 + 1);
 		break;
 	}
 }
@@ -2783,6 +2821,8 @@ void f_inspector::handle_sop_delete(){
 		// delete current Model
 		if(m_cur_model >= 0){
 			vector<s_model>::iterator itr = m_models.begin() + m_cur_model;
+			if(itr->ref > 0)
+				break;
 			m_models.erase(itr);
 			m_cur_model = (int) m_models.size() - 1;
 		}
@@ -2791,6 +2831,7 @@ void f_inspector::handle_sop_delete(){
 		// delete current object
 		if(m_cur_obj >= 0){
 			vector<s_obj>::iterator itr = m_objs.begin() + m_cur_obj;
+			itr->pmdl->ref--;
 			m_objs.erase(itr);
 			m_cur_obj = (int) m_objs.size() - 1;
 		}

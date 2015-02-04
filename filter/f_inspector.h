@@ -388,7 +388,7 @@ private:
 	Mat m_rvec_cam, m_tvec_cam; // Extrinsic camera parameter.
 
 	double m_erep;		// reprojection error of last current camera parameter.
-	Mat jcam_max;
+	Mat m_jcam_max;
 	void calc_jcam_max();
 
 	// master camera parameter (increasing order in f_x)
@@ -397,6 +397,13 @@ private:
 	vector<Mat> m_cam_dist_tbl;
 	vector<double> m_cam_erep;
 	
+	enum e_campar{
+		ECP_FX = 0, ECP_FY, ECP_CX, ECP_CY, ECP_K1, ECP_K2, ECP_P1, ECP_P2, ECP_K3, ECP_K4, ECP_K5, ECP_K6
+	};
+
+	static const char * m_str_campar[ECP_K6+1];
+	int m_cur_campar;
+
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
 	bool m_bcalib_use_intrinsic_guess;
 	bool m_bcalib_fix_principal_point;
