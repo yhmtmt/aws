@@ -689,25 +689,25 @@ void s_obj::render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam
 	// x axis
 	v[1] = D3DXVECTOR2(p2d[1].x, p2d[1].y);
 	if(axis == 0)
-		color = D3DCOLOR_RGBA(255, 0, 0, arpha);
-	else
 		color = D3DCOLOR_RGBA(255, 0, 0, 255);
+	else
+		color = D3DCOLOR_RGBA(255, 0, 0, arpha);
 	pline->Draw(v, 2, color);
 
 	// y axis
 	v[1] = D3DXVECTOR2(p2d[2].x, p2d[2].y);
 	if(axis == 1)
-		color = D3DCOLOR_RGBA(0, 255, 0, arpha);
-	else
 		color = D3DCOLOR_RGBA(0, 255, 0, 255);
+	else
+		color = D3DCOLOR_RGBA(0, 255, 0, arpha);
 	pline->Draw(v, 2, color);
 
 	// z axis
 	v[1] = D3DXVECTOR2(p2d[3].x, p2d[3].y);
 	if(axis == 2)
-		color = D3DCOLOR_RGBA(0, 0, 255, arpha);
-	else
 		color = D3DCOLOR_RGBA(0, 0, 255, 255);
+	else
+		color = D3DCOLOR_RGBA(0, 0, 255, arpha);
 	pline->Draw(v, 2, color);
 
 	pline->End();
@@ -2085,7 +2085,7 @@ void f_inspector::renderObj()
 			}
 			v[0] = D3DXVECTOR2(pt2d[i].x, pt2d[i].y);
 			v[1] = D3DXVECTOR2(pt2dprj[i].x, pt2dprj[i].y);
-			m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 128, 128, 128));
+			m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 0, 0, 128));
 		}
 		m_pline->End();
 
