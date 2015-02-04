@@ -793,7 +793,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_badd_model(false), m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1),
 	m_op(OBJ), m_sop(SOP_NULL),
 	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
-	m_mm(MM_NORMAL), m_axis(AX_X), m_rot_step(1.0), m_trn_step(1.0), m_zoom_step(1.0),
+	m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0),
 	m_theta_z_mdl(0.0), m_dist_mdl(0.0)
 {
@@ -866,9 +866,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 	// object/camera manipulation
 	register_fpar("axis", (int*)&m_axis, (int)AX_Z + 1, m_axis_str, "Axis for rotation and translation. {x, y, z}");
-	register_fpar("srot", &m_rot_step, "Rotation step for the camera and objects. (degree)");
-	register_fpar("strn", &m_trn_step, "Translation step for the camera and objects. (meter)");
-	register_fpar("szm", &m_zoom_step, "Zooming step for the camera and screen. (default 1.1)");
+	register_fpar("sadj", &m_adj_step, "Parameter adjustment step for the camera and objects.");
 }
 
 f_inspector::~f_inspector()
@@ -951,6 +949,9 @@ bool f_inspector::proc()
 		break;
 	case SOP_DELETE:
 		handle_sop_delete();
+		break;
+	case SOP_INST_OBJ:
+		handle_sop_inst_obj();
 		break;
 	}
 
@@ -1972,7 +1973,8 @@ void f_inspector::renderInfo()
 	// Cursor position
 	char information[1024];
 	int y = 0;
-	snprintf(information, 1023, "AWS Time %s (Image Time %lld)", m_time_str, m_timg);
+	snprintf(information, 1023, "AWS Time %s (Image Time %lld) Adjust Step x%f", 
+		m_time_str, m_timg, (float) m_adj_step);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
 	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (E)->Estimate (C)->Camera", m_str_op[m_op]);
@@ -2531,7 +2533,7 @@ void f_inspector::translate_obj(short delta)
 		return ;
 	double * ptr = m_objs[m_cur_obj].jmax.ptr<double>(0) + 3;
 
-	double step = (double)(delta / WHEEL_DELTA) * m_trn_step;
+	double step = (double)(delta / WHEEL_DELTA) * m_adj_step;
 	Mat tvec = Mat::zeros(3, 1, CV_64FC1);
 	switch(m_axis){
 	case AX_X:
@@ -2553,7 +2555,7 @@ void f_inspector::rotate_obj(short delta)
 	if(m_cur_obj < 0)
 		return;
 	// m_rot_step degree per wheel step
-	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_rot_step;
+	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_adj_step;
 	Mat rvec = Mat::zeros(3, 1, CV_64FC1);
 	switch(m_axis){
 	case AX_X:
@@ -2575,7 +2577,7 @@ void f_inspector::rotate_obj(short delta)
 
 void f_inspector::translate_cam(short delta)
 {
-	double step = (double)(delta / WHEEL_DELTA) * m_trn_step;
+	double step = (double)(delta / WHEEL_DELTA) * m_adj_step;
 	Mat tvec = Mat::zeros(3, 1, CV_64FC1);
 	switch(m_axis){
 	case AX_X:
@@ -2595,7 +2597,7 @@ void f_inspector::translate_cam(short delta)
 void f_inspector::rotate_cam(short delta)
 {
 	// m_rot_step degree per wheel step
-	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_rot_step;
+	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_adj_step;
 	Mat rvec = Mat::zeros(3, 1, CV_64FC1);
 	switch(m_axis){
 	case AX_X:
@@ -2621,8 +2623,8 @@ void f_inspector::zoom_cam(short delta)
 
 	//float scale = (float) pow(m_zoom_step, (double) step);
 	double * ptr = jcam_max.ptr<double>(0);
-	m_cam_int.at<double>(0, 0) += m_zoom_step * step / ptr[0];
-	m_cam_int.at<double>(1, 1) += m_zoom_step * step / ptr[0];
+	m_cam_int.at<double>(0, 0) += m_adj_step * step / ptr[0];
+	m_cam_int.at<double>(1, 1) += m_adj_step * step / ptr[0];
 }
 
 void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
@@ -2630,6 +2632,12 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 	switch(wParam){
 	case VK_DELETE:
 		m_sop = SOP_DELETE;
+		break;
+	case VK_UP:
+		handle_vk_up();
+		break;
+	case VK_DOWN:
+		handle_vk_down();
 		break;
 	case VK_LEFT:
 		handle_vk_left();
@@ -2640,6 +2648,18 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 	default:
 		break;
 	}
+}
+
+void f_inspector::handle_vk_up()
+{
+	m_adj_pow += 1;
+	m_adj_step = pow(10., (double)m_adj_pow);
+}
+
+void f_inspector::handle_vk_down()
+{
+	m_adj_pow -= 1;
+	m_adj_step = pow(10., (double)m_adj_pow);
 }
 
 void f_inspector::handle_vk_left()
@@ -2723,22 +2743,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case 'I':
 		if(m_op == MODEL){
-			if(m_cur_model < 0){
-				break;
-			}
-
-			double width =(double) m_maincam.get_surface_width();
-			double height = (double) m_maincam.get_surface_height();
-			m_objs.push_back(s_obj());
-			m_cur_obj = (int) m_objs.size() - 1;
-			m_cur_point = 0;
-			if(!m_objs[m_cur_obj].init(&m_models[m_cur_model], m_timg, m_cam_int, m_cam_dist, width, height)){
-				m_objs.pop_back();
-				cerr << "Failed to create an instance of model " << m_models[m_cur_model].name << endl;		
-			}else{
-				m_op = OBJ;
-			}
-			break;
+			m_sop = SOP_INST_OBJ;
 		}
 		break;
 	case 'C':
@@ -2779,7 +2784,7 @@ void f_inspector::handle_sop_delete(){
 		if(m_cur_model >= 0){
 			vector<s_model>::iterator itr = m_models.begin() + m_cur_model;
 			m_models.erase(itr);
-			m_cur_model = m_models.size() - 1;
+			m_cur_model = (int) m_models.size() - 1;
 		}
 		break;
 	case OBJ:
@@ -2787,7 +2792,7 @@ void f_inspector::handle_sop_delete(){
 		if(m_cur_obj >= 0){
 			vector<s_obj>::iterator itr = m_objs.begin() + m_cur_obj;
 			m_objs.erase(itr);
-			m_cur_obj = m_objs.size() - 1;
+			m_cur_obj = (int) m_objs.size() - 1;
 		}
 		break;
 	case POINT:
@@ -2834,6 +2839,28 @@ void f_inspector::handle_sop_load()
 		loadCampar();
 		//load camera intrinsics
 		break;
+	}
+	m_sop = SOP_NULL;
+}
+
+void f_inspector::handle_sop_inst_obj()
+{
+	if(m_op == MODEL){
+		if(m_cur_model < 0){
+			return;
+		}
+
+		double width =(double) m_maincam.get_surface_width();
+		double height = (double) m_maincam.get_surface_height();
+		m_objs.push_back(s_obj());
+		m_cur_obj = (int) m_objs.size() - 1;
+		m_cur_point = 0;
+		if(!m_objs[m_cur_obj].init(&m_models[m_cur_model], m_timg, m_cam_int, m_cam_dist, width, height)){
+			m_objs.pop_back();
+			cerr << "Failed to create an instance of model " << m_models[m_cur_model].name << endl;		
+		}else{
+			m_op = OBJ;
+		}
 	}
 	m_sop = SOP_NULL;
 }

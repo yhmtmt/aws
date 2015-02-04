@@ -274,12 +274,14 @@ private:
 	};
 
 	enum e_sub_operation{
-		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_DELETE
+		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_INST_OBJ, SOP_DELETE
 	};
 
 	void handle_sop_delete();
 	void handle_sop_save();
 	void handle_sop_load();
+	void handle_sop_inst_obj();
+
 
 	e_sub_operation m_sop;
 	static const char * m_str_op[ESTIMATE+1]; 
@@ -483,9 +485,8 @@ public:
 		AX_X, AX_Y, AX_Z
 	} m_axis;
 	static const char * m_axis_str[AX_Z + 1];
-	double m_rot_step;
-	double m_trn_step;
-	double m_zoom_step;
+	int m_adj_pow;
+	double m_adj_step;
 
 	Point2i m_mc; // mouse cursor
 	Point2i m_pt_sc_start; // scroll start
@@ -516,7 +517,9 @@ public:
 
 	virtual void handle_keydown(WPARAM wParam, LPARAM lParam);
 	void handle_vk_left();
+	void handle_vk_up();
 	void handle_vk_right();
+	void handle_vk_down();
 
 	virtual void handle_syskeydown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_keyup(WPARAM wParam, LPARAM lParam){};
