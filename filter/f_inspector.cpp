@@ -1926,6 +1926,7 @@ void f_inspector::render(Mat & imgs, long long timg)
 	m_maincam.blt_offsrf(m_pd3dev, imgs);
 
 	renderObj();
+	renderCampar();
 
 	m_maincam.ResetRenderTarget(m_pd3dev);
 
@@ -2198,6 +2199,74 @@ void f_inspector::renderModel(long long timg)
 		render_prjpts(m_models[m_cur_model], pts, m_pd3dev, NULL, m_pline, m_cur_model, 0, -1);	
 	}
 	m_model_view.ResetRenderTarget(m_pd3dev);
+}
+
+void f_inspector::renderCampar()
+{
+	if(m_op != CAMERA)
+		return ;
+
+	double w, h;
+	w = m_maincam.get_surface_width();
+	h = m_maincam.get_surface_height();
+
+	double fx, fy, cx, cy;
+	fx = m_cam_int.at<double>(0, 0);
+	fy = m_cam_int.at<double>(1, 1);
+	cx = m_cam_int.at<double>(0, 2);
+	cy = m_cam_int.at<double>(1, 2);
+
+	int  mw, mh, cw, ch;
+	cw = (int)(w / 20.0);
+	ch = (int)(h / 20.0);
+	mw = 2 * cw + 1;
+	mh = 2 * ch + 1;
+	vector<Point3f> pt3d;
+	vector<Point2f> pt2d;
+
+	pt3d.resize(mw * mh);
+	int ipt = 0, ipt_dst;
+	Point3f org(-(float) (cw * 20.0), - (float) (ch * 20.0), (float) fx);
+	for(int i = 0; i < mw; i++){
+		for(int j = 0; j < mh; j++){
+			pt3d[ipt] = Point3f((float)(org.x + 20.0 * i), (float)(org.y + 20.0 * j), (float)fx);
+			ipt++;
+		}
+	}
+
+	projectPoints(pt3d, Mat::zeros(3, 1, CV_64FC1), Mat::zeros(3, 1, CV_64FC1), m_cam_int, m_cam_dist, pt2d);
+
+	D3DXVECTOR2 v[2];
+	m_pline->Begin();
+	ipt = 0;
+	ipt_dst = ipt + mh;
+	// horizontal line
+	for(int i = 0; i < mw - 1; i++){
+		for(int j = 0; j < mh; j++){
+			v[0] = D3DXVECTOR2(pt2d[ipt].x, pt2d[ipt].y);
+			v[1] = D3DXVECTOR2(pt2d[ipt_dst].x, pt2d[ipt_dst].y);
+			m_pline->Draw(v, 2, D3DCOLOR_RGBA(255, 255, 255, (j == ch ? 255 : 128)));
+			ipt++;
+			ipt_dst++;
+		}
+	}
+
+	ipt = 0;
+	ipt_dst = ipt + 1;
+	// vertical line
+	for(int i = 0; i < mw; i++){
+		for(int j = 0; j < mh - 1; j++){
+			v[0] = D3DXVECTOR2(pt2d[ipt].x, pt2d[ipt].y);
+			v[1] = D3DXVECTOR2(pt2d[ipt_dst].x, pt2d[ipt_dst].y);
+			m_pline->Draw(v, 2, D3DCOLOR_RGBA(255, 255, 255, (i == cw ? 255 : 128)));
+			ipt++;
+			ipt_dst++;
+		}
+		ipt++;
+		ipt_dst++;
+	}
+
+	m_pline->End();
 }
 
 void f_inspector::estimate()

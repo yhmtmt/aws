@@ -418,6 +418,7 @@ private:
 	bool saveCampar();
 	bool loadCampar();
 	void clearCampar();
+	void renderCampar();
 
 	bool saveCamparTbl();
 	bool loadCamparTbl();
