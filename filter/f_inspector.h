@@ -132,6 +132,7 @@ struct s_obj
 	Mat tvec, rvec;
 
 	Mat jacobian;
+	Mat jmax; // maximum values of jacobian for each parameter
 	Mat hessian;
 	Mat dp;
 	Mat err;
@@ -383,6 +384,8 @@ private:
 	Mat m_rvec_cam, m_tvec_cam; // Extrinsic camera parameter.
 
 	double m_erep;		// reprojection error of last current camera parameter.
+	Mat jcam_max;
+	void calc_jcam_max();
 
 	// master camera parameter (increasing order in f_x)
 	bool m_bcam_tbl_loaded;
@@ -412,62 +415,10 @@ private:
 	void render3D(long long timg);
 	void renderChsbd(long long timg);
 
-
-	void proj_objs(vector<s_obj> & objs){
-		for(int iobj = 0; iobj < objs.size(); iobj++){
-			s_obj & obj = objs[iobj];
-			obj.proj(m_cam_int, m_cam_dist);
-		}
-	}
-
-	void acc_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
-		for(int iobj = 0; iobj < objs.size(); iobj++){
-			s_obj & obj = objs[iobj];
-		// accumulating camera intrinsic part of hessians of all objects
-			Hcamint += obj.hessian(Rect(6, 6, 12, 12));
-		}
-	}
-
-	void copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
-		for(int iobj = 0; iobj < objs.size(); iobj++){
-			s_obj & obj = objs[iobj];
-			Hcamint.copyTo(obj.hessian(Rect(6, 6, 12, 12)));
-		}
-	}
-
-	void update_params(vector<s_obj> & objs){
-		for(int iobj = 0; iobj < objs.size(); iobj++){
-			s_obj & obj = objs[iobj];
-			Mat Hinv, eigenval, eigenvec;
-			double det = determinant(obj.hessian);
-			eigen(obj.hessian, eigenval, eigenvec);
-			invert(obj.hessian, Hinv, DECOMP_CHOLESKY);
-			Mat Grad = obj.jacobian.t() * obj.err;;
-			obj.dp = Hinv * Grad;
-			double * ptr_dp = obj.dp.ptr<double>(0);
-			double * ptr; 
-			ptr = obj.rvec.ptr<double>(0);
-			ptr[0] += ptr_dp[0]; // rx
-			ptr[1] += ptr_dp[1]; // ry
-			ptr[2] += ptr_dp[2]; // rz
-			ptr = obj.tvec.ptr<double>(0);
-			ptr[0] += ptr_dp[3]; // tx
-			ptr[1] += ptr_dp[4]; // ty
-			ptr[2] += ptr_dp[5]; // tz
-			ptr = m_cam_int.ptr<double>(0);
-			ptr[0] += ptr_dp[6]; // fx
-			ptr[2] += ptr_dp[8]; // cx
-			ptr[4] += ptr_dp[7]; // fy
-			ptr[5] += ptr_dp[9]; // cy
-			// Updating distortion parameters
-			ptr = m_cam_dist.ptr<double>(0);
-			ptr_dp += 10;
-			for(int i = 0; i < 8; i++, ptr++, ptr_dp++){
-				*ptr += *ptr_dp;
-			}
-		}
-	}
-
+	void proj_objs(vector<s_obj> & objs);
+	void acc_Hcamint(Mat & Hcamint, vector<s_obj> & objs);
+	void copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs);
+	void update_params(vector<s_obj> & objs);
 	void estimate();
 	void estimate_fulltime();
 

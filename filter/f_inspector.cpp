@@ -22,6 +22,7 @@
 #include <fstream>
 #include <vector>
 #include <list>
+#include <cmath>
 using namespace std;
 
 #include <opencv2/opencv.hpp>
@@ -652,6 +653,17 @@ bool s_obj::save()
 void s_obj::proj(Mat & camint, Mat & camdist)
 {
 	projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian);
+
+	//calculating maximum values for each parameter
+	jmax = Mat::zeros(1, jacobian.cols, CV_64FC1);
+	double * ptr_max, * ptr;
+	for(int i = 0; i < jacobian.rows; i++){
+		ptr = jacobian.ptr<double>(i);
+		ptr_max = jmax.ptr<double>(0);
+		for(int j = 0; j < jacobian.cols; j++, ptr++, ptr_max++){
+			*ptr_max = max(*ptr_max, abs(*ptr));
+		}
+	}
 	mulTransposed(jacobian, hessian, true);
 	calc_ssd();
 	calc_num_matched_points();
@@ -765,26 +777,25 @@ const char * f_inspector::m_axis_str[AX_Z + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_bundistort(false), m_bpttrack(false),/* m_bcbtrack(false), m_bchsbd_found(false),
-																 m_sz_chsbd(6, 9), m_pitch_chsbd(0.0254f), m_bshow_chsbd(false),
-																 m_num_chsbds_calib(120),*/
-																 m_bpose_fixed(true), m_bcampar_fixed(true), m_bcam_tbl_loaded(false),
-																 m_bload_campar(false), m_bload_campar_tbl(false),
-																 m_bcalib_use_intrinsic_guess(false),
-																 m_bcalib_fix_principal_point(false),
-																 m_bcalib_fix_aspect_ratio(false),
-																 m_bcalib_zero_tangent_dist(true),
-																 m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
-																 m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true),
-																 m_bcalib_rational_model(false),
-																 m_badd_model(false),
-																 m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1),
-																 m_op(OBJ), m_sop(SOP_NULL),
-																 m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
-																 m_mm(MM_NORMAL), m_axis(AX_X), m_rot_step(1.0), m_trn_step(1.0), m_zoom_step(1.1),
-																 m_main_offset(0, 0), m_main_scale(1.0),
-																 m_theta_z_mdl(0.0), m_dist_mdl(0.0)
-
+	m_sh(1.0), m_sv(1.0), m_bundistort(false), m_bpttrack(false),
+	/* m_bcbtrack(false), m_bchsbd_found(false),
+	m_sz_chsbd(6, 9), m_pitch_chsbd(0.0254f), m_bshow_chsbd(false),
+	m_num_chsbds_calib(120),*/
+	m_bpose_fixed(true), m_bcampar_fixed(true), m_bcam_tbl_loaded(false),
+	m_bload_campar(false), m_bload_campar_tbl(false),
+	m_bcalib_use_intrinsic_guess(false),
+	m_bcalib_fix_principal_point(false),
+	m_bcalib_fix_aspect_ratio(false),
+	m_bcalib_zero_tangent_dist(true),
+	m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
+	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true),
+	m_bcalib_rational_model(false),
+	m_badd_model(false), m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1),
+	m_op(OBJ), m_sop(SOP_NULL),
+	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
+	m_mm(MM_NORMAL), m_axis(AX_X), m_rot_step(1.0), m_trn_step(1.0), m_zoom_step(1.0),
+	m_main_offset(0, 0), m_main_scale(1.0),
+	m_theta_z_mdl(0.0), m_dist_mdl(0.0)
 {
 	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
@@ -911,6 +922,10 @@ bool f_inspector::proc()
 			// save frame objects
 			m_fobjs[iend].init(m_timg, m_objs, m_cam_int, m_cam_dist);
 
+			// update time and image.
+			m_timg = timg;
+			m_img = img;
+
 			update_obj();
 			update_campar();
 
@@ -921,8 +936,6 @@ bool f_inspector::proc()
 				m_objs[i].load(m_objs[i].name, m_timg, m_models);
 			}
 		}
-		m_timg = timg;
-		m_img = img;
 	}else{
 		timg = m_timg;
 		img = m_img;
@@ -934,6 +947,7 @@ bool f_inspector::proc()
 
 	// projection 
 	proj_objs(m_objs);
+	calc_jcam_max();
 
 	// estimate
 	if(m_op == ESTIMATE){
@@ -2085,7 +2099,7 @@ void f_inspector::renderObj()
 			}
 			v[0] = D3DXVECTOR2(pt2d[i].x, pt2d[i].y);
 			v[1] = D3DXVECTOR2(pt2dprj[i].x, pt2dprj[i].y);
-			m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 0, 0, 128));
+			m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 128, 128, 128));
 		}
 		m_pline->End();
 
@@ -2103,7 +2117,7 @@ void f_inspector::renderObj()
 		Point2f & pt2 = m_objs[m_cur_obj].pt2dprj[m_cur_point];
 		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
 		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
-		m_pline->Draw(v, 2, D3DCOLOR_RGBA(128, 0, 0, 255));
+		m_pline->Draw(v, 2, D3DCOLOR_RGBA(255, 0, 0, 255));
 	}
 	m_pline->End();
 }
@@ -2255,6 +2269,76 @@ void f_inspector::estimate_fulltime()
 		update_params(m_fobjs[ifrm].objs);
 	}	
 }
+
+void f_inspector::proj_objs(vector<s_obj> & objs){
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		s_obj & obj = objs[iobj];
+		obj.proj(m_cam_int, m_cam_dist);
+	}
+}
+
+void f_inspector::acc_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		s_obj & obj = objs[iobj];
+		// accumulating camera intrinsic part of hessians of all objects
+		Hcamint += obj.hessian(Rect(6, 6, 12, 12));
+	}
+}
+
+void f_inspector::copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		s_obj & obj = objs[iobj];
+		Hcamint.copyTo(obj.hessian(Rect(6, 6, 12, 12)));
+	}
+}
+
+void f_inspector::update_params(vector<s_obj> & objs){
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		s_obj & obj = objs[iobj];
+		Mat Hinv, eigenval, eigenvec;
+		double det = determinant(obj.hessian);
+		eigen(obj.hessian, eigenval, eigenvec);
+		invert(obj.hessian, Hinv, DECOMP_CHOLESKY);
+		Mat Grad = obj.jacobian.t() * obj.err;;
+		obj.dp = Hinv * Grad;
+		double * ptr_dp = obj.dp.ptr<double>(0);
+		double * ptr; 
+		ptr = obj.rvec.ptr<double>(0);
+		ptr[0] += ptr_dp[0]; // rx
+		ptr[1] += ptr_dp[1]; // ry
+		ptr[2] += ptr_dp[2]; // rz
+		ptr = obj.tvec.ptr<double>(0);
+		ptr[0] += ptr_dp[3]; // tx
+		ptr[1] += ptr_dp[4]; // ty
+		ptr[2] += ptr_dp[5]; // tz
+		ptr = m_cam_int.ptr<double>(0);
+		ptr[0] += ptr_dp[6]; // fx
+		ptr[2] += ptr_dp[8]; // cx
+		ptr[4] += ptr_dp[7]; // fy
+		ptr[5] += ptr_dp[9]; // cy
+		// Updating distortion parameters
+		ptr = m_cam_dist.ptr<double>(0);
+		ptr_dp += 10;
+		for(int i = 0; i < 8; i++, ptr++, ptr_dp++){
+			*ptr += *ptr_dp;
+		}
+	}
+}
+
+void f_inspector::calc_jcam_max(){
+	jcam_max = Mat::zeros(1, 12, CV_64FC1);
+	double * ptr_max, * ptr;
+	ptr_max = jcam_max.ptr<double>(0);
+	for(int iobj = 0; iobj < m_objs.size(); iobj++){
+		s_obj & obj = m_objs[iobj];
+		Mat & jmax = obj.jmax;
+		ptr = jmax.ptr<double>(0) + 6;
+		for(int i = 0; i < 12; i++){
+			*ptr_max = max(*ptr_max, *ptr);
+		}
+	}
+}
+
 
 ///////////////////////////////////////////////////////// message handler
 // Planed features
@@ -2436,18 +2520,19 @@ void f_inspector::translate_obj(short delta)
 {
 	if(m_cur_obj < 0)
 		return ;
+	double * ptr = m_objs[m_cur_obj].jmax.ptr<double>(0) + 3;
 
 	double step = (double)(delta / WHEEL_DELTA) * m_trn_step;
 	Mat tvec = Mat::zeros(3, 1, CV_64FC1);
 	switch(m_axis){
 	case AX_X:
-		tvec.at<double>(0, 0) = step;
+		tvec.at<double>(0, 0) = step / ptr[0];
 		break;
 	case AX_Y:
-		tvec.at<double>(1, 0) = step;
+		tvec.at<double>(1, 0) = step / ptr[1];
 		break;
 	case AX_Z:
-		tvec.at<double>(2, 0) = step;
+		tvec.at<double>(2, 0) = step / ptr[2];
 		break;
 	}
 
@@ -2458,7 +2543,6 @@ void f_inspector::rotate_obj(short delta)
 {
 	if(m_cur_obj < 0)
 		return;
-
 	// m_rot_step degree per wheel step
 	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_rot_step;
 	Mat rvec = Mat::zeros(3, 1, CV_64FC1);
@@ -2525,10 +2609,11 @@ void f_inspector::rotate_cam(short delta)
 void f_inspector::zoom_cam(short delta)
 {
 	short step = delta / WHEEL_DELTA;
-	float scale = (float) pow(m_zoom_step, (double) step);
 
-	m_cam_int.at<double>(0, 0) *= scale;
-	m_cam_int.at<double>(1, 1) *= scale;
+	//float scale = (float) pow(m_zoom_step, (double) step);
+	double * ptr = jcam_max.ptr<double>(0);
+	m_cam_int.at<double>(0, 0) += m_zoom_step * step / ptr[0];
+	m_cam_int.at<double>(1, 1) += m_zoom_step * step / ptr[0];
 }
 
 void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
