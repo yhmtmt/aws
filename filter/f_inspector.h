@@ -231,17 +231,13 @@ struct s_frame_obj{
 		const Mat & acamint, const Mat & acamdist);
 };
 
+//////////////////////////////////////////////////////////////// The filter
 // The functions of the filter
 // 2D object annotation 
 //	- manually specify feature point 
 //  - manually bind 3d model
 //  - manually bind 2d point to 3d model point
-// Optimization for camera parameters and object attitude
-// Finding chessboard and calibrating camera
-// Table based handling of camera parameters with various magnifications
-// load and save camera parameters for each time frame
-// load and save object information for each time frame
- 
+// Optimization for camera parameters and object attitud
 class f_inspector: public f_ds_window
 {
 private:
@@ -276,71 +272,16 @@ private:
 	enum e_sub_operation{
 		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_INST_OBJ, SOP_DELETE
 	};
+	static const char * m_str_op[ESTIMATE+1]; 
+	e_operation m_op;
 
+	e_sub_operation m_sop;
 	void handle_sop_delete();
 	void handle_sop_save();
 	void handle_sop_load();
 	void handle_sop_inst_obj();
 
-
-	e_sub_operation m_sop;
-	static const char * m_str_op[ESTIMATE+1]; 
-	e_operation m_op;
-
 	bool m_bundistort;	// undistort flag. it cant be used with model handling mode.
-	bool m_bpttrack;	// point tracking flag
-	bool m_bcampar_fixed;	// indicates the condition of the camera parameter in this frame
-	bool m_bpose_fixed;		// indicates the model pause is fixed in this frame
-
-	//
-	// chessboard
-	// 
-	/* now chessboard handling codes are unified into object handling codes
-	char m_fname_chsbds[1024]; // name of chsbd collection
-	bool m_bcbtrack;	// chessboard tracking
-	bool m_bshow_chsbd; // chessboard detected in current frame is marked.
-	bool m_bchsbd_found;	// indicates chessboard is found in this frame
-
-	double m_pitch_chsbd;	// chesboard pitch
-	Size m_sz_chsbd;		// chesboard size
-	vector<Point3f> m_3dchsbd;				// chessboard corners in the world coordinate, automatically constructed by the pitch and size.
-	vector<vector<Point2f > > m_2dchsbd;	// chessboard found in the image
-	vector<bool> m_bchsbd_pose_fixed;		// true if chessboard pose is fixed.
-	vector<Mat> m_rvecs_chsbd;				// chesboard rotation in the time
-	vector<Mat> m_tvecs_chsbd;				// chesboard translation in the time
-	vector<long long> m_time_chsbd;			// the time chessboard found
-	vector<double> m_ereps_chsbd;			// reprojection error for each chessboard
-	int m_cur_chsbd;						// index of the current chessboard
-
-	vector<Point2f> m_corners_chsbd;	// temporal data object for findChessboard
-	
-	void seekChsbdTime(long long timg); // seeks chessboard found at time specified as "timg"
-	void findChsbd(Mat & img, long long timg);
-
-	void initChsbd3D();
-	void clearChsbds();
-	bool saveChsbds();
-	bool loadChsbds();
-
-	int m_num_chsbds_calib;
-	bool chooseChsbds(vector<vector<Point2f > > & chsbds, vector<int> & id_chsbd);
-	void calibChsbd(Mat & img); // calibration is done with chessboard stocked
-	void guessCamparPauseChsbd(long long timg);
-	*/
-
-	//
-	// Object
-	// 
-	char m_name_obj[1024]; // name of the object file.
-	vector<vector<s_obj> > m_obj_trace;
-	int m_cur_model; // current selected model
-	int m_cur_obj; // current object selected
-	int m_cur_point; // current selected point of the model
-	vector<s_obj> m_objs; // object points
-	void load_obj();
-	void save_obj();
-	void renderObj();
-	void update_obj();
 
 	//
 	// model 
@@ -350,14 +291,6 @@ private:
 	vector<s_model> m_models; // storing models
 	// loading model when m_badd_model is asserted
 	bool load_model();
-
-	// model poses in each time frame
-	vector<long long> m_pose_time;		// times corresponding model pose
-	vector<bool> m_bmodel_pose_fixed;	// true if model pose is fixed
-	vector<vector<vector<Mat > > > m_rvecs_model; // rvec for the models in the time
-	vector<vector<vector<Mat > > > m_tvecs_model; // tvec for the models in the time
-
-	void seekModelTime(long long time){};
 
 	// 
 	// model view 
@@ -375,13 +308,26 @@ private:
 
 	void renderModel(long long timg);
 
+	// frame objects
+	vector<s_frame_obj> m_fobjs;
+
+	//
+	// Object
+	// 
+	char m_name_obj[1024]; // name of the object file.
+	vector<vector<s_obj> > m_obj_trace;
+	int m_cur_model; // current selected model
+	int m_cur_obj; // current object selected
+	int m_cur_point; // current selected point of the model
+	vector<s_obj> m_objs; // object points
+	void load_obj();
+	void save_obj();
+	void renderObj();
+	void update_obj();
+
 	//
 	// Camera Parameter
 	//
-
-	bool m_bload_campar;
-	bool m_bload_campar_tbl;
-
 	char m_fname_campar[1024]; // name of camera parameter file
 	char m_fname_campar_tbl[1024]; // name of camera parameter table for multiple magnifications
 	Mat m_cam_int, m_cam_dist; // Intrinsic camera parameter.	
@@ -434,9 +380,6 @@ private:
 	void estimate();
 	void estimate_fulltime();
 
-	// frame objects
-	vector<s_frame_obj> m_fobjs;
-
 	virtual bool alloc_d3dres();
 	virtual void release_d3dres();
 public:
@@ -454,14 +397,6 @@ public:
 
 		if(!f_ds_window::init_run())
 			return false;
-
-		/*
-		initChsbd3D();
-
-		if(strlen(m_fname_chsbds)){
-			loadChsbds();
-		}
-		*/
 
 		if(strlen(m_fname_campar)){
 			loadCampar();
@@ -515,9 +450,7 @@ public:
 	void zoom_screen(short delta);
 	void translate_obj(short delta);
 	void rotate_obj(short delta);
-	void translate_cam(short delta);
-	void rotate_cam(short delta);
-	void zoom_cam(short delta);
+	void adjust_cam(short delta);
 
 	virtual void handle_mousemove(WPARAM wParam, LPARAM lParam);
 	void scroll_screen();

@@ -781,58 +781,34 @@ const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_bundistort(false), m_bpttrack(false),
-	/* m_bcbtrack(false), m_bchsbd_found(false),
-	m_sz_chsbd(6, 9), m_pitch_chsbd(0.0254f), m_bshow_chsbd(false),
-	m_num_chsbds_calib(120),*/
-	m_bpose_fixed(true), m_bcampar_fixed(true), m_bcam_tbl_loaded(false),
-	m_bload_campar(false), m_bload_campar_tbl(false),
-	m_bcalib_use_intrinsic_guess(false),
-	m_bcalib_fix_principal_point(false),
-	m_bcalib_fix_aspect_ratio(false),
-	m_bcalib_zero_tangent_dist(true),
-	m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
-	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true),
-	m_bcalib_rational_model(false), m_cur_campar(0),
-	m_badd_model(false), m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1),
-	m_op(OBJ), m_sop(SOP_NULL),
-	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL),
-	m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
-	m_main_offset(0, 0), m_main_scale(1.0),
-	m_theta_z_mdl(0.0), m_dist_mdl(0.0)
+	m_sh(1.0), m_sv(1.0), m_bundistort(false), m_bcam_tbl_loaded(false),
+	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
+	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
+	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
+	m_badd_model(false), m_cur_campar(0),  m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1), m_op(OBJ), m_sop(SOP_NULL),
+	m_pmesh_chsbd(NULL), m_ptex_chsbd(NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
+	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0)
 {
 	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
 	m_fname_campar[0] = '\0';
 	m_fname_campar_tbl[0] = '\0';
-	//	m_fname_chsbds[0] = '\0';
+
 	m_cam_int = Mat::eye(3, 3, CV_64FC1);
 	m_cam_dist = Mat::zeros(1, 8, CV_64FC1);
 	m_rvec_cam = Mat::zeros(3, 1, CV_64FC1);
 	m_tvec_cam = Mat::zeros(3, 1, CV_64FC1);
+
 	register_fpar("name_obj", m_name_obj, 1024, "Name of object interested.");
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
 	register_fpar("add_model", &m_badd_model, "If the flag is asserted, model is loaded from fmodel");
-	register_fpar("ldcp", &m_bload_campar, "Load a camera parameter.");
-	register_fpar("ldcptbl", &m_bload_campar_tbl, "Load the table of camera parameters with multiple magnifications."); 
 	register_fpar("fcp", m_fname_campar, 1024, "File path of camera parameter.");
 	register_fpar("fcptbl", m_fname_campar_tbl, 1024, "File path of table of the camera parameters with multiple magnifications.");
 	register_fpar("op", (int*)&m_op, ESTIMATE+1, m_str_op,"Operation ");
 	register_fpar("sh", &m_sh, "Horizontal scaling value. Image size is multiplied by the value. (default 1.0)");
-	register_fpar("sv", &m_sv, "Vertical scaling value. Image size is multiplied by the value. (default 1.0)");	
-
-	// chessboard related parameters
-	//	register_fpar("fchsbds", m_fname_chsbds, 1024, "File path of chessboard collections");
-	//	register_fpar("cbtrack", &m_bcbtrack, "Chessboard tracking enabled.");
-	//	register_fpar("pcb", &m_pitch_chsbd, "Pitch of the chesboard (0.0254m default)");
-	//	register_fpar("vcb", &(m_sz_chsbd.height), "Number of vertical grids in the chessboard (6 default)");
-	//	register_fpar("hcb", &(m_sz_chsbd.width), "Number of horizontal grids in the chessboard (9 default)");
-	//	register_fpar("showcb", &m_bshow_chsbd, "Show detected chessboard.");
-	//	register_fpar("cbdet", &m_bchsbd_found, "Chessboard found flag");
-	// 	register_fpar("chsbds", &m_num_chsbds_calib, "Number of chessboards used for calibration.");
+	register_fpar("sv", &m_sv, "Vertical scaling value. Image size is multiplied by the value. (default 1.0)");
 
 	// model related parameters
-	register_fpar("pttrack", &m_bpttrack, "Model point tracking enabled.");
 	register_fpar("mdl", &m_cur_model, "Model with specified index is selected.");
 	register_fpar("pt", &m_cur_point, "Model point of specified index is selected.");
 
@@ -865,9 +841,6 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("rational_model", &m_bcalib_rational_model, "Enable rational model (k4, k5, k6)");
 
 	register_fpar("undist", &m_bundistort, "Undistort source image according to the camera parameter.");
-
-	// state flag
-	register_fpar("cpfix", &m_bcampar_fixed, "Camera parameter fixed flag");
 
 	// object/camera manipulation
 	register_fpar("axis", (int*)&m_axis, (int)AX_Z + 1, m_axis_str, "Axis for rotation and translation. {x, y, z}");
@@ -913,8 +886,6 @@ bool f_inspector::proc()
 			return true;
 
 		if(m_timg != timg){ // new frame arrived
-			//			m_bchsbd_found = false;
-			m_bpose_fixed = false;
 			// auto save camera parameter and objects
 			if(m_timg > 0){
 				saveCampar();
@@ -1015,634 +986,11 @@ bool f_inspector::proc()
 		m_badd_model = false;
 	}
 
-	//////////////// Chessboard related code /////////////////////////
-	/*
-	switch(m_op){
-	case DET_CHSBD:
-	if(!m_bchsbd_found)
-	findChsbd(img_s, timg);
-	break;
-	case SAVE_CHSBDS:
-	if(!saveChsbds()){
-	cerr << "Failed to save Chess boards." << endl;
-	}else{
-	cout << "Chessboards successfully saved." << endl;
-	}
-	m_op = NORMAL;
-	break;
-	case LOAD_CHSBDS:
-	if(!loadChsbds()){
-	cerr << "Failed to load Chessboards." << endl;
-	}else{
-	cout << "Chessboards successfully loaded." << endl;
-	}
-	m_op = NORMAL;
-	break;
-	case CLEAR_CHSBDS:
-	clearChsbds();
-	break;
-	}
-	*/
-
-	// calibration
-	//calibrate(img_s, timg);
-
 	// rendering main view
 	render(img_s, timg);
 
 	return true;
 }
-
-/* now chessboard handling codes are unified into object handling codes
-void f_inspector::initChsbd3D()
-{
-HRESULT hr;
-m_3dchsbd.resize(m_sz_chsbd.height*m_sz_chsbd.width);
-for(int i= 0; i < m_sz_chsbd.height; i++){
-for(int j = 0; j < m_sz_chsbd.width; j++){
-int ipt = m_sz_chsbd.width * i + j;
-m_3dchsbd[ipt].x = (float) (m_pitch_chsbd * i);
-m_3dchsbd[ipt].y = (float)(m_pitch_chsbd * j);
-m_3dchsbd[ipt].z = 0.f;
-}
-}
-
-// creating chessboard model
-D3DXCreateMeshFVF(2, 4, D3DXMESH_MANAGED, 
-ModelVertex::FVF, m_pd3dev, &m_pmesh_chsbd);
-// set vertex buffer
-ModelVertex * v;
-m_pmesh_chsbd->LockVertexBuffer(0, (void**) &v);
-v[0] = ModelVertex((float)(-m_pitch_chsbd), (float)(-m_pitch_chsbd), 0.f, 
-0.f, 0.f, 1.f,
-0.f, 0.f);
-v[1] = ModelVertex((float)(m_pitch_chsbd * 9), (float)(-m_pitch_chsbd), 0.f, 
-0.f, 0.f, 1.f, 
-1.f, 0.f);
-v[2] = ModelVertex((float)(m_pitch_chsbd * 9), (float)(m_pitch_chsbd * 6), 0.f, 
-0.f, 0.f, 0.f, 
-1.f, 1.f);
-v[3] = ModelVertex((float)(-m_pitch_chsbd), (float)(m_pitch_chsbd * 6), 0.f, 
-0.f, 0.f, 0.f, 
-0.f, 1.f);
-m_pmesh_chsbd->UnlockVertexBuffer();
-
-// set index buffer
-WORD * i;
-m_pmesh_chsbd->LockIndexBuffer(0, (void**) &i);
-// Direct3D assumes counter clockwise vertex ordering in culling.
-// however, we flip the coordinate from right-hand to left-hand 
-// during view transformation. so the vertex ordering is now in clockwise
-// ordering.
-i[0] = 0; i[1] = 1; i[2] = 2;
-i[3] = 0; i[4] = 2; i[5] = 3;
-m_pmesh_chsbd->UnlockIndexBuffer();
-
-// set attribute buffer
-DWORD * a;
-m_pmesh_chsbd->LockAttributeBuffer(0, (DWORD**) &a);
-a[0] = 0;
-a[1] = 0;
-m_pmesh_chsbd->UnlockAttributeBuffer();
-
-// 
-vector<DWORD> ajbuf(m_pmesh_chsbd->GetNumFaces() * 3);
-m_pmesh_chsbd->GenerateAdjacency(0.f, &ajbuf[0]);
-m_pmesh_chsbd->OptimizeInplace(
-D3DXMESHOPT_ATTRSORT | D3DXMESHOPT_COMPACT | D3DXMESHOPT_VERTEXCACHE,           
-&ajbuf[0], 0, 0, 0);   
-
-// set texture buffer	
-hr = D3DXCreateTextureFromFile(m_pd3dev, 
-_T("7x10calib-checkerboard_trimed.png"), &m_ptex_chsbd);
-
-if(hr != D3D_OK){
-cerr << "Failed to load Chessboard texture" << endl;
-m_ptex_chsbd = NULL;
-}
-
-m_cur_chsbd = 0;
-}
-
-void f_inspector::seekChsbdTime(long long timg)
-{
-m_bchsbd_found = false;
-// seraching for current chessboard
-for(; m_cur_chsbd < m_2dchsbd.size(); m_cur_chsbd++){
-if(m_time_chsbd[m_cur_chsbd] == timg){
-m_bchsbd_found = true;
-cout << "Chessboard found in stock" << endl;
-break;
-}
-
-if(m_time_chsbd[m_cur_chsbd] > timg){
-break;
-}
-}
-}
-
-void f_inspector::findChsbd(Mat & img, long long timg)
-{
-// seraching for current chessboard
-seekChsbdTime(timg);
-if(m_bchsbd_found)
-return;
-
-m_corners_chsbd.clear();
-Mat gry;
-cvtColor(img, gry, CV_RGB2GRAY);
-if(m_bchsbd_found = findChessboardCorners(gry, m_sz_chsbd, m_corners_chsbd)){
-cornerSubPix(gry, m_corners_chsbd, Size(11, 11), Size(-1, -1),
-TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
-m_2dchsbd.insert(m_2dchsbd.begin() + m_cur_chsbd, m_corners_chsbd);
-m_time_chsbd.insert(m_time_chsbd.begin() + m_cur_chsbd, m_timg);
-m_rvecs_chsbd.insert(m_rvecs_chsbd.begin() + m_cur_chsbd, Mat(3, 1, CV_64FC1));
-m_tvecs_chsbd.insert(m_tvecs_chsbd.begin() + m_cur_chsbd, Mat(3, 1, CV_64FC1));
-cout << "Chessboard newly added." << endl;
-cout << m_time_chsbd.size() << " chessboard stocked." << endl;
-}else{
-cerr <<  "Failed to find chessboard." << endl;
-}
-m_bcampar_fixed = false;
-}
-
-void f_inspector::clearChsbds()
-{
-m_2dchsbd.clear();
-m_time_chsbd.clear();
-m_bchsbd_found = false;
-}
-
-bool f_inspector::saveChsbds()
-{
-FileStorage fs(m_fname_chsbds, FileStorage::WRITE);
-if(!fs.isOpened()){
-return false;
-}
-
-int num_chsbds = (int) m_2dchsbd.size();
-int num_pts = m_sz_chsbd.width * m_sz_chsbd.height;
-fs << "ChsbdSize" << m_sz_chsbd;
-fs << "ChsbdPitch" << m_pitch_chsbd;
-fs << "NumChsbds" << num_chsbds;
-fs << "Chsbds" << "{";
-for(int icb = 0; icb < num_chsbds; icb++){
-char buf[128];
-snprintf(buf, 128, "Chsbd%04d", icb);
-fs << buf << "{";
-long long t = m_time_chsbd[icb];
-fs << "TimeU" <<  *((int*) &t + 1);
-fs << "TimeL" << *((int*) &t);
-if(m_bchsbd_pose_fixed.size() == num_chsbds && 
-m_bchsbd_pose_fixed[icb]){
-fs << "Err" << m_ereps_chsbd[icb];
-fs << "Pose" << m_bchsbd_pose_fixed[icb];
-fs << "Rvec" << m_rvecs_chsbd[icb];
-fs << "Tvec" << m_tvecs_chsbd[icb];
-}
-fs << "Pts" << "[";
-vector<Point2f> & chsbd2d = m_2dchsbd[icb];
-for(int ipt = 0; ipt < num_pts; ipt++){
-fs << chsbd2d[ipt];
-}
-fs << "]";
-fs << "}";
-}
-fs << "}";
-
-return true;
-}
-
-bool f_inspector::loadChsbds()
-{
-clearChsbds();
-
-FileStorage fs(m_fname_chsbds, FileStorage::READ);
-if(!fs.isOpened()){
-return false;
-}
-
-FileNode fn;
-
-fn = fs["ChsbdSize"];
-
-if(fn.empty()){
-return false;
-}
-fn >> m_sz_chsbd;
-
-int num_pts = m_sz_chsbd.width * m_sz_chsbd.height;
-initChsbd3D();
-
-fn = fs["ChsbdPitch"];
-
-if(fn.empty()){
-return false;
-}
-
-fn >> m_pitch_chsbd;
-
-int num_chsbds;
-
-fn = fs["NumChsbds"];
-
-if(fn.empty()){
-return true;
-}
-
-fn >> num_chsbds;
-
-m_2dchsbd.resize(num_chsbds);
-m_time_chsbd.resize(num_chsbds);
-m_rvecs_chsbd.resize(num_chsbds);
-m_tvecs_chsbd.resize(num_chsbds);
-m_ereps_chsbd.resize(num_chsbds, 0.);
-m_bchsbd_pose_fixed.resize(num_chsbds, false);
-
-fn = fs["Chsbds"];
-if(fn.empty()){
-return false;
-}
-
-for(int icb = 0; icb < num_chsbds; icb++){
-m_2dchsbd[icb].resize(num_pts);
-char buf[128];
-snprintf(buf, 128, "Chsbd%04d", icb);
-FileNode fnchsbd = fn[buf];
-FileNode fnsub;
-
-if(fnchsbd.empty())
-return false;
-
-fnsub = fnchsbd["TimeU"];
-long long t;
-if(fnsub.empty())
-return false;
-fnsub >> *((int*) &t + 1);
-
-fnsub = fnchsbd["TimeL"];
-if(fnsub.empty())
-return false;
-fnsub >> *((int*) &t);
-m_time_chsbd[icb] = t;
-
-fnsub = fnchsbd["Err"];
-if(!fnsub.empty()){
-fnsub >> m_ereps_chsbd[icb];
-m_bchsbd_pose_fixed[icb] = true;
-}
-
-fnsub = fnchsbd["Rvec"];
-if(!fnsub.empty())
-fnsub >> m_rvecs_chsbd[icb];
-
-fnsub = fnchsbd["Tvec"];
-if(!fnsub.empty())
-fnsub >> m_tvecs_chsbd[icb];
-
-fnsub = fnchsbd["Pts"];
-if(fnsub.empty())
-return false;
-
-FileNodeIterator itr_pt = fnsub.begin();
-vector<Point2f> & chsbd2d = m_2dchsbd[icb];
-for(int ipt = 0; ipt < num_pts; ipt++, itr_pt++){
-if((*itr_pt).empty())
-return false;
-(*itr_pt) >> chsbd2d[ipt];			
-}
-}
-
-return true;
-}
-
-
-bool f_inspector::chooseChsbds(vector<vector<Point2f > > & chsbd2d, vector<int> & id_chsbd)
-{
-if(m_2dchsbd.size() < m_num_chsbds_calib)
-return false;
-
-int step = (int) ((double) m_2dchsbd.size() / (double) m_num_chsbds_calib);
-for(int i = 0, id = 0; i < m_num_chsbds_calib; i++, id += step){
-chsbd2d.push_back(m_2dchsbd[id]);
-id_chsbd.push_back(id);
-}
-
-return true;
-}
-
-void f_inspector::calibChsbd(Mat & img)
-{
-vector<vector<Point3f > > chsbds3d;
-vector<vector<Point2f > > chsbds2d;
-vector<int> id_chsbd;
-vector<Mat> tvecs, rvecs;
-
-// initializing resulting data structure
-m_rvecs_chsbd.clear();
-m_tvecs_chsbd.clear();
-m_bchsbd_pose_fixed.clear();
-m_ereps_chsbd.clear();
-
-m_rvecs_chsbd.resize(m_2dchsbd.size());
-m_tvecs_chsbd.resize(m_2dchsbd.size());
-m_bchsbd_pose_fixed.resize(m_2dchsbd.size(), false);
-m_ereps_chsbd.resize(m_2dchsbd.size(), DBL_MAX);
-
-cout << "Selecting " << m_num_chsbds_calib << " chessboards." << endl;
-if(!chooseChsbds(chsbds2d, id_chsbd))
-return;
-
-int flag = 0;
-flag |= (m_bcalib_use_intrinsic_guess ? CV_CALIB_USE_INTRINSIC_GUESS : 0);
-flag |= (m_bcalib_fix_principal_point ? CV_CALIB_FIX_PRINCIPAL_POINT : 0);
-flag |= (m_bcalib_fix_aspect_ratio ? CV_CALIB_FIX_ASPECT_RATIO : 0);
-flag |= (m_bcalib_zero_tangent_dist ? CV_CALIB_ZERO_TANGENT_DIST : 0);
-flag |= (m_bcalib_fix_k1 ? CV_CALIB_FIX_K1 : 0);
-flag |= (m_bcalib_fix_k2 ? CV_CALIB_FIX_K2 : 0);
-flag |= (m_bcalib_fix_k3 ? CV_CALIB_FIX_K3 : 0);
-flag |= (m_bcalib_fix_k4 ? CV_CALIB_FIX_K4 : 0);
-flag |= (m_bcalib_fix_k5 ? CV_CALIB_FIX_K5 : 0);
-flag |= (m_bcalib_fix_k6 ? CV_CALIB_FIX_K6 : 0);
-flag |= (m_bcalib_rational_model ? CV_CALIB_RATIONAL_MODEL : 0);
-
-for(int i = 0; i < chsbds2d.size(); i++)
-chsbds3d.push_back(m_3dchsbd);
-
-Mat Cdist;
-Cdist = m_cam_dist.clone();
-m_erep = calibrateCamera(chsbds3d, chsbds2d, 
-Size(img.cols, img.rows), m_cam_int, Cdist,
-rvecs, tvecs, flag);
-
-for(int i = 0; i < chsbds2d.size(); i++){
-int id = id_chsbd[i];
-m_rvecs_chsbd[id] = rvecs[i];
-m_tvecs_chsbd[id] = tvecs[i];
-m_bchsbd_pose_fixed[id] = true;
-}
-
-MatIterator_<double> src_itr, src_end;
-MatIterator_<double> dst_itr;
-
-for(src_itr = Cdist.begin<double>(), dst_itr = m_cam_dist.begin<double>(),
-src_end = Cdist.end<double>();
-src_itr != src_end; src_itr++, dst_itr++)
-*dst_itr = *src_itr;
-
-cout << "Calibration done with reprojection error of " << m_erep << endl;
-cout << "Mcam = " << m_cam_int << endl;
-cout << "Cdist = " << m_cam_dist << endl;
-
-// calculate reprojection error
-m_ereps_chsbd.resize(m_2dchsbd.size());
-m_bchsbd_pose_fixed.resize(m_2dchsbd.size());
-for(int icb = 0; icb < m_2dchsbd.size(); icb++){
-if(!m_bchsbd_pose_fixed[icb])
-continue;
-
-m_ereps_chsbd[icb] = 0.;
-vector<Point2f> impts;
-vector<Point2f> & chsbd2d = m_2dchsbd[icb];
-projectPoints(m_3dchsbd, m_rvecs_chsbd[icb], m_tvecs_chsbd[icb],
-m_cam_int, m_cam_dist, impts);
-for(int ipt = 0; ipt < impts.size(); ipt++){
-Point2f pd, pp;
-pd = impts[ipt];
-pp = chsbd2d[ipt];
-double dx = pp.x - pd.x;
-double dy = pp.y - pd.y;
-m_ereps_chsbd[icb] += dx * dx + dy * dy;
-}
-m_ereps_chsbd[icb] = sqrt(m_ereps_chsbd[icb] / (double) impts.size());
-m_bchsbd_pose_fixed[icb] = true;
-}
-
-// inserting to the table. Table is sorted in descending order for focal length.
-vector<Mat>::iterator itr_int = m_cam_int_tbl.begin();
-vector<Mat>::iterator itr_int_end = m_cam_int_tbl.end();
-vector<Mat>::iterator itr_dist = m_cam_dist_tbl.begin();
-vector<double>::iterator itr_erep = m_cam_erep.begin();
-for(;itr_int != itr_int_end; itr_int++, itr_dist++, itr_erep++){
-double fx_0 = (*itr_int).at<double>(0, 0);
-double fx_1 = m_cam_int.at<double>(0, 0);
-if(fx_1 < fx_0){
-break;
-}
-}
-m_cam_int_tbl.insert(itr_int, m_cam_int.clone());
-m_cam_dist_tbl.insert(itr_dist, m_cam_dist.clone());
-m_cam_erep.insert(itr_erep, m_erep);
-
-m_bcampar_fixed = true;
-}
-
-void f_inspector::guessCamparPauseChsbd(long long timg)
-{
-int num_models = 1;
-seekChsbdTime(timg);
-vector<int> num_pts;
-num_pts.push_back((int)m_3dchsbd.size());
-vector<vector<Point3f> > p3d;
-p3d.push_back(m_3dchsbd);
-vector<vector<Point2f> > p2d;
-p2d.push_back(m_2dchsbd[m_cur_chsbd]);
-
-if(m_cam_int.cols != 3 || m_cam_int.rows != 3 || m_cam_int.type() != CV_64FC1){
-m_cam_int = Mat::eye(3, 3, CV_64FC1);
-m_cam_dist = Mat::zeros(8, 1, CV_64FC1);
-}
-
-s_package pkg(num_models, num_pts, p2d, p3d,
-m_cam_int_tbl, m_cam_dist_tbl, 
-m_cam_int, m_cam_dist);
-
-int m = pkg.num_models * 6; // rvecs and tvecs (6degree of freedom for each model.)
-switch(m_op){
-case DET_POSE_CAM:
-m += 11;
-break;
-case DET_POSE_CAM_TBL:
-m += 1;
-if(!m_bcam_tbl_loaded){
-cerr << "Estimation using camera parameter table requires the table should be loaded." << endl;
-return;
-}
-break;
-case DET_POSE:
-if(!m_bcampar_fixed){
-cerr << "Estimating only pose requires camera intrinsics to be fixed" << endl;
-return;
-}
-break;
-}
-
-c_aws_lmdif lm((int)(p2d.size() * 2), m);
-int info;
-switch(m_op){
-case DET_POSE_CAM:
-info = lm.optimize(prj_pause_and_cam, (void*)&pkg, 1.);
-m_cam_int.at<double>(0, 0) = lm.x(0);
-m_cam_int.at<double>(1, 1) = lm.x(1);
-m_cam_int.at<double>(0, 2) = lm.x(2);
-m_cam_int.at<double>(1, 2) = lm.x(3);
-Mat(8, 1, CV_64FC1, (void*) &lm.x(4)).copyTo(m_cam_dist);
-Mat(3, 1, CV_64FC1, (void*) &lm.x(12)).copyTo(m_rvecs_chsbd[m_cur_chsbd]);
-Mat(3, 1, CV_64FC1, (void*) &lm.x(15)).copyTo(m_tvecs_chsbd[m_cur_chsbd]);
-break;
-case DET_POSE_CAM_TBL:
-info = lm.optimize(prj_pause_and_cam_with_tbl, (void*)&pkg, 1.);
-m_cam_int_tbl[(int)(lm.x(0) + 0.5)].copyTo(m_cam_int);
-m_cam_dist_tbl[(int)(lm.x(0) + 0.5)].copyTo(m_cam_dist);
-Mat(3, 1, CV_64FC1, (void*) &lm.x(1)).copyTo(m_rvecs_chsbd[m_cur_chsbd]);
-Mat(3, 1, CV_64FC1, (void*) &lm.x(4)).copyTo(m_tvecs_chsbd[m_cur_chsbd]);
-break;
-case DET_POSE:
-info = lm.optimize(prj_pause, (void*)&pkg, 1.);
-Mat(3, 1, CV_64FC1, (void*) &lm.x(0)).copyTo(m_rvecs_chsbd[m_cur_chsbd]);
-Mat(3, 1, CV_64FC1, (void*) &lm.x(3)).copyTo(m_tvecs_chsbd[m_cur_chsbd]);
-break;
-}
-
-if(info < 4 && info > 0)
-m_bcampar_fixed = true;
-
-switch(info){
-case 0:
-cout << "Improper input parameters" << endl;
-break;
-case 1:
-cout << "Sum of error squares is at most tol" << endl;
-break;
-case 2:
-cout << "Error in solution is at most tol" << endl;
-break;
-case 3:
-cout << "Both sum of error squares and error in solution is at most tol" << endl;
-break;
-case 4:
-cout << "fvec is orthogonal to the column of the Jacobian." << endl;
-break;
-case 5:
-cout << "Number of iterations exceeds " << 200 * (m + 1) << endl; 
-break;
-case 6:
-cout << "Tol is too small for sum of error squares." << endl;
-break;
-case 7:
-cout << "Tol is too small for error in solution." << endl;
-break;
-}
-
-// store results
-
-// constants passed as p
-// camint: 
-// n : the number of models
-// m_1, ..., m_n: the number of corresponding points
-// 2D-3D model points
-// (x11, y11)-(X11, Y11, Z11), ...., (x1m_1,y1m_1)-(X1m_1, Y1m_1, Z1m_1)
-// ...
-// (xn1, yn1)-(Xn1, Yn1, Zn1), ....., (xnm_n, ynm_n)-(Xnm_n, Ynm_n, Znm_n)
-
-// 1. optimize campar and pause
-// parameters optimized
-// fx,fy,cx,cy,px,py,k1, ,,, k6, 
-// rvec_1, tvec_1, rvec2, tvec2, ..., rvec_n, tvec_n
-// 2. optimize campar and pause using table
-// parameters optimized
-// f_pos
-// rvec_1, tvec_1, rvec2, tvec2, ..., rvec_n, tvec_n
-// 3. Optimize pause using fixed intrinsic campar
-}
-
-void f_inspector::calibrate(Mat & img_s, long long timg)
-{
-switch(m_op){
-case CALIB:
-if(!m_bcampar_fixed)
-calibChsbd(img_s);
-break;
-case SAVE_CAMPAR:
-if(!saveCampar())
-cerr << "Failed to save camera parameter" << endl;
-m_op = NORMAL;
-break;
-case LOAD_CAMPAR:
-if(!loadCampar())
-cerr << "Failed to load camera parameter" << endl;
-m_op = NORMAL;
-break;
-case CLEAR_CAMPAR:
-clearCampar();
-m_op = NORMAL;
-break;
-case DET_POSE:
-case DET_POSE_CAM:
-case DET_POSE_CAM_TBL:
-guessCamparPauseChsbd(timg);
-guessCamparPauseModel(timg);
-m_op = NORMAL;
-}
-}
-
-
-void f_inspector::renderChsbd(long long timg)
-{	
-D3DXMATRIX Mtrn;
-
-// if chesbord is not there, return without rendering
-seekChsbdTime(timg);
-
-// chess board is found 
-if(!m_bchsbd_found)
-return;
-
-// the camera parameter is fixed
-if(!m_bcampar_fixed)
-return;
-
-// the chesboard pose is fixed
-if(m_rvecs_chsbd.size() <= m_cur_chsbd)
-return;
-
-//		for(int icb = 0; icb < m_2dchsbd.size(); icb++){
-int icb = m_cur_chsbd;
-m_pd3dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);   
-m_pd3dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);   
-m_pd3dev->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_POINT);      
-m_pd3dev->SetRenderState(D3DRS_LIGHTING, false);   
-m_pd3dev->SetTexture(0, m_ptex_chsbd);
-
-Mat tvec = m_tvecs_chsbd[icb];
-Mat rmat;
-Rodrigues(m_rvecs_chsbd[icb], rmat);
-double * prot = rmat.ptr<double>(0);
-double * ptvec = tvec.ptr<double>(0);
-Mtrn(0, 0) = (float) prot[0];
-Mtrn(1, 0) = (float) prot[1];
-Mtrn(2, 0) = (float) prot[2];
-Mtrn(3, 0) = (float) ptvec[0];
-
-Mtrn(0, 1) = (float) prot[3];
-Mtrn(1, 1) = (float) prot[4];
-Mtrn(2, 1) = (float) prot[5];
-Mtrn(3, 1) = (float) ptvec[1];
-
-Mtrn(0, 2) = (float) prot[6];
-Mtrn(1, 2) = (float) prot[7];
-Mtrn(2, 2) = (float) prot[8];
-Mtrn(3, 2) = (float) ptvec[2];
-
-Mtrn(0, 3) = 0.;
-Mtrn(1, 3) = 0.;
-Mtrn(2, 3) = 0.;
-Mtrn(3, 3) = 1.0;
-m_pd3dev->SetTransform(D3DTS_WORLD, &Mtrn);
-m_pmesh_chsbd->DrawSubset(0);
-}
-
-*/
 
 bool f_inspector::saveCampar()
 {
@@ -1759,7 +1107,6 @@ bool f_inspector::loadCamparTbl()
 	}
 
 	m_bcam_tbl_loaded = true;
-	m_bcampar_fixed = false;
 	return true;
 }
 
@@ -1768,7 +1115,6 @@ void f_inspector::clearCampar()
 	m_cam_int.release();
 	m_cam_dist.release();
 	m_erep = 0.0;
-	m_bcampar_fixed = false;
 }
 
 void f_inspector::clearCamparTbl()
@@ -1778,7 +1124,6 @@ void f_inspector::clearCamparTbl()
 	m_cam_erep.clear();
 
 	m_bcam_tbl_loaded = false;
-	m_bcampar_fixed = false;
 }
 
 bool f_inspector::load_model()
@@ -1840,71 +1185,10 @@ void f_inspector::update_obj()
 	}
 }
 
-void f_inspector::render3D(long long timg)
-{
-	m_model_view.SetAsRenderTarget(m_pd3dev);
-	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
-		D3DCOLOR_COLORVALUE(0.f, 0.f, 0.f, 1.0f), 1.0f, 0);
-	// rendering chessboard
-	D3DXMATRIX Mprj, Mviewcam, Mview;
-	D3DXMatrixIdentity(&Mprj);
-	double w, h;
-	w = (double) m_model_view.get_surface_width();
-	h = (double) m_model_view.get_surface_height();
-
-	float zn = 0.1f, zf = 100.f;
-	float q = (float)(zf / (zf - zn));
-	float fx = (float) m_cam_int.at<double>(0, 0);
-	float fy = (float) m_cam_int.at<double>(1, 1);
-	float cx = (float) m_cam_int.at<double>(0, 2);
-	float cy = (float) m_cam_int.at<double>(1, 2);
-	float nfacx = (float) (0.5 * w);
-	float nfacy = (float) (0.5 * h);
-
-	// focal length (normalized with screen size)
-	Mprj(0, 0) = (float) (fx / nfacx);
-	Mprj(1, 1) = (float) (fy / nfacy);
-
-	// principal point (normalized with screen size)
-	Mprj(2, 0) = (float) (cx / (double) (0.5 * w) - 1.0); 
-	Mprj(2, 1) = (float) (1.0 - cy / (double) (0.5 * h));
-
-	Mprj(2, 2) =  q;
-	Mprj(3, 2) = (float) (- q * zn);
-	Mprj(2, 3) = 1.0; // original z is reserved as forth dimension.
-	m_pd3dev->SetTransform(D3DTS_PROJECTION, &Mprj);
-
-	// setting view matrix
-	D3DXMatrixIdentity(&Mviewcam);
-	// because we assume righthand coordinate for world space.
-	// but the camera coordinate is the lefthand one.
-	// we need to flip y-axis, and also need to be careful about culling direction.
-	Mviewcam(1, 0) = -Mviewcam(1, 0); 
-	Mviewcam(1, 1) = -Mviewcam(1, 1); 
-	Mviewcam(1, 2) = -Mviewcam(1, 2); 
-	Mviewcam(1, 3) = -Mviewcam(1, 3); 
-
-	m_pd3dev->SetTransform(D3DTS_VIEW, &Mviewcam);
-
-	// rendering chessboard
-	//	renderChsbd(timg);
-
-	// rendering 3d mdoel
-	renderModel(timg);
-
-	m_model_view.ResetRenderTarget(m_pd3dev);
-}
-
 //////////////////////////////////////////////// renderer
 void f_inspector::render(Mat & imgs, long long timg)
 {
 	// Image level rendering
-	/*
-	if(m_bshow_chsbd && m_bchsbd_found){
-	drawChessboardCorners(imgs, m_sz_chsbd, 
-	m_2dchsbd[m_cur_chsbd], m_bchsbd_found);
-	}
-	*/
 
 	// undistort if the flag is enabled.
 	if(m_bundistort){
@@ -2430,40 +1714,6 @@ void f_inspector::calc_jcam_max(){
 
 
 ///////////////////////////////////////////////////////// message handler
-// Planed features
-// * Main window shows video image
-// * Selected model is shown in subwindow (projected at the center, rotating around y-axis)
-// * op = OBJ, enables adding new points.
-//				Points are drawn. A selected point is highlighted. 
-//				If a certaine model is assigned, the model instance is also rendered.
-// * op = MODEL, enables model selection
-// * op = POINT, enables point selection by left and right keys for current object.
-// * op = OBJ3D, for selected object, enables rotating and translating in 3D space, and enable point matching between 2d and 3d. Drawings are the same as op=OBJ
-// * op = POINT3D, enables point selection by left and right keys for current assigned 3D object.
-// * op = CAMINT. manipulating camera interinsics displaying cimaging grid
-// * op = CAMEXT manipulating camera extrinsic displaying world grid
-// Current Implementation
-// SHIFT + Drag : op=OBJ Scroll Video Image, op=OBJ3D x-y translation
-// SHIFT + Wheel: op=OBJ Scaling, op=OBJ3D z translation
-// Ctrl + Wheel: op=OBJ3D obj rotation for selected axis, op=CAMEXT camera rotation for selected axis
-// Shift + Wheel: op=OBJ3D obj translation for selected axis, op=CAMEXT camera translation for selected axis
-// L Click : Point add cur_obj
-// Left Key: op=OBJ cur_obj--, op=POINT cur_obj_point--
-// Right Key: op=OBJ cur_ob++, op=POINT cur_obj_point++
-// F: Reset scale at original
-// O: op=OBJ Add New Object 
-// I: op=OBJ The current mdoel is assigned to the current object, then op<=OBJ3D
-// C: op=OBJ The current point is assigned to the current 3d point.
-// m: op <= MODEL
-// o: op <= OBJ
-// p: op <= POINT
-// q: op <= OBJ3D
-// r: op <= POINT3D
-// e: op <= CAMEXT
-// i: op <= CAMINT
-// x: m_axis <= AX_X
-// y: m_axis <= AX_Y
-// z: m_axis <= AX_Z
 
 void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 {
@@ -2508,25 +1758,6 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 	m_mm = MM_NORMAL;
 };
 
-void f_inspector::assign_point2d()
-{
-	if(m_objs.size() == 0)
-		return;
-
-	if(m_cur_point < 0)
-		return;
-
-	Point2f pt;
-	double iscale = 1.0 / m_main_scale;
-	pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
-	pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
-	pt.y *= (float) iscale;
-	pt.y += (float) m_ViewPort.Height;
-
-	m_objs[m_cur_obj].pt2d[m_cur_point] = pt;
-	m_objs[m_cur_obj].visible[m_cur_point] = 1;
-}
-
 void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 {
 	extractPointlParam(lParam, m_mc);
@@ -2542,18 +1773,6 @@ void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 	}
 }
 
-void f_inspector::scroll_screen()
-{
-	m_main_offset.x += (float)(m_mc.x - m_pt_sc_start.x);
-	m_main_offset.y += (float)(m_mc.y - m_pt_sc_start.y);
-	m_pt_sc_start = m_mc;
-}
-
-void f_inspector::shift_cam_center()
-{
-	m_cam_int.at<double>(0, 2) += (float)(m_mc.x - m_pt_sc_start.x);
-	m_cam_int.at<double>(1, 2)  += (float)(m_mc.y - m_pt_sc_start.y);
-}
 
 void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 {
@@ -2586,11 +1805,67 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 			translate_obj(delta);
 			break;
 		case CAMERA:
-			zoom_cam(delta);
+			adjust_cam(delta);
 			// change the focal length of the camera
 			break;
 		}
 	}
+}
+
+
+void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
+{
+	switch(wParam){
+	case VK_DELETE:
+		m_sop = SOP_DELETE;
+		break;
+	case VK_UP:
+		handle_vk_up();
+		break;
+	case VK_DOWN:
+		handle_vk_down();
+		break;
+	case VK_LEFT:
+		handle_vk_left();
+		break;
+	case VK_RIGHT:
+		handle_vk_right();
+		break;
+	default:
+		break;
+	}
+}
+
+void f_inspector::assign_point2d()
+{
+	if(m_objs.size() == 0)
+		return;
+
+	if(m_cur_point < 0)
+		return;
+
+	Point2f pt;
+	double iscale = 1.0 / m_main_scale;
+	pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
+	pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
+	pt.y *= (float) iscale;
+	pt.y += (float) m_ViewPort.Height;
+
+	m_objs[m_cur_obj].pt2d[m_cur_point] = pt;
+	m_objs[m_cur_obj].visible[m_cur_point] = 1;
+}
+
+void f_inspector::scroll_screen()
+{
+	m_main_offset.x += (float)(m_mc.x - m_pt_sc_start.x);
+	m_main_offset.y += (float)(m_mc.y - m_pt_sc_start.y);
+	m_pt_sc_start = m_mc;
+}
+
+void f_inspector::shift_cam_center()
+{
+	m_cam_int.at<double>(0, 2) += (float)(m_mc.x - m_pt_sc_start.x);
+	m_cam_int.at<double>(1, 2)  += (float)(m_mc.y - m_pt_sc_start.y);
 }
 
 void f_inspector::zoom_screen(short delta)
@@ -2653,49 +1928,7 @@ void f_inspector::rotate_obj(short delta)
 	Rodrigues(R, m_objs[m_cur_obj].rvec);
 }
 
-void f_inspector::translate_cam(short delta)
-{
-	double step = (double)(delta / WHEEL_DELTA) * m_adj_step;
-	Mat tvec = Mat::zeros(3, 1, CV_64FC1);
-	switch(m_axis){
-	case AX_X:
-		tvec.at<double>(0, 0) = step;
-		break;
-	case AX_Y:
-		tvec.at<double>(1, 0) = step;
-		break;
-	case AX_Z:
-		tvec.at<double>(2, 0) = step;
-		break;
-	}
-
-	m_tvec_cam += tvec;
-}
-
-void f_inspector::rotate_cam(short delta)
-{
-	// m_rot_step degree per wheel step
-	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_adj_step;
-	Mat rvec = Mat::zeros(3, 1, CV_64FC1);
-	switch(m_axis){
-	case AX_X:
-		rvec.at<double>(0, 0) = step;
-		break;
-	case AX_Y:
-		rvec.at<double>(1, 0) = step;
-		break;
-	case AX_Z:
-		rvec.at<double>(2, 0) = step;
-		break;
-	}
-	Mat R1, R2;
-	Rodrigues(m_rvec_cam, R1);
-	Rodrigues(rvec, R2);
-	Mat R = R2 * R1;
-	Rodrigues(R, m_rvec_cam);
-}
-
-void f_inspector::zoom_cam(short delta)
+void f_inspector::adjust_cam(short delta)
 {
 	short step = delta / WHEEL_DELTA;
 	double * ptr = m_jcam_max.ptr<double>(0);
@@ -2724,29 +1957,6 @@ void f_inspector::zoom_cam(short delta)
 			double * ptr_dist = m_cam_dist.ptr<double>(0);
 			ptr_dist[m_cur_campar - ECP_K1] += m_adj_step * step / ptr[m_cur_campar];
 		}
-		break;
-	}
-}
-
-void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
-{
-	switch(wParam){
-	case VK_DELETE:
-		m_sop = SOP_DELETE;
-		break;
-	case VK_UP:
-		handle_vk_up();
-		break;
-	case VK_DOWN:
-		handle_vk_down();
-		break;
-	case VK_LEFT:
-		handle_vk_left();
-		break;
-	case VK_RIGHT:
-		handle_vk_right();
-		break;
-	default:
 		break;
 	}
 }
