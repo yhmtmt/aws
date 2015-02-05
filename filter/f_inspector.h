@@ -15,7 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_inspector.h.  If not, see <http://www.gnu.org/licenses/>. 
-
+#include "../util/c_imgalign.h"
 #include "f_ds_window.h"
 ////////////////// procedure for model pose estimation
 // for calibration phase

@@ -69,7 +69,6 @@ const char * get_interpol_type_name(e_interpol_type type)
 	return ipltname[type];
 }
 
-
 void c_imgalign::calc_H_trn(Mat & T, Mat & Tx, Mat & Ty, Mat & Q, 
 	int start_x, int start_y, int end_x, int end_y, Mat & H)
 {

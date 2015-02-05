@@ -1,3 +1,5 @@
+#ifndef _C_IMGALIGN_H_
+#define _C_IMGALIGN_H_
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -289,3 +291,5 @@ public:
 	Mat & calc_warp(vector<Mat> & Tpyr, vector<Mat> & Tmask, vector<Mat> & Ipyr,
 		Rect & roi, Mat & Wini);
 };
+
+#endif
