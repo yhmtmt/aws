@@ -211,8 +211,9 @@ struct s_obj
 	bool init(const s_obj & obj);
 
 	bool load(const char * aname, long long at, vector<s_model> & mdls);
+	bool load(FileNode & fnobj, vector<s_model> & mdls);
 	bool save();
-
+	bool save(FileStorage & fs);
 	void fixAttitude(bool val){
 		is_attitude_fixed = val;
 	}
@@ -223,12 +224,16 @@ struct s_frame_obj{
 	long long tfrm;
 	vector<s_obj> objs;
 	Mat camint, camdist;
+
 	s_frame_obj()
 	{
 	}
 
 	bool init(const long long atfrm, const vector<s_obj> & aobjs, 
 		const Mat & acamint, const Mat & acamdist);
+
+	bool save(const char * aname);
+	bool load(const char * aname, vector<s_model> & mdls);
 };
 
 //////////////////////////////////////////////////////////////// The filter
@@ -268,12 +273,13 @@ private:
 	enum e_operation {
 		MODEL, OBJ, POINT, CAMERA, ESTIMATE
 	};
+	static const char * m_str_op[ESTIMATE+1]; 
+	e_operation m_op;
 
+	// sub operation
 	enum e_sub_operation{
 		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_INST_OBJ, SOP_DELETE
 	};
-	static const char * m_str_op[ESTIMATE+1]; 
-	e_operation m_op;
 
 	e_sub_operation m_sop;
 	void handle_sop_delete();
@@ -288,6 +294,7 @@ private:
 	//
 	char m_fname_model[1024]; // name of the model file
 	bool m_badd_model;
+	int m_cur_model; // current selected model
 	vector<s_model> m_models; // storing models
 	// loading model when m_badd_model is asserted
 	bool load_model();
@@ -303,27 +310,19 @@ private:
 	Mat m_rvec_cam_mdl, m_tvec_cam_mdl;
 	Mat m_cam_int_mdl, m_cam_dist_mdl;
 
-	LPD3DXMESH m_pmesh_chsbd;
-	LPDIRECT3DTEXTURE9 m_ptex_chsbd;
-
 	void renderModel(long long timg);
 
 	// frame objects
 	vector<s_frame_obj> m_fobjs;
+	int m_cur_frm;
 
 	//
 	// Object
 	// 
 	char m_name_obj[1024]; // name of the object file.
-	vector<vector<s_obj> > m_obj_trace;
-	int m_cur_model; // current selected model
 	int m_cur_obj; // current object selected
 	int m_cur_point; // current selected point of the model
-	vector<s_obj> m_objs; // object points
-	void load_obj();
-	void save_obj();
 	void renderObj();
-	void update_obj();
 
 	//
 	// Camera Parameter
@@ -361,9 +360,6 @@ private:
 	bool m_bcalib_rational_model;
 
 	void update_campar();
-	bool saveCampar();
-	bool loadCampar();
-	void clearCampar();
 	void renderCampar();
 
 	bool saveCamparTbl();
@@ -398,19 +394,11 @@ public:
 		if(!f_ds_window::init_run())
 			return false;
 
-		if(strlen(m_fname_campar)){
-			loadCampar();
-		}
-
 		return true;
 	}
 
 	virtual void destroy_run()
 	{
-		if(m_ptex_chsbd)
-			m_ptex_chsbd->Release();
-		if(m_pmesh_chsbd)
-			m_pmesh_chsbd->Release();
 		f_ds_window::destroy_run();
 		m_model_view.release();
 	}
@@ -473,6 +461,10 @@ public:
 //  Shift+LDrag: scroll
 //  Shift+Wheel: scaling
 //  R: Reset Window
+//  L: Load Frame object
+//  S: Save Frame object
+//  Up: parameter adjustment step up
+//  Down: parameter adjustment step down
 //
 // State {Model, Obj, Point, Camera}
 // State transition (always it can work)
@@ -521,24 +513,14 @@ public:
 // 
 // op = Camera
 // * show camera center and the distortion grid
-//  L: Load Camera Parameter (need to specify parameter file)
-//  S: Save Camera Parameter (need to specify parameter file)
 //  ->: cur_par++
 //  <-: cur_par--
-//  Wheel: Change focal length
-//  LDrag: Move Principal Point
+//  Wheel: Change selected parameter value
 //  f : fix par[cur_par]
 //  Del: Delete the camera parameter
 //
 // op = Estimate
 //  E: Estimate
 //
-// render : render whole screen with correct scroll and scale
-// renderObj : render overlay model, corresponding points, highlight selected point
-// renderModel : render model window
-// renderInfo : render Information of the filter state
-// instObj : initialize new object instance by a model 
-// estimate: 
-
 
 #endif
