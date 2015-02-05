@@ -522,134 +522,6 @@ bool s_obj::init(const s_obj & obj)
 	return true;
 }
 
-bool s_obj::load(const char * aname, long long at, vector<s_model> & mdls)
-{
-	char fname[1024];
-	snprintf(fname, 1024, "%s_%lld.yml", aname, at);
-	FileStorage fs(fname, FileStorage::READ);
-	if(!fs.isOpened()){
-		return false;
-	}
-
-	FileNode fn;
-
-	fn = fs["ObjName"];
-	if(fn.empty())
-		return false;
-
-	string str;
-	fn >> str;
-	if(str != name)
-		return false;
-
-	fn = fs["Model"];
-	if(fn.empty())
-		return false;
-
-	fn >> str;
-	pmdl = NULL;
-	for(int i = 0; i < mdls.size(); i++){
-		if(mdls[i].fname == str){
-			pmdl = &mdls[i];
-			break;
-		}
-	}
-	if(pmdl == NULL){
-		mdls.push_back(s_model());
-		vector<s_model>::iterator itr = mdls.end() - 1;
-		if(!itr->load(str.c_str())){
-			mdls.pop_back();
-			cerr << "Failed to load model " << str << endl;
-			return false;
-		}
-		pmdl = &(*itr);
-	}
-
-	// allocating memories
-	int num_points = (int) pmdl->pts.size();
-	pt2d.resize(num_points);
-	pt2dprj.resize(num_points);
-	visible.resize(num_points);
-
-	fn = fs["rvec"];
-	if(fn.empty()){
-		return false;
-	}
-	fn >> rvec;
-
-	fn = fs["tvec"];
-	if(fn.empty()){
-		return false;
-	}
-	fn >> tvec;
-
-	fn = fs["Matched"];
-	if(fn.empty())
-		return false;
-	FileNodeIterator itr = fn.begin();
-	for(int i = 0; i < num_points; i++, itr++){
-		if((*itr).empty())
-			return false;
-		int b;
-		(*itr) >> b;
-		visible[i] = b;
-	}
-
-	fn = fs["Points"];
-	if(fn.empty())
-		return false;
-	itr = fn.begin();
-	for(int i = 0; i < num_points; i++, itr++){
-		if((*itr).empty())
-			return false;
-		(*itr) >> pt2d[i];
-	}
-
-	t = at;
-	if(name){
-		if(strcmp(name, aname) == 0){
-			return true;
-		}
-		delete[] name;
-		name = new char[strlen(aname)+1];
-		if(!name)
-			return false;
-		strcpy(name, aname);
-	}
-
-	return true;
-}
-
-bool s_obj::save()
-{
-	char fname[1024];
-	snprintf(fname, 1024, "%s_%lld.yml", name, t);
-	FileStorage fs(fname, FileStorage::WRITE);
-	if(!fs.isOpened()){
-		return false;
-	}
-
-	// time, model file
-	fs << "ObjName" << name;
-	fs << "Model" << pmdl->fname;
-	fs << "rvec" << rvec;
-	fs << "tvec" << tvec;
-
-	// piont correspondance
-	fs << "Matched" << "[";
-	for(int i = 0; i < visible.size(); i++){
-		fs << visible[i];
-	}
-	fs << "]";
-
-	fs << "Points" << "[";
-	for(int i = 0; i < pt2d.size(); i++){
-		fs << pt2d[i];
-	}
-	fs << "]";
-	return true;
-}
-
 bool s_obj::load(FileNode & fnobj, vector<s_model> & mdls)
 {
 	FileNode fn;
@@ -1056,28 +928,32 @@ bool f_inspector::proc()
 		img = m_pin->get_img(timg);
 		if(img.empty())
 			return true;
-
 		if(m_timg != timg){ // new frame arrived
 			// auto save camera parameter and objects
-			if(m_timg > 0){
+			if(timg > 0){
 				// new frame object added
-				m_fobjs.push_back(s_frame_obj());
+				m_fobjs.push_back(new s_frame_obj);
 				m_cur_frm = (int) m_fobjs.size() - 1;
-				m_fobjs[m_cur_frm].tfrm = timg;
+				if(m_fobjs[m_cur_frm] == NULL){
+					cerr << "Cannot allocate memory for frame object" << endl;
+					return false;
+				}
+
+				m_fobjs[m_cur_frm]->tfrm = timg;
 
 				// if the frame object is not the first one, save the previous frame object 
 				// and initialize current frame object with the previous frame object.
 				if(m_cur_frm > 0){
 					// save previous frame object
-					s_frame_obj & fobj = m_fobjs[m_cur_frm - 1];
+					s_frame_obj & fobj = *m_fobjs[m_cur_frm - 1];
 					if(!fobj.save(m_name)){
 						cerr << "Failed to save filter objects in time " << fobj.tfrm << "." << endl;
 					}
 
 					// To initialize new frame object, it firstly seeks for the file for the frame via time stamp.
 					// If the trial failed, the new frame object is simply initalized with previous frame object.
-					if(!m_fobjs[m_cur_frm].load(m_name, m_models)){
-						m_fobjs[m_cur_frm].init(timg, fobj.objs, fobj.camint, fobj.camdist);
+					if(!m_fobjs[m_cur_frm]->load(m_name, m_models)){
+						m_fobjs[m_cur_frm]->init(timg, fobj.objs, fobj.camint, fobj.camdist);
 					}
 				}
 			}
@@ -1107,13 +983,17 @@ bool f_inspector::proc()
 	}
 
 	// projection 
-	proj_objs(m_fobjs[m_cur_frm].objs);
+	proj_objs(m_fobjs[m_cur_frm]->objs);
 	calc_jcam_max();
 
 	// estimate
 	if(m_op == ESTIMATE){
 		estimate();
 	}
+
+	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
+	m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
+
 	// input source is not ready. but it tends to happen usually.
 	if(img.empty())
 		return true;
@@ -1339,7 +1219,7 @@ void f_inspector::renderInfo()
 	// Cursor position
 	char information[1024];
 	int y = 0;
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 
 	snprintf(information, 1023, "AWS Time %s (Image Time %lld) Adjust Step x%f", 
 		m_time_str, m_timg, (float) m_adj_step);
@@ -1442,7 +1322,7 @@ void f_inspector::renderCursor()
 void f_inspector::renderObj()
 {
 	// Drawing object (2d and 3d)
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
 		if(m_op == OBJ){
@@ -1635,7 +1515,7 @@ void f_inspector::renderCampar()
 void f_inspector::estimate()
 {
 	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	for(int i = 0; i < objs.size(); i++){
 		s_obj & obj = objs[i];
 		cout << "obj[" << i << "].hessian=" << obj.hessian << endl;
@@ -1701,23 +1581,23 @@ void f_inspector::estimate_fulltime()
 {
 	// full projection with current camera parameters
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-		vector<s_obj> & objs = m_fobjs[ifrm].objs;
-		proj_objs(m_fobjs[ifrm].objs);
+		vector<s_obj> & objs = m_fobjs[ifrm]->objs;
+		proj_objs(m_fobjs[ifrm]->objs);
 	}
 
 	// accumulating camera intrinsics part of the hessian
 	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-		acc_Hcamint(Hcamint, m_fobjs[ifrm].objs);
+		acc_Hcamint(Hcamint, m_fobjs[ifrm]->objs);
 	}
 
 	// copying camera intrinsic part 
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-		copy_Hcamint(Hcamint, m_fobjs[ifrm].objs);
+		copy_Hcamint(Hcamint, m_fobjs[ifrm]->objs);
 	}
 
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-		update_params(m_fobjs[ifrm].objs);
+		update_params(m_fobjs[ifrm]->objs);
 	}	
 }
 
@@ -1779,7 +1659,7 @@ void f_inspector::update_params(vector<s_obj> & objs){
 void f_inspector::calc_jcam_max(){
 	m_jcam_max = Mat::zeros(1, 12, CV_64FC1);
 	double * ptr_max, * ptr;
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
 		Mat & jmax = obj.jmax;
@@ -1917,7 +1797,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 
 void f_inspector::assign_point2d()
 {
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	if(objs.size() == 0)
 		return;
 
@@ -1964,7 +1844,7 @@ void f_inspector::translate_obj(short delta)
 {
 	if(m_cur_obj < 0)
 		return ;
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	double * ptr = objs[m_cur_obj].jmax.ptr<double>(0) + 3;
 
 	double step = (double)(delta / WHEEL_DELTA) * m_adj_step;
@@ -1989,7 +1869,7 @@ void f_inspector::rotate_obj(short delta)
 	if(m_cur_obj < 0)
 		return;	
 
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	// m_rot_step degree per wheel step
 	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_adj_step;
 	Mat rvec = Mat::zeros(3, 1, CV_64FC1);
@@ -2058,7 +1938,7 @@ void f_inspector::handle_vk_down()
 
 void f_inspector::handle_vk_left()
 {	
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	switch(m_op){
 	case OBJ:
 		{
@@ -2094,7 +1974,7 @@ void f_inspector::handle_vk_left()
 
 void f_inspector::handle_vk_right()
 {
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	switch(m_op){
 	case OBJ:
 		{
@@ -2180,7 +2060,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 
 
 void f_inspector::handle_sop_delete(){
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	switch(m_op){
 	case MODEL:
 		// delete current Model
@@ -2222,7 +2102,7 @@ void f_inspector::handle_sop_save()
 	case OBJ:
 	case POINT:
 	case CAMERA:
-		m_fobjs[m_cur_frm].save(m_name);
+		m_fobjs[m_cur_frm]->save(m_name);
 		break;
 	}	
 	m_sop = SOP_NULL;
@@ -2237,7 +2117,7 @@ void f_inspector::handle_sop_load()
 	case OBJ:
 	case POINT:
 	case CAMERA:
-		m_fobjs[m_cur_frm].load(m_name, m_models);
+		m_fobjs[m_cur_frm]->load(m_name, m_models);
 		//load camera intrinsics
 		break;
 	}
@@ -2246,7 +2126,7 @@ void f_inspector::handle_sop_load()
 
 void f_inspector::handle_sop_inst_obj()
 {
-	vector<s_obj> & objs = m_fobjs[m_cur_frm].objs;
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	if(m_op == MODEL){
 		if(m_cur_model < 0){
 			return;

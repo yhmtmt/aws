@@ -210,9 +210,7 @@ struct s_obj
 
 	bool init(const s_obj & obj);
 
-	bool load(const char * aname, long long at, vector<s_model> & mdls);
 	bool load(FileNode & fnobj, vector<s_model> & mdls);
-	bool save();
 	bool save(FileStorage & fs);
 	void fixAttitude(bool val){
 		is_attitude_fixed = val;
@@ -313,7 +311,7 @@ private:
 	void renderModel(long long timg);
 
 	// frame objects
-	vector<s_frame_obj> m_fobjs;
+	vector<s_frame_obj*> m_fobjs;
 	int m_cur_frm;
 
 	//
@@ -401,6 +399,9 @@ public:
 	{
 		f_ds_window::destroy_run();
 		m_model_view.release();
+		for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++)
+			delete m_fobjs[ifobj];
+		m_fobjs.clear();
 	}
 
 	virtual bool proc();
