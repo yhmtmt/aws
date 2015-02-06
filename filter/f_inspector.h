@@ -128,6 +128,9 @@ struct s_obj
 	vector<Point2f> pt2d;
 	vector<Point2f> pt2dprj;
 	vector<int> visible; // true if 2d point is visible in the image
+
+	vector<Mat> ptx_tmpl; // point's template images.
+
 	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
@@ -215,6 +218,8 @@ struct s_obj
 	void fixAttitude(bool val){
 		is_attitude_fixed = val;
 	}
+
+	void sample_tmpl(Mat & img, Size & sz); 
 };
 
 ///////////////////////////////////////////////////////////////// s_frame_obj
@@ -225,6 +230,13 @@ struct s_frame_obj{
 
 	s_frame_obj()
 	{
+	}
+
+	void sample_tmpl(Mat & img, Size & sz)
+	{
+		for(int i = 0; i < objs.size(); i++){
+			objs[i].sample_tmpl(img, sz);
+		}
 	}
 
 	bool init(const long long atfrm, const vector<s_obj> & aobjs, 
@@ -256,6 +268,9 @@ private:
 	Mat m_img;			// image frame
 	double m_sh, m_sv; // horizontal and vertical scale. 
 
+	// Tracking module
+	c_imgalign m_ia;
+	Size m_sz_vtx_smpl;
 
 	// Rendering method for whole view
 	void render(Mat & imgs, long long timg);
@@ -294,7 +309,7 @@ private:
 	bool m_badd_model;
 	int m_cur_model; // current selected model
 	vector<s_model> m_models; // storing models
-	// loading model when m_badd_model is asserted
+
 	bool load_model();
 
 	// 

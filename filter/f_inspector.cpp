@@ -44,59 +44,6 @@ using namespace cv;
 
 const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  
 
-//About the parameter estimation
-//m: 2d point projected
-//M: 3d point in object coordinate
-//r: rotation params (including world/camera rotation)
-//   vector in R^3 
-//t: translation params (including world/camera translation)
-//   vector in R^3
-//p: projection params
-//   vector in R^4 (focal length and principal point for both x,y direction)
-//k: distortion params
-//   vector in R^6
-//
-//The projection function is
-//
-//m = P(D(T(R(M;r);t),k),p)
-//
-//Here I ommit the indices of the points and objects
-//
-//The estimation of parameters of camera and objects means the optimization,
-//
-//    min Sum(m-m')^2
-// [r, t, k, k]^T for all points
-//
-//First, to enable iterative minimization, linearize the function D around [r,t,p,k]^T
-//
-//D(P(T(R(M;r+dr);t+dt);p+dp)k+dk) 
-//  <=> J[dr, dt, dk, dp]^T + P(D(T(R(M;r);t);k)p)
-//
-//J is the Jacobian. Then we minimize
-//
-//     min Sum{m - J[dr, dt, dk, dp]^T - D(P(T(R(M;r);t);k)p)}^2
-// [dr, dt, dk, dp]^T for all points
-//
-//and update parameters with
-//
-//[r, t, k, p]^T <= [r, t, k, p]^T + [dr, dt, dk, dp]^T
-//
-//The [dr ,dt, dk, dp]^T is actually,
-//
-//Sum{2J^T{m - J[dr, dt, dk, dp]^T - P(D(T(R(M;r);t);k)p)}=0 (the derivative equals zero)
-//Sum {J^TJ [dr, dt, dk, dp]^T} = Sum {J^Tm - P(D(T(R(M;r);t);k)p)}
-//[dr, dt, dk, dp]^T = Sum {J^TJ}^(-1) Sum J^T{m - P(D(T(R(M;r);t);k)p)} 
-//
-//yes,it's Gauss-Newton method. And the Jacobian can be calculated as,
-//
-//J=dD/d[r, t, k, p]^T = [dD/dr, dD/dt, dD/dk, dD/dp]
-//
-//dP/dr=dP/dD * dD/dT * dT/dR * dR/dr
-//dP/dt=dP/dD * dD/dT * dT/dt
-//dP/dp=dP/dD * dD/dT
-//dP/dk=dP/dk
-//
-//The Jacobian can also be calculated with cv::projectPoints
 
 //////////////////////////////////////////////////////////////// helper function
 void get_cursor_point(vector<Point2f> & pt2ds, float x, float y, int & idx, double & dist)
@@ -206,152 +153,7 @@ void render_prjpts(s_model & mdl, vector<Point2f> & pt2dprj,
 	}
 	pline->End();
 }
-///////////////////////////////////////////////////////////////// for cminpack
-/*
-struct s_package {
-	int num_models;
-	vector<int> & num_pts;
-	vector<vector<Point2f > > & p2d;
-	vector<vector<Point2f > > p2dprj;
-	vector<vector<Point3f > > & p3d;
-	vector<Mat> & cam_int_tbl;
-	vector<Mat> & cam_dist_tbl;
-	Mat cam_int, cam_dist;
-	s_package(int anum_models, vector<int> & anum_pts, 
-		vector<vector<Point2f > > & ap2d,
-		vector<vector<Point3f > > & ap3d, 
-		vector<Mat> & acam_int_tbl, 
-		vector<Mat> & acam_dist_tbl,
-		Mat & acam_int, Mat & acam_dist): 
-	num_models(anum_models), num_pts(anum_pts), p2d(ap2d), p3d(ap3d),
-		cam_int_tbl(acam_int_tbl), cam_dist_tbl(acam_dist_tbl), 
-		cam_int(acam_int), cam_dist(acam_dist){
-	}
-};
 
-int prj_pause_and_cam(void * p, int m, int n, const __cminpack_real__ *x,
-	__cminpack_real__ *fvec, int iflag)
-{
-	// input layout
-	// x[0] : fx, x[1] : fy, x[2] : cx, x[3] : cy
-	// x[4] : k1, x[5] : k2, x[6] : px, x[7] : py
-	// x[8] : k3, x[9] : k4, x[10]: k5, x[11]: k6
-	// x[12 ~] : rvec and tvec
-
-	s_package * pkg = (s_package *) p;
-	Mat & cam_int = pkg->cam_int;
-	Mat & cam_dist = pkg->cam_dist;
-
-	// loading projection matrix
-	double * ptr = cam_int.ptr<double>(0);
-	ptr[0] = x[0]; //fx
-	ptr[2] = x[2]; // cx
-	ptr[4] = x[1]; // fy
-	ptr[5] = x[3]; // cy
-
-	// loading distortino parameter
-	ptr = cam_dist.ptr<double>(0);
-	ptr[0] = x[4]; // k1
-	ptr[1] = x[5]; // k2
-	ptr[2] = x[6]; // px
-	ptr[3] = x[7]; // py
-	ptr[4] = x[8]; // k3
-	ptr[5] = x[9]; // k4
-	ptr[6] = x[10]; // k5
-	ptr[7] = x[11]; // k6;
-
-	const double * px = &(x[12]);
-	double * pf = fvec;
-	for(int im = 0; im < pkg->num_models; im++){
-		Mat rvec = Mat(3, 1, CV_64FC1, (void*) px);
-		Mat tvec = Mat(3, 1, CV_64FC1, (void*) (px+3));
-		projectPoints(pkg->p3d[im], rvec, tvec, cam_int, 
-			cam_dist, pkg->p2dprj[im]);
-		for(int ipt = 0; ipt < pkg->num_pts[im]; ipt++){
-			pf[0] = pkg->p2dprj[im][ipt].x - pkg->p2d[im][ipt].x;
-			pf[1] = pkg->p2dprj[im][ipt].y - pkg->p2d[im][ipt].y;
-			pf += 2;
-		}
-		px += 6;
-	}
-	return 0;
-}
-
-int prj_pause_and_cam_with_tbl(void * p, int m, int n, const __cminpack_real__ *x,
-	__cminpack_real__ *fvec, int iflag)
-{
-	// input layout
-	// x[0] : camera parameter table index
-	// x[1 ~ ]: rvec and tvec
-
-	s_package * pkg = (s_package *) p;
-	Mat & cam_int = pkg->cam_int;
-	Mat & cam_dist = pkg->cam_dist;
-
-	// loading projection matrix
-	double * ptr = cam_int.ptr<double>(0);
-	int x0_l = max(0, (int) x[0]);  
-	double rat = x[0] - (double) x0_l;
-	double rat_i = 1.0 - rat;
-	int x0_u = min((int)(pkg->cam_int_tbl.size() - 1), x0_l + 1);
-
-	double * ptr_u = pkg->cam_int_tbl[x0_u].ptr<double>(0);
-	double * ptr_l = pkg->cam_int_tbl[x0_l].ptr<double>(0);
-
-	ptr[0] = rat_i * ptr_l[0] + rat * ptr_u[0]; //fx
-	ptr[2] = rat_i * ptr_l[2] + rat * ptr_u[2]; // cx
-	ptr[4] = rat_i * ptr_l[4] + rat * ptr_u[4]; // fy
-	ptr[5] = rat_i * ptr_l[5] + rat * ptr_u[5]; // cy
-
-	// loading distortion parameter
-	ptr = cam_dist.ptr<double>(0);
-	ptr_u = pkg->cam_dist_tbl[x0_u].ptr<double>(0);
-	ptr_l = pkg->cam_dist_tbl[x0_l].ptr<double>(0);
-	for(int i = 0; i < 8; i++){
-		ptr[i] = rat_i * ptr_l[i] + rat * ptr_u[i];; // k1
-	}
-
-	const double * px = &(x[1]);
-	double * pf = fvec;
-	for(int im = 0; im < pkg->num_models; im++){
-		Mat rvec = Mat(3, 1, CV_64FC1, (void*) px);
-		Mat tvec = Mat(3, 1, CV_64FC1, (void*) (px+3));
-		projectPoints(pkg->p3d[im], rvec, tvec, cam_int, 
-			cam_dist, pkg->p2dprj[im]);
-		for(int ipt = 0; ipt < pkg->num_pts[im]; ipt++){
-			pf[0] = pkg->p2dprj[im][ipt].x - pkg->p2d[im][ipt].x;
-			pf[1] = pkg->p2dprj[im][ipt].y - pkg->p2d[im][ipt].y;
-			pf += 2;
-		}
-		px += 6;
-	}
-	return 0;
-}
-
-int prj_pause(void * p, int m, int n, const __cminpack_real__ *x,
-	__cminpack_real__ *fvec, int iflag)
-{
-	s_package * pkg = (s_package *) p;
-	Mat & cam_int = pkg->cam_int;
-	Mat & cam_dist = pkg->cam_dist;
-
-	const double * px = &(x[0]);
-	double * pf = fvec;
-	for(int im = 0; im < pkg->num_models; im++){
-		Mat rvec = Mat(3, 1, CV_64FC1, (void*) px);
-		Mat tvec = Mat(3, 1, CV_64FC1, (void*) (px+3));
-		projectPoints(pkg->p3d[im], rvec, tvec, cam_int, 
-			cam_dist, pkg->p2dprj[im]);
-		for(int ipt = 0; ipt < pkg->num_pts[im]; ipt++){
-			pf[0] = pkg->p2dprj[im][ipt].x - pkg->p2d[im][ipt].x;
-			pf[1] = pkg->p2dprj[im][ipt].y - pkg->p2d[im][ipt].y;
-			pf += 2;
-		}
-		px += 6;
-	}
-	return 0;
-}
-*/
 /////////////////////////////////////////////////////////////////// struct s_model
 
 double s_model::get_max_dist()
@@ -727,6 +529,25 @@ void s_obj::render_vector(Point3f & vec,
 	xcross(pline, vec2d[0], 3.0, color);
 	pline->End();
 }
+
+void s_obj::sample_tmpl(Mat & img, Size & sz)
+{
+	int ox = sz.width >> 1;
+	int oy = sz.height >> 1;
+	Rect roi;
+	roi.width = sz.width;
+	roi.height = sz.height;
+
+	ptx_tmpl.resize(pt2d.size());
+
+	for(int i = 0; i < pt2d.size(); i++){
+		Point2f & pt = pt2d[i];
+		roi.x = (int)(pt.x + 0.5) - ox;
+		roi.y = (int)(pt.y + 0.5) - oy;
+		img(roi).copyTo(ptx_tmpl[i]);
+	}
+}
+
 //////////////////////////////////////////////////////////////////// s_frame_obj
 
 bool s_frame_obj::init(const long long atfrm, const vector<s_obj> & aobjs, const Mat & acamint, const Mat & acamdist)
@@ -827,7 +648,8 @@ const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_bundistort(false), m_bcam_tbl_loaded(false),
+	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(16, 16),
+	m_bundistort(false), m_bcam_tbl_loaded(false),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
@@ -852,6 +674,10 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("op", (int*)&m_op, ESTIMATE+1, m_str_op,"Operation ");
 	register_fpar("sh", &m_sh, "Horizontal scaling value. Image size is multiplied by the value. (default 1.0)");
 	register_fpar("sv", &m_sv, "Vertical scaling value. Image size is multiplied by the value. (default 1.0)");
+
+	// point tracking parameter
+	register_fpar("szptx", &m_sz_vtx_smpl.width, "Horizontal size of a point template.");
+	register_fpar("szpty", &m_sz_vtx_smpl.height, "Vertical size of a point template.");
 
 	// model related parameters
 	register_fpar("mdl", &m_cur_model, "Model with specified index is selected.");
@@ -947,6 +773,7 @@ bool f_inspector::proc()
 				if(m_cur_frm > 0){
 					// save previous frame object
 					s_frame_obj & fobj = *m_fobjs[m_cur_frm - 1];
+					
 					if(!fobj.save(m_name)){
 						cerr << "Failed to save filter objects in time " << fobj.tfrm << "." << endl;
 					}
@@ -1000,6 +827,7 @@ bool f_inspector::proc()
 		return true;
 
 	Mat img_s;
+
 	resize(img, img_s, Size(), m_sh, m_sv);
 
 	// fit the viewport size to the image
@@ -1512,6 +1340,60 @@ void f_inspector::renderCampar()
 
 	m_pline->End();
 }
+
+//About the parameter estimation
+//m: 2d point projected
+//M: 3d point in object coordinate
+//r: rotation params (including world/camera rotation)
+//   vector in R^3 
+//t: translation params (including world/camera translation)
+//   vector in R^3
+//p: projection params
+//   vector in R^4 (focal length and principal point for both x,y direction)
+//k: distortion params
+//   vector in R^6
+//
+//The projection function is
+//
+//m = P(D(T(R(M;r);t),k),p)
+//
+//Here I ommit the indices of the points and objects
+//
+//The estimation of parameters of camera and objects means the optimization,
+//
+//    min Sum(m-m')^2
+// [r, t, k, k]^T for all points
+//
+//First, to enable iterative minimization, linearize the function D around [r,t,p,k]^T
+//
+//D(P(T(R(M;r+dr);t+dt);p+dp)k+dk) 
+//  <=> J[dr, dt, dk, dp]^T + P(D(T(R(M;r);t);k)p)
+//
+//J is the Jacobian. Then we minimize
+//
+//     min Sum{m - J[dr, dt, dk, dp]^T - D(P(T(R(M;r);t);k)p)}^2
+// [dr, dt, dk, dp]^T for all points
+//
+//and update parameters with
+//
+//[r, t, k, p]^T <= [r, t, k, p]^T + [dr, dt, dk, dp]^T
+//
+//The [dr ,dt, dk, dp]^T is actually,
+//
+//Sum{2J^T{m - J[dr, dt, dk, dp]^T - P(D(T(R(M;r);t);k)p)}=0 (the derivative equals zero)
+//Sum {J^TJ [dr, dt, dk, dp]^T} = Sum {J^Tm - P(D(T(R(M;r);t);k)p)}
+//[dr, dt, dk, dp]^T = Sum {J^TJ}^(-1) Sum J^T{m - P(D(T(R(M;r);t);k)p)} 
+//
+//yes,it's Gauss-Newton method. And the Jacobian can be calculated as,
+//
+//J=dD/d[r, t, k, p]^T = [dD/dr, dD/dt, dD/dk, dD/dp]
+//
+//dP/dr=dP/dD * dD/dT * dT/dR * dR/dr
+//dP/dt=dP/dD * dD/dT * dT/dt
+//dP/dp=dP/dD * dD/dT
+//dP/dk=dP/dk
+//
+//The Jacobian can also be calculated with cv::projectPoints
 
 void f_inspector::estimate()
 {

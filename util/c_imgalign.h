@@ -164,7 +164,7 @@ protected:
 public:
 	c_imgalign():m_icur(0), m_inew(1), m_weight(true), m_robust(false),
 		m_tmpl_blk_sx(2), m_tmpl_blk_sy(2), m_err_th(100.0), m_itr_exit_th(0.1),
-		m_num_max_itrs(5), m_wt(EWT_AFN), m_interpol_type(EIT_NN), m_bmask(false),
+		m_num_max_itrs(5), m_wt(EWT_TRN), m_interpol_type(EIT_BIL), m_bmask(false),
 		m_mask()
 	{
 		getDerivKernels(m_kxrow, m_kxcol, 1, 0, 3, true, CV_64F);
