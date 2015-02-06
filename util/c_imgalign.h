@@ -286,6 +286,11 @@ public:
 		return m_delta_p[ilv];
 	}
 
+	// Tpyr: pyramid images of a template image 
+	// Ipyr: pyramid images of a whole image to be tracked
+	// roi: template image ROI in the original whole image
+	// Wini: initial warp
+	// Return Value: Motion matrix contains Wini
 	Mat & calc_warp(vector<Mat> & Tpyr, vector<Mat> & Ipyr,
 		Rect & roi, Mat & Wini);
 	Mat & calc_warp(vector<Mat> & Tpyr, vector<Mat> & Tmask, vector<Mat> & Ipyr,

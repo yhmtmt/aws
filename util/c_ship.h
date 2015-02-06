@@ -467,6 +467,8 @@ public:
 			x1 *= rat;
 			y0 *= rat;
 			y1 *= rat;
+
+			// calculating affin transformation 
 			double * ptr = m_M.ptr<double>(0);
 			double t = ptr[2] * rat;
 			pt[0].x = (float)(ptr[0] * x0 + ptr[1] * y0 + t);

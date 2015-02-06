@@ -30,7 +30,8 @@ using namespace cv;
 
 #include "util.h"
 
-
+// Synthesize two affine trasformations
+// res = l * r 
 bool synth_afn(Mat & l, Mat & r, Mat & res)
 {
 	if(l.cols != 3 || r.cols != 3)

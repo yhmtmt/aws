@@ -271,7 +271,7 @@ bool f_stabilizer::proc(){
 	if(m_roi.height <= 0 || (m_roi.y + m_roi.height) >= gry.rows)
 		m_roi.height = gry.rows - m_roi.y;
 
-	// making image pyramid
+	// making image pyramid of a new image
 	buildPyramid(gry, m_pyrimg[0], m_num_pyr_level);
 
 	// making a template and its pyramid
@@ -282,25 +282,39 @@ bool f_stabilizer::proc(){
 	if(m_bmask && m_Tmask.size() != m_num_pyr_level)
 		buildPyramid(m_mask, m_Tmask, m_num_pyr_level);
 
+	// making image pyramid of the template image sampled from ROI 
+	// in the previous image stabilized with warp parameters m_W
 	buildPyramid(m_refimg(m_roi), m_pyrimg[1], m_num_pyr_level);
 	if(!m_bWinit){
 		init();
 		m_bWinit = true;
 	}
 
-	// calculating new warp
-	Mat Wnew;
+	// calculating new warp. The new warp contains the previous warp. 
+	// Warp function basically is  ROI of Wnew(Original Image) = ROI of Wold(Previous Image) 
+	Mat Wnew; 
 	
 	if(m_bmask)
-		Wnew = m_core.calc_warp(m_pyrimg[1], m_Tmask, m_pyrimg[0], m_roi, m_W);
+		Wnew = m_core.calc_warp(m_pyrimg[1] /* previous image template*/,
+			m_Tmask /* Mask image. Pixels with value zero is ignored in the error calculation.*/, 
+			m_pyrimg[0] /* image the warp to be calculated */,
+			m_roi /* roi for template sampling */,  
+			m_W /* previous warp */);
 	else
-		Wnew = m_core.calc_warp(m_pyrimg[1], m_pyrimg[0], m_roi, m_W);
+		Wnew = m_core.calc_warp(m_pyrimg[1] /* previous image */,
+			m_pyrimg[0] /* image the warp to be calculated */, 
+			m_roi/* roi for template sampling */, 
+			m_W /* previous warp */);
 
+	// convergence check
 	if(m_core.is_conv())
 		m_num_conv_frms++;
+	else // if not, the previous warp parameters are used.
+		m_W.copyTo(Wnew);
+
 	m_num_frms++;
 
-	// Motion parameter is estimated as a moving average of Wnew
+	// Motion parameters are estimated as the moving average of Wnew
 	Mat clrout, gryout;
 	switch(m_core.get_wt()){
 	case EWT_AFN:
@@ -309,22 +323,32 @@ bool f_stabilizer::proc(){
 		{
 			double theta0 = asin(m_M.at<double>(1, 0));
 			double theta1 = asin(Wnew.at<double>(1, 0));
+			// we want to cancel the rotation. but still need to be canceled slightly.
+			// because the alignment errors cause unintended rotation.
+			// Very small (m_alpha[0] + m_beta) sets the camear's average rotation as the stable rotation
 			theta0 = /*(1 - m_alpha[0]) * theta0 + */(m_alpha[0] + m_beta) * theta1;
-			theta1 = sin(theta0);
-			m_M.at<double>(0, 1) = -theta1;
-			m_M.at<double>(1, 0) = theta1;
+			double s0, c0;
+			s0 = sin(theta0);
+			m_M.at<double>(0, 1) = -s0;
+			m_M.at<double>(1, 0) = s0;
 			theta1 = cos(theta0);
-			m_M.at<double>(0, 0) = theta1;
-			m_M.at<double>(1, 1) = theta1;
+			m_M.at<double>(0, 0) = c0;
+			m_M.at<double>(1, 1) = c0;
 		}
 	case EWT_TRN:
+		// usually we dont want to cancel the horizontal motion. The coefficient m_alpha[2] + m_beta should nearly be 1.0
 		m_M.at<double>(0, 2) = /*(1 - m_alpha[2]) * m_M.at<double>(0, 2) +*/
 			(m_alpha[2] + m_beta) * Wnew.at<double>(0, 2);
 		m_M.at<double>(1, 2) = /*(1 - m_alpha[5]) * m_M.at<double>(1, 2) +*/
 			 (m_alpha[5] + m_beta) * Wnew.at<double>(1, 2);
 
+		// Here m_M is the true motion it should not be canceled
 		invertAffineTransform(m_M, m_iM);
+
+		// Subtract m_M by multiplying Wnew and m_iM the inverse of m_M
 		synth_afn(Wnew, m_iM, m_W);
+
+		// Applying resulting warp function for both color and gray scale image
 		warpAffine(clr, clrout, 
 			m_W, Size(clr.cols, clr.rows)
 			, INTER_LINEAR | WARP_INVERSE_MAP);
