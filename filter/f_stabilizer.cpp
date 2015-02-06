@@ -331,7 +331,7 @@ bool f_stabilizer::proc(){
 			s0 = sin(theta0);
 			m_M.at<double>(0, 1) = -s0;
 			m_M.at<double>(1, 0) = s0;
-			theta1 = cos(theta0);
+			c0 = cos(theta0);
 			m_M.at<double>(0, 0) = c0;
 			m_M.at<double>(1, 1) = c0;
 		}

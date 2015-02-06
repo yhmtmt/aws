@@ -31,7 +31,7 @@ using namespace cv;
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
 
-#include "../util/aws_cminpack.h"
+//#include "../util/aws_cminpack.h"
 #include "../util/coord.h"
 #include "../util/c_ship.h"
 #include "../util/c_clock.h"
@@ -207,6 +207,7 @@ void render_prjpts(s_model & mdl, vector<Point2f> & pt2dprj,
 	pline->End();
 }
 ///////////////////////////////////////////////////////////////// for cminpack
+/*
 struct s_package {
 	int num_models;
 	vector<int> & num_pts;
@@ -350,7 +351,7 @@ int prj_pause(void * p, int m, int n, const __cminpack_real__ *x,
 	}
 	return 0;
 }
-
+*/
 /////////////////////////////////////////////////////////////////// struct s_model
 
 double s_model::get_max_dist()
