@@ -549,7 +549,7 @@ void s_obj::sample_tmpl(Mat & img, Size & sz)
 		roi.x = (int)(pt.x + 0.5) - ox;
 		roi.y = (int)(pt.y + 0.5) - oy;
 		img(roi).copyTo(ptx_tmpl[i]);
-		cout << roi << endl;
+	//	cout << roi << endl;
 	}
 }
 
@@ -704,7 +704,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
-	m_badd_model(false), m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1), 
+	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0)
 {
@@ -721,7 +721,6 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("lvpyr", &m_lvpyr, "Level of the pyramid.");
 
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
-	register_fpar("add_model", &m_badd_model, "If the flag is asserted, model is loaded from fmodel");
 	register_fpar("fcp", m_fname_campar, 1024, "File path of camera parameter.");
 	register_fpar("fcptbl", m_fname_campar_tbl, 1024, "File path of table of the camera parameters with multiple magnifications.");
 	register_fpar("op", (int*)&m_op, ESTIMATE+1, m_str_op,"Operation ");
@@ -808,8 +807,18 @@ bool f_inspector::proc()
 		img = m_pin->get_img(timg);
 		if(img.empty() || timg < 0)
 			return true;
+
 		if(m_timg != timg){ // new frame arrived
-			// auto save camera parameter and objects
+			// resize the original image to adjust the original aspect ratio.
+			// (Some video file should change the aspect ratio to display correctly)
+			resize(img, m_img_s, Size(), m_sh, m_sv);
+
+			// generate gray scale image
+			cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
+
+			// build image pyramid
+			buildPyramid(m_img_gry, m_impyr, m_lvpyr - 1);
+
 			if(timg > 0){
 				// new frame object added
 				m_fobjs.push_back(new s_frame_obj);
@@ -827,9 +836,6 @@ bool f_inspector::proc()
 					// save previous frame object
 					s_frame_obj & fobj = *m_fobjs[m_cur_frm - 1];
 					
-					// sample point templates for succeeding point tracking 
-					fobj.sample_tmpl(m_img_gry, m_sz_vtx_smpl);
-
 					if(!fobj.save(m_name)){
 						cerr << "Failed to save filter objects in time " << fobj.tfrm << "." << endl;
 					}
@@ -849,6 +855,8 @@ bool f_inspector::proc()
 	}else{
 		timg = m_timg;
 		img = m_img;
+		if(img.empty())
+			return true;
 	}
 
 	switch(m_sop){
@@ -873,6 +881,9 @@ bool f_inspector::proc()
 	proj_objs(m_fobjs[m_cur_frm]->objs);
 	calc_jcam_max();
 
+	// sample point templates
+	m_fobjs[m_cur_frm]->sample_tmpl(m_img_gry, m_sz_vtx_smpl);
+
 	// estimate
 	if(m_op == ESTIMATE){
 		estimate();
@@ -881,26 +892,12 @@ bool f_inspector::proc()
 	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
 	m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
 
-	// input source is not ready. but it tends to happen usually.
-	if(img.empty())
-		return true;
-
-	// resize the original image to adjust the original aspect ratio.
-	// (Some video file should change the aspect ratio to display correctly)
-	resize(img, m_img_s, Size(), m_sh, m_sv);
-
-	// generate gray scale image
-	cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
-
-	// build image pyramid
-	buildPyramid(m_img_gry, m_impyr, m_lvpyr - 1);
-
 	// fit the viewport size to the image
 	if(m_img_s.cols != m_ViewPort.Width ||
 		m_img_s.rows != m_ViewPort.Height){
-			if(!init_viewport(m_img_s)){
-				return false;
-			}
+		if(!init_viewport(m_img_s)){
+			return false;
+		}
 	}
 
 	// fit the direct 3d surface to the image
@@ -925,14 +922,6 @@ bool f_inspector::proc()
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height,
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height))
 			return false;
-	}
-
-	//////////////// Model related code //////////////////////////////
-	if(m_badd_model){
-		if(!load_model()){
-			cerr << "Failed to load model " << m_fname_model << endl;
-		}
-		m_badd_model = false;
 	}
 
 	// rendering main view

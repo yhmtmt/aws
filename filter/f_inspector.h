@@ -310,7 +310,6 @@ private:
 	// model 
 	//
 	char m_fname_model[1024]; // name of the model file
-	bool m_badd_model;
 	int m_cur_model; // current selected model
 	vector<s_model> m_models; // storing models
 
