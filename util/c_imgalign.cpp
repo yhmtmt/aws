@@ -794,8 +794,12 @@ Mat & c_imgalign::calc_warp(vector<Mat> & Tpyr, vector<Mat> & Ipyr,
 
 	if(m_wt == EWT_HMG){
 		m_invW = Mat::eye(3, 3, CV_64FC1);
+		m_Wtmp[0] = Mat::eye(3, 3, CV_64FC1);
+		m_Wtmp[1] = Mat::eye(3, 3, CV_64FC1);
 	}else{
 		m_invW = Mat::eye(2, 3, CV_64FC1);
+		m_Wtmp[0] = Mat::eye(2, 3, CV_64FC1);
+		m_Wtmp[1] = Mat::eye(2, 3, CV_64FC1);
 	}
 
 	int levels = min((int) Tpyr.size(), (int) Ipyr.size());

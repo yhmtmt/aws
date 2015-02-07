@@ -335,8 +335,10 @@ bool s_obj::load(FileNode & fnobj, vector<s_model> & mdls)
 
 	string str;
 	fn >> str;
-	if(str != name)
+	name = new char[str.length() + 1];
+	if(name == NULL)
 		return false;
+	strcpy(name, str.c_str());
 
 	fn = fnobj["Model"];
 	if(fn.empty())
@@ -541,10 +543,13 @@ void s_obj::sample_tmpl(Mat & img, Size & sz)
 	ptx_tmpl.resize(pt2d.size());
 
 	for(int i = 0; i < pt2d.size(); i++){
+		if(!visible[i])
+			continue;
 		Point2f & pt = pt2d[i];
 		roi.x = (int)(pt.x + 0.5) - ox;
 		roi.y = (int)(pt.y + 0.5) - oy;
 		img(roi).copyTo(ptx_tmpl[i]);
+		cout << roi << endl;
 	}
 }
 
@@ -573,23 +578,38 @@ bool s_frame_obj::init(const long long atfrm, s_frame_obj & fobj,
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		vector<Point2f> & pt2d = objs[iobj].pt2d;
 		vector<Point2f> & pt2d_prev = objs_prev[iobj].pt2d;
+		vector<int> & visible = objs[iobj].visible;
+		vector<int> & visible_prev = objs_prev[iobj].visible;
 		vector<Mat> & tmpl = objs_prev[iobj].ptx_tmpl;
 		for(int ipt = 0; ipt < pt2d.size(); ipt++){
+			if(!visible_prev[ipt]){
+				visible[ipt] = 0;
+				continue;
+			}
+			
 			Point2f & pt_prev = pt2d_prev[ipt];
+			char buf[128];
 			Point2f & pt = pt2d[ipt];
-			buildPyramid(tmpl[ipt], tmplpyr, (int) impyr.size());
+			snprintf(buf, 128, "t%d.png", ipt);
+			imwrite(buf, tmpl[ipt]);
+			buildPyramid(tmpl[ipt], tmplpyr, (int) impyr.size() - 1);
 			roi.width = tmpl[ipt].cols;
 			roi.height = tmpl[ipt].rows;
-			roi.x = (int)(pt_prev.x + 0.5) - roi.width;
-			roi.y = (int)(pt_prev.y + 0.5) - roi.height;
-
+			roi.x = (int)(pt_prev.x + 0.5) - (roi.width >> 1);
+			roi.y = (int)(pt_prev.y + 0.5) - (roi.height >> 1);
+			snprintf(buf, 128, "r%d.png", ipt);
+			imwrite(buf, impyr[0](roi));
+			cout << roi << endl;
 			Warp = ia.calc_warp(tmplpyr, impyr, roi, I);
 			if(!ia.is_conv()){
-				objs[iobj].visible[ipt] = 0;
-				continue;
+				//objs[iobj].visible[ipt] = 0;
+				//continue;
+				cerr << "Tracker does not converged." << endl;
 			}
 
 			afn(Warp, pt_prev, pt);
+			cout << pt_prev;
+			cout << pt;
 		}
 	}
 	return true;
@@ -679,7 +699,7 @@ const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(16, 16), m_lvpyr(1),
+	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_lvpyr(2),
 	m_bundistort(false), m_bcam_tbl_loaded(false),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
@@ -786,7 +806,7 @@ bool f_inspector::proc()
 	Mat img;
 	if(!is_pause()){
 		img = m_pin->get_img(timg);
-		if(img.empty())
+		if(img.empty() || timg < 0)
 			return true;
 		if(m_timg != timg){ // new frame arrived
 			// auto save camera parameter and objects
@@ -847,6 +867,9 @@ bool f_inspector::proc()
 	}
 
 	// projection 
+	if(m_cur_frm < 0)
+		return true;
+
 	proj_objs(m_fobjs[m_cur_frm]->objs);
 	calc_jcam_max();
 
@@ -870,7 +893,7 @@ bool f_inspector::proc()
 	cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
 
 	// build image pyramid
-	buildPyramid(m_img_gry, m_impyr, m_lvpyr);
+	buildPyramid(m_img_gry, m_impyr, m_lvpyr - 1);
 
 	// fit the viewport size to the image
 	if(m_img_s.cols != m_ViewPort.Width ||
