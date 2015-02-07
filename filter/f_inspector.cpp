@@ -550,17 +550,48 @@ void s_obj::sample_tmpl(Mat & img, Size & sz)
 
 //////////////////////////////////////////////////////////////////// s_frame_obj
 
-bool s_frame_obj::init(const long long atfrm, const vector<s_obj> & aobjs, const Mat & acamint, const Mat & acamdist)
+bool s_frame_obj::init(const long long atfrm, s_frame_obj & fobj, 
+	vector<Mat> & impyr, c_imgalign & ia)
 {
 	tfrm = atfrm;
-	objs.resize(aobjs.size());
-	for(int i = 0; i < aobjs.size(); i++){
-		if(!objs[i].init(aobjs[i])){
+	vector<s_obj> & objs_prev = fobj.objs;
+
+	objs.resize(objs_prev.size());
+	for(int i = 0; i < objs.size(); i++){
+		if(!objs[i].init(objs_prev[i])){
 			return false;
 		}
 	}
-	acamint.copyTo(camint);
-	acamdist.copyTo(camdist);
+	fobj.camint.copyTo(camint);
+	fobj.camdist.copyTo(camdist);
+
+	// tracking points
+	vector<Mat> tmplpyr;
+	Rect roi;
+	Mat Warp, I;
+	I = Mat::eye(3, 3, CV_64FC1);
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		vector<Point2f> & pt2d = objs[iobj].pt2d;
+		vector<Point2f> & pt2d_prev = objs_prev[iobj].pt2d;
+		vector<Mat> & tmpl = objs_prev[iobj].ptx_tmpl;
+		for(int ipt = 0; ipt < pt2d.size(); ipt++){
+			Point2f & pt_prev = pt2d_prev[ipt];
+			Point2f & pt = pt2d[ipt];
+			buildPyramid(tmpl[ipt], tmplpyr, (int) impyr.size());
+			roi.width = tmpl[ipt].cols;
+			roi.height = tmpl[ipt].rows;
+			roi.x = (int)(pt_prev.x + 0.5) - roi.width;
+			roi.y = (int)(pt_prev.y + 0.5) - roi.height;
+
+			Warp = ia.calc_warp(tmplpyr, impyr, roi, I);
+			if(!ia.is_conv()){
+				objs[iobj].visible[ipt] = 0;
+				continue;
+			}
+
+			afn(Warp, pt_prev, pt);
+		}
+	}
 	return true;
 }
 
@@ -648,7 +679,7 @@ const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(16, 16),
+	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(16, 16), m_lvpyr(1),
 	m_bundistort(false), m_bcam_tbl_loaded(false),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
@@ -666,6 +697,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_cam_dist = Mat::zeros(1, 8, CV_64FC1);
 	m_rvec_cam = Mat::zeros(3, 1, CV_64FC1);
 	m_tvec_cam = Mat::zeros(3, 1, CV_64FC1);
+
+	register_fpar("lvpyr", &m_lvpyr, "Level of the pyramid.");
 
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
 	register_fpar("add_model", &m_badd_model, "If the flag is asserted, model is loaded from fmodel");
@@ -774,6 +807,9 @@ bool f_inspector::proc()
 					// save previous frame object
 					s_frame_obj & fobj = *m_fobjs[m_cur_frm - 1];
 					
+					// sample point templates for succeeding point tracking 
+					fobj.sample_tmpl(m_img_gry, m_sz_vtx_smpl);
+
 					if(!fobj.save(m_name)){
 						cerr << "Failed to save filter objects in time " << fobj.tfrm << "." << endl;
 					}
@@ -781,7 +817,7 @@ bool f_inspector::proc()
 					// To initialize new frame object, it firstly seeks for the file for the frame via time stamp.
 					// If the trial failed, the new frame object is simply initalized with previous frame object.
 					if(!m_fobjs[m_cur_frm]->load(m_name, m_models)){
-						m_fobjs[m_cur_frm]->init(timg, fobj.objs, fobj.camint, fobj.camdist);
+						m_fobjs[m_cur_frm]->init(timg, fobj, m_impyr, m_ia);
 					}
 				}
 			}
@@ -826,37 +862,43 @@ bool f_inspector::proc()
 	if(img.empty())
 		return true;
 
-	Mat img_s;
+	// resize the original image to adjust the original aspect ratio.
+	// (Some video file should change the aspect ratio to display correctly)
+	resize(img, m_img_s, Size(), m_sh, m_sv);
 
-	resize(img, img_s, Size(), m_sh, m_sv);
+	// generate gray scale image
+	cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
+
+	// build image pyramid
+	buildPyramid(m_img_gry, m_impyr, m_lvpyr);
 
 	// fit the viewport size to the image
-	if(img_s.cols != m_ViewPort.Width ||
-		img_s.rows != m_ViewPort.Height){
-			if(!init_viewport(img_s)){
+	if(m_img_s.cols != m_ViewPort.Width ||
+		m_img_s.rows != m_ViewPort.Height){
+			if(!init_viewport(m_img_s)){
 				return false;
 			}
 	}
 
 	// fit the direct 3d surface to the image
-	if(img_s.cols != m_maincam.get_surface_width() ||
-		img_s.rows != m_maincam.get_surface_height())
+	if(m_img_s.cols != m_maincam.get_surface_width() ||
+		m_img_s.rows != m_maincam.get_surface_height())
 	{
 		m_maincam.release();
 		if(!m_maincam.init(m_pd3dev,  
-			(float) img_s.cols, (float) img_s.rows, 
+			(float) m_img_s.cols, (float) m_img_s.rows, 
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height, 
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height))
 			return false;
 	}
 
 	// fit the direct 3d surface of the model view to the image
-	if((img_s.cols != m_model_view.get_surface_width() || 
-		img_s.rows != m_model_view.get_surface_height()))
+	if((m_img_s.cols != m_model_view.get_surface_width() || 
+		m_img_s.rows != m_model_view.get_surface_height()))
 	{
 		m_model_view.release();
 		if(!m_model_view.init(m_pd3dev,
-			(float) img_s.cols, (float) img_s.rows,
+			(float) m_img_s.cols, (float) m_img_s.rows,
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height,
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height))
 			return false;
@@ -871,7 +913,7 @@ bool f_inspector::proc()
 	}
 
 	// rendering main view
-	render(img_s, timg);
+	render(m_img_s, timg);
 
 	return true;
 }

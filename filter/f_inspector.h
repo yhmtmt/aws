@@ -239,8 +239,8 @@ struct s_frame_obj{
 		}
 	}
 
-	bool init(const long long atfrm, const vector<s_obj> & aobjs, 
-		const Mat & acamint, const Mat & acamdist);
+	bool init(const long long atfrm, s_frame_obj & fobj, 
+		vector<Mat> & impyr, c_imgalign & ia);
 
 	bool save(const char * aname);
 	bool load(const char * aname, vector<s_model> & mdls);
@@ -266,6 +266,10 @@ private:
 	//
 	long long m_timg;	// time stamp of the time frame
 	Mat m_img;			// image frame
+	Mat m_img_s;		// scaled image
+	Mat m_img_gry;		// gray scale image
+	vector<Mat> m_impyr; // image pyramid of the gray image
+	int m_lvpyr;		// level of the pyramid
 	double m_sh, m_sv; // horizontal and vertical scale. 
 
 	// Tracking module

@@ -58,6 +58,20 @@ bool synth_afn(Mat & l, Mat & r, Mat & res)
 	return true;
 }
 
+bool afn(Mat & A, Point2f & pt_in, Point2f & pt_out)
+{
+	if(A.cols != 3 || A.rows != 2)
+		return false;
+
+	double *ptr;
+
+	ptr = A.ptr<double>(0);
+	pt_out.x = (float)(pt_in.x * ptr[0] + pt_in.y * ptr[1] + ptr[2]);
+	ptr = A.ptr<double>(1);
+	pt_out.y = (float)(pt_in.x * ptr[0] + pt_in.y * ptr[1] + ptr[2]);
+	return true;
+}
+
 
 // R G
 // G B

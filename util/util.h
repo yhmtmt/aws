@@ -20,6 +20,7 @@
 #include "aws_stdlib.h"
 
 bool synth_afn(Mat & l, Mat & r, Mat & res);
+bool afn(Mat & A, Point2f & in, Point2f & pt_out);
 
 void cnvBayerRG8ToBGR8(Mat & src, Mat & dst);
 void cnvBayerRG16ToBGR16(Mat & src, Mat & dst);
