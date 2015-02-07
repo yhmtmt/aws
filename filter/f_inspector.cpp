@@ -575,6 +575,7 @@ bool s_frame_obj::init(const long long atfrm, s_frame_obj & fobj,
 	Rect roi;
 	Mat Warp, I;
 	I = Mat::eye(3, 3, CV_64FC1);
+	//ia.set_wt(EWT_RGD);
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		vector<Point2f> & pt2d = objs[iobj].pt2d;
 		vector<Point2f> & pt2d_prev = objs_prev[iobj].pt2d;
@@ -608,8 +609,8 @@ bool s_frame_obj::init(const long long atfrm, s_frame_obj & fobj,
 			}
 
 			afn(Warp, pt_prev, pt);
-			cout << pt_prev;
-			cout << pt;
+			cout << pt_prev << endl;
+			cout << pt << endl;
 		}
 	}
 	return true;
@@ -817,7 +818,9 @@ bool f_inspector::proc()
 			cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
 
 			// build image pyramid
-			buildPyramid(m_img_gry, m_impyr, m_lvpyr - 1);
+			GaussianBlur(m_img_gry, m_img_gry_blur, Size(0, 0), 3.0);
+
+			buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
 
 			if(timg > 0){
 				// new frame object added
@@ -882,7 +885,7 @@ bool f_inspector::proc()
 	calc_jcam_max();
 
 	// sample point templates
-	m_fobjs[m_cur_frm]->sample_tmpl(m_img_gry, m_sz_vtx_smpl);
+	m_fobjs[m_cur_frm]->sample_tmpl(m_img_gry_blur, m_sz_vtx_smpl);
 
 	// estimate
 	if(m_op == ESTIMATE){
