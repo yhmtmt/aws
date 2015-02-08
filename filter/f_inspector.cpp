@@ -689,7 +689,10 @@ bool s_frame_obj::load(const char * aname, vector<s_model> & mdls)
 
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[ESTIMATE+1]
-= {"model", "obj", "point", "camera", "estimate"};
+	= {"model", "obj", "point", "camera", "estimate"};
+
+const char * f_inspector::m_str_sop[SOP_DELETE+1]
+	= {"null", "save", "load", "ins", "del"};
 
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
@@ -701,6 +704,7 @@ const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_lvpyr(2),
+	m_bauto_load_fobj(false), m_bauto_save_fobj(false),
 	m_bundistort(false), m_bcam_tbl_loaded(false),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
@@ -720,11 +724,13 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_tvec_cam = Mat::zeros(3, 1, CV_64FC1);
 
 	register_fpar("lvpyr", &m_lvpyr, "Level of the pyramid.");
-
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
 	register_fpar("fcp", m_fname_campar, 1024, "File path of camera parameter.");
 	register_fpar("fcptbl", m_fname_campar_tbl, 1024, "File path of table of the camera parameters with multiple magnifications.");
 	register_fpar("op", (int*)&m_op, ESTIMATE+1, m_str_op,"Operation ");
+	register_fpar("sop", (int*)&m_sop, SOP_DELETE+1, m_str_sop, "Sub operation.");
+	register_fpar("asave", &m_bauto_save_fobj, "Automatically save frame object.");
+	register_fpar("aload", &m_bauto_load_fobj, "Automatically load frame object.");
 	register_fpar("sh", &m_sh, "Horizontal scaling value. Image size is multiplied by the value. (default 1.0)");
 	register_fpar("sv", &m_sv, "Vertical scaling value. Image size is multiplied by the value. (default 1.0)");
 
@@ -811,8 +817,10 @@ bool f_inspector::proc()
 
 		if(m_timg != timg){ // new frame arrived
 			// save current frame object
-			if(!m_fobjs[m_cur_frm]->save(m_name)){
-				cerr << "Failed to save filter objects in time " << m_fobjs[m_cur_frm]->tfrm << "." << endl;
+			if(m_bauto_save_fobj){
+				if(!m_fobjs[m_cur_frm]->save(m_name)){
+					cerr << "Failed to save filter objects in time " << m_fobjs[m_cur_frm]->tfrm << "." << endl;
+				}
 			}
 
 			// resize the original image to adjust the original aspect ratio.
@@ -863,18 +871,13 @@ bool f_inspector::proc()
 				}
 
 				m_fobjs[m_cur_frm]->tfrm = timg;
-
-				// if the frame object is not the first one, save the previous frame object 
-				// and initialize current frame object with the previous frame object.
-				if(m_cur_frm > 0){
-					// save previous frame object
-					s_frame_obj & fobj = *m_fobjs[m_cur_frm - 1];
 					
-					// To initialize new frame object, it firstly seeks for the file for the frame via time stamp.
-					// If the trial failed, the new frame object is simply initalized with previous frame object.
-					if(!m_fobjs[m_cur_frm]->load(m_name, m_models)){
-						m_fobjs[m_cur_frm]->init(timg, fobj, m_impyr, m_ia);
-					}
+				if(!m_bauto_load_fobj || !m_fobjs[m_cur_frm]->load(m_name, m_models)){
+					// determining reference frame.
+					int iref_frm = m_cur_frm - 1;
+					iref_frm = (iref_frm < 0 ? m_cur_frm + 1 : iref_frm);
+					if(iref_frm < m_fobjs.size())
+						m_fobjs[m_cur_frm]->init(timg, *m_fobjs[iref_frm], m_impyr, m_ia);
 				}
 			}
 

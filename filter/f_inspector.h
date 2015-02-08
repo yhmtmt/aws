@@ -298,7 +298,7 @@ private:
 	enum e_sub_operation{
 		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_INST_OBJ, SOP_DELETE
 	};
-
+	static const char * m_str_sop[SOP_DELETE+1];
 	e_sub_operation m_sop;
 	void handle_sop_delete();
 	void handle_sop_save();
@@ -330,6 +330,7 @@ private:
 	void renderModel(long long timg);
 
 	// frame objects
+	bool m_bauto_load_fobj, m_bauto_save_fobj;
 	vector<s_frame_obj*> m_fobjs;
 	int m_cur_frm;
 
