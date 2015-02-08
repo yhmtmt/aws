@@ -703,7 +703,7 @@ const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_lvpyr(2),
+	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
 	m_bauto_load_fobj(false), m_bauto_save_fobj(false),
 	m_bundistort(false), m_bcam_tbl_loaded(false),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
@@ -723,7 +723,6 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_rvec_cam = Mat::zeros(3, 1, CV_64FC1);
 	m_tvec_cam = Mat::zeros(3, 1, CV_64FC1);
 
-	register_fpar("lvpyr", &m_lvpyr, "Level of the pyramid.");
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
 	register_fpar("fcp", m_fname_campar, 1024, "File path of camera parameter.");
 	register_fpar("fcptbl", m_fname_campar_tbl, 1024, "File path of table of the camera parameters with multiple magnifications.");
@@ -735,6 +734,9 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("sv", &m_sv, "Vertical scaling value. Image size is multiplied by the value. (default 1.0)");
 
 	// point tracking parameter
+	register_fpar("wt", (int*)&m_wt, EWT_UNKNOWN+1, wtname, "Warp type of the point tracker.");
+	register_fpar("lvpyr", &m_lvpyr, "Level of the pyramid for point tracking.");
+	register_fpar("vgb", &m_sig_gb, "Variance for gaussian blur.");
 	register_fpar("szptx", &m_sz_vtx_smpl.width, "Horizontal size of a point template.");
 	register_fpar("szpty", &m_sz_vtx_smpl.height, "Vertical size of a point template.");
 
@@ -831,7 +833,7 @@ bool f_inspector::proc()
 			cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
 
 			// build image pyramid
-			GaussianBlur(m_img_gry, m_img_gry_blur, Size(0, 0), 3.0);
+			GaussianBlur(m_img_gry, m_img_gry_blur, Size(0, 0), m_sig_gb);
 
 			buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
 

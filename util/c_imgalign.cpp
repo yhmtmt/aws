@@ -32,7 +32,7 @@ using namespace cv;
 #include "c_imgalign.h"
 
 
-static const char * wtname[] = {"trn", "rgd", "sim", "afn", "hmg", "unknown"};
+const char * wtname[EWT_UNKNOWN+1] = {"trn", "rgd", "sim", "afn", "hmg", "unknown"};
 static const char * ipltname[] = {"nn", "bil", "unknown"};
 
 e_warp_type get_warp_type(const char * str)

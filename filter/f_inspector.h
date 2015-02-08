@@ -268,12 +268,14 @@ private:
 	Mat m_img;			// image frame
 	Mat m_img_s;		// scaled image
 	Mat m_img_gry;		// gray scale image
+	double m_sig_gb; // variance for gaussian blur
 	Mat m_img_gry_blur; // gray scale image with Gaussian blur
 	vector<Mat> m_impyr; // image pyramid of the gray image
 	int m_lvpyr;		// level of the pyramid
 	double m_sh, m_sv; // horizontal and vertical scale. 
 
 	// Tracking module
+	e_warp_type m_wt;
 	c_imgalign m_ia;
 	Size m_sz_vtx_smpl;
 

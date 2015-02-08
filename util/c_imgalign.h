@@ -26,6 +26,8 @@ enum e_warp_type{
 	EWT_TRN, EWT_RGD, EWT_SIM, EWT_AFN, EWT_HMG, EWT_UNKNOWN
 };
 
+extern const char * wtname[EWT_UNKNOWN+1];
+
 e_warp_type get_warp_type(const char * str);
 const char * get_warp_type_name(e_warp_type type);
 e_interpol_type get_interpol_type(const char * str);
