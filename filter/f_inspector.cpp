@@ -810,6 +810,11 @@ bool f_inspector::proc()
 			return true;
 
 		if(m_timg != timg){ // new frame arrived
+			// save current frame object
+			if(!m_fobjs[m_cur_frm]->save(m_name)){
+				cerr << "Failed to save filter objects in time " << m_fobjs[m_cur_frm]->tfrm << "." << endl;
+			}
+
 			// resize the original image to adjust the original aspect ratio.
 			// (Some video file should change the aspect ratio to display correctly)
 			resize(img, m_img_s, Size(), m_sh, m_sv);
@@ -822,10 +827,36 @@ bool f_inspector::proc()
 
 			buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
 
-			if(timg > 0){
+			// if the next frame object is in the m_fobjs, we do not insert the new object
+			int bfound = false;
+			if(m_fobjs[m_cur_frm]->tfrm > timg){ // for larger time
+				m_cur_frm++;
+				for(;  m_cur_frm < m_fobjs.size(); m_cur_frm++){
+					long long tfrm = m_fobjs[m_cur_frm]->tfrm;
+					if(tfrm == timg){
+						bfound = true;
+						break;
+					}else if(tfrm > timg){
+						break;
+					}
+				}
+			}else{ // for smaller time 
+				m_cur_frm--;
+				for(; m_cur_frm >= 0; m_cur_frm--){
+					long long tfrm = m_fobjs[m_cur_frm]->tfrm;
+					if(tfrm == timg){
+						bfound = true;
+						break;
+					}else if(tfrm < timg){
+						m_cur_frm++;
+						break;
+					}
+				}
+			}
+
+			if(!bfound){
 				// new frame object added
-				m_fobjs.push_back(new s_frame_obj);
-				m_cur_frm = (int) m_fobjs.size() - 1;
+				m_fobjs.insert(m_fobjs.begin() + m_cur_frm, new s_frame_obj);
 				if(m_fobjs[m_cur_frm] == NULL){
 					cerr << "Cannot allocate memory for frame object" << endl;
 					return false;
@@ -839,10 +870,6 @@ bool f_inspector::proc()
 					// save previous frame object
 					s_frame_obj & fobj = *m_fobjs[m_cur_frm - 1];
 					
-					if(!fobj.save(m_name)){
-						cerr << "Failed to save filter objects in time " << fobj.tfrm << "." << endl;
-					}
-
 					// To initialize new frame object, it firstly seeks for the file for the frame via time stamp.
 					// If the trial failed, the new frame object is simply initalized with previous frame object.
 					if(!m_fobjs[m_cur_frm]->load(m_name, m_models)){
