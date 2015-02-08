@@ -818,13 +818,7 @@ bool f_inspector::proc()
 			return true;
 
 		if(m_timg != timg){ // new frame arrived
-			// save current frame object
-			if(m_bauto_save_fobj){
-				if(!m_fobjs[m_cur_frm]->save(m_name)){
-					cerr << "Failed to save filter objects in time " << m_fobjs[m_cur_frm]->tfrm << "." << endl;
-				}
-			}
-
+			int bfound = false;
 			// resize the original image to adjust the original aspect ratio.
 			// (Some video file should change the aspect ratio to display correctly)
 			resize(img, m_img_s, Size(), m_sh, m_sv);
@@ -836,32 +830,41 @@ bool f_inspector::proc()
 			GaussianBlur(m_img_gry, m_img_gry_blur, Size(0, 0), m_sig_gb);
 
 			buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
+			if(m_cur_frm >= 0){
+				// save current frame object
+				if(m_bauto_save_fobj){
+					if(!m_fobjs[m_cur_frm]->save(m_name)){
+						cerr << "Failed to save filter objects in time " << m_fobjs[m_cur_frm]->tfrm << "." << endl;
+					}
+				}
 
-			// if the next frame object is in the m_fobjs, we do not insert the new object
-			int bfound = false;
-			if(m_fobjs[m_cur_frm]->tfrm > timg){ // for larger time
-				m_cur_frm++;
-				for(;  m_cur_frm < m_fobjs.size(); m_cur_frm++){
-					long long tfrm = m_fobjs[m_cur_frm]->tfrm;
-					if(tfrm == timg){
-						bfound = true;
-						break;
-					}else if(tfrm > timg){
-						break;
+				// if the next frame object is in the m_fobjs, we do not insert the new object
+				if(m_fobjs[m_cur_frm]->tfrm < timg){ // for larger time
+					m_cur_frm++;
+					for(;  m_cur_frm < m_fobjs.size(); m_cur_frm++){
+						long long tfrm = m_fobjs[m_cur_frm]->tfrm;
+						if(tfrm == timg){
+							bfound = true;
+							break;
+						}else if(tfrm > timg){
+							break;
+						}
+					}
+				}else{ // for smaller time 
+					m_cur_frm--;
+					for(; m_cur_frm >= 0; m_cur_frm--){
+						long long tfrm = m_fobjs[m_cur_frm]->tfrm;
+						if(tfrm == timg){
+							bfound = true;
+							break;
+						}else if(tfrm < timg){
+							m_cur_frm++;
+							break;
+						}
 					}
 				}
-			}else{ // for smaller time 
-				m_cur_frm--;
-				for(; m_cur_frm >= 0; m_cur_frm--){
-					long long tfrm = m_fobjs[m_cur_frm]->tfrm;
-					if(tfrm == timg){
-						bfound = true;
-						break;
-					}else if(tfrm < timg){
-						m_cur_frm++;
-						break;
-					}
-				}
+			}else{
+				m_cur_frm = 0;
 			}
 
 			if(!bfound){
