@@ -42,6 +42,14 @@ const char * f_fep01::m_rec_str[6] = {
 	"RXT" /* text */, "RXR" /* text 1 stage repeat */, "RX2" /* text 2 stage repeat */
 };
 
+const char * f_fep01::m_st_str[ST_TEST+1] = {
+	"init", "rst", "op", "dbg", "test"
+};
+
+const char * f_fep01::m_sst_str[SST_PROC+1] = {
+	"cmd", "proc"
+};
+
 f_fep01::f_fep01(const char * name):f_base(name), 
 	m_port(0), m_br(9600), m_hcom(NULL_SERIAL), m_addr(0x00), m_addr_group(0xF0), m_addr_dst(0x00), m_header_less(0),
 	m_scramble_0(0xFF), m_scramble_1(0xFF), m_num_freqs(0x03), m_freq0(0x18), m_freq1(0x2A), m_freq2(0x3C),
@@ -110,6 +118,11 @@ f_fep01::f_fep01(const char * name):f_base(name),
 	register_fpar("carg1", m_cmd.carg1, 2, "Command argument 1 (a char value)");
 	register_fpar("carg2", m_cmd.carg2, 2, "Command argument 2 (a char value)");
 	register_fpar("msg", m_cmd.msg, 129, "Message to be sent");
+
+	// level 2 state
+	register_fpar("st", (int*)&m_st, ST_TEST+ 1, m_st_str, "Level 2 state.");
+	register_fpar("sst", (int*)&m_sst, SST_PROC, m_sst_str, "Level 2 sub state.");
+
 	m_rbuf[0] = m_wbuf[0] = '\0';
 }
 
@@ -126,8 +139,6 @@ bool f_fep01::handle_init()
 			unpack_reg();
 			m_st = ST_OP;
 			m_sst = SST_CMD;
-			m_cur_cmd = NUL;
-			m_cmd_stat = NRES;
 		}
 		break;
 	}
@@ -248,11 +259,24 @@ bool f_fep01::handle_dbg()
 
 bool f_fep01::handle_test()
 {
+	m_cmd.type = TS2;
+	m_cmd_queue.push_back(m_cmd);
 	return true;
 }
 
 bool f_fep01::handle_rst()
 {
+	switch(m_sst){
+	case SST_CMD:
+		m_cmd.type = RST;
+		m_cmd_queue.push_back(m_cmd);
+		break;
+	case SST_PROC:
+		if(m_cur_cmd == RST && m_cmd_stat & EOC){
+			m_st = ST_OP;
+			m_sst = SST_CMD;
+		}
+	}
 	return true;
 }
 

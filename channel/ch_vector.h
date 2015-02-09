@@ -44,3 +44,44 @@ public:
 		return;
 	}
 };
+
+template<class T> class ch_ring: public ch_base
+{
+protected:
+	int m_size;
+	int m_head, m_tail, m_num;
+	T * m_buf;
+public:
+	ch_ring(const char * name):ch_base(name), m_buf(NULL), m_size(1024), m_head(0), m_tail(0), m_num(0)
+	{
+		m_buf = new T[m_size];
+	}
+
+	virtual ~ch_ring()
+	{
+	}
+
+	int write(T * buf, int len){
+		int i;
+		lock();
+		for(i = 0; m_num < m_size && i < len; m_num++, i++, m_tail = (m_tail + 1) % m_size){
+			m_buf[m_tail] = buf[i];
+		}
+		unlock();
+		return i;
+	}
+
+	int read(T * buf, int len){
+		int i;
+		lock();
+		for(i = 0; m_num != 0 && i < len; m_num--, m_head = (m_head + 1) % m_size){
+			buf[i] = m_buf[m_head];
+		}
+		unlock();
+		return i;
+	}
+
+	virtual void tran(){
+		return;
+	}
+};

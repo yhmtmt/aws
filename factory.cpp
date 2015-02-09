@@ -90,6 +90,7 @@ void ch_base::register_factory()
 	register_factory<ch_ptz>("ptz");
 	register_factory<ch_ptzctrl>("ptzc");
 	register_factory<ch_campar>("campar");
+	register_factory<ch_ring<char> >("crbuf");
 }
 
 ////////////////////////////////////////////////// setting up filter factory

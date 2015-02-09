@@ -831,6 +831,7 @@ bool f_inspector::proc()
 
 			buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
 			if(m_cur_frm >= 0){
+
 				// save current frame object
 				if(m_bauto_save_fobj){
 					if(!m_fobjs[m_cur_frm]->save(m_name)){

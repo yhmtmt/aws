@@ -37,11 +37,13 @@ protected:
 		ST_INIT, ST_RST, ST_OP, ST_DBG, ST_TEST
 	};
 	e_state m_st;
+	static const char * m_st_str[ST_TEST+1];
 
 	enum e_sub_state{
 		SST_CMD, SST_PROC
 	};
 	e_sub_state m_sst;
+	static const char * m_sst_str[SST_PROC+1];
 
 	// load register values
 	bool handle_init();
@@ -302,12 +304,13 @@ public:
 		// writing a command if it is in the write buffer
 		m_wbuf_len = (int) strlen(m_wbuf);
 
-		int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
-		if(m_wbuf_len != wlen){
-			cerr << "Write operation failed." << endl;
+		if(m_cur_cmd == NUL){
+			int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+			if(m_wbuf_len != wlen){
+				cerr << "Write operation failed." << endl;
+			}
+			m_wbuf[0] = '\0';
 		}
-
-		m_wbuf[0] = '\0';
 
 		return true;
 	}
