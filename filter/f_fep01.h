@@ -36,6 +36,27 @@ protected:
 	enum e_state{
 		ST_INIT, ST_RST, ST_OP, ST_DBG, ST_TEST
 	};
+	e_state m_st;
+
+	enum e_sub_state{
+		SST_CMD, SST_PROC
+	};
+	e_sub_state m_sst;
+
+	// load register values
+	bool handle_init();
+
+	// reset register values
+	bool handle_rst();
+
+	// ordinal operation (transmmit data comes from input channel and output recieved data to output channel)
+	bool handle_op();
+
+	// manual command mode (debug mode)
+	bool handle_dbg();
+
+	// invoke TS2 mode. 
+	bool handle_test();
 
 	enum e_cmd{
 		NUL, ARG,  BAN, BCL, DAS,
@@ -108,10 +129,11 @@ protected:
 	unsigned char m_reg[29];	// register
 	unsigned char m_dbm;		// dbm command result
 	unsigned int m_rid;			// recieved id
+	unsigned int m_tid;			// own id
 	unsigned char m_ver;		// main version
 	unsigned short m_sub_ver;	// sub version 
-	bool read_reg();			// load register values to our m_reg
-	bool write_reg();			// write m_reg values to m_reg
+
+	void dump_reg();			// dump reg values to stdout
 	bool pack_reg();			// pack filter parameters to the regs
 	void unpack_reg();			// unpack regs to filter parameters
 
@@ -158,6 +180,8 @@ protected:
 			msg[0] = '\0';
 		}
 	};
+
+	// if m_bpush_cmd is asserted, the command set at m_cmd is pushed to m_cmd_queue
 	bool m_bpush_cmd;
 	s_cmd m_cmd;
 	list<s_cmd> m_cmd_queue;
@@ -193,6 +217,8 @@ public:
 
 		init_parser();
 
+		m_st = ST_INIT;
+		m_sst = SST_CMD;
 		return true;
 	}
 
@@ -207,10 +233,41 @@ public:
 
 	virtual bool proc()
 	{
-		// push a command to the command queue from a fset command
-		if(m_bpush_cmd){
-			m_cmd_queue.push_back(m_cmd);
-			m_cmd = s_cmd();
+		switch(m_st){
+		case ST_INIT:
+			// push initialization command
+			// final command finished successfully -> ST_OP
+			// if some commands failed return false
+			if(!handle_init()){
+				return false;
+			}
+			break;
+		case ST_RST:
+			// push reseting commands
+			// final command finished successfully -> ST_OP
+			if(!handle_rst()){
+				return false;
+			}
+			break;
+		case ST_OP:
+			// push data transfer command with message from input channel
+			// and output recieved data to output channel
+			if(!handle_op()){
+				return false;
+			}
+			break;
+		case ST_DBG:
+			// manually push a command to the queue
+			if(!handle_dbg()){
+				return false;
+			}
+			break;
+		case ST_TEST:
+			// maybe it invokes the TS2 mode
+			if(!handle_test()){
+				return false;
+			}
+			break;
 		}
 
 		// pop a command from queue and set to write buffer

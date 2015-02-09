@@ -102,6 +102,7 @@ f_fep01::f_fep01(const char * name):f_base(name),
 	register_fpar("rbuf", m_rbuf, 1024, "Read buffer.");
 	register_fpar("wbuf", m_wbuf, 1024, "Write buffer.");
 
+	// for debug mode
 	register_fpar("push_cmd", &m_bpush_cmd, "Push command flag.");
 	register_fpar("cmd", (int*)&m_cmd.type, VER+1, m_cmd_str, "Command to be queued.");
 	register_fpar("iarg1", &m_cmd.iarg1, "Command argument 1 (an integer value)");
@@ -112,14 +113,154 @@ f_fep01::f_fep01(const char * name):f_base(name),
 	m_rbuf[0] = m_wbuf[0] = '\0';
 }
 
-bool f_fep01::read_reg()
+bool f_fep01::handle_init()
+{
+	// push reg command 
+	switch(m_sst){
+	case SST_CMD:
+		m_cmd.type = ARG;
+		m_cmd_queue.push_back(m_cmd);
+		break;
+	case SST_PROC:
+		if(m_cur_cmd == ARG && m_cmd_stat & EOC){
+			unpack_reg();
+			m_st = ST_OP;
+			m_sst = SST_CMD;
+			m_cur_cmd = NUL;
+			m_cmd_stat = NRES;
+		}
+		break;
+	}
+	return true;
+}
+
+bool f_fep01::handle_op()
 {
 	return true;
 }
 
-bool f_fep01::write_reg()
+bool f_fep01::handle_dbg()
+{
+	if(m_bpush_cmd){
+		m_cmd_queue.push_back(m_cmd);
+		m_cmd = s_cmd();
+		m_bpush_cmd = false;
+	}
+
+	if(m_cmd_stat & EOC){
+		cout << m_cmd_str[m_cur_cmd] << " ";
+		if(P0 & m_cmd_stat) cout << "P0";
+		if(P1 & m_cmd_stat) cout << "P1";
+		if(N0 & m_cmd_stat) cout << "N0";
+		if(N1 & m_cmd_stat) cout << "N1";
+		if(N2 & m_cmd_stat) cout << "N2";
+		if(N3 & m_cmd_stat) cout << "N3";
+		cout << endl;
+
+		// dump command specific messages to the console
+		switch(m_cur_cmd){
+		case ARG:// dump register
+			dump_reg();
+			break;
+		case BAN:
+			cout << "fband:" << (m_fband ? "H" : "L") << endl;
+			break;
+		case BCL:
+			break;
+		case DAS:
+			cout << "addr:" << m_addr << endl;
+			break;
+		case DBM:
+			cout << "dbm:-" << m_dbm << endl;
+			break;
+		case DVS:
+			cout << "ant:" << (m_ant ? "B" : "A") << endl;
+			cout << "div:" << (m_div ? "yes" : "no") << endl;
+			break;
+		case FCN:
+			cout << "nfreqs:" << m_num_freqs << endl;
+			break;
+		case FRQ:
+			switch(m_cmd_arg1){
+			case 1:
+				cout << "frq0:" << m_freq0 << endl;
+				break;
+			case 2:
+				cout << "frq1:" << m_freq1 << endl;
+				break;
+			case 3:
+				cout << "frq2:" << m_freq2 << endl;
+				break;
+			}
+			break;
+		case IDR:
+			printf("scid0: x%02x\n", m_scramble_0);
+			printf("scid1: x%02x\n", m_scramble_1);
+			break;
+		case IDW:
+		case INI:
+			break;
+		case PAS:
+			cout << "addr_rep0:" << m_addr_rep0 << endl;
+			cout << "addr_rep1:" << m_addr_rep1 << endl;
+			break;
+		case POF:
+		case PON:
+			break;
+		case PTE:
+			cout << "tlp_wait_ex:" << m_tlp_wait_ex << endl;
+			break;
+		case PTN:
+			cout << "tlp_wait:" << m_tlp_wait << endl;
+			break;
+		case PTS:
+			cout << "tlp_slp:" << m_tlp_slp << endl;
+			break;
+		case ROF:
+		case RON:
+			break;
+		case REG:
+			cout << "REG" << m_cmd_arg1 << ":" << m_reg[m_cmd_arg1] << endl;
+			break;
+		case RID:
+			cout << "rid:" << m_rid << endl;
+			break;
+		case RST:
+		case TBN:
+		case TBR:
+		case TB2:
+			break;
+		case TID:
+			cout << "tid:" << m_tid << endl;
+			break;
+		case TS2:
+		case TXT:
+		case TXR:
+		case TX2:
+			break;
+		case VER:
+			cout << "ver:" << m_ver << "." << m_sub_ver << endl;
+			break;
+		}
+	}
+	return true;
+}
+
+bool f_fep01::handle_test()
 {
 	return true;
+}
+
+bool f_fep01::handle_rst()
+{
+	return true;
+}
+
+void f_fep01::dump_reg()
+{
+	for(int ireg = 0; ireg < 29; ireg++){
+		printf("REG%02d: x%02x\n", ireg, m_reg[ireg]);
+	}
 }
 
 void f_fep01::unpack_reg()
@@ -389,10 +530,11 @@ bool f_fep01::parse_response_value()
 		}
 		break;
 	case DBM:
-		if(m_pbuf_tail != 5){
+		if(m_pbuf_tail != 9 || m_pbuf[0] != '-' ||
+			m_pbuf[4] != 'd' || m_pbuf[5] != 'B' || m_pbuf[6] != 'm'){ 
 			is_proc = false;
-		}else{
-			int dbm = str3DigitDecimal(m_pbuf);
+		}else{ // form of "-xxxdBm"
+			int dbm = str3DigitDecimal(m_pbuf + 1);
 			if(dbm > 0 && dbm < 256)
 				m_dbm = dbm;
 			else
@@ -568,7 +710,7 @@ bool f_fep01::parse_response_value()
 	case TID:
 		if(m_pbuf_tail == 14){
 			m_pbuf[m_pbuf_tail - 2] = '\0';
-			m_rid = (unsigned int) atoi(m_pbuf);
+			m_tid = (unsigned int) atoi(m_pbuf);
 		}else{
 			is_proc = false;
 			break;
@@ -1102,7 +1244,7 @@ bool f_fep01::set_cmd()
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
 			&& itr->iarg3 > 0 && itr->iarg3 <129 && 
 			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-			snprintf(m_wbuf, 512, "@%s%03d%03d03d%s", itr->iarg1, itr->iarg2, itr->iarg3, itr->msg);
+			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%s", itr->iarg1, itr->iarg2, itr->iarg3, itr->msg);
 		}
 		break;
 	case TB2:
@@ -1111,7 +1253,7 @@ bool f_fep01::set_cmd()
 			&& itr->iarg3 >= 0 && itr->iarg3 < 255 
 			&& itr->iarg4 > 0 && itr->iarg4 <129 && 
 			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-			snprintf(m_wbuf, 512, "@%s%03d%03d03d03d%s", itr->iarg1, itr->iarg2, itr->iarg3, itr->msg);
+			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%03d%s", itr->iarg1, itr->iarg2, itr->iarg3, itr->msg);
 		}
 		break;
 	case TID:
@@ -1130,14 +1272,14 @@ bool f_fep01::set_cmd()
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255 &&
 			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-				snprintf(m_wbuf, 512, "@%s%03d03d%s", itr->iarg1, itr->iarg2, itr->msg);
+			snprintf(m_wbuf, 512, "@%s%03d%03d%s", itr->iarg1, itr->iarg2, itr->msg);
 		}
 	case TX2:
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
 			&& itr->iarg3 >= 0 && itr->iarg3 < 255 && 
 			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-			snprintf(m_wbuf, 512, "@%s%03d%03d03d03d%s", itr->iarg1, itr->iarg2, itr->msg);
+			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%03d%s", itr->iarg1, itr->iarg2, itr->msg);
 		}
 		break;
 	case VER:
