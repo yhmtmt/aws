@@ -237,4 +237,6 @@ void f_base::register_factory()
 
 	// event 
 	register_factory<f_event>("evt");
+
+	register_factory<f_fep01>("fep01");
 }

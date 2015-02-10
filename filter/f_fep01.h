@@ -83,9 +83,19 @@ protected:
 
 	static const char * m_rec_str[6];
 
+	enum e_com_mode{ // communication mode
+		CM_P2P
+	};
+
+	e_com_mode m_cm;
+	static const char * m_cm_str[CM_P2P+1];
+	unsigned char m_addr_p2p;
+
 	char m_dname[1024];
 	unsigned short m_port;
 	unsigned int m_br;
+	int m_len_pkt;
+
 	AWS_SERIAL m_hcom;
 	unsigned char m_addr;		// own address (0 to 255)
 	unsigned char m_addr_group; // group address (0 to 255)
@@ -203,7 +213,7 @@ protected:
 	e_msg_rcv m_cur_rcv;
 	bool m_rcv_header;
 	bool m_rcv_done;
-	unsigned char m_rcv_src, m_rcv_rep0, m_rcv_rep1, m_rcv_len;
+	unsigned char m_rcv_src, m_rcv_rep0, m_rcv_rep1, m_rcv_len, m_proced_len;
 	char m_rcv_msg[256];
 
 public:
@@ -223,6 +233,15 @@ public:
 
 		m_st = ST_INIT;
 		m_sst = SST_CMD;
+
+		if(m_chin.size() == 1){
+			m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0]);
+		}
+
+		if(m_chout.size() == 1){
+			m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
+		}
+
 		return true;
 	}
 

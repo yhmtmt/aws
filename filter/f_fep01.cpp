@@ -50,20 +50,27 @@ const char * f_fep01::m_sst_str[SST_PROC+1] = {
 	"cmd", "proc"
 };
 
+const char * f_fep01::m_cm_str[CM_P2P+1] = {
+	"p2p"
+};
+
 f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
-	m_port(0), m_br(9600), m_hcom(NULL_SERIAL), m_addr(0x00), m_addr_group(0xF0), m_addr_dst(0x00), m_header_less(0),
-	m_scramble_0(0xFF), m_scramble_1(0xFF), m_num_freqs(0x03), m_freq0(0x18), m_freq1(0x2A), m_freq2(0x3C),
-	m_ant(0), m_div(1), m_num_reps(0x0A), m_th_roam(0x50), m_rep_power(0), m_rep_err(0), m_rep_suc(0), m_rep(0),
-	m_tint_cmd(0x00), m_fband(0), m_tbclr(0x64), m_fwait(4), m_chk_group(1), m_int_bcn(0), m_fbcn(0),
-	m_bcn(0), m_tlp_wait_ex(0), m_lp_wait(0), m_flw(0), m_tlp_wait(0x0F), m_crlf(0), m_delim(1), m_tlp_slp(0x0F),
-	m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF),
-	m_rbuf_len(0), m_wbuf_len(0), m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), 
-	m_cur_cmd(NUL), m_cmd_stat(0), m_cur_rcv(RNUL)
+	m_port(0), m_br(9600), m_len_pkt(128), m_cm(CM_P2P), m_addr_p2p(0), m_hcom(NULL_SERIAL), m_addr(0x00), m_addr_group(0xF0), 
+	m_addr_dst(0x00), m_header_less(0), m_scramble_0(0xFF), m_scramble_1(0xFF), m_num_freqs(0x03), m_freq0(0x18), 
+	m_freq1(0x2A), m_freq2(0x3C), m_ant(0), m_div(1), m_num_reps(0x0A), m_th_roam(0x50), m_rep_power(0), 
+	m_rep_err(0), m_rep_suc(0), m_rep(0), m_tint_cmd(0x00), m_fband(0), m_tbclr(0x64), m_fwait(4), m_chk_group(1), 
+	m_int_bcn(0), m_fbcn(0), m_bcn(0), m_tlp_wait_ex(0), m_lp_wait(0), m_flw(0), m_tlp_wait(0x0F), m_crlf(0), 
+	m_delim(1), m_tlp_slp(0x0F), m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF), m_rbuf_len(0), m_wbuf_len(0), 
+	m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), m_cur_cmd(NUL), m_cmd_stat(0), m_cur_rcv(RNUL),
+	m_rcv_len(0), m_proced_len(0)
 {
 	m_dname[0] = '\0';
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
 	register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
 	register_fpar("br", &m_br, "Baud rate.");
+	register_fpar("lpkt", &m_len_pkt, "Packet length.");
+
+	register_fpar("cm", (int*)&m_cm, CM_P2P+1, m_cm_str, "Communication Mode.");
 
 	register_fpar("addr", &m_addr, "own address (0 to 239)");
 	register_fpar("addr_group", &m_addr_group, "group address (240 to 254)");
@@ -147,6 +154,30 @@ bool f_fep01::handle_init()
 
 bool f_fep01::handle_op()
 {
+	int len;
+	len = m_pin->read(m_cmd.msg, m_len_pkt);
+	if(len){
+		// push one packet to the queue from input channel
+		m_cmd.msg[len] = '\0';
+		switch(m_cm){
+		case CM_P2P:
+			m_cmd.type = TBN;
+			m_cmd.iarg1 = (int) m_addr_p2p;
+		}
+
+		m_cmd_queue.push_back(m_cmd);
+	}
+
+	// if there exists recieved data, push to the output channel
+	if(m_cur_rcv != RNUL){
+		// push one recieved data to output channel
+		m_proced_len += m_pout->write(m_rcv_msg + m_proced_len, (int) m_rcv_len);
+		if(m_proced_len == m_rcv_len){
+			m_proced_len = 0;
+			m_cur_rcv = RNUL;
+		}
+	}
+
 	return true;
 }
 
