@@ -365,7 +365,7 @@ void f_nmea::destroy_run(){
 
 ///////////////////////////////////////////////////////////// f_nmea_proc
 const char * f_nmea_proc::str_aibm_type[AIBM_HEX + 1] = {
-	"C6", "C8", "BIN", "HEX"
+	"TEXT", "C6", "C8", "BIN", "HEX"
 };
 
 bool f_nmea_proc::init_run()
@@ -399,6 +399,9 @@ bool f_nmea_proc::proc()
 	if(strlen(m_str_aibm)){
 		bool ret;
 		switch(m_aibm_type){
+		case AIBM_TEXT:
+			ret = m_aibm.set_msg_text(m_str_aibm);
+			break;
 		case AIBM_C6:
 			ret = m_aibm.set_msg_c6(m_str_aibm);
 			break;

@@ -128,6 +128,55 @@ bool s_binary_message::set_msg_c8(char * buf)
 	return true;
 }
 
+bool s_binary_message::set_msg_text(char * buf)
+{
+	int imsg = 0;
+	msg[imsg] = 0;
+	imsg++;
+	msg[imsg] = 0x80;
+	imsg++;
+	unsigned char u;
+	len = 0;
+	while(*buf){
+		// 0 rem 6 res
+		u = encchar(*buf);
+		msg[imsg] = u << 2;
+		len += 6;
+		buf++;
+		if(!*buf)
+			break;
+
+		// 2 rem 4 res
+		u = encchar(*buf);
+		msg[imsg] |= (u & 0x30) >> 4;
+		imsg++;
+		msg[imsg] = (u & 0x0F) << 4;
+		len += 6;
+		buf++;
+		if(!*buf)
+			break;
+
+		// 4 rem 2 res
+		u = encchar(*buf);
+		msg[imsg] |= (u & 0x3C) >> 2;
+		imsg++;
+		msg[imsg] = (u & 0x03) << 6;
+		len += 6;
+		buf++;
+		if(!*buf)
+			break;
+
+		// 6 rem 0 res
+		u = encchar(*buf);
+		msg[imsg] |= u;
+		imsg++;
+		len += 6;
+		buf++;
+	}
+	return true;
+}
+
+
 bool s_binary_message::set_msg_c6(char * buf)
 {
 	int imsg = 0; 

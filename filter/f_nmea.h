@@ -143,7 +143,7 @@ protected:
 	s_binary_message m_aibm; // AIS binary message
 	char m_str_aibm[1024]; // string to be sent as AIS binary message
 	enum e_str_aibm_type{
-		AIBM_C6, AIBM_C8, AIBM_BIN, AIBM_HEX
+		AIBM_TEXT, AIBM_C6, AIBM_C8, AIBM_BIN, AIBM_HEX
 	} m_aibm_type;
 	static const char * str_aibm_type[AIBM_HEX + 1];
 

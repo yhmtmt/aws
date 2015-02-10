@@ -46,6 +46,9 @@ struct s_binary_message{
 	~s_binary_message(){
 	}
 
+	// text DAC 1 FI 0
+	bool set_msg_text(char * buf);
+
 	// interpreting data in buf as hex data. The characters in buf should be 0 to 9 or a to f.
 	bool set_msg_hex(char * buf);
 
