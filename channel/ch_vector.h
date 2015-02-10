@@ -1,3 +1,6 @@
+#ifndef _CH_VECTOR_H_
+#define _CH_VECTOR_H_
+#include "ch_base.h"
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -52,8 +55,7 @@ protected:
 	int m_head, m_tail, m_num;
 	T * m_buf;
 public:
-	ch_ring(const char * name):ch_base(name), m_buf(NULL), m_size(1024), m_head(0), m_tail(0), m_num(0)
-	{
+	ch_ring(const char * name):ch_base(name), m_buf(NULL), m_size(1024), m_head(0), m_tail(0), m_num(0){
 		m_buf = new T[m_size];
 	}
 
@@ -85,3 +87,5 @@ public:
 		return;
 	}
 };
+
+#endif

@@ -17,8 +17,8 @@
 // along with f_fep01.h.  If not, see <http://www.gnu.org/licenses/>. 
 #include "../util/util.h"
 #include "../util/aws_serial.h"
+#include "../channel/ch_vector.h"
 #include "f_base.h"
-
 
 // Note:  HEADER LESS MODE IS PROHIBITED
 // I do not support header less mode. Because the recieved packets cannot be distinguished from some
@@ -28,6 +28,8 @@
 class f_fep01: public f_base
 {
 protected:
+	ch_ring<char> * m_pin, * m_pout;
+
 	// state transition
 	// ST_INIT load all register (queue commands,last comand return, call unpack_reg -> ST_OP)
 	// ST_RST set all register (pack_reg, queue commands, last command return, re-open device -> ST_OP 

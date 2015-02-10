@@ -50,7 +50,7 @@ const char * f_fep01::m_sst_str[SST_PROC+1] = {
 	"cmd", "proc"
 };
 
-f_fep01::f_fep01(const char * name):f_base(name), 
+f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_port(0), m_br(9600), m_hcom(NULL_SERIAL), m_addr(0x00), m_addr_group(0xF0), m_addr_dst(0x00), m_header_less(0),
 	m_scramble_0(0xFF), m_scramble_1(0xFF), m_num_freqs(0x03), m_freq0(0x18), m_freq1(0x2A), m_freq2(0x3C),
 	m_ant(0), m_div(1), m_num_reps(0x0A), m_th_roam(0x50), m_rep_power(0), m_rep_err(0), m_rep_suc(0), m_rep(0),
