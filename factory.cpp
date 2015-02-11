@@ -240,5 +240,6 @@ void f_base::register_factory()
 
 	register_factory<f_fep01>("fep01");
 	register_factory<f_serial>("ser");
+	register_factory<f_udp>("udp");
 
 }

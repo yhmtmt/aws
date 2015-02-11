@@ -33,6 +33,8 @@ private:
 	unsigned short m_port;
 	unsigned int m_br;
 	unsigned int m_frm_len;
+
+	// buffers
 	char * m_rbuf, * m_wbuf;
 	int m_head_rbuf, m_head_wbuf;
 	int m_tail_rbuf, m_tail_wbuf;
@@ -54,7 +56,13 @@ public:
 
 	virtual bool init_run()
 	{
-	
+
+		if(m_chin.size() == 1)
+			m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0]);
+
+		if(m_chout.size() == 1)
+			m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
+
 #ifdef _WIN32
 		m_hserial = open_serial(m_port, m_br);
 #else
@@ -78,8 +86,12 @@ public:
 
 	virtual void destroy_run()
 	{
+		close_serial(m_hserial);
+
 		delete[] m_rbuf;
+		m_rbuf = NULL;
 		delete[] m_wbuf;
+		m_wbuf = NULL;
 	}
 
 	virtual bool proc()
@@ -105,7 +117,7 @@ public:
 			}
 
 			if(m_head_wbuf < m_tail_wbuf){
-				m_head_wbuf += write_serial(m_hserial, m_wbuf, m_tail_wbuf - m_head_wbuf);
+				m_head_wbuf += write_serial(m_hserial, m_wbuf + m_head_wbuf, m_tail_wbuf - m_head_wbuf);
 			}
 
 			if(m_head_wbuf == m_tail_wbuf){
@@ -117,17 +129,109 @@ public:
 	}
 };
 
+// udp communication filter interfacing ch_ring<char> input/output channels
 class f_udp: public f_base
 {
 private:
 	ch_ring<char> * m_pin, * m_pout;
+	char m_host[1024];
+	unsigned short m_port;
+	int m_len_pkt;
+	SOCKET m_sock_snd, m_sock_rcv;
+	sockaddr_in m_sock_addr_snd, m_sock_addr_rcv;
+
+	// buffers
+	char * m_rbuf, * m_wbuf;
+	int m_head_rbuf, m_head_wbuf;
+	int m_tail_rbuf, m_tail_wbuf;
+	int m_len_buf;
+
 public:
-	f_udp(const char * fname): f_base(fname)
+	f_udp(const char * fname): f_base(fname), m_pin(NULL), m_pout(NULL),
+		m_port(20100), m_len_pkt(1024), m_sock_snd(-1), m_sock_rcv(-1),
+		m_rbuf(NULL), m_wbuf(NULL), m_head_rbuf(0), m_head_wbuf(0), 
+		m_tail_rbuf(0), m_tail_wbuf(0), m_len_buf(0)
 	{
+		register_fpar("port", &m_port, "UDP port.");
+		register_fpar("host", m_host, 1024, "Host address.");
+		register_fpar("lpkt", &m_len_pkt, "Packet length");
 	}
 
 	virtual ~f_udp()
 	{
+	}
+
+	virtual bool init_run()
+	{
+		if(m_chin.size() == 1 && (m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0])) != NULL){
+			m_sock_snd = socket(AF_INET, SOCK_DGRAM, 0);	
+			m_sock_addr_snd.sin_family =AF_INET;
+			m_sock_addr_snd.sin_port = htons(20001);
+			set_sockaddr_addr(m_sock_addr_snd, m_host);
+			if(::bind(m_sock_snd, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_snd)) == SOCKET_ERROR){
+				cerr << "Socket error" << endl;
+				return false;
+			}
+		}
+
+		if(m_chout.size() == 1 && (m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0])) != NULL){
+			m_sock_rcv = socket(AF_INET, SOCK_DGRAM, 0);	
+			m_sock_addr_rcv.sin_family =AF_INET;
+			m_sock_addr_rcv.sin_port = htons(20001);
+			set_sockaddr_addr(m_sock_addr_rcv);
+			if(::bind(m_sock_rcv, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
+				cerr << "Socket error" << endl;
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	virtual void destroy_run()
+	{
+		closesocket(m_sock_snd);
+		m_sock_snd = -1;
+		closesocket(m_sock_rcv);
+		m_sock_rcv = -1;
+		delete[] m_rbuf;
+		m_rbuf = NULL;
+		delete[] m_wbuf;
+		m_wbuf = NULL;
+	}
+
+	virtual bool proc(){
+		if(m_pout){
+			if(m_tail_rbuf == 0){
+				int sz = sizeof(m_sock_addr_rcv);
+				m_tail_rbuf = recvfrom(m_sock_rcv, m_rbuf, m_len_pkt, 0, (sockaddr*) &m_sock_addr_rcv, &sz);
+			}
+
+			if(m_head_rbuf < m_tail_rbuf){
+				m_head_rbuf += m_pout->write(m_rbuf + m_head_rbuf, m_tail_rbuf - m_head_rbuf);
+			}
+
+			if(m_head_rbuf == m_tail_rbuf){
+				m_head_rbuf = 0;
+				m_tail_rbuf = 0;
+			}
+		}
+
+		if(m_pin){
+			if(m_tail_wbuf == 0){
+				m_tail_wbuf = m_pin->read(m_wbuf, m_len_pkt);
+			}
+
+			if(m_head_wbuf < m_tail_wbuf){
+				m_head_wbuf += send(m_sock_snd, m_wbuf + m_head_wbuf, m_tail_wbuf - m_head_wbuf, 0);
+			}
+
+			if(m_head_wbuf == m_tail_wbuf){
+				m_head_wbuf = 0;
+				m_tail_wbuf = 0;
+			}
+		}
+		return true;
 	}
 };
 
