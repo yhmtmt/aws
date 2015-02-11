@@ -22,7 +22,7 @@
 // if not windows 8, the direct 3d is not included in the windows sdk.
 //#include <d2d1.h>
 //#include <dwrite.h>
-/#include <d3d9.h>
+#include <d3d9.h>
 #endif
 
 #include <d3dx9.h>
