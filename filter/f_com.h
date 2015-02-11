@@ -17,14 +17,116 @@
 #ifndef F_COM_H
 #define F_COM_H
 
-class f_com: public f_base
+#include "../channel/ch_vector.h"
+#include "../util/aws_sock.h"
+#include "../util/aws_serial.h"
+
+
+// Serial communication filter interfacing ring buffer.
+class f_serial: public f_base
 {
 private:
+	ch_ring<char> * m_pin, * m_pout;
+
+	AWS_SERIAL m_hserial;
+	char m_dname[1024];
+	unsigned short m_port;
+	unsigned int m_br;
+	unsigned int m_frm_len;
+	char * m_rbuf, * m_wbuf;
+	int m_head_rbuf, m_head_wbuf;
+	int m_tail_rbuf, m_tail_wbuf;
+	int m_len_buf;
 public:
-	f_com(const char *fname):f_base(fname)
+	f_serial(const char *fname):f_base(fname), m_hserial(NULL_SERIAL), m_pin(NULL), m_pout(NULL), m_port(1),
+		m_br(9600), m_frm_len(256), m_rbuf(NULL), m_wbuf(NULL), m_head_rbuf(0), m_head_wbuf(0), m_tail_rbuf(0),
+		m_tail_wbuf(0), m_len_buf(0)
+	{
+		m_dname[0] = '\0';
+		register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
+		register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
+		register_fpar("br", &m_br, "Baud rate.");
+	}
+
+	virtual ~f_serial()
 	{
 	}
-	virtual ~f_com()
+
+	virtual bool init_run()
+	{
+	
+#ifdef _WIN32
+		m_hserial = open_serial(m_port, m_br);
+#else
+		m_hserial = open_serial(m_dname, m_br);
+#endif
+		if(m_hserial == NULL_SERIAL)
+			return false;
+
+		// allocate the buffer if the memory is not allocated
+		if(m_wbuf == NULL || m_rbuf == NULL){
+			m_wbuf = new char [m_frm_len];
+			if(m_wbuf == NULL)
+				return false;
+			m_rbuf = new char [m_frm_len];
+			if(m_rbuf == NULL)
+				return false;
+		}
+
+		return true;
+	}
+
+	virtual void destroy_run()
+	{
+		delete[] m_rbuf;
+		delete[] m_wbuf;
+	}
+
+	virtual bool proc()
+	{
+		if(m_pout){
+			if(m_tail_rbuf == 0){
+				m_tail_rbuf = read_serial(m_hserial, m_rbuf, m_frm_len);
+			}
+
+			if(m_head_rbuf < m_tail_rbuf){
+				m_head_rbuf += m_pout->write(m_rbuf + m_head_rbuf, m_tail_rbuf - m_head_rbuf);
+			}
+
+			if(m_head_rbuf == m_tail_rbuf){
+				m_head_rbuf = 0;
+				m_tail_rbuf = 0;
+			}
+		}
+
+		if(m_pin){
+			if(m_tail_wbuf == 0){
+				m_tail_wbuf = m_pin->read(m_wbuf, m_frm_len);
+			}
+
+			if(m_head_wbuf < m_tail_wbuf){
+				m_head_wbuf += write_serial(m_hserial, m_wbuf, m_tail_wbuf - m_head_wbuf);
+			}
+
+			if(m_head_wbuf == m_tail_wbuf){
+				m_head_wbuf = 0;
+				m_tail_wbuf = 0;
+			}
+		}
+		return true;
+	}
+};
+
+class f_udp: public f_base
+{
+private:
+	ch_ring<char> * m_pin, * m_pout;
+public:
+	f_udp(const char * fname): f_base(fname)
+	{
+	}
+
+	virtual ~f_udp()
 	{
 	}
 };
