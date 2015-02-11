@@ -19,9 +19,9 @@
 
 #include "../util/coord.h"
 
-#include <d2d1.h>
-#include <dwrite.h>
-#include <d3d9.h>
+//#include <d2d1.h>
+//#include <dwrite.h>
+//#include <d3d9.h>
 #include <d3dx9.h>
 
 struct CUSTOMVERTEX

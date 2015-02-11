@@ -44,8 +44,6 @@ f_ds_window::f_ds_window(const char * name): f_base(name),
 	m_Hfull(1920), m_Vfull(1080), m_iadapter(D3DADAPTER_DEFAULT),
 	m_Hwin(1920), m_Vwin(1080),
 	m_pd3d(NULL), m_pd3dev(NULL), 
-	m_pD2DFactory(NULL), m_pD2DRndrTgt(NULL), m_pDWriteFactory(NULL),
-	m_pTextFormat(NULL), m_pBlackBrush(NULL),
 	m_pgrabsurf(NULL), m_pline(NULL), m_grab_name(NULL)
 {
 	register_fpar("wmd", &m_bwin, "yes: window mode, no: full screen mode");
@@ -140,103 +138,6 @@ void f_ds_window::fit_win_mode(){
 	GetClientRect(m_hwnd, &rc);
 	m_Vwin = rc.bottom - rc.top;
 	m_Hwin = rc.right - rc. left;
-}
-
-bool f_ds_window::init_d2d()
-{
-	HRESULT hr = D2D1CreateFactory(
-		D2D1_FACTORY_TYPE_SINGLE_THREADED,
-		&m_pD2DFactory
-		);
-
-	if(FAILED(hr)){
-		cerr << "Failed to initialize ID2D1Factory interface." << endl;
-		return false;
-	}
-
-	RECT rc;
-	GetClientRect(m_hwnd, &rc);
-
-	// Create a Direct2D render target				
-	hr = m_pD2DFactory->CreateHwndRenderTarget(
-		D2D1::RenderTargetProperties(),
-		D2D1::HwndRenderTargetProperties(
-		m_hwnd,
-		D2D1::SizeU(
-		rc.right - rc.left,
-		rc.bottom - rc.top)
-		),
-		&m_pD2DRndrTgt
-		);
-
-	if(FAILED(hr)){
-		cerr << "Failed to initialize ID2D1HWndRendarTarget interface." << endl;
-		return false;
-	}
-
-    m_pD2DRndrTgt->CreateSolidColorBrush(
-        D2D1::ColorF(D2D1::ColorF::Black),
-        &m_pBlackBrush
-        ); 
-
-	hr = DWriteCreateFactory(
-		DWRITE_FACTORY_TYPE_SHARED,
-		__uuidof(m_pDWriteFactory),
-		reinterpret_cast<IUnknown **>(&m_pDWriteFactory)
-		);
-	if(FAILED(hr)){
-		cerr << "Failed to initialize IDWriteFactory interface." << endl;
-		return false;
-	}
-
-	static const WCHAR msc_fontName[] = L"Verdana";
-	static const FLOAT msc_fontSize = 18;
-	hr = m_pDWriteFactory->CreateTextFormat(
-		msc_fontName,
-		NULL,
-		DWRITE_FONT_WEIGHT_NORMAL,
-		DWRITE_FONT_STYLE_NORMAL,
-		DWRITE_FONT_STRETCH_NORMAL,
-		msc_fontSize,
-		L"", //locale
-		&m_pTextFormat
-		);
-	if(FAILED(hr)){
-		cerr << "Failed to initialize IDWriteTextFormat interface." << endl;
-		return false;
-	}
-
-	m_pTextFormat->SetTextAlignment(DWRITE_TEXT_ALIGNMENT_CENTER);
-	m_pTextFormat->SetParagraphAlignment(DWRITE_PARAGRAPH_ALIGNMENT_CENTER);
-
-	return true;
-}
-
-void f_ds_window::release_d2d()
-{
-	if(m_pTextFormat != NULL){
-		m_pTextFormat->Release();
-		m_pTextFormat = NULL;
-	}
-	if(m_pDWriteFactory != NULL){
-		m_pDWriteFactory->Release();
-		m_pDWriteFactory = NULL;
-	}
-
-	if(m_pBlackBrush != NULL){
-		m_pBlackBrush->Release();
-		m_pBlackBrush = NULL;
-	}
-
-	if(m_pD2DRndrTgt != NULL){
-		m_pD2DRndrTgt->Release();
-		m_pD2DRndrTgt = NULL;
-	}
-
-	if(m_pD2DFactory != NULL){
-		m_pD2DFactory->Release();
-		m_pD2DFactory = NULL;
-	}
 }
 
 bool f_ds_window::init_d3d()
