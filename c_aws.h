@@ -1,3 +1,5 @@
+#ifndef _C_AWS_H_
+#define _C_AWS_H_
 // Copyright(c) 2014 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -13,7 +15,7 @@
 
 // You should have received a copy of the GNU General Public License
 // along with c_aws.h.  If not, see <http://www.gnu.org/licenses/>. 
-
+#include "CmdAppBase/CmdAppBase.h"
 class c_rcmd;
 
 //////////////////////////////////////////////////////////// class c_aws
@@ -152,3 +154,5 @@ public:
 void * cmd_proc(void * paws);
 
 extern bool g_kill;
+
+#endif

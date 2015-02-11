@@ -135,7 +135,7 @@ void ch_base::register_factory()
 // This function is called at the begining of the aws process start. If you
 // need to initialize global and static data structure please insert your 
 // initialization code here.
-void f_base::init(){
+void f_base::init(c_aws * paws){
 	// initializing basic members of the filter graph.
 	pthread_mutex_init(&m_mutex, NULL);
 	pthread_cond_init(&m_cond,  NULL);
@@ -143,6 +143,7 @@ void f_base::init(){
 	m_err_head = 0;
 	m_err_tail = 0;
 	m_file_err.open(FILE_FERR_LOG);
+	m_paws = paws;
 
 	// registering filters
 	f_base::register_factory();
