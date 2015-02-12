@@ -39,10 +39,224 @@ const char * f_dummy_data::m_str_edt[EDT_TIME_FILE + 1] =
 	"rand", "time", "trand", "file", "tfile"
 };
 
+bool f_dummy_data::init_run()
+{
+	if(m_dtype == EDT_FILE){
+		if(m_fname_data[0] != '\0'){
+			m_fdata.open(m_fname_data);
+			if(!m_fdata.is_open()){
+				return false;
+			}
+		}
+	}else if(m_dtype == EDT_RAND || m_dtype == EDT_TIME_RAND){
+		srand(0);
+	}
+
+	if(m_chout.size() == 1){
+		m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
+	}
+
+	m_len_pkt = max(m_len_pkt, (unsigned int)sizeof(m_cur_time));
+	m_buf = new unsigned char[m_len_pkt];
+	if(m_buf == NULL){
+		return false;
+	}
+	return true;
+}
+
+void f_dummy_data::destroy_run()
+{
+	delete[] m_buf;
+	m_buf = NULL;
+}
+
+bool f_dummy_data::proc(){
+	if(m_pout != NULL){
+		if(m_tail_buf == 0){// no data
+			switch(m_dtype){
+			case EDT_RAND:
+				for(unsigned int i = 0; i < m_len_pkt; i++)
+					m_buf[i] = (unsigned char) (rand() & 0x00FF);
+				break;
+			case EDT_TIME:
+				memset(m_buf, 0, m_len_pkt);
+				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
+				break;
+			case EDT_TIME_RAND:
+				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
+				for(unsigned int i = sizeof(m_cur_time); i < m_len_pkt; i++){
+					m_buf[i] = (unsigned char) (rand() & 0x00FF);
+				}
+				break;
+			case EDT_FILE:
+				m_fdata.read((char*)m_buf, m_len_pkt);
+				m_tail_buf = (int) m_fdata.gcount();
+				break;
+			case EDT_TIME_FILE:
+				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
+				m_fdata.read((char*)(m_buf + sizeof(m_cur_time)), m_len_pkt);
+				m_tail_buf = (int) m_fdata.gcount() + sizeof(m_cur_time);
+				break;
+			}
+		}
+
+		if(m_head_buf < m_tail_buf){
+			m_head_buf += m_pout->write((char*)(m_buf + m_head_buf), m_tail_buf - m_head_buf);
+		}
+	}
+	return true;
+}
+
 ///////////////////////////////////////////////// f_serial
 
+bool f_serial::init_run()
+{
+
+	if(m_chin.size() == 1)
+		m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0]);
+
+	if(m_chout.size() == 1)
+		m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
+
+#ifdef _WIN32
+	m_hserial = open_serial(m_port, m_br);
+#else
+	m_hserial = open_serial(m_dname, m_br);
+#endif
+	if(m_hserial == NULL_SERIAL)
+		return false;
+
+	// allocate the buffer if the memory is not allocated
+	if(m_wbuf == NULL || m_rbuf == NULL){
+		m_wbuf = new char [m_frm_len];
+		if(m_wbuf == NULL)
+			return false;
+		m_rbuf = new char [m_frm_len];
+		if(m_rbuf == NULL)
+			return false;
+	}
+
+	return true;
+}
+
+void f_serial::destroy_run()
+{
+	close_serial(m_hserial);
+
+	delete[] m_rbuf;
+	m_rbuf = NULL;
+	delete[] m_wbuf;
+	m_wbuf = NULL;
+}
+
+bool f_serial::proc()
+{
+	if(m_pout){
+		if(m_tail_rbuf == 0){
+			m_tail_rbuf = read_serial(m_hserial, m_rbuf, m_frm_len);
+		}
+
+		if(m_head_rbuf < m_tail_rbuf){
+			m_head_rbuf += m_pout->write(m_rbuf + m_head_rbuf, m_tail_rbuf - m_head_rbuf);
+		}
+
+		if(m_head_rbuf == m_tail_rbuf){
+			m_head_rbuf = 0;
+			m_tail_rbuf = 0;
+		}
+	}
+
+	if(m_pin){
+		if(m_tail_wbuf == 0){
+			m_tail_wbuf = m_pin->read(m_wbuf, m_frm_len);
+		}
+
+		if(m_head_wbuf < m_tail_wbuf){
+			m_head_wbuf += write_serial(m_hserial, m_wbuf + m_head_wbuf, m_tail_wbuf - m_head_wbuf);
+		}
+
+		if(m_head_wbuf == m_tail_wbuf){
+			m_head_wbuf = 0;
+			m_tail_wbuf = 0;
+		}
+	}
+	return true;
+}
 
 ///////////////////////////////////////////////// f_udp
+
+bool f_udp::init_run()
+{
+	if(m_chin.size() == 1 && (m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0])) != NULL){
+		m_sock_snd = socket(AF_INET, SOCK_DGRAM, 0);	
+		m_sock_addr_snd.sin_family =AF_INET;
+		m_sock_addr_snd.sin_port = htons(20001);
+		set_sockaddr_addr(m_sock_addr_snd, m_host);
+		if(::bind(m_sock_snd, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_snd)) == SOCKET_ERROR){
+			cerr << "Socket error" << endl;
+			return false;
+		}
+	}
+
+	if(m_chout.size() == 1 && (m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0])) != NULL){
+		m_sock_rcv = socket(AF_INET, SOCK_DGRAM, 0);	
+		m_sock_addr_rcv.sin_family =AF_INET;
+		m_sock_addr_rcv.sin_port = htons(20001);
+		set_sockaddr_addr(m_sock_addr_rcv);
+		if(::bind(m_sock_rcv, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
+			cerr << "Socket error" << endl;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void f_udp::destroy_run()
+{
+	closesocket(m_sock_snd);
+	m_sock_snd = -1;
+	closesocket(m_sock_rcv);
+	m_sock_rcv = -1;
+	delete[] m_rbuf;
+	m_rbuf = NULL;
+	delete[] m_wbuf;
+	m_wbuf = NULL;
+}
+
+bool f_udp::proc(){
+	if(m_pout){
+		if(m_tail_rbuf == 0){
+			int sz = sizeof(m_sock_addr_rcv);
+			m_tail_rbuf = recvfrom(m_sock_rcv, m_rbuf, m_len_pkt, 0, (sockaddr*) &m_sock_addr_rcv, &sz);
+		}
+
+		if(m_head_rbuf < m_tail_rbuf){
+			m_head_rbuf += m_pout->write(m_rbuf + m_head_rbuf, m_tail_rbuf - m_head_rbuf);
+		}
+
+		if(m_head_rbuf == m_tail_rbuf){
+			m_head_rbuf = 0;
+			m_tail_rbuf = 0;
+		}
+	}
+
+	if(m_pin){
+		if(m_tail_wbuf == 0){
+			m_tail_wbuf = m_pin->read(m_wbuf, m_len_pkt);
+		}
+
+		if(m_head_wbuf < m_tail_wbuf){
+			m_head_wbuf += send(m_sock_snd, m_wbuf + m_head_wbuf, m_tail_wbuf - m_head_wbuf, 0);
+		}
+
+		if(m_head_wbuf == m_tail_wbuf){
+			m_head_wbuf = 0;
+			m_tail_wbuf = 0;
+		}
+	}
+	return true;
+}
 
 ///////////////////////////////////////////////// f_trn_img
 const char * f_trn_img::get_err_msg(int code)

@@ -224,7 +224,12 @@ void f_nmea::extract_nmea_from_buffer()
 			}
 
 			if(m_blog){
-				m_flog << get_time_str() << m_nmea << endl;
+				if(m_flog.is_open())
+					m_flog << get_time_str() << m_nmea << endl;
+				else{
+					sprintf(m_fname_log, "%s_%lld.nmea", m_name, m_cur_time);
+					m_flog.open(m_fname_log);
+				}
 			}
 
 			// remained data moves to the buffer head
