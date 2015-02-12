@@ -17,6 +17,7 @@
 #include "stdafx.h"
 
 #include <iostream>
+#include <fstream>
 using namespace std;
 
 #include <opencv2/opencv.hpp>
@@ -31,6 +32,19 @@ using namespace cv;
 #include "f_base.h"
 #include "f_com.h"
 
+
+///////////////////////////////////////////////// f_dummy_data
+const char * f_dummy_data::m_str_edt[EDT_TIME_FILE + 1] = 
+{
+	"rand", "time", "trand", "file", "tfile"
+};
+
+///////////////////////////////////////////////// f_serial
+
+
+///////////////////////////////////////////////// f_udp
+
+///////////////////////////////////////////////// f_trn_img
 const char * f_trn_img::get_err_msg(int code)
 {
 	const char * msg = f_base::get_err_msg(code);
@@ -253,6 +267,8 @@ bool f_trn_img::proc()
 	return true;
 }
 
+
+////////////////////////////////////////////////////// f_rcv_img
 
 bool f_rcv_img::init_run()
 {

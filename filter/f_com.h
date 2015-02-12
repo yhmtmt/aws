@@ -22,6 +22,106 @@
 #include "../util/aws_serial.h"
 
 
+// Dummy data generator
+class f_dummy_data: public f_base{
+private:
+	ch_ring<char> * m_pout;
+	unsigned int m_len_pkt;
+	char m_fname_data[1024];
+	ifstream m_fdata;
+	enum e_data_type {
+		EDT_RAND /* only random number */, EDT_TIME/* only time */,
+		EDT_TIME_RAND /* Both time and random number */,
+		EDT_FILE /* Data from file */, 
+		EDT_TIME_FILE /* data from file with time stamp */
+	} m_dtype;
+
+	static const char * m_str_edt[EDT_TIME_FILE+1];
+
+	unsigned char * m_buf;
+	int m_head_buf, m_tail_buf;
+public:
+	f_dummy_data(const char * name):f_base(name), m_pout(NULL), m_len_pkt(1024), m_dtype(EDT_RAND),
+		m_buf(NULL), m_head_buf(0), m_tail_buf(0)
+	{
+		register_fpar("lpkt", &m_len_pkt, "Length of the packet.");
+		register_fpar("type", (int*)&m_dtype, EDT_TIME_FILE+1, m_str_edt, "Data type.");
+		register_fpar("fdata", m_fname_data, 1024, "File path of the data.");
+	}
+
+	virtual ~f_dummy_data()
+	{
+	}
+
+	virtual bool init_run()
+	{
+		if(m_dtype == EDT_FILE){
+			if(m_fname_data[0] != '\0'){
+				m_fdata.open(m_fname_data);
+				if(!m_fdata.is_open()){
+					return false;
+				}
+			}
+		}else if(m_dtype == EDT_RAND || m_dtype == EDT_TIME_RAND){
+			srand(0);
+		}
+
+		if(m_chout.size() == 1){
+			m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
+		}
+
+		m_len_pkt = max(m_len_pkt, (unsigned int)sizeof(m_cur_time));
+		m_buf = new unsigned char[m_len_pkt];
+		if(m_buf == NULL){
+			return false;
+		}
+		return true;
+	}
+
+	virtual void destroy_run()
+	{
+		delete[] m_buf;
+		m_buf = NULL;
+	}
+
+	virtual bool proc(){
+		if(m_pout != NULL){
+			if(m_tail_buf == 0){// no data
+				switch(m_dtype){
+				case EDT_RAND:
+					for(unsigned int i = 0; i < m_len_pkt; i++)
+						m_buf[i] = (unsigned char) (rand() & 0x00FF);
+					break;
+				case EDT_TIME:
+					memset(m_buf, 0, m_len_pkt);
+					memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
+					break;
+				case EDT_TIME_RAND:
+					memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
+					for(unsigned int i = sizeof(m_cur_time); i < m_len_pkt; i++){
+						m_buf[i] = (unsigned char) (rand() & 0x00FF);
+					}
+					break;
+				case EDT_FILE:
+					m_fdata.read((char*)m_buf, m_len_pkt);
+					m_tail_buf = (int) m_fdata.gcount();
+					break;
+				case EDT_TIME_FILE:
+					memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
+					m_fdata.read((char*)(m_buf + sizeof(m_cur_time)), m_len_pkt);
+					m_tail_buf = (int) m_fdata.gcount() + sizeof(m_cur_time);
+					break;
+				}
+			}
+
+			if(m_head_buf < m_tail_buf){
+				m_head_buf += m_pout->write((char*)(m_buf + m_head_buf), m_tail_buf - m_head_buf);
+			}
+		}
+		return true;
+	}
+};
+
 // Serial communication filter interfacing ring buffer.
 class f_serial: public f_base
 {
