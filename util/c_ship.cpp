@@ -348,7 +348,7 @@ const c_ship * c_ship::register_ship_by_vdm5(c_vdm_msg5 * pvdm5)
 		push_ship(ps);
 	}
 	ps->m_data_type = ESDT_VDM;
-
+	//cout << "Shipname " << pvdm5->m_shipname << endl;
 	ps->set_name((const char*) pvdm5->m_shipname);
 	ps->m_type = pvdm5->m_shiptype;
 	ps->set_dimension(pvdm5->m_to_bow, pvdm5->m_to_stern,

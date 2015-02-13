@@ -133,10 +133,10 @@ bool s_binary_message::set_msg_text(char * buf)
 	int imsg = 0;
 	msg[imsg] = 0;
 	imsg++;
-	msg[imsg] = 0x80;
+	msg[imsg] = 0x40;
 	imsg++;
 	unsigned char u;
-	len = 0;
+	len = 16;
 	while(*buf){
 		// 0 rem 6 res
 		u = encchar(*buf);
@@ -2179,19 +2179,20 @@ ostream & c_abk::show(ostream & out)
 
 unsigned char decchar(unsigned char c6)
 {
-	if(c6 < ' ')
+	if (c6 <= ' ')
 		return c6 + '@';
-	
 	return c6;
 }
 
 unsigned char encchar(unsigned char c8)
 {
-	if(c8 < '`' && c8 >= '@'){
-		return c8 - '@';
-	}else if(c8 >= ' '){
-		return c8;
+	if(c8 >= '0' && c8 <= 'W'){
+		return c8 - '0';
 	}
+	else if (c8 >= '`' && c8 <= 'w'){
+		return c8 - '`' + 40;
+	}
+
 	return 0;
 }
 
