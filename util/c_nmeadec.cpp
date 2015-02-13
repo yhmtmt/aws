@@ -2186,13 +2186,11 @@ unsigned char decchar(unsigned char c6)
 
 unsigned char encchar(unsigned char c8)
 {
-	if(c8 >= '0' && c8 <= 'W'){
-		return c8 - '0';
+	if(c8 < '`' && c8 >= '@'){
+		return c8 - '@';
+	}else if(c8 >= ' '){
+		return c8;
 	}
-	else if (c8 >= '`' && c8 <= 'w'){
-		return c8 - '`' + 40;
-	}
-
 	return 0;
 }
 
