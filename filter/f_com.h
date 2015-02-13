@@ -22,6 +22,44 @@
 #include "../util/aws_serial.h"
 
 
+// Dummy data generator
+class f_dummy_data: public f_base{
+private:
+	ch_ring<char> * m_pout;
+	unsigned int m_len_pkt;
+	char m_fname_data[1024];
+	ifstream m_fdata;
+	enum e_data_type {
+		EDT_RAND /* only random number */, EDT_TIME/* only time */,
+		EDT_TIME_RAND /* Both time and random number */,
+		EDT_FILE /* Data from file */, 
+		EDT_TIME_FILE /* data from file with time stamp */
+	} m_dtype;
+
+	static const char * m_str_edt[EDT_TIME_FILE+1];
+
+	unsigned char * m_buf;
+	int m_head_buf, m_tail_buf;
+public:
+	f_dummy_data(const char * name):f_base(name), m_pout(NULL), m_len_pkt(1024), m_dtype(EDT_RAND),
+		m_buf(NULL), m_head_buf(0), m_tail_buf(0)
+	{
+		register_fpar("lpkt", &m_len_pkt, "Length of the packet.");
+		register_fpar("type", (int*)&m_dtype, EDT_TIME_FILE+1, m_str_edt, "Data type.");
+		register_fpar("fdata", m_fname_data, 1024, "File path of the data.");
+	}
+
+	virtual ~f_dummy_data()
+	{
+	}
+
+	virtual bool init_run();
+
+	virtual void destroy_run();
+
+	virtual bool proc();
+};
+
 // Serial communication filter interfacing ring buffer.
 class f_serial: public f_base
 {
@@ -54,79 +92,11 @@ public:
 	{
 	}
 
-	virtual bool init_run()
-	{
+	virtual bool init_run();
 
-		if(m_chin.size() == 1)
-			m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0]);
+	virtual void destroy_run();
 
-		if(m_chout.size() == 1)
-			m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
-
-#ifdef _WIN32
-		m_hserial = open_serial(m_port, m_br);
-#else
-		m_hserial = open_serial(m_dname, m_br);
-#endif
-		if(m_hserial == NULL_SERIAL)
-			return false;
-
-		// allocate the buffer if the memory is not allocated
-		if(m_wbuf == NULL || m_rbuf == NULL){
-			m_wbuf = new char [m_frm_len];
-			if(m_wbuf == NULL)
-				return false;
-			m_rbuf = new char [m_frm_len];
-			if(m_rbuf == NULL)
-				return false;
-		}
-
-		return true;
-	}
-
-	virtual void destroy_run()
-	{
-		close_serial(m_hserial);
-
-		delete[] m_rbuf;
-		m_rbuf = NULL;
-		delete[] m_wbuf;
-		m_wbuf = NULL;
-	}
-
-	virtual bool proc()
-	{
-		if(m_pout){
-			if(m_tail_rbuf == 0){
-				m_tail_rbuf = read_serial(m_hserial, m_rbuf, m_frm_len);
-			}
-
-			if(m_head_rbuf < m_tail_rbuf){
-				m_head_rbuf += m_pout->write(m_rbuf + m_head_rbuf, m_tail_rbuf - m_head_rbuf);
-			}
-
-			if(m_head_rbuf == m_tail_rbuf){
-				m_head_rbuf = 0;
-				m_tail_rbuf = 0;
-			}
-		}
-
-		if(m_pin){
-			if(m_tail_wbuf == 0){
-				m_tail_wbuf = m_pin->read(m_wbuf, m_frm_len);
-			}
-
-			if(m_head_wbuf < m_tail_wbuf){
-				m_head_wbuf += write_serial(m_hserial, m_wbuf + m_head_wbuf, m_tail_wbuf - m_head_wbuf);
-			}
-
-			if(m_head_wbuf == m_tail_wbuf){
-				m_head_wbuf = 0;
-				m_tail_wbuf = 0;
-			}
-		}
-		return true;
-	}
+	virtual bool proc();
 };
 
 // udp communication filter interfacing ch_ring<char> input/output channels
@@ -161,80 +131,13 @@ public:
 	{
 	}
 
-	virtual bool init_run()
-	{
-		if(m_chin.size() == 1 && (m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0])) != NULL){
-			m_sock_snd = socket(AF_INET, SOCK_DGRAM, 0);	
-			m_sock_addr_snd.sin_family =AF_INET;
-			m_sock_addr_snd.sin_port = htons(20001);
-			set_sockaddr_addr(m_sock_addr_snd, m_host);
-			if(::bind(m_sock_snd, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_snd)) == SOCKET_ERROR){
-				cerr << "Socket error" << endl;
-				return false;
-			}
-		}
-
-		if(m_chout.size() == 1 && (m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0])) != NULL){
-			m_sock_rcv = socket(AF_INET, SOCK_DGRAM, 0);	
-			m_sock_addr_rcv.sin_family =AF_INET;
-			m_sock_addr_rcv.sin_port = htons(20001);
-			set_sockaddr_addr(m_sock_addr_rcv);
-			if(::bind(m_sock_rcv, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
-				cerr << "Socket error" << endl;
-				return false;
-			}
-		}
-
-		return true;
-	}
-
-	virtual void destroy_run()
-	{
-		closesocket(m_sock_snd);
-		m_sock_snd = -1;
-		closesocket(m_sock_rcv);
-		m_sock_rcv = -1;
-		delete[] m_rbuf;
-		m_rbuf = NULL;
-		delete[] m_wbuf;
-		m_wbuf = NULL;
-	}
-
-	virtual bool proc(){
-		if(m_pout){
-			if(m_tail_rbuf == 0){
-				int sz = sizeof(m_sock_addr_rcv);
-				m_tail_rbuf = recvfrom(m_sock_rcv, m_rbuf, m_len_pkt, 0, (sockaddr*) &m_sock_addr_rcv, &sz);
-			}
-
-			if(m_head_rbuf < m_tail_rbuf){
-				m_head_rbuf += m_pout->write(m_rbuf + m_head_rbuf, m_tail_rbuf - m_head_rbuf);
-			}
-
-			if(m_head_rbuf == m_tail_rbuf){
-				m_head_rbuf = 0;
-				m_tail_rbuf = 0;
-			}
-		}
-
-		if(m_pin){
-			if(m_tail_wbuf == 0){
-				m_tail_wbuf = m_pin->read(m_wbuf, m_len_pkt);
-			}
-
-			if(m_head_wbuf < m_tail_wbuf){
-				m_head_wbuf += send(m_sock_snd, m_wbuf + m_head_wbuf, m_tail_wbuf - m_head_wbuf, 0);
-			}
-
-			if(m_head_wbuf == m_tail_wbuf){
-				m_head_wbuf = 0;
-				m_tail_wbuf = 0;
-			}
-		}
-		return true;
-	}
+	virtual bool init_run();
+	virtual void destroy_run();
+	virtual bool proc();
 };
 
+
+// filter not used
 class f_trn: public f_base{
 protected:
 	SOCKET m_sock;
@@ -277,6 +180,7 @@ public:
 	}
 };
 
+// filter not used
 class f_rcv: public f_base{
 protected:
 	SOCKET m_sock;

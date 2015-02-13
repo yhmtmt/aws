@@ -76,6 +76,8 @@ template <class T> f_base * createFilter(const char * name)
 	return reinterpret_cast<f_base*>(new T(name));
 }
 
+class c_aws;
+
 typedef map<const char *, CreateFilter, cmp> FMap;
 
 class f_base
@@ -96,7 +98,8 @@ public:
 	static f_base * create(const char * tname, const char * fname);
 
 	// initialize mutex and signal objects. this is called by the c_aws constructor
-	static void init();
+	static c_aws * m_paws;
+	static void init(c_aws * paws);
 
 	// uninitialize mutex and signal objects. called by the c_aws destoractor
 	static void uninit();

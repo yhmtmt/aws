@@ -29,7 +29,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "CmdAppBase/CmdAppBase.h"
 #include "util/aws_sock.h"
 #include "util/aws_thread.h"
 
@@ -168,7 +167,7 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 	add_val(&m_time_zone_minute, "int");
 
 	// Initializing filter globals
-	f_base::init();
+	f_base::init(this);
 
 	// Initializing channel globals
 	ch_base::init();

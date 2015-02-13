@@ -28,6 +28,7 @@ using namespace cv;
 
 #include "../util/c_clock.h"
 #include "f_base.h"
+#include "../c_aws.h"
 
 /////////////////////////////////////////////////////////////// filter factory
 FMap f_base::m_fmap;
@@ -158,6 +159,7 @@ int f_base::m_time_zone_minute = 540;
 char f_base::m_time_str[32];
 tmex f_base::m_tm;
 c_clock f_base::m_clk;
+c_aws * f_base::m_paws = NULL;
 
 ofstream f_base::m_file_err;
 f_base::s_ferr f_base::m_err_buf[SIZE_FERR_BUF];
