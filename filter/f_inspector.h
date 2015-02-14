@@ -17,6 +17,10 @@
 // along with f_inspector.h.  If not, see <http://www.gnu.org/licenses/>. 
 #include "../util/c_imgalign.h"
 #include "f_ds_window.h"
+
+bool is_equal(Mat & a, Mat & b);
+
+
 ////////////////// procedure for model pose estimation
 // for calibration phase
 // 1. load lens parameter table

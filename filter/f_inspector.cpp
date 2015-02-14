@@ -42,8 +42,30 @@ using namespace cv;
 
 #include "f_inspector.h"
 
-const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  
+bool is_equal(Mat & a, Mat & b)
+{
+	if(a.type() != b.type())
+		return false;
 
+	if(a.rows != b.rows)
+		return false;
+
+	if(a.cols != b.cols)
+		return false;
+
+	MatIterator_<Vec3b> itra = a.begin<Vec3b>();
+	MatIterator_<Vec3b> itrb = b.begin<Vec3b>();
+	MatConstIterator_<Vec3b> itr_end = a.end<Vec3b>();
+	for(int i = 0;itra != itr_end; itra++, itrb++, i++){
+		if((*itra)[0] != (*itrb)[0] || (*itra)[1] != (*itrb)[1] || (*itra)[2] != (*itrb)[2]){
+			return false;
+		}
+	}
+
+	return true;
+}
+
+const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  
 
 //////////////////////////////////////////////////////////////// helper function
 void get_cursor_point(vector<Point2f> & pt2ds, float x, float y, int & idx, double & dist)
@@ -831,6 +853,9 @@ bool f_inspector::proc()
 
 			buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
 			if(m_cur_frm >= 0){
+				if(is_equal(m_img, img)){
+					cout << "Same frame with previous frame." << endl;
+				}
 
 				// save current frame object
 				if(m_bauto_save_fobj){
