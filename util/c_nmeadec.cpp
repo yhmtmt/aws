@@ -2176,6 +2176,7 @@ ostream & c_abk::show(ostream & out)
 }
 
 //////////////////////////////////////////////// string handler
+// decchar and encchar handle Six bit ASCII, not Aromoring.
 
 unsigned char decchar(unsigned char c6)
 {

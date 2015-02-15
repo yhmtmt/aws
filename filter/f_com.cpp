@@ -190,18 +190,20 @@ bool f_udp::init_run()
 	if(m_chin.size() == 1 && (m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0])) != NULL){
 		m_sock_snd = socket(AF_INET, SOCK_DGRAM, 0);	
 		m_sock_addr_snd.sin_family =AF_INET;
-		m_sock_addr_snd.sin_port = htons(20001);
+		m_sock_addr_snd.sin_port = htons(m_port);
 		set_sockaddr_addr(m_sock_addr_snd, m_host);
+		/*
 		if(::bind(m_sock_snd, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_snd)) == SOCKET_ERROR){
 			cerr << "Socket error" << endl;
 			return false;
 		}
+		*/
 	}
 
 	if(m_chout.size() == 1 && (m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0])) != NULL){
 		m_sock_rcv = socket(AF_INET, SOCK_DGRAM, 0);	
 		m_sock_addr_rcv.sin_family =AF_INET;
-		m_sock_addr_rcv.sin_port = htons(20001);
+		m_sock_addr_rcv.sin_port = htons(m_port);
 		set_sockaddr_addr(m_sock_addr_rcv);
 		if(::bind(m_sock_rcv, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
 			cerr << "Socket error" << endl;
@@ -228,7 +230,7 @@ bool f_udp::proc(){
 	if(m_pout){
 		if(m_tail_rbuf == 0){
 			int sz = sizeof(m_sock_addr_rcv);
-			m_tail_rbuf = recvfrom(m_sock_rcv, m_rbuf, m_len_pkt, 0, (sockaddr*) &m_sock_addr_rcv, &sz);
+			m_tail_rbuf = recvfrom(m_sock_rcv, m_rbuf, m_len_pkt, 0, (sockaddr*) &m_sock_addr_snd, &sz);
 		}
 
 		if(m_head_rbuf < m_tail_rbuf){
@@ -247,7 +249,9 @@ bool f_udp::proc(){
 		}
 
 		if(m_head_wbuf < m_tail_wbuf){
-			m_head_wbuf += send(m_sock_snd, m_wbuf + m_head_wbuf, m_tail_wbuf - m_head_wbuf, 0);
+			int sz = sizeof(m_sock_addr_snd);
+			m_head_wbuf += sendto(m_sock_snd, m_wbuf + m_head_wbuf, 
+				m_tail_wbuf - m_head_wbuf, 0, (sockaddr*)&m_sock_addr_snd, sz);
 		}
 
 		if(m_head_wbuf == m_tail_wbuf){
