@@ -245,6 +245,8 @@ struct s_frame_obj{
 
 	bool init(const long long atfrm, s_frame_obj & fobj, 
 		vector<Mat> & impyr, c_imgalign & ia);
+	bool init(const long long atfrm, s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
+		vector<Mat> & impyr, c_imgalign * pia);
 
 	bool save(const char * aname);
 	bool load(const char * aname, vector<s_model> & mdls);

@@ -576,6 +576,80 @@ void s_obj::sample_tmpl(Mat & img, Size & sz)
 }
 
 //////////////////////////////////////////////////////////////////// s_frame_obj
+bool s_frame_obj::init(const long long atfrm, 
+	s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
+	vector<Mat> & impyr, c_imgalign * pia)
+{
+	tfrm = atfrm;
+	vector<s_obj> & objs_prev = pfobj0->objs;
+	objs.resize(objs_prev.size());
+	for(int i = 0; i < objs.size(); i++){
+		if(!objs[i].init(objs_prev[i])){
+			return false;
+		}
+	}
+	pfobj0->camint.copyTo(camint);
+	pfobj0->camdist.copyTo(camdist);
+
+	// tracking points
+	vector<Mat> tmplpyr;
+	Rect roi;
+	Mat Warp, I;
+	I = Mat::eye(3, 3, CV_64FC1);
+	//ia.set_wt(EWT_RGD);
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		vector<Point2f> & pt2d = objs[iobj].pt2d;
+		vector<Point2f> & pt2d_prev = objs_prev[iobj].pt2d;
+		vector<int> & visible = objs[iobj].visible;
+		vector<int> & visible_prev = objs_prev[iobj].visible;
+		vector<Mat> & tmpl = objs_prev[iobj].ptx_tmpl;
+		for(int ipt = 0; ipt < pt2d.size(); ipt++){
+			if(!visible_prev[ipt]){
+				visible[ipt] = 0;
+				continue;
+			}
+			
+			Point2f & pt_prev = pt2d_prev[ipt];
+
+			char buf[128];
+			Point2f & pt = pt2d[ipt];
+			if(pfobj1){
+				Point2f & pt_next = pfobj1->objs[iobj].pt2d[ipt];
+				long long tprev, tnext;
+				tprev = pfobj0->tfrm;
+				tnext = pfobj1->tfrm;
+				double fac = abs((double) (tfrm - tprev) / (double)(tnext - tprev));
+
+				// linear interpolation
+				pt.x = (float)(fac * pt_prev.x + (1.0 - fac) * pt_next.x);
+				pt.y = (float)(fac * pt_prev.y + (1.0 - fac) * pt_next.y);
+			}
+
+			if(pia){
+				snprintf(buf, 128, "t%d.png", ipt);
+				imwrite(buf, tmpl[ipt]);
+				buildPyramid(tmpl[ipt], tmplpyr, (int) impyr.size() - 1);
+				roi.width = tmpl[ipt].cols;
+				roi.height = tmpl[ipt].rows;
+				roi.x = (int)(pt_prev.x + 0.5) - (roi.width >> 1);
+				roi.y = (int)(pt_prev.y + 0.5) - (roi.height >> 1);
+				snprintf(buf, 128, "r%d.png", ipt);
+				imwrite(buf, impyr[0](roi));
+				cout << roi << endl;
+				Warp = pia->calc_warp(tmplpyr, impyr, roi, I);
+				if(!pia->is_conv()){
+					cerr << "Tracker does not converged." << endl;
+				}
+				afn(Warp, pt_prev, pt);
+			}
+			
+			cout << pt_prev << endl;
+			cout << pt << endl;
+		}
+	}
+	return true;
+}
+
 
 bool s_frame_obj::init(const long long atfrm, s_frame_obj & fobj, 
 	vector<Mat> & impyr, c_imgalign & ia)
@@ -905,10 +979,18 @@ bool f_inspector::proc()
 					
 				if(!m_bauto_load_fobj || !m_fobjs[m_cur_frm]->load(m_name, m_models)){
 					// determining reference frame.
-					int iref_frm = m_cur_frm - 1;
-					iref_frm = (iref_frm < 0 ? m_cur_frm + 1 : iref_frm);
-					if(iref_frm < m_fobjs.size())
-						m_fobjs[m_cur_frm]->init(timg, *m_fobjs[iref_frm], m_impyr, m_ia);
+					int iref_prev = m_cur_frm - 1;
+					int iref_next = m_cur_frm + 1;
+
+					if(iref_next < m_fobjs.size()){
+						if(iref_prev >= 0)
+							m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia);
+						else
+							m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia);
+					}else{
+						if(iref_prev >= 0)
+							m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia);
+					}
 				}
 			}
 
