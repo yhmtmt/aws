@@ -127,13 +127,14 @@ bool f_serial::init_run()
 		return false;
 
 	// allocate the buffer if the memory is not allocated
-	if(m_wbuf == NULL || m_rbuf == NULL){
-		m_wbuf = new char [m_frm_len];
-		if(m_wbuf == NULL)
-			return false;
-		m_rbuf = new char [m_frm_len];
-		if(m_rbuf == NULL)
-			return false;
+	m_wbuf = new char [m_frm_len];
+	if(m_wbuf == NULL)
+		return false;
+	m_rbuf = new char [m_frm_len];
+	if(m_rbuf == NULL){
+		delete[] m_wbuf;
+		m_wbuf = NULL;
+		return false;
 	}
 
 	return true;
@@ -189,6 +190,9 @@ bool f_udp::init_run()
 {
 	if(m_chin.size() == 1 && (m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0])) != NULL){
 		m_sock_snd = socket(AF_INET, SOCK_DGRAM, 0);	
+		if(set_sock_nb(m_sock_snd) != 0)
+			return false;
+
 		m_sock_addr_snd.sin_family =AF_INET;
 		m_sock_addr_snd.sin_port = htons(m_port);
 		set_sockaddr_addr(m_sock_addr_snd, m_host);
@@ -202,13 +206,39 @@ bool f_udp::init_run()
 
 	if(m_chout.size() == 1 && (m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0])) != NULL){
 		m_sock_rcv = socket(AF_INET, SOCK_DGRAM, 0);	
+		if(set_sock_nb(m_sock_rcv) != 0)
+			return false;
+
 		m_sock_addr_rcv.sin_family =AF_INET;
 		m_sock_addr_rcv.sin_port = htons(m_port);
 		set_sockaddr_addr(m_sock_addr_rcv);
-		if(::bind(m_sock_rcv, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
+		if(::bind(m_sock_rcv, (sockaddr*)&m_sock_addr_rcv, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
 			cerr << "Socket error" << endl;
 			return false;
 		}
+	}
+
+	if(m_fname_out[0]){
+		m_fout.open(m_fname_out);	
+		if(!m_fout.is_open())
+			return false;
+	}
+
+	if(m_fname_in[0]){
+		m_fin.open(m_fname_in);
+		if(!m_fin.is_open())
+			return false;
+	}
+
+	m_rbuf = new char [m_len_pkt];
+	if(m_rbuf == NULL)
+		return false;
+
+	m_wbuf = new char [m_len_pkt];
+	if(m_wbuf == NULL){
+		delete[] m_rbuf;
+		m_rbuf = NULL;
+		return false;
 	}
 
 	return true;
@@ -224,6 +254,10 @@ void f_udp::destroy_run()
 	m_rbuf = NULL;
 	delete[] m_wbuf;
 	m_wbuf = NULL;
+	if(m_fout.is_open())
+		m_fout.close();
+	if(m_fin.is_open())
+		m_fin.close();
 }
 
 bool f_udp::proc(){
@@ -231,6 +265,13 @@ bool f_udp::proc(){
 		if(m_tail_rbuf == 0){
 			int sz = sizeof(m_sock_addr_rcv);
 			m_tail_rbuf = recvfrom(m_sock_rcv, m_rbuf, m_len_pkt, 0, (sockaddr*) &m_sock_addr_snd, &sz);
+			if(m_tail_rbuf == SOCKET_ERROR){
+				if(!ewouldblock(get_socket_error())){
+					dump_socket_error();
+					return false;
+				}
+				m_tail_rbuf = 0;
+			}
 		}
 
 		if(m_head_rbuf < m_tail_rbuf){
@@ -238,6 +279,8 @@ bool f_udp::proc(){
 		}
 
 		if(m_head_rbuf == m_tail_rbuf){
+			if(m_fin.is_open())
+				m_fin.write(m_rbuf, m_tail_rbuf);
 			m_head_rbuf = 0;
 			m_tail_rbuf = 0;
 		}
@@ -255,6 +298,8 @@ bool f_udp::proc(){
 		}
 
 		if(m_head_wbuf == m_tail_wbuf){
+			if(m_fout.is_open())
+				m_fout.write(m_wbuf, m_tail_rbuf);
 			m_head_wbuf = 0;
 			m_tail_wbuf = 0;
 		}

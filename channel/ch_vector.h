@@ -76,7 +76,7 @@ public:
 	int read(T * buf, int len){
 		int i;
 		lock();
-		for(i = 0; m_num != 0 && i < len; m_num--, m_head = (m_head + 1) % m_size){
+		for(i = 0; m_num != 0 && i < len; m_num--, i++, m_head = (m_head + 1) % m_size){
 			buf[i] = m_buf[m_head];
 		}
 		unlock();

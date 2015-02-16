@@ -109,22 +109,31 @@ private:
 	int m_len_pkt;
 	SOCKET m_sock_snd, m_sock_rcv;
 	sockaddr_in m_sock_addr_snd, m_sock_addr_rcv;
-
+	
 	// buffers
 	char * m_rbuf, * m_wbuf;
 	int m_head_rbuf, m_head_wbuf;
 	int m_tail_rbuf, m_tail_wbuf;
 	int m_len_buf;
 
+	// log file
+	char m_fname_out[1024];
+	ofstream m_fout;
+	char m_fname_in[1024];
+	ofstream m_fin;
 public:
 	f_udp(const char * fname): f_base(fname), m_pin(NULL), m_pout(NULL),
 		m_port(20100), m_len_pkt(1024), m_sock_snd(-1), m_sock_rcv(-1),
 		m_rbuf(NULL), m_wbuf(NULL), m_head_rbuf(0), m_head_wbuf(0), 
 		m_tail_rbuf(0), m_tail_wbuf(0), m_len_buf(0)
 	{
+		m_fname_out[0] = '\0';
+		m_fname_in[0] = '\0';
 		register_fpar("port", &m_port, "UDP port.");
 		register_fpar("host", m_host, 1024, "Host address.");
 		register_fpar("lpkt", &m_len_pkt, "Packet length");
+		register_fpar("fout", m_fname_out, 1024, "Output log file.");
+		register_fpar("fin", m_fname_in, 1024, "Input log file.");
 	}
 
 	virtual ~f_udp()
