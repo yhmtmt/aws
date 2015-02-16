@@ -76,6 +76,14 @@ inline bool ewouldblock(int er){
 #endif
 }
 
+inline bool econnreset(int er){
+#ifdef _WIN32
+	return er == WSAECONNRESET;
+#else
+	return er == ECONNRESET;
+#endif
+}
+
 int dump_socket_error();
 
 inline void set_sockaddr_addr(sockaddr_in & addr, const char * str_addr = NULL)

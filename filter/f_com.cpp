@@ -188,31 +188,21 @@ bool f_serial::proc()
 
 bool f_udp::init_run()
 {
-	if(m_chin.size() == 1 && (m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0])) != NULL){
-		m_sock_snd = socket(AF_INET, SOCK_DGRAM, 0);	
-		if(set_sock_nb(m_sock_snd) != 0)
-			return false;
+	m_sock = socket(AF_INET, SOCK_DGRAM, 0);	
+	if(set_sock_nb(m_sock) != 0)
+		return false;
 
+	if(m_chin.size() == 1 && (m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0])) != NULL){
 		m_sock_addr_snd.sin_family =AF_INET;
-		m_sock_addr_snd.sin_port = htons(m_port);
-		set_sockaddr_addr(m_sock_addr_snd, m_host);
-		/*
-		if(::bind(m_sock_snd, (sockaddr*)&m_sock_addr_snd, sizeof(m_sock_addr_snd)) == SOCKET_ERROR){
-			cerr << "Socket error" << endl;
-			return false;
-		}
-		*/
+		m_sock_addr_snd.sin_port = htons(m_port_dst);
+		set_sockaddr_addr(m_sock_addr_snd, m_host_dst);
 	}
 
 	if(m_chout.size() == 1 && (m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0])) != NULL){
-		m_sock_rcv = socket(AF_INET, SOCK_DGRAM, 0);	
-		if(set_sock_nb(m_sock_rcv) != 0)
-			return false;
-
 		m_sock_addr_rcv.sin_family =AF_INET;
 		m_sock_addr_rcv.sin_port = htons(m_port);
 		set_sockaddr_addr(m_sock_addr_rcv);
-		if(::bind(m_sock_rcv, (sockaddr*)&m_sock_addr_rcv, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
+		if(::bind(m_sock, (sockaddr*)&m_sock_addr_rcv, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
 			cerr << "Socket error" << endl;
 			return false;
 		}
@@ -246,10 +236,8 @@ bool f_udp::init_run()
 
 void f_udp::destroy_run()
 {
-	closesocket(m_sock_snd);
-	m_sock_snd = -1;
-	closesocket(m_sock_rcv);
-	m_sock_rcv = -1;
+	closesocket(m_sock);
+	m_sock = -1;
 	delete[] m_rbuf;
 	m_rbuf = NULL;
 	delete[] m_wbuf;
@@ -261,49 +249,83 @@ void f_udp::destroy_run()
 }
 
 bool f_udp::proc(){
-	if(m_pout){
-		if(m_tail_rbuf == 0){
-			int sz = sizeof(m_sock_addr_rcv);
-			m_tail_rbuf = recvfrom(m_sock_rcv, m_rbuf, m_len_pkt, 0, (sockaddr*) &m_sock_addr_snd, &sz);
-			if(m_tail_rbuf == SOCKET_ERROR){
-				if(!ewouldblock(get_socket_error())){
-					dump_socket_error();
-					return false;
+	bool rcv_end = false;
+	bool snd_end = false;
+	while(!rcv_end || !snd_end){
+		if(m_pout){
+			if(m_tail_rbuf == 0){
+				int sz = sizeof(m_sock_addr_rcv);
+				m_tail_rbuf = recvfrom(m_sock, m_rbuf, m_len_pkt, 0, (sockaddr*) &m_sock_addr_snd, &sz);
+
+				if(m_tail_rbuf == 0) // no recieved packet
+					rcv_end = true;
+				else
+					snd_end = false;
+
+				if(m_tail_rbuf == SOCKET_ERROR){ // packet does not arrive
+					int er = get_socket_error();
+					if(!ewouldblock(er) && !econnreset(er)){
+						cout << "Error in socket " << m_name << endl;
+						dump_socket_error();
+						return false;
+					}
+					m_tail_rbuf = 0;
+					rcv_end = true;
 				}
+			}
+
+			if(m_head_rbuf < m_tail_rbuf){
+				int len = m_pout->write(m_rbuf + m_head_rbuf, m_tail_rbuf - m_head_rbuf);
+				if(len == 0) // output channel is full
+					rcv_end = true;
+				m_head_rbuf += len;
+			}
+
+			if(m_head_rbuf == m_tail_rbuf){
+				if(m_fin.is_open())
+					m_fin.write(m_rbuf, m_tail_rbuf);
+
+				/*
+				if(m_tail_rbuf > 0)
+					cout << m_name << " recieved " << m_tail_rbuf << "bytes" << endl;
+				*/
+				m_head_rbuf = 0;
 				m_tail_rbuf = 0;
 			}
+
 		}
 
-		if(m_head_rbuf < m_tail_rbuf){
-			m_head_rbuf += m_pout->write(m_rbuf + m_head_rbuf, m_tail_rbuf - m_head_rbuf);
-		}
+		if(m_pin){
+			if(m_tail_wbuf == 0){
+				m_tail_wbuf = m_pin->read(m_wbuf, m_len_pkt);
+				if(m_tail_wbuf == 0) // no data in the channel
+					snd_end = true;
+				else
+					snd_end = false;
+			}
 
-		if(m_head_rbuf == m_tail_rbuf){
-			if(m_fin.is_open())
-				m_fin.write(m_rbuf, m_tail_rbuf);
-			m_head_rbuf = 0;
-			m_tail_rbuf = 0;
+			if(m_head_wbuf < m_tail_wbuf){
+				int sz = sizeof(m_sock_addr_snd);
+				int len = sendto(m_sock, m_wbuf + m_head_wbuf, 
+					m_tail_wbuf - m_head_wbuf, 0, (sockaddr*)&m_sock_addr_snd, sz);
+				if(len == 0) // socket is not ready to send packet
+					snd_end = true;
+				m_head_wbuf += len;
+			}
+
+			if(m_head_wbuf == m_tail_wbuf){
+				if(m_fout.is_open())
+					m_fout.write(m_wbuf, m_tail_rbuf);
+				/*
+				if(m_tail_wbuf > 0)
+					cout << m_name << " sent " << m_tail_wbuf << "bytes" << endl;
+				*/
+				m_head_wbuf = 0;
+				m_tail_wbuf = 0;
+			}
 		}
 	}
 
-	if(m_pin){
-		if(m_tail_wbuf == 0){
-			m_tail_wbuf = m_pin->read(m_wbuf, m_len_pkt);
-		}
-
-		if(m_head_wbuf < m_tail_wbuf){
-			int sz = sizeof(m_sock_addr_snd);
-			m_head_wbuf += sendto(m_sock_snd, m_wbuf + m_head_wbuf, 
-				m_tail_wbuf - m_head_wbuf, 0, (sockaddr*)&m_sock_addr_snd, sz);
-		}
-
-		if(m_head_wbuf == m_tail_wbuf){
-			if(m_fout.is_open())
-				m_fout.write(m_wbuf, m_tail_rbuf);
-			m_head_wbuf = 0;
-			m_tail_wbuf = 0;
-		}
-	}
 	return true;
 }
 
