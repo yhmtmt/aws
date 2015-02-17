@@ -869,6 +869,14 @@ void c_aws::proc_command()
 		case CMD_FRM:
 			result = handle_frm(cmd);
 			break;
+		case CMD_CD:
+			if(cmd.num_args != 2)
+				result = false;
+			else{
+				chdir(cmd.args[1]);
+				result = true;
+			}
+			break;
 		}
 
 		if(!result){

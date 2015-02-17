@@ -30,7 +30,7 @@ const char * str_cmd[CMD_UNKNOWN] = {
 	"channel", "filter", "fcmd", "fset", "fget", 
 	"finf", "fpar", "chinf", "go", "stop", "quit",
 	"step","cyc","online", "pause","clear", "rcmd", 
-	"trat", "chrm", "frm" 
+	"trat", "chrm", "frm", "awscd" 
 };
 
 e_cmd cmd_str_to_id(const char * cmd_str)

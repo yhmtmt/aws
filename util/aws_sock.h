@@ -27,8 +27,10 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <sys/stat.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 #include <string.h>
+#include <errno.h>
 #define SOCKET int
 
 #ifndef SOCKET_ERROR 
