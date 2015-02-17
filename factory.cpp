@@ -243,4 +243,5 @@ void f_base::register_factory()
 	register_factory<f_serial>("ser");
 	register_factory<f_udp>("udp");
 	register_factory<f_dummy_data>("dd");
+	register_factory<f_rec_data>("rd");
 }

@@ -22,6 +22,80 @@
 #include "../util/aws_serial.h"
 
 
+class f_rec_data: public f_base{
+private:
+	ch_ring<char> * m_pin;
+	char m_fname[1024];
+	int m_buf_size;
+	char * m_buf;
+	ofstream m_flog;
+	bool m_bdump;
+public:
+	f_rec_data(const char * name): f_base(name), m_pin(NULL), m_buf_size(1024), m_buf(NULL), m_bdump(true)
+	{
+		m_fname[0] = '\0';
+		register_fpar("fname", m_fname, 1024, "File name to save the recieved data.");
+		register_fpar("buf_size", &m_buf_size, "Buffer size.");
+		register_fpar("dump", &m_bdump, "Dump recieved data to STDOUT.");
+	}
+
+	virtual ~f_rec_data()
+	{
+	}
+
+	virtual bool init_run()
+	{
+		if(m_fname[0] != '\0'){
+			m_flog.open(m_fname);
+			if(!m_flog.is_open())
+				return false;
+		}
+
+		if(m_chin.size() != 1)
+			return false;
+
+		m_pin = dynamic_cast<ch_ring<char>*>(m_chin[0]);
+		if(m_pin == NULL)
+			return false;
+
+		m_buf = new char[m_buf_size];
+		if(m_buf == NULL){
+			return false;
+		}
+
+		return true;
+	}
+
+	virtual void destroy_run()
+	{
+		if(m_flog.is_open())
+			m_flog.close();
+		delete[] m_buf;
+		m_buf = NULL;
+	}
+
+	virtual bool proc()
+	{
+		int len;
+		while(len = m_pin->read(m_buf, m_buf_size-1)){
+			if(m_bdump && len != 0){
+				m_buf[len] = '\0';
+				cout << m_time_str << " " << m_buf;
+			}
+			if(m_flog.is_open()){
+				// DATA RECORD 
+				//   8byte  4byte len byte
+				// [ TIME ][ LEN ][ DATA]
+				m_flog.write((const char*)&m_cur_time, sizeof(m_cur_time));
+				m_flog.write((const char*)&len, sizeof(len));
+				m_flog.write((const char*)m_buf, len);
+			}
+		}
+		return true;
+
+	}
+};
+
 // Dummy data generator
 class f_dummy_data: public f_base{
 private:
