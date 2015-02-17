@@ -49,7 +49,7 @@ inline unsigned char h2i(char h){
 	i = h - '0';
 	if(i < 10)
 		return i;
-	i = h - 'F';
+	i = h - 'A' + 10;
 	return i;
 }
 #endif

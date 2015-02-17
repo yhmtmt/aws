@@ -140,6 +140,7 @@ bool f_fep01::handle_init()
 	case SST_CMD:
 		m_cmd.type = ARG;
 		m_cmd_queue.push_back(m_cmd);
+		m_sst = SST_PROC;
 		break;
 	case SST_PROC:
 		if(m_cur_cmd == ARG && m_cmd_stat & EOC){
@@ -450,8 +451,9 @@ bool f_fep01::pack_reg()
 bool f_fep01::parse_rbuf()
 {
 	char * rbuf = m_rbuf;
-	char * pbuf = m_pbuf + m_pbuf_tail;
+	char * pbuf;
 	for(int i = 0; i < m_rbuf_len && m_pbuf_tail < 512; i++, rbuf++){
+		pbuf = m_pbuf + m_pbuf_tail;
 		*pbuf = *rbuf;
 		m_pbuf_tail++;
 		if(*pbuf == 0x0D){
@@ -490,6 +492,7 @@ bool f_fep01::parse_rbuf()
 					if(m_pbuf_tail == 4){ // P0<cr><lf> etc.
 						if(parse_response()){
 							cout << "Response: " << m_pbuf << endl;
+							pbuf = m_pbuf;
 							m_pbuf_tail = 0;
 							m_parse_cr = m_parse_lf = 0;
 							continue;
@@ -499,6 +502,7 @@ bool f_fep01::parse_rbuf()
 					if(parse_response_value()){
 						m_pbuf[m_pbuf_tail] = '\0';
 						cout << "Response: " << m_pbuf << endl;
+						pbuf = m_pbuf;
 						m_pbuf_tail = 0;
 						m_parse_cr = m_parse_lf = 0;
 						continue;
@@ -546,9 +550,9 @@ bool f_fep01::parse_response_value()
 	switch(m_cur_cmd){
 	case ARG: // REGxx:yyH
 		if(m_pbuf_tail == 11 && m_pbuf[0] == 'R' && m_pbuf[1] == 'E' 
-			&& m_pbuf[2] == 'G' && m_pbuf[4] == ':' && m_pbuf[7] == 'H'){
+			&& m_pbuf[2] == 'G' && m_pbuf[5] == ':' && m_pbuf[8] == 'H'){
 				unsigned char ireg = str2DigitDecimal(m_pbuf + 3);
-				unsigned char reg = str2DigitHex(m_pbuf + 5);
+				unsigned char reg = str2DigitHex(m_pbuf + 6);
 				m_reg[ireg] = reg;
 				if(ireg == 28){ // end of command 
 					m_cmd_stat |= EOC;
@@ -1171,6 +1175,11 @@ bool f_fep01::parse_message()
 bool f_fep01::set_cmd()
 {
 	list<s_cmd>::iterator itr = m_cmd_queue.begin();
+
+	m_cur_cmd = itr->type;
+	m_cmd_arg1 = itr->iarg1;
+	m_cmd_arg2 = itr->iarg2;
+	m_cmd_stat = 0;
 
 	switch(itr->type){
 	case ARG:

@@ -21,7 +21,7 @@
 #include "../util/aws_sock.h"
 #include "../util/aws_serial.h"
 
-
+// data recorder interfacing ring buffer ch_ring<char>
 class f_rec_data: public f_base{
 private:
 	ch_ring<char> * m_pin;
@@ -96,7 +96,7 @@ public:
 	}
 };
 
-// Dummy data generator
+// Dummy data generator interfacing ring buffer ch_ring<char>
 class f_dummy_data: public f_base{
 private:
 	ch_ring<char> * m_pout;

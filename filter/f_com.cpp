@@ -52,9 +52,9 @@ bool f_dummy_data::init_run()
 		srand(0);
 	}
 
-	if(m_chout.size() == 1){
-		m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
-	}
+	if(m_chout.size() != 1)
+		return false;
+	m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
 
 	m_len_pkt = max(m_len_pkt, (unsigned int)sizeof(m_cur_time));
 	m_buf = new unsigned char[m_len_pkt];
@@ -75,16 +75,18 @@ bool f_dummy_data::proc(){
 		if(m_tail_buf == 0){// no data
 			switch(m_dtype){
 			case EDT_RAND:
-				for(unsigned int i = 0; i < m_len_pkt; i++)
+				for(unsigned int i = 0; i < m_len_pkt; m_tail_buf++, i++)
 					m_buf[i] = (unsigned char) (rand() & 0x00FF);
 				break;
 			case EDT_TIME:
 				memset(m_buf, 0, m_len_pkt);
 				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
+				m_tail_buf = sizeof(m_cur_time);
 				break;
 			case EDT_TIME_RAND:
 				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
-				for(unsigned int i = sizeof(m_cur_time); i < m_len_pkt; i++){
+				m_tail_buf = sizeof(m_cur_time);
+				for(unsigned int i = sizeof(m_cur_time); i < m_len_pkt; m_tail_buf++, i++){
 					m_buf[i] = (unsigned char) (rand() & 0x00FF);
 				}
 				break;

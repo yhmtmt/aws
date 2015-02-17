@@ -294,15 +294,23 @@ public:
 		}
 
 		// pop a command from queue and set to write buffer
-		if(m_cmd_queue.size() != 0){
+		if(m_cur_cmd == NUL && m_cmd_queue.size() != 0){
 			set_cmd();
+			// writing a command if it is in the write buffer
+			m_wbuf_len = (int) strlen(m_wbuf);
+
+			int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+			if(m_wbuf_len != wlen){
+				cerr << "Write operation failed." << endl;
+			}
+			m_wbuf[0] = '\0';
 		}
 
 		// handling recieved message. this code is temporal and simply dumping to stdout. 
 		if(m_rcv_done){
 			m_rcv_msg[m_rcv_len] = '\0';
 			cout << "Recieve: " << m_rcv_msg << endl;
-			m_rcv_done = true;
+			m_rcv_done = false;
 		}
 
 		// handling processed command 
@@ -320,17 +328,6 @@ public:
 			if(!parse_rbuf()){
 				cerr << "Failed to parse read buffer." << endl;
 			}
-		}
-
-		// writing a command if it is in the write buffer
-		m_wbuf_len = (int) strlen(m_wbuf);
-
-		if(m_cur_cmd == NUL){
-			int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
-			if(m_wbuf_len != wlen){
-				cerr << "Write operation failed." << endl;
-			}
-			m_wbuf[0] = '\0';
 		}
 
 		return true;
