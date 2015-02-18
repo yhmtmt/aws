@@ -901,6 +901,95 @@ void f_inspector::release_d3dres()
 	return;
 }
 
+bool f_inspector::new_frame(Mat & img, long long & timg)
+{
+	int bfound = false;
+	// resize the original image to adjust the original aspect ratio.
+	// (Some video file should change the aspect ratio to display correctly)
+	resize(img, m_img_s, Size(), m_sh, m_sv);
+
+	// generate gray scale image
+	cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
+
+	// build image pyramid
+	GaussianBlur(m_img_gry, m_img_gry_blur, Size(0, 0), m_sig_gb);
+
+	buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
+	if(m_cur_frm >= 0){
+		if(is_equal(m_img, img)){
+			cout << "Same frame with previous frame." << endl;
+		}
+
+		// save current frame object
+		if(m_bauto_save_fobj){
+			if(!m_fobjs[m_cur_frm]->save(m_name)){
+				cerr << "Failed to save filter objects in time " << m_fobjs[m_cur_frm]->tfrm << "." << endl;
+			}
+		}
+
+		// if the next frame object is in the m_fobjs, we do not insert the new object
+		if(m_fobjs[m_cur_frm]->tfrm < timg){ // for larger time
+			m_cur_frm++;
+			for(;  m_cur_frm < m_fobjs.size(); m_cur_frm++){
+				long long tfrm = m_fobjs[m_cur_frm]->tfrm;
+				if(tfrm == timg){
+					bfound = true;
+					break;
+				}else if(tfrm > timg){
+					break;
+				}
+			}
+		}else{ // for smaller time 
+			m_cur_frm--;
+			for(; m_cur_frm >= 0; m_cur_frm--){
+				long long tfrm = m_fobjs[m_cur_frm]->tfrm;
+				if(tfrm == timg){
+					bfound = true;
+					break;
+				}else if(tfrm < timg){
+					m_cur_frm++;
+					break;
+				}
+			}
+		}
+	}else{
+		m_cur_frm = 0;
+	}
+
+	if(!bfound){
+		// new frame object added
+		m_fobjs.insert(m_fobjs.begin() + m_cur_frm, new s_frame_obj);
+		if(m_fobjs[m_cur_frm] == NULL){
+			cerr << "Cannot allocate memory for frame object" << endl;
+			return false;
+		}
+
+		m_fobjs[m_cur_frm]->tfrm = timg;
+
+		if(!m_bauto_load_fobj || !m_fobjs[m_cur_frm]->load(m_name, m_models)){
+			// determining reference frame.
+			int iref_prev = m_cur_frm - 1;
+			int iref_next = m_cur_frm + 1;
+
+			if(iref_next < m_fobjs.size()){
+				if(iref_prev >= 0)
+					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia);
+				else
+					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia);
+			}else{
+				if(iref_prev >= 0)
+					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia);
+			}
+		}
+	}
+
+	// update time and image.
+	m_timg = timg;
+	m_img = img;
+
+	return true;
+}
+
 bool f_inspector::proc()
 {
 	pthread_lock lock(&m_d3d_mtx);
@@ -908,101 +997,13 @@ bool f_inspector::proc()
 	////////////////// updating pvt information ///////////////////////
 	long long timg;	
 	Mat img;
-	if(!is_pause()){
-		img = m_pin->get_img(timg);
-		if(img.empty() || timg < 0)
-			return true;
+	img = m_pin->get_img(timg);
+	if(img.empty() || timg < 0)
+		return true;
 
-		if(m_timg != timg){ // new frame arrived
-			int bfound = false;
-			// resize the original image to adjust the original aspect ratio.
-			// (Some video file should change the aspect ratio to display correctly)
-			resize(img, m_img_s, Size(), m_sh, m_sv);
-
-			// generate gray scale image
-			cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
-
-			// build image pyramid
-			GaussianBlur(m_img_gry, m_img_gry_blur, Size(0, 0), m_sig_gb);
-
-			buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
-			if(m_cur_frm >= 0){
-				if(is_equal(m_img, img)){
-					cout << "Same frame with previous frame." << endl;
-				}
-
-				// save current frame object
-				if(m_bauto_save_fobj){
-					if(!m_fobjs[m_cur_frm]->save(m_name)){
-						cerr << "Failed to save filter objects in time " << m_fobjs[m_cur_frm]->tfrm << "." << endl;
-					}
-				}
-
-				// if the next frame object is in the m_fobjs, we do not insert the new object
-				if(m_fobjs[m_cur_frm]->tfrm < timg){ // for larger time
-					m_cur_frm++;
-					for(;  m_cur_frm < m_fobjs.size(); m_cur_frm++){
-						long long tfrm = m_fobjs[m_cur_frm]->tfrm;
-						if(tfrm == timg){
-							bfound = true;
-							break;
-						}else if(tfrm > timg){
-							break;
-						}
-					}
-				}else{ // for smaller time 
-					m_cur_frm--;
-					for(; m_cur_frm >= 0; m_cur_frm--){
-						long long tfrm = m_fobjs[m_cur_frm]->tfrm;
-						if(tfrm == timg){
-							bfound = true;
-							break;
-						}else if(tfrm < timg){
-							m_cur_frm++;
-							break;
-						}
-					}
-				}
-			}else{
-				m_cur_frm = 0;
-			}
-
-			if(!bfound){
-				// new frame object added
-				m_fobjs.insert(m_fobjs.begin() + m_cur_frm, new s_frame_obj);
-				if(m_fobjs[m_cur_frm] == NULL){
-					cerr << "Cannot allocate memory for frame object" << endl;
-					return false;
-				}
-
-				m_fobjs[m_cur_frm]->tfrm = timg;
-					
-				if(!m_bauto_load_fobj || !m_fobjs[m_cur_frm]->load(m_name, m_models)){
-					// determining reference frame.
-					int iref_prev = m_cur_frm - 1;
-					int iref_next = m_cur_frm + 1;
-
-					if(iref_next < m_fobjs.size()){
-						if(iref_prev >= 0)
-							m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia);
-						else
-							m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia);
-					}else{
-						if(iref_prev >= 0)
-							m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia);
-					}
-				}
-			}
-
-			// update time and image.
-			m_timg = timg;
-			m_img = img;
-		}
-	}else{
-		timg = m_timg;
-		img = m_img;
-		if(img.empty())
-			return true;
+	if(m_timg != timg){ // new frame arrived
+		if(!new_frame(img, timg))
+			return false;
 	}
 
 	switch(m_sop){

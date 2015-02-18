@@ -267,6 +267,8 @@ private:
 	//
 	ch_image * m_pin;
 
+	bool new_frame(Mat & img, long long & timg);
+
 	// 
 	// image information to be processed
 	//
