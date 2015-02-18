@@ -183,7 +183,6 @@ void * f_base::fthread(void * ptr)
 			filter->clock_wait();
 			cycle++;
 		}
-
 		filter->lock_cmd();
 		
 		filter->tran_chout();
@@ -276,7 +275,7 @@ f_base::f_base(const char * name):m_offset_time(0), m_bactive(false),
 	register_fpar("ProcCount", &m_count_proc, "Number of execution."); 
 	register_fpar("ClockCount", &m_count_clock, "Number of clock cycles passed." );
 	register_fpar("ProcRate", &m_proc_rate, "Processing rate.(Read only)");
-	register_fpar("MacCycle", &m_max_cycle, "Maximum cycles per processing.(Read Only)");
+	register_fpar("MaxCycle", &m_max_cycle, "Maximum cycles per processing.(Read Only)");
 }
 
 f_base::~f_base()

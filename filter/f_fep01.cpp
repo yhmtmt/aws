@@ -55,7 +55,7 @@ const char * f_fep01::m_cm_str[CM_P2P+1] = {
 };
 
 f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
-	m_port(0), m_br(9600), m_len_pkt(128), m_cm(CM_P2P), m_addr_p2p(0), m_hcom(NULL_SERIAL), m_addr(0x00), m_addr_group(0xF0), 
+	m_port(0), m_br(9600), m_len_pkt(128), m_max_queue(10), m_cm(CM_P2P), m_addr_p2p(0), m_hcom(NULL_SERIAL), m_addr(0x00), m_addr_group(0xF0), 
 	m_addr_dst(0x00), m_header_less(0), m_scramble_0(0xFF), m_scramble_1(0xFF), m_num_freqs(0x03), m_freq0(0x18), 
 	m_freq1(0x2A), m_freq2(0x3C), m_ant(0), m_div(1), m_num_reps(0x0A), m_th_roam(0x50), m_rep_power(0), 
 	m_rep_err(0), m_rep_suc(0), m_rep(0), m_tint_cmd(0x00), m_fband(0), m_tbclr(0x64), m_fwait(4), m_chk_group(1), 
@@ -71,6 +71,7 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	register_fpar("lpkt", &m_len_pkt, "Packet length.");
 
 	register_fpar("cm", (int*)&m_cm, CM_P2P+1, m_cm_str, "Communication Mode.");
+	register_fpar("addr_p2p", &m_addr_p2p, "Destination address for P2P communication.");
 
 	register_fpar("addr", &m_addr, "own address (0 to 239)");
 	register_fpar("addr_group", &m_addr_group, "group address (240 to 254)");
@@ -155,20 +156,21 @@ bool f_fep01::handle_init()
 
 bool f_fep01::handle_op()
 {
-	int len;
-	len = m_pin->read(m_cmd.msg, m_len_pkt);
-	if(len){
-		// push one packet to the queue from input channel
-		m_cmd.msg[len] = '\0';
-		switch(m_cm){
-		case CM_P2P:
-			m_cmd.type = TBN;
-			m_cmd.iarg1 = (int) m_addr_p2p;
+	if(m_cmd_queue.size() < m_max_queue){
+		int len = m_pin->read(m_cmd.msg, m_len_pkt);
+		if(len){
+			// push one packet to the queue from input channel
+			m_cmd.msg[len] = '\0';
+			switch(m_cm){
+			case CM_P2P:
+				m_cmd.type = TBN;
+				m_cmd.iarg1 = (int) m_addr_p2p;
+				m_cmd.iarg2 = len;
+			}
+
+			m_cmd_queue.push_back(m_cmd);
 		}
-
-		m_cmd_queue.push_back(m_cmd);
 	}
-
 	// if there exists recieved data, push to the output channel
 	if(m_cur_rcv != RNUL){
 		// push one recieved data to output channel
@@ -818,8 +820,9 @@ bool f_fep01::parse_response()
 		default:
 			is_proc = false;
 		}
+		break;
 	case 'N':
-		switch(m_pbuf[2]){
+		switch(m_pbuf[1]){
 		case '0':
 			m_cmd_stat |= N0;
 			break;
@@ -832,6 +835,7 @@ bool f_fep01::parse_response()
 		default:
 			is_proc = false;
 		}
+		break;
 	default:
 		is_proc = false;
 	}
@@ -995,6 +999,8 @@ bool f_fep01::parse_response()
 		case TB2:
 			if(m_cmd_stat & N0 | m_cmd_stat & N1 | m_cmd_stat & N3 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
+				if(m_cmd_stat & P0)
+					m_total_tx += m_len_tx;
 			}else if(m_cmd_stat & P1){
 				// sending 
 				break;
@@ -1017,6 +1023,7 @@ bool f_fep01::parse_response()
 				snprintf(m_pbuf, "%s_ts2.log", m_name);
 				m_flog_ts2.open(m_pbuf, ios_base::app);
 				m_ts2_mode = true;
+				m_total_tx += m_len_tx;
 			}else{
 				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
@@ -1184,6 +1191,7 @@ bool f_fep01::set_cmd()
 	switch(itr->type){
 	case ARG:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case BAN:
 		if(itr->carg1[0] == 'L' || itr->carg1[0] == 'H'){
@@ -1191,9 +1199,11 @@ bool f_fep01::set_cmd()
 		}else{
 			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case BCL:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case DAS:
 		if(itr->iarg1 != -1){
@@ -1201,9 +1211,11 @@ bool f_fep01::set_cmd()
 		}else{
 			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case DBM:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case DVS:
 		if(itr->carg1[0] == 'A' || itr->carg1[0] == 'B' || itr->carg1[0] == 'D'){
@@ -1211,6 +1223,7 @@ bool f_fep01::set_cmd()
 		}else{
 			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case FCN:
 		if(itr->iarg1 < 4 && itr->iarg1 > 0){
@@ -1218,6 +1231,7 @@ bool f_fep01::set_cmd()
 		}else{
 			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case FRQ:
 		if(itr->iarg1 < 4 && itr->iarg1 > 0){
@@ -1228,9 +1242,11 @@ bool f_fep01::set_cmd()
 				snprintf(m_wbuf, 512, "@%s%d\r\n", m_cmd_str[itr->type], itr->iarg1);
 			}
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case IDR:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case IDW:
 		if(itr->iarg1 <= 0x0000FFFF && itr->iarg1 >= 0){
@@ -1238,9 +1254,11 @@ bool f_fep01::set_cmd()
 		}else{
 			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case INI:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case PAS:
 		if(itr->iarg1 < 256 && itr->iarg1 >= 0 && itr->iarg2 < 256 && itr->iarg2 >= 0){
@@ -1248,12 +1266,15 @@ bool f_fep01::set_cmd()
 		}else{
 			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case POF:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case PON:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case PTE:
 		if(itr->iarg1 >= 0 && itr->iarg1 < 16){
@@ -1261,6 +1282,7 @@ bool f_fep01::set_cmd()
 		}else{
 			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case PTN:
 		if(itr->iarg1 > 0 && itr->iarg1 < 256){
@@ -1268,6 +1290,7 @@ bool f_fep01::set_cmd()
 		}else{
 			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case PTS:
 		if(itr->iarg1 > 0 && itr->iarg1 < 256){
@@ -1275,6 +1298,7 @@ bool f_fep01::set_cmd()
 		}else{
 			snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case ROF:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
@@ -1282,6 +1306,7 @@ bool f_fep01::set_cmd()
 	case RON:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		break;
+		m_wbuf_len = (int) strlen(m_wbuf);
 	case REG:
 		if(itr->iarg1 < 29 && itr->iarg1 >= 0){
 			if(itr->iarg2 < 256 && itr->iarg2 >= 0){
@@ -1290,34 +1315,55 @@ bool f_fep01::set_cmd()
 				snprintf(m_wbuf, 512, "@%s%02d\r\n", m_cmd_str[itr->type], itr->iarg1);
 			}
 		}
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case RID:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case RST:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	case TBN:
-		if(itr->iarg1 >= 0 && itr->iarg1 < 255 && itr->iarg2 > 0 && itr->iarg2 <129 && 
-			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-			snprintf(m_wbuf, 512, "@%s%03d%03d%s", itr->iarg1, itr->iarg2, itr->msg);
+		if(itr->iarg1 >= 0 && itr->iarg1 < 255 && itr->iarg2 > 0 && itr->iarg2){
+			snprintf(m_wbuf, 512, "@%s%03d%03d", m_cmd_str[itr->type], itr->iarg1, itr->iarg2);
+			m_wbuf_len = (int) strlen(m_wbuf);
+			memcpy(m_wbuf + strlen(m_wbuf), itr->msg, itr->iarg2);
+			m_wbuf_len += itr->iarg2;
+			m_wbuf[m_wbuf_len] = '\r';
+			m_wbuf[m_wbuf_len+1] = '\n';
+			m_wbuf_len += 2;
+			m_len_tx = itr->iarg2;
 		}
 		break;
 	case TBR:
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
-			&& itr->iarg3 > 0 && itr->iarg3 <129 && 
-			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%s", itr->iarg1, itr->iarg2, itr->iarg3, itr->msg);
+			&& itr->iarg3 > 0 && itr->iarg3 <129){
+			m_wbuf_len = (int) strlen(m_wbuf);
+			snprintf(m_wbuf, 512, "@%s%03d%03d%03d", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->iarg3);
+			memcpy(m_wbuf + strlen(m_wbuf), itr->msg, itr->iarg3);
+			m_wbuf_len += itr->iarg2;
+			m_wbuf[m_wbuf_len] = '\r';
+			m_wbuf[m_wbuf_len+1] = '\n';
+			m_wbuf_len += 2;
+			m_len_tx = itr->iarg3;
 		}
 		break;
 	case TB2:
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
 			&& itr->iarg3 >= 0 && itr->iarg3 < 255 
-			&& itr->iarg4 > 0 && itr->iarg4 <129 && 
-			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%03d%s", itr->iarg1, itr->iarg2, itr->iarg3, itr->msg);
+			&& itr->iarg4 > 0 && itr->iarg4 <129){
+			m_wbuf_len = (int) strlen(m_wbuf);
+			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%03d", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->iarg3, itr->iarg4);
+			memcpy(m_wbuf + strlen(m_wbuf), itr->msg, itr->iarg4);
+			m_wbuf_len += itr->iarg2;
+			m_wbuf[m_wbuf_len] = '\r';
+			m_wbuf[m_wbuf_len+1] = '\n';
+			m_wbuf_len += 2;
+			m_len_tx = itr->iarg4;
 		}
 		break;
 	case TID:
@@ -1327,27 +1373,32 @@ bool f_fep01::set_cmd()
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
 		break;
 	case TXT:
-		if(itr->iarg1 >= 0 && itr->iarg1 < 255 && 
-			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-			snprintf(m_wbuf, 512, "@%s%03d%s", itr->iarg1, itr->msg);
+		if(itr->iarg1 >= 0 && itr->iarg1 < 255){
+			snprintf(m_wbuf, 512, "@%s%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->msg);
+			m_wbuf_len = (int) strlen(m_wbuf);
+			m_len_tx = (int) strlen(itr->msg);
 		}
 		break;
 	case TXR:
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
-			&& itr->iarg2 >= 0 && itr->iarg2 < 255 &&
-			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-			snprintf(m_wbuf, 512, "@%s%03d%03d%s", itr->iarg1, itr->iarg2, itr->msg);
+			&& itr->iarg2 >= 0 && itr->iarg2 < 255){
+			snprintf(m_wbuf, 512, "@%s%03d%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->msg);
+			m_wbuf_len = (int) strlen(m_wbuf);
+			m_len_tx = (int) strlen(itr->msg);
 		}
 	case TX2:
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
-			&& itr->iarg3 >= 0 && itr->iarg3 < 255 && 
-			itr->msg[0] != '\0' && itr->msg[itr->iarg2] == '\0'){
-			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%03d%s", itr->iarg1, itr->iarg2, itr->msg);
+			&& itr->iarg3 >= 0 && itr->iarg3 < 255){
+			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2
+				,itr->iarg3, itr->msg);
+			m_wbuf_len = (int) strlen(m_wbuf);
+			m_len_tx = (int) strlen(itr->msg);
 		}
 		break;
 	case VER:
 		snprintf(m_wbuf, 512, "@%s\r\n", m_cmd_str[itr->type]);
+		m_wbuf_len = (int) strlen(m_wbuf);
 		break;
 	}
 

@@ -105,6 +105,10 @@ bool f_dummy_data::proc(){
 		if(m_head_buf < m_tail_buf){
 			m_head_buf += m_pout->write((char*)(m_buf + m_head_buf), m_tail_buf - m_head_buf);
 		}
+		
+		if(m_head_buf == m_tail_buf){
+			m_head_buf = m_tail_buf = 0;
+		}
 	}
 	return true;
 }

@@ -198,6 +198,7 @@ protected:
 	// if m_bpush_cmd is asserted, the command set at m_cmd is pushed to m_cmd_queue
 	bool m_bpush_cmd;
 	s_cmd m_cmd;
+	int m_max_queue;
 	list<s_cmd> m_cmd_queue;
 	bool set_cmd();
 
@@ -215,7 +216,8 @@ protected:
 	bool m_rcv_done;
 	unsigned char m_rcv_src, m_rcv_rep0, m_rcv_rep1, m_rcv_len, m_proced_len;
 	char m_rcv_msg[256];
-
+	int m_len_tx;
+	long long m_total_tx, m_total_rx;
 public:
 	f_fep01(const char * name);
 
@@ -242,6 +244,7 @@ public:
 			m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
 		}
 
+		m_total_tx = m_total_rx = 0;
 		return true;
 	}
 
@@ -256,6 +259,7 @@ public:
 
 	virtual bool proc()
 	{
+		cout << "Proc/Cycle " << m_count_proc << "/" << m_count_clock << endl;
 		switch(m_st){
 		case ST_INIT:
 			// push initialization command
@@ -296,10 +300,12 @@ public:
 		// pop a command from queue and set to write buffer
 		if(m_cur_cmd == NUL && m_cmd_queue.size() != 0){
 			set_cmd();
-			// writing a command if it is in the write buffer
-			m_wbuf_len = (int) strlen(m_wbuf);
 
 			int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+			if(wlen){
+			cout << "Write:";
+			cout.write(m_wbuf, wlen);
+			}
 			if(m_wbuf_len != wlen){
 				cerr << "Write operation failed." << endl;
 			}
@@ -318,10 +324,15 @@ public:
 			cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
 			m_cur_cmd = NUL;
 			m_cmd_stat = NRES;
+			cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
 		}
 
 		// parsing read buffer. The read buffer is possible to contain both command response and recieved messages.
 		m_rbuf_len = read_serial(m_hcom, m_rbuf, 512);
+		if(m_rbuf_len){
+		cout << "Read:";
+		cout.write(m_rbuf, m_rbuf_len);
+		}
 		if(m_rbuf_len < 0){
 			cerr << "Read operation failed." << endl;
 		}else{
@@ -329,7 +340,6 @@ public:
 				cerr << "Failed to parse read buffer." << endl;
 			}
 		}
-
 		return true;
 	}
 };
