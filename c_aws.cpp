@@ -334,6 +334,9 @@ bool c_aws::handle_stop()
 bool c_aws::handle_chan(s_cmd & cmd)
 {
 	bool result;
+	if(cmd.num_args < 3)
+		return false;
+
 	if(!(result = add_channel(cmd)))
 		sprintf(cmd.get_ret_str(), "Failed to create channel %s of %s.",
 			cmd.args[2], cmd.args[1]);
@@ -343,6 +346,8 @@ bool c_aws::handle_chan(s_cmd & cmd)
 bool c_aws::handle_fltr(s_cmd & cmd)
 {
 	bool result;
+	if(cmd.num_args < 5)
+		return false;
 	if(!(result = add_filter(cmd)))
 		sprintf(cmd.get_ret_str(), "Failed to create filter %s of %s.", 
 			cmd.args[2], cmd.args[1]);
