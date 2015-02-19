@@ -20,6 +20,7 @@
 
 class f_ds_vfile:public f_ds_video
 {
+	ch_image * m_pout;
 	IBaseFilter * m_phsplt; // haali splitter ar
 	IBaseFilter * m_pffdec; // ffdshow decoder
 	char m_fname[1024];
@@ -39,6 +40,14 @@ public:
 	virtual bool init_run(){
 		if(!f_ds_video::init_run())
 			return false;
+
+		if(m_chout.size() != 1)
+			return false;
+
+		m_pout = dynamic_cast<ch_image*>(m_chout[0]);
+		if(m_pout == NULL)
+			return false;
+
 		return 	open(m_fname);
 	}
 
@@ -77,17 +86,13 @@ public:
 			}while(ofs != State_Running);
 		}
 		
-		ch_image * pout = dynamic_cast<ch_image*>(m_chout[0]);
-		if(pout == NULL)
-			return false;
-
 		Mat img;
 		m_bstream = grab(img);
 		if(!m_bstream)
 			return true;
 
 		m_time_shot = m_cur_time;
-		pout->set_img(img, m_cur_time);
+		m_pout->set_img(img, m_cur_time);
 		return true;
 	}
 

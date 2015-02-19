@@ -203,6 +203,8 @@ protected:
 	bool set_cmd();
 
 	e_cmd m_cur_cmd;
+	long long m_tcmd; // time command issued
+	long long m_tcmd_wait; // interval for data transmission command
 	unsigned char m_cmd_arg1, m_cmd_arg2;
 	unsigned char m_parse_cr; // CR=0x0D
 	unsigned char m_parse_lf; // LF=0x0A
@@ -259,7 +261,7 @@ public:
 
 	virtual bool proc()
 	{
-		cout << "Proc/Cycle " << m_count_proc << "/" << m_count_clock << endl;
+		//cout << "Proc/Cycle " << m_count_proc << "/" << m_count_clock << endl;
 		switch(m_st){
 		case ST_INIT:
 			// push initialization command
@@ -303,8 +305,9 @@ public:
 
 			int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
 			if(wlen){
-			cout << "Write:";
-			cout.write(m_wbuf, wlen);
+				m_tcmd = m_cur_time;
+				cout << "Write:";
+				cout.write(m_wbuf, wlen);
 			}
 			if(m_wbuf_len != wlen){
 				cerr << "Write operation failed." << endl;
@@ -320,18 +323,39 @@ public:
 		}
 
 		// handling processed command 
-		if(m_cur_cmd != NUL && m_cmd_stat & EOC){
-			cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
-			m_cur_cmd = NUL;
-			m_cmd_stat = NRES;
-			cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+		if(m_cur_cmd != NUL){
+			if(m_cmd_stat & EOC){
+				cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
+				m_cur_cmd = NUL;
+				m_cmd_stat = NRES;
+				cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+			}else if(m_rep){
+				/* m_rep == 1 means data transmission commands do not return response */
+				/* Simply finish data transmissoin command with time interval.        */
+				switch(m_cur_cmd){
+				case TBN:
+				case TBR:
+				case TB2:
+				case TXT:
+				case TXR:
+				case TX2:
+					if(m_tcmd + m_tcmd_wait > m_cur_time)
+						break;
+					m_cmd_stat = NRES;
+					m_cur_cmd = NUL;
+					cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+					break;
+				default:
+					break;
+				}
+			}
 		}
 
 		// parsing read buffer. The read buffer is possible to contain both command response and recieved messages.
 		m_rbuf_len = read_serial(m_hcom, m_rbuf, 512);
 		if(m_rbuf_len){
-		cout << "Read:";
-		cout.write(m_rbuf, m_rbuf_len);
+			cout << "Read:";
+			cout.write(m_rbuf, m_rbuf_len);
 		}
 		if(m_rbuf_len < 0){
 			cerr << "Read operation failed." << endl;

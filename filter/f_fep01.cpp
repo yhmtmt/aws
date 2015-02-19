@@ -61,8 +61,8 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_rep_err(0), m_rep_suc(0), m_rep(0), m_tint_cmd(0x00), m_fband(0), m_tbclr(0x64), m_fwait(4), m_chk_group(1), 
 	m_int_bcn(0), m_fbcn(0), m_bcn(0), m_tlp_wait_ex(0), m_lp_wait(0), m_flw(0), m_tlp_wait(0x0F), m_crlf(0), 
 	m_delim(1), m_tlp_slp(0x0F), m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF), m_rbuf_len(0), m_wbuf_len(0), 
-	m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), m_cur_cmd(NUL), m_cmd_stat(0), m_cur_rcv(RNUL),
-	m_rcv_len(0), m_proced_len(0)
+	m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), m_cur_cmd(NUL), m_tcmd(0), m_tcmd_wait(100 * MSEC), 
+	m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_proced_len(0)
 {
 	m_dname[0] = '\0';
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
@@ -72,7 +72,7 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 
 	register_fpar("cm", (int*)&m_cm, CM_P2P+1, m_cm_str, "Communication Mode.");
 	register_fpar("addr_p2p", &m_addr_p2p, "Destination address for P2P communication.");
-
+	register_fpar("tcw", &m_tcmd_wait, "Data transmission commands interval. This works only for no-response mode.");
 	register_fpar("addr", &m_addr, "own address (0 to 239)");
 	register_fpar("addr_group", &m_addr_group, "group address (240 to 254)");
 	register_fpar("addr_dst", &m_addr_dst, "destination address (0 to 255), header less mode only.");
@@ -571,9 +571,11 @@ bool f_fep01::parse_response_value()
 		switch(m_pbuf[0]){
 		case 'L':
 			m_fband = 0;
+			m_cmd_stat |= EOC;
 			break;
 		case 'H':
 			m_fband = 1;
+			m_cmd_stat |= EOC;
 			break;
 		default:
 			is_proc = false;
@@ -584,9 +586,10 @@ bool f_fep01::parse_response_value()
 			is_proc = false;
 		}else{
 			int das = str3DigitDecimal(m_pbuf);
-			if(das > 0 && das < 256)
+			if(das > 0 && das < 256){
 				m_addr = das;
-			else
+				m_cmd_stat |= EOC;
+			}else
 				is_proc = false;
 		}
 		break;
@@ -596,9 +599,10 @@ bool f_fep01::parse_response_value()
 			is_proc = false;
 		}else{ // form of "-xxxdBm"
 			int dbm = str3DigitDecimal(m_pbuf + 1);
-			if(dbm > 0 && dbm < 256)
+			if(dbm > 0 && dbm < 256){
 				m_dbm = dbm;
-			else
+				m_cmd_stat |= EOC;
+			}else
 				is_proc = false;
 		}
 		break;
@@ -611,13 +615,16 @@ bool f_fep01::parse_response_value()
 		case 'A':
 			m_ant = 0;
 			m_div = 0;
+			m_cmd_stat |= EOC;
 			break;
 		case 'B':
 			m_ant = 1;
 			m_div = 0;
+			m_cmd_stat |= EOC;
 			break;
 		case 'D':
 			m_div = 1;
+			m_cmd_stat |= EOC;
 			break;
 		default:
 			is_proc = false;
@@ -628,9 +635,10 @@ bool f_fep01::parse_response_value()
 			is_proc = false;
 		}else{
 			int nfreqs = m_pbuf[0] - '0';
-			if(nfreqs > 0 && nfreqs < 4)
+			if(nfreqs > 0 && nfreqs < 4){
 				m_num_freqs = (unsigned char) nfreqs;
-			else
+				m_cmd_stat |= EOC;
+			}else
 				is_proc = false;
 		}
 		break;
@@ -647,12 +655,15 @@ bool f_fep01::parse_response_value()
 			switch(m_cmd_arg1){
 			case 1:
 				m_freq0 = (unsigned char) freq;
+				m_cmd_stat |= EOC;
 				break;
 			case 2:
 				m_freq1 = (unsigned char) freq;
+				m_cmd_stat |= EOC;
 				break;
 			case 3:
 				m_freq1 = (unsigned char) freq;
+				m_cmd_stat |= EOC;
 			default:
 				is_proc = false;
 			}
@@ -673,6 +684,7 @@ bool f_fep01::parse_response_value()
 			}
 			m_scramble_0 = scid0;
 			m_scramble_1 = scid1;
+			m_cmd_stat |= EOC;
 		}else{
 			is_proc = false;
 		}
@@ -695,6 +707,7 @@ bool f_fep01::parse_response_value()
 			}
 			m_addr_rep0 = (unsigned char) rep0;
 			m_addr_rep1 = (unsigned char) rep1;
+			m_cmd_stat |= EOC;
 		}else{
 			is_proc = false;
 		}
@@ -713,6 +726,7 @@ bool f_fep01::parse_response_value()
 				break;
 			}
 			m_tlp_wait_ex = (unsigned char) pte;
+			m_cmd_stat |= EOC;
 		}
 	case PTN:
 		if(m_pbuf_tail != 5){
@@ -724,6 +738,7 @@ bool f_fep01::parse_response_value()
 				break;
 			}
 			m_tlp_wait = (unsigned char) ptn;
+			m_cmd_stat |= EOC;
 		}
 		break;
 	case PTS:
@@ -736,6 +751,7 @@ bool f_fep01::parse_response_value()
 				break;
 			}
 			m_tlp_slp = (unsigned char) pts;
+			m_cmd_stat |= EOC;
 		}
 		break;
 	case ROF:
@@ -750,6 +766,7 @@ bool f_fep01::parse_response_value()
 				break;
 			}
 			m_reg[m_cmd_arg1] = (unsigned char) reg;
+			m_cmd_stat |= EOC;
 		}else{
 			is_proc = false;
 		}
@@ -758,6 +775,7 @@ bool f_fep01::parse_response_value()
 		if(m_pbuf_tail == 14){
 			m_pbuf[m_pbuf_tail - 2] = '\0';
 			m_rid = (unsigned int) atoi(m_pbuf);
+			m_cmd_stat |= EOC;
 		}else{
 			is_proc = false;
 		}
@@ -772,6 +790,7 @@ bool f_fep01::parse_response_value()
 		if(m_pbuf_tail == 14){
 			m_pbuf[m_pbuf_tail - 2] = '\0';
 			m_tid = (unsigned int) atoi(m_pbuf);
+			m_cmd_stat |= EOC;
 		}else{
 			is_proc = false;
 			break;
@@ -794,6 +813,7 @@ bool f_fep01::parse_response_value()
 		if(m_pbuf_tail == 7 && m_pbuf[1] == '.'){
 			m_ver = m_pbuf[0] - '0';
 			m_sub_ver = str3DigitDecimal(m_pbuf + 2);
+			m_cmd_stat |= EOC;
 		}else{
 			is_proc = false;
 		}
