@@ -62,7 +62,7 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_int_bcn(0), m_fbcn(0), m_bcn(0), m_tlp_wait_ex(0), m_lp_wait(0), m_flw(0), m_tlp_wait(0x0F), m_crlf(0), 
 	m_delim(1), m_tlp_slp(0x0F), m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF), m_rbuf_len(0), m_wbuf_len(0), 
 	m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), m_cur_cmd(NUL), m_tcmd(0), m_tcmd_wait(100 * MSEC), 
-	m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_proced_len(0)
+	m_tcmd_out(5*SEC), m_num_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_proced_len(0)
 {
 	m_dname[0] = '\0';
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
@@ -72,7 +72,9 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 
 	register_fpar("cm", (int*)&m_cm, CM_P2P+1, m_cm_str, "Communication Mode.");
 	register_fpar("addr_p2p", &m_addr_p2p, "Destination address for P2P communication.");
-	register_fpar("tcw", &m_tcmd_wait, "Data transmission commands interval. This works only for no-response mode.");
+	register_fpar("tcw", &m_tcmd_wait, "Data transmission commands interval. This works only for no-response mode. (unit 100ns)");
+	register_fpar("tco", &m_tcmd_out, "Data Transmission timeout. (unit 100ns)");
+	register_fpar("nretry", &m_num_max_retry, "Maximum retry count.");
 	register_fpar("addr", &m_addr, "own address (0 to 239)");
 	register_fpar("addr_group", &m_addr_group, "group address (240 to 254)");
 	register_fpar("addr_dst", &m_addr_dst, "destination address (0 to 255), header less mode only.");
