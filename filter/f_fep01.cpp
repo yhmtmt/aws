@@ -302,6 +302,17 @@ bool f_fep01::handle_rst()
 {
 	switch(m_sst){
 	case SST_CMD:
+		pack_reg();
+		m_cmd = s_cmd();
+		m_cmd.type = REG;
+		for(int i = 0; i < 29; i++){
+			if(i == 20) // Ignore change in serial setting. 
+				continue;
+			m_cmd.iarg1 = i;
+			m_cmd.iarg2 = m_reg[i];
+			m_cmd_queue.push_back(m_cmd);
+		}
+		m_cmd = s_cmd();
 		m_cmd.type = RST;
 		m_cmd_queue.push_back(m_cmd);
 		break;
