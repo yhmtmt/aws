@@ -218,7 +218,6 @@ protected:
 	unsigned int m_cmd_stat;
 	e_msg_rcv m_cur_rcv;
 	bool m_rcv_header;
-	bool m_rcv_done;
 	unsigned char m_rcv_src, m_rcv_rep0, m_rcv_rep1, m_rcv_len, m_proced_len;
 	char m_rcv_msg[256];
 	int m_len_tx;
@@ -319,10 +318,9 @@ public:
 		}
 
 		// handling recieved message. this code is temporal and simply dumping to stdout. 
-		if(m_rcv_done){
-			m_rcv_msg[m_rcv_len] = '\0';
-			cout << "Recieve: " << m_rcv_msg << endl;
-			m_rcv_done = false;
+		if(m_rcv_len && m_st != ST_OP){
+			cout << "Recieve: ";
+			cout.write(m_rcv_msg, m_rcv_len);
 		}
 
 		// handling processed command 

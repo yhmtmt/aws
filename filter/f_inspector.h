@@ -378,6 +378,7 @@ private:
 	int m_cur_campar;
 
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
+	bool m_bcalib_fix_campar;
 	bool m_bcalib_use_intrinsic_guess;
 	bool m_bcalib_fix_principal_point;
 	bool m_bcalib_fix_aspect_ratio;

@@ -174,13 +174,16 @@ bool f_fep01::handle_op()
 		}
 	}
 	// if there exists recieved data, push to the output channel
-	if(m_cur_rcv != RNUL){
+	if(m_cur_rcv != RNUL && m_rcv_len){
 		// push one recieved data to output channel
-		m_proced_len += m_pout->write(m_rcv_msg + m_proced_len, (int) m_rcv_len);
+		m_proced_len += m_pout->write(m_rcv_msg + m_proced_len, (int) (m_rcv_len - m_proced_len));
 		if(m_proced_len == m_rcv_len){
 			m_proced_len = 0;
+			m_rcv_len = 0;
 			m_cur_rcv = RNUL;
 		}
+		cout << "Recieve: ";
+		cout.write(m_rcv_msg, m_rcv_len);
 	}
 
 	return true;
@@ -555,6 +558,7 @@ void f_fep01::init_parser()
 	m_cmd_stat = 0;
 	m_cur_rcv = RNUL;
 	m_rcv_header = false;
+	m_rcv_len = 0;
 	m_ts2_mode = false;
 }
 
@@ -1177,12 +1181,15 @@ bool f_fep01::parse_message()
 	switch(m_cur_rcv){
 	case RBN: // src, length 
 		ptr = &m_pbuf[9];
+		ptr = &m_pbuf[9] + m_rcv_len;
 		break;
 	case RBR: // src, rep, length
 		ptr = &m_pbuf[12];
+		ptr = &m_pbuf[12] + m_rcv_len;
 		break;
 	case RB2: // src, rep0, rep1, length
 		ptr = &m_pbuf[15];
+		ptr = &m_pbuf[15] + m_rcv_len;
 		break;
 	case RXT: // src
 		ptr = &m_pbuf[6];
@@ -1199,12 +1206,11 @@ bool f_fep01::parse_message()
 	}
 
 	char * pmsg;
-	for(pmsg = m_rcv_msg; ptr != ptr_end; pmsg++, ptr++){
+	for(pmsg = m_rcv_msg, m_rcv_len = 0; ptr != ptr_end; pmsg++, ptr++, m_rcv_len++){
 		*pmsg = *ptr;
 	}
 	*pmsg = '\0';
 
-	m_rcv_done = true;
 	m_msg_bin = false;
 	m_rcv_header = false;
 	m_cur_rcv = RNUL;

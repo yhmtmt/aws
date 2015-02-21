@@ -1661,6 +1661,14 @@ void f_inspector::estimate()
 	cout << "camdist=" << m_cam_dist << endl;
 }
 
+
+// About Hessian structure
+// There are multiple objects with different attitudes, 
+// We do not need to combine the hessian (actually JJ^t),
+// in stead of that, we can calculate attitude part of the hessian
+// independent of that of the other objects. 
+// Of course, we need to unify the cammera intrinsic part of the hessian.
+
 void f_inspector::estimate_fulltime()
 {
 	// full projection with current camera parameters
@@ -1708,15 +1716,118 @@ void f_inspector::copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
 }
 
 void f_inspector::update_params(vector<s_obj> & objs){
+	int ipar;
+
+	// indexing parameters
+	vector<int> ipars;
+	int num_params = 0;
+	num_params = 6; // rvec, tvec;
+	if(!m_bcalib_fix_campar){
+		if(!m_bcalib_fix_principal_point)
+			num_params += 2; // cx cy
+
+		if(!m_bcalib_zero_tangent_dist)
+			num_params += 2; // px py
+
+		if(!m_bcalib_fix_k1)
+			num_params += 1;
+		if(!m_bcalib_fix_k2)
+			num_params += 1;
+		if(!m_bcalib_fix_k3)
+			num_params += 1;
+		if(!m_bcalib_fix_k4)
+			num_params += 1;
+		if(!m_bcalib_fix_k5)
+			num_params += 1;
+		if(!m_bcalib_fix_k6)
+			num_params += 1;
+	}
+
+	ipars.resize(num_params);
+	for(ipar = 0; ipar< 6; ipar++)
+		ipars[ipar] = ipar;
+
+	if(!m_bcalib_fix_campar){
+		ipars[ipar] = 6; ipar++;
+		ipars[ipar] = 7; ipar++;
+		if(!m_bcalib_fix_principal_point){
+			ipars[ipar] = 8; ipar++;
+			ipars[ipar] = 9; ipar++;
+		}
+
+		if(!m_bcalib_fix_k1){
+			ipars[ipar] = 10; ipar++;
+		}
+			num_params += 1;
+		if(!m_bcalib_fix_k2){
+			ipars[ipar] = 11; ipar++;
+		}
+
+		if(!m_bcalib_zero_tangent_dist){
+			ipars[ipar] = 12; ipar++;
+			ipars[ipar] = 13; ipar++;
+		}
+
+		if(!m_bcalib_fix_k3){
+			ipars[ipar] = 15; ipar++;
+		}
+
+		if(!m_bcalib_fix_k4){
+			ipars[ipar] = 16; ipar++;
+		}
+
+		if(!m_bcalib_fix_k5){
+			ipars[ipar] = 17; ipar++;
+		}
+
+		if(!m_bcalib_fix_k6){
+			ipars[ipar] = 18; ipar++;
+		}
+	}
+
+	// updating each object
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
-		Mat Hinv, eigenval, eigenvec;
-		double det = determinant(obj.hessian);
-		eigen(obj.hessian, eigenval, eigenvec);
-		invert(obj.hessian, Hinv, DECOMP_CHOLESKY);
-		Mat Grad = obj.jacobian.t() * obj.err;;
-		obj.dp = Hinv * Grad;
-		double * ptr_dp = obj.dp.ptr<double>(0);
+		Mat eigenval, eigenvec;
+		Mat H, Hinv; // Hessian excluding fixed parameters and the inverse
+		Mat Jt; // Transpose of the Jacobian excluding fixed parameters
+		Mat dp; // updating amount of parameters
+
+		// setting reduced Hessian
+		H = Mat(num_params, num_params, CV_64FC1);
+		for(ipar = 0; ipar < num_params; ipar++){
+			int i = ipars[ipar];
+			double * ptr0 = obj.hessian.ptr<double>(i);
+			double * ptr1 = H.ptr<double>(ipar);
+			for(int jpar = 0; jpar < num_params; jpar++){
+				int j = ipars[jpar];
+				ptr1[jpar] = ptr0[j];
+			}
+		}
+
+		// settig reduced transposed Jacobian
+		Jt = Mat(num_params, obj.jacobian.rows, CV_64FC1);
+		for(ipar = 0; ipar < num_params; ipar++){
+			int i = ipars[ipar];
+			double * ptr0 = obj.jacobian.ptr<double>(0) + i;
+			double * ptr1 = Jt.ptr<double>(ipar);
+			for(int jpar = 0; jpar < Jt.cols; jpar++, ptr0 += obj.jacobian.cols){
+				ptr1[jpar] = *ptr0;
+			}
+		}
+
+		//double det = determinant(obj.hessian);
+		//eigen(obj.hessian, eigenval, eigenvec);
+
+		// calculating Hessian inverse
+		invert(H, Hinv, DECOMP_CHOLESKY);
+
+		// calculating parameter changes
+		Mat Grad = Jt * obj.err;
+		dp = Hinv * Grad;
+
+		// updating parameters
+		double * ptr_dp = dp.ptr<double>(0);
 		double * ptr; 
 		ptr = obj.rvec.ptr<double>(0);
 		ptr[0] += ptr_dp[0]; // rx
@@ -1726,16 +1837,47 @@ void f_inspector::update_params(vector<s_obj> & objs){
 		ptr[0] += ptr_dp[3]; // tx
 		ptr[1] += ptr_dp[4]; // ty
 		ptr[2] += ptr_dp[5]; // tz
-		ptr = m_cam_int.ptr<double>(0);
-		ptr[0] += ptr_dp[6]; // fx
-		ptr[2] += ptr_dp[8]; // cx
-		ptr[4] += ptr_dp[7]; // fy
-		ptr[5] += ptr_dp[9]; // cy
-		// Updating distortion parameters
-		ptr = m_cam_dist.ptr<double>(0);
-		ptr_dp += 10;
-		for(int i = 0; i < 8; i++, ptr++, ptr_dp++){
-			*ptr += *ptr_dp;
+
+		ipar = 6;
+		if(!m_bcalib_fix_campar){
+			ptr = m_cam_int.ptr<double>(0);
+			ptr[0] += ptr_dp[ipar]; ipar++;
+			ptr[4] += ptr_dp[ipar]; ipar++;
+
+			if(!m_bcalib_fix_principal_point){
+				ptr[2] += ptr_dp[ipar]; ipar++;
+				ptr[5] += ptr_dp[ipar]; ipar++;
+			}
+
+			ptr = m_cam_dist.ptr<double>(0);
+
+			if(!m_bcalib_fix_k1){
+				ptr[ipar] += ptr_dp[ipar]; ipar++;
+			}
+			if(!m_bcalib_fix_k2){
+				ptr[ipar] += ptr_dp[ipar]; ipar++;
+			}
+
+			if(!m_bcalib_zero_tangent_dist){
+				ptr[ipar] += ptr_dp[ipar]; ipar++;
+				ptr[ipar] += ptr_dp[ipar]; ipar++;
+			}
+
+			if(!m_bcalib_fix_k3){			
+				ptr[ipar] += ptr_dp[ipar]; ipar++;
+			}
+
+			if(!m_bcalib_fix_k4){			
+				ptr[ipar] += ptr_dp[ipar]; ipar++;
+			}
+
+			if(!m_bcalib_fix_k5){			
+				ptr[ipar] += ptr_dp[ipar]; ipar++;
+			}
+
+			if(!m_bcalib_fix_k6){			
+				ptr[ipar] += ptr_dp[ipar]; ipar++;
+			}
 		}
 	}
 }
