@@ -197,7 +197,7 @@ void s_model::proj(vector<Point2f> & pt2ds,  Mat & cam_int, Mat & cam_dist, Mat 
 
 bool s_model::load(const char * afname)
 {
-	fname = afname;
+	strcpy(fname, afname);
 	FileStorage fs;
 	fs.open(fname, FileStorage::READ);
 	if(!fs.isOpened()){
@@ -450,9 +450,10 @@ bool s_obj::save(FileStorage & fs)
 	return true;
 }
 
-void s_obj::proj(Mat & camint, Mat & camdist)
+void s_obj::proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio)
 {
-	projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian);
+	projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian,
+		fix_aspect_ratio ? 1.0 : 0.0);
 
 	//calculating maximum values for each parameter
 	jmax = Mat::zeros(1, jacobian.cols, CV_64FC1);
@@ -857,6 +858,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("erep", &m_erep, "Reprojection error.");
 
 	register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Use intrinsic guess.");
+	register_fpar("fix_campar", &m_bcalib_fix_campar, "Fix camera parameters");
 	register_fpar("fix_principal_point", &m_bcalib_fix_principal_point, "Fix camera center as specified (cx, cy)");
 	register_fpar("fix_aspect_ratio", &m_bcalib_fix_aspect_ratio, "Fix aspect ratio as specified fx/fy. Only fy is optimized.");
 	register_fpar("zero_tangent_dist", &m_bcalib_zero_tangent_dist, "Zeroify tangential distortion (px, py)");
@@ -1248,7 +1250,8 @@ void f_inspector::renderInfo()
 	// Allowed key list
 	// Cursor position
 	char information[1024];
-	int y = 0;
+	float sx, sy;
+	int y = 0, x = 0;
 	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 
 	snprintf(information, 1023, "AWS Time %s (Image Time %lld) Adjust Step x%f", 
@@ -1269,6 +1272,7 @@ void f_inspector::renderInfo()
 			snprintf(information, 1023, "Model[%d]=%s (%d Points, %d Edges)", m_cur_model, 
 			m_models[m_cur_model].fname,
 			m_models[m_cur_model].pts.size(), m_models[m_cur_model].edges.size());
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
 	case OBJ:
 		if(m_cur_obj < 0)
@@ -1280,6 +1284,7 @@ void f_inspector::renderInfo()
 				obj.rvec.at<double>(0), obj.rvec.at<double>(1), obj.rvec.at<double>(2),
 				obj.tvec.at<double>(0), obj.tvec.at<double>(1), obj.tvec.at<double>(2));
 		}
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
 	case POINT:
 		if(m_cur_obj < 0)
@@ -1306,30 +1311,145 @@ void f_inspector::renderInfo()
 				}
 			}
 		}
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
 	case CAMERA:
-		// camera intrinsics, fx,fy,cx,cy,p0,p1,k1-k6 
-		snprintf(information, 1023, "Camera fx=%f fy=%f cx=%f cy=%f k1=%f k2=%f p1=%f p2=%f k3=%f k4=%f k5=%f k6=%f",
-			(float)m_cam_int.at<double>(0, 0), (float)m_cam_int.at<double>(1, 1), 
-			(float)m_cam_int.at<double>(0, 2), (float)m_cam_int.at<double>(1, 2),
-			(float)m_cam_dist.at<double>(0, 0), (float)m_cam_dist.at<double>(0, 1), 
-			(float)m_cam_dist.at<double>(0, 2), (float)m_cam_dist.at<double>(0, 3), 
-			(float)m_cam_dist.at<double>(0, 4), (float)m_cam_dist.at<double>(0, 5), 
-			(float)m_cam_dist.at<double>(0, 6), (float)m_cam_dist.at<double>(0, 7));
-			m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
-			y += 20;
-		snprintf(information, 1023, "Current Parameter %s J=%f", 
-			m_str_campar[m_cur_campar], m_jcam_max.at<double>(m_cur_campar));
+		{
+			int cr, cg, cb;
+			int val;
+			bool sel;
+
+			// camera intrinsics, fx,fy,cx,cy,p0,p1,k1-k6 
+			x = 0;
+			snprintf(information, 1023, "Camera ");
+
+			m_d3d_txt.render(m_pd3dev, information, (float)x, (float)y, 1.0, 0, EDTC_LT);
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			// focal length
+			sel = m_cur_campar == ECP_FX || m_cur_campar == ECP_FY;
+			val = sel ? 255 : 128;
+			snprintf(information, 1023, "fx=%f fy=%f", m_cam_int.at<double>(0,0), m_cam_int.at<double>(1,1));
+			
+			if(m_bcalib_fix_campar){
+				cr = val; cg = 0; cb = 0;
+			}
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			// principal points
+			sel = m_cur_campar == ECP_CX;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_fix_principal_point){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "cx=%f", m_cam_int.at<double>(0,2));
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			sel = m_cur_campar == ECP_CY;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_fix_principal_point){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "cy=%f", m_cam_int.at<double>(1,2));
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			//k1 to k6
+			double * ptr = m_cam_dist.ptr<double>(0);
+			sel = m_cur_campar == ECP_K1;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_fix_k1){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "k1=%f", (float)ptr[0]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			sel = m_cur_campar == ECP_K2;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_fix_k2){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "k2=%f", (float)ptr[0]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			sel = m_cur_campar == ECP_P1;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_zero_tangent_dist){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "p1=%f", (float)ptr[0]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			sel = m_cur_campar == ECP_P2;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_zero_tangent_dist){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "p2=%f", (float)ptr[0]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			sel = m_cur_campar == ECP_K3;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_fix_k3){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "k3=%f", (float)ptr[0]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			sel = m_cur_campar == ECP_K4;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_fix_k4){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "k4=%f", (float)ptr[0]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			sel = m_cur_campar == ECP_K5;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_fix_k5){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "k5=%f", (float)ptr[0]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			sel = m_cur_campar == ECP_K6;
+			val = sel ? 255 : 128;
+			if(m_bcalib_fix_campar || m_bcalib_fix_k6){
+				cr = val; cg = 0; cb = 0;
+			}
+			snprintf(information, 1023, "k6=%f", (float)ptr[0]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+		}
 		break;
 	case ESTIMATE:
 		snprintf(information, 1023, "Estimate");
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
 	}
 
-	m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
-
 	snprintf(information, 1023, "(%d, %d)", m_mc.x, m_mc.y);
-
 	m_d3d_txt.render(m_pd3dev, information, (float)(m_mc.x + 20), (float)(m_mc.y + 20), 1.0, 0, EDTC_LT);
 }
 
@@ -1696,7 +1816,7 @@ void f_inspector::estimate_fulltime()
 void f_inspector::proj_objs(vector<s_obj> & objs){
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
-		obj.proj(m_cam_int, m_cam_dist);
+		obj.proj(m_cam_int, m_cam_dist, m_bcalib_fix_aspect_ratio);
 	}
 }
 
@@ -2275,6 +2395,39 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			break;
 		case CAMERA:
 			// fix selected camera parameter
+			switch(m_cur_campar){
+			case ECP_FX:
+			case ECP_FY:
+				m_bcalib_fix_campar = !m_bcalib_fix_campar;
+				break;
+			case ECP_CX:
+			case ECP_CY:
+				m_bcalib_fix_principal_point = !m_bcalib_fix_principal_point;
+				break;
+			case ECP_K1:
+				m_bcalib_fix_k1 = !m_bcalib_fix_k1;
+				break;
+			case ECP_K2:
+				m_bcalib_fix_k2 = !m_bcalib_fix_k2;
+				break;
+			case ECP_P1:
+			case ECP_P2:
+				m_bcalib_zero_tangent_dist = !m_bcalib_zero_tangent_dist;
+				break;
+			case ECP_K3:
+				m_bcalib_fix_k3 = !m_bcalib_fix_k3;
+				break;
+			case ECP_K4:
+				m_bcalib_fix_k4 = !m_bcalib_fix_k4;
+				break;
+			case ECP_K5:
+				m_bcalib_fix_k5 = !m_bcalib_fix_k5;
+				break;
+			case ECP_K6:
+				m_bcalib_fix_k6 = !m_bcalib_fix_k6;
+				break;
+			}
+			break;
 		default:
 			break;
 		}
@@ -2344,7 +2497,10 @@ void f_inspector::handle_sop_load()
 	case POINT:
 	case CAMERA:
 		m_fobjs[m_cur_frm]->load(m_name, m_models);
-		//load camera intrinsics
+		if(m_cur_obj < 0)
+			m_cur_obj = (int)(m_fobjs[m_cur_frm]->objs.size() - 1);
+		if(m_cur_model < 0)
+			m_cur_model = (int) (m_models.size() - 1);
 		break;
 	}
 	m_sop = SOP_NULL;

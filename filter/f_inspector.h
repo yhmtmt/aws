@@ -78,7 +78,7 @@ struct s_edge{
 struct s_obj;
 struct s_model
 {
-	const char * fname;
+	char fname[1024];
 	int ref;
 	string name;
 	vector<Point3f> pts;
@@ -88,6 +88,7 @@ struct s_model
 	s_model():ref(0), xmin(FLT_MAX), ymin(FLT_MAX), zmin(FLT_MAX),
 		xmax(-FLT_MAX), ymax(-FLT_MAX), zmax(-FLT_MAX)
 	{
+		fname[0] = '\0';
 	}
 
 	int get_num_pts()
@@ -197,7 +198,7 @@ struct s_obj
 	}
 
 	// calculate projection
-	void proj(Mat & camint, Mat & camdist);
+	void proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio = true);
 
 	// draw the wire frame model
 	void render(LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
