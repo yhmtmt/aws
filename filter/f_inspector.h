@@ -230,12 +230,15 @@ struct s_obj
 ///////////////////////////////////////////////////////////////// s_frame_obj
 struct s_frame_obj{
 	long long tfrm;
+	double ssd; // sum of square projection errors
 	vector<s_obj> objs;
 	Mat camint, camdist;
 
 	s_frame_obj()
 	{
 	}
+
+	void proj_objs(bool fix_aspect_ratio = true);
 
 	void sample_tmpl(Mat & img, Size & sz)
 	{
@@ -369,7 +372,7 @@ private:
 	bool m_bcam_tbl_loaded;
 	vector<Mat> m_cam_int_tbl;
 	vector<Mat> m_cam_dist_tbl;
-	vector<double> m_cam_erep;
+	double m_cam_erep;
 	
 	enum e_campar{
 		ECP_FX = 0, ECP_FY, ECP_CX, ECP_CY, ECP_K1, ECP_K2, ECP_P1, ECP_P2, ECP_K3, ECP_K4, ECP_K5, ECP_K6
@@ -377,6 +380,15 @@ private:
 
 	static const char * m_str_campar[ECP_K6+1];
 	int m_cur_campar;
+
+	// for parameter estimation
+#define ERROR_TOL 0.01
+	enum e_estimation_state{
+		EES_DIV, EES_CONV, EES_CONT
+	} m_eest;
+	int m_num_max_itrs;		// maximum gauss newton iteration
+	int m_num_max_frms_used; // frame counts used for the parameter estimation
+	int m_err_range; // error range of reprojection error of usable frame 
 
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
 	bool m_bcalib_fix_campar;
@@ -399,7 +411,6 @@ private:
 	void render3D(long long timg);
 	void renderChsbd(long long timg);
 
-	void proj_objs(vector<s_obj> & objs);
 	void acc_Hcamint(Mat & Hcamint, vector<s_obj> & objs);
 	void copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs);
 	void update_params(vector<s_obj> & objs);

@@ -808,7 +808,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
 	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
-	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0)
+	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0),
+	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3)
 {
 	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
@@ -842,6 +843,10 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("pt", &m_cur_point, "Model point of specified index is selected.");
 
 	// camera calibration and parameter
+	register_fpar("max_itrs", &m_num_max_itrs, "Number of maximum iteration of Gauss-Newton Iteration.");
+	register_fpar("max_frms", &m_num_max_frms_used, "Number of maximum frames used for the Gauss-Newton optimization.");
+	register_fpar("err_rng", &m_err_range, "Error range to discard frames used for optimization. Specified as number of standard deviation.");
+
 	register_fpar("fx", m_cam_int.ptr<double>(0, 0), "x-directional focal length in milimeter");
 	register_fpar("fy", m_cam_int.ptr<double>(1, 1), "y-directional focal length in milimeter");
 	register_fpar("cx", m_cam_int.ptr<double>(0, 2), "x-coordinate of camera center in pixel.");
@@ -1027,7 +1032,9 @@ bool f_inspector::proc()
 	if(m_cur_frm < 0)
 		return true;
 
-	proj_objs(m_fobjs[m_cur_frm]->objs);
+	m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
+	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
+	m_fobjs[m_cur_frm]->proj_objs(m_bcalib_fix_aspect_ratio);
 	calc_jcam_max();
 
 	// sample point templates
@@ -1035,7 +1042,11 @@ bool f_inspector::proc()
 
 	// estimate
 	if(m_op == ESTIMATE){
-		estimate_fulltime();
+		int itr = 0;
+		while(m_eest == EES_CONT && itr < m_num_max_itrs){
+			estimate_fulltime();
+			itr++;
+		}
 	}
 
 	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
@@ -1093,7 +1104,6 @@ bool f_inspector::saveCamparTbl()
 		fs << buf << "{";
 		fs << "Int" << m_cam_int_tbl[ipar];
 		fs << "Dist" << m_cam_dist_tbl[ipar];
-		fs << "Err" << m_cam_erep[ipar];
 		fs << "}";
 	}
 
@@ -1117,7 +1127,6 @@ bool f_inspector::loadCamparTbl()
 	fn >> num_pars;
 	m_cam_int_tbl.resize(num_pars);
 	m_cam_dist_tbl.resize(num_pars);
-	m_cam_erep.resize(num_pars);
 
 	fn = fs["Pars"];
 	if(fn.empty())
@@ -1143,10 +1152,6 @@ bool f_inspector::loadCamparTbl()
 			return false;
 		fnsub >> m_cam_dist_tbl[ipar];
 
-		fnsub = fnpar["Err"];
-		if(fnsub.empty())
-			continue;
-		fnsub >> m_cam_erep[ipar];
 	}
 
 	m_bcam_tbl_loaded = true;
@@ -1157,8 +1162,6 @@ void f_inspector::clearCamparTbl()
 {
 	m_cam_int_tbl.clear();
 	m_cam_dist_tbl.clear();
-	m_cam_erep.clear();
-
 	m_bcam_tbl_loaded = false;
 }
 
@@ -1792,31 +1795,86 @@ void f_inspector::estimate()
 void f_inspector::estimate_fulltime()
 {
 	// full projection with current camera parameters
+	double ssd = 0.0;
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 		vector<s_obj> & objs = m_fobjs[ifrm]->objs;
-		proj_objs(m_fobjs[ifrm]->objs);
+		// copy camera parameters
+		m_cam_int.copyTo(m_fobjs[ifrm]->camint);
+		m_cam_dist.copyTo(m_fobjs[ifrm]->camdist);
+
+		// projection
+		m_fobjs[ifrm]->proj_objs(m_bcalib_fix_aspect_ratio);
+
+		// accumulating frame's projection ssd
+		ssd += m_fobjs[ifrm]->ssd;
 	}
+
+	// calculating average ssd 
+	double ssd_avg = ssd / (double)m_fobjs.size();
+	double cam_erep = sqrt(ssd_avg);
+	if(m_cam_erep - cam_erep < ERROR_TOL){
+		m_eest = EES_DIV;
+		return;
+	}
+
+	m_cam_erep = cam_erep;
+
+	// calcurate variance of the ssd
+	ssd = 0;
+	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+		double ssdd = (m_fobjs[ifrm]->ssd - ssd_avg);
+		ssd += ssdd * ssdd;
+	}
+	ssd /= (double)m_fobjs.size();
+	double s_ssd = sqrt(ssd);
+	double ssd_range = s_ssd * (double) m_err_range; 
+
+	// calculating valid flag. if the flag is asserted, the frame is used for the optimization
+	vector<bool> valid;
+	int num_valid_frms = min((int)m_fobjs.size(), m_num_max_frms_used);
+	double step = (double) num_valid_frms / (double)m_fobjs.size(); 
+	valid.resize(m_fobjs.size(), false);
+	num_valid_frms = 0;
+	for(double ifrm = 0.; ifrm < (double) m_fobjs.size(); ifrm += step){
+		int i = (int) ifrm;
+		if(m_fobjs[i]->ssd - ssd_avg < ssd_range){
+			valid[i] = true;
+			num_valid_frms++;
+		}
+	}
+
+	// current frame is forced to be used for the optimization
+	valid[m_cur_frm] = true;
+	num_valid_frms++;
 
 	// accumulating camera intrinsics part of the hessian
 	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+		if(!valid[ifrm])
+			continue;
 		acc_Hcamint(Hcamint, m_fobjs[ifrm]->objs);
 	}
 
 	// copying camera intrinsic part 
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+		if(!valid[ifrm])
+			continue;
 		copy_Hcamint(Hcamint, m_fobjs[ifrm]->objs);
 	}
 
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+		if(!valid[ifrm])
+			continue;
 		update_params(m_fobjs[ifrm]->objs);
 	}	
 }
 
-void f_inspector::proj_objs(vector<s_obj> & objs){
+void s_frame_obj::proj_objs(bool fix_aspect_ratio){
+	ssd = 0.0;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
-		obj.proj(m_cam_int, m_cam_dist, m_bcalib_fix_aspect_ratio);
+		obj.proj(camint, camdist, fix_aspect_ratio);
+		ssd += obj.ssd;
 	}
 }
 
