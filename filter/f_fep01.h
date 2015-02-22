@@ -220,13 +220,29 @@ protected:
 	bool m_rcv_header;
 	unsigned char m_rcv_src, m_rcv_rep0, m_rcv_rep1, m_rcv_len, m_proced_len;
 	char m_rcv_msg[256];
+	unsigned char m_rcv_pow;
 	int m_len_tx;
 	long long m_total_tx, m_total_rx;
+
+	char m_fname_txlog[1024], m_fname_rxlog[1024];
+	ofstream m_ftxlog, m_frxlog;
 public:
 	f_fep01(const char * name);
 
 	virtual bool init_run()
 	{
+		if(m_fname_txlog[0]){
+			m_ftxlog.open(m_fname_txlog);
+			if(!m_ftxlog.is_open())
+				return false;
+		}
+
+		if(m_fname_rxlog[0]){
+			m_frxlog.open(m_fname_rxlog);
+			if(!m_frxlog.is_open())
+				return false;
+		}
+
 #ifdef _WIN32
 		m_hcom = open_serial(m_port, m_br);
 #else
@@ -259,6 +275,11 @@ public:
 		}
 
 		m_hcom = NULL_SERIAL;
+		if(m_ftxlog.is_open())
+			m_ftxlog.close();
+
+		if(m_frxlog.is_open())
+			m_frxlog.close();
 	}
 
 	virtual bool proc()

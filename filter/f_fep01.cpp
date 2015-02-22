@@ -65,6 +65,9 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_tcmd_out(5*SEC), m_num_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_proced_len(0)
 {
 	m_dname[0] = '\0';
+	m_fname_txlog[0] = '\0';
+	m_fname_rxlog[0] = '\0';
+
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
 	register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
 	register_fpar("br", &m_br, "Baud rate.");
@@ -182,8 +185,16 @@ bool f_fep01::handle_op()
 			m_rcv_len = 0;
 			m_cur_rcv = RNUL;
 		}
+		if(m_frxlog.is_open()){
+			m_frxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
+			m_frxlog.write((const char*) & m_rcv_len, sizeof(m_rcv_len));
+			m_frxlog.write((const char*) m_rcv_msg, m_rcv_len);
+		}
 		cout << "Recieve: ";
 		cout.write(m_rcv_msg, m_rcv_len);
+		if(m_rep_power){
+			cout << "Power:" << m_rcv_pow << endl;
+		}
 	}
 
 	return true;
@@ -487,13 +498,23 @@ bool f_fep01::parse_rbuf()
 					continue; // entering message recieve mode
 			}else if(m_cur_rcv != RNUL){
 				if(!m_rcv_header){
+					m_parse_count--; // counting header parts
 					if(m_parse_count == 0){
 						if(parse_message_header())
 							continue;
 					}
 				}else{
 					if(m_msg_bin){
-						if((m_msg_bin && m_parse_count == 0) || (!m_msg_bin && m_parse_cr && m_parse_lf)){
+						m_parse_count--; // counting message parts, power and crlf
+						/*if binary we cant use cr lf as the delimiter. we count the packet length */
+						if(m_parse_count == 0){ 
+							if(parse_message()){
+								continue;
+							}
+						}
+					}else{
+						/* if not binary, cr lf is the delimiter */
+						if (m_parse_cr && m_parse_lf) {
 							if(parse_message()){
 								continue;
 							}
@@ -1141,17 +1162,20 @@ bool f_fep01::parse_message_header()
 	case RBN: // src, length 
 		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
 		m_rcv_len = str3DigitDecimal(&m_pbuf[6]);
+		m_parse_count = m_rcv_len + (m_rep_power ? 3 : 0) /* power report */ + 2 /* cr lf */;
 		break;
 	case RBR: // rep, src, length
 		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[3]);
 		m_rcv_src = str3DigitDecimal(&m_pbuf[6]);
 		m_rcv_len = str3DigitDecimal(&m_pbuf[9]);
+		m_parse_count = m_rcv_len + (m_rep_power ? 3 : 0) /* power report */ + 2 /* cr lf */;
 		break;
 	case RB2: // rep0, rep1, src, length
 		m_rcv_rep0 = str3DigitDecimal(&m_pbuf[3]);
 		m_rcv_rep1 = str3DigitDecimal(&m_pbuf[6]);
 		m_rcv_src = str3DigitDecimal(&m_pbuf[9]);
 		m_rcv_len = str3DigitDecimal(&m_pbuf[12]);
+		m_parse_count = m_rcv_len + (m_rep_power ? 3 : 0) /* power report */ + 2 /* cr lf */;
 		break;
 	case RXT: // src
 		m_rcv_src = str3DigitDecimal(&m_pbuf[3]);
@@ -1181,24 +1205,27 @@ bool f_fep01::parse_message()
 	switch(m_cur_rcv){
 	case RBN: // src, length 
 		ptr = &m_pbuf[9];
-		ptr = &m_pbuf[9] + m_rcv_len;
+		ptr_end = &m_pbuf[9] + m_rcv_len;
 		break;
 	case RBR: // src, rep, length
 		ptr = &m_pbuf[12];
-		ptr = &m_pbuf[12] + m_rcv_len;
+		ptr_end = &m_pbuf[12] + m_rcv_len;
 		break;
 	case RB2: // src, rep0, rep1, length
 		ptr = &m_pbuf[15];
-		ptr = &m_pbuf[15] + m_rcv_len;
+		ptr_end = &m_pbuf[15] + m_rcv_len;
 		break;
 	case RXT: // src
 		ptr = &m_pbuf[6];
+		ptr_end = m_pbuf + m_pbuf_tail - 2 - (m_rep_power ? 3 : 0);
 		break;
 	case RXR: // src, rep0
 		ptr = &m_pbuf[9];
+		ptr_end = m_pbuf + m_pbuf_tail - 2 - (m_rep_power ? 3 : 0);
 		break;
 	case RX2: // src, rep0, rep1
 		ptr = &m_pbuf[12];
+		ptr_end = m_pbuf + m_pbuf_tail - 2 - (m_rep_power ? 3 : 0);
 		break;
 	default:
 		// this is not the recieved message
@@ -1210,6 +1237,9 @@ bool f_fep01::parse_message()
 		*pmsg = *ptr;
 	}
 	*pmsg = '\0';
+	if(m_rep_power){
+		m_rcv_pow = str3DigitDecimal(ptr);
+	}
 
 	m_msg_bin = false;
 	m_rcv_header = false;
@@ -1374,6 +1404,15 @@ bool f_fep01::set_cmd()
 			m_wbuf[m_wbuf_len+1] = '\n';
 			m_wbuf_len += 2;
 			m_len_tx = itr->iarg2;
+			if(m_ftxlog.is_open()){
+				unsigned char len = (unsigned char) itr->iarg2;
+				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
+				m_ftxlog.write((const char*) & len, sizeof(len));
+				m_ftxlog.write((const char*) itr->msg, len);
+			}
+			if(m_rep != 0){
+				m_total_tx += m_len_tx;
+			}
 		}
 		break;
 	case TBR:
@@ -1383,11 +1422,20 @@ bool f_fep01::set_cmd()
 			m_wbuf_len = (int) strlen(m_wbuf);
 			snprintf(m_wbuf, 512, "@%s%03d%03d%03d", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->iarg3);
 			memcpy(m_wbuf + strlen(m_wbuf), itr->msg, itr->iarg3);
-			m_wbuf_len += itr->iarg2;
+			m_wbuf_len += itr->iarg3;
 			m_wbuf[m_wbuf_len] = '\r';
 			m_wbuf[m_wbuf_len+1] = '\n';
 			m_wbuf_len += 2;
 			m_len_tx = itr->iarg3;
+			if(m_ftxlog.is_open()){
+				unsigned char len = (unsigned char) itr->iarg3;
+				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
+				m_ftxlog.write((const char*) & len, sizeof(len));
+				m_ftxlog.write((const char*) itr->msg, len);
+			}
+			if(m_rep != 0){
+				m_total_tx += m_len_tx;
+			}
 		}
 		break;
 	case TB2:
@@ -1398,11 +1446,20 @@ bool f_fep01::set_cmd()
 			m_wbuf_len = (int) strlen(m_wbuf);
 			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%03d", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->iarg3, itr->iarg4);
 			memcpy(m_wbuf + strlen(m_wbuf), itr->msg, itr->iarg4);
-			m_wbuf_len += itr->iarg2;
+			m_wbuf_len += itr->iarg4;
 			m_wbuf[m_wbuf_len] = '\r';
 			m_wbuf[m_wbuf_len+1] = '\n';
 			m_wbuf_len += 2;
 			m_len_tx = itr->iarg4;
+			if(m_ftxlog.is_open()){
+				unsigned char len = (unsigned char) itr->iarg4;
+				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
+				m_ftxlog.write((const char*) & len, sizeof(len));
+				m_ftxlog.write((const char*) itr->msg, len);
+			}
+			if(m_rep != 0){
+				m_total_tx += m_len_tx;
+			}
 		}
 		break;
 	case TID:
@@ -1416,6 +1473,15 @@ bool f_fep01::set_cmd()
 			snprintf(m_wbuf, 512, "@%s%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->msg);
 			m_wbuf_len = (int) strlen(m_wbuf);
 			m_len_tx = (int) strlen(itr->msg);
+			if(m_ftxlog.is_open()){
+				unsigned char len = (unsigned char) strlen(itr->msg);
+				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
+				m_ftxlog.write((const char*) & len, sizeof(len));
+				m_ftxlog.write((const char*) itr->msg, len);
+			}
+			if(m_rep != 0){
+				m_total_tx += m_len_tx;
+			}
 		}
 		break;
 	case TXR:
@@ -1424,6 +1490,15 @@ bool f_fep01::set_cmd()
 			snprintf(m_wbuf, 512, "@%s%03d%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->msg);
 			m_wbuf_len = (int) strlen(m_wbuf);
 			m_len_tx = (int) strlen(itr->msg);
+			if(m_ftxlog.is_open()){
+				unsigned char len = (unsigned char) strlen(itr->msg);
+				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
+				m_ftxlog.write((const char*) & len, sizeof(len));
+				m_ftxlog.write((const char*) itr->msg, len);
+			}
+			if(m_rep != 0){
+				m_total_tx += m_len_tx;
+			}
 		}
 	case TX2:
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
@@ -1433,6 +1508,15 @@ bool f_fep01::set_cmd()
 				,itr->iarg3, itr->msg);
 			m_wbuf_len = (int) strlen(m_wbuf);
 			m_len_tx = (int) strlen(itr->msg);
+			if(m_ftxlog.is_open()){
+				unsigned char len = (unsigned char) strlen(itr->msg);
+				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
+				m_ftxlog.write((const char*) & len, sizeof(len));
+				m_ftxlog.write((const char*) itr->msg, len);
+			}
+			if(m_rep != 0){
+				m_total_tx += m_len_tx;
+			}
 		}
 		break;
 	case VER:
