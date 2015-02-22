@@ -1035,7 +1035,7 @@ bool f_inspector::proc()
 
 	// estimate
 	if(m_op == ESTIMATE){
-		estimate();
+		estimate_fulltime();
 	}
 
 	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);

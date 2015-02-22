@@ -48,14 +48,14 @@ public:
 	}
 };
 
-template<class T> class ch_ring: public ch_base
+template<class T, int size = 1024> class ch_ring: public ch_base
 {
 protected:
 	int m_size;
 	int m_head, m_tail, m_num;
 	T * m_buf;
 public:
-	ch_ring(const char * name):ch_base(name), m_buf(NULL), m_size(1024), m_head(0), m_tail(0), m_num(0){
+	ch_ring(const char * name):ch_base(name), m_buf(NULL), m_size(size), m_head(0), m_tail(0), m_num(0){
 		m_buf = new T[m_size];
 	}
 
