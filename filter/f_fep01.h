@@ -97,6 +97,8 @@ protected:
 	int m_len_pkt;
 
 	AWS_SERIAL m_hcom;
+
+	// Unpacked register parameters
 	unsigned char m_addr;		// own address (0 to 255)
 	unsigned char m_addr_group; // group address (0 to 255)
 	unsigned char m_addr_dst;	// destination address (0 to 255), header less mode only.
@@ -140,6 +142,7 @@ protected:
 	unsigned char m_addr_rep0;	// address for repeater 0 in header less mode (0 to 254), 255 means no use.
 	unsigned char m_addr_rep1;  // address for repeater 1 in header less mode (0 to 254), 255 means no use.
 
+	// Register parameter
 	unsigned char m_reg[29];	// register
 	unsigned char m_dbm;		// dbm command result
 	unsigned int m_rid;			// recieved id
@@ -147,6 +150,7 @@ protected:
 	unsigned char m_ver;		// main version
 	unsigned short m_sub_ver;	// sub version 
 
+	// Register handling methods
 	void dump_reg();			// dump reg values to stdout
 	bool pack_reg();			// pack filter parameters to the regs
 	void unpack_reg();			// unpack regs to filter parameters
@@ -219,13 +223,37 @@ protected:
 	e_msg_rcv m_cur_rcv;
 	bool m_rcv_header;
 	unsigned char m_rcv_src, m_rcv_rep0, m_rcv_rep1, m_rcv_len, m_proced_len;
-	char m_rcv_msg[256];
-	unsigned char m_rcv_pow;
-	int m_len_tx;
-	long long m_total_tx, m_total_rx;
+	char m_rcv_msg[256];				// recieved message
+	unsigned char m_rcv_pow;			// recieved power. used only if m_rep_power is enabled.
+	int m_len_tx;						// transmission length
+	long long m_total_tx, m_total_rx;	// total transmission and reception
 
+	// for logging
 	char m_fname_txlog[1024], m_fname_rxlog[1024];
 	ofstream m_ftxlog, m_frxlog;
+	void log_tx(unsigned char len, const char * msg)
+	{
+		// data record
+		// <time> <len> <msg>
+		if(m_ftxlog.is_open()){
+			m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
+			m_ftxlog.write((const char*) & len, sizeof(len));
+			m_ftxlog.write((const char*) msg, len);
+		}
+	}
+
+	void log_rx()
+	{
+		// data record
+		// <time> <len> <power> <msg>
+		if(m_frxlog.is_open()){
+			m_frxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
+			m_frxlog.write((const char*) & m_rcv_len, sizeof(m_rcv_len));
+			m_frxlog.write((const char*) & m_rcv_pow, sizeof(m_rcv_pow));
+			m_frxlog.write((const char*) m_rcv_msg, m_rcv_len);
+		}
+	}
+
 public:
 	f_fep01(const char * name);
 

@@ -55,14 +55,18 @@ const char * f_fep01::m_cm_str[CM_P2P+1] = {
 };
 
 f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
-	m_port(0), m_br(9600), m_len_pkt(128), m_max_queue(10), m_cm(CM_P2P), m_addr_p2p(0), m_hcom(NULL_SERIAL), m_addr(0x00), m_addr_group(0xF0), 
+	m_port(0), m_br(9600), m_len_pkt(128), m_max_queue(10), m_cm(CM_P2P), m_addr_p2p(0), m_hcom(NULL_SERIAL),
+	m_addr(0x00), m_addr_group(0xF0), 
 	m_addr_dst(0x00), m_header_less(0), m_scramble_0(0xFF), m_scramble_1(0xFF), m_num_freqs(0x03), m_freq0(0x18), 
 	m_freq1(0x2A), m_freq2(0x3C), m_ant(0), m_div(1), m_num_reps(0x0A), m_th_roam(0x50), m_rep_power(0), 
 	m_rep_err(0), m_rep_suc(0), m_rep(0), m_tint_cmd(0x00), m_fband(0), m_tbclr(0x64), m_fwait(4), m_chk_group(1), 
 	m_int_bcn(0), m_fbcn(0), m_bcn(0), m_tlp_wait_ex(0), m_lp_wait(0), m_flw(0), m_tlp_wait(0x0F), m_crlf(0), 
-	m_delim(1), m_tlp_slp(0x0F), m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF), m_rbuf_len(0), m_wbuf_len(0), 
-	m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), m_cur_cmd(NUL), m_tcmd(0), m_tcmd_wait(100 * MSEC), 
-	m_tcmd_out(5*SEC), m_num_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_proced_len(0)
+	m_delim(1), m_tlp_slp(0x0F), m_to_hlss(0x01), m_addr_rep0(0xFF), m_addr_rep1(0xFF), m_rbuf_len(0),
+	m_wbuf_len(0), 
+	m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), m_cur_cmd(NUL), m_tcmd(0),
+	m_tcmd_wait(100 * MSEC), 
+	m_tcmd_out(5*SEC), m_num_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_proced_len(0), m_rcv_pow(0),
+	m_total_tx(0), m_total_rx(0)
 {
 	m_dname[0] = '\0';
 	m_fname_txlog[0] = '\0';
@@ -185,11 +189,8 @@ bool f_fep01::handle_op()
 			m_rcv_len = 0;
 			m_cur_rcv = RNUL;
 		}
-		if(m_frxlog.is_open()){
-			m_frxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
-			m_frxlog.write((const char*) & m_rcv_len, sizeof(m_rcv_len));
-			m_frxlog.write((const char*) m_rcv_msg, m_rcv_len);
-		}
+
+		log_rx();
 		cout << "Recieve: ";
 		cout.write(m_rcv_msg, m_rcv_len);
 		if(m_rep_power){
@@ -1404,12 +1405,7 @@ bool f_fep01::set_cmd()
 			m_wbuf[m_wbuf_len+1] = '\n';
 			m_wbuf_len += 2;
 			m_len_tx = itr->iarg2;
-			if(m_ftxlog.is_open()){
-				unsigned char len = (unsigned char) itr->iarg2;
-				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
-				m_ftxlog.write((const char*) & len, sizeof(len));
-				m_ftxlog.write((const char*) itr->msg, len);
-			}
+			log_tx((unsigned char) itr->iarg2, (const char*) itr->msg);
 			if(m_rep != 0){
 				m_total_tx += m_len_tx;
 			}
@@ -1427,12 +1423,7 @@ bool f_fep01::set_cmd()
 			m_wbuf[m_wbuf_len+1] = '\n';
 			m_wbuf_len += 2;
 			m_len_tx = itr->iarg3;
-			if(m_ftxlog.is_open()){
-				unsigned char len = (unsigned char) itr->iarg3;
-				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
-				m_ftxlog.write((const char*) & len, sizeof(len));
-				m_ftxlog.write((const char*) itr->msg, len);
-			}
+			log_tx((unsigned char) itr->iarg3, (const char*) itr->msg);
 			if(m_rep != 0){
 				m_total_tx += m_len_tx;
 			}
@@ -1451,12 +1442,7 @@ bool f_fep01::set_cmd()
 			m_wbuf[m_wbuf_len+1] = '\n';
 			m_wbuf_len += 2;
 			m_len_tx = itr->iarg4;
-			if(m_ftxlog.is_open()){
-				unsigned char len = (unsigned char) itr->iarg4;
-				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
-				m_ftxlog.write((const char*) & len, sizeof(len));
-				m_ftxlog.write((const char*) itr->msg, len);
-			}
+			log_tx((unsigned char) itr->iarg4, (const char*) itr->msg);
 			if(m_rep != 0){
 				m_total_tx += m_len_tx;
 			}
@@ -1473,12 +1459,7 @@ bool f_fep01::set_cmd()
 			snprintf(m_wbuf, 512, "@%s%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->msg);
 			m_wbuf_len = (int) strlen(m_wbuf);
 			m_len_tx = (int) strlen(itr->msg);
-			if(m_ftxlog.is_open()){
-				unsigned char len = (unsigned char) strlen(itr->msg);
-				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
-				m_ftxlog.write((const char*) & len, sizeof(len));
-				m_ftxlog.write((const char*) itr->msg, len);
-			}
+			log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
 			if(m_rep != 0){
 				m_total_tx += m_len_tx;
 			}
@@ -1490,12 +1471,7 @@ bool f_fep01::set_cmd()
 			snprintf(m_wbuf, 512, "@%s%03d%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->msg);
 			m_wbuf_len = (int) strlen(m_wbuf);
 			m_len_tx = (int) strlen(itr->msg);
-			if(m_ftxlog.is_open()){
-				unsigned char len = (unsigned char) strlen(itr->msg);
-				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
-				m_ftxlog.write((const char*) & len, sizeof(len));
-				m_ftxlog.write((const char*) itr->msg, len);
-			}
+			log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
 			if(m_rep != 0){
 				m_total_tx += m_len_tx;
 			}
@@ -1508,12 +1484,7 @@ bool f_fep01::set_cmd()
 				,itr->iarg3, itr->msg);
 			m_wbuf_len = (int) strlen(m_wbuf);
 			m_len_tx = (int) strlen(itr->msg);
-			if(m_ftxlog.is_open()){
-				unsigned char len = (unsigned char) strlen(itr->msg);
-				m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
-				m_ftxlog.write((const char*) & len, sizeof(len));
-				m_ftxlog.write((const char*) itr->msg, len);
-			}
+			log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
 			if(m_rep != 0){
 				m_total_tx += m_len_tx;
 			}
