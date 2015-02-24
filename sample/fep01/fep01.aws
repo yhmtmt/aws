@@ -1,5 +1,9 @@
 #!/bin/sh
 
+if [ $# -ne 2 ]; then
+    echo "fep01.aws <com port> <dst address>"
+fi
+
 channel crbuf din
 channel crbuf dout
 filter dd dd -i -o din
@@ -8,7 +12,7 @@ filter fep01 fep01 -i din -o dout
 #fset dev /dev/ttyPS0
 fset fep01 port $1
 fset fep01 br 115200
-fset fep01 addr_p2p 2
+fset fep01 addr_p2p $2
 fset fep01 cm p2p
 fset fep01 lpkt 100
 cyc 0.01
