@@ -18,6 +18,6 @@ fset fep01 lpkt 100
 cyc 0.01
 go
 
-sleep 5
+sleep 3
 
 fset fep01 st dbg

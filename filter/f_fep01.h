@@ -374,7 +374,48 @@ public:
 
 		// handling processed command 
 		if(m_cur_cmd != NUL){
-			if(m_tcmd + m_tcmd_out <= m_cur_time){ // command timeout
+			if(m_cmd_stat & EOC){
+				cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
+				if(m_cmd_stat & N0 || m_cmd_stat & N1 || m_cmd_stat & N2 || m_cmd_stat & N3){
+					// if the communication failed repete until counting m_num_max_retry
+					if(m_num_retry < m_num_max_retry){
+						int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+						if(wlen){
+							m_tcmd = m_cur_time;
+							m_num_retry++;
+							cout << "Retry " << m_num_retry << ":";
+							cout.write(m_wbuf, wlen);
+						}
+					}else{
+						cout << "Failed to send " << m_wbuf << endl;
+						m_cur_cmd = NUL;
+						m_cmd_stat = NRES;
+					}
+				}else{
+					m_cur_cmd = NUL;
+					m_cmd_stat = NRES;
+					cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+				}
+			}else if(m_rep){
+				/* m_rep == 1 means data transmission commands do not return response */
+				/* Simply finish data transmissoin command with time interval.        */
+				switch(m_cur_cmd){
+				case TBN:
+				case TBR:
+				case TB2:
+				case TXT:
+				case TXR:
+				case TX2:
+					if(m_tcmd + m_tcmd_wait > m_cur_time)
+						break;
+					m_cmd_stat = NRES;
+					m_cur_cmd = NUL;
+					cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+					break;
+				default:
+					break;
+				}
+			}else if(m_tcmd + m_tcmd_out <= m_cur_time){ // command timeout
 				// retry if the retry count is less than the maximum
 				if(m_num_retry < m_num_max_retry){
 					int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
@@ -386,53 +427,11 @@ public:
 					}
 				}else{
 					cout << "Failed to send " << m_wbuf << endl;
-				}
-			}else{
-				if(m_cmd_stat & EOC){
-					cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
-					if(m_cmd_stat & N0 || m_cmd_stat & N1 || m_cmd_stat & N2 || m_cmd_stat & N3){
-						// if the communication failed repete until counting m_num_max_retry
-						if(m_num_retry < m_num_max_retry){
-							int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
-							if(wlen){
-								m_tcmd = m_cur_time;
-								m_num_retry++;
-								cout << "Retry " << m_num_retry << ":";
-								cout.write(m_wbuf, wlen);
-							}
-						}else{
-							cout << "Failed to send " << m_wbuf << endl;
-							m_cur_cmd = NUL;
-							m_cmd_stat = NRES;
-						}
-					}else{
-						m_cur_cmd = NUL;
-						m_cmd_stat = NRES;
-						cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
-					}
-				}else if(m_rep){
-					/* m_rep == 1 means data transmission commands do not return response */
-					/* Simply finish data transmissoin command with time interval.        */
-					switch(m_cur_cmd){
-					case TBN:
-					case TBR:
-					case TB2:
-					case TXT:
-					case TXR:
-					case TX2:
-						if(m_tcmd + m_tcmd_wait > m_cur_time)
-							break;
-						m_cmd_stat = NRES;
-						m_cur_cmd = NUL;
-						cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
-						break;
-					default:
-						break;
-					}
+					m_cur_cmd = NUL;
+					m_cmd_stat = NRES;
 				}
 			}
 		}
-
 		// parsing read buffer. The read buffer is possible to contain both command response and recieved messages.
 		m_rbuf_len = read_serial(m_hcom, m_rbuf, 512);
 		if(m_rbuf_len){

@@ -7,11 +7,11 @@ fi
 
 fset fep01 cmd $1
 
-if [ $# -gt 2 ]; then
+if [ $# -gt 1 ]; then
     fset fep01 iarg1 $2    
 fi
 
-if [ $# -gt 3 ]; then
+if [ $# -gt 2 ]; then
     fset fep01 iarg2 $3
 fi
 

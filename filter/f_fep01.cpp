@@ -65,7 +65,7 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_wbuf_len(0), 
 	m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), m_cur_cmd(NUL), m_tcmd(0),
 	m_tcmd_wait(100 * MSEC), 
-	m_tcmd_out(5*SEC), m_num_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_proced_len(0), m_rcv_pow(0),
+	m_tcmd_out(5*SEC), m_num_retry(3), m_num_max_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_proced_len(0), m_rcv_pow(0),
 	m_total_tx(0), m_total_rx(0)
 {
 	m_dname[0] = '\0';
