@@ -1,0 +1,19 @@
+#!/bin/sh
+
+channel crbuf din
+channel crbuf dout
+filter dd dd -i -o din
+filter rd rd -i dout -o
+filter fep01 fep01 -i din -o dout
+#fset dev /dev/ttyPS0
+fset fep01 port $1
+fset fep01 br 115200
+fset fep01 addr_p2p 2
+fset fep01 cm p2p
+fset fep01 lpkt 100
+cyc 0.01
+go
+
+sleep 5
+
+fset fep01 st dbg
