@@ -65,8 +65,8 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_wbuf_len(0), 
 	m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), m_cur_cmd(NUL), m_tcmd(0),
 	m_tcmd_wait(100 * MSEC), 
-	m_tcmd_out(5*SEC), m_num_retry(3), m_num_max_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_proced_len(0), m_rcv_pow(0),
-	m_msg_len(0),
+	m_tcmd_out(5*SEC), m_num_retry(3), m_num_max_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_rcv_msg_head(0), m_rcv_pow(0),
+	m_rcv_msg_tail(0),
 	m_total_tx(0), m_total_rx(0)
 {
 	m_dname[0] = '\0';
@@ -181,13 +181,14 @@ bool f_fep01::handle_op()
 			m_cmd_queue.push_back(m_cmd);
 		}
 	}
+
 	// if there exists recieved data, push to the output channel
-	if(m_msg_len){
+	if(m_rcv_msg_head < m_rcv_msg_tail){
 		// push one recieved data to output channel
-		m_proced_len += m_pout->write(m_rcv_msg + m_proced_len, (int) (m_rcv_len - m_proced_len));
-		if(m_proced_len == m_msg_len){
-			m_proced_len = 0;
-			m_msg_len = 0;
+		m_rcv_msg_head += m_pout->write(m_rcv_msg + m_rcv_msg_head, (int) (m_rcv_msg_tail - m_rcv_msg_head));
+		if(m_rcv_msg_head == m_rcv_msg_tail){
+			m_rcv_msg_head = 0;
+			m_rcv_msg_tail = 0;
 			m_cur_rcv = RNUL;
 		}
 	}
@@ -506,7 +507,7 @@ bool f_fep01::parse_rbuf()
 							if(parse_message()){
 								continue;
 							}else{
-								throw c_parse_exception(NUL, m_cmd_stat, __LINE__);
+								throw c_parse_message_exception(m_cur_rcv, m_cmd_stat, __LINE__);
 							}
 						}
 					}else{
@@ -515,7 +516,7 @@ bool f_fep01::parse_rbuf()
 							if(parse_message()){
 								continue;
 							}else{
-								throw c_parse_exception(NUL, m_cmd_stat, __LINE__);
+								throw c_parse_message_exception(m_cur_rcv, m_cmd_stat, __LINE__);
 							}
 						}
 					}
@@ -546,17 +547,26 @@ bool f_fep01::parse_rbuf()
 						continue;
 					}
 				}
-				throw c_parse_exception(NUL, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(NUL, m_cmd_stat, __LINE__);
 			}
-		}catch(const c_parse_exception & e){
+		}catch(const c_parse_response_exception & e){
 			m_pbuf[m_pbuf_tail] = '\0';
-			cerr << "Error: during parsing read buffer. Status: " << m_cmd_str[e.cmd] << " line = " << e.line << "." << endl;
-			cerr << "Buffer:";
+			cerr << "Errorin parsing read buffer. Status: " << m_cmd_str[e.cmd] << " line = " << e.line << "." << endl;
+			cerr << "Read Buffer: ";
 			cerr.write(m_pbuf, m_pbuf_tail);
 			cerr << "State P0:P1:N0:N1:N3:" << (P0 & e.stat ? 1 : 0) << ":" << (P1 & e.stat ? 1 : 0) << 
 				":" << (N0 & e.stat ? 1 : 0) << ":" << (N1 & e.stat ? 1 : 0) << ":" << (N3 & e.stat ? 1 : 0) << endl;
 			init_parser();
 			return false;
+		}catch(const c_parse_message_exception & e){
+			cerr << "Error in parsing read buffer. Status: " << m_rec_str[e.type] << " line = " << e.line << "." << endl;
+			cerr << "Message Buffer Usage: " << m_rcv_msg_head << " to " << m_rcv_msg_tail << endl;
+			cerr << "Message Length Recieved: " << m_rcv_msg << endl;
+			cerr << "Read Buffer: ";
+			cerr.write(m_pbuf, m_pbuf_tail);
+			cerr << "Message Buffer:";
+			cerr.write(m_rcv_msg + m_rcv_msg_head, m_rcv_msg_tail - m_rcv_msg_head);
+			init_parser();
 		}
 	}
 
@@ -581,7 +591,7 @@ void f_fep01::init_parser()
 	m_rcv_header = false;
 	m_rcv_len = 0;
 	m_rcv_msg[0] = '\0';
-	m_msg_len = 0;
+	m_rcv_msg_tail = 0;
 	m_ts2_mode = false;
 }
 
@@ -906,56 +916,56 @@ bool f_fep01::parse_response()
 			if(m_cmd_stat & N0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case BAN: // P0 or N0 
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case BCL: // P0 or N0 
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case DAS: // P0 or N0 
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case DBM: // N0
 			if(m_cmd_stat & N0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case DVS:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case FCN:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case FRQ:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case IDR:
@@ -964,84 +974,84 @@ bool f_fep01::parse_response()
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case INI:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case PAS:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case POF:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case PON:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case PTE:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case PTN:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case PTS:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case ROF:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case RON:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case REG:
 			if(m_cmd_stat & N0 | m_cmd_stat & P0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case RID:
 			if(m_cmd_stat & N0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case RST:
@@ -1051,7 +1061,7 @@ bool f_fep01::parse_response()
 					m_flog_ts2.close();
 				}
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case TBN:
@@ -1065,14 +1075,14 @@ bool f_fep01::parse_response()
 				// sending 
 				break;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case TID:
 			if(m_cmd_stat & N0){
 				m_cmd_stat |= EOC;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case TS2:
@@ -1085,7 +1095,7 @@ bool f_fep01::parse_response()
 				m_ts2_mode = true;
 				m_total_tx += m_len_tx;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case TXT:
@@ -1097,7 +1107,7 @@ bool f_fep01::parse_response()
 				// sending 
 				break;
 			}else{
-				throw c_parse_exception(m_cur_cmd, m_cmd_stat, __LINE__);
+				throw c_parse_response_exception(m_cur_cmd, m_cmd_stat, __LINE__);
 			}
 			break;
 		case VER:
@@ -1235,8 +1245,8 @@ bool f_fep01::parse_message()
 	}
 
 	char * pmsg;
-	for(pmsg = m_rcv_msg + m_msg_len, m_rcv_len = 0; ptr != ptr_end; pmsg++, ptr++, m_rcv_len++){
-		if(m_msg_len + m_rcv_len >= 1023){
+	for(pmsg = m_rcv_msg + m_rcv_msg_tail, m_rcv_len = 0; ptr != ptr_end; pmsg++, ptr++, m_rcv_len++){
+		if(m_rcv_msg_tail + m_rcv_len >= 1023){
 			cerr << "Overflow in buffer for recieved message" << endl;
 			return false;
 		}
@@ -1250,12 +1260,12 @@ bool f_fep01::parse_message()
 
 	log_rx();
 	cout << "Recieve: ";
-	cout.write(m_rcv_msg + m_msg_len, m_rcv_len);
+	cout.write(m_rcv_msg + m_rcv_msg_tail, m_rcv_len);
 	if(m_rep_power){
 		cout << "Power:" << m_rcv_pow << endl;
 	}
 
-	m_msg_len += m_rcv_len;
+	m_rcv_msg_tail += m_rcv_len;
 	m_msg_bin = false;
 	m_rcv_header = false;
 	m_cur_rcv = RNUL;

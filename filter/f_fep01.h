@@ -156,13 +156,12 @@ protected:
 	bool pack_reg();			// pack filter parameters to the regs
 	void unpack_reg();			// unpack regs to filter parameters
 
-	int m_rbuf_len;
-	char m_rbuf[512];
-	int m_wbuf_len;
-	char m_wbuf[512];
+	int m_rbuf_len;		// data length read from serial port
+	char m_rbuf[512];	// data from serial port
+	int m_wbuf_len;		// length of data to be written to serial port
+	char m_wbuf[512];	// data buffer to be written to serial port
 
 	// for command issue
-
 	struct s_cmd{
 		e_cmd type;
 		char msg[129];
@@ -182,67 +181,78 @@ protected:
 		}
 	};
 
-	bool m_bpush_cmd;
-	s_cmd m_cmd;
-	int m_max_queue;
-	list<s_cmd> m_cmd_queue;
-	bool set_cmd();
+	bool m_bpush_cmd;		// if the flag asserted, a command in the queue is issued. (calling set_cmd and write into serial port)
+	s_cmd m_cmd;			// temporal command variable
+	int m_max_queue;		// Maximum size of the command queue
+	list<s_cmd> m_cmd_queue;// Command queue
+	bool set_cmd();			// set a command 
 
 	long long m_tcmd;       // time command issued
 	long long m_tcmd_wait;  // interval for data transmission command
 	long long m_tcmd_out;   // command time out
 	int m_num_max_retry;    // maximum number of retry 
-	int m_num_retry;		// number of retry
+	int m_num_retry;		// number of retry of current command
 
-	e_cmd m_cur_cmd;
-	unsigned char m_cmd_arg1, m_cmd_arg2;
+	e_cmd m_cur_cmd;		// Command waiting response
+	unsigned char m_cmd_arg1, m_cmd_arg2; // 1st and 2nd command arguments. 
+										  // Note that some commands require at most two arguments 
+										  // to understand the response
 	unsigned int m_cmd_stat; // Command response P0,P1, N0, N1, N3, End of Command(EOC)
-	ofstream m_flog_ts2;
 
 	// parameters used by parser
-	int m_pbuf_tail;
+	int m_pbuf_tail;  // tail index of the parser's buffer
 	char m_pbuf[512]; // buffer used by parser
 	unsigned char m_parse_cr; // indicates CR=0x0D recieved. 
 	unsigned char m_parse_lf; // indicates LF=0x0A recieved. 
 	int m_parse_count; // for parsing binary message, CRLF cannot be delimiter. 
 					   //Thus we use the data count recoreded in the message header to parse the message.
 
+	// pars read buffer
 	bool parse_rbuf();
-	void init_parser();
-	bool parse_response_value();
-	bool parse_response();
-	bool parse_message_type();
-	bool parse_message_header();
-	bool parse_message();
-	struct c_parse_exception
+
+	// helper functions for read buffer's parser
+	void init_parser(); // initialize all parser state
+	bool parse_response_value();	// parse values of command response
+	bool parse_response();			// parse command response
+	bool parse_message_type();		// parse message type
+	bool parse_message_header();	// parse message header
+	bool parse_message();			// parse message 
+	struct c_parse_response_exception
 	{
 		e_cmd cmd;
 		int stat;
 		int line;
-		c_parse_exception(e_cmd acmd, int astat, int aline): cmd(acmd), stat(astat), line(aline)
+		c_parse_response_exception(e_cmd acmd, int astat, int aline): cmd(acmd), stat(astat), line(aline)
+		{
+		}
+	};
+	struct c_parse_message_exception
+	{
+		e_msg_rcv type;
+		int stat;
+		int line;
+		c_parse_message_exception(e_msg_rcv atype, int astat, int aline): type(atype), stat(astat), line(aline)
 		{
 		}
 	};
 
-
-	// for Message parser
-	e_msg_rcv m_cur_rcv;	 // Current type of recieved message
+	// for Recieved Message parser
 	bool m_msg_bin;			 // asserted if the recieved message header is binary
 	bool m_rcv_header;		 // Flag shows message header indicating message type was recieved.
+	e_msg_rcv m_cur_rcv;	 // Current type of recieved message
 	unsigned char m_rcv_src; // Message source address
-	unsigned char m_rcv_rep0; // Message source repeater address 1
-	unsigned char m_rcv_rep1; // Message source repeater addres 2
+	unsigned char m_rcv_rep0;// Message source repeater address 1
+	unsigned char m_rcv_rep1;// Message source repeater addres 2
 	unsigned char m_rcv_len; // Recieved data length in the packet parsing.
-	unsigned char m_rcv_pow;			// recieved power. used only if m_rep_power is enabled.
+	unsigned char m_rcv_pow; // recieved power. used only if m_rep_power is enabled.
 
 	char m_rcv_msg[1024];	 // recieved message.This stores all the messages until they are transmitted to the output channel.
-	int m_proced_len;		 // Message length transmitted to the output channel in m_rcv_msg
-	int m_msg_len;			 // Message length stored in m_rcv_msg
+	int m_rcv_msg_head;		 // Message length transmitted to the output channel in m_rcv_msg
+	int m_rcv_msg_tail;		 // Message length stored in m_rcv_msg
 	int m_len_tx;						// transmission length
-	long long m_total_tx, m_total_rx;	// total transmission and reception
 
 	// for logging
-	char m_fname_txlog[1024], m_fname_rxlog[1024];
+	char m_fname_txlog[1024] /* tx log file */, m_fname_rxlog[1024] /* rx log file */;
 	ofstream m_ftxlog, m_frxlog;
 	void log_tx(unsigned char len, const char * msg)
 	{
@@ -262,11 +272,19 @@ protected:
 		if(m_frxlog.is_open()){
 			m_frxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
 			m_frxlog.write((const char*) & m_rcv_len, sizeof(m_rcv_len));
+			m_frxlog.write((const char*) & m_rcv_src, sizeof(m_rcv_src));
+			m_frxlog.write((const char*) & m_rcv_rep0, sizeof(m_rcv_rep0));
+			m_frxlog.write((const char*) & m_rcv_rep1, sizeof(m_rcv_rep1));
 			m_frxlog.write((const char*) & m_rcv_pow, sizeof(m_rcv_pow));
-			m_frxlog.write((const char*) m_rcv_msg + m_msg_len, m_rcv_len);
+			m_frxlog.write((const char*) m_rcv_msg + m_rcv_msg_tail, m_rcv_len);
 		}
 	}
 
+	// Logging file for ts2 mode
+	ofstream m_flog_ts2;
+
+	// for statistics
+	long long m_total_tx, m_total_rx;	// total transmission and reception
 public:
 	f_fep01(const char * name);
 
@@ -306,6 +324,7 @@ public:
 		}
 
 		m_total_tx = m_total_rx = 0;
+
 		return true;
 	}
 
