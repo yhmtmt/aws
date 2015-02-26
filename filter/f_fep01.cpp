@@ -459,6 +459,7 @@ bool f_fep01::handle_rst()
 		m_cmd = s_cmd();
 		m_cmd.type = RST;
 		m_cmd_queue.push_back(m_cmd);
+		m_sst = SST_PROC;
 		break;
 	case SST_PROC:
 		if(m_cur_cmd == RST && m_cmd_stat & EOC){
