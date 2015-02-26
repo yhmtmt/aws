@@ -212,6 +212,11 @@ protected:
 
 	// helper functions for read buffer's parser
 	void init_parser(); // initialize all parser state
+	void end_parser(){
+		m_pbuf_tail = 0;
+		m_parse_cr = m_parse_lf = 0;
+
+	}
 	bool parse_response_value();	// parse values of command response
 	bool parse_response();			// parse command response
 	bool parse_message_type();		// parse message type
@@ -342,143 +347,7 @@ public:
 			m_frxlog.close();
 	}
 
-	virtual bool proc()
-	{
-		//cout << "Proc/Cycle " << m_count_proc << "/" << m_count_clock << endl;
-		switch(m_st){
-		case ST_INIT:
-			// push initialization command
-			// final command finished successfully -> ST_OP
-			// if some commands failed return false
-			if(!handle_init()){
-				return false;
-			}
-			break;
-		case ST_RST:
-			// push reseting commands
-			// final command finished successfully -> ST_OP
-			if(!handle_rst()){
-				return false;
-			}
-			break;
-		case ST_OP:
-			// push data transfer command with message from input channel
-			// and output recieved data to output channel
-			if(!handle_op()){
-				return false;
-			}
-			break;
-		case ST_DBG:
-			// manually push a command to the queue
-			if(!handle_dbg()){
-				return false;
-			}
-			break;
-		case ST_TEST:
-			// maybe it invokes the TS2 mode
-			if(!handle_test()){
-				return false;
-			}
-			break;
-		}
-
-		// pop a command from queue and set to write buffer
-		if(m_cur_cmd == NUL && m_cmd_queue.size() != 0){
-			set_cmd();
-
-			int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
-			if(wlen){
-				m_tcmd = m_cur_time;
-				m_num_retry = 0;
-				cout << "Write:";
-				cout.write(m_wbuf, wlen);
-			}
-			if(m_wbuf_len != wlen){
-				cerr << "Write operation failed." << endl;
-			}
-		}
-
-		// handling recieved message. this code is temporal and simply dumping to stdout. 
-		if(m_rcv_len && m_st != ST_OP){
-			cout << "Recieve: ";
-			cout.write(m_rcv_msg, m_rcv_len);
-		}
-
-		// handling processed command 
-		if(m_cur_cmd != NUL){
-			if(m_cmd_stat & EOC){
-				cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
-				if(m_cmd_stat & N0 || m_cmd_stat & N1 || m_cmd_stat & N2 || m_cmd_stat & N3){
-					// if the communication failed repete until counting m_num_max_retry
-					if(m_num_retry < m_num_max_retry){
-						int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
-						if(wlen){
-							m_tcmd = m_cur_time;
-							m_num_retry++;
-							cout << "Retry " << m_num_retry << ":";
-							cout.write(m_wbuf, wlen);
-						}
-					}else{
-						cout << "Failed to send " << m_wbuf << endl;
-						m_cur_cmd = NUL;
-						m_cmd_stat = NRES;
-					}
-				}else{
-					m_cur_cmd = NUL;
-					m_cmd_stat = NRES;
-					cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
-				}
-			}else if(m_rep){
-				/* m_rep == 1 means data transmission commands do not return response */
-				/* Simply finish data transmissoin command with time interval.        */
-				switch(m_cur_cmd){
-				case TBN:
-				case TBR:
-				case TB2:
-				case TXT:
-				case TXR:
-				case TX2:
-					if(m_tcmd + m_tcmd_wait > m_cur_time)
-						break;
-					m_cmd_stat = NRES;
-					m_cur_cmd = NUL;
-					cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
-					break;
-				default:
-					break;
-				}
-			}else if(m_tcmd + m_tcmd_out <= m_cur_time){ // command timeout
-				// retry if the retry count is less than the maximum
-				if(m_num_retry < m_num_max_retry){
-					int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
-					if(wlen){
-						m_tcmd = m_cur_time;
-						m_num_retry++;
-						cout << "Retry " << m_num_retry << ":";
-						cout.write(m_wbuf, wlen);
-					}
-				}else{
-					cout << "Failed to send " << m_wbuf << endl;
-					m_cur_cmd = NUL;
-					m_cmd_stat = NRES;
-				}
-			}
-		}
-		// parsing read buffer. The read buffer is possible to contain both command response and recieved messages.
-		m_rbuf_len = read_serial(m_hcom, m_rbuf, 512);
-		if(m_rbuf_len){
-			cout << "Read:";
-			cout.write(m_rbuf, m_rbuf_len);
-		}
-		if(m_rbuf_len < 0){
-			cerr << "Read operation failed." << endl;
-		}else{
-			if(!parse_rbuf()){
-				cerr << "Failed to parse read buffer." << endl;
-			}
-		}
-		return true;
-	}
+	virtual bool proc();
 };
 
 inline int str3DigitDecimal(const char * str)

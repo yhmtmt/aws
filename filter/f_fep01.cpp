@@ -144,6 +144,138 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_rbuf[0] = m_wbuf[0] = '\0';
 }
 
+bool f_fep01::proc()
+{
+	//cout << "Proc/Cycle " << m_count_proc << "/" << m_count_clock << endl;
+	switch(m_st){
+	case ST_INIT:
+		// push initialization command
+		// final command finished successfully -> ST_OP
+		// if some commands failed return false
+		if(!handle_init()){
+			return false;
+		}
+		break;
+	case ST_RST:
+		// push reseting commands
+		// final command finished successfully -> ST_OP
+		if(!handle_rst()){
+			return false;
+		}
+		break;
+	case ST_OP:
+		// push data transfer command with message from input channel
+		// and output recieved data to output channel
+		if(!handle_op()){
+			return false;
+		}
+		break;
+	case ST_DBG:
+		// manually push a command to the queue
+		if(!handle_dbg()){
+			return false;
+		}
+		break;
+	case ST_TEST:
+		// maybe it invokes the TS2 mode
+		if(!handle_test()){
+			return false;
+		}
+		break;
+	}
+
+	// pop a command from queue and set to write buffer
+	if(m_cur_cmd == NUL && m_cmd_queue.size() != 0){
+		set_cmd();
+
+		int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+		if(wlen){
+			m_tcmd = m_cur_time;
+			m_num_retry = 0;
+			cout << "Write:";
+			cout.write(m_wbuf, wlen);
+		}
+		if(m_wbuf_len != wlen){
+			cerr << "Write operation failed." << endl;
+		}
+	}
+
+	// handling processed command 
+	if(m_cur_cmd != NUL){
+		if(m_cmd_stat & EOC){
+			cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
+			if(m_cmd_stat & N0 || m_cmd_stat & N1 || m_cmd_stat & N2 || m_cmd_stat & N3){
+				// if the communication failed repete until counting m_num_max_retry
+				if(m_num_retry < m_num_max_retry){
+					int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+					if(wlen){
+						m_tcmd = m_cur_time;
+						m_num_retry++;
+						cout << "Retry " << m_num_retry << ":";
+						cout.write(m_wbuf, wlen);
+					}
+				}else{
+					cout << "Failed to send " << m_wbuf << endl;
+					m_cur_cmd = NUL;
+					m_cmd_stat = NRES;
+				}
+			}else{
+				m_cur_cmd = NUL;
+				m_cmd_stat = NRES;
+				cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+			}
+		}else if(m_rep){
+			/* m_rep == 1 means data transmission commands do not return response */
+			/* Simply finish data transmissoin command with time interval.        */
+			switch(m_cur_cmd){
+			case TBN:
+			case TBR:
+			case TB2:
+			case TXT:
+			case TXR:
+			case TX2:
+				if(m_tcmd + m_tcmd_wait > m_cur_time)
+					break;
+				m_cmd_stat = NRES;
+				m_cur_cmd = NUL;
+				cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+				break;
+			default:
+				break;
+			}
+		}else if(m_tcmd + m_tcmd_out <= m_cur_time){ // command timeout
+			// retry if the retry count is less than the maximum
+			if(m_num_retry < m_num_max_retry){
+				int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+				if(wlen){
+					m_tcmd = m_cur_time;
+					m_num_retry++;
+					cout << "Retry " << m_num_retry << ":";
+					cout.write(m_wbuf, wlen);
+				}
+			}else{
+				cout << "Failed to send " << m_wbuf << endl;
+				m_cur_cmd = NUL;
+				m_cmd_stat = NRES;
+			}
+		}
+	}
+	// parsing read buffer. The read buffer is possible to contain both command response and recieved messages.
+	m_rbuf_len = read_serial(m_hcom, m_rbuf, 512);
+	if(m_rbuf_len){
+		cout << "Read:";
+		cout.write(m_rbuf, m_rbuf_len);
+	}
+	if(m_rbuf_len < 0){
+		cerr << "Read operation failed." << endl;
+	}else{
+		if(!parse_rbuf()){
+			cerr << "Failed to parse read buffer." << endl;
+		}
+	}
+	return true;
+}
+
 bool f_fep01::handle_init()
 {
 	// push reg command 
@@ -531,9 +663,7 @@ bool f_fep01::parse_rbuf()
 					if(m_pbuf_tail == 4){ // P0<cr><lf> etc.
 						if(parse_response()){
 							cout << "Response: " << m_pbuf << endl;
-							pbuf = m_pbuf;
-							m_pbuf_tail = 0;
-							m_parse_cr = m_parse_lf = 0;
+							end_parser();
 							continue;
 						}
 					}
@@ -541,13 +671,13 @@ bool f_fep01::parse_rbuf()
 					if(parse_response_value()){
 						m_pbuf[m_pbuf_tail] = '\0';
 						cout << "Response: " << m_pbuf << endl;
-						pbuf = m_pbuf;
-						m_pbuf_tail = 0;
-						m_parse_cr = m_parse_lf = 0;
+						end_parser();
 						continue;
 					}
 				}
-				throw c_parse_response_exception(NUL, m_cmd_stat, __LINE__);
+
+				// read buffer has incomplete data.
+				end_parser();
 			}
 		}catch(const c_parse_response_exception & e){
 			m_pbuf[m_pbuf_tail] = '\0';
@@ -561,7 +691,7 @@ bool f_fep01::parse_rbuf()
 		}catch(const c_parse_message_exception & e){
 			cerr << "Error in parsing read buffer. Status: " << m_rec_str[e.type] << " line = " << e.line << "." << endl;
 			cerr << "Message Buffer Usage: " << m_rcv_msg_head << " to " << m_rcv_msg_tail << endl;
-			cerr << "Message Length Recieved: " << m_rcv_msg << endl;
+			cerr << "Message Length Recieved: " << (int) m_rcv_msg << endl;
 			cerr << "Read Buffer: ";
 			cerr.write(m_pbuf, m_pbuf_tail);
 			cerr << "Message Buffer:";
@@ -646,7 +776,7 @@ bool f_fep01::parse_response_value()
 	case DBM:
 		if(m_pbuf_tail != 9 || m_pbuf[0] != '-' ||
 			m_pbuf[4] != 'd' || m_pbuf[5] != 'B' || m_pbuf[6] != 'm'){ 
-			is_proc = false;
+				is_proc = false;
 		}else{ // form of "-xxxdBm"
 			int dbm = str3DigitDecimal(m_pbuf + 1);
 			if(dbm > 0 && dbm < 256){
@@ -1257,19 +1387,21 @@ bool f_fep01::parse_message()
 	if(m_rep_power){
 		m_rcv_pow = str3DigitDecimal(ptr);
 	}
+	m_total_rx += m_rcv_len;
 
 	log_rx();
 	cout << "Recieve: ";
 	cout.write(m_rcv_msg + m_rcv_msg_tail, m_rcv_len);
 	if(m_rep_power){
-		cout << "Power:" << m_rcv_pow << endl;
+		cout << "Power:" << (int) m_rcv_pow << endl;
 	}
+	cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
 
 	m_rcv_msg_tail += m_rcv_len;
 	m_msg_bin = false;
 	m_rcv_header = false;
 	m_cur_rcv = RNUL;
-	m_parse_cr = m_parse_lf = 0;
+	end_parser();
 	return true;
 }
 
@@ -1331,8 +1463,8 @@ bool f_fep01::set_cmd()
 	case FRQ:
 		if(itr->iarg1 < 4 && itr->iarg1 > 0){
 			if((itr->iarg2 < 61 && itr->iarg2 > 23)  || 
-			(itr->iarg2 < 78 && itr->iarg2 > 61)){
-				snprintf(m_wbuf, 512, "@%s%d:%d\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2);
+				(itr->iarg2 < 78 && itr->iarg2 > 61)){
+					snprintf(m_wbuf, 512, "@%s%d:%d\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2);
 			}else{
 				snprintf(m_wbuf, 512, "@%s%d\r\n", m_cmd_str[itr->type], itr->iarg1);
 			}
@@ -1440,18 +1572,18 @@ bool f_fep01::set_cmd()
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
 			&& itr->iarg3 > 0 && itr->iarg3 <129){
-			m_wbuf_len = (int) strlen(m_wbuf);
-			snprintf(m_wbuf, 512, "@%s%03d%03d%03d", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->iarg3);
-			memcpy(m_wbuf + strlen(m_wbuf), itr->msg, itr->iarg3);
-			m_wbuf_len += itr->iarg3;
-			m_wbuf[m_wbuf_len] = '\r';
-			m_wbuf[m_wbuf_len+1] = '\n';
-			m_wbuf_len += 2;
-			m_len_tx = itr->iarg3;
-			log_tx((unsigned char) itr->iarg3, (const char*) itr->msg);
-			if(m_rep != 0){
-				m_total_tx += m_len_tx;
-			}
+				m_wbuf_len = (int) strlen(m_wbuf);
+				snprintf(m_wbuf, 512, "@%s%03d%03d%03d", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->iarg3);
+				memcpy(m_wbuf + strlen(m_wbuf), itr->msg, itr->iarg3);
+				m_wbuf_len += itr->iarg3;
+				m_wbuf[m_wbuf_len] = '\r';
+				m_wbuf[m_wbuf_len+1] = '\n';
+				m_wbuf_len += 2;
+				m_len_tx = itr->iarg3;
+				log_tx((unsigned char) itr->iarg3, (const char*) itr->msg);
+				if(m_rep != 0){
+					m_total_tx += m_len_tx;
+				}
 		}
 		break;
 	case TB2:
@@ -1459,18 +1591,18 @@ bool f_fep01::set_cmd()
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
 			&& itr->iarg3 >= 0 && itr->iarg3 < 255 
 			&& itr->iarg4 > 0 && itr->iarg4 <129){
-			m_wbuf_len = (int) strlen(m_wbuf);
-			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%03d", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->iarg3, itr->iarg4);
-			memcpy(m_wbuf + strlen(m_wbuf), itr->msg, itr->iarg4);
-			m_wbuf_len += itr->iarg4;
-			m_wbuf[m_wbuf_len] = '\r';
-			m_wbuf[m_wbuf_len+1] = '\n';
-			m_wbuf_len += 2;
-			m_len_tx = itr->iarg4;
-			log_tx((unsigned char) itr->iarg4, (const char*) itr->msg);
-			if(m_rep != 0){
-				m_total_tx += m_len_tx;
-			}
+				m_wbuf_len = (int) strlen(m_wbuf);
+				snprintf(m_wbuf, 512, "@%s%03d%03d%03d%03d", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->iarg3, itr->iarg4);
+				memcpy(m_wbuf + strlen(m_wbuf), itr->msg, itr->iarg4);
+				m_wbuf_len += itr->iarg4;
+				m_wbuf[m_wbuf_len] = '\r';
+				m_wbuf[m_wbuf_len+1] = '\n';
+				m_wbuf_len += 2;
+				m_len_tx = itr->iarg4;
+				log_tx((unsigned char) itr->iarg4, (const char*) itr->msg);
+				if(m_rep != 0){
+					m_total_tx += m_len_tx;
+				}
 		}
 		break;
 	case TID:
@@ -1493,26 +1625,26 @@ bool f_fep01::set_cmd()
 	case TXR:
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255){
-			snprintf(m_wbuf, 512, "@%s%03d%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->msg);
-			m_wbuf_len = (int) strlen(m_wbuf);
-			m_len_tx = (int) strlen(itr->msg);
-			log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
-			if(m_rep != 0){
-				m_total_tx += m_len_tx;
-			}
+				snprintf(m_wbuf, 512, "@%s%03d%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->msg);
+				m_wbuf_len = (int) strlen(m_wbuf);
+				m_len_tx = (int) strlen(itr->msg);
+				log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
+				if(m_rep != 0){
+					m_total_tx += m_len_tx;
+				}
 		}
 	case TX2:
 		if(itr->iarg1 >= 0 && itr->iarg1 < 255 
 			&& itr->iarg2 >= 0 && itr->iarg2 < 255 
 			&& itr->iarg3 >= 0 && itr->iarg3 < 255){
-			snprintf(m_wbuf, 512, "@%s%03d%03d%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2
-				,itr->iarg3, itr->msg);
-			m_wbuf_len = (int) strlen(m_wbuf);
-			m_len_tx = (int) strlen(itr->msg);
-			log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
-			if(m_rep != 0){
-				m_total_tx += m_len_tx;
-			}
+				snprintf(m_wbuf, 512, "@%s%03d%03d%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2
+					,itr->iarg3, itr->msg);
+				m_wbuf_len = (int) strlen(m_wbuf);
+				m_len_tx = (int) strlen(itr->msg);
+				log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
+				if(m_rep != 0){
+					m_total_tx += m_len_tx;
+				}
 		}
 		break;
 	case VER:
