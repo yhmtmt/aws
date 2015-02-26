@@ -36,7 +36,7 @@ using namespace cv;
 ///////////////////////////////////////////////// f_dummy_data
 const char * f_dummy_data::m_str_edt[EDT_TIME_FILE + 1] = 
 {
-	"rand", "time", "trand", "file", "tfile"
+	"rand", "time", "bseq", "aseq", "trand", "file", "tfile"
 };
 
 bool f_dummy_data::init_run()
@@ -75,13 +75,24 @@ bool f_dummy_data::proc(){
 		if(m_tail_buf == 0){// no data
 			switch(m_dtype){
 			case EDT_RAND:
-				for(unsigned int i = 0; i < m_len_pkt; m_tail_buf++, i++)
+				for(unsigned int i = 0; i < m_len_pkt; m_tail_buf++, i++, m_total++)
 					m_buf[i] = (unsigned char) (rand() & 0x00FF);
 				break;
 			case EDT_TIME:
 				memset(m_buf, 0, m_len_pkt);
 				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
 				m_tail_buf = sizeof(m_cur_time);
+				m_total += m_tail_buf;
+				break;
+			case EDT_BYTE_SEQ:
+				for(unsigned int i = 0; i < m_len_pkt;m_tail_buf++, i++, m_total++){
+					m_buf[i] = (unsigned char) (m_total & 0xFF);
+				}
+				break;
+			case EDT_ASCII_SEQ:
+				for(unsigned int i = 0; i < m_len_pkt;m_tail_buf++, i++, m_total++){
+					m_buf[i] = (char)(m_total % ('Z' - 'A')) + 'A';
+				}
 				break;
 			case EDT_TIME_RAND:
 				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
@@ -89,15 +100,18 @@ bool f_dummy_data::proc(){
 				for(unsigned int i = sizeof(m_cur_time); i < m_len_pkt; m_tail_buf++, i++){
 					m_buf[i] = (unsigned char) (rand() & 0x00FF);
 				}
+				m_total += m_tail_buf;
 				break;
 			case EDT_FILE:
 				m_fdata.read((char*)m_buf, m_len_pkt);
 				m_tail_buf = (int) m_fdata.gcount();
+				m_total += m_tail_buf;
 				break;
 			case EDT_TIME_FILE:
 				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
 				m_fdata.read((char*)(m_buf + sizeof(m_cur_time)), m_len_pkt);
 				m_tail_buf = (int) m_fdata.gcount() + sizeof(m_cur_time);
+				m_total += m_tail_buf;
 				break;
 			}
 		}

@@ -4,12 +4,8 @@ if [ $# -ne 2 ]; then
     echo "fep01.aws <com port> <dst address>"
 fi
 
-channel crbuf din
-channel crbuf dout
-filter dd dd -i -o din
-fset dd type aseq
-filter rd rd -i dout -o
-filter fep01 fep01 -i din -o dout
+channel crbuf dloop
+filter fep01 fep01 -i dloop -o dloop
 #fset dev /dev/ttyPS0
 fset fep01 port $1
 fset fep01 br 115200

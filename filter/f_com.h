@@ -105,18 +105,21 @@ private:
 	ifstream m_fdata;
 	enum e_data_type {
 		EDT_RAND /* only random number */, EDT_TIME/* only time */,
+		EDT_BYTE_SEQ, /* byte sequence */
+		EDT_ASCII_SEQ, /* ASCII sequence */
 		EDT_TIME_RAND /* Both time and random number */,
 		EDT_FILE /* Data from file */, 
 		EDT_TIME_FILE /* data from file with time stamp */
 	} m_dtype;
 
 	static const char * m_str_edt[EDT_TIME_FILE+1];
+	long long m_total;
 
 	unsigned char * m_buf;
 	int m_head_buf, m_tail_buf;
 public:
 	f_dummy_data(const char * name):f_base(name), m_pout(NULL), m_len_pkt(1024), m_dtype(EDT_RAND),
-		m_buf(NULL), m_head_buf(0), m_tail_buf(0)
+		m_buf(NULL), m_head_buf(0), m_tail_buf(0), m_total(0)
 	{
 		register_fpar("lpkt", &m_len_pkt, "Length of the packet.");
 		register_fpar("type", (int*)&m_dtype, EDT_TIME_FILE+1, m_str_edt, "Data type.");
