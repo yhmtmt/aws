@@ -152,9 +152,6 @@ struct s_obj
 		rvec = Mat::zeros(3, 1, CV_64FC1);
 	};
 
-	s_obj(const s_obj & obj){
-	}
-
 	~s_obj()
 	{
 		delete[] name;
@@ -310,14 +307,15 @@ private:
 
 	// sub operation
 	enum e_sub_operation{
-		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_INST_OBJ, SOP_DELETE
+		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ
 	};
-	static const char * m_str_sop[SOP_DELETE+1];
+	static const char * m_str_sop[SOP_REINIT_FOBJ+1];
 	e_sub_operation m_sop;
 	void handle_sop_delete();
 	void handle_sop_save();
 	void handle_sop_load();
 	void handle_sop_inst_obj();
+	void handle_sop_reinit_fobj();
 
 	bool m_bundistort;	// undistort flag. it cant be used with model handling mode.
 
@@ -507,6 +505,7 @@ public:
 //  R: Reset Window
 //  L: Load Frame object
 //  S: Save Frame object
+//  F: Reinitialize frame object 
 //  Up: parameter adjustment step up
 //  Down: parameter adjustment step down
 //
@@ -518,7 +517,6 @@ public:
 //  E: op <= Estimate
 //  C: op <= Camera
 //  P: op <= Point
-// 
 // op = Model
 //  * Show the model in full screen
 //	I: Instantiate and initialize New Object, op <= Obj, cur_obj = new_obj

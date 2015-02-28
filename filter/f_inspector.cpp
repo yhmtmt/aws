@@ -327,6 +327,9 @@ bool s_obj::init(const s_obj & obj)
 	pmdl = obj.pmdl;
 	t = obj.t;
 
+	if(name != NULL)
+		delete [] name;
+	name = NULL;
 	name = new char[strlen(obj.name) + 1];
 	if(name == NULL)
 		return false;
@@ -357,7 +360,12 @@ bool s_obj::load(FileNode & fnobj, vector<s_model> & mdls)
 
 	string str;
 	fn >> str;
+
+	if(name != NULL)
+		delete [] name;
+	name = NULL;
 	name = new char[str.length() + 1];
+
 	if(name == NULL)
 		return false;
 	strcpy(name, str.c_str());
@@ -788,8 +796,8 @@ bool s_frame_obj::load(const char * aname, vector<s_model> & mdls)
 const char * f_inspector::m_str_op[ESTIMATE+1]
 	= {"model", "obj", "point", "camera", "estimate"};
 
-const char * f_inspector::m_str_sop[SOP_DELETE+1]
-	= {"null", "save", "load", "ins", "del"};
+const char * f_inspector::m_str_sop[SOP_REINIT_FOBJ+1]
+	= {"null", "save", "load", "ins", "del", "fobj"};
 
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
@@ -1025,6 +1033,9 @@ bool f_inspector::proc()
 		break;
 	case SOP_INST_OBJ:
 		handle_sop_inst_obj();
+		break;
+	case SOP_REINIT_FOBJ:
+		handle_sop_reinit_fobj();
 		break;
 	}
 
@@ -2432,6 +2443,9 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			m_sop = SOP_INST_OBJ;
 		}
 		break;
+	case 'F':
+		m_sop = SOP_REINIT_FOBJ;
+		break;
 	case 'C':
 		m_op = CAMERA;
 		break;
@@ -2585,4 +2599,22 @@ void f_inspector::handle_sop_inst_obj()
 		}
 	}
 	m_sop = SOP_NULL;
+}
+
+
+void f_inspector::handle_sop_reinit_fobj()
+{
+	// determining reference frame.
+	int iref_prev = m_cur_frm - 1;
+	int iref_next = m_cur_frm + 1;
+
+	if(iref_next < m_fobjs.size()){
+		if(iref_prev >= 0)
+			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia);
+		else
+			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia);
+	}else{
+		if(iref_prev >= 0)
+			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia);
+	}
 }

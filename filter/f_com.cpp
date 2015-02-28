@@ -91,7 +91,7 @@ bool f_dummy_data::proc(){
 				break;
 			case EDT_ASCII_SEQ:
 				for(unsigned int i = 0; i < m_len_pkt;m_tail_buf++, i++, m_total++){
-					m_buf[i] = (char)(m_total % ('Z' - 'A')) + 'A';
+					m_buf[i] = (char)(m_total % ('Z' - 'A' + 1)) + 'A';
 				}
 				break;
 			case EDT_TIME_RAND:
