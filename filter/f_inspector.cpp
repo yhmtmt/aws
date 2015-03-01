@@ -577,17 +577,22 @@ void s_obj::sample_tmpl(Mat & img, Size & sz)
 		if(!visible[i])
 			continue;
 		Point2f & pt = pt2d[i];
+
 		roi.x = (int)(pt.x + 0.5) - ox;
 		roi.y = (int)(pt.y + 0.5) - oy;
+		if(roi.x < 0 || roi.y < 0 || roi.x + roi.width >= img.cols || roi.y + roi.height >= img.rows){
+			visible[i] = false;
+			continue;
+		}
+
 		img(roi).copyTo(ptx_tmpl[i]);
-	//	cout << roi << endl;
 	}
 }
 
 //////////////////////////////////////////////////////////////////// s_frame_obj
 bool s_frame_obj::init(const long long atfrm, 
 	s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
-	vector<Mat> & impyr, c_imgalign * pia)
+	vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks)
 {
 	tfrm = atfrm;
 	vector<s_obj> & objs_prev = pfobj0->objs;
@@ -605,6 +610,7 @@ bool s_frame_obj::init(const long long atfrm,
 	Rect roi;
 	Mat Warp, I;
 	I = Mat::eye(3, 3, CV_64FC1);
+	miss_tracks = 0;
 	//ia.set_wt(EWT_RGD);
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		vector<Point2f> & pt2d = objs[iobj].pt2d;
@@ -620,7 +626,7 @@ bool s_frame_obj::init(const long long atfrm,
 			
 			Point2f & pt_prev = pt2d_prev[ipt];
 
-			char buf[128];
+			//char buf[128];
 			Point2f & pt = pt2d[ipt];
 			if(pfobj1){
 				Point2f & pt_next = pfobj1->objs[iobj].pt2d[ipt];
@@ -635,31 +641,32 @@ bool s_frame_obj::init(const long long atfrm,
 			}
 
 			if(pia){
-				snprintf(buf, 128, "t%d.png", ipt);
-				imwrite(buf, tmpl[ipt]);
+				//snprintf(buf, 128, "t%d.png", ipt);
+				//imwrite(buf, tmpl[ipt]);
 				buildPyramid(tmpl[ipt], tmplpyr, (int) impyr.size() - 1);
 				roi.width = tmpl[ipt].cols;
 				roi.height = tmpl[ipt].rows;
 				roi.x = (int)(pt_prev.x + 0.5) - (roi.width >> 1);
 				roi.y = (int)(pt_prev.y + 0.5) - (roi.height >> 1);
-				snprintf(buf, 128, "r%d.png", ipt);
-				imwrite(buf, impyr[0](roi));
-				cout << roi << endl;
+				//snprintf(buf, 128, "r%d.png", ipt);
+				//imwrite(buf, impyr[0](roi));
+				//cout << roi << endl;
 				Warp = pia->calc_warp(tmplpyr, impyr, roi, I);
 				if(!pia->is_conv()){
 					cerr << "Tracker does not converged." << endl;
+					miss_tracks++;
 				}
 				afn(Warp, pt_prev, pt);
 			}
 			
-			cout << pt_prev << endl;
-			cout << pt << endl;
+			//cout << pt_prev << endl;
+			//cout << pt << endl;
 		}
 	}
 	return true;
 }
 
-
+// this initialization method has not already been used. Removed in the future code.
 bool s_frame_obj::init(const long long atfrm, s_frame_obj & fobj, 
 	vector<Mat> & impyr, c_imgalign & ia)
 {
@@ -808,7 +815,7 @@ const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
+	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
 	m_bauto_load_fobj(false), m_bauto_save_fobj(false),
 	m_bundistort(false), m_bcam_tbl_loaded(false),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
@@ -845,6 +852,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("vgb", &m_sig_gb, "Variance for gaussian blur.");
 	register_fpar("szptx", &m_sz_vtx_smpl.width, "Horizontal size of a point template.");
 	register_fpar("szpty", &m_sz_vtx_smpl.height, "Vertical size of a point template.");
+	register_fpar("miss_tracks", &m_miss_tracks, "Miss tracking counts of the points.");
 
 	// model related parameters
 	register_fpar("mdl", &m_cur_model, "Model with specified index is selected.");
@@ -988,12 +996,12 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 
 			if(iref_next < m_fobjs.size()){
 				if(iref_prev >= 0)
-					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia);
+					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia, m_miss_tracks);
 				else
-					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia);
+					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia, m_miss_tracks);
 			}else{
 				if(iref_prev >= 0)
-					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia);
+					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia, m_miss_tracks);
 			}
 		}
 	}
@@ -1275,7 +1283,8 @@ void f_inspector::renderInfo()
 	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (E)->Estimate (C)->Camera", m_str_op[m_op]);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
-	snprintf(information, 1023, "%d Objects %d Models", objs.size(), m_models.size());
+	snprintf(information, 1023, "%d Objects, %d Models, %d Miss Tracking", 
+		objs.size(), m_models.size(), m_miss_tracks);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 	switch(m_op){
@@ -2610,11 +2619,11 @@ void f_inspector::handle_sop_reinit_fobj()
 
 	if(iref_next < m_fobjs.size()){
 		if(iref_prev >= 0)
-			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia);
+			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia, m_miss_tracks);
 		else
-			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia);
+			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia, m_miss_tracks);
 	}else{
 		if(iref_prev >= 0)
-			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia);
+			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia, m_miss_tracks);
 	}
 }

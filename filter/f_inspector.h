@@ -247,7 +247,7 @@ struct s_frame_obj{
 	bool init(const long long atfrm, s_frame_obj & fobj, 
 		vector<Mat> & impyr, c_imgalign & ia);
 	bool init(const long long atfrm, s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
-		vector<Mat> & impyr, c_imgalign * pia);
+		vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks);
 
 	bool save(const char * aname);
 	bool load(const char * aname, vector<s_model> & mdls);
@@ -286,6 +286,7 @@ private:
 	// Tracking module
 	e_warp_type m_wt;
 	c_imgalign m_ia;
+	int m_miss_tracks;
 	Size m_sz_vtx_smpl;
 
 	// Rendering method for whole view
