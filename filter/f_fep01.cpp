@@ -73,6 +73,9 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_fname_txlog[0] = '\0';
 	m_fname_rxlog[0] = '\0';
 
+	register_fpar("ftxlog", m_fname_txlog, 1024, "Transmission log file.");
+	register_fpar("frxlog", m_fname_rxlog, 1024, "Receive log file.");
+
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
 	register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
 	register_fpar("br", &m_br, "Baud rate.");
@@ -544,7 +547,7 @@ bool f_fep01::pack_reg()
 	}
 	m_reg[0] = m_addr;
 
-	if(m_addr < 240){
+	if(m_addr_group < 240){
 		return false;
 	}
 	m_reg[1] = m_addr_group;
