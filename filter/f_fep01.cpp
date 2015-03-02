@@ -147,6 +147,7 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_rbuf[0] = m_wbuf[0] = '\0';
 }
 
+
 bool f_fep01::proc()
 {
 	//cout << "Proc/Cycle " << m_count_proc << "/" << m_count_clock << endl;
