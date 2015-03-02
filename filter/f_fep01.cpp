@@ -302,7 +302,7 @@ bool f_fep01::handle_init()
 
 bool f_fep01::handle_op()
 {
-	if(m_cmd_queue.size() < m_max_queue){
+	if(m_cmd_queue.size() < m_max_queue && m_pin != NULL){
 		int len = m_pin->read(m_cmd.msg, m_len_pkt);
 		if(len){
 			// push one packet to the queue from input channel
@@ -319,7 +319,7 @@ bool f_fep01::handle_op()
 	}
 
 	// if there exists recieved data, push to the output channel
-	if(m_rcv_msg_head < m_rcv_msg_tail){
+	if(m_rcv_msg_head < m_rcv_msg_tail && m_pout != NULL){
 		// push one recieved data to output channel
 		m_rcv_msg_head += m_pout->write(m_rcv_msg + m_rcv_msg_head, (int) (m_rcv_msg_tail - m_rcv_msg_head));
 		if(m_rcv_msg_head == m_rcv_msg_tail){
