@@ -196,8 +196,8 @@ bool f_fep01::proc()
 		if(wlen){
 			m_tcmd = m_cur_time;
 			m_num_retry = 0;
-			cout << "Write:";
-			cout.write(m_wbuf, wlen);
+			//cout << "Write:";
+			//cout.write(m_wbuf, wlen);
 		}
 		if(m_wbuf_len != wlen){
 			cerr << "Write operation failed." << endl;
@@ -226,7 +226,7 @@ bool f_fep01::proc()
 			}else{
 				m_cur_cmd = NUL;
 				m_cmd_stat = NRES;
-				cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+				//cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
 			}
 		}else if(m_rep){
 			/* m_rep == 1 means data transmission commands do not return response */
@@ -242,7 +242,7 @@ bool f_fep01::proc()
 					break;
 				m_cmd_stat = NRES;
 				m_cur_cmd = NUL;
-				cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+				//cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
 				break;
 			default:
 				break;
@@ -1225,7 +1225,7 @@ bool f_fep01::parse_response()
 				m_cmd_stat |= EOC;
 			}else if(m_cmd_stat & P0){
 				// if TS2 succeeded, log file is opened.
-				snprintf(m_pbuf, "%s_ts2.log", m_name);
+				snprintf(m_pbuf, 512, "%s_ts2.log", m_name);
 				m_flog_ts2.open(m_pbuf, ios_base::app);
 				m_ts2_mode = true;
 				m_total_tx += m_len_tx;
@@ -1395,12 +1395,12 @@ bool f_fep01::parse_message()
 	m_total_rx += m_rcv_len;
 
 	log_rx();
-	cout << "Recieve: ";
-	cout.write(m_rcv_msg + m_rcv_msg_tail, m_rcv_len);
-	if(m_rep_power){
-		cout << "Power:" << (int) m_rcv_pow << endl;
-	}
-	cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
+	//cout << "Recieve: ";
+	//cout.write(m_rcv_msg + m_rcv_msg_tail, m_rcv_len);
+	//if(m_rep_power){
+	//	cout << "Power:" << (int) m_rcv_pow << endl;
+	//}
+	//cout << "Total Tx:" << m_total_tx << " Rx:" << m_total_rx << endl;
 
 	m_rcv_msg_tail += m_rcv_len;
 	m_msg_bin = false;

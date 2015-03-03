@@ -20,6 +20,7 @@
 #include <Windows.h>
 //#include <winsock2.h>
 #define MSG_MORE MSG_PARTIAL
+#define socklen_t int
 #else /* for unix */
 #include <sys/types.h>
 #include <sys/socket.h>

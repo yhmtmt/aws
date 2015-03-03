@@ -274,7 +274,7 @@ bool f_udp::proc(){
 	while(!rcv_end || !snd_end){
 		if(m_pout){
 			if(m_tail_rbuf == 0){
-				int sz = sizeof(m_sock_addr_rcv);
+				socklen_t sz = sizeof(m_sock_addr_rcv);
 				m_tail_rbuf = recvfrom(m_sock, m_rbuf, m_len_pkt, 0, (sockaddr*) &m_sock_addr_snd, &sz);
 
 				if(m_tail_rbuf == 0) // no recieved packet

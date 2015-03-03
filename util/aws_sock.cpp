@@ -14,7 +14,8 @@
 
 // You should have received a copy of the GNU General Public License
 // along with aws_sock.cpp.  If not, see <http://www.gnu.org/licenses/>. 
-
+#include <iostream>
+using namespace std;
 #include "aws_sock.h"
 
 int dump_socket_error()

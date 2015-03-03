@@ -1062,10 +1062,10 @@ bool f_inspector::proc()
 	// estimate
 	if(m_op == ESTIMATE){
 		int itr = 0;
-		while(m_eest == EES_CONT && itr < m_num_max_itrs){
+		do{
 			estimate_fulltime();
 			itr++;
-		}
+		}while(m_eest == EES_CONT && itr < m_num_max_itrs);
 	}
 
 	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
@@ -1832,9 +1832,15 @@ void f_inspector::estimate_fulltime()
 	// calculating average ssd 
 	double ssd_avg = ssd / (double)m_fobjs.size();
 	double cam_erep = sqrt(ssd_avg);
-	if(m_cam_erep - cam_erep < ERROR_TOL){
+	double diff = m_cam_erep - cam_erep;
+	if(diff < -ERROR_TOL){
 		m_eest = EES_DIV;
 		return;
+	}else if(diff < ERROR_TOL){
+		m_eest = EES_CONV;
+		return;
+	}else{
+		m_eest = EES_CONT;
 	}
 
 	m_cam_erep = cam_erep;
@@ -1913,12 +1919,14 @@ void f_inspector::copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
 	}
 }
 
-void f_inspector::update_params(vector<s_obj> & objs){
+void f_inspector::update_params(vector<s_obj> & objs)
+{
 	int ipar;
 
 	// indexing parameters
 	vector<int> ipars;
 	int num_params = 0;
+	// counting phase
 	num_params = 6; // rvec, tvec;
 	if(!m_bcalib_fix_campar){
 		if(!m_bcalib_fix_principal_point)
@@ -1941,7 +1949,10 @@ void f_inspector::update_params(vector<s_obj> & objs){
 			num_params += 1;
 	}
 
+	// allocating phase
 	ipars.resize(num_params);
+
+	// loading phase
 	for(ipar = 0; ipar< 6; ipar++)
 		ipars[ipar] = ipar;
 
@@ -1986,12 +1997,14 @@ void f_inspector::update_params(vector<s_obj> & objs){
 	// updating each object
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
-		Mat eigenval, eigenvec;
+		//Mat eigenval, eigenvec;
 		Mat H, Hinv; // Hessian excluding fixed parameters and the inverse
 		Mat Jt; // Transpose of the Jacobian excluding fixed parameters
 		Mat dp; // updating amount of parameters
 
-		// setting reduced Hessian
+		// setting reduced Hessian. 
+		// In this loop ipar, jpar represents reduced hessian row,col indices, 
+		// and i, j represents original hessian's row, col indices.
 		H = Mat(num_params, num_params, CV_64FC1);
 		for(ipar = 0; ipar < num_params; ipar++){
 			int i = ipars[ipar];

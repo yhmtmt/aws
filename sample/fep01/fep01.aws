@@ -4,6 +4,8 @@ if [ $# -ne 2 ]; then
     echo "fep01.aws <com port> <dst address>"
 fi
 
+awscd "c:\cygwin\home\yhmtmt\share\aws\aws\sample\fep01"
+
 channel crbuf din
 channel crbuf dout
 filter dd dd -i -o din
@@ -16,9 +18,11 @@ fset fep01 br 115200
 fset fep01 addr_p2p $2
 fset fep01 cm p2p
 fset fep01 lpkt 100
-cyc 1
+fset fep01 ftxlog tx.log
+fset fep01 frxlog rx.log
+cyc 0.01
 go
 
-sleep 3
+#sleep 3
 
-fset fep01 st dbg
+#fset fep01 st dbg
