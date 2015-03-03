@@ -1567,7 +1567,7 @@ bool f_fep01::set_cmd()
 			m_wbuf[m_wbuf_len+1] = '\n';
 			m_wbuf_len += 2;
 			m_len_tx = itr->iarg2;
-			log_tx((unsigned char) itr->iarg2, (const char*) itr->msg);
+			log_tx((unsigned char) itr->iarg2, (unsigned char) itr->iarg1, (const char*) itr->msg);
 			if(m_rep != 0){
 				m_total_tx += m_len_tx;
 			}
@@ -1585,7 +1585,7 @@ bool f_fep01::set_cmd()
 				m_wbuf[m_wbuf_len+1] = '\n';
 				m_wbuf_len += 2;
 				m_len_tx = itr->iarg3;
-				log_tx((unsigned char) itr->iarg3, (const char*) itr->msg);
+				log_tx((unsigned char) itr->iarg3, (unsigned char) itr->iarg1, (const char*) itr->msg);
 				if(m_rep != 0){
 					m_total_tx += m_len_tx;
 				}
@@ -1604,7 +1604,7 @@ bool f_fep01::set_cmd()
 				m_wbuf[m_wbuf_len+1] = '\n';
 				m_wbuf_len += 2;
 				m_len_tx = itr->iarg4;
-				log_tx((unsigned char) itr->iarg4, (const char*) itr->msg);
+				log_tx((unsigned char) itr->iarg4, (unsigned char) itr->iarg1, (const char*) itr->msg);
 				if(m_rep != 0){
 					m_total_tx += m_len_tx;
 				}
@@ -1621,7 +1621,7 @@ bool f_fep01::set_cmd()
 			snprintf(m_wbuf, 512, "@%s%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->msg);
 			m_wbuf_len = (int) strlen(m_wbuf);
 			m_len_tx = (int) strlen(itr->msg);
-			log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
+			log_tx((unsigned char) strlen(itr->msg), (unsigned char) m_len_tx, (const char*) itr->msg);
 			if(m_rep != 0){
 				m_total_tx += m_len_tx;
 			}
@@ -1633,7 +1633,7 @@ bool f_fep01::set_cmd()
 				snprintf(m_wbuf, 512, "@%s%03d%03d%s\r\n", m_cmd_str[itr->type], itr->iarg1, itr->iarg2, itr->msg);
 				m_wbuf_len = (int) strlen(m_wbuf);
 				m_len_tx = (int) strlen(itr->msg);
-				log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
+				log_tx((unsigned char) strlen(itr->msg), (unsigned char) m_len_tx, (const char*) itr->msg);
 				if(m_rep != 0){
 					m_total_tx += m_len_tx;
 				}
@@ -1646,7 +1646,7 @@ bool f_fep01::set_cmd()
 					,itr->iarg3, itr->msg);
 				m_wbuf_len = (int) strlen(m_wbuf);
 				m_len_tx = (int) strlen(itr->msg);
-				log_tx((unsigned char) strlen(itr->msg), (const char*) itr->msg);
+				log_tx((unsigned char) strlen(itr->msg), (unsigned char) m_len_tx, (const char*) itr->msg);
 				if(m_rep != 0){
 					m_total_tx += m_len_tx;
 				}

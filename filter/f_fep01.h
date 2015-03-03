@@ -259,21 +259,22 @@ protected:
 	// for logging
 	char m_fname_txlog[1024] /* tx log file */, m_fname_rxlog[1024] /* rx log file */;
 	ofstream m_ftxlog, m_frxlog;
-	void log_tx(unsigned char len, const char * msg)
+	void log_tx(unsigned char len, unsigned char dst, const char * msg)
 	{
 		// data record
 		// <time> <len> <msg>
 		if(m_ftxlog.is_open()){
 			m_ftxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
 			m_ftxlog.write((const char*) & len, sizeof(len));
-			m_ftxlog.write((const char*) msg, len);
+			m_ftxlog.write((const char*) & dst, sizeof(dst));
+			m_ftxlog.write((const char*) msg, 128);
 		}
 	}
 
 	void log_rx()
 	{
 		// data record
-		// <time> <len> <power> <msg>
+		// <time> <len> <src> <rep0> <rep1> <power> <msg> 
 		if(m_frxlog.is_open()){
 			m_frxlog.write((const char*) & m_cur_time, sizeof(m_cur_time));
 			m_frxlog.write((const char*) & m_rcv_len, sizeof(m_rcv_len));
@@ -281,7 +282,7 @@ protected:
 			m_frxlog.write((const char*) & m_rcv_rep0, sizeof(m_rcv_rep0));
 			m_frxlog.write((const char*) & m_rcv_rep1, sizeof(m_rcv_rep1));
 			m_frxlog.write((const char*) & m_rcv_pow, sizeof(m_rcv_pow));
-			m_frxlog.write((const char*) m_rcv_msg + m_rcv_msg_tail, m_rcv_len);
+			m_frxlog.write((const char*) m_rcv_msg + m_rcv_msg_tail, 128);
 		}
 	}
 
@@ -296,13 +297,13 @@ public:
 	virtual bool init_run()
 	{
 		if(m_fname_txlog[0]){
-			m_ftxlog.open(m_fname_txlog);
+			m_ftxlog.open(m_fname_txlog, ios_base::binary);
 			if(!m_ftxlog.is_open())
 				return false;
 		}
 
 		if(m_fname_rxlog[0]){
-			m_frxlog.open(m_fname_rxlog);
+			m_frxlog.open(m_fname_rxlog, ios_base::binary);
 			if(!m_frxlog.is_open())
 				return false;
 		}
