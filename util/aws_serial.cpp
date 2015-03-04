@@ -1,4 +1,7 @@
 #include "stdafx.h"
+#include <iostream>
+using namespace std;
+
 #include "aws_serial.h"
 
 int enc_cbr(int cbr)
@@ -122,19 +125,23 @@ AWS_SERIAL open_serial(unsigned short port, int cbr)
 }
 
 #else
-AWS_SERIAL open_serial(const char * dname, int cbr)
+AWS_SERIAL open_serial(const char * dname, int cbr, bool nonblk)
 {
 	AWS_SERIAL h = NULL_SERIAL;
 	termios copt;
 	if(enc_cbr(cbr) < 0)
 		return h;
 
-	h = ::open(dname, O_RDWR | O_NOCTTY /*| O_NDELAY*/);
+	h = ::open(dname, O_RDWR | O_NOCTTY /*| (nonblk ? O_NDELAY : 0)| O_NDELAY*/);
 	if(h == NULL_SERIAL){
 		return h;
 	}
 
 	tcgetattr(h, &copt);
+
+	copt.c_cflag = enc_cbr(cbr) | CS8 | CLOCAL | CREAD;
+	copt.c_oflag &= ~(OPOST);
+	/*
 	cfsetispeed(&copt, enc_cbr(cbr));
 	cfsetospeed(&copt, enc_cbr(cbr));
 	copt.c_cflag &= ~PARENB;
@@ -144,6 +151,9 @@ AWS_SERIAL open_serial(const char * dname, int cbr)
 	copt.c_cc[VMIN] = 0;
 	copt.c_cc[VTIME] = 1;
 	copt.c_cflag |= (CLOCAL | CREAD);
+	*/
+
+	tcflush(h, TCIFLUSH);
 
 	if(tcsetattr(h, TCSANOW, &copt) != 0){
 		::close(h);
@@ -179,6 +189,14 @@ int write_serial(AWS_SERIAL h, char * buf, int len)
 		return -1;
 #else
 	len_sent = write(h, buf, len);
+	/*
+	cout << "Write serial: " << len << " bytes." << endl;
+	cout.write(buf, len);
+	cout << "(";
+	for(int i = 0; i < len; i++)
+		printf("%02x ", (int) buf[i]);
+	cout << ")";
+	*/
 #endif
 
 	return len_sent;
@@ -203,7 +221,35 @@ int read_serial(AWS_SERIAL h, char * buf, int len)
 			return -1;
 	}
 #else
-	len_rcvd = read(h, buf, len);
+	fd_set rd, er;
+	timeval tout;
+	tout.tv_sec = 0;
+	tout.tv_usec = 0;
+	FD_ZERO(&rd);
+	FD_ZERO(&er);
+	FD_SET(h, &rd);
+	FD_SET(h, &er);
+
+	int res = select(h+1, &rd, NULL, &er, &tout);
+	if(res > 0){
+		if(FD_ISSET(h, &rd)){
+			len_rcvd = read(h, buf, len);
+			/*
+			cout << "Read serial: " << len_rcvd << " bytes." << endl;
+			cout.write(buf, len_rcvd);
+			*/
+		}else if(FD_ISSET(h, &er)){
+			cerr << "Error in read_serial." << endl;
+			return -1;
+		}
+		return 0;
+	}else if(res < 0){
+		cerr << "Error in read_serial." << endl;
+		return -1;
+	}else{
+		return 0;
+	}
+
 #endif
 	return len_rcvd;
 }

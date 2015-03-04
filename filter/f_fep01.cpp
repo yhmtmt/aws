@@ -54,6 +54,7 @@ const char * f_fep01::m_cm_str[CM_P2P+1] = {
 	"p2p"
 };
 
+
 f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_port(0), m_br(9600), m_len_pkt(128), m_max_queue(10), m_cm(CM_P2P), m_addr_p2p(0), m_hcom(NULL_SERIAL),
 	m_addr(0x00), m_addr_group(0xF0), 

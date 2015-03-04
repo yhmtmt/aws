@@ -22,7 +22,7 @@ AWS_SERIAL open_serial(unsigned short port, int cbr);
 #else
 #define NULL_SERIAL -1
 #define AWS_SERIAL int
-AWS_SERIAL open_serial(const char * dname, int cbr);
+AWS_SERIAL open_serial(const char * dname, int cbr, bool nonblk = false);
 #endif
 
 bool close_serial(AWS_SERIAL h);

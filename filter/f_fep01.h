@@ -296,6 +296,7 @@ public:
 
 	virtual bool init_run()
 	{
+		cout << m_name << ": Entering init_run()" << endl;
 		if(m_fname_txlog[0]){
 			m_ftxlog.open(m_fname_txlog, ios_base::binary);
 			if(!m_ftxlog.is_open())
@@ -308,14 +309,17 @@ public:
 				return false;
 		}
 
+		cout << m_name << ": Openning serial" << endl;
+
 #ifdef _WIN32
 		m_hcom = open_serial(m_port, m_br);
 #else
-		m_hcom = open_serial(m_dname, m_br);
+		m_hcom = open_serial(m_dname, m_br, true);
 #endif
 		if(m_hcom == NULL_SERIAL)
 			return false;
 
+		cout << m_name << ": Serial device " << m_dname << "=" << m_hcom << endl;
 		init_parser();
 
 		m_st = ST_INIT;

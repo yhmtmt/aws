@@ -8,7 +8,7 @@ channel crbuf dloop
 filter fep01 fep01 -i dloop -o dloop
 #fset dev /dev/ttyPS0
 fset fep01 port $1
-fset fep01 br 115200
+fset fep01 br 9600
 fset fep01 addr_p2p $2
 fset fep01 cm p2p
 fset fep01 lpkt 100
