@@ -267,10 +267,12 @@ bool f_fep01::proc()
 	}
 	// parsing read buffer. The read buffer is possible to contain both command response and recieved messages.
 	m_rbuf_len = read_serial(m_hcom, m_rbuf, 512);
+	/*
 	if(m_rbuf_len){
 		cout << "Read:";
 		cout.write(m_rbuf, m_rbuf_len);
 	}
+	*/
 	if(m_rbuf_len < 0){
 		cerr << "Read operation failed." << endl;
 	}else{
@@ -615,6 +617,7 @@ bool f_fep01::parse_rbuf()
 {
 	char * rbuf = m_rbuf;
 	char * pbuf;
+
 	for(int i = 0; i < m_rbuf_len && m_pbuf_tail < 512; i++, rbuf++){
 		pbuf = m_pbuf + m_pbuf_tail;
 		*pbuf = *rbuf;
@@ -668,15 +671,15 @@ bool f_fep01::parse_rbuf()
 					// try to process as a command ressponse
 					if(m_pbuf_tail == 4){ // P0<cr><lf> etc.
 						if(parse_response()){
-							cout << "Response: " << m_pbuf << endl;
+							//cout << "Response: " << m_pbuf << endl;
 							end_parser();
 							continue;
 						}
 					}
 					// try to process as a command's return value
 					if(parse_response_value()){
-						m_pbuf[m_pbuf_tail] = '\0';
-						cout << "Response: " << m_pbuf << endl;
+						//m_pbuf[m_pbuf_tail] = '\0';
+						//cout << "Response: " << m_pbuf << endl;
 						end_parser();
 						continue;
 					}

@@ -1,20 +1,23 @@
 #!/bin/sh
 
-if [ $# -ne 2 ]; then
-    echo "fep01.aws <com port> <dst address>"
+if [ $# -ne 3 ]; then
+    echo "fep01.aws <com port> <dst address> <cycle time sec>"
 fi
 
 channel crbuf dloop
 filter fep01 fep01 -i dloop -o dloop
-#fset dev /dev/ttyPS0
+#fset dev "/dev/ttyUL1"
 fset fep01 port $1
-fset fep01 br 9600
+fset fep01 br 115200
 fset fep01 addr_p2p $2
 fset fep01 cm p2p
 fset fep01 lpkt 100
-cyc 1
+
+fset fep01 ftxlog tx.log
+fset fep01 ftxlog ty.log
+cyc $3
 go
 
-sleep 3
+#sleep 3
 
-fset fep01 st dbg
+#fset fep01 st dbg

@@ -139,7 +139,9 @@ AWS_SERIAL open_serial(const char * dname, int cbr, bool nonblk)
 
 	tcgetattr(h, &copt);
 
-	copt.c_cflag = enc_cbr(cbr) | CS8 | CLOCAL | CREAD;
+	copt.c_cflag = enc_cbr(cbr) | CS8 | CLOCAL | CREAD;	
+	copt.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+	copt.c_iflag &= ~(IGNCR | ICRNL | INLCR);
 	copt.c_oflag &= ~(OPOST);
 	/*
 	cfsetispeed(&copt, enc_cbr(cbr));
@@ -231,6 +233,7 @@ int read_serial(AWS_SERIAL h, char * buf, int len)
 	FD_SET(h, &er);
 
 	int res = select(h+1, &rd, NULL, &er, &tout);
+	len_rcvd = 0;
 	if(res > 0){
 		if(FD_ISSET(h, &rd)){
 			len_rcvd = read(h, buf, len);
@@ -242,7 +245,6 @@ int read_serial(AWS_SERIAL h, char * buf, int len)
 			cerr << "Error in read_serial." << endl;
 			return -1;
 		}
-		return 0;
 	}else if(res < 0){
 		cerr << "Error in read_serial." << endl;
 		return -1;
