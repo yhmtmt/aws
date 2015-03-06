@@ -42,8 +42,8 @@ const char * f_fep01::m_rec_str[6] = {
 	"RXT" /* text */, "RXR" /* text 1 stage repeat */, "RX2" /* text 2 stage repeat */
 };
 
-const char * f_fep01::m_st_str[ST_TEST+1] = {
-	"init", "rst", "op", "dbg", "test"
+const char * f_fep01::m_st_str[ST_TIME_SYNC_SV+1] = {
+	"init", "rst", "op", "dbg", "test", "tcl", "tsv"
 };
 
 const char * f_fep01::m_sst_str[SST_PROC+1] = {
@@ -68,7 +68,7 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_tcmd_wait(100 * MSEC), 
 	m_tcmd_out(5*SEC), m_num_retry(3), m_num_max_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_rcv_msg_head(0), m_rcv_pow(0),
 	m_rcv_msg_tail(0),
-	m_total_tx(0), m_total_rx(0)
+	m_total_tx(0), m_total_rx(0), m_num_ts_pkts(10)
 {
 	m_dname[0] = '\0';
 	m_fname_txlog[0] = '\0';
@@ -81,6 +81,7 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
 	register_fpar("br", &m_br, "Baud rate.");
 	register_fpar("lpkt", &m_len_pkt, "Packet length.");
+	register_fpar("thead", &m_thead, "Time header enable.");
 
 	register_fpar("cm", (int*)&m_cm, CM_P2P+1, m_cm_str, "Communication Mode.");
 	register_fpar("addr_p2p", &m_addr_p2p, "Destination address for P2P communication.");
@@ -145,6 +146,9 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	register_fpar("st", (int*)&m_st, ST_TEST+ 1, m_st_str, "Level 2 state.");
 	register_fpar("sst", (int*)&m_sst, SST_PROC, m_sst_str, "Level 2 sub state.");
 
+	register_fpar("ntpks", &m_num_ts_pkts, "Number of packets used for time synchronization.");
+	register_fpar("tcl", &m_tcl, "Time client.");
+
 	m_rbuf[0] = m_wbuf[0] = '\0';
 }
 
@@ -184,6 +188,16 @@ bool f_fep01::proc()
 	case ST_TEST:
 		// maybe it invokes the TS2 mode
 		if(!handle_test()){
+			return false;
+		}
+		break;
+	case ST_TIME_SYNC_CL:
+		if(!handle_time_sync_client()){
+			return false;
+		}
+		break;
+	case ST_TIME_SYNC_SV:
+		if(!handle_time_sync_server()){
 			return false;
 		}
 		break;
@@ -306,7 +320,15 @@ bool f_fep01::handle_init()
 bool f_fep01::handle_op()
 {
 	if(m_cmd_queue.size() < m_max_queue && m_pin != NULL){
-		int len = m_pin->read(m_cmd.msg, m_len_pkt);
+		int len;
+		if(m_thead){
+			memcpy((void*)m_cmd.msg, (void*)&m_cur_time, sizeof(m_cur_time));
+			len = sizeof(m_cur_time);
+			len += m_pin->read(m_cmd.msg + sizeof(m_cur_time), m_len_pkt - sizeof(m_cur_time));
+		}else{
+			len = m_pin->read(m_cmd.msg, m_len_pkt);
+		}
+
 		if(len){
 			// push one packet to the queue from input channel
 			m_cmd.msg[len] = '\0';
@@ -473,6 +495,132 @@ bool f_fep01::handle_rst()
 			m_st = ST_OP;
 			m_sst = SST_CMD;
 		}
+	}
+	return true;
+}
+
+bool f_fep01::handle_time_sync_client()
+{
+	switch(m_ts_state){
+	case ETS_CLEAN:
+		if(m_cmd_queue.size() == 0){
+			m_ts_state = ETS_RCV;
+			m_ts_pkt_cnt = 0;
+		}
+		break;
+	case ETS_RCV:
+		// wating  for recieving time packet
+		if(m_rcv_msg_head < m_rcv_msg_tail && m_pout != NULL){
+			char * ptr = &m_rcv_msg[m_rcv_msg_head];
+			unsigned char tid = *ptr;
+			ptr++;
+			long long rcv_time = (long long) *ptr;
+			if(rcv_time != m_snd_time){
+				cerr << "Time sync packet is not recieved." << endl;
+				return false;
+			}
+			ptr += sizeof(long long);
+			int delay = (int) *ptr;
+			m_delay = delay;
+			m_ts_pkt_cnt++;
+			if(m_num_ts_pkts == tid){
+				m_ts_state = ETS_CLEAN;
+				m_st = ST_OP;
+				rcv_time += (m_delay / m_ts_pkt_cnt);
+				f_base::set_time(rcv_time);
+				break;
+			}else{
+				// mirror the message
+				m_cmd.iarg1 = m_rcv_src;
+				m_cmd.iarg2 = m_rcv_msg_tail - m_rcv_msg_head;
+				memcpy((void*)m_cmd.msg, (void*) m_rcv_msg, m_rcv_msg_tail - m_rcv_msg_head);
+				m_rcv_msg_tail = m_rcv_msg_head = 0;
+
+				//returning message
+				m_cmd_queue.push_back(m_cmd);
+				if(!set_cmd())
+					return false;
+				int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+				if(wlen != m_wbuf_len){
+					return false;
+				}
+			}
+		}
+		break;
+	case ETS_SND:// no use
+		break;
+	}
+	return true;
+}
+
+bool f_fep01::handle_time_sync_server()
+{
+	switch(m_ts_state){
+	case ETS_CLEAN:
+		if(m_cmd_queue.size() == 0){
+			// state transition 
+			m_ts_pkt_cnt = 0;
+			m_delay = 0;
+			m_num_retry = 0;
+			m_ts_state = ETS_SND;
+		}
+		break;
+	case ETS_SND:
+		{
+			// packing packet
+			// time packet format
+			// <packet number 1 byte> <time : 8byte> <delay value 4byte>
+
+			m_cmd.type = TBN;
+			m_cmd.iarg1 = m_tcl; // client addrss
+			m_cmd.iarg2 = sizeof(m_ts_pkt_cnt) + sizeof(m_cur_time) + sizeof(m_delay);
+			char * ptr = m_cmd.msg;
+			*ptr = m_ts_pkt_cnt;
+			ptr++;
+			memcpy((void*)ptr, (void*)&m_cur_time, sizeof(m_cur_time));
+			m_snd_time = m_cur_time;
+			ptr += sizeof(m_cur_time);
+			memcpy((void*)ptr, (void*)&m_delay, sizeof(m_delay));
+
+			//sending command
+			m_cmd_queue.push_back(m_cmd);
+			if(!set_cmd())
+				return false;
+
+			int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
+			if(wlen != m_wbuf_len){
+				return false;
+			}
+		}
+		m_ts_state = ETS_RCV;
+		break;
+	case ETS_RCV:
+		// diff recieved time and send time
+		if(m_rcv_msg_head < m_rcv_msg_tail && m_pout != NULL){
+			char * ptr = &m_rcv_msg[m_rcv_msg_head];
+			unsigned char tid = *ptr;
+			ptr++;
+			long long rcv_time = (long long) *ptr;
+			if(rcv_time != m_snd_time){
+				cerr << "Time sync packet is not recieved." << endl;
+				return false;
+			}
+			if(m_num_ts_pkts == tid){
+				m_st = ST_OP;
+				m_ts_state = ETS_CLEAN;
+				break;
+			}
+			m_delay = (int)(m_cur_time - m_snd_time);
+			m_ts_state = ETS_SND;
+			m_ts_pkt_cnt++;
+			m_num_retry = 0;
+		}else if(m_snd_time + m_tcmd_out <= m_cur_time && m_num_retry < m_num_max_retry){
+			m_num_retry++;
+			m_ts_state = ETS_SND;
+		}else{
+			return false;
+		}
+		break;
 	}
 	return true;
 }
