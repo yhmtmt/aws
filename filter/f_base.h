@@ -420,6 +420,7 @@ public:
 	}
 
 	void set_time(tmex & tm){m_clk.set_time(tm);};
+	void set_time(long long & t){m_clk.set_time(t);};
 
 	// clock signal issued by c_aws's main loop
 	static void clock(long long cur_time);

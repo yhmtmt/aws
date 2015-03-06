@@ -94,6 +94,9 @@ public:
 
 	long long get_time(); // get UTC time
 	void set_time(tmex & tm); // set new UTC time
+	void set_time(long long & t)	// set new UTC time
+	{m_tcur = t;} 
+
 	void wait();
 };
 

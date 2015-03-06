@@ -36,11 +36,11 @@ protected:
 	// ST_OP ordinal operation (recieve data stream from channel)
 	// ST_TEST Invoke TS2 
 	enum e_state{
-		ST_INIT, ST_RST, ST_OP, ST_DBG, ST_TEST
+		ST_INIT, ST_RST, ST_OP, ST_DBG, ST_TEST, ST_TIME_SYNC_CL, ST_TIME_SYNC_SV
 	};
 	e_state m_st;
 	bool m_ts2_mode;
-	static const char * m_st_str[ST_TEST+1];
+	static const char * m_st_str[ST_TIME_SYNC_SV+1];
 
 	enum e_sub_state{
 		SST_CMD, SST_PROC
@@ -62,6 +62,10 @@ protected:
 
 	// invoke TS2 mode. 
 	bool handle_test();
+
+	bool handle_time_sync_client();
+
+	bool handle_time_sync_server();
 
 	enum e_cmd{
 		NUL, ARG,  BAN, BCL, DAS,
@@ -96,6 +100,7 @@ protected:
 	unsigned short m_port;
 	unsigned int m_br;
 	int m_len_pkt;
+	bool m_thead; // time header enable
 
 	AWS_SERIAL m_hcom;
 
@@ -291,6 +296,18 @@ protected:
 
 	// for statistics
 	long long m_total_tx, m_total_rx;	// total transmission and reception
+
+	// time sync mode
+	unsigned char m_ts_pkt_cnt;
+	unsigned char m_num_ts_pkts;
+	unsigned char m_tcl; // time client
+	enum e_ts_state{ // time sync state
+		ETS_CLEAN, ETS_SND, ETS_RCV
+	} m_ts_state;
+	char m_time_packet[128];
+	long long m_snd_time;
+	int m_delay;
+
 public:
 	f_fep01(const char * name);
 
