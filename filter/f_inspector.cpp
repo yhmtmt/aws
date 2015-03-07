@@ -823,7 +823,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
 	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
-	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0),
+	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
 	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3)
 {
 	m_name_obj[0] = '\0';
@@ -1062,6 +1062,7 @@ bool f_inspector::proc()
 	// estimate
 	if(m_op == ESTIMATE){
 		int itr = 0;
+		m_cam_erep = DBL_MAX;
 		do{
 			estimate_fulltime();
 			itr++;
@@ -2005,7 +2006,7 @@ void f_inspector::update_params(vector<s_obj> & objs)
 	vector<int> ipars;
 	make_param_indices(ipars);
 	Mat H, Hinv, Jt, dp;
-	H = Mat(ipars.size(), ipars.size(), CV_64FC1);
+	H = Mat((int)ipars.size(), (int)ipars.size(), CV_64FC1);
 
 	// updating each object
 	for(int iobj = 0; iobj < objs.size(); iobj++){
@@ -2025,7 +2026,7 @@ void f_inspector::update_params(vector<s_obj> & objs)
 		}
 
 		// settig reduced transposed Jacobian
-		Jt = Mat(ipars.size(), obj.jacobian.rows, CV_64FC1);
+		Jt = Mat((int)ipars.size(), obj.jacobian.rows, CV_64FC1);
 		for(int ipar = 0; ipar < ipars.size(); ipar++){
 			int i = ipars[ipar];
 			double * ptr0 = obj.jacobian.ptr<double>(0) + i;
@@ -2603,15 +2604,14 @@ bool f_inspector::save_fobjs()
 {
 	ofstream file;
 	char fname[1024];
-	snprintf(fname, 1024, "%s.inspector");
+	snprintf(fname, 1024, "%s.inspector", m_name);
 	file.open(fname);
 	if(!file.is_open())
 		return false;
 
 	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
 		m_fobjs[ifobj]->save(m_name);
-		snprintf(fname, 1024, "%s_%lld,yml", m_name, m_fobjs[ifobj]->tfrm);
-		file << fname << endl;
+		file << m_fobjs[ifobj]->tfrm << endl;
 	}
 
 	return true;
@@ -2645,7 +2645,7 @@ bool f_inspector::load_fobjs()
 {
 	ifstream file;
 	char fname[1024];
-	snprintf(fname, 1024, "%s.inspector");
+	snprintf(fname, 1024, "%s.inspector", m_name);
 	file.open(fname);
 	if(!file.is_open())
 		return false;
@@ -2661,11 +2661,14 @@ bool f_inspector::load_fobjs()
 		file.getline(fname, 1024);
 		num_fobjs++;
 	}
+	file.clear();
 	file.seekg(ios_base::beg);
 
 	m_fobjs.resize(num_fobjs);
 	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
 		file.getline(fname, 1024);
+		m_fobjs[ifobj] = new s_frame_obj();
+		m_fobjs[ifobj]->tfrm = atoll(fname);
 		m_fobjs[ifobj]->load(m_name, m_models);
 	}
 
