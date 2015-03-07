@@ -301,9 +301,9 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		MODEL, OBJ, POINT, CAMERA, ESTIMATE
+		MODEL, OBJ, POINT, CAMERA, ESTIMATE, FRAME
 	};
-	static const char * m_str_op[ESTIMATE+1]; 
+	static const char * m_str_op[FRAME+1]; 
 	e_operation m_op;
 
 	// sub operation
@@ -346,7 +346,8 @@ private:
 	bool m_bauto_load_fobj, m_bauto_save_fobj;
 	vector<s_frame_obj*> m_fobjs;
 	int m_cur_frm;
-
+	bool save_fobjs();
+	bool load_fobjs();
 	//
 	// Object
 	// 
@@ -413,6 +414,7 @@ private:
 	void acc_Hcamint(Mat & Hcamint, vector<s_obj> & objs);
 	void copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs);
 	void update_params(vector<s_obj> & objs);
+	void make_param_indices(vector<int> & ipars);
 	void estimate();
 	void estimate_fulltime();
 
@@ -518,6 +520,7 @@ public:
 //  E: op <= Estimate
 //  C: op <= Camera
 //  P: op <= Point
+//  F: op <= Frame
 // op = Model
 //  * Show the model in full screen
 //	I: Instantiate and initialize New Object, op <= Obj, cur_obj = new_obj

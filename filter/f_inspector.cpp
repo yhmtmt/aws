@@ -800,8 +800,8 @@ bool s_frame_obj::load(const char * aname, vector<s_model> & mdls)
 }
 
 //////////////////////////////////////////////////////////////////// class f_inspector
-const char * f_inspector::m_str_op[ESTIMATE+1]
-	= {"model", "obj", "point", "camera", "estimate"};
+const char * f_inspector::m_str_op[FRAME+1]
+	= {"model", "obj", "point", "camera", "estimate", "frame"};
 
 const char * f_inspector::m_str_sop[SOP_REINIT_FOBJ+1]
 	= {"null", "save", "load", "ins", "del", "fobj"};
@@ -1470,6 +1470,10 @@ void f_inspector::renderInfo()
 		snprintf(information, 1023, "Estimate");
 		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
+	case FRAME:
+		snprintf(information, 1023, "%d Frame Objs", (int)m_fobjs.size());
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		break;
 	}
 
 	snprintf(information, 1023, "(%d, %d)", m_mc.x, m_mc.y);
@@ -1919,12 +1923,13 @@ void f_inspector::copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
 	}
 }
 
-void f_inspector::update_params(vector<s_obj> & objs)
+// Since we do not update all parameters according to flags,
+// we need to calculate indices of the parameters to calculate hessian.
+void f_inspector::make_param_indices(vector<int> & ipars)
 {
 	int ipar;
 
 	// indexing parameters
-	vector<int> ipars;
 	int num_params = 0;
 	// counting phase
 	num_params = 6; // rvec, tvec;
@@ -1993,32 +1998,35 @@ void f_inspector::update_params(vector<s_obj> & objs)
 			ipars[ipar] = 18; ipar++;
 		}
 	}
+}
+
+void f_inspector::update_params(vector<s_obj> & objs)
+{
+	vector<int> ipars;
+	make_param_indices(ipars);
+	Mat H, Hinv, Jt, dp;
+	H = Mat(ipars.size(), ipars.size(), CV_64FC1);
 
 	// updating each object
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
-		//Mat eigenval, eigenvec;
-		Mat H, Hinv; // Hessian excluding fixed parameters and the inverse
-		Mat Jt; // Transpose of the Jacobian excluding fixed parameters
-		Mat dp; // updating amount of parameters
 
 		// setting reduced Hessian. 
 		// In this loop ipar, jpar represents reduced hessian row,col indices, 
 		// and i, j represents original hessian's row, col indices.
-		H = Mat(num_params, num_params, CV_64FC1);
-		for(ipar = 0; ipar < num_params; ipar++){
+		for(int ipar = 0; ipar < ipars.size(); ipar++){
 			int i = ipars[ipar];
 			double * ptr0 = obj.hessian.ptr<double>(i);
 			double * ptr1 = H.ptr<double>(ipar);
-			for(int jpar = 0; jpar < num_params; jpar++){
+			for(int jpar = 0; jpar < ipars.size(); jpar++){
 				int j = ipars[jpar];
 				ptr1[jpar] = ptr0[j];
 			}
 		}
 
 		// settig reduced transposed Jacobian
-		Jt = Mat(num_params, obj.jacobian.rows, CV_64FC1);
-		for(ipar = 0; ipar < num_params; ipar++){
+		Jt = Mat(ipars.size(), obj.jacobian.rows, CV_64FC1);
+		for(int ipar = 0; ipar < ipars.size(); ipar++){
 			int i = ipars[ipar];
 			double * ptr0 = obj.jacobian.ptr<double>(0) + i;
 			double * ptr1 = Jt.ptr<double>(ipar);
@@ -2032,7 +2040,7 @@ void f_inspector::update_params(vector<s_obj> & objs)
 
 		// calculating Hessian inverse
 		invert(H, Hinv, DECOMP_CHOLESKY);
-
+		
 		// calculating parameter changes
 		Mat Grad = Jt * obj.err;
 		dp = Hinv * Grad;
@@ -2049,7 +2057,7 @@ void f_inspector::update_params(vector<s_obj> & objs)
 		ptr[1] += ptr_dp[4]; // ty
 		ptr[2] += ptr_dp[5]; // tz
 
-		ipar = 6;
+		int ipar = 6;
 		if(!m_bcalib_fix_campar){
 			ptr = m_cam_int.ptr<double>(0);
 			ptr[0] += ptr_dp[ipar]; ipar++;
@@ -2461,12 +2469,17 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		m_op = ESTIMATE;
 		break;
 	case 'I':
-		if(m_op == MODEL){
+		switch(m_op){
+		case MODEL:
 			m_sop = SOP_INST_OBJ;
+			break;
+		case FRAME:
+			m_sop = SOP_REINIT_FOBJ;
+			break;
 		}
 		break;
 	case 'F':
-		m_sop = SOP_REINIT_FOBJ;
+		m_op = FRAME;
 		break;
 	case 'C':
 		m_op = CAMERA;
@@ -2577,8 +2590,31 @@ void f_inspector::handle_sop_save()
 	case CAMERA:
 		m_fobjs[m_cur_frm]->save(m_name);
 		break;
+	case FRAME:
+		if(!save_fobjs()){
+			cerr << "Failed to save fobjs." << endl;
+		}
+		break;
 	}	
 	m_sop = SOP_NULL;
+}
+
+bool f_inspector::save_fobjs()
+{
+	ofstream file;
+	char fname[1024];
+	snprintf(fname, 1024, "%s.inspector");
+	file.open(fname);
+	if(!file.is_open())
+		return false;
+
+	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
+		m_fobjs[ifobj]->save(m_name);
+		snprintf(fname, 1024, "%s_%lld,yml", m_name, m_fobjs[ifobj]->tfrm);
+		file << fname << endl;
+	}
+
+	return true;
 }
 
 void f_inspector::handle_sop_load()
@@ -2596,8 +2632,44 @@ void f_inspector::handle_sop_load()
 		if(m_cur_model < 0)
 			m_cur_model = (int) (m_models.size() - 1);
 		break;
+	case FRAME:
+		if(!load_fobjs()){
+			cerr << "Failed to load fobjs." << endl;
+		}
+		break;
 	}
 	m_sop = SOP_NULL;
+}
+
+bool f_inspector::load_fobjs()
+{
+	ifstream file;
+	char fname[1024];
+	snprintf(fname, 1024, "%s.inspector");
+	file.open(fname);
+	if(!file.is_open())
+		return false;
+	if(m_fobjs.size()){
+		for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
+			delete m_fobjs[ifobj];
+		}
+		m_fobjs.clear();
+	}
+
+	int num_fobjs = 0;
+	while(!file.eof()){
+		file.getline(fname, 1024);
+		num_fobjs++;
+	}
+	file.seekg(ios_base::beg);
+
+	m_fobjs.resize(num_fobjs);
+	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
+		file.getline(fname, 1024);
+		m_fobjs[ifobj]->load(m_name, m_models);
+	}
+
+	return true;
 }
 
 void f_inspector::handle_sop_inst_obj()
