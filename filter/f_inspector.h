@@ -144,6 +144,7 @@ struct s_obj
 	Mat hessian;
 	Mat dp;
 	Mat err;
+	Mat jterr;
 	double ssd;
 	int match_count;
 
@@ -391,6 +392,8 @@ private:
 	int m_err_range; // error range of reprojection error of usable frame 
 
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
+	CvLevMarq m_solver;
+
 	bool m_bcalib_fix_campar;
 	bool m_bcalib_use_intrinsic_guess;
 	bool m_bcalib_fix_principal_point;
@@ -417,7 +420,7 @@ private:
 	void make_param_indices(vector<int> & ipars);
 	void estimate();
 	void estimate_fulltime();
-
+	void estimate_levmarq();
 	virtual bool alloc_d3dres();
 	virtual void release_d3dres();
 public:

@@ -475,6 +475,7 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio)
 	}
 	mulTransposed(jacobian, hessian, true);
 	calc_ssd();
+	jterr = jacobian.t() * err;
 	calc_num_matched_points();
 }
 
@@ -640,7 +641,7 @@ bool s_frame_obj::init(const long long atfrm,
 				pt.y = (float)(fac * pt_prev.y + (1.0 - fac) * pt_next.y);
 			}
 
-			if(pia){
+			if(pia && tmpl.size() != 0){
 				//snprintf(buf, 128, "t%d.png", ipt);
 				//imwrite(buf, tmpl[ipt]);
 				buildPyramid(tmpl[ipt], tmplpyr, (int) impyr.size() - 1);
@@ -1004,6 +1005,7 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia, m_miss_tracks);
 			}
 		}
+		m_cur_obj = (int) m_fobjs[m_cur_frm]->objs.size() - 1;
 	}
 
 	// update time and image.
@@ -1067,6 +1069,7 @@ bool f_inspector::proc()
 			estimate_fulltime();
 			itr++;
 		}while(m_eest == EES_CONT && itr < m_num_max_itrs);
+		m_op = FRAME;
 	}
 
 	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
@@ -1810,13 +1813,250 @@ void f_inspector::estimate()
 }
 
 
+// estimation methods written with Levenberg Marquardt implementation in OpenCV (CvLevMarq)
+void f_inspector::estimate_levmarq()
+{
+//	double ssd_avg, ssd_range;
+	// calculating valid flag. if the flag is asserted, the frame is used for the optimization
+	vector<bool> valid;
+	int num_valid_frms = min((int)m_fobjs.size(), m_num_max_frms_used);
+	double step =  (double)m_fobjs.size() / (double) num_valid_frms; 
+	valid.resize(m_fobjs.size(), false);
+	num_valid_frms = 0;
+	for(double ifrm = 0.; ifrm < (double) m_fobjs.size(); ifrm += step){
+		int i = (int) ifrm;
+//		if(m_fobjs[i]->ssd - ssd_avg < ssd_range){
+			valid[i] = true;
+			num_valid_frms++;
+//		}
+	}
+
+	// current frame is forced to be used for the optimization
+	valid[m_cur_frm] = true;
+	num_valid_frms++;
+
+	// counting extrinsic parameters (6 x number of objects)
+	int nparams = 12;;
+	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
+		if(!valid[ifobj])
+			continue;
+		vector<s_obj> & objs = m_fobjs[ifobj]->objs;		
+		nparams += (int) objs.size() * 6;
+	}
+
+	// initializing LM-solver
+	CvTermCriteria tc;
+	tc.epsilon = FLT_EPSILON;
+	tc.max_iter = m_num_max_itrs;
+	tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
+	m_solver.init(nparams, 0, tc);
+
+	//set initial parameter and parameter mask
+
+	double * param = m_solver.param->data.db;
+	uchar * mask = m_solver.mask->data.ptr;
+
+	// Setting camera intrinsics
+	double * ptr_int, * ptr_dist;
+	ptr_int = m_cam_int.ptr<double>(0);
+	ptr_dist = m_cam_dist.ptr<double>(0);
+
+	if(m_bcalib_fix_campar){
+		for(int ipar = 0; ipar < 12; ipar++)
+			mask[ipar] = 0;
+	}
+	param[0] = ptr_int[0];
+	param[1] = ptr_int[4];
+
+	if(m_bcalib_fix_principal_point){
+		mask[2] = 0;
+		mask[3] = 0;
+	}
+	param[2] = ptr_int[2];
+	param[3] = ptr_int[5];
+
+	if(m_bcalib_zero_tangent_dist){
+		mask[6] = 0;
+		mask[7] = 0;
+	}
+	param[6] = ptr_dist[2];
+	param[7] = ptr_dist[3];
+
+	if(m_bcalib_fix_k1)
+		mask[4] = 0;
+	param[4] = ptr_dist[0];
+
+	if(m_bcalib_fix_k2)
+		mask[5] = 0;
+	param[5] = ptr_dist[1];
+
+	if(m_bcalib_fix_k3)
+		mask[8] = 0;
+	param[8] = ptr_dist[8];
+
+	if(m_bcalib_fix_k4)
+		mask[9] = 0;
+	param[9] = ptr_dist[9];
+
+	if(m_bcalib_fix_k5)
+		mask[10] = 0;
+	param[10] = ptr_dist[10];
+
+	if(m_bcalib_fix_k6)
+		mask[11] = 0;
+	param[11] = ptr_dist[11];
+
+	// setting extrinsics
+	param += 12;
+	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
+		if(!valid[ifobj])
+			continue;
+		vector<s_obj> & objs = m_fobjs[ifobj]->objs;
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			double * pext;
+			// copy rvec
+			pext = objs[iobj].rvec.ptr<double>();
+			memcpy((void*)param, (void*)pext, sizeof(double) * 3);
+
+			// copy tvec
+			pext = objs[iobj].tvec.ptr<double>();
+			memcpy((void*)(param + 3), (void*)pext, sizeof(double) * 3);
+
+			param += 6;
+		}
+	}
+
+	// Compounds of Jacobian
+	// J = 
+	//     | Cam | Obj1 | Obj2 | ... | Obj n |
+	// OP1   C1    OP11
+	// OP2   C2           OP22 
+	// ...
+	// OPn   Cn                         OPnn
+	// 
+	// Jt = 
+	//     | OP1   | OP2   | ... | OP4  |
+	// Cam   C1^t    C2^t          C4^t
+	// Obj1  OP11^t
+	// Obj2         OP22^t 
+	// ...
+	// Objn                        OPnn^t
+	// 
+	// Psuedo Hessian (JtJ)
+	//      | Cam         |  Obj1   |  Obj2   | .... |  Obj n   |
+	// Cam    Hcam         C1^tOP11  C2^tOP22          Cn^tOPnn
+	// Obj1   (C1^tOP11)^t  OP11^2
+	// Obj2   (C2^tOP22)^t            OP22^2
+	// ...
+	// Objn   (Cn^tOPnn)^t                              OPnn^2
+	//
+	// Hcam = C1^2+...Cn^2
+	// 
+	// Err =
+	//     |Err|
+	//      OE1  
+	//      OE2  
+	//       ...
+	//      OEn  
+	//
+	// JtErr
+	//     Ecam
+	//     OP11^tOE1
+	//     OP22^tOE2
+	//     ...
+	//     OPnn^tOEn
+	// Ecam = C1^tOE1 + C2^tOE2 + ... + Cn^tOEn
+
+	while(1){
+		const CvMat * _param = NULL;
+		CvMat * _JtJ = NULL, *_JtErr = NULL;
+		double * errNorm = NULL;
+		double * pparam;
+
+		param = m_solver.param->data.db;
+		pparam = m_solver.prevParam->data.db;
+
+		bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
+
+		// if we need to use fixed aspect ratio, this codes should be rewritten to multiply the aspect ratio
+		param[0] = param[1];
+		pparam[0] = pparam[1];
+
+		// updating intrinsic parameters
+		ptr_int[0] = param[0];
+		ptr_int[4] = param[1];
+		ptr_int[2] = param[2];
+		ptr_int[5] = param[3];
+		for(int idist = 0; idist < 12; idist++){
+			ptr_dist[idist] = param[4 + idist];
+		}
+
+		// updating extrinsic parameters 
+		param += 12;
+		for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
+			if(!valid[ifobj])
+				continue;
+			vector<s_obj> & objs = m_fobjs[ifobj]->objs;
+			for(int iobj = 0; iobj < objs.size(); iobj++){
+				double * pext;
+				// copy rvec
+				pext = objs[iobj].rvec.ptr<double>();
+				memcpy((void*)pext, (void*)param, sizeof(double) * 3);
+
+				// copy tvec
+				pext = objs[iobj].tvec.ptr<double>();
+				memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
+
+				param += 6;
+			}
+		}
+
+		// calculate projection
+		double ssd = 0.0;
+		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+			vector<s_obj> & objs = m_fobjs[ifrm]->objs;
+
+			// copy camera parameters
+			m_cam_int.copyTo(m_fobjs[ifrm]->camint);
+			m_cam_dist.copyTo(m_fobjs[ifrm]->camdist);
+
+			// projection
+			m_fobjs[ifrm]->proj_objs(m_bcalib_fix_aspect_ratio);
+
+			// accumulating frame's projection ssd
+			ssd += m_fobjs[ifrm]->ssd;
+		}
+
+		*errNorm = sqrt(ssd);
+		Mat JtJ(_JtJ);
+		Mat JtErr(_JtErr);
+
+		// Calculating Psuedo Hessian JtJ and JtErr
+		int i = 0;
+		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+			vector<s_obj> & objs = m_fobjs[ifrm]->objs;
+			for(int iobj = 0; iobj < objs.size(); iobj++, i+=6){
+				// JtJ
+				JtJ(Rect(0, 0, 12, 12)) += objs[iobj].hessian(Rect(6, 6, 12, 12));
+				objs[iobj].hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
+				objs[iobj].hessian(Rect(6, 0, 6, 6)).copyTo(JtJ(Rect(i+6, i, 6, 6)));
+				objs[iobj].hessian(Rect(0, 6, 6, 6)).copyTo(JtJ(Rect(i, i+6, 6, 6)));
+
+				// I do not remember the correspondance between Rect.x, y to Mat.row, col.
+				JtErr(Rect(0, 0, 12, 0)) += objs[iobj].jterr(Rect(0, 0, 12, 0));
+				objs[iobj].jterr(Rect(12 + i, 0, 6, 0)).copyTo(JtJ(Rect(12 + i, 0, 6, 0)));
+			}
+		}
+	}
+}
+
+
 // About Hessian structure
 // There are multiple objects with different attitudes, 
 // We do not need to combine the hessian (actually JJ^t),
 // in stead of that, we can calculate attitude part of the hessian
 // independent of that of the other objects. 
 // Of course, we need to unify the cammera intrinsic part of the hessian.
-
 void f_inspector::estimate_fulltime()
 {
 	// full projection with current camera parameters
@@ -1863,7 +2103,7 @@ void f_inspector::estimate_fulltime()
 	// calculating valid flag. if the flag is asserted, the frame is used for the optimization
 	vector<bool> valid;
 	int num_valid_frms = min((int)m_fobjs.size(), m_num_max_frms_used);
-	double step = (double) num_valid_frms / (double)m_fobjs.size(); 
+	double step =  (double)m_fobjs.size() / (double) num_valid_frms; 
 	valid.resize(m_fobjs.size(), false);
 	num_valid_frms = 0;
 	for(double ifrm = 0.; ifrm < (double) m_fobjs.size(); ifrm += step){
@@ -1935,6 +2175,7 @@ void f_inspector::make_param_indices(vector<int> & ipars)
 	// counting phase
 	num_params = 6; // rvec, tvec;
 	if(!m_bcalib_fix_campar){
+		num_params += 2;
 		if(!m_bcalib_fix_principal_point)
 			num_params += 2; // cx cy
 
@@ -1984,19 +2225,19 @@ void f_inspector::make_param_indices(vector<int> & ipars)
 		}
 
 		if(!m_bcalib_fix_k3){
-			ipars[ipar] = 15; ipar++;
+			ipars[ipar] = 14; ipar++;
 		}
 
 		if(!m_bcalib_fix_k4){
-			ipars[ipar] = 16; ipar++;
+			ipars[ipar] = 15; ipar++;
 		}
 
 		if(!m_bcalib_fix_k5){
-			ipars[ipar] = 17; ipar++;
+			ipars[ipar] = 16; ipar++;
 		}
 
 		if(!m_bcalib_fix_k6){
-			ipars[ipar] = 18; ipar++;
+			ipars[ipar] = 17; ipar++;
 		}
 	}
 }
@@ -2045,6 +2286,9 @@ void f_inspector::update_params(vector<s_obj> & objs)
 		// calculating parameter changes
 		Mat Grad = Jt * obj.err;
 		dp = Hinv * Grad;
+
+		cout << "Hinv=" << Hinv;
+		cout << "dp=" << dp << endl;
 
 		// updating parameters
 		double * ptr_dp = dp.ptr<double>(0);
@@ -2388,6 +2632,9 @@ void f_inspector::handle_vk_left()
 	switch(m_op){
 	case OBJ:
 		{
+			if(objs.size() == 0)
+				return ;
+
 			m_cur_obj = m_cur_obj - 1;
 			if(m_cur_obj < 0){
 				m_cur_obj += (int) objs.size();
@@ -2397,6 +2644,8 @@ void f_inspector::handle_vk_left()
 		}
 		break;
 	case POINT: // decrement current object point. 3d-object point is also. 
+		if(m_cur_obj < 0)
+			return;
 		m_cur_point = m_cur_point  - 1;
 		if(m_cur_point < 0){
 			m_cur_point += (int) objs[m_cur_obj].get_num_points();
@@ -2404,6 +2653,8 @@ void f_inspector::handle_vk_left()
 
 		break;
 	case MODEL: // decrement the current model index
+		if(m_models.size() == 0)
+			return;
 		m_cur_model = m_cur_model - 1;
 		if(m_cur_model < 0){
 			m_cur_model += (int) m_models.size();
@@ -2424,16 +2675,22 @@ void f_inspector::handle_vk_right()
 	switch(m_op){
 	case OBJ:
 		{
+			if(objs.size() == 0)
+				return ;
 			m_cur_obj = m_cur_obj + 1;
 			m_cur_obj %= (int) objs.size();
 			m_cur_point = objs[m_cur_obj].get_num_points() - 1;
 		}
 		break;
 	case POINT: // increment the current object point index. The 3d-object point index as well.
+		if(m_cur_obj < 0)
+			return;
 		m_cur_point = m_cur_point + 1;
 		m_cur_point %= (int) objs[m_cur_obj].get_num_points();
 		break;
 	case MODEL: // increment the current model index.
+		if(m_models.size() == 0)
+			return;
 		m_cur_model = m_cur_model + 1;
 		m_cur_model %= (int) m_models.size();
 		break;
@@ -2714,4 +2971,5 @@ void f_inspector::handle_sop_reinit_fobj()
 		if(iref_prev >= 0)
 			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia, m_miss_tracks);
 	}
+	m_sop = SOP_NULL;
 }
