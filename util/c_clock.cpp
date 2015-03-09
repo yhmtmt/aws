@@ -199,7 +199,7 @@ bool c_clock::start(unsigned period, unsigned delay,
 #else 		
 		m_ts_period.tv_sec = period / SEC;
 		m_ts_period.tv_nsec = (period % SEC) * 100;
-		
+		clock_gettime(CLOCK_REALTIME, &m_ts);
 #endif
 		m_tcur = offset;
 	}else if(m_state == RUN){
@@ -260,14 +260,47 @@ void c_clock::wait()
 {
 #ifdef _WIN32
 	WaitForSingleObject(m_sem, INFINITE);
+	if(m_state == RUN)
+		m_tcur +=  (long long) m_rate * m_period;
 #else
-	timespec ts = m_ts_period, trem;
+	timespec ts, ts_next, trem;
+	long long s, ns;
+	clock_gettime(CLOCK_REALTIME, &ts);
+//	cout << "Cur" << ts.tv_sec << "sec" << ts.tv_nsec << "nsec" << endl;
+
+	ts_next.tv_sec = m_ts.tv_sec + m_ts_period.tv_sec;
+	ts_next.tv_nsec = m_ts.tv_nsec + m_ts_period.tv_nsec;
+	s = ts_next.tv_nsec / 1000000000;
+	ns = ts_next.tv_nsec - s * 1000000000;
+	ts_next.tv_sec += s;
+	ts_next.tv_nsec = ns;
+//	cout << "Next" << ts_next.tv_sec << "sec" << ts_next.tv_nsec << "nsec" << endl;
+
+	ts.tv_sec = ts_next.tv_sec - ts.tv_sec;
+	ts.tv_nsec = ts_next.tv_nsec - ts.tv_nsec;
+//	cout << "Wait" << ts.tv_sec << "sec" << ts.tv_nsec << "nsec" << endl;
+
+	if(ts.tv_nsec < 0){
+		ts.tv_nsec += 1000000000;
+		ts.tv_sec -= 1;
+	}
+
+	s = ts.tv_nsec / 1000000000;
+	ns = ts.tv_nsec - s * 1000000000;
+//	cout << "s" << s << "ns" << ns << endl;
+	ts.tv_sec += s;
+	ts.tv_nsec = ns;
+//	cout << "Wait(Col)" << ts.tv_sec << "sec" << ts.tv_nsec << "nsec" << endl;
+
 	while(nanosleep(&ts, &trem)){
 		ts = trem;
 	}
-#endif
-	if(m_state == RUN)
+
+	m_ts = ts_next;
+	if(m_state == RUN){
 		m_tcur +=  (long long) m_rate * m_period;
+	}
+#endif
 }
 
 void c_clock::stop()

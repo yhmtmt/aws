@@ -52,7 +52,7 @@ UTIL =  c_clock c_imgalign c_nmeadec c_ship coord util aws_serial aws_sock
 # listing include path 
 INC = -I/usr/local/include  -I$(CUR_DIR)/opencv/include 
 
-LIB = -L$(CUR_DIR)/opencv/$(CPU)/lib -lpthread -lopencv_core -lopencv_contrib -lopencv_features2d -lopencv_imgproc -lopencv_imgproc -lopencv_calib3d -lopencv_ml  -lopencv_flann -lopencv_video -lopencv_legacy -lopencv_nonfree -lopencv_objdetect -lopencv_highgui -lopencv_photo -lopencv_gpu
+LIB = -L$(CUR_DIR)/opencv/$(CPU)/lib -lrt -lpthread -lopencv_core -lopencv_contrib -lopencv_features2d -lopencv_imgproc -lopencv_imgproc -lopencv_calib3d -lopencv_ml  -lopencv_flann -lopencv_video -lopencv_legacy -lopencv_nonfree -lopencv_objdetect -lopencv_highgui -lopencv_photo -lopencv_gpu
 
 LIB += -L$(CUR_DIR)/cminpack/$(OS)/$(CPU) -lcminpack
 

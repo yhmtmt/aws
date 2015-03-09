@@ -65,7 +65,7 @@ private:
 	DWORD m_token;
 	HANDLE m_sem;
 #else
-	timespec m_ts_period;
+	timespec m_ts_period, m_ts;
 #endif
 	int m_rate;
 public:

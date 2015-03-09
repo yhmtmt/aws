@@ -29,6 +29,3 @@ sleep 1
 fset fep01 st dbg
 
 sleep 1
-
-./tssvr.sh 2
-

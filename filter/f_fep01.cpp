@@ -207,6 +207,7 @@ bool f_fep01::proc()
 	if(m_cur_cmd == NUL && m_cmd_queue.size() != 0){
 		set_cmd();
 
+		m_cmd_stat = NRES;
 		int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
 		if(wlen){
 			m_tcmd = m_cur_time;
@@ -226,6 +227,7 @@ bool f_fep01::proc()
 			if(m_cmd_stat & N0 || m_cmd_stat & N1 || m_cmd_stat & N2 || m_cmd_stat & N3){
 				// if the communication failed repete until counting m_num_max_retry
 				if(m_num_retry < m_num_max_retry){
+					m_cmd_stat = NRES;
 					int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
 					if(wlen){
 						m_tcmd = m_cur_time;
@@ -270,6 +272,7 @@ bool f_fep01::proc()
 					m_tcmd = m_cur_time;
 					m_num_retry++;
 					cout << "Retry " << m_num_retry << ":";
+					m_cmd_stat = NRES;
 					cout.write(m_wbuf, wlen);
 				}
 			}else{
