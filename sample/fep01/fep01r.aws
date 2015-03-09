@@ -11,7 +11,7 @@ awscd "c:\cygwin\home\yhmtmt\share\aws\aws\sample\fep01"
 channel crbuf dout
 filter rd rd -i dout -o
 filter fep01 fep01 -i -o dout
-#fset dev /dev/ttyPS0
+#fset fep01 dev /dev/ttyPS0
 fset fep01 port $1
 fset fep01 br 115200
 fset fep01 addr_p2p $2

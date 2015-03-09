@@ -66,9 +66,9 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	m_wbuf_len(0), 
 	m_pbuf_tail(0), m_parse_cr(0), m_parse_lf(0), m_parse_count(0), m_cur_cmd(NUL), m_tcmd(0),
 	m_tcmd_wait(100 * MSEC), 
-	m_tcmd_out(5*SEC), m_num_retry(3), m_num_max_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_rcv_msg_head(0), m_rcv_pow(0),
+	m_tcmd_out(5*SEC), m_num_retry(0), m_num_max_retry(3), m_cmd_stat(0), m_cur_rcv(RNUL), m_rcv_len(0), m_rcv_msg_head(0), m_rcv_pow(0),
 	m_rcv_msg_tail(0),
-	m_total_tx(0), m_total_rx(0), m_num_ts_pkts(10)
+	m_total_tx(0), m_total_rx(0), m_num_ts_pkts(10), m_ts_state(ETS_CLEAN)
 {
 	m_dname[0] = '\0';
 	m_fname_txlog[0] = '\0';
@@ -143,7 +143,7 @@ f_fep01::f_fep01(const char * name):f_base(name), m_pin(NULL), m_pout(NULL),
 	register_fpar("msg", m_cmd.msg, 129, "Message to be sent");
 
 	// level 2 state
-	register_fpar("st", (int*)&m_st, ST_TEST+ 1, m_st_str, "Level 2 state.");
+	register_fpar("st", (int*)&m_st, ST_TIME_SYNC_SV+ 1, m_st_str, "Level 2 state.");
 	register_fpar("sst", (int*)&m_sst, SST_PROC, m_sst_str, "Level 2 sub state.");
 
 	register_fpar("ntpks", &m_num_ts_pkts, "Number of packets used for time synchronization.");
@@ -222,7 +222,7 @@ bool f_fep01::proc()
 	// handling processed command 
 	if(m_cur_cmd != NUL){
 		if(m_cmd_stat & EOC){
-			cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
+			//cout << "Cmd " << m_cmd_str[m_cur_cmd] << " done." << endl;
 			if(m_cmd_stat & N0 || m_cmd_stat & N1 || m_cmd_stat & N2 || m_cmd_stat & N3){
 				// if the communication failed repete until counting m_num_max_retry
 				if(m_num_retry < m_num_max_retry){
@@ -506,21 +506,20 @@ bool f_fep01::handle_time_sync_client()
 		if(m_cmd_queue.size() == 0){
 			m_ts_state = ETS_RCV;
 			m_ts_pkt_cnt = 0;
+			m_rcv_msg_head = m_rcv_msg_tail = 0;
 		}
 		break;
 	case ETS_RCV:
 		// wating  for recieving time packet
-		if(m_rcv_msg_head < m_rcv_msg_tail && m_pout != NULL){
+		if(m_rcv_msg_head < m_rcv_msg_tail){
 			char * ptr = &m_rcv_msg[m_rcv_msg_head];
 			unsigned char tid = *ptr;
 			ptr++;
-			long long rcv_time = (long long) *ptr;
-			if(rcv_time != m_snd_time){
-				cerr << "Time sync packet is not recieved." << endl;
-				return false;
-			}
+			long long rcv_time;
+			memcpy((void*)&rcv_time, (void*)ptr, sizeof(rcv_time));
 			ptr += sizeof(long long);
-			int delay = (int) *ptr;
+			int delay;
+			memcpy((void*)&delay, (void*)ptr, sizeof(delay));
 			m_delay = delay;
 			m_ts_pkt_cnt++;
 			if(m_num_ts_pkts == tid){
@@ -528,23 +527,19 @@ bool f_fep01::handle_time_sync_client()
 				m_st = ST_OP;
 				rcv_time += (m_delay / m_ts_pkt_cnt);
 				f_base::set_time(rcv_time);
-				break;
-			}else{
-				// mirror the message
-				m_cmd.iarg1 = m_rcv_src;
-				m_cmd.iarg2 = m_rcv_msg_tail - m_rcv_msg_head;
-				memcpy((void*)m_cmd.msg, (void*) m_rcv_msg, m_rcv_msg_tail - m_rcv_msg_head);
-				m_rcv_msg_tail = m_rcv_msg_head = 0;
-
-				//returning message
-				m_cmd_queue.push_back(m_cmd);
-				if(!set_cmd())
-					return false;
-				int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
-				if(wlen != m_wbuf_len){
-					return false;
-				}
 			}
+
+			cout << m_name << " RCV TS" << (int)tid << " TPKT " << rcv_time 
+				<< " TRCV " << m_cur_time << " TD/2 " << m_delay << endl;
+
+			// returning message
+			m_cmd.type = TBN;
+			m_cmd.iarg1 = m_rcv_src;
+			m_cmd.iarg2 = m_rcv_msg_tail - m_rcv_msg_head;
+			memcpy((void*)m_cmd.msg, (void*) (m_rcv_msg + m_rcv_msg_head), m_rcv_msg_tail - m_rcv_msg_head);
+			m_rcv_msg_tail = m_rcv_msg_head = 0;
+
+			m_cmd_queue.push_back(m_cmd);
 		}
 		break;
 	case ETS_SND:// no use
@@ -563,6 +558,7 @@ bool f_fep01::handle_time_sync_server()
 			m_delay = 0;
 			m_num_retry = 0;
 			m_ts_state = ETS_SND;
+			m_rcv_msg_head = m_rcv_msg_tail = 0;
 		}
 		break;
 	case ETS_SND:
@@ -570,55 +566,81 @@ bool f_fep01::handle_time_sync_server()
 			// packing packet
 			// time packet format
 			// <packet number 1 byte> <time : 8byte> <delay value 4byte>
-
 			m_cmd.type = TBN;
 			m_cmd.iarg1 = m_tcl; // client addrss
 			m_cmd.iarg2 = sizeof(m_ts_pkt_cnt) + sizeof(m_cur_time) + sizeof(m_delay);
 			char * ptr = m_cmd.msg;
+
+			// 1 byte packet id
 			*ptr = m_ts_pkt_cnt;
 			ptr++;
+
+			// long long  current time
 			memcpy((void*)ptr, (void*)&m_cur_time, sizeof(m_cur_time));
 			m_snd_time = m_cur_time;
 			ptr += sizeof(m_cur_time);
+
+			// int delay
 			memcpy((void*)ptr, (void*)&m_delay, sizeof(m_delay));
+			cout << m_name << " RCV TS" << (int)m_ts_pkt_cnt << " TSND " 
+				<< m_snd_time << " TD/2 " << m_delay << endl;
 
 			//sending command
 			m_cmd_queue.push_back(m_cmd);
-			if(!set_cmd())
-				return false;
-
-			int wlen = write_serial(m_hcom, m_wbuf, m_wbuf_len);
-			if(wlen != m_wbuf_len){
-				return false;
-			}
 		}
 		m_ts_state = ETS_RCV;
 		break;
 	case ETS_RCV:
 		// diff recieved time and send time
-		if(m_rcv_msg_head < m_rcv_msg_tail && m_pout != NULL){
+		if(m_rcv_msg_head < m_rcv_msg_tail){
 			char * ptr = &m_rcv_msg[m_rcv_msg_head];
+
+			// 1byte packet id
 			unsigned char tid = *ptr;
 			ptr++;
-			long long rcv_time = (long long) *ptr;
-			if(rcv_time != m_snd_time){
-				cerr << "Time sync packet is not recieved." << endl;
-				return false;
+
+			// long long recieved send time (this is used to confirm the packet is the reply for the previous ts packet sent.)
+			long long rcv_snd_time;
+			memcpy((void*)&rcv_snd_time, (void*)ptr, sizeof(rcv_snd_time));
+
+			if(rcv_snd_time != m_snd_time){
+				if(m_num_retry < m_num_max_retry){
+					cerr << "Time sync packet is not recieved." << endl;
+					m_ts_state = ETS_SND;
+					m_num_retry++;
+					m_rcv_msg_head = m_rcv_msg_tail = 0;
+					return true;
+				}else{
+					cerr << "Failed to synchronize time." << endl;
+					return false;
+				}
 			}
+
+			// The last packet.  
 			if(m_num_ts_pkts == tid){
 				m_st = ST_OP;
 				m_ts_state = ETS_CLEAN;
-				break;
 			}
-			m_delay = (int)(m_cur_time - m_snd_time);
+
+			m_delay = (int)(m_cur_time - m_snd_time) / 2;
+
+			cout << m_name << " RCV TS" << (int)tid << " TPKT " << rcv_snd_time << " TSND " 
+				<< m_snd_time << " TRCV " << m_cur_time << " TD/2 " << m_delay << endl;
+
 			m_ts_state = ETS_SND;
 			m_ts_pkt_cnt++;
 			m_num_retry = 0;
-		}else if(m_snd_time + m_tcmd_out <= m_cur_time && m_num_retry < m_num_max_retry){
-			m_num_retry++;
-			m_ts_state = ETS_SND;
+			m_rcv_msg_head = m_rcv_msg_tail = 0;
+		}else if(m_snd_time + m_tcmd_out <= m_cur_time){
+			if(m_num_retry < m_num_max_retry){
+				m_num_retry++;
+				m_ts_state = ETS_SND;
+			}else{
+				cerr << "Failed to synchronize time." << endl;
+				return false;
+			}
 		}else{
-			return false;
+			return true;
 		}
 		break;
 	}

@@ -80,7 +80,10 @@ public:
 		while(len = m_pin->read(m_buf, m_buf_size-1)){
 			if(m_bdump && len != 0){
 				m_buf[len] = '\0';
-				cout << m_time_str << " " << m_buf;
+
+				cout << m_time_str;
+				cout.write(m_buf, len);
+				cout << endl;
 			}
 			if(m_flog.is_open()){
 				// DATA RECORD 
