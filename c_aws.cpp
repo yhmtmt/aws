@@ -35,6 +35,7 @@ using namespace cv;
 #include "util/c_clock.h"
 #include "channel/ch_base.h"
 #include "filter/f_base.h"
+#include "util/c_ship.h"
 #include "command.h"
 #include "c_aws.h"
 
@@ -186,10 +187,13 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 	if(FAILED(hr))
 		return;
 #endif
+
+	c_ship::init();
 }
 
 c_aws::~c_aws()
 {
+	c_ship::destroy();
 	f_base::uninit();
 	ch_base::uninit();
 	clear();

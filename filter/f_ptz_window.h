@@ -105,9 +105,6 @@ public:
 
 	virtual bool run(long long start_time, long long end_time)
 	{
-		c_ship::destroy();
-		c_ship::init();
-
 		m_prev_time = start_time;
 		return f_base::run(start_time, end_time);
 	}

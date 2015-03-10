@@ -58,8 +58,6 @@ f_ptz_window::f_ptz_window(const char * name):f_ds_window(name),
 	m_capture_time(0), m_shutter_time(0),
 	m_baiscap(false), m_ptgt_prev(NULL)
 {
-	c_ship::init();
-
 	// initialize geometry parameters
 	m_Rown = Mat::zeros(3, 3, CV_64FC1);
 	m_Rwrld = Mat::zeros(3, 3, CV_64FC1);
@@ -70,7 +68,6 @@ f_ptz_window::f_ptz_window(const char * name):f_ds_window(name),
 
 f_ptz_window::~f_ptz_window()
 {
-	c_ship::destroy();
 	release_d3dres();
 }
 

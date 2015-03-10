@@ -289,8 +289,6 @@ void f_sprot_window::destroy_run()
 
 bool f_sprot_window::alloc_d3dres()
 {
-	 c_ship::init();
-
 	if(!f_ds_window::alloc_d3dres()){
 		return false;
 	}

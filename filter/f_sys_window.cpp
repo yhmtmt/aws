@@ -55,8 +55,6 @@ f_sys_window::f_sys_window(const char * name):f_ds_window(name),
 	m_grid3d_width(-1.0), m_own_mmsi(-1),
 	m_btrck(false), m_sz_map(300, 300), m_sz_subcam(1600/3, 300)
 {
-	c_ship::init();
-
 	// initialize geometry parameters
 	m_Rown = Mat::zeros(3, 3, CV_64FC1);
 	m_Rwrld = Mat::zeros(3, 3, CV_64FC1);
@@ -64,7 +62,6 @@ f_sys_window::f_sys_window(const char * name):f_ds_window(name),
 
 f_sys_window::~f_sys_window()
 {
-	c_ship::destroy();
 	release_d3dres();
 }
 
