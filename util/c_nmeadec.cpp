@@ -135,28 +135,12 @@ bool s_binary_message::set_msg_text(char * buf)
 	imsg++;
 	msg[imsg] = 0x40;
 	imsg++;
+	msg[imsg] = (unsigned char)(0x80) | (unsigned char)((0x7F0 & txtseq) >> 4);
+	imsg++;
+	msg[imsg] = (unsigned char)((0x0F & txtseq) << 4);
+	len = 28;
 	unsigned char u;
-	len = 16;
 	while(*buf){
-		// 0 rem 6 res
-		u = encchar(*buf);
-		msg[imsg] = u << 2;
-		len += 6;
-		buf++;
-		if(!*buf)
-			break;
-
-		// 2 rem 4 res
-		u = encchar(*buf);
-		msg[imsg] |= (u & 0x30) >> 4;
-		imsg++;
-		msg[imsg] = (u & 0x0F) << 4;
-		len += 6;
-		buf++;
-		if(!*buf)
-			break;
-
-		// 4 rem 2 res
 		u = encchar(*buf);
 		msg[imsg] |= (u & 0x3C) >> 2;
 		imsg++;
@@ -166,10 +150,26 @@ bool s_binary_message::set_msg_text(char * buf)
 		if(!*buf)
 			break;
 
-		// 6 rem 0 res
 		u = encchar(*buf);
 		msg[imsg] |= u;
 		imsg++;
+		len += 6;
+		buf++;
+		if(!*buf)
+			break;
+
+		u = encchar(*buf);
+		msg[imsg] = u << 2;
+		len += 6;
+		buf++;
+		if(!*buf)
+			break;
+
+		// 6 rem 0 res
+		u = encchar(*buf);
+		msg[imsg] |= (u & 0x30) >> 4;
+		imsg++;
+		msg[imsg] = (u & 0x0F) << 4;
 		len += 6;
 		buf++;
 	}

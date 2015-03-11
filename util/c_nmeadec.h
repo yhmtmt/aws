@@ -37,10 +37,12 @@ struct s_binary_message{
 	int sq; // sequence id
 	int type; // message 8 or 14
 	int ch; // channel 0/*auto*/, 1 /*A*/, 2 /*B*/, 3 /*A and B*/
+	int txtseq;
+	bool ackreq;
 	unsigned int mmsi; // for message 6 or 12
 	unsigned char msg[120]; // message up to 120 bytes
 	char nmea[86]; // nmea buffer
-	s_binary_message():len(0), sq(0), mmsi(0), type(8), ch(0){
+	s_binary_message():len(0), sq(0), mmsi(0), type(8), ch(0), txtseq(0), ackreq(false){
 	}
 
 	~s_binary_message(){
