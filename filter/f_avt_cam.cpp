@@ -79,7 +79,7 @@ void _STDCALL proc_frame(tPvFrame * pfrm)
 
 f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5), 
 	m_access(ePvAccessMaster), m_frame(NULL), 
-	m_PixelFormat(ePvFmtMono8),
+	m_PixelFormat(__ePvFmt_force_32),
 	m_update(false),
 	m_BandwidthCtrlMode(StreamBytesPerSecond),
 	m_StreamBytesPerSecond(115000000), m_ExposureMode(emAuto), m_ExposureAutoAdjustTol(5),
@@ -89,12 +89,13 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	m_GainAutoMin(10), m_GainAutoOutliers(0), m_GainAutoRate(100), m_GainAutoTarget(50),
 	m_GainValue(10),
 	m_WhitebalMode(ewmAuto), m_WhitebalAutoAdjustTol(5), m_WhitebalAutoRate(100),
-	m_WhitebalValueRed(0), m_WhitebalValueBlue(0)
+	m_WhitebalValueRed(0), m_WhitebalValueBlue(0),
+	m_Height(UINT_MAX), m_RegionX(UINT_MAX), m_RegionY(UINT_MAX), m_Width(UINT_MAX),
+	m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0)
 {
 	register_fpar("host", m_host, 1024, "Network address of the camera to be opened.");
 	register_fpar("nbuf", &m_num_buf, "Number of image buffers.");
 	register_fpar("update", &m_update, "Update flag.");
-	register_fpar("PixelFormat", (int*)&m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
 	register_fpar("BandwidthCtrlMode", (int*)&m_BandwidthCtrlMode, Both + 1, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
 	register_fpar("StreamBytesPerSecond", &m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
 
@@ -125,6 +126,14 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	register_fpar("WhitebalAutoRate", &m_WhitebalAutoRate, "WhitebalAutoRate (percent, default 100)");
 	register_fpar("WhitebalValueRed", &m_WhitebalValueRed, "WhitebalValueRed (percent, default 0)");
 	register_fpar("WhitebalValueBlue", &m_WhitebalValueBlue, "WhitebalValueBlue (percent, default 0)");
+
+	// Image format
+	register_fpar("Height", &m_Height, "Height of the ROI (1 to Maximum Height)");
+	register_fpar("Width", &m_Width, "Width of the ROI(1 to Maximum Width)");
+	register_fpar("RegionX", &m_RegionX, "Top left x position of the ROI (0 to Maximum Camera Width - 1)");
+	register_fpar("RegionY", &m_RegionY, "Top left y position of the ROI (0 to Maximum Camera Height -1)");
+	register_fpar("PixelFormat", (int*)&m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
+
 }
 
 f_avt_cam::~f_avt_cam()
@@ -184,10 +193,138 @@ bool f_avt_cam::config_param()
 {
 	tPvErr err;
 
-	err = PvAttrEnumSet(m_hcam, "PixelFormat", strPvFmt[m_PixelFormat]);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set PiexelFomrat" << endl;
-		return false;
+	if(m_PixelFormat == __ePvFmt_force_32){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "PixelFormat", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get PiexelFomrat" << endl;
+			return false;
+		}
+		m_PixelFormat = getPvImageFmt(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "PixelFormat", strPvFmt[m_PixelFormat]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set PiexelFomrat" << endl;
+			return false;
+		}
+	}
+
+	if(m_Height == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "Height", (tPvUint32*)&m_Height);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get Height" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "Height", (tPvUint32)m_Height);
+		if(err != ePvErrSuccess){
+			cerr << "failed to set Height" << endl;
+			return false;
+		}
+	}
+
+	if(m_Width == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "Width", (tPvUint32*)&m_Width);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get Width" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "Width", (tPvUint32)m_Width);
+		if(err != ePvErrSuccess){
+			cerr << "failed to set Width" << endl;
+			return false;
+		}
+	}
+
+	if(m_RegionX == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "RegionX", (tPvUint32*)&m_RegionX);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get RegionX" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "RegionX", (tPvUint32)m_RegionX);
+		if(err != ePvErrSuccess){
+			cerr << "failed to set RegionX" << endl;
+			return false;
+		}
+	}
+
+	if(m_RegionY == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "RegionY", (tPvUint32*)&m_RegionY);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get RegionY" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "RegionY", (tPvUint32)m_RegionY);
+		if(err != ePvErrSuccess){
+			cerr << "failed to set RegionY" << endl;
+			return false;
+		}
+	}
+
+	if(m_BinningX == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "BinningX", (tPvUint32*)&m_BinningX);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get BinningX" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "BinningX", (tPvUint32)m_BinningX);
+		if(err != ePvErrSuccess){
+			cerr << "failed to set BinningX" << endl;
+			return false;
+		}
+	}
+	
+	if(m_BinningY == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "BinningY", (tPvUint32*)&m_BinningY);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get BinningY" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "BinningY", (tPvUint32)m_BinningY);
+		if(err != ePvErrSuccess){
+			cerr << "failed to set BinningY" << endl;
+			return false;
+		}
+	}
+
+	if(m_DecimationHorizontal == 0){
+		long long val;
+		err = PvAttrInt64Get(m_hcam, "DecimationHorizontal", (tPvInt64*)&val);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get DecimationHorizontal" << endl;
+			return false;
+		}
+		m_DecimationHorizontal = (int) val;
+	}else{
+		long long val = m_DecimationHorizontal;
+		err = PvAttrInt64Set(m_hcam, "DecimationHorizontal", (tPvInt64)val);
+		if(err != ePvErrSuccess){
+			cerr << "failed to set BinningY" << endl;
+			return false;
+		}
+	}
+
+	if(m_DecimationVertical == 0){
+		long long val;
+		err = PvAttrInt64Get(m_hcam, "DecimationVertical", (tPvInt64*)&val);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get DecimationVertical" << endl;
+			return false;
+		}
+		m_DecimationVertical = (int) val;
+	}else{
+		long long val = m_DecimationVertical;
+		err = PvAttrInt64Set(m_hcam, "DecimationVertical", (tPvInt64)val);
+		if(err != ePvErrSuccess){
+			cerr << "failed to set BinningY" << endl;
+			return false;
+		}
 	}
 
 	return config_param_dynamic();

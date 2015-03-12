@@ -42,6 +42,13 @@ class f_avt_cam: public f_base
 	};
 
 protected:
+	tPvImageFormat getPvImageFmt(const char * str){
+		for(int i = 0; i < ePvFmtBayer12Packed + 1; i++){
+			if(strcmp(strPvFmt[i], str) == 0)
+				return (tPvImageFormat) i;
+		}
+		return __ePvFmt_force_32;
+	};
 	static const char * strPvFmt[ePvFmtBayer12Packed+1];
 	static const char * strBandwidthCtrlMode[Both+1];
 	static const char * strExposureMode[emExternal+1];
@@ -64,8 +71,19 @@ protected:
 	int m_cur_frm;
 	
 	///////////////////// parameters
+
 	// static parameters. these parameters should not be modified during running state
+	unsigned int m_Height;
+	unsigned int m_RegionX;
+	unsigned int m_RegionY;
+	unsigned int m_Width;
 	tPvImageFormat m_PixelFormat;
+
+	unsigned int m_BinningX;
+	unsigned int m_BinningY;
+	int m_DecimationHorizontal;
+	int m_DecimationVertical;
+
 	bool config_param();
 
 	// dynamic parameters. These parameters can be modified during running state
@@ -94,6 +112,7 @@ protected:
 	unsigned int m_WhitebalAutoRate;
 	unsigned int m_WhitebalValueRed;
 	unsigned int m_WhitebalValueBlue;
+
 
 	bool config_param_dynamic();
 
