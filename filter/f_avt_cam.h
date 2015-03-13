@@ -22,26 +22,27 @@
 class f_avt_cam: public f_base
 {
 	enum eBandwidthCtrlMode {
-	StreamBytesPerSecond=0, SCPD, Both
-};
+		bcmStreamBytesPerSecond=0, bcmSCPD, bcmBoth, bcmUndef
+	};
 
 	enum eExposureMode{
-		emManual, emAuto, emAutoOnce, emExternal
+		emManual, emAuto, emAutoOnce, emExternal, emUndef
 	};
 
 	enum eExposureAutoAlg{
-		eaaMean, eaaFitRange
+		eaaMean, eaaFitRange, eaaUndef
 	};
 
 	enum eGainMode{
-		egmManual, egmAuto, egmAutoOnce, egmExternal
+		egmManual, egmAuto, egmAutoOnce, egmExternal, egmUndef
 	};
 
 	enum eWhitebalMode{
-		ewmManual, ewmAuto, ewmAutoOnce
+		ewmManual, ewmAuto, ewmAutoOnce, ewmUndef
 	};
 
 protected:
+	static const char * strPvFmt[ePvFmtBayer12Packed+1];
 	tPvImageFormat getPvImageFmt(const char * str){
 		for(int i = 0; i < ePvFmtBayer12Packed + 1; i++){
 			if(strcmp(strPvFmt[i], str) == 0)
@@ -49,12 +50,53 @@ protected:
 		}
 		return __ePvFmt_force_32;
 	};
-	static const char * strPvFmt[ePvFmtBayer12Packed+1];
-	static const char * strBandwidthCtrlMode[Both+1];
-	static const char * strExposureMode[emExternal+1];
-	static const char * strExposureAutoAlg[eaaFitRange+1];
-	static const char * strGainMode[egmExternal+1];
-	static const char * strWhitebalMode[ewmAutoOnce+1];
+
+	static const char * strBandwidthCtrlMode[bcmUndef];
+	eBandwidthCtrlMode getBandwidthCtrlMode(const char * str){
+		for(int i = 0; i < bcmUndef; i++){
+			if(strcmp(strBandwidthCtrlMode[i], str) == 0)
+				return (eBandwidthCtrlMode) i;
+		}
+		return bcmUndef;
+	}
+
+	static const char * strExposureMode[emUndef];
+	eExposureMode getExposureMode(const char * str){
+		for(int i = 0; i < emUndef; i++){
+			if(strcmp(strExposureMode[i], str) == 0)
+				return (eExposureMode) i;
+		}
+		return emUndef;
+	}
+	static const char * strExposureAutoAlg[eaaUndef];
+	eExposureAutoAlg getExposureAutoAlg(const char * str){
+		for(int i = 0; i < eaaUndef; i++){
+			if(strcmp(strExposureAutoAlg[eaaUndef], str) == 0){
+				return (eExposureAutoAlg) i;
+			}
+		}
+		return eaaUndef;
+	}
+
+	static const char * strGainMode[egmUndef];
+	eGainMode getGainMode(const char * str){
+		for(int i = 0; i < egmUndef; i++){
+			if(strcmp(strGainMode[i], str) == 0){
+				return (eGainMode) i;
+			}
+		}
+		return egmUndef;
+	}
+
+	static const char * strWhitebalMode[ewmUndef];
+	eWhitebalMode getWhitebalMode(const char * str){
+		for(int i = 0; i < ewmUndef; i++){
+			if(strcmp(strWhitebalMode[i], str) == 0){
+				return (eWhitebalMode) i;
+			}
+		}
+		return ewmUndef;
+	}
 
 	vector<bool> m_frm_done;
 	ch_image_ref * pout;
@@ -112,7 +154,6 @@ protected:
 	unsigned int m_WhitebalAutoRate;
 	unsigned int m_WhitebalValueRed;
 	unsigned int m_WhitebalValueBlue;
-
 
 	bool config_param_dynamic();
 

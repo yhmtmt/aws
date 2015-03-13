@@ -51,7 +51,7 @@ const char * f_avt_cam::strPvFmt[ePvFmtBayer12Packed+1] = {
 	"Mono12Packed",  "Bayer12Packed"
 };
 
-const char * f_avt_cam::strBandwidthCtrlMode[Both+1] = {
+const char * f_avt_cam::strBandwidthCtrlMode[bcmUndef] = {
 	"StreamBytesPerSecond", "SCPD", "Both"
 };
 
@@ -81,13 +81,13 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	m_access(ePvAccessMaster), m_frame(NULL), 
 	m_PixelFormat(__ePvFmt_force_32),
 	m_update(false),
-	m_BandwidthCtrlMode(StreamBytesPerSecond),
-	m_StreamBytesPerSecond(115000000), m_ExposureMode(emAuto), m_ExposureAutoAdjustTol(5),
-	m_ExposureAutoAlg(eaaMean), m_ExposureAutoMax(500000), m_ExposureAutoMin(1000),
-	m_ExposureAutoOutliers(0), m_ExposureAutoRate(100), m_ExposureAutoTarget(50),
-	m_ExposureValue(100), m_GainMode(egmAuto), m_GainAutoAdjustTol(5), m_GainAutoMax(30),
-	m_GainAutoMin(10), m_GainAutoOutliers(0), m_GainAutoRate(100), m_GainAutoTarget(50),
-	m_GainValue(10),
+	m_BandwidthCtrlMode(bcmUndef),
+	m_StreamBytesPerSecond(0/*115000000*/), m_ExposureMode(emUndef), m_ExposureAutoAdjustTol(UINT_MAX /*5*/),
+	m_ExposureAutoAlg(eaaUndef/*eaaMean*/), m_ExposureAutoMax(UINT_MAX/*500000*/), m_ExposureAutoMin(UINT_MAX/*1000*/),
+	m_ExposureAutoOutliers(UINT_MAX/*0*/), m_ExposureAutoRate(UINT_MAX/*100*/), m_ExposureAutoTarget(UINT_MAX/*50*/),
+	m_ExposureValue(UINT_MAX/*100*/), m_GainMode(egmUndef), m_GainAutoAdjustTol(UINT_MAX/*5*/), m_GainAutoMax(UINT_MAX/*30*/),
+	m_GainAutoMin(UINT_MAX/*10*/), m_GainAutoOutliers(UINT_MAX/*0*/), m_GainAutoRate(UINT_MAX /*100*/), m_GainAutoTarget(UINT_MAX /*50*/),
+	m_GainValue(UINT_MAX/*10*/),
 	m_WhitebalMode(ewmAuto), m_WhitebalAutoAdjustTol(5), m_WhitebalAutoRate(100),
 	m_WhitebalValueRed(0), m_WhitebalValueBlue(0),
 	m_Height(UINT_MAX), m_RegionX(UINT_MAX), m_RegionY(UINT_MAX), m_Width(UINT_MAX),
@@ -96,7 +96,7 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	register_fpar("host", m_host, 1024, "Network address of the camera to be opened.");
 	register_fpar("nbuf", &m_num_buf, "Number of image buffers.");
 	register_fpar("update", &m_update, "Update flag.");
-	register_fpar("BandwidthCtrlMode", (int*)&m_BandwidthCtrlMode, Both + 1, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
+	register_fpar("BandwidthCtrlMode", (int*)&m_BandwidthCtrlMode, bcmUndef, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
 	register_fpar("StreamBytesPerSecond", &m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
 
 	// about exposure
@@ -305,7 +305,7 @@ bool f_avt_cam::config_param()
 		long long val = m_DecimationHorizontal;
 		err = PvAttrInt64Set(m_hcam, "DecimationHorizontal", (tPvInt64)val);
 		if(err != ePvErrSuccess){
-			cerr << "failed to set BinningY" << endl;
+			cerr << "failed to set DecimationHorizontal" << endl;
 			return false;
 		}
 	}
@@ -322,7 +322,7 @@ bool f_avt_cam::config_param()
 		long long val = m_DecimationVertical;
 		err = PvAttrInt64Set(m_hcam, "DecimationVertical", (tPvInt64)val);
 		if(err != ePvErrSuccess){
-			cerr << "failed to set BinningY" << endl;
+			cerr << "Failed to set DecimationVertical" << endl;
 			return false;
 		}
 	}
@@ -333,119 +333,279 @@ bool f_avt_cam::config_param()
 bool f_avt_cam::config_param_dynamic()
 {
 	tPvErr err;
-	
-	err = PvAttrEnumSet(m_hcam, "BandwidthCtrlMode", strBandwidthCtrlMode[m_BandwidthCtrlMode]);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set BandwidthCtrlMode" << endl;
-		return false;
+	if(m_BandwidthCtrlMode == bcmUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "BandwidthCtrlMode", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get BandwidthCtrlMode" << endl;
+			return false;
+		}
+		m_BandwidthCtrlMode = getBandwidthCtrlMode(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "BandwidthCtrlMode", strBandwidthCtrlMode[m_BandwidthCtrlMode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set BandwidthCtrlMode" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "StreamBytesPerSecond", (tPvUint32) m_StreamBytesPerSecond);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set StreamBytesPerSecond" << endl;
-		return false;
+	if(m_StreamBytesPerSecond == 0){
+		err = PvAttrUint32Get(m_hcam, "StreamBytesPerSecond", (tPvUint32*) &m_StreamBytesPerSecond);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get Stream BytesPerSecond" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "StreamBytesPerSecond", (tPvUint32) m_StreamBytesPerSecond);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set StreamBytesPerSecond" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrEnumSet(m_hcam, "ExposureMode", strExposureMode[m_ExposureMode]);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set ExposureMode" << endl;
-		return false;
+	if(m_ExposureMode == emUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "ExposureMode", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get ExposureMode" << endl;
+			return false;
+		}
+		m_ExposureMode = getExposureMode(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "ExposureMode", strExposureMode[m_ExposureMode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureMode" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "ExposureAutoAdjustTol", m_ExposureAutoAdjustTol);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set ExposureAutoAdjustTol" << endl;
-		return false;
+	if(m_ExposureAutoAdjustTol == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "ExposureAutoAdjustTol", (tPvUint32*)&m_ExposureAutoAdjustTol);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get ExposureAutoAdjustTol" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "ExposureAutoAdjustTol", m_ExposureAutoAdjustTol);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureAutoAdjustTol" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrEnumSet(m_hcam, "ExposureAutoAlg", strExposureAutoAlg[m_ExposureAutoAlg]);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set ExposureAutoAlg" << endl;
-		return false;
+	if(m_ExposureAutoAlg == eaaUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "ExposureAutoAlg", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get ExposureAutoAlg" << endl;
+			return false;
+		}
+		m_ExposureAutoAlg = getExposureAutoAlg(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "ExposureAutoAlg", strExposureAutoAlg[m_ExposureAutoAlg]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureAutoAlg" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "ExposureAutoMax", m_ExposureAutoMax);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set ExposureAutoMax" << endl;
-		return false;
+	if(m_ExposureAutoMax == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "ExposureAutoMax", (tPvUint32*)m_ExposureAutoMax);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get ExposureAutomax" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "ExposureAutoMax", m_ExposureAutoMax);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureAutoMax" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "ExposureAutoMin", m_ExposureAutoMin);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set ExposureAutoMin" << endl;
-		return false;
+	if(m_ExposureAutoMin == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "ExposureAutoMin", (tPvUint32*)&m_ExposureAutoMin);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get ExposureAutoMin" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "ExposureAutoMin", m_ExposureAutoMin);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureAutoMin" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "ExposureAutoOutliers", m_ExposureAutoOutliers);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set ExposureAutoOutliers" << endl;
-		return false;
+	if(m_ExposureAutoOutliers == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "ExposureAutoOutliers", (tPvUint32*)&m_ExposureAutoOutliers);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get ExposureAutoOutliers" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "ExposureAutoOutliers", m_ExposureAutoOutliers);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureAutoOutliers" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "ExposureAutoRate", m_ExposureAutoRate);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set ExposureAutoRate" << endl;
-		return false;
+	if(m_ExposureAutoRate == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "ExposureAutoRate", (tPvUint32*)&m_ExposureAutoRate);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get ExposureAutoRate" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "ExposureAutoRate", m_ExposureAutoRate);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureAutoRate" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "ExposureAutoTarget", m_ExposureAutoTarget);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set ExposureAutoTarget" << endl;
-		return false;
+	if(m_ExposureAutoTarget == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "ExposureAutoTarget", (tPvUint32*)&m_ExposureAutoTarget);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureAutoTarget" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "ExposureAutoTarget", m_ExposureAutoTarget);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureAutoTarget" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "ExposureValue", m_ExposureValue);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set ExposureValue" << endl;
-		return false;
+	if(m_ExposureValue == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "ExposureValue", (tPvUint32*)&m_ExposureValue);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get ExposureValue" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "ExposureValue", m_ExposureValue);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set ExposureValue" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrEnumSet(m_hcam, "GainMode", strGainMode[m_GainMode]);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set GainMode" << endl;
-		return false;
+	if(m_GainMode == egmUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "GainMode", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get GainMode" << endl;
+			return false;
+		}
+		m_GainMode = getGainMode(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "GainMode", strGainMode[m_GainMode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set GainMode" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "GainAutoAdjustTol", m_GainAutoAdjustTol);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set GainAutoAdjustTol" << endl;
-		return false;
+
+	if(m_GainAutoAdjustTol == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "GainAutoAdjustTol", (tPvUint32*)&m_GainAutoAdjustTol);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get GainAutoAdjustTol" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "GainAutoAdjustTol", m_GainAutoAdjustTol);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set GainAutoAdjustTol" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "GainAutoMax", m_GainAutoMax);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set GainAutoMax" << endl;
-		return false;
+	if(m_GainAutoMax == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "GainAutoMax", (tPvUint32*)&m_GainAutoMax);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get GainAutoMax" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "GainAutoMax", m_GainAutoMax);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set GainAutoMax" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "GainAutoMin", m_GainAutoMin);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set GainAutoMin" << endl;
-		return false;
+	if(m_GainAutoMin == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "GainAutoMin", (tPvUint32*)m_GainAutoMin);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get GainAutoMin" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "GainAutoMin", m_GainAutoMin);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set GainAutoMin" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "GainAutoOutliers", m_GainAutoOutliers);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set GainAutoOutliers" << endl;
-		return false;
+	if(m_GainAutoOutliers == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "GainAutoOutliers", (tPvUint32*)&m_GainAutoOutliers);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get GainAutoOutliers" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "GainAutoOutliers", m_GainAutoOutliers);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set GainAutoOutliers" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "GainAutoRate", m_GainAutoRate);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set GainAutoRate" << endl;
-		return false;
+	if(m_GainAutoRate == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "GainAutoRate", (tPvUint32*)&m_GainAutoRate);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get GainAutoRate" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "GainAutoRate", m_GainAutoRate);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set GainAutoRate" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "GainAutoTarget", m_GainAutoTarget);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set GainAutoTarget" << endl;
-		return false;
+	if(m_GainAutoTarget == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "GainAutoTarget", (tPvUint32*)&m_GainAutoTarget);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get GainAutoTarget" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "GainAutoTarget", m_GainAutoTarget);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set GainAutoTarget" << endl;
+			return false;
+		}
 	}
 
-	err = PvAttrUint32Set(m_hcam, "GainValue", m_GainValue);
-	if(err != ePvErrSuccess){
-		cerr << "Failed to set GainValue" << endl;
-		return false;
+	if(m_GainValue == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "GainValue", (tPvUint32*)&m_GainValue);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get GainValue" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "GainValue", m_GainValue);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set GainValue" << endl;
+			return false;
+		}
 	}
 
 	return true;
