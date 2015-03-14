@@ -93,7 +93,7 @@ void ch_base::register_factory()
 	register_factory<ch_ring<char, 1024> >("crbuf");
 	register_factory<ch_ring<char, 2048> >("crbuf2k");
 	register_factory<ch_ring<char, 4096> >("crbuf4k");
-	register_factory<ch_ring<char, 9192> >("crbuf9k");
+	register_factory<ch_ring<char, 8192> >("crbuf8k");
 }
 
 ////////////////////////////////////////////////// setting up filter factory

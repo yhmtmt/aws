@@ -25,7 +25,6 @@ Windows version is useful if you need to play the videos or render the 3D graphi
    * libjpeg (only if you need to use SANYO HD5400)
    * curl (only if you need to use SANYO HD5400)
    * OpenCV 2.4.10
-   * cminpack
    * PvAPI (NOTE: Need to execute installer. Remove vimba from the system)
 3. Create New empty project for "console application" (I recommend you to configure the compile target as x64 right after creating the project.)
 4. Add sources to the project obtained with git clone above explained.(Notice: Files under "rcmd/" should not be imported. The remote commands can only be built with cygwin and Linux.)
@@ -396,7 +395,50 @@ qjpg: Jpeg quality. [0-100]
 qpng: Png quality. [0-10]  
 path: Storing path.  
       * PRC:  
-Images in input channel is saved as files with specified image format. File name is the combination of the filter name and time record.  
+Images in input channel is saved as files with specified image format. File name is the combination of the filter name and time record.
+
+22. fep01
+    * IN: {crbuf | crbuf2k | crbuf4k | crbuf8k}
+    * OUT: {crbuf | crbuf2k | crbuf4k | crbuf8k}
+    * PAR:
+port: Number of serial port (for windows)
+dev: Device file of serial port. (for Linux)
+br: Baudrate of the serial port.
+lpkt: Packet length the FEP01 uses.[0-128] (Maybe packet length larger than about 100 could be collapse the buffer.9
+cm: Communication mode. {p2p} (Currently only p2p is supported.)
+thead: Time stamp is added at header. {yes | no}
+addr_p2p: Destination address in p2p mode.
+ftxlog: Path for transmission log file.
+frxlog: Path for recieving log file.
+st: State configuration. {init, rst, op, dbg, test, tcl, tsv}
+addr: Own addres. [0-240]
+rep: Acknowledge is confirmed for each data transmission. {yes | no}
+rep_power: Get power report when the packet is recieved. {yes | no}
+
+    * PRC:
+Some sample scripts are in sample/fep01/. In state "init", ARG command is issued and the returned values are stored into filter parameters. In state "rst", filter parameters are written to the device's register and then RST command is issude. In state "op", The data in the input channel is transmitted automatically to the destination specified, and the recieved data is automatically copied to the output channel. In "dbg" mode, FEP01's commands can be manually issued using some filter parameters. In "tcl" state, it works as time synchronization client waiting for time information packet, from time synchronization server FEP01 configured as state "tsvr".
+
+23. ser
+    * IN:
+    * OUT:
+    * PAR:
+    * PRC:
+24. udp
+    * IN:
+    * OUT:
+    * PAR:
+    * PRC:
+25. dd
+    * IN:
+    * OUT:
+    * PAR:
+    * PRC:
+26. rd
+    * IN:
+    * OUT:
+    * PAR:
+    * PRC:
+
 
 # Channels
 1. imgc  
@@ -456,7 +498,7 @@ You can specify the enum parameter corresponding to string set. First, prepare t
          ALPHA, BETA, GAMMA, UNKNOWN 
     };
 
-    char * estr[e_val::UNKNOWN] = {
+    char * estr[UNKNOWN] = {
          "alpha", "beta", "gamma"
     };
  
