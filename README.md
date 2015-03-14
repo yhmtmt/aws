@@ -400,45 +400,57 @@ Images in input channel is saved as files with specified image format. File name
 22. fep01
     * IN: {crbuf | crbuf2k | crbuf4k | crbuf8k}
     * OUT: {crbuf | crbuf2k | crbuf4k | crbuf8k}
-    * PAR:
-port: Number of serial port (for windows)
-dev: Device file of serial port. (for Linux)
-br: Baudrate of the serial port.
-lpkt: Packet length the FEP01 uses.[0-128] (Maybe packet length larger than about 100 could be collapse the buffer.9
-cm: Communication mode. {p2p} (Currently only p2p is supported.)
-thead: Time stamp is added at header. {yes | no}
-addr_p2p: Destination address in p2p mode.
-ftxlog: Path for transmission log file.
-frxlog: Path for recieving log file.
-st: State configuration. {init, rst, op, dbg, test, tcl, tsv}
-addr: Own addres. [0-240]
-rep: Acknowledge is confirmed for each data transmission. {yes | no}
-rep_power: Get power report when the packet is recieved. {yes | no}
+    * PAR:  
+port: Number of serial port (for windows)  
+dev: Device file of serial port. (for Linux)  
+br: Baudrate of the serial port.  
+lpkt: Packet length the FEP01 uses.[0-128] (Maybe packet length larger than about 100 could be collapse the buffer.9  
+cm: Communication mode. {p2p} (Currently only p2p is supported.)  
+thead: Time stamp is added at header. {yes | no}  
+addr_p2p: Destination address in p2p mode.  
+ftxlog: Path for transmission log file.  
+frxlog: Path for recieving log file.  
+st: State configuration. {init, rst, op, dbg, test, tcl, tsv}  
+addr: Own addres. [0-240]  
+rep: Acknowledge is confirmed for each data transmission. {yes | no}  
+rep_power: Get power report when the packet is recieved. {yes | no}  
 
-    * PRC:
+    * PRC:  
 Some sample scripts are in sample/fep01/. In state "init", ARG command is issued and the returned values are stored into filter parameters. In state "rst", filter parameters are written to the device's register and then RST command is issude. In state "op", The data in the input channel is transmitted automatically to the destination specified, and the recieved data is automatically copied to the output channel. In "dbg" mode, FEP01's commands can be manually issued using some filter parameters. In "tcl" state, it works as time synchronization client waiting for time information packet, from time synchronization server FEP01 configured as state "tsvr".
 
 23. ser
-    * IN:
-    * OUT:
-    * PAR:
-    * PRC:
+    * IN: {crbuf | crbuf2k | crbuf4k | crbuf8k}
+    * OUT: {crbuf | crbuf2k | crbuf4k | crbuf8k}
+    * PAR:  
+*port: Number of serial port (for Windows)  
+*dev: Device file of the serial port (for Linux)  
+*br: Baud rate of serial port  
+    * PRC:  
+The data in the input channel is transmitted to serial port specifiedd. And the recieved data is copied to the output channel.
 24. udp
-    * IN:
-    * OUT:
-    * PAR:
-    * PRC:
-25. dd
-    * IN:
-    * OUT:
-    * PAR:
-    * PRC:
-26. rd
-    * IN:
-    * OUT:
-    * PAR:
-    * PRC:
+    * IN: {crbuf | crbuf2k | crbuf4k | crbuf8k}
+    * OUT: {crbuf | crbuf2k | crbuf4k | crbuf8k}
+    * PAR:  
+* port_dst: Destination port number
+* host_dst: Host address of the destination.
+* lpkt: Length of the packet.
+* fout: Output log file.
+* fint: Input log file.
 
+    * PRC:  
+The data in input channel is transmitted to UDP destination specified. And the recieved data is copied to the output channel.
+25. dd
+    * IN: Null
+    * OUT: {crbuf | crbuf2k | crbuf4k | crbuf8k}
+    * PAR:
+    * PRC:  
+Generate dummy data and output it to the output channel.
+26. rd
+    * IN: {crbuf | crbuf2k | crbuf4k | crbuf8k}:
+    * OUT: Null
+    * PAR:
+    * PRC:  
+Record the data in the input channel.
 
 # Channels
 1. imgc  
@@ -454,6 +466,8 @@ Transfers nmea sentences. Source filter pushes nmea sentences to the channel. De
 	* Pars vector<char[83]>  
 4. ship_ctrl  
 	* Pars
+5. crbuf
+1KByte Ring buffer. crbuf2k, crbuf4k, crbuf8k are the variant the sizes are 2Kbyte, 4Kbyte, 8Kbyte respectively.
 
 ## Designing New Filter
 Here I explain how you can design and add your new filter to the system. There are some points. 1. and 2. are the duty, and the others are the tips.
