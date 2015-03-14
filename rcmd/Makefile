@@ -10,8 +10,8 @@ ifeq ($(ZYNQ), y)
 	CC	= $(CXX)
 endif
 
-OBJ = aws_cmd.o ../command.o filter.o channel.o fcmd.o fset.o fget.o cyc.o online.o pause.o go.o quit.o stop.o step.o trat.o clear.o finf.o chinf.o fpar.o frm.o chrm.o awscd.o
-TGT = filter channel fcmd fset fget cyc online pause go quit stop step trat clear finf chinf fpar frm chrm awscd
+OBJ = aws_cmd.o ../command.o filter.o channel.o fcmd.o fset.o fget.o cyc.o online.o pause.o go.o quit.o stop.o step.o trat.o clear.o finf.o chinf.o fpar.o frm.o chrm.o awscd.o awstime.o
+TGT = filter channel fcmd fset fget cyc online pause go quit stop step trat clear finf chinf fpar frm chrm awscd awstime
 OBJv2 = c_aws_cmd.o fls.o chls.o fpls.o
 TGTv2 = fls chls fpls
 OBJv3 = c_aws_cmd.o awsevt.o 

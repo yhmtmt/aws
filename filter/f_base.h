@@ -433,6 +433,10 @@ public:
 		return m_time_str;
 	}
 
+	static long long get_time(){
+	  return m_cur_time;
+	}
+	
 	void get_info(s_cmd & cmd, int ifilter){
 		// currentlly returning filter name, id, number of parameters, number of input channels and output channels.
 		snprintf(cmd.get_ret_str(), RET_LEN, "%s %d %d %d %d", m_name, ifilter, m_pars.size(), m_chin.size(), m_chout.size());
