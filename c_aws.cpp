@@ -890,7 +890,7 @@ void c_aws::proc_command()
 		  if(cmd.num_args == 1){
 		    snprintf(cmd.get_ret_str(), RET_LEN, "%s", f_base::get_time_str());
 		    result = true;
-		  }else if(cmd.num_args == 2 && cmd.arg[1][0] == 'n'){
+		  }else if(cmd.num_args == 2 && cmd.args[1][0] == 'n'){
 		    snprintf(cmd.get_ret_str(), RET_LEN, "%lld", f_base::get_time());
 		    result = true;
 		  }else
@@ -1105,7 +1105,7 @@ c_rcmd::c_rcmd(c_aws * paws, unsigned short port):m_paws(paws){
 	if(ret != 0){
 		cerr << "bind failed with SOCKET_ERROR." << endl;
 		closesocket(m_svr_sock);
-		m_svr_sock = NULL;
+		m_svr_sock = -1;
 		return;
 	}
 
@@ -1113,7 +1113,7 @@ c_rcmd::c_rcmd(c_aws * paws, unsigned short port):m_paws(paws){
 	if(ret == SOCKET_ERROR){
 		cerr << "listen failed with SOCKET_ERROR." << endl;
 		closesocket(m_svr_sock);
-		m_svr_sock = NULL;
+		m_svr_sock = -1;
 		return;
 	}
 
@@ -1127,7 +1127,7 @@ c_rcmd::~c_rcmd(){
 		m_exit = true;
 		pthread_join(m_th_rcmd, NULL);
 	}
-	if(m_svr_sock != SOCKET_ERROR && m_svr_sock != NULL)
+	if(m_svr_sock != SOCKET_ERROR && m_svr_sock != -1)
 		closesocket(m_svr_sock);
 }
 
