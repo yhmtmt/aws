@@ -1093,7 +1093,7 @@ c_rcmd::c_rcmd(c_aws * paws, unsigned short port):m_paws(paws){
 	m_svr_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if(m_svr_sock == SOCKET_ERROR){
 		cerr << "socket failed with SOCKET_ERROR" << endl;
-		m_svr_sock = NULL;
+		m_svr_sock = -1;
 		return;
 	}
 

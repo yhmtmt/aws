@@ -96,7 +96,7 @@ bool f_base::s_fpar::get(char * valstr, size_t sz){
 	case S64:
 		n = snprintf(valstr, sz, "%lld", *s64);break;
 	case U64:
-		n = snprintf(valstr, sz, "%llu", *f64);break;
+		n = snprintf(valstr, sz, "%llu", *u64);break;
 	case F32:
 		n = snprintf(valstr, sz, "%e", *f32);break;
 	case S32:
