@@ -421,6 +421,26 @@ public:
 
 	void set_time(tmex & tm){m_clk.set_time(tm);};
 	void set_time(long long & t){m_clk.set_time(t);};
+	static void set_sys_time(){
+#ifdef _WIN32
+		SYSTEMTIME st;
+		ZeroMemory(&st, sizeof(st));
+		st.wDay = m_tm.tm_mday;
+		st.wDayOfWeek = m_tm.tm_wday;
+		st.wMonth = m_tm.tm_mon;
+		st.wYear = m_tm.tm_year + 1900;
+		st.wHour = m_tm.tm_hour;
+		st.wMinute = m_tm.tm_min;
+		st.wSecond = m_tm.tm_sec;
+		st.wMilliseconds = m_tm.tm_msec;
+		SetLocalTime(&st);
+#else
+		timespect ts;
+		ts.ts_sec = m_cur_time / SEC;
+		ts.ts_nsec = (m_ruc_time - sec * ts.ts_sec) * 100;
+		clock_settime(CLOCK_REALTIME, &ts);
+#endif
+	}
 
 	// clock signal issued by c_aws's main loop
 	static void clock(long long cur_time);
