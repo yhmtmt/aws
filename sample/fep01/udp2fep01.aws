@@ -2,6 +2,7 @@
 
 if [ $# -ne 5 ]; then
     echo "fep01.aws <com port> <dst fep01 address> <dst udp port> <src udp port> <cycle time sec>"
+    exit 1;
 fi
 
 awscd "c:\cygwin\home\yhmtmt\share\aws\aws\sample\fep01"

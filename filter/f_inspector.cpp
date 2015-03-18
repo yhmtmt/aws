@@ -1063,12 +1063,16 @@ bool f_inspector::proc()
 
 	// estimate
 	if(m_op == ESTIMATE){
+		/*
 		int itr = 0;
 		m_cam_erep = DBL_MAX;
 		do{
 			estimate_fulltime();
 			itr++;
 		}while(m_eest == EES_CONT && itr < m_num_max_itrs);
+		m_op = FRAME;
+		*/
+		estimate_levmarq();
 		m_op = FRAME;
 	}
 
@@ -1836,7 +1840,7 @@ void f_inspector::estimate_levmarq()
 	num_valid_frms++;
 
 	// counting extrinsic parameters (6 x number of objects)
-	int nparams = 12;;
+	int nparams = 12; // we assume the camera intrinsics are the same for every frames.
 	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
 		if(!valid[ifobj])
 			continue;
@@ -2043,8 +2047,8 @@ void f_inspector::estimate_levmarq()
 				objs[iobj].hessian(Rect(0, 6, 6, 6)).copyTo(JtJ(Rect(i, i+6, 6, 6)));
 
 				// I do not remember the correspondance between Rect.x, y to Mat.row, col.
-				JtErr(Rect(0, 0, 12, 0)) += objs[iobj].jterr(Rect(0, 0, 12, 0));
-				objs[iobj].jterr(Rect(12 + i, 0, 6, 0)).copyTo(JtJ(Rect(12 + i, 0, 6, 0)));
+				JtErr(Rect(0, 0, 1, 12)) += objs[iobj].jterr(Rect(0, 0, 1, 12));
+				objs[iobj].jterr(Rect(0, 12 + i, 1, 6)).copyTo(JtJ(Rect(0, 12 + i, 1, 6)));
 			}
 		}
 	}
