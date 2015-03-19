@@ -1836,8 +1836,10 @@ void f_inspector::estimate_levmarq()
 	}
 
 	// current frame is forced to be used for the optimization
-	valid[m_cur_frm] = true;
-	num_valid_frms++;
+	if(!valid[m_cur_frm]){
+		valid[m_cur_frm] = true;
+		num_valid_frms++;
+	}
 
 	// counting extrinsic parameters (6 x number of objects)
 	int nparams = 12; // we assume the camera intrinsics are the same for every frames.
@@ -2031,24 +2033,32 @@ void f_inspector::estimate_levmarq()
 			ssd += m_fobjs[ifrm]->ssd;
 		}
 
+		if(!proceed){
+			return ;
+		}
+
 		*errNorm = sqrt(ssd);
-		Mat JtJ(_JtJ);
-		Mat JtErr(_JtErr);
+		if(_JtJ != NULL && _JtErr != NULL){
+			Mat JtJ(_JtJ);
+			Mat JtErr(_JtErr);
 
-		// Calculating Psuedo Hessian JtJ and JtErr
-		int i = 0;
-		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-			vector<s_obj> & objs = m_fobjs[ifrm]->objs;
-			for(int iobj = 0; iobj < objs.size(); iobj++, i+=6){
-				// JtJ
-				JtJ(Rect(0, 0, 12, 12)) += objs[iobj].hessian(Rect(6, 6, 12, 12));
-				objs[iobj].hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
-				objs[iobj].hessian(Rect(6, 0, 6, 6)).copyTo(JtJ(Rect(i+6, i, 6, 6)));
-				objs[iobj].hessian(Rect(0, 6, 6, 6)).copyTo(JtJ(Rect(i, i+6, 6, 6)));
+			// Calculating Psuedo Hessian JtJ and JtErr
+			int i = 0;
+			for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+				if(!valid[ifrm])
+					continue;
+				vector<s_obj> & objs = m_fobjs[ifrm]->objs;
+				for(int iobj = 0; iobj < objs.size(); iobj++, i+=6){
+					// JtJ
+					JtJ(Rect(0, 0, 12, 12)) += objs[iobj].hessian(Rect(6, 6, 12, 12));
+					objs[iobj].hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
+					objs[iobj].hessian(Rect(6, 0, 6, 6)).copyTo(JtJ(Rect(i+6, i, 6, 6)));
+					objs[iobj].hessian(Rect(0, 6, 6, 6)).copyTo(JtJ(Rect(i, i+6, 6, 6)));
 
-				// I do not remember the correspondance between Rect.x, y to Mat.row, col.
-				JtErr(Rect(0, 0, 1, 12)) += objs[iobj].jterr(Rect(0, 0, 1, 12));
-				objs[iobj].jterr(Rect(0, 12 + i, 1, 6)).copyTo(JtJ(Rect(0, 12 + i, 1, 6)));
+					// I do not remember the correspondance between Rect.x, y to Mat.row, col.
+					JtErr(Rect(0, 0, 1, 12)) += objs[iobj].jterr(Rect(0, 0, 1, 12));
+					objs[iobj].jterr(Rect(0, 12, 1, 6)).copyTo(JtErr(Rect(0, 12 + i, 1, 6)));
+				}
 			}
 		}
 	}
