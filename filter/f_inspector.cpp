@@ -819,7 +819,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
 	m_bauto_load_fobj(false), m_bauto_save_fobj(false),
 	m_bundistort(false), m_bcam_tbl_loaded(false),
-	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
+	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
 	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1), 
@@ -881,6 +881,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 	register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Use intrinsic guess.");
 	register_fpar("fix_campar", &m_bcalib_fix_campar, "Fix camera parameters");
+	register_fpar("fix_focus", &m_bcalib_fix_focus, "Fix camera's focal length");
 	register_fpar("fix_principal_point", &m_bcalib_fix_principal_point, "Fix camera center as specified (cx, cy)");
 	register_fpar("fix_aspect_ratio", &m_bcalib_fix_aspect_ratio, "Fix aspect ratio as specified fx/fy. Only fy is optimized.");
 	register_fpar("zero_tangent_dist", &m_bcalib_zero_tangent_dist, "Zeroify tangential distortion (px, py)");
@@ -1871,6 +1872,10 @@ void f_inspector::estimate_levmarq()
 		for(int ipar = 0; ipar < 12; ipar++)
 			mask[ipar] = 0;
 	}
+	if(m_bcalib_fix_focus){
+		mask[0] = 0;
+		mask[1] = 0;
+	}
 	param[0] = ptr_int[0];
 	param[1] = ptr_int[4];
 
@@ -2217,42 +2222,42 @@ void f_inspector::make_param_indices(vector<int> & ipars)
 	for(ipar = 0; ipar< 6; ipar++)
 		ipars[ipar] = ipar;
 
-	if(!m_bcalib_fix_campar){
+	if(!m_bcalib_fix_focus){
 		ipars[ipar] = 6; ipar++;
 		ipars[ipar] = 7; ipar++;
-		if(!m_bcalib_fix_principal_point){
-			ipars[ipar] = 8; ipar++;
-			ipars[ipar] = 9; ipar++;
-		}
+	}
+	if(!m_bcalib_fix_principal_point){
+		ipars[ipar] = 8; ipar++;
+		ipars[ipar] = 9; ipar++;
+	}
 
-		if(!m_bcalib_fix_k1){
-			ipars[ipar] = 10; ipar++;
-		}
-			num_params += 1;
-		if(!m_bcalib_fix_k2){
-			ipars[ipar] = 11; ipar++;
-		}
+	if(!m_bcalib_fix_k1){
+		ipars[ipar] = 10; ipar++;
+	}
+	num_params += 1;
+	if(!m_bcalib_fix_k2){
+		ipars[ipar] = 11; ipar++;
+	}
 
-		if(!m_bcalib_zero_tangent_dist){
-			ipars[ipar] = 12; ipar++;
-			ipars[ipar] = 13; ipar++;
-		}
+	if(!m_bcalib_zero_tangent_dist){
+		ipars[ipar] = 12; ipar++;
+		ipars[ipar] = 13; ipar++;
+	}
 
-		if(!m_bcalib_fix_k3){
-			ipars[ipar] = 14; ipar++;
-		}
+	if(!m_bcalib_fix_k3){
+		ipars[ipar] = 14; ipar++;
+	}
 
-		if(!m_bcalib_fix_k4){
-			ipars[ipar] = 15; ipar++;
-		}
+	if(!m_bcalib_fix_k4){
+		ipars[ipar] = 15; ipar++;
+	}
 
-		if(!m_bcalib_fix_k5){
-			ipars[ipar] = 16; ipar++;
-		}
+	if(!m_bcalib_fix_k5){
+		ipars[ipar] = 16; ipar++;
+	}
 
-		if(!m_bcalib_fix_k6){
-			ipars[ipar] = 17; ipar++;
-		}
+	if(!m_bcalib_fix_k6){
+		ipars[ipar] = 17; ipar++;
 	}
 }
 
@@ -2317,45 +2322,44 @@ void f_inspector::update_params(vector<s_obj> & objs)
 		ptr[2] += ptr_dp[5]; // tz
 
 		int ipar = 6;
-		if(!m_bcalib_fix_campar){
+		if(!m_bcalib_fix_focus){
 			ptr = m_cam_int.ptr<double>(0);
 			ptr[0] += ptr_dp[ipar]; ipar++;
 			ptr[4] += ptr_dp[ipar]; ipar++;
+		}
+		if(!m_bcalib_fix_principal_point){
+			ptr[2] += ptr_dp[ipar]; ipar++;
+			ptr[5] += ptr_dp[ipar]; ipar++;
+		}
 
-			if(!m_bcalib_fix_principal_point){
-				ptr[2] += ptr_dp[ipar]; ipar++;
-				ptr[5] += ptr_dp[ipar]; ipar++;
-			}
+		ptr = m_cam_dist.ptr<double>(0);
 
-			ptr = m_cam_dist.ptr<double>(0);
+		if(!m_bcalib_fix_k1){
+			ptr[ipar] += ptr_dp[ipar]; ipar++;
+		}
+		if(!m_bcalib_fix_k2){
+			ptr[ipar] += ptr_dp[ipar]; ipar++;
+		}
 
-			if(!m_bcalib_fix_k1){
-				ptr[ipar] += ptr_dp[ipar]; ipar++;
-			}
-			if(!m_bcalib_fix_k2){
-				ptr[ipar] += ptr_dp[ipar]; ipar++;
-			}
+		if(!m_bcalib_zero_tangent_dist){
+			ptr[ipar] += ptr_dp[ipar]; ipar++;
+			ptr[ipar] += ptr_dp[ipar]; ipar++;
+		}
 
-			if(!m_bcalib_zero_tangent_dist){
-				ptr[ipar] += ptr_dp[ipar]; ipar++;
-				ptr[ipar] += ptr_dp[ipar]; ipar++;
-			}
+		if(!m_bcalib_fix_k3){			
+			ptr[ipar] += ptr_dp[ipar]; ipar++;
+		}
 
-			if(!m_bcalib_fix_k3){			
-				ptr[ipar] += ptr_dp[ipar]; ipar++;
-			}
+		if(!m_bcalib_fix_k4){			
+			ptr[ipar] += ptr_dp[ipar]; ipar++;
+		}
 
-			if(!m_bcalib_fix_k4){			
-				ptr[ipar] += ptr_dp[ipar]; ipar++;
-			}
+		if(!m_bcalib_fix_k5){			
+			ptr[ipar] += ptr_dp[ipar]; ipar++;
+		}
 
-			if(!m_bcalib_fix_k5){			
-				ptr[ipar] += ptr_dp[ipar]; ipar++;
-			}
-
-			if(!m_bcalib_fix_k6){			
-				ptr[ipar] += ptr_dp[ipar]; ipar++;
-			}
+		if(!m_bcalib_fix_k6){			
+			ptr[ipar] += ptr_dp[ipar]; ipar++;
 		}
 	}
 }
@@ -2777,7 +2781,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			switch(m_cur_campar){
 			case ECP_FX:
 			case ECP_FY:
-				m_bcalib_fix_campar = !m_bcalib_fix_campar;
+				m_bcalib_fix_focus = !m_bcalib_fix_focus;
 				break;
 			case ECP_CX:
 			case ECP_CY:

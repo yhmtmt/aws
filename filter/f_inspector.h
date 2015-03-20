@@ -395,6 +395,7 @@ private:
 	CvLevMarq m_solver;
 
 	bool m_bcalib_fix_campar;
+	bool m_bcalib_fix_focus;
 	bool m_bcalib_use_intrinsic_guess;
 	bool m_bcalib_fix_principal_point;
 	bool m_bcalib_fix_aspect_ratio;
