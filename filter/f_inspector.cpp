@@ -2025,6 +2025,9 @@ void f_inspector::estimate_levmarq()
 		// calculate projection
 		double ssd = 0.0;
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+			if(!valid[ifrm])
+				continue;
+
 			vector<s_obj> & objs = m_fobjs[ifrm]->objs;
 
 			// copy camera parameters
