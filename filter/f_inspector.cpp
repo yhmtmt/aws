@@ -819,7 +819,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
 	m_bauto_load_fobj(false), m_bauto_save_fobj(false),
 	m_bundistort(false), m_bcam_tbl_loaded(false),
-	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
+	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
 	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1), 
@@ -1364,8 +1364,10 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			snprintf(information, 1023, "fx=%f fy=%f", m_cam_int.at<double>(0,0), m_cam_int.at<double>(1,1));
 			
-			if(m_bcalib_fix_campar){
+			if(m_bcalib_fix_campar || m_bcalib_fix_focus){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
 			m_d3d_txt.get_text_size(sx, sy, information);
@@ -1376,6 +1378,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_fix_principal_point){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "cx=%f", m_cam_int.at<double>(0,2));
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1386,6 +1390,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_fix_principal_point){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "cy=%f", m_cam_int.at<double>(1,2));
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1398,6 +1404,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_fix_k1){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "k1=%f", (float)ptr[0]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1408,6 +1416,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_fix_k2){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "k2=%f", (float)ptr[0]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1418,6 +1428,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_zero_tangent_dist){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "p1=%f", (float)ptr[0]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1428,6 +1440,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_zero_tangent_dist){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "p2=%f", (float)ptr[0]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1438,6 +1452,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_fix_k3){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "k3=%f", (float)ptr[0]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1448,6 +1464,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_fix_k4){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "k4=%f", (float)ptr[0]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1458,6 +1476,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_fix_k5){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "k5=%f", (float)ptr[0]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1468,6 +1488,8 @@ void f_inspector::renderInfo()
 			val = sel ? 255 : 128;
 			if(m_bcalib_fix_campar || m_bcalib_fix_k6){
 				cr = val; cg = 0; cb = 0;
+			}else{
+				cr = 0; cg = val; cb = 0;
 			}
 			snprintf(information, 1023, "k6=%f", (float)ptr[0]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
@@ -1978,12 +2000,15 @@ void f_inspector::estimate_levmarq()
 	//     OPnn^tOEn
 	// Ecam = C1^tOE1 + C2^tOE2 + ... + Cn^tOEn
 
-	while(1){
-		const CvMat * _param = NULL;
-		CvMat * _JtJ = NULL, *_JtErr = NULL;
-		double * errNorm = NULL;
-		double * pparam;
+	const CvMat * _param = NULL;
+	CvMat * _JtJ = NULL, *_JtErr = NULL;
+	double * errNorm = NULL;
+	double * pparam = NULL;
+	int itr = 0;
+	ofstream log("levmarq.log");
 
+	while(1){
+		log << "Iteration " << itr << " state=" << m_solver.state << endl;
 		param = m_solver.param->data.db;
 		pparam = m_solver.prevParam->data.db;
 
@@ -2046,29 +2071,54 @@ void f_inspector::estimate_levmarq()
 		}
 
 		*errNorm = sqrt(ssd);
+		log << "errNorm = " << *errNorm << endl;
+
 		if(_JtJ != NULL && _JtErr != NULL){
 			Mat JtJ(_JtJ);
 			Mat JtErr(_JtErr);
 
 			// Calculating Psuedo Hessian JtJ and JtErr
-			int i = 0;
+			int i = 12;
 			for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 				if(!valid[ifrm])
 					continue;
 				vector<s_obj> & objs = m_fobjs[ifrm]->objs;
 				for(int iobj = 0; iobj < objs.size(); iobj++, i+=6){
+					log << "J[" << ifrm << "][" << iobj <<"] = " << endl;
+					log << objs[iobj].jacobian << endl;
 					// JtJ
+					log << "H[" << ifrm << "][" << iobj <<"] = " << endl;
+					log << objs[iobj].hessian << endl;
+					// JtJFrame
+					//      6     12
+					// 6   RTRT   CRTt
+					// 12  CRT    CC
+					//
+					// JtJ(0:12,0:12) += Hfrm(6:18, 6:18)
+					// JtJ(12+6ifrm:12+6ifrm+6, 12+6ifrm:12+6ifrm+6) = Hfrm(0:6, 0:6)
+					// JtJ(12+6ifrm:12+6ifrm+6, 0:12) = Hfrm(0:6, 6:18)
+					// JtJ(0:12, 12+6ifrm:12+6ifrm+6) = Hfrm(6:18, 0:6)
 					JtJ(Rect(0, 0, 12, 12)) += objs[iobj].hessian(Rect(6, 6, 12, 12));
 					objs[iobj].hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
-					objs[iobj].hessian(Rect(6, 0, 6, 6)).copyTo(JtJ(Rect(i+6, i, 6, 6)));
-					objs[iobj].hessian(Rect(0, 6, 6, 6)).copyTo(JtJ(Rect(i, i+6, 6, 6)));
+					objs[iobj].hessian(Rect(6, 0, 12, 6)).copyTo(JtJ(Rect(0, i, 12, 6)));
+					objs[iobj].hessian(Rect(0, 6, 6, 12)).copyTo(JtJ(Rect(i, 0, 6, 12)));
 
-					// I do not remember the correspondance between Rect.x, y to Mat.row, col.
-					JtErr(Rect(0, 0, 1, 12)) += objs[iobj].jterr(Rect(0, 0, 1, 12));
-					objs[iobj].jterr(Rect(0, 12, 1, 6)).copyTo(JtErr(Rect(0, 12 + i, 1, 6)));
+					// JtErr
+					log << "JtErr[" << ifrm << "][" << iobj << "] = " << endl;
+					log << objs[iobj].jterr << endl;
+					// JtErrFrame
+					// 6  ERT
+					// 12 ECAM
+					JtErr(Rect(0, 6, 1, 12)) += objs[iobj].jterr(Rect(0, 0, 1, 12));
+					objs[iobj].jterr(Rect(0, 0, 1, 6)).copyTo(JtErr(Rect(0, i, 1, 6)));
 				}
 			}
+			log << "JtJ =" << endl;
+			log << JtJ << endl;
+			log << "JtErr =" << endl;
+			log << JtErr << endl;
 		}
+		itr++;
 	}
 }
 
