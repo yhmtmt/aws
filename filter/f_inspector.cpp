@@ -2609,7 +2609,14 @@ void f_inspector::translate_obj(short delta)
 	double * ptr = objs[m_cur_obj].jmax.ptr<double>(0) + 3;
 
 	double step = (double)(delta / WHEEL_DELTA) * m_adj_step;
+	double div = ptr[m_axis];
+	if(div != div){// to avoid Not a number
+		div = 1.0;
+		cout << "Not a number detected." << endl;
+	}
+	
 	Mat tvec = Mat::zeros(3, 1, CV_64FC1);
+
 	switch(m_axis){
 	case AX_X:
 		tvec.at<double>(0, 0) = step / ptr[0];
