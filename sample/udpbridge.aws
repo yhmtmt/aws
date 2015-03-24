@@ -1,0 +1,23 @@
+#!/bin/sh
+# this sample simply bridges two UDP sockets.
+# Actually, ms and mv set both destination ports, address, and their source ports.
+# The parrameter cyc and the size of crbuf are crucial for the transmission paformance.
+# I've not yet imlemented crbuf larger than 1024bytes. 
+
+channel crbuf in
+channel crbuf out
+filter udp ms -i in -o out
+fset ms host_dst 127.0.0.1
+fset ms port_dst 14551
+fset ms port 14552
+fset ms fin msin.log
+fset ms fout msout.log
+filter udp mv -i out -o in
+fset mv host_dst 127.0.0.1
+fset mv port_dst 14549
+fset mv port 14550
+fset mv fin mvin.log
+fset mv fout mvout.log
+cyc 0.01
+go
+
