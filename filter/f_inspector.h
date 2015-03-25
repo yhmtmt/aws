@@ -20,7 +20,6 @@
 
 bool is_equal(Mat & a, Mat & b);
 
-
 ////////////////// procedure for model pose estimation
 // for calibration phase
 // 1. load lens parameter table
@@ -362,6 +361,7 @@ private:
 	//
 	char m_fname_campar[1024]; // name of camera parameter file
 	char m_fname_campar_tbl[1024]; // name of camera parameter table for multiple magnifications
+	double m_depth_min, m_depth_max;
 	Mat m_cam_int, m_cam_dist; // Intrinsic camera parameter.	
 	Mat m_rvec_cam, m_tvec_cam; // Extrinsic camera parameter.
 
@@ -516,7 +516,7 @@ public:
 //  Up: parameter adjustment step up
 //  Down: parameter adjustment step down
 //
-// State {Model, Obj, Point, Camera}
+// State {Frame, Model, Obj, Point, Camera}
 // State transition (always it can work)
 // <input>: <Action>
 //  M: op <= Model
@@ -572,5 +572,7 @@ public:
 // op = Estimate
 //  E: Estimate
 //
+// op = Frame
+
 
 #endif

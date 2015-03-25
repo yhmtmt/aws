@@ -822,7 +822,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
-	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_cur_obj(-1), m_cur_point(-1), 
+	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), m_cur_obj(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
 	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3)
@@ -878,6 +878,9 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("k6", m_cam_dist.ptr<double>(0) + 7, "Radial distortion coefficient k6.");
 	register_fpar("campar", &m_cur_campar, ECP_K6+1, m_str_campar, "Current camera parameter selected.");
 	register_fpar("erep", &m_erep, "Reprojection error.");
+
+	register_fpar("dmin", &m_depth_min, "Minimum Scene Depth in meter");
+	register_fpar("dmax", &m_depth_max, "Maximum Scene Depth in meter");
 
 	register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Use intrinsic guess.");
 	register_fpar("fix_campar", &m_bcalib_fix_campar, "Fix camera parameters");
@@ -2607,7 +2610,6 @@ void f_inspector::translate_obj(short delta)
 		return ;
 	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	double * ptr = objs[m_cur_obj].jmax.ptr<double>(0) + 3;
-
 	double step = (double)(delta / WHEEL_DELTA) * m_adj_step;
 	double div = ptr[m_axis];
 	if(div != div){// to avoid Not a number
@@ -2619,17 +2621,22 @@ void f_inspector::translate_obj(short delta)
 
 	switch(m_axis){
 	case AX_X:
-		tvec.at<double>(0, 0) = step / ptr[0];
+		tvec.at<double>(0, 0) = step / div;
 		break;
 	case AX_Y:
-		tvec.at<double>(1, 0) = step / ptr[1];
+		tvec.at<double>(1, 0) = step / div;
 		break;
 	case AX_Z:
-		tvec.at<double>(2, 0) = step / ptr[2];
+		tvec.at<double>(2, 0) = step / div;
 		break;
 	}
 
 	objs[m_cur_obj].tvec += tvec;
+	double * tptr = objs[m_cur_obj].tvec.ptr<double>(0);
+	if(tptr[m_axis] != tptr[m_axis]){
+		tptr[m_axis] = 1.0;
+		cout << "Not a number detected." << endl;
+	}
 }
 
 void f_inspector::rotate_obj(short delta)
