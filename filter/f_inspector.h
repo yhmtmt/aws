@@ -83,7 +83,6 @@ struct s_model
 	vector<Point3f> pts;
 	vector<s_edge> edges;
 	float xmin, ymin, zmin, xmax, ymax, zmax;
-
 	s_model():ref(0), xmin(FLT_MAX), ymin(FLT_MAX), zmin(FLT_MAX),
 		xmax(-FLT_MAX), ymax(-FLT_MAX), zmax(-FLT_MAX)
 	{
@@ -180,6 +179,26 @@ struct s_obj
 
 	int get_num_points(){
 		return (int) pt2d.size();
+	}
+
+	void get_bb_pt2d(Rect & bb)
+	{
+		float xmin, ymin, xmax, ymax;
+		xmin = ymin = FLT_MAX;
+		xmax = ymax = 0;
+		bb = Rect(0, 0, 0, 0);
+		for(int i = 0; i < visible.size(); i++){
+			if(!visible[i])
+				continue;
+			xmin = min(pt2d[i].x, xmin);
+			xmax = max(pt2d[i].x, xmax);
+			ymin = min(pt2d[i].y, ymin);
+			ymax = max(pt2d[i].y, ymax);
+		}
+		bb.x = (int) xmin;
+		bb.y = (int) ymin;
+		bb.width = (int)(xmax - xmin);
+		bb.height = (int)(ymax - ymin);
 	}
 
 	// getting the nearest object point and the distance to (x, y)
@@ -308,13 +327,31 @@ private:
 
 	// sub operation
 	enum e_sub_operation{
-		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ
+		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ
 	};
 	static const char * m_str_sop[SOP_REINIT_FOBJ+1];
 	e_sub_operation m_sop;
 	void handle_sop_delete();
 	void handle_sop_save();
 	void handle_sop_load();
+	void handle_sop_guess();
+	void help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy){
+		double * ptr = obj.tvec.ptr<double>(0);
+		s_model * pmdl = obj.pmdl;
+		double sx = pmdl->get_xsize();
+		double sy = pmdl->get_ysize();
+		ptr[2] = z;
+		Rect bb;
+		obj.get_bb_pt2d(bb);
+		double fx = (double) bb.width * z / (double) sx;
+		double fy = (double) bb.height * z / (double) sy;
+
+		ptr[0] = ((double) bb.x + (double) bb.width * (-pmdl->xmin / sx) - cx) / fx;
+		ptr[1] = ((double) bb.y + (double) bb.height * (-pmdl->ymin / sy) - cy) / fy;
+
+		sfx += fx;
+		sfy += fy;
+	}
 	void handle_sop_inst_obj();
 	void handle_sop_reinit_fobj();
 
@@ -512,7 +549,6 @@ public:
 //  R: Reset Window
 //  L: Load Frame object
 //  S: Save Frame object
-//  F: Reinitialize frame object 
 //  Up: parameter adjustment step up
 //  Down: parameter adjustment step down
 //

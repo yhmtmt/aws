@@ -805,7 +805,7 @@ const char * f_inspector::m_str_op[FRAME+1]
 	= {"model", "obj", "point", "camera", "estimate", "frame"};
 
 const char * f_inspector::m_str_sop[SOP_REINIT_FOBJ+1]
-	= {"null", "save", "load", "ins", "del", "fobj"};
+	= {"null", "save", "load", "guess", "ins", "del", "fobj"};
 
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
@@ -1044,6 +1044,9 @@ bool f_inspector::proc()
 		break;
 	case SOP_DELETE:
 		handle_sop_delete();
+		break;
+	case SOP_GUESS:
+		handle_sop_guess();
 		break;
 	case SOP_INST_OBJ:
 		handle_sop_inst_obj();
@@ -2811,6 +2814,15 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'E':
 		m_op = ESTIMATE;
 		break;
+	case 'G':
+		switch(m_op){
+		case MODEL:
+		case FRAME:
+		case OBJ:
+			m_sop = SOP_GUESS;
+			break;
+		}
+		break;
 	case 'I':
 		switch(m_op){
 		case MODEL:
@@ -3057,4 +3069,46 @@ void f_inspector::handle_sop_reinit_fobj()
 			m_fobjs[m_cur_frm]->init(m_timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia, m_miss_tracks);
 	}
 	m_sop = SOP_NULL;
+}
+
+void f_inspector::handle_sop_guess()
+{
+	// translation of objects 
+	// the depth of the objects are all set as (dmin + dmax) / 2
+	int num_objs;
+	double cx, cy;
+	cx = m_cam_int.ptr<double>()[2];
+	cy = m_cam_int.ptr<double>()[5];
+	double fx, fy, sfx, sfy;
+	double z = 0.5 * (m_depth_min + m_depth_max);
+	Rect bb;
+	sfx = sfy = 0.0;
+	num_objs = 0;
+	switch(m_op){
+	case FRAME:
+		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+			vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+			for(int iobj = 0; iobj < m_fobjs.size(); iobj++){
+				help_guess(objs[iobj], z, cx, cy, sfx, sfy);
+				num_objs++;
+			}
+		}
+	case OBJ:
+		if(m_cur_obj >= 0){
+			vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+			if(m_cur_obj < objs.size()){
+				help_guess(objs[m_cur_obj], z, cx, cy, sfx, sfy);
+				num_objs++;
+			}else{
+				return;
+			}
+		}
+	}
+	fx = sfx / (double) num_objs;
+	fy = sfy / (double) num_objs;
+	if(m_bcalib_fix_aspect_ratio){
+		fx = fy * m_cam_int.ptr<double>()[0] / m_cam_int.ptr<double>()[4];
+	}
+	m_cam_int.ptr<double>()[0] = fx;
+	m_cam_int.ptr<double>()[4] = fy;
 }
