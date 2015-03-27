@@ -2055,6 +2055,9 @@ void f_inspector::estimate_levmarq()
 
 		// calculate projection
 		double ssd = 0.0;
+		log << "Cam_int = " << endl << m_cam_int << endl;
+		log << "Cam_dist = " << endl << m_cam_dist << endl;
+
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 			if(!valid[ifrm])
 				continue;
@@ -3112,4 +3115,19 @@ void f_inspector::handle_sop_guess()
 	m_cam_int.ptr<double>()[0] = fx;
 	m_cam_int.ptr<double>()[4] = fy;
 	m_sop = SOP_NULL;
+
+	switch(m_op){
+	case FRAME:
+		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
+			m_cam_int.copyTo(m_fobjs[ifrm]->camint);
+			m_cam_dist.copyTo(m_fobjs[ifrm]->camdist);
+		}
+		break;
+	case OBJ:
+		if(m_cur_obj >= 0){
+			m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
+			m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
+		}
+		break;
+	}
 }
