@@ -3087,8 +3087,8 @@ void f_inspector::handle_sop_guess()
 	switch(m_op){
 	case FRAME:
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-			vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
-			for(int iobj = 0; iobj < m_fobjs.size(); iobj++){
+			vector<s_obj> & objs = m_fobjs[ifrm]->objs;
+			for(int iobj = 0; iobj < objs.size(); iobj++){
 				help_guess(objs[iobj], z, cx, cy, sfx, sfy);
 				num_objs++;
 			}
@@ -3111,4 +3111,5 @@ void f_inspector::handle_sop_guess()
 	}
 	m_cam_int.ptr<double>()[0] = fx;
 	m_cam_int.ptr<double>()[4] = fy;
+	m_sop = SOP_NULL;
 }
