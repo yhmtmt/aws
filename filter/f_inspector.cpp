@@ -473,6 +473,9 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio)
 			*ptr_max = max(*ptr_max, abs(*ptr));
 		}
 	}
+	// jacobian 
+	// rows: 2N 
+	// cols: r, t, f, c, k
 	mulTransposed(jacobian, hessian, true);
 	calc_ssd();
 	jterr = jacobian.t() * err;
@@ -1425,7 +1428,7 @@ void f_inspector::renderInfo()
 			}else{
 				cr = 0; cg = val; cb = 0;
 			}
-			snprintf(information, 1023, "k2=%f", (float)ptr[0]);
+			snprintf(information, 1023, "k2=%f", (float)ptr[1]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
 			m_d3d_txt.get_text_size(sx, sy, information);
 			x += (int)sx + 10;
@@ -1437,7 +1440,7 @@ void f_inspector::renderInfo()
 			}else{
 				cr = 0; cg = val; cb = 0;
 			}
-			snprintf(information, 1023, "p1=%f", (float)ptr[0]);
+			snprintf(information, 1023, "p1=%f", (float)ptr[2]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
 			m_d3d_txt.get_text_size(sx, sy, information);
 			x += (int)sx + 10;
@@ -1449,7 +1452,7 @@ void f_inspector::renderInfo()
 			}else{
 				cr = 0; cg = val; cb = 0;
 			}
-			snprintf(information, 1023, "p2=%f", (float)ptr[0]);
+			snprintf(information, 1023, "p2=%f", (float)ptr[3]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
 			m_d3d_txt.get_text_size(sx, sy, information);
 			x += (int)sx + 10;
@@ -1461,7 +1464,7 @@ void f_inspector::renderInfo()
 			}else{
 				cr = 0; cg = val; cb = 0;
 			}
-			snprintf(information, 1023, "k3=%f", (float)ptr[0]);
+			snprintf(information, 1023, "k3=%f", (float)ptr[4]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
 			m_d3d_txt.get_text_size(sx, sy, information);
 			x += (int)sx + 10;
@@ -1473,7 +1476,7 @@ void f_inspector::renderInfo()
 			}else{
 				cr = 0; cg = val; cb = 0;
 			}
-			snprintf(information, 1023, "k4=%f", (float)ptr[0]);
+			snprintf(information, 1023, "k4=%f", (float)ptr[5]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
 			m_d3d_txt.get_text_size(sx, sy, information);
 			x += (int)sx + 10;
@@ -1485,7 +1488,7 @@ void f_inspector::renderInfo()
 			}else{
 				cr = 0; cg = val; cb = 0;
 			}
-			snprintf(information, 1023, "k5=%f", (float)ptr[0]);
+			snprintf(information, 1023, "k5=%f", (float)ptr[6]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
 			m_d3d_txt.get_text_size(sx, sy, information);
 			x += (int)sx + 10;
@@ -1497,7 +1500,7 @@ void f_inspector::renderInfo()
 			}else{
 				cr = 0; cg = val; cb = 0;
 			}
-			snprintf(information, 1023, "k6=%f", (float)ptr[0]);
+			snprintf(information, 1023, "k6=%f", (float)ptr[7]);
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
 			m_d3d_txt.get_text_size(sx, sy, information);
 			x += (int)sx + 10;
@@ -3027,6 +3030,14 @@ bool f_inspector::load_fobjs()
 		m_fobjs[ifobj] = new s_frame_obj();
 		m_fobjs[ifobj]->tfrm = atoll(fname);
 		m_fobjs[ifobj]->load(m_name, m_models);
+		if(m_timg == m_fobjs[ifobj]->tfrm){
+			m_cur_frm = ifobj;
+			m_cur_obj = (int) m_fobjs[ifobj]->objs.size() - 1;
+			if(!m_fobjs[ifobj]->camint.empty())
+				m_fobjs[ifobj]->camint.copyTo(m_cam_int);
+			if(!m_fobjs[ifobj]->camdist.empty())
+				m_fobjs[ifobj]->camdist.copyTo(m_cam_dist);
+		}
 	}
 
 	return true;
