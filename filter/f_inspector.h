@@ -137,6 +137,8 @@ struct s_obj
 	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
+	bool is_prj;
+
 	Mat jacobian;
 	Mat jmax; // maximum values of jacobian for each parameter
 	Mat hessian;
@@ -146,7 +148,7 @@ struct s_obj
 	double ssd;
 	int match_count;
 
-	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false){
+	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false), is_prj(false){
 		tvec = Mat::zeros(3, 1, CV_64FC1);
 		rvec = Mat::zeros(3, 1, CV_64FC1);
 	};
@@ -249,8 +251,9 @@ struct s_frame_obj{
 	double ssd; // sum of square projection errors
 	vector<s_obj> objs;
 	Mat camint, camdist;
+	bool is_prj;
 
-	s_frame_obj()
+	s_frame_obj():is_prj(false)
 	{
 	}
 

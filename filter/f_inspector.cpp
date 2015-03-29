@@ -462,7 +462,12 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio)
 {
 	projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian,
 		fix_aspect_ratio ? 1.0 : 0.0);
-
+	cout << "Camint = " << endl << camint << endl;
+	cout << "Camdist = " << endl << camdist << endl;
+	cout << "rvec = " << endl << rvec << endl;
+	cout << "tvec = " << endl << tvec << endl;
+	cout << "Projecting " << name << endl;
+	cout << "J=" << jacobian << endl;
 	//calculating maximum values for each parameter
 	jmax = Mat::zeros(1, jacobian.cols, CV_64FC1);
 	double * ptr_max, * ptr;
@@ -480,6 +485,8 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio)
 	calc_ssd();
 	jterr = jacobian.t() * err;
 	calc_num_matched_points();
+
+	is_prj = true;
 }
 
 void s_obj::render(LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
@@ -1934,19 +1941,19 @@ void f_inspector::estimate_levmarq()
 
 	if(m_bcalib_fix_k3)
 		mask[8] = 0;
-	param[8] = ptr_dist[8];
+	param[8] = ptr_dist[4];
 
 	if(m_bcalib_fix_k4)
 		mask[9] = 0;
-	param[9] = ptr_dist[9];
+	param[9] = ptr_dist[5];
 
 	if(m_bcalib_fix_k5)
 		mask[10] = 0;
-	param[10] = ptr_dist[10];
+	param[10] = ptr_dist[6];
 
 	if(m_bcalib_fix_k6)
 		mask[11] = 0;
-	param[11] = ptr_dist[11];
+	param[11] = ptr_dist[7];
 
 	// setting extrinsics
 	param += 12;
@@ -2023,39 +2030,41 @@ void f_inspector::estimate_levmarq()
 
 		bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
 
-		// if we need to use fixed aspect ratio, this codes should be rewritten to multiply the aspect ratio
-		param[0] = param[1];
-		pparam[0] = pparam[1];
+		if(_JtJ || _JtErr){
+			// if we need to use fixed aspect ratio, this codes should be rewritten to multiply the aspect ratio
+			param[0] = param[1];
+			pparam[0] = pparam[1];
 
-		// updating intrinsic parameters
-		ptr_int[0] = param[0];
-		ptr_int[4] = param[1];
-		ptr_int[2] = param[2];
-		ptr_int[5] = param[3];
-		for(int idist = 0; idist < 12; idist++){
-			ptr_dist[idist] = param[4 + idist];
-		}
+			// updating intrinsic parameters
+			ptr_int[0] = param[0];
+			ptr_int[4] = param[1];
+			ptr_int[2] = param[2];
+			ptr_int[5] = param[3];
+			for(int idist = 0; idist < 12; idist++){
+				ptr_dist[idist] = param[4 + idist];
+			}
 
-		// updating extrinsic parameters 
-		param += 12;
-		for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
-			if(!valid[ifobj])
-				continue;
-			vector<s_obj> & objs = m_fobjs[ifobj]->objs;
-			for(int iobj = 0; iobj < objs.size(); iobj++){
-				double * pext;
-				// copy rvec
-				pext = objs[iobj].rvec.ptr<double>();
-				memcpy((void*)pext, (void*)param, sizeof(double) * 3);
+			// updating extrinsic parameters 
+			param += 12;
+			for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
+				if(!valid[ifobj])
+					continue;
+				vector<s_obj> & objs = m_fobjs[ifobj]->objs;
+				for(int iobj = 0; iobj < objs.size(); iobj++){
+					double * pext;
+					// copy rvec
+					pext = objs[iobj].rvec.ptr<double>();
+					memcpy((void*)pext, (void*)param, sizeof(double) * 3);
 
-				// copy tvec
-				pext = objs[iobj].tvec.ptr<double>();
-				memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
+					// copy tvec
+					pext = objs[iobj].tvec.ptr<double>();
+					memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
 
-				param += 6;
+					objs[iobj].is_prj = false;
+					param += 6;
+				}
 			}
 		}
-
 		// calculate projection
 		double ssd = 0.0;
 		log << "Cam_int = " << endl << m_cam_int << endl;
@@ -2070,6 +2079,7 @@ void f_inspector::estimate_levmarq()
 			// copy camera parameters
 			m_cam_int.copyTo(m_fobjs[ifrm]->camint);
 			m_cam_dist.copyTo(m_fobjs[ifrm]->camdist);
+			m_fobjs[ifrm]->is_prj = false;
 
 			// projection
 			m_fobjs[ifrm]->proj_objs(m_bcalib_fix_aspect_ratio);
@@ -2224,13 +2234,20 @@ void f_inspector::estimate_fulltime()
 	}	
 }
 
-void s_frame_obj::proj_objs(bool fix_aspect_ratio){
+void s_frame_obj::proj_objs(bool fix_aspect_ratio)
+{
+	if(is_prj)
+		return;
+
 	ssd = 0.0;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
+		if(obj.is_prj)
+			continue;
 		obj.proj(camint, camdist, fix_aspect_ratio);
 		ssd += obj.ssd;
 	}
+	is_prj = true;
 }
 
 void f_inspector::acc_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
@@ -2646,6 +2663,7 @@ void f_inspector::translate_obj(short delta)
 		tptr[m_axis] = 1.0;
 		cout << "Not a number detected." << endl;
 	}
+	objs[m_cur_obj].is_prj = false;
 }
 
 void f_inspector::rotate_obj(short delta)
@@ -2673,6 +2691,7 @@ void f_inspector::rotate_obj(short delta)
 	Rodrigues(rvec, R2);
 	Mat R = R2 * R1;
 	Rodrigues(R, objs[m_cur_obj].rvec);
+	objs[m_cur_obj].is_prj = false;
 }
 
 void f_inspector::adjust_cam(short delta)
@@ -2706,6 +2725,7 @@ void f_inspector::adjust_cam(short delta)
 		}
 		break;
 	}
+	m_fobjs[m_cur_obj]->is_prj = false;
 }
 
 void f_inspector::handle_vk_up()
