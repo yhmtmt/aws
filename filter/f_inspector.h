@@ -20,6 +20,23 @@
 
 bool is_equal(Mat & a, Mat & b);
 
+void mat2csv(ofstream & out, Mat & m)
+{
+	if(m.type() != CV_64FC1){
+		return;
+	}
+	double * ptr = m.ptr<double>(0);
+	for(int i = 0; i < m.rows; i++){
+		for(int j = 0; j< m.cols; j++){
+			out << *ptr;
+			if(j != m.cols - 1)
+				out << ",";
+			ptr++;
+		}
+		out << endl;
+	}
+}
+
 ////////////////// procedure for model pose estimation
 // for calibration phase
 // 1. load lens parameter table
