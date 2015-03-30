@@ -20,7 +20,7 @@
 
 bool is_equal(Mat & a, Mat & b);
 
-void mat2csv(ofstream & out, Mat & m)
+inline void mat2csv(ofstream & out, Mat & m)
 {
 	if(m.type() != CV_64FC1){
 		return;
