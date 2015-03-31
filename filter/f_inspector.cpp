@@ -462,12 +462,15 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio)
 {
 	projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian,
 		fix_aspect_ratio ? 1.0 : 0.0);
+	/*
 	cout << "Camint = " << endl << camint << endl;
 	cout << "Camdist = " << endl << camdist << endl;
 	cout << "rvec = " << endl << rvec << endl;
 	cout << "tvec = " << endl << tvec << endl;
 	cout << "Projecting " << name << endl;
 	cout << "J=" << jacobian << endl;
+	*/
+
 	//calculating maximum values for each parameter
 	jmax = Mat::zeros(1, jacobian.cols, CV_64FC1);
 	double * ptr_max, * ptr;
@@ -2067,8 +2070,10 @@ void f_inspector::estimate_levmarq()
 		}
 		// calculate projection
 		double ssd = 0.0;
-		log << "Cam_int = " << endl << m_cam_int << endl;
-		log << "Cam_dist = " << endl << m_cam_dist << endl;
+		log << "Cam_int = " << endl;
+		mat2csv(log, m_cam_int);
+		log << "Cam_dist = " << endl;
+		mat2csv(log, m_cam_dist);
 
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 			if(!valid[ifrm])
@@ -2093,7 +2098,7 @@ void f_inspector::estimate_levmarq()
 		}
 
 		*errNorm = sqrt(ssd);
-		log << "errNorm = " << *errNorm << endl;
+		log << "errNorm," << *errNorm << endl;
 
 		if(_JtJ != NULL && _JtErr != NULL){
 			Mat JtJ(_JtJ);
@@ -2107,10 +2112,10 @@ void f_inspector::estimate_levmarq()
 				vector<s_obj> & objs = m_fobjs[ifrm]->objs;
 				for(int iobj = 0; iobj < objs.size(); iobj++, i+=6){
 					log << "J[" << ifrm << "][" << iobj <<"] = " << endl;
-					log << objs[iobj].jacobian << endl;
+					mat2csv(log, objs[iobj].jacobian);
 					// JtJ
 					log << "H[" << ifrm << "][" << iobj <<"] = " << endl;
-					log << objs[iobj].hessian << endl;
+					mat2csv(log, objs[iobj].hessian);
 					// JtJFrame
 					//      6     12
 					// 6   RTRT   CRTt
@@ -2127,7 +2132,7 @@ void f_inspector::estimate_levmarq()
 
 					// JtErr
 					log << "JtErr[" << ifrm << "][" << iobj << "] = " << endl;
-					log << objs[iobj].jterr << endl;
+					mat2csv(log, objs[iobj].jterr);
 					// JtErrFrame
 					// 6  ERT
 					// 12 ECAM
@@ -2136,9 +2141,9 @@ void f_inspector::estimate_levmarq()
 				}
 			}
 			log << "JtJ =" << endl;
-			log << JtJ << endl;
+			mat2csv(log, JtJ);
 			log << "JtErr =" << endl;
-			log << JtErr << endl;
+			mat2csv(log, JtErr);
 		}
 		itr++;
 	}
@@ -2236,15 +2241,13 @@ void f_inspector::estimate_fulltime()
 
 void s_frame_obj::proj_objs(bool fix_aspect_ratio)
 {
-	if(is_prj)
-		return;
-
 	ssd = 0.0;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
-		if(obj.is_prj)
+		if(is_prj && obj.is_prj)
 			continue;
 		obj.proj(camint, camdist, fix_aspect_ratio);
+	
 		ssd += obj.ssd;
 	}
 	is_prj = true;
@@ -2663,6 +2666,7 @@ void f_inspector::translate_obj(short delta)
 		tptr[m_axis] = 1.0;
 		cout << "Not a number detected." << endl;
 	}
+	m_fobjs[m_cur_frm]->is_prj = false;
 	objs[m_cur_obj].is_prj = false;
 }
 
@@ -2691,6 +2695,7 @@ void f_inspector::rotate_obj(short delta)
 	Rodrigues(rvec, R2);
 	Mat R = R2 * R1;
 	Rodrigues(R, objs[m_cur_obj].rvec);
+	m_fobjs[m_cur_frm]->is_prj = false;
 	objs[m_cur_obj].is_prj = false;
 }
 
