@@ -458,10 +458,19 @@ bool s_obj::save(FileStorage & fs)
 	return true;
 }
 
-void s_obj::proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio)
+void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ratio)
 {
-	projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian,
-		fix_aspect_ratio ? 1.0 : 0.0);
+	if(bjacobian){
+		projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian,
+			fix_aspect_ratio ? 1.0 : 0.0);
+		// jacobian 
+		// rows: 2N 
+		// cols: r, t, f, c, k
+		mulTransposed(jacobian, hessian, true);
+		jterr = jacobian.t() * err;
+	}else{
+		projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj);
+	}
 	/*
 	cout << "Camint = " << endl << camint << endl;
 	cout << "Camdist = " << endl << camdist << endl;
@@ -470,25 +479,7 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio)
 	cout << "Projecting " << name << endl;
 	cout << "J=" << jacobian << endl;
 	*/
-
-	//calculating maximum values for each parameter
-	jmax = Mat::zeros(1, jacobian.cols, CV_64FC1);
-	double * ptr_max, * ptr;
-	for(int i = 0; i < jacobian.rows; i++){
-		ptr = jacobian.ptr<double>(i);
-		ptr_max = jmax.ptr<double>(0);
-		for(int j = 0; j < jacobian.cols; j++, ptr++, ptr_max++){
-			*ptr_max = max(*ptr_max, abs(*ptr));
-		}
-	}
-	// jacobian 
-	// rows: 2N 
-	// cols: r, t, f, c, k
-	mulTransposed(jacobian, hessian, true);
 	calc_ssd();
-	jterr = jacobian.t() * err;
-	calc_num_matched_points();
-
 	is_prj = true;
 }
 
@@ -1075,8 +1066,8 @@ bool f_inspector::proc()
 
 	m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
 	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
-	m_fobjs[m_cur_frm]->proj_objs(m_bcalib_fix_aspect_ratio);
-	calc_jcam_max();
+	m_fobjs[m_cur_frm]->proj_objs(true, m_bcalib_fix_aspect_ratio);
+	calc_jmax();
 
 	// sample point templates
 	m_fobjs[m_cur_frm]->sample_tmpl(m_img_gry_blur, m_sz_vtx_smpl);
@@ -2020,7 +2011,6 @@ void f_inspector::estimate_levmarq()
 	// Ecam = C1^tOE1 + C2^tOE2 + ... + Cn^tOEn
 
 	const CvMat * _param = NULL;
-	CvMat * _JtJ = NULL, *_JtErr = NULL;
 	double * errNorm = NULL;
 	double * pparam = NULL;
 	int itr = 0;
@@ -2028,6 +2018,9 @@ void f_inspector::estimate_levmarq()
 
 	while(1){
 		log << "Iteration " << itr << " state=" << m_solver.state << endl;
+		CvMat * _JtJ = NULL, *_JtErr = NULL; // for each iteration, these data structure should be initialized.
+											 // This is because the ERROR_CHECK state of CvLevMarq assume the 
+											 // outerloop does not update their JtJ and JtErr
 		param = m_solver.param->data.db;
 		pparam = m_solver.prevParam->data.db;
 
@@ -2075,6 +2068,7 @@ void f_inspector::estimate_levmarq()
 		log << "Cam_dist = " << endl;
 		mat2csv(log, m_cam_dist);
 
+		bool updateJ = _JtJ != NULL & _JtErr != NULL;
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 			if(!valid[ifrm])
 				continue;
@@ -2087,7 +2081,7 @@ void f_inspector::estimate_levmarq()
 			m_fobjs[ifrm]->is_prj = false;
 
 			// projection
-			m_fobjs[ifrm]->proj_objs(m_bcalib_fix_aspect_ratio);
+			m_fobjs[ifrm]->proj_objs(updateJ, m_bcalib_fix_aspect_ratio);
 
 			// accumulating frame's projection ssd
 			ssd += m_fobjs[ifrm]->ssd;
@@ -2100,7 +2094,7 @@ void f_inspector::estimate_levmarq()
 		*errNorm = sqrt(ssd);
 		log << "errNorm," << *errNorm << endl;
 
-		if(_JtJ != NULL && _JtErr != NULL){
+		if(updateJ){
 			Mat JtJ(_JtJ);
 			Mat JtErr(_JtErr);
 
@@ -2142,6 +2136,22 @@ void f_inspector::estimate_levmarq()
 			}
 			log << "JtJ =" << endl;
 			mat2csv(log, JtJ);
+			Mat JtJN;
+			JtJ.copyTo(JtJN);
+			double Log10 = ::log(10.0);
+			double lambda = exp(m_solver.lambdaLg10 * Log10);
+			for(int i = 0; i < JtJN.cols; i++)
+				JtJN.at<double>(i, i) *= 1.0 + lambda;
+			log << "lambda, " << lambda << endl;
+			Mat JtJinv = JtJN.inv(DECOMP_CHOLESKY);
+			log << "JtJinv =" << endl;
+			mat2csv(log, JtJinv);
+			Mat evl, evc;
+			eigen(JtJ, evl, evc);
+			log << "Eval =" << endl;
+			mat2csv(log, evl);
+			log << "Evec =" << endl;
+			mat2csv(log, evc);
 			log << "JtErr =" << endl;
 			mat2csv(log, JtErr);
 		}
@@ -2167,7 +2177,7 @@ void f_inspector::estimate_fulltime()
 		m_cam_dist.copyTo(m_fobjs[ifrm]->camdist);
 
 		// projection
-		m_fobjs[ifrm]->proj_objs(m_bcalib_fix_aspect_ratio);
+		m_fobjs[ifrm]->proj_objs(true, m_bcalib_fix_aspect_ratio);
 
 		// accumulating frame's projection ssd
 		ssd += m_fobjs[ifrm]->ssd;
@@ -2239,14 +2249,14 @@ void f_inspector::estimate_fulltime()
 	}	
 }
 
-void s_frame_obj::proj_objs(bool fix_aspect_ratio)
+void s_frame_obj::proj_objs(bool bjacobian, bool fix_aspect_ratio)
 {
 	ssd = 0.0;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
 		if(is_prj && obj.is_prj)
 			continue;
-		obj.proj(camint, camdist, fix_aspect_ratio);
+		obj.proj(camint, camdist, bjacobian, fix_aspect_ratio);
 	
 		ssd += obj.ssd;
 	}
@@ -2449,14 +2459,21 @@ void f_inspector::update_params(vector<s_obj> & objs)
 	}
 }
 
-void f_inspector::calc_jcam_max(){
+void f_inspector::calc_jmax(){
 	m_jcam_max = Mat::zeros(1, 12, CV_64FC1);
 	double * ptr_max, * ptr;
 	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = objs[iobj];
-		Mat & jmax = obj.jmax;
-		ptr = jmax.ptr<double>(0) + 6;
+		obj.jmax = Mat::zeros(1, obj.jacobian.cols, CV_64FC1);
+		for(int i = 0; i < obj.jacobian.rows; i++){
+			ptr = obj.jacobian.ptr<double>(i);
+			ptr_max = obj.jmax.ptr<double>(0);
+			for(int j = 0; j < obj.jacobian.cols; j++, ptr++, ptr_max++)
+				*ptr_max = max(*ptr_max, abs(*ptr));
+		}
+
+		ptr = obj.jmax.ptr<double>(0) + 6;
 		ptr_max = m_jcam_max.ptr<double>(0);
 		for(int i = 0; i < 12; i++, ptr++, ptr_max++){
 			*ptr_max = max(*ptr_max, *ptr);
