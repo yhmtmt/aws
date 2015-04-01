@@ -233,7 +233,7 @@ struct s_obj
 	}
 
 	// calculate projection
-	void proj(Mat & camint, Mat & camdist, bool fix_aspect_ratio = true);
+	void proj(Mat & camint, Mat & camdist, bool bjacobian = true, bool fix_aspect_ratio = true);
 
 	// draw the wire frame model
 	void render(LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
@@ -274,7 +274,7 @@ struct s_frame_obj{
 	{
 	}
 
-	void proj_objs(bool fix_aspect_ratio = true);
+	void proj_objs(bool bjacobian = true, bool fix_aspect_ratio = true);
 
 	void sample_tmpl(Mat & img, Size & sz)
 	{
@@ -424,7 +424,7 @@ private:
 
 	double m_erep;		// reprojection error of last current camera parameter.
 	Mat m_jcam_max;
-	void calc_jcam_max();
+	void calc_jmax();
 
 	// master camera parameter (increasing order in f_x)
 	bool m_bcam_tbl_loaded;
