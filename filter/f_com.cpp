@@ -335,7 +335,7 @@ bool f_udp::proc(){
 
 			if(m_head_wbuf == m_tail_wbuf){
 				if(m_fout.is_open())
-					m_fout.write(m_wbuf, m_tail_rbuf);
+					m_fout.write(m_wbuf, m_tail_wbuf);
 				/*
 				if(m_tail_wbuf > 0)
 					cout << m_name << " sent " << m_tail_wbuf << "bytes" << endl;
