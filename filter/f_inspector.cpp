@@ -466,10 +466,12 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 		// jacobian 
 		// rows: 2N 
 		// cols: r, t, f, c, k
+		calc_ssd();
 		mulTransposed(jacobian, hessian, true);
 		jterr = jacobian.t() * err;
 	}else{
 		projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj);
+		calc_ssd();
 	}
 	/*
 	cout << "Camint = " << endl << camint << endl;
@@ -479,7 +481,7 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 	cout << "Projecting " << name << endl;
 	cout << "J=" << jacobian << endl;
 	*/
-	calc_ssd();
+	
 	is_prj = true;
 }
 
@@ -2011,54 +2013,52 @@ void f_inspector::estimate_levmarq()
 	// Ecam = C1^tOE1 + C2^tOE2 + ... + Cn^tOEn
 
 	const CvMat * _param = NULL;
-	double * errNorm = NULL;
 	double * pparam = NULL;
 	int itr = 0;
 	ofstream log("levmarq.log");
 
 	while(1){
 		log << "Iteration " << itr << " state=" << m_solver.state << endl;
+		double * errNorm = NULL;
 		CvMat * _JtJ = NULL, *_JtErr = NULL; // for each iteration, these data structure should be initialized.
 											 // This is because the ERROR_CHECK state of CvLevMarq assume the 
 											 // outerloop does not update their JtJ and JtErr
 		param = m_solver.param->data.db;
 		pparam = m_solver.prevParam->data.db;
-
+		
 		bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
 
-		if(_JtJ || _JtErr){
-			// if we need to use fixed aspect ratio, this codes should be rewritten to multiply the aspect ratio
-			param[0] = param[1];
-			pparam[0] = pparam[1];
+		// if we need to use fixed aspect ratio, this codes should be rewritten to multiply the aspect ratio
+		param[0] = param[1];
+		pparam[0] = pparam[1];
 
-			// updating intrinsic parameters
-			ptr_int[0] = param[0];
-			ptr_int[4] = param[1];
-			ptr_int[2] = param[2];
-			ptr_int[5] = param[3];
-			for(int idist = 0; idist < 12; idist++){
-				ptr_dist[idist] = param[4 + idist];
-			}
+		// updating intrinsic parameters
+		ptr_int[0] = param[0];
+		ptr_int[4] = param[1];
+		ptr_int[2] = param[2];
+		ptr_int[5] = param[3];
+		for(int idist = 0; idist < 12; idist++){
+			ptr_dist[idist] = param[4 + idist];
+		}
 
-			// updating extrinsic parameters 
-			param += 12;
-			for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
-				if(!valid[ifobj])
-					continue;
-				vector<s_obj> & objs = m_fobjs[ifobj]->objs;
-				for(int iobj = 0; iobj < objs.size(); iobj++){
-					double * pext;
-					// copy rvec
-					pext = objs[iobj].rvec.ptr<double>();
-					memcpy((void*)pext, (void*)param, sizeof(double) * 3);
+		// updating extrinsic parameters 
+		param += 12;
+		for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
+			if(!valid[ifobj])
+				continue;
+			vector<s_obj> & objs = m_fobjs[ifobj]->objs;
+			for(int iobj = 0; iobj < objs.size(); iobj++){
+				double * pext;
+				// copy rvec
+				pext = objs[iobj].rvec.ptr<double>();
+				memcpy((void*)pext, (void*)param, sizeof(double) * 3);
 
-					// copy tvec
-					pext = objs[iobj].tvec.ptr<double>();
-					memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
+				// copy tvec
+				pext = objs[iobj].tvec.ptr<double>();
+				memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
 
-					objs[iobj].is_prj = false;
-					param += 6;
-				}
+				objs[iobj].is_prj = false;
+				param += 6;
 			}
 		}
 		// calculate projection
@@ -2068,7 +2068,7 @@ void f_inspector::estimate_levmarq()
 		log << "Cam_dist = " << endl;
 		mat2csv(log, m_cam_dist);
 
-		bool updateJ = _JtJ != NULL & _JtErr != NULL;
+		bool updateJ = _JtJ != NULL && _JtErr != NULL;
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 			if(!valid[ifrm])
 				continue;
@@ -2090,10 +2090,10 @@ void f_inspector::estimate_levmarq()
 		if(!proceed){
 			return ;
 		}
-
-		*errNorm = sqrt(ssd);
-		log << "errNorm," << *errNorm << endl;
-
+		if(errNorm){
+			*errNorm = sqrt(ssd);
+			log << "errNorm," << *errNorm << endl;
+		}
 		if(updateJ){
 			Mat JtJ(_JtJ);
 			Mat JtErr(_JtErr);
