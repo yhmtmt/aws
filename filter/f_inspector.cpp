@@ -1085,7 +1085,8 @@ bool f_inspector::proc()
 		}while(m_eest == EES_CONT && itr < m_num_max_itrs);
 		m_op = FRAME;
 		*/
-		estimate_levmarq();
+		//estimate_levmarq();
+		estimate_rt_levmarq();
 		m_op = FRAME;
 	}
 
@@ -1852,6 +1853,192 @@ void f_inspector::estimate()
 }
 
 
+void f_inspector::estimate_rt_levmarq()
+{
+	// counting extrinsic parameters (6 x number of objects)
+	int nparams = 0; // we assume the camera intrinsics are the same for every frames.
+	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;		
+	nparams += (int) objs.size() * 6;
+
+	// initializing LM-solver
+	CvTermCriteria tc;
+	tc.epsilon = FLT_EPSILON;
+	tc.max_iter = m_num_max_itrs;
+	tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
+	m_solver.init(nparams, 0, tc);
+
+	//set initial parameter and parameter mask
+	double * param = m_solver.param->data.db;
+	uchar * mask = m_solver.mask->data.ptr;
+
+	// setting extrinsics
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		double * pext;
+		// copy rvec
+		pext = objs[iobj].rvec.ptr<double>();
+		memcpy((void*)param, (void*)pext, sizeof(double) * 3);
+
+		// copy tvec
+		pext = objs[iobj].tvec.ptr<double>();
+		memcpy((void*)(param + 3), (void*)pext, sizeof(double) * 3);
+
+		param += 6;
+	}
+
+	// Compounds of Jacobian
+	// J = 
+	//     | Cam | Obj1 | Obj2 | ... | Obj n |
+	// OP1   C1    OP11
+	// OP2   C2           OP22 
+	// ...
+	// OPn   Cn                         OPnn
+	// 
+	// Jt = 
+	//     | OP1   | OP2   | ... | OP4  |
+	// Cam   C1^t    C2^t          C4^t
+	// Obj1  OP11^t
+	// Obj2         OP22^t 
+	// ...
+	// Objn                        OPnn^t
+	// 
+	// Psuedo Hessian (JtJ)
+	//      | Cam         |  Obj1   |  Obj2   | .... |  Obj n   |
+	// Cam    Hcam         C1^tOP11  C2^tOP22          Cn^tOPnn
+	// Obj1   (C1^tOP11)^t  OP11^2
+	// Obj2   (C2^tOP22)^t            OP22^2
+	// ...
+	// Objn   (Cn^tOPnn)^t                              OPnn^2
+	//
+	// Hcam = C1^2+...Cn^2
+	// 
+	// Err =
+	//     |Err|
+	//      OE1  
+	//      OE2  
+	//       ...
+	//      OEn  
+	//
+	// JtErr
+	//     Ecam
+	//     OP11^tOE1
+	//     OP22^tOE2
+	//     ...
+	//     OPnn^tOEn
+	// Ecam = C1^tOE1 + C2^tOE2 + ... + Cn^tOEn
+
+	const CvMat * _param = NULL;
+	double * pparam = NULL;
+	int itr = 0;
+	ofstream log("levmarq.csv");
+
+	while(1){
+		log << "Iteration " << itr << " state=" << m_solver.state << endl;
+		double * errNorm = NULL;
+		CvMat * _JtJ = NULL, *_JtErr = NULL; // for each iteration, these data structure should be initialized.
+											 // This is because the ERROR_CHECK state of CvLevMarq assume the 
+											 // outerloop does not update their JtJ and JtErr
+		param = m_solver.param->data.db;
+		pparam = m_solver.prevParam->data.db;
+		bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
+
+		//mat2csv(log, Mat(m_solver.JtJN));
+		log << "V = " << endl;
+		mat2csv(log, Mat(m_solver.JtJV));
+		log << "W = " << endl;
+		mat2csv(log, Mat(m_solver.JtJW));
+
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			double * pext;
+			// copy rvec
+			pext = objs[iobj].rvec.ptr<double>();
+			memcpy((void*)pext, (void*)param, sizeof(double) * 3);
+			log << "rvec[" << iobj << "]=" << endl;
+			mat2csv(log, objs[iobj].rvec);
+
+			// copy tvec
+			pext = objs[iobj].tvec.ptr<double>();
+			memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
+			log << "tvec[" << iobj << "]=" << endl;
+			mat2csv(log, objs[iobj].tvec);
+
+			objs[iobj].is_prj = false;
+			param += 6;
+		}
+
+		// calculate projection
+		double ssd = 0.0;
+		log << "Cam_int = " << endl;
+		mat2csv(log, m_cam_int);
+		log << "Cam_dist = " << endl;
+		mat2csv(log, m_cam_dist);
+
+		bool updateJ = _JtJ != NULL && _JtErr != NULL;
+		m_fobjs[m_cur_frm]->is_prj = false;
+		// projection
+		m_fobjs[m_cur_frm]->proj_objs(updateJ, m_bcalib_fix_aspect_ratio);
+		// accumulating frame's projection ssd
+		ssd += m_fobjs[m_cur_frm]->ssd;
+
+		if(!proceed){
+			return ;
+		}
+		if(errNorm){
+			*errNorm = sqrt(ssd);
+			log << "errNorm," << *errNorm << endl;
+		}
+
+		if(updateJ){
+			Mat JtJ(_JtJ);
+			Mat JtErr(_JtErr);
+
+			// Calculating Psuedo Hessian JtJ and JtErr
+			for(int iobj = 0, i = 0; iobj < objs.size(); iobj++, i+=6){
+				log << "J[" << iobj <<"] = " << endl;
+				mat2csv(log, objs[iobj].jacobian);
+				// JtJ
+				log << "H[" << iobj <<"] = " << endl;
+				mat2csv(log, objs[iobj].hessian);
+				// JtJFrame
+				//      6  
+				// 6   RTRT
+				//
+				// JtJ(12+6ifrm:12+6ifrm+6, 12+6ifrm:12+6ifrm+6) = Hfrm(0:6, 0:6)
+				objs[iobj].hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
+
+				// JtErr
+				log << "JtErr[" << iobj << "] = " << endl;
+				mat2csv(log, objs[iobj].jterr);
+				// JtErrFrame
+				// 6  ERT
+				// 12 ECAM
+				objs[iobj].jterr(Rect(0, 0, 1, 6)).copyTo(JtErr(Rect(0, i, 1, 6)));
+			}
+
+			log << "JtJ =" << endl;
+			mat2csv(log, JtJ);
+			Mat JtJN;
+			JtJ.copyTo(JtJN);
+			double Log10 = ::log(10.0);
+			double lambda = exp(m_solver.lambdaLg10 * Log10);
+			for(int i = 0; i < JtJN.cols; i++)
+				JtJN.at<double>(i, i) *= 1.0 + lambda;
+			log << "lambda, " << lambda << endl;
+			Mat JtJinv = JtJN.inv(DECOMP_CHOLESKY);
+			log << "JtJinv =" << endl;
+			mat2csv(log, JtJinv);
+			Mat evl, evc;
+			eigen(JtJ, evl, evc);
+			log << "Eval =" << endl;
+			mat2csv(log, evl);
+			log << "Evec =" << endl;
+			mat2csv(log, evc);
+			log << "JtErr =" << endl;
+			mat2csv(log, JtErr);
+		}
+		itr++;
+	}
+}
+
 // estimation methods written with Levenberg Marquardt implementation in OpenCV (CvLevMarq)
 void f_inspector::estimate_levmarq()
 {
@@ -2015,7 +2202,7 @@ void f_inspector::estimate_levmarq()
 	const CvMat * _param = NULL;
 	double * pparam = NULL;
 	int itr = 0;
-	ofstream log("levmarq.log");
+	ofstream log("levmarq.csv");
 
 	while(1){
 		log << "Iteration " << itr << " state=" << m_solver.state << endl;
@@ -2025,8 +2212,13 @@ void f_inspector::estimate_levmarq()
 											 // outerloop does not update their JtJ and JtErr
 		param = m_solver.param->data.db;
 		pparam = m_solver.prevParam->data.db;
-		
 		bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
+
+		//mat2csv(log, Mat(m_solver.JtJN));
+		log << "V = " << endl;
+		mat2csv(log, Mat(m_solver.JtJV));
+		log << "W = " << endl;
+		mat2csv(log, Mat(m_solver.JtJW));
 
 		// if we need to use fixed aspect ratio, this codes should be rewritten to multiply the aspect ratio
 		param[0] = param[1];
@@ -2130,7 +2322,7 @@ void f_inspector::estimate_levmarq()
 					// JtErrFrame
 					// 6  ERT
 					// 12 ECAM
-					JtErr(Rect(0, 6, 1, 12)) += objs[iobj].jterr(Rect(0, 0, 1, 12));
+					JtErr(Rect(0, 0, 1, 12)) += objs[iobj].jterr(Rect(0, 6, 1, 12));
 					objs[iobj].jterr(Rect(0, 0, 1, 6)).copyTo(JtErr(Rect(0, i, 1, 6)));
 				}
 			}

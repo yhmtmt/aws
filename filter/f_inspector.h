@@ -189,8 +189,10 @@ struct s_obj
 		err = Mat::zeros((int) visible.size() * 2, 1, CV_64FC1);
 		double * ptr = err.ptr<double>(0);
 		for(int i = 0; i < visible.size(); i++, ptr+=2){
-			ptr[0] = (double) visible[i] * (pt2d[i].x - pt2dprj[i].x);
-			ptr[1] = (double) visible[i] * (pt2d[i].y - pt2dprj[i].y);
+//			ptr[0] = (double) visible[i] * (pt2d[i].x - pt2dprj[i].x);
+//			ptr[1] = (double) visible[i] * (pt2d[i].y - pt2dprj[i].y);
+			ptr[0] = (double) visible[i] * (pt2dprj[i].x - pt2d[i].x);
+			ptr[1] = (double) visible[i] * (pt2dprj[i].y - pt2d[i].y);
 			ssd += (ptr[0] * ptr[0] + ptr[1] * ptr[1]);
 		}
 		return ssd;
@@ -479,6 +481,7 @@ private:
 	void estimate();
 	void estimate_fulltime();
 	void estimate_levmarq();
+	void estimate_rt_levmarq();
 	virtual bool alloc_d3dres();
 	virtual void release_d3dres();
 public:
