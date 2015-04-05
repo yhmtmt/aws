@@ -342,16 +342,16 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		MODEL, OBJ, POINT, CAMERA, ESTIMATE, FRAME
+		MODEL, OBJ, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME
 	};
 	static const char * m_str_op[FRAME+1]; 
 	e_operation m_op;
 
 	// sub operation
 	enum e_sub_operation{
-		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ
+		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ, SOP_INS_CPTBL
 	};
-	static const char * m_str_sop[SOP_REINIT_FOBJ+1];
+	static const char * m_str_sop[SOP_INS_CPTBL + 1];
 	e_sub_operation m_sop;
 	void handle_sop_delete();
 	void handle_sop_save();
@@ -376,6 +376,10 @@ private:
 	}
 	void handle_sop_inst_obj();
 	void handle_sop_reinit_fobj();
+	void handle_sop_ins_cptbl()
+	{
+		addCamparTbl();
+	}
 
 	bool m_bundistort;	// undistort flag. it cant be used with model handling mode.
 
@@ -430,6 +434,7 @@ private:
 
 	// master camera parameter (increasing order in f_x)
 	bool m_bcam_tbl_loaded;
+	int m_cur_camtbl;
 	vector<Mat> m_cam_int_tbl;
 	vector<Mat> m_cam_dist_tbl;
 	double m_cam_erep;
@@ -443,6 +448,10 @@ private:
 
 	// for parameter estimation
 #define ERROR_TOL 0.01
+	enum e_estimation_mode{
+		EMD_STOP = 0, EMD_FULL, EMD_RT, EMD_SEL
+	} m_emd;
+	static const char * m_str_emd[EMD_SEL + 1];
 	enum e_estimation_state{
 		EES_DIV, EES_CONV, EES_CONT
 	} m_eest;
@@ -467,6 +476,8 @@ private:
 	void update_campar();
 	void renderCampar();
 
+	bool addCamparTbl();
+	bool delCamparTbl();
 	bool saveCamparTbl();
 	bool loadCamparTbl();
 	void clearCamparTbl();
@@ -481,6 +492,7 @@ private:
 	void estimate();
 	void estimate_fulltime();
 	void estimate_levmarq();
+	void select_opt_campar();
 	void estimate_rt_levmarq();
 	virtual bool alloc_d3dres();
 	virtual void release_d3dres();
@@ -582,6 +594,7 @@ public:
 //  O: op <= Obj
 //  E: op <= Estimate
 //  C: op <= Camera
+//  T: op <= CameraTbl
 //  P: op <= Point
 //  F: op <= Frame
 // op = Model
@@ -626,12 +639,25 @@ public:
 //  <-: cur_par--
 //  Wheel: Change selected parameter value
 //  f : fix par[cur_par]
+//
+// op = CamTbl
+//  ->: cur_par++
+//  <-: cur_par--
 //  Del: Delete the camera parameter
+//  I : Insert current parameter to the table
+//  L : Load Camera parameter table
+//  S : Save Camera parameter table
+//	s : set current campar
 //
 // op = Estimate
 //  E: Estimate
+//  1: full parameter estimation
+//  2: Camera parameter selection and attitude optimization mode
+//  3: rotation/translation estimation
 //
 // op = Frame
+//  L : Load Camera parameter table
+//  S : Save Camera parameter table
 
 
 #endif

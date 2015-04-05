@@ -808,10 +808,10 @@ bool s_frame_obj::load(const char * aname, vector<s_model> & mdls)
 
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[FRAME+1]
-	= {"model", "obj", "point", "camera", "estimate", "frame"};
+	= {"model", "obj", "point", "camera", "camtbl", "estimate", "frame"};
 
-const char * f_inspector::m_str_sop[SOP_REINIT_FOBJ+1]
-	= {"null", "save", "load", "guess", "ins", "del", "fobj"};
+const char * f_inspector::m_str_sop[SOP_INS_CPTBL+1]
+	= {"null", "save", "load", "guess", "ins", "del", "fobj", "icp"};
 
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
@@ -821,10 +821,14 @@ const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
 	"fx", "fy", "cx", "cy", "k1", "k2", "c1", "c2", "k3", "k4", "k5", "k6"
 };
 
+const char * f_inspector::m_str_emd[EMD_SEL + 1] = {
+	"stop", "full", "rt", "sel"
+};
+
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
 	m_bauto_load_fobj(false), m_bauto_save_fobj(false),
-	m_bundistort(false), m_bcam_tbl_loaded(false),
+	m_bundistort(false), m_bcam_tbl_loaded(false), m_cur_camtbl(-1),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
@@ -845,9 +849,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
 	register_fpar("fcp", m_fname_campar, 1024, "File path of camera parameter.");
-	register_fpar("fcptbl", m_fname_campar_tbl, 1024, "File path of table of the camera parameters with multiple magnifications.");
 	register_fpar("op", (int*)&m_op, ESTIMATE+1, m_str_op,"Operation ");
-	register_fpar("sop", (int*)&m_sop, SOP_DELETE+1, m_str_sop, "Sub operation.");
+	register_fpar("sop", (int*)&m_sop, SOP_INS_CPTBL+1, m_str_sop, "Sub operation.");
 	register_fpar("asave", &m_bauto_save_fobj, "Automatically save frame object.");
 	register_fpar("aload", &m_bauto_load_fobj, "Automatically load frame object.");
 	register_fpar("sh", &m_sh, "Horizontal scaling value. Image size is multiplied by the value. (default 1.0)");
@@ -901,8 +904,11 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("fix_k5", &m_bcalib_fix_k5, "Fix k5 as specified.");
 	register_fpar("fix_k6", &m_bcalib_fix_k6, "Fix k6 as specified.");
 	register_fpar("rational_model", &m_bcalib_rational_model, "Enable rational model (k4, k5, k6)");
-
+	register_fpar("emd", (int*)&m_emd, EMD_SEL + 1, m_str_emd, "Estimation mode.");
 	register_fpar("undist", &m_bundistort, "Undistort source image according to the camera parameter.");
+
+	register_fpar("fcptbl", m_fname_campar_tbl, 1024, "File path of table of the camera parameters with multiple magnifications.");
+	register_fpar("cptbl", &m_cur_camtbl, "Current camera parameter index in thetable.");
 
 	// object/camera manipulation
 	register_fpar("axis", (int*)&m_axis, (int)AX_Z + 1, m_axis_str, "Axis for rotation and translation. {x, y, z}");
@@ -1060,6 +1066,9 @@ bool f_inspector::proc()
 	case SOP_REINIT_FOBJ:
 		handle_sop_reinit_fobj();
 		break;
+	case SOP_INS_CPTBL:
+		handle_sop_ins_cptbl();
+		break;
 	}
 
 	// projection 
@@ -1076,6 +1085,17 @@ bool f_inspector::proc()
 
 	// estimate
 	if(m_op == ESTIMATE){
+		switch(m_emd){
+		case EMD_FULL:
+			estimate_levmarq();
+			break;
+		case EMD_RT:
+			estimate_rt_levmarq();
+			break;
+		case EMD_SEL:
+			break;
+		}
+		m_emd = EMD_STOP;
 		/*
 		int itr = 0;
 		m_cam_erep = DBL_MAX;
@@ -1085,9 +1105,6 @@ bool f_inspector::proc()
 		}while(m_eest == EES_CONT && itr < m_num_max_itrs);
 		m_op = FRAME;
 		*/
-		//estimate_levmarq();
-		estimate_rt_levmarq();
-		m_op = FRAME;
 	}
 
 	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
@@ -1128,6 +1145,36 @@ bool f_inspector::proc()
 	// rendering main view
 	render(m_img_s, timg);
 
+	return true;
+}
+
+bool f_inspector::addCamparTbl()
+{
+	double fx = m_cam_int.at<double>(0, 0);
+	int icp;
+	for(icp = 0; icp < m_cam_int_tbl.size(); icp++){
+		Mat & ci = m_cam_int_tbl[icp];
+		double * ptr = ci.ptr<double>();
+		if(ptr[0] > fx){
+			break;
+		}
+	}
+	// insert current camera parameter here
+	m_cam_int_tbl.insert(m_cam_int_tbl.begin() + icp, Mat());
+	m_cam_dist_tbl.insert(m_cam_int_tbl.begin() + icp, Mat());
+	m_cam_int.copyTo(m_cam_int_tbl[icp]);
+	m_cam_dist.copyTo(m_cam_dist_tbl[icp]);
+	return true;
+}
+
+bool f_inspector::delCamparTbl()
+{
+	if(m_cur_camtbl >= 0 && m_cam_int_tbl.size() > 0 ){
+		m_cam_int_tbl.erase(m_cam_int_tbl.begin() + m_cur_camtbl);
+		m_cam_dist_tbl.erase(m_cam_dist_tbl.begin() + m_cur_camtbl);
+		if(m_cur_camtbl >= m_cam_int_tbl.size())
+			m_cur_camtbl = (int) m_cam_int_tbl.size() - 1;
+	}
 	return true;
 }
 
@@ -1359,6 +1406,7 @@ void f_inspector::renderInfo()
 		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
 	case CAMERA:
+	case CAMTBL:
 		{
 			int cr, cg, cb;
 			int val;
@@ -1508,6 +1556,88 @@ void f_inspector::renderInfo()
 			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
 			m_d3d_txt.get_text_size(sx, sy, information);
 			x += (int)sx + 10;
+		}
+
+		if(m_op != CAMTBL){
+			break;
+		}
+
+		y += 20;
+		for(int icp = 0; icp < m_cam_int_tbl.size(); icp++, y += 20){
+			Mat camint = m_cam_int_tbl[icp];
+			Mat camdist = m_cam_dist_tbl[icp];
+			int cr, cg, cb;
+
+			cr = cg = cb = (icp == m_cur_camtbl ? 255 : 128);
+			// camera intrinsics, fx,fy,cx,cy,p0,p1,k1-k6 
+			x = 0;
+			snprintf(information, 1023, "Camera ");
+
+			m_d3d_txt.render(m_pd3dev, information, (float)x, (float)y, 1.0, 0, EDTC_LT);
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			// focal length
+			snprintf(information, 1023, "fx=%f fy=%f", camint.at<double>(0,0), camint.at<double>(1,1));			
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			// principal points
+			snprintf(information, 1023, "cx=%f", camint.at<double>(0,2));
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			snprintf(information, 1023, "cy=%f", camint.at<double>(1,2));
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			//k1 to k6
+			double * ptr = camdist.ptr<double>(0);
+			snprintf(information, 1023, "k1=%f", (float)ptr[0]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			snprintf(information, 1023, "k2=%f", (float)ptr[1]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			snprintf(information, 1023, "p1=%f", (float)ptr[2]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			snprintf(information, 1023, "p2=%f", (float)ptr[3]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			snprintf(information, 1023, "k3=%f", (float)ptr[4]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			snprintf(information, 1023, "k4=%f", (float)ptr[5]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			snprintf(information, 1023, "k5=%f", (float)ptr[6]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+
+			snprintf(information, 1023, "k6=%f", (float)ptr[7]);
+			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+			m_d3d_txt.get_text_size(sx, sy, information);
+			x += (int)sx + 10;
+		}
+		if(m_op != CAMTBL){
+			break;
 		}
 		break;
 	case ESTIMATE:
@@ -2994,6 +3124,13 @@ void f_inspector::handle_vk_left()
 			m_cur_campar = ECP_K6;
 		}
 		break;
+	case CAMTBL:
+		if(m_cam_int_tbl.size()){
+			m_cur_camtbl = m_cur_camtbl - 1;
+			if(m_cur_camtbl < 0)
+				m_cur_camtbl = (int) m_cam_int_tbl.size() - 1;
+		}
+		break;
 	}
 }
 
@@ -3026,6 +3163,12 @@ void f_inspector::handle_vk_right()
 		m_cur_campar = m_cur_campar + 1;
 		m_cur_campar %= (ECP_K6 + 1);
 		break;
+	case CAMTBL:
+		if(m_cam_int_tbl.size()){
+			m_cur_camtbl = m_cur_camtbl + 1;
+			m_cur_camtbl %= m_cam_int_tbl.size();
+		}
+		break;
 	}
 }
 
@@ -3053,6 +3196,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case 'E':
 		m_op = ESTIMATE;
+		m_emd = EMD_STOP;
 		break;
 	case 'G':
 		switch(m_op){
@@ -3071,10 +3215,17 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		case FRAME:
 			m_sop = SOP_REINIT_FOBJ;
 			break;
+		case CAMERA:
+		case CAMTBL:
+			m_sop = SOP_INS_CPTBL;
+			break;
 		}
 		break;
 	case 'F':
 		m_op = FRAME;
+		break;
+	case 'T':
+		m_op = CAMTBL;
 		break;
 	case 'C':
 		m_op = CAMERA;
@@ -3133,6 +3284,29 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		default:
 			break;
 		}
+	case 's':
+		if(m_op == CAMTBL){
+			if(m_cur_camtbl >= 0 && m_cur_camtbl < m_cam_int_tbl.size()){
+				m_cam_int_tbl[m_cur_camtbl].copyTo(m_cam_int);
+				m_cam_dist_tbl[m_cur_camtbl].copyTo(m_cam_dist);
+			}
+		}
+		break;
+	case '1':
+		if(m_op == ESTIMATE){
+			m_emd = EMD_FULL;
+		}
+		break;
+	case '2':
+		if(m_op == ESTIMATE){
+			m_emd = EMD_RT;
+		}
+		break;
+	case '3':
+		if(m_op == ESTIMATE){
+			m_emd = EMD_SEL;
+		}
+		break;
 
 	default:
 		break;
@@ -3171,7 +3345,9 @@ void f_inspector::handle_sop_delete(){
 		}
 		break;
 	case CAMERA:
+	case CAMTBL:
 		// delete current camera parameter
+		delCamparTbl();
 		break;
 	}
 	m_sop = SOP_NULL;
@@ -3182,8 +3358,11 @@ void f_inspector::handle_sop_save()
 	switch(m_op){
 	case OBJ:
 	case POINT:
-	case CAMERA:
 		m_fobjs[m_cur_frm]->save(m_name);
+		break;
+	case CAMERA:
+	case CAMTBL:
+		saveCamparTbl();
 		break;
 	case FRAME:
 		if(!save_fobjs()){
@@ -3219,12 +3398,15 @@ void f_inspector::handle_sop_load()
 		break;
 	case OBJ:
 	case POINT:
-	case CAMERA:
 		m_fobjs[m_cur_frm]->load(m_name, m_models);
 		if(m_cur_obj < 0)
 			m_cur_obj = (int)(m_fobjs[m_cur_frm]->objs.size() - 1);
 		if(m_cur_model < 0)
 			m_cur_model = (int) (m_models.size() - 1);
+		break;
+	case CAMERA:
+	case CAMTBL:
+		loadCamparTbl();
 		break;
 	case FRAME:
 		if(!load_fobjs()){
