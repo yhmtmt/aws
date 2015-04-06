@@ -288,7 +288,7 @@ struct s_obj
 struct s_frame_obj{
 	long long tfrm;
 	double ssd; // sum of square projection errors
-	vector<s_obj> objs;
+	vector<s_obj*> objs;
 	Mat camint, camdist;
 	bool is_prj;
 
@@ -296,17 +296,22 @@ struct s_frame_obj{
 	{
 	}
 
+	~s_frame_obj()
+	{
+		for (int i = 0; i < objs.size(); i++)
+			delete objs[i];
+		objs.clear();
+	}
+
 	void proj_objs(bool bjacobian = true, bool fix_aspect_ratio = true);
 
 	void sample_tmpl(Mat & img, Size & sz)
 	{
 		for(int i = 0; i < objs.size(); i++){
-			objs[i].sample_tmpl(img, sz);
+			objs[i]->sample_tmpl(img, sz);
 		}
 	}
 
-	bool init(const long long atfrm, s_frame_obj & fobj, 
-		vector<Mat> & impyr, c_imgalign & ia);
 	bool init(const long long atfrm, s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
 		vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks);
 
@@ -354,9 +359,6 @@ private:
 	void render(Mat & imgs, long long timg);
 	void renderInfo();
 	void renderCursor();
-
-	// Parameter calibration
-	void calibrate(Mat & img_s, long long timg);
 
 	//
 	// operation mode
@@ -406,11 +408,8 @@ private:
 			s_obj * pobj;
 			s_model * pmdl = &m_models[m_cur_model];
 			pobj = pmdl->detect(m_img);
-			vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
-			objs.push_back(s_obj());
-			if(!objs[objs.size() - 1].init(*pobj))
-				objs.pop_back();
-			delete pobj;
+			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+			objs.push_back(pobj);
 		}
 		m_sop = SOP_NULL;
 	}
@@ -519,9 +518,9 @@ private:
 	void render3D(long long timg);
 	void renderChsbd(long long timg);
 
-	void acc_Hcamint(Mat & Hcamint, vector<s_obj> & objs);
-	void copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs);
-	void update_params(vector<s_obj> & objs);
+	void acc_Hcamint(Mat & Hcamint, vector<s_obj*> & objs);
+	void copy_Hcamint(Mat & Hcamint, vector<s_obj*> & objs);
+	void update_params(vector<s_obj*> & objs);
 	void make_param_indices(vector<int> & ipars);
 	void estimate();
 	void estimate_fulltime();
@@ -685,9 +684,9 @@ public:
 //
 // op = Estimate
 //  E: Estimate
-//  1: full parameter estimation
-//  2: Camera parameter selection and attitude optimization mode
-//  3: rotation/translation estimation
+//  1: full parameter estimation EMD_FULL
+//  2: Camera parameter selection and attitude optimization mode EMD_SEL
+//  3: rotation/translation estimation EMD_RT
 //
 // op = Frame
 //  L : Load Camera parameter table

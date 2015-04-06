@@ -691,12 +691,18 @@ bool s_frame_obj::init(const long long atfrm,
 	vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks)
 {
 	tfrm = atfrm;
-	vector<s_obj> & objs_prev = pfobj0->objs;
+	vector<s_obj*> & objs_prev = pfobj0->objs;
 	objs.resize(objs_prev.size());
 	for(int i = 0; i < objs.size(); i++){
-		if(!objs[i].init(objs_prev[i])){
+		s_obj * pobj = new s_obj();
+		if(!pobj->init(*objs_prev[i])){
+			delete pobj;
+			i--;
+			for(; i >= 0; i--)
+				delete objs[i];
 			return false;
 		}
+		objs[i] = pobj;
 	}
 	pfobj0->camint.copyTo(camint);
 	pfobj0->camdist.copyTo(camdist);
@@ -709,11 +715,11 @@ bool s_frame_obj::init(const long long atfrm,
 	miss_tracks = 0;
 	//ia.set_wt(EWT_RGD);
 	for(int iobj = 0; iobj < objs.size(); iobj++){
-		vector<Point2f> & pt2d = objs[iobj].pt2d;
-		vector<Point2f> & pt2d_prev = objs_prev[iobj].pt2d;
-		vector<int> & visible = objs[iobj].visible;
-		vector<int> & visible_prev = objs_prev[iobj].visible;
-		vector<Mat> & tmpl = objs_prev[iobj].ptx_tmpl;
+		vector<Point2f> & pt2d = objs[iobj]->pt2d;
+		vector<Point2f> & pt2d_prev = objs_prev[iobj]->pt2d;
+		vector<int> & visible = objs[iobj]->visible;
+		vector<int> & visible_prev = objs_prev[iobj]->visible;
+		vector<Mat> & tmpl = objs_prev[iobj]->ptx_tmpl;
 		for(int ipt = 0; ipt < pt2d.size(); ipt++){
 			if(!visible_prev[ipt]){
 				visible[ipt] = 0;
@@ -725,7 +731,7 @@ bool s_frame_obj::init(const long long atfrm,
 			//char buf[128];
 			Point2f & pt = pt2d[ipt];
 			if(pfobj1){
-				Point2f & pt_next = pfobj1->objs[iobj].pt2d[ipt];
+				Point2f & pt_next = pfobj1->objs[iobj]->pt2d[ipt];
 				long long tprev, tnext;
 				tprev = pfobj0->tfrm;
 				tnext = pfobj1->tfrm;
@@ -762,67 +768,6 @@ bool s_frame_obj::init(const long long atfrm,
 	return true;
 }
 
-// this initialization method has not already been used. Removed in the future code.
-bool s_frame_obj::init(const long long atfrm, s_frame_obj & fobj, 
-	vector<Mat> & impyr, c_imgalign & ia)
-{
-	tfrm = atfrm;
-	vector<s_obj> & objs_prev = fobj.objs;
-
-	objs.resize(objs_prev.size());
-	for(int i = 0; i < objs.size(); i++){
-		if(!objs[i].init(objs_prev[i])){
-			return false;
-		}
-	}
-	fobj.camint.copyTo(camint);
-	fobj.camdist.copyTo(camdist);
-
-	// tracking points
-	vector<Mat> tmplpyr;
-	Rect roi;
-	Mat Warp, I;
-	I = Mat::eye(3, 3, CV_64FC1);
-	//ia.set_wt(EWT_RGD);
-	for(int iobj = 0; iobj < objs.size(); iobj++){
-		vector<Point2f> & pt2d = objs[iobj].pt2d;
-		vector<Point2f> & pt2d_prev = objs_prev[iobj].pt2d;
-		vector<int> & visible = objs[iobj].visible;
-		vector<int> & visible_prev = objs_prev[iobj].visible;
-		vector<Mat> & tmpl = objs_prev[iobj].ptx_tmpl;
-		for(int ipt = 0; ipt < pt2d.size(); ipt++){
-			if(!visible_prev[ipt]){
-				visible[ipt] = 0;
-				continue;
-			}
-			
-			Point2f & pt_prev = pt2d_prev[ipt];
-			char buf[128];
-			Point2f & pt = pt2d[ipt];
-			snprintf(buf, 128, "t%d.png", ipt);
-			imwrite(buf, tmpl[ipt]);
-			buildPyramid(tmpl[ipt], tmplpyr, (int) impyr.size() - 1);
-			roi.width = tmpl[ipt].cols;
-			roi.height = tmpl[ipt].rows;
-			roi.x = (int)(pt_prev.x + 0.5) - (roi.width >> 1);
-			roi.y = (int)(pt_prev.y + 0.5) - (roi.height >> 1);
-			snprintf(buf, 128, "r%d.png", ipt);
-			imwrite(buf, impyr[0](roi));
-			cout << roi << endl;
-			Warp = ia.calc_warp(tmplpyr, impyr, roi, I);
-			if(!ia.is_conv()){
-				//objs[iobj].visible[ipt] = 0;
-				//continue;
-				cerr << "Tracker does not converged." << endl;
-			}
-
-			afn(Warp, pt_prev, pt);
-			cout << pt_prev << endl;
-			cout << pt << endl;
-		}
-	}
-	return true;
-}
 
 bool s_frame_obj::save(const char * aname)
 {
@@ -843,7 +788,7 @@ bool s_frame_obj::save(const char * aname)
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		snprintf(buf, 1024, "Obj%03d", iobj);
 		fs << buf << "{";
-		objs[iobj].save(fs);
+		objs[iobj]->save(fs);
 		fs << "}";
 	}
 	fs << "}";
@@ -889,7 +834,7 @@ bool s_frame_obj::load(const char * aname, vector<s_model> & mdls)
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		snprintf(buf, 1024, "Obj%03d", iobj);
 		fnobj = fn[buf];
-		if(!objs[iobj].load(fnobj, mdls))
+		if(!objs[iobj]->load(fnobj, mdls))
 			return false;
 	}
 	return true;
@@ -1432,7 +1377,7 @@ void f_inspector::renderInfo()
 	char information[1024];
 	float sx, sy;
 	int y = 0, x = 0;
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 
 	snprintf(information, 1023, "AWS Time %s (Image Time %lld) Adjust Step x%f", 
 		m_time_str, m_timg, (float) m_adj_step);
@@ -1459,7 +1404,7 @@ void f_inspector::renderInfo()
 		if(m_cur_obj < 0)
 			snprintf(information, 1023, "Obj[]=NULL");
 		else{
-			s_obj & obj = objs[m_cur_obj];
+			s_obj & obj = *objs[m_cur_obj];
 			snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f rvec=(%f,%f,%f) tvec=(%f,%f,%f)",
 				m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd,
 				obj.rvec.at<double>(0), obj.rvec.at<double>(1), obj.rvec.at<double>(2),
@@ -1471,22 +1416,22 @@ void f_inspector::renderInfo()
 		if(m_cur_obj < 0)
 			snprintf(information, 1023, "Obj[]=NULL");
 		else{
-			s_obj & obj = objs[m_cur_obj];
+			s_obj & obj = *objs[m_cur_obj];
 			if(m_cur_point < 0){
 				snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f", 
-					m_cur_obj, objs[m_cur_obj].name, objs[m_cur_obj].pmdl->fname, obj.match_count, obj.ssd);
+					m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd);
 			}else{
-				Point3f & pt3d = objs[m_cur_obj].pmdl->pts[m_cur_point];
-				Point2f & pt2d = objs[m_cur_obj].pt2d[m_cur_point];
-				int matched = objs[m_cur_obj].visible[m_cur_point];
+				Point3f & pt3d = obj.pmdl->pts[m_cur_point];
+				Point2f & pt2d = obj.pt2d[m_cur_point];
+				int matched = obj.visible[m_cur_point];
 				if(matched){
 					snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->(%f,%f)", 
-						m_cur_obj, objs[m_cur_obj].name, objs[m_cur_obj].pmdl->fname, 
+						m_cur_obj, obj.name, obj.pmdl->fname, 
 						obj.match_count, obj.ssd,
 						m_cur_point, pt3d.x, pt3d.y, pt3d.z, pt2d.x, pt2d.y);
 				}else{
 					snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->NULL", 
-						m_cur_obj, objs[m_cur_obj].name, objs[m_cur_obj].pmdl->fname, 
+						m_cur_obj, obj.name, obj.pmdl->fname, 
 						obj.match_count, obj.ssd,
 						m_cur_point, pt3d.x, pt3d.y, pt3d.z);
 				}
@@ -1762,9 +1707,9 @@ void f_inspector::renderCursor()
 void f_inspector::renderObj()
 {
 	// Drawing object (2d and 3d)
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
-		s_obj & obj = objs[iobj];
+		s_obj & obj = *objs[iobj];
 		if(m_op == OBJ){
 			if(iobj == m_cur_obj){
 				drawPoint2d(m_pd3dev, 
@@ -1808,7 +1753,7 @@ void f_inspector::renderObj()
 		m_pline->End();
 
 		// render selected axis
-		objs[iobj].render_axis(
+		obj.render_axis(
 			m_rvec_cam, m_tvec_cam, m_cam_int, m_cam_dist,
 			m_pd3dev, m_pline, (int) m_axis);
 	}
@@ -1818,7 +1763,7 @@ void f_inspector::renderObj()
 		D3DXVECTOR2 v[2];
 		Point2f pt1 = Point2f((float) (m_mc.x - m_main_offset.x) / m_main_scale, 
 			(float) (m_mc.y - (int) m_ViewPort.Height -m_main_offset.y) / m_main_scale + m_ViewPort.Height);
-		Point2f & pt2 = objs[m_cur_obj].pt2dprj[m_cur_point];
+		Point2f & pt2 = objs[m_cur_obj]->pt2dprj[m_cur_point];
 		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
 		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
 		m_pline->Draw(v, 2, D3DCOLOR_RGBA(255, 0, 0, 255));
@@ -2009,22 +1954,22 @@ void f_inspector::renderCampar()
 void f_inspector::estimate()
 {
 	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 	for(int i = 0; i < objs.size(); i++){
-		s_obj & obj = objs[i];
+		s_obj & obj = *objs[i];
 		cout << "obj[" << i << "].hessian=" << obj.hessian << endl;
 		// accumulating camera intrinsic part of hessians of all objects
 		Hcamint += obj.hessian(Rect(6, 6, 12, 12));
 	}
 	cout << "Hcamint=" << Hcamint << endl;
 	for(int i = 0; i < objs.size(); i++){
-		s_obj & obj = objs[i];
+		s_obj & obj = *objs[i];
 		// copy a part of hessian corresponding to the camera intrinsics 
 		Hcamint.copyTo(obj.hessian(Rect(6, 6, 12, 12)));
 	}
 
 	for(int i = 0; i < objs.size(); i++){
-		s_obj & obj = objs[i];
+		s_obj & obj = *objs[i];
 		cout << "Accumulated obj[" << i << "].hessian=" << obj.hessian << endl;
 		cout << "Previous params" << endl;
 		cout << "rvec=" << obj.rvec << endl;
@@ -2076,7 +2021,7 @@ void f_inspector::estimate_rt_levmarq()
 {
 	// counting extrinsic parameters (6 x number of objects)
 	int nparams = 0; // we assume the camera intrinsics are the same for every frames.
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;		
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;		
 	nparams += (int) objs.size() * 6;
 
 	// initializing LM-solver
@@ -2094,11 +2039,12 @@ void f_inspector::estimate_rt_levmarq()
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		double * pext;
 		// copy rvec
-		pext = objs[iobj].rvec.ptr<double>();
+		s_obj & obj = *objs[iobj];
+		pext = obj.rvec.ptr<double>();
 		memcpy((void*)param, (void*)pext, sizeof(double) * 3);
 
 		// copy tvec
-		pext = objs[iobj].tvec.ptr<double>();
+		pext = obj.tvec.ptr<double>();
 		memcpy((void*)(param + 3), (void*)pext, sizeof(double) * 3);
 
 		param += 6;
@@ -2169,18 +2115,19 @@ void f_inspector::estimate_rt_levmarq()
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			double * pext;
 			// copy rvec
-			pext = objs[iobj].rvec.ptr<double>();
+			s_obj & obj = *objs[iobj];
+			pext = obj.rvec.ptr<double>();
 			memcpy((void*)pext, (void*)param, sizeof(double) * 3);
 			log << "rvec[" << iobj << "]=" << endl;
-			mat2csv(log, objs[iobj].rvec);
+			mat2csv(log, obj.rvec);
 
 			// copy tvec
-			pext = objs[iobj].tvec.ptr<double>();
+			pext = obj.tvec.ptr<double>();
 			memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
 			log << "tvec[" << iobj << "]=" << endl;
-			mat2csv(log, objs[iobj].tvec);
+			mat2csv(log, obj.tvec);
 
-			objs[iobj].is_prj = false;
+			obj.is_prj = false;
 			param += 6;
 		}
 
@@ -2212,25 +2159,26 @@ void f_inspector::estimate_rt_levmarq()
 
 			// Calculating Psuedo Hessian JtJ and JtErr
 			for(int iobj = 0, i = 0; iobj < objs.size(); iobj++, i+=6){
+				s_obj & obj = *objs[iobj];
 				log << "J[" << iobj <<"] = " << endl;
-				mat2csv(log, objs[iobj].jacobian);
+				mat2csv(log, obj.jacobian);
 				// JtJ
 				log << "H[" << iobj <<"] = " << endl;
-				mat2csv(log, objs[iobj].hessian);
+				mat2csv(log, obj.hessian);
 				// JtJFrame
 				//      6  
 				// 6   RTRT
 				//
 				// JtJ(12+6ifrm:12+6ifrm+6, 12+6ifrm:12+6ifrm+6) = Hfrm(0:6, 0:6)
-				objs[iobj].hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
+				obj.hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
 
 				// JtErr
 				log << "JtErr[" << iobj << "] = " << endl;
-				mat2csv(log, objs[iobj].jterr);
+				mat2csv(log, obj.jterr);
 				// JtErrFrame
 				// 6  ERT
 				// 12 ECAM
-				objs[iobj].jterr(Rect(0, 0, 1, 6)).copyTo(JtErr(Rect(0, i, 1, 6)));
+				obj.jterr(Rect(0, 0, 1, 6)).copyTo(JtErr(Rect(0, i, 1, 6)));
 			}
 
 			log << "JtJ =" << endl;
@@ -2287,7 +2235,7 @@ void f_inspector::estimate_levmarq()
 	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
 		if(!valid[ifobj])
 			continue;
-		vector<s_obj> & objs = m_fobjs[ifobj]->objs;		
+		vector<s_obj*> & objs = m_fobjs[ifobj]->objs;		
 		nparams += (int) objs.size() * 6;
 	}
 
@@ -2362,15 +2310,16 @@ void f_inspector::estimate_levmarq()
 	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
 		if(!valid[ifobj])
 			continue;
-		vector<s_obj> & objs = m_fobjs[ifobj]->objs;
+		vector<s_obj*> & objs = m_fobjs[ifobj]->objs;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			double * pext;
 			// copy rvec
-			pext = objs[iobj].rvec.ptr<double>();
+			s_obj & obj = *objs[iobj];
+			pext = obj.rvec.ptr<double>();
 			memcpy((void*)param, (void*)pext, sizeof(double) * 3);
 
 			// copy tvec
-			pext = objs[iobj].tvec.ptr<double>();
+			pext = obj.tvec.ptr<double>();
 			memcpy((void*)(param + 3), (void*)pext, sizeof(double) * 3);
 
 			param += 6;
@@ -2457,18 +2406,19 @@ void f_inspector::estimate_levmarq()
 		for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
 			if(!valid[ifobj])
 				continue;
-			vector<s_obj> & objs = m_fobjs[ifobj]->objs;
+			vector<s_obj*> & objs = m_fobjs[ifobj]->objs;
 			for(int iobj = 0; iobj < objs.size(); iobj++){
 				double * pext;
+				s_obj & obj = *objs[iobj];
 				// copy rvec
-				pext = objs[iobj].rvec.ptr<double>();
+				pext = obj.rvec.ptr<double>();
 				memcpy((void*)pext, (void*)param, sizeof(double) * 3);
 
 				// copy tvec
-				pext = objs[iobj].tvec.ptr<double>();
+				pext = obj.tvec.ptr<double>();
 				memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
 
-				objs[iobj].is_prj = false;
+				obj.is_prj = false;
 				param += 6;
 			}
 		}
@@ -2483,8 +2433,6 @@ void f_inspector::estimate_levmarq()
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 			if(!valid[ifrm])
 				continue;
-
-			vector<s_obj> & objs = m_fobjs[ifrm]->objs;
 
 			// copy camera parameters
 			m_cam_int.copyTo(m_fobjs[ifrm]->camint);
@@ -2514,13 +2462,14 @@ void f_inspector::estimate_levmarq()
 			for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 				if(!valid[ifrm])
 					continue;
-				vector<s_obj> & objs = m_fobjs[ifrm]->objs;
+				vector<s_obj*> & objs = m_fobjs[ifrm]->objs;
 				for(int iobj = 0; iobj < objs.size(); iobj++, i+=6){
+					s_obj & obj = *objs[iobj];
 					log << "J[" << ifrm << "][" << iobj <<"] = " << endl;
-					mat2csv(log, objs[iobj].jacobian);
+					mat2csv(log, obj.jacobian);
 					// JtJ
 					log << "H[" << ifrm << "][" << iobj <<"] = " << endl;
-					mat2csv(log, objs[iobj].hessian);
+					mat2csv(log, obj.hessian);
 					// JtJFrame
 					//      6     12
 					// 6   RTRT   CRTt
@@ -2530,19 +2479,19 @@ void f_inspector::estimate_levmarq()
 					// JtJ(12+6ifrm:12+6ifrm+6, 12+6ifrm:12+6ifrm+6) = Hfrm(0:6, 0:6)
 					// JtJ(12+6ifrm:12+6ifrm+6, 0:12) = Hfrm(0:6, 6:18)
 					// JtJ(0:12, 12+6ifrm:12+6ifrm+6) = Hfrm(6:18, 0:6)
-					JtJ(Rect(0, 0, 12, 12)) += objs[iobj].hessian(Rect(6, 6, 12, 12));
-					objs[iobj].hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
-					objs[iobj].hessian(Rect(6, 0, 12, 6)).copyTo(JtJ(Rect(0, i, 12, 6)));
-					objs[iobj].hessian(Rect(0, 6, 6, 12)).copyTo(JtJ(Rect(i, 0, 6, 12)));
+					JtJ(Rect(0, 0, 12, 12)) += obj.hessian(Rect(6, 6, 12, 12));
+					obj.hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
+					obj.hessian(Rect(6, 0, 12, 6)).copyTo(JtJ(Rect(0, i, 12, 6)));
+					obj.hessian(Rect(0, 6, 6, 12)).copyTo(JtJ(Rect(i, 0, 6, 12)));
 
 					// JtErr
 					log << "JtErr[" << ifrm << "][" << iobj << "] = " << endl;
-					mat2csv(log, objs[iobj].jterr);
+					mat2csv(log, obj.jterr);
 					// JtErrFrame
 					// 6  ERT
 					// 12 ECAM
-					JtErr(Rect(0, 0, 1, 12)) += objs[iobj].jterr(Rect(0, 6, 1, 12));
-					objs[iobj].jterr(Rect(0, 0, 1, 6)).copyTo(JtErr(Rect(0, i, 1, 6)));
+					JtErr(Rect(0, 0, 1, 12)) += obj.jterr(Rect(0, 6, 1, 12));
+					obj.jterr(Rect(0, 0, 1, 6)).copyTo(JtErr(Rect(0, i, 1, 6)));
 				}
 			}
 			log << "JtJ =" << endl;
@@ -2582,7 +2531,6 @@ void f_inspector::estimate_fulltime()
 	// full projection with current camera parameters
 	double ssd = 0.0;
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-		vector<s_obj> & objs = m_fobjs[ifrm]->objs;
 		// copy camera parameters
 		m_cam_int.copyTo(m_fobjs[ifrm]->camint);
 		m_cam_dist.copyTo(m_fobjs[ifrm]->camdist);
@@ -2664,7 +2612,7 @@ void s_frame_obj::proj_objs(bool bjacobian, bool fix_aspect_ratio)
 {
 	ssd = 0.0;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
-		s_obj & obj = objs[iobj];
+		s_obj & obj = *objs[iobj];
 		if(is_prj && obj.is_prj)
 			continue;
 		obj.proj(camint, camdist, bjacobian, fix_aspect_ratio);
@@ -2674,17 +2622,17 @@ void s_frame_obj::proj_objs(bool bjacobian, bool fix_aspect_ratio)
 	is_prj = true;
 }
 
-void f_inspector::acc_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
+void f_inspector::acc_Hcamint(Mat & Hcamint, vector<s_obj*> & objs){
 	for(int iobj = 0; iobj < objs.size(); iobj++){
-		s_obj & obj = objs[iobj];
+		s_obj & obj = *objs[iobj];
 		// accumulating camera intrinsic part of hessians of all objects
 		Hcamint += obj.hessian(Rect(6, 6, 12, 12));
 	}
 }
 
-void f_inspector::copy_Hcamint(Mat & Hcamint, vector<s_obj> & objs){
+void f_inspector::copy_Hcamint(Mat & Hcamint, vector<s_obj*> & objs){
 	for(int iobj = 0; iobj < objs.size(); iobj++){
-		s_obj & obj = objs[iobj];
+		s_obj & obj = *objs[iobj];
 		Hcamint.copyTo(obj.hessian(Rect(6, 6, 12, 12)));
 	}
 }
@@ -2767,7 +2715,7 @@ void f_inspector::make_param_indices(vector<int> & ipars)
 	}
 }
 
-void f_inspector::update_params(vector<s_obj> & objs)
+void f_inspector::update_params(vector<s_obj*> & objs)
 {
 	vector<int> ipars;
 	make_param_indices(ipars);
@@ -2776,7 +2724,7 @@ void f_inspector::update_params(vector<s_obj> & objs)
 
 	// updating each object
 	for(int iobj = 0; iobj < objs.size(); iobj++){
-		s_obj & obj = objs[iobj];
+		s_obj & obj = *objs[iobj];
 
 		// setting reduced Hessian. 
 		// In this loop ipar, jpar represents reduced hessian row,col indices, 
@@ -2873,9 +2821,9 @@ void f_inspector::update_params(vector<s_obj> & objs)
 void f_inspector::calc_jmax(){
 	m_jcam_max = Mat::zeros(1, 12, CV_64FC1);
 	double * ptr_max, * ptr;
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
-		s_obj & obj = objs[iobj];
+		s_obj & obj = *objs[iobj];
 		obj.jmax = Mat::zeros(1, obj.jacobian.cols, CV_64FC1);
 		for(int i = 0; i < obj.jacobian.rows; i++){
 			ptr = obj.jacobian.ptr<double>(i);
@@ -3018,7 +2966,7 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 
 void f_inspector::assign_point2d()
 {
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 	if(objs.size() == 0)
 		return;
 
@@ -3031,9 +2979,9 @@ void f_inspector::assign_point2d()
 	pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
 	pt.y *= (float) iscale;
 	pt.y += (float) m_ViewPort.Height;
-
-	objs[m_cur_obj].pt2d[m_cur_point] = pt;
-	objs[m_cur_obj].visible[m_cur_point] = 1;
+	s_obj & obj = *objs[m_cur_obj];
+	obj.pt2d[m_cur_point] = pt;
+	obj.visible[m_cur_point] = 1;
 }
 
 void f_inspector::scroll_screen()
@@ -3065,8 +3013,9 @@ void f_inspector::translate_obj(short delta)
 {
 	if(m_cur_obj < 0)
 		return ;
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
-	double * ptr = objs[m_cur_obj].jmax.ptr<double>(0) + 3;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+	s_obj & obj = *objs[m_cur_obj];
+	double * ptr = obj.jmax.ptr<double>(0) + 3;
 	double step = (double)(delta / WHEEL_DELTA) * m_adj_step;
 	double div = ptr[m_axis];
 	if(div != div){// to avoid Not a number
@@ -3088,14 +3037,14 @@ void f_inspector::translate_obj(short delta)
 		break;
 	}
 
-	objs[m_cur_obj].tvec += tvec;
-	double * tptr = objs[m_cur_obj].tvec.ptr<double>(0);
+	obj.tvec += tvec;
+	double * tptr = obj.tvec.ptr<double>(0);
 	if(tptr[m_axis] != tptr[m_axis]){
 		tptr[m_axis] = 1.0;
 		cout << "Not a number detected." << endl;
 	}
 	m_fobjs[m_cur_frm]->is_prj = false;
-	objs[m_cur_obj].is_prj = false;
+	obj.is_prj = false;
 }
 
 void f_inspector::rotate_obj(short delta)
@@ -3103,7 +3052,7 @@ void f_inspector::rotate_obj(short delta)
 	if(m_cur_obj < 0)
 		return;	
 
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 	// m_rot_step degree per wheel step
 	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_adj_step;
 	Mat rvec = Mat::zeros(3, 1, CV_64FC1);
@@ -3118,13 +3067,14 @@ void f_inspector::rotate_obj(short delta)
 		rvec.at<double>(2, 0) = step;
 		break;
 	}
+	s_obj & obj = *objs[m_cur_obj];
 	Mat R1, R2;
-	Rodrigues(objs[m_cur_obj].rvec, R1);
+	Rodrigues(obj.rvec, R1);
 	Rodrigues(rvec, R2);
 	Mat R = R2 * R1;
-	Rodrigues(R, objs[m_cur_obj].rvec);
+	Rodrigues(R, obj.rvec);
 	m_fobjs[m_cur_frm]->is_prj = false;
-	objs[m_cur_obj].is_prj = false;
+	obj.is_prj = false;
 }
 
 void f_inspector::adjust_cam(short delta)
@@ -3175,7 +3125,7 @@ void f_inspector::handle_vk_down()
 
 void f_inspector::handle_vk_left()
 {	
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 	switch(m_op){
 	case OBJ:
 		{
@@ -3187,7 +3137,7 @@ void f_inspector::handle_vk_left()
 				m_cur_obj += (int) objs.size();
 			}
 			// the current object point index is initialized
-			m_cur_point = objs[m_cur_obj].get_num_points() - 1;
+			m_cur_point = objs[m_cur_obj]->get_num_points() - 1;
 		}
 		break;
 	case POINT: // decrement current object point. 3d-object point is also. 
@@ -3195,7 +3145,7 @@ void f_inspector::handle_vk_left()
 			return;
 		m_cur_point = m_cur_point  - 1;
 		if(m_cur_point < 0){
-			m_cur_point += (int) objs[m_cur_obj].get_num_points();
+			m_cur_point += (int) objs[m_cur_obj]->get_num_points();
 		}
 
 		break;
@@ -3225,7 +3175,8 @@ void f_inspector::handle_vk_left()
 
 void f_inspector::handle_vk_right()
 {
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+	s_obj & obj = *objs[m_cur_obj];
 	switch(m_op){
 	case OBJ:
 		{
@@ -3233,14 +3184,14 @@ void f_inspector::handle_vk_right()
 				return ;
 			m_cur_obj = m_cur_obj + 1;
 			m_cur_obj %= (int) objs.size();
-			m_cur_point = objs[m_cur_obj].get_num_points() - 1;
+			m_cur_point = obj.get_num_points() - 1;
 		}
 		break;
 	case POINT: // increment the current object point index. The 3d-object point index as well.
 		if(m_cur_obj < 0)
 			return;
 		m_cur_point = m_cur_point + 1;
-		m_cur_point %= (int) objs[m_cur_obj].get_num_points();
+		m_cur_point %= (int) obj.get_num_points();
 		break;
 	case MODEL: // increment the current model index.
 		if(m_models.size() == 0)
@@ -3409,7 +3360,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 
 
 void f_inspector::handle_sop_delete(){
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 	switch(m_op){
 	case MODEL:
 		// delete current Model
@@ -3424,8 +3375,8 @@ void f_inspector::handle_sop_delete(){
 	case OBJ:
 		// delete current object
 		if(m_cur_obj >= 0){
-			vector<s_obj>::iterator itr = objs.begin() + m_cur_obj;
-			itr->pmdl->ref--;
+			vector<s_obj*>::iterator itr = objs.begin() + m_cur_obj;
+			(*itr)->pmdl->ref--;
 			objs.erase(itr);
 			m_cur_obj = (int) objs.size() - 1;
 		}
@@ -3433,7 +3384,7 @@ void f_inspector::handle_sop_delete(){
 	case POINT:
 		//reset current point
 		if(m_cur_obj >= 0 && m_cur_point >= 0){
-			s_obj & obj = objs[m_cur_obj];
+			s_obj & obj = *objs[m_cur_obj];
 			if(m_cur_point < obj.get_num_points())
 				obj.visible[m_cur_point] = 0;
 		}
@@ -3555,7 +3506,7 @@ bool f_inspector::load_fobjs()
 
 void f_inspector::handle_sop_inst_obj()
 {
-	vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 	if(m_op == MODEL){
 		if(m_cur_model < 0){
 			return;
@@ -3563,13 +3514,14 @@ void f_inspector::handle_sop_inst_obj()
 
 		double width =(double) m_maincam.get_surface_width();
 		double height = (double) m_maincam.get_surface_height();
-		objs.push_back(s_obj());
-		m_cur_obj = (int) objs.size() - 1;
-		m_cur_point = 0;
-		if(!objs[m_cur_obj].init(&m_models[m_cur_model], m_timg, m_cam_int, m_cam_dist, width, height)){
-			objs.pop_back();
+		s_obj * pobj = new s_obj;
+		if(!pobj->init(&m_models[m_cur_model], m_timg, m_cam_int, m_cam_dist, width, height)){
+			delete pobj;
 			cerr << "Failed to create an instance of model " << m_models[m_cur_model].name << endl;		
 		}else{
+			objs.push_back(pobj);
+			m_cur_obj = (int) objs.size() - 1;
+			m_cur_point = 0;
 			m_op = OBJ;
 		}
 	}
@@ -3611,17 +3563,17 @@ void f_inspector::handle_sop_guess()
 	switch(m_op){
 	case FRAME:
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-			vector<s_obj> & objs = m_fobjs[ifrm]->objs;
+			vector<s_obj*> & objs = m_fobjs[ifrm]->objs;
 			for(int iobj = 0; iobj < objs.size(); iobj++){
-				help_guess(objs[iobj], z, cx, cy, sfx, sfy);
+				help_guess(*objs[iobj], z, cx, cy, sfx, sfy);
 				num_objs++;
 			}
 		}
 	case OBJ:
 		if(m_cur_obj >= 0){
-			vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj < objs.size()){
-				help_guess(objs[m_cur_obj], z, cx, cy, sfx, sfy);
+				help_guess(*objs[m_cur_obj], z, cx, cy, sfx, sfy);
 				num_objs++;
 			}else{
 				return;
