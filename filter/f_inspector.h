@@ -153,20 +153,7 @@ struct s_model
 
 	bool load(const char * afname);
 
-	s_obj * detect(Mat & img)
-	{
-		if(type == EMT_CHSBD){
-			s_obj * pobj = new s_obj;
-			pobj->pmdl = this;
-			
-			if(par_chsbd.detect(img, pobj->pt2d)){
-				pobj->visible.resize(pobj->pt2d.size(), true);
-				return pobj;
-			}
-			delete pobj;
-		}
-		return NULL;
-	}
+	s_obj * detect(Mat & img);
 };
 
 ///////////////////////////////////////////////////////////////// s_obj

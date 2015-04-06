@@ -290,6 +290,21 @@ bool s_model::load(const char * afname)
 	return true;
 }
 
+s_obj * s_model::detect(Mat & img)
+{
+	if(type == EMT_CHSBD){
+		s_obj * pobj = new s_obj;
+		pobj->pmdl = this;
+
+		if(par_chsbd.detect(img, pobj->pt2d)){
+			pobj->visible.resize(pobj->pt2d.size(), true);
+			return pobj;
+		}
+		delete pobj;
+	}
+	return NULL;
+}
+
 ////////// s_model's sub-struct
 bool s_model::s_chsbd::parse(const char * name, e_model_type & type, 
 	vector<Point3f> & pts, vector<s_edge> & edges)
@@ -315,7 +330,7 @@ bool s_model::s_chsbd::parse(const char * name, e_model_type & type,
 
 	w = atoi(tok[1]);
 	h = atoi(tok[2]);
-	p = atof(tok[3]);
+	p = (float) atof(tok[3]);
 
 	int numpts = w * h;
 	int numedges = w * (h - 1) + (w - 1) * h;
