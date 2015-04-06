@@ -99,6 +99,24 @@ struct s_model
 	string name;
 	vector<Point3f> pts;
 	vector<s_edge> edges;
+
+	enum e_model_type{
+		EMT_NORMAL, EMT_CHSBD, EMT_UNKNOWN
+	} type;
+
+	struct s_chsbd{
+		int w, h; // chessboard width and height
+		float p; // chessboard pitch in meter
+		bool parse(const char * name, e_model_type & type, vector<Point3f> & pts, vector<s_edge> & edges);
+		bool detect(Mat & img, vector<Point2f> & pt2d);
+	};
+
+	union{
+		s_chsbd par_chsbd;
+	};
+
+	static const char * m_str_type[ EMT_UNKNOWN + 1];
+
 	float xmin, ymin, zmin, xmax, ymax, zmax;
 	s_model():ref(0), xmin(FLT_MAX), ymin(FLT_MAX), zmin(FLT_MAX),
 		xmax(-FLT_MAX), ymax(-FLT_MAX), zmax(-FLT_MAX)
@@ -134,6 +152,21 @@ struct s_model
 		Mat & rvec_obj, Mat & tvec_obj);
 
 	bool load(const char * afname);
+
+	s_obj * detect(Mat & img)
+	{
+		if(type == EMT_CHSBD){
+			s_obj * pobj = new s_obj;
+			pobj->pmdl = this;
+			
+			if(par_chsbd.detect(img, pobj->pt2d)){
+				pobj->visible.resize(pobj->pt2d.size(), true);
+				return pobj;
+			}
+			delete pobj;
+		}
+		return NULL;
+	}
 };
 
 ///////////////////////////////////////////////////////////////// s_obj
@@ -349,7 +382,7 @@ private:
 
 	// sub operation
 	enum e_sub_operation{
-		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ, SOP_INS_CPTBL
+		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_DET, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ, SOP_INS_CPTBL
 	};
 	static const char * m_str_sop[SOP_INS_CPTBL + 1];
 	e_sub_operation m_sop;
@@ -379,6 +412,20 @@ private:
 	void handle_sop_ins_cptbl()
 	{
 		addCamparTbl();
+		m_sop = SOP_NULL;
+	}
+	void handle_sop_det(){
+		if(m_cur_model >= 0 && m_cur_model < m_models.size()){
+			s_obj * pobj;
+			s_model * pmdl = &m_models[m_cur_model];
+			pobj = pmdl->detect(m_img);
+			vector<s_obj> & objs = m_fobjs[m_cur_frm]->objs;
+			objs.push_back(s_obj());
+			if(!objs[objs.size() - 1].init(*pobj))
+				objs.pop_back();
+			delete pobj;
+		}
+		m_sop = SOP_NULL;
 	}
 
 	bool m_bundistort;	// undistort flag. it cant be used with model handling mode.
@@ -641,8 +688,8 @@ public:
 //  f : fix par[cur_par]
 //
 // op = CamTbl
-//  ->: cur_par++
-//  <-: cur_par--
+//  ->: cur_camtbl++
+//  <-: cur_camtbl--
 //  Del: Delete the camera parameter
 //  I : Insert current parameter to the table
 //  L : Load Camera parameter table

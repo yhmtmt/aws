@@ -214,6 +214,12 @@ bool s_model::load(const char * afname)
 	}
 	fn >> name;
 
+	// decode the model name. Some names are reserved for specific models
+	// if model head is "chsbd", the name should have the format "chsbd_<x>_<y>_<p>". Here <x>, <y> are non-negative integer, <p> is fixed point number.
+	if(par_chsbd.parse(name.c_str(), type, pts, edges)){
+		return true;
+	}
+
 	int numPoints;
 	fn = fs["NumPoints"];
 	if(fn.empty()){
@@ -281,6 +287,74 @@ bool s_model::load(const char * afname)
 		zmin = min(zmin, pts[i].z);
 		zmax = max(ymax, pts[i].z);
 	}
+	return true;
+}
+
+////////// s_model's sub-struct
+bool s_model::s_chsbd::parse(const char * name, e_model_type & type, 
+	vector<Point3f> & pts, vector<s_edge> & edges)
+{
+	char * tok[3];
+	char buf[128];
+	tok[0] = buf;
+	int i, itok;
+	for(i = 0, itok = 0; name[i]; i++){
+		if(name[i] == '_'){
+			buf[i] = '\0';
+			itok++;
+			tok[itok] = buf + i + 1;
+		}else{
+			buf[i] = name[i];
+		}
+	}
+	buf[i] = '\0';
+	if(itok != 4)
+		return false;
+	if(strcmp(tok[0], "chsbd") != 0)
+		return false;
+
+	w = atoi(tok[1]);
+	h = atoi(tok[2]);
+	p = atof(tok[3]);
+
+	int numpts = w * h;
+	int numedges = w * (h - 1) + (w - 1) * h;
+	pts.resize(numpts);
+	i = 0;
+	int j = 0;
+	for (int y = 0; y < h; y++){
+		for(int x = 0; x < w; x++){
+			Point3f & pt = pts[i];
+			pt.x = (float)(x * p);
+			pt.y = (float)(y * p);
+			pt.z = 0;
+			i++;
+			if(x < w - 1){
+				s_edge & e = edges[j];
+				e.s = i;
+				e.e = i + 1;
+				j++;
+			}
+			if(y < h - 1){
+				s_edge & e = edges[j];
+				e.s = i;
+				e.e = i + w;
+				j++;
+			}
+		}
+	}
+
+	return true;
+}
+
+bool s_model::s_chsbd::detect(Mat & img, vector<Point2f> & pt2d)
+{
+	if(!findChessboardCorners(img, Size(w, h), pt2d))
+		return false;
+	Size winSize = Size( 5, 5 );
+	Size zeroZone = Size( -1, -1 );
+	TermCriteria criteria = TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 40, 0.001 );
+	cornerSubPix(img, pt2d, winSize, zeroZone, criteria); 
 	return true;
 }
 
@@ -811,7 +885,7 @@ const char * f_inspector::m_str_op[FRAME+1]
 	= {"model", "obj", "point", "camera", "camtbl", "estimate", "frame"};
 
 const char * f_inspector::m_str_sop[SOP_INS_CPTBL+1]
-	= {"null", "save", "load", "guess", "ins", "del", "fobj", "icp"};
+	= {"null", "save", "load", "guess", "det", "ins", "del", "fobj", "icp"};
 
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
@@ -3175,6 +3249,11 @@ void f_inspector::handle_vk_right()
 void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 {
 	switch(wParam){
+	case 'D':
+		if(m_op == MODEL){
+			m_sop = SOP_DET;
+		}
+		break;
 	case 'R': // reset window
 		m_main_offset = Point2f(0., 0.);
 		m_main_scale = 1.0;
