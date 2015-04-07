@@ -834,8 +834,16 @@ bool s_frame_obj::load(const char * aname, vector<s_model> & mdls)
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		snprintf(buf, 1024, "Obj%03d", iobj);
 		fnobj = fn[buf];
-		if(!objs[iobj]->load(fnobj, mdls))
+		s_obj * pobj = new s_obj;
+		objs[iobj] = pobj;
+		if(!pobj->load(fnobj, mdls)){
+			for(; iobj >= 0; iobj--){
+				delete objs[iobj];
+			}
+			objs.clear();
 			return false;
+		}
+		
 	}
 	return true;
 }
@@ -1195,7 +1203,7 @@ bool f_inspector::addCamparTbl()
 	}
 	// insert current camera parameter here
 	m_cam_int_tbl.insert(m_cam_int_tbl.begin() + icp, Mat());
-	m_cam_dist_tbl.insert(m_cam_int_tbl.begin() + icp, Mat());
+	m_cam_dist_tbl.insert(m_cam_dist_tbl.begin() + icp, Mat());
 	m_cam_int.copyTo(m_cam_int_tbl[icp]);
 	m_cam_dist.copyTo(m_cam_dist_tbl[icp]);
 	return true;
@@ -1605,7 +1613,7 @@ void f_inspector::renderInfo()
 			cr = cg = cb = (icp == m_cur_camtbl ? 255 : 128);
 			// camera intrinsics, fx,fy,cx,cy,p0,p1,k1-k6 
 			x = 0;
-			snprintf(information, 1023, "Camera ");
+			snprintf(information, 1023, "Param[%d]:", icp);
 
 			m_d3d_txt.render(m_pd3dev, information, (float)x, (float)y, 1.0, 0, EDTC_LT);
 			m_d3d_txt.get_text_size(sx, sy, information);
@@ -1676,6 +1684,9 @@ void f_inspector::renderInfo()
 		break;
 	case ESTIMATE:
 		snprintf(information, 1023, "Estimate");
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		y += 20;
+		snprintf(information, 1023, "State: %s", m_str_emd[m_emd]);
 		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
 	case FRAME:
@@ -3176,7 +3187,6 @@ void f_inspector::handle_vk_left()
 void f_inspector::handle_vk_right()
 {
 	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
-	s_obj & obj = *objs[m_cur_obj];
 	switch(m_op){
 	case OBJ:
 		{
@@ -3184,14 +3194,18 @@ void f_inspector::handle_vk_right()
 				return ;
 			m_cur_obj = m_cur_obj + 1;
 			m_cur_obj %= (int) objs.size();
+			s_obj & obj = *objs[m_cur_obj];
 			m_cur_point = obj.get_num_points() - 1;
 		}
 		break;
 	case POINT: // increment the current object point index. The 3d-object point index as well.
-		if(m_cur_obj < 0)
-			return;
-		m_cur_point = m_cur_point + 1;
-		m_cur_point %= (int) obj.get_num_points();
+		{
+			if(m_cur_obj < 0)
+				return;
+			s_obj & obj = *objs[m_cur_obj];
+			m_cur_point = m_cur_point + 1;
+			m_cur_point %= (int) obj.get_num_points();
+		}
 		break;
 	case MODEL: // increment the current model index.
 		if(m_models.size() == 0)
@@ -3232,6 +3246,8 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case 'O': /* O key */ 
 		m_op = OBJ;
+		if(m_cur_obj < 0)
+			m_cur_obj = m_fobjs[m_cur_frm]->objs.size() - 1;
 		break;
 	case 'M':
 		m_op = MODEL;
@@ -3334,6 +3350,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			if(m_cur_camtbl >= 0 && m_cur_camtbl < m_cam_int_tbl.size()){
 				m_cam_int_tbl[m_cur_camtbl].copyTo(m_cam_int);
 				m_cam_dist_tbl[m_cur_camtbl].copyTo(m_cam_dist);
+				m_fobjs[m_cur_frm]->is_prj = false;
 			}
 		}
 		break;
