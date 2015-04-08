@@ -124,6 +124,8 @@ struct s_model
 		fname[0] = '\0';
 	}
 
+	void calc_bounds();
+
 	int get_num_pts()
 	{
 		return (int) pts.size();
@@ -398,21 +400,8 @@ private:
 	}
 	void handle_sop_inst_obj();
 	void handle_sop_reinit_fobj();
-	void handle_sop_ins_cptbl()
-	{
-		addCamparTbl();
-		m_sop = SOP_NULL;
-	}
-	void handle_sop_det(){
-		if(m_cur_model >= 0 && m_cur_model < m_models.size()){
-			s_obj * pobj;
-			s_model * pmdl = &m_models[m_cur_model];
-			pobj = pmdl->detect(m_img);
-			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
-			objs.push_back(pobj);
-		}
-		m_sop = SOP_NULL;
-	}
+	void handle_sop_ins_cptbl();
+	void handle_sop_det();
 
 	bool m_bundistort;	// undistort flag. it cant be used with model handling mode.
 

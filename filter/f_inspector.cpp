@@ -215,8 +215,9 @@ bool s_model::load(const char * afname)
 	fn >> name;
 
 	// decode the model name. Some names are reserved for specific models
-	// if model head is "chsbd", the name should have the format "chsbd_<x>_<y>_<p>". Here <x>, <y> are non-negative integer, <p> is fixed point number.
+	// If model head is "chsbd", the name should have the format "chsbd_<x>_<y>_<p>". Here <x>, <y> are non-negative integer, <p> is fixed point number.
 	if(par_chsbd.parse(name.c_str(), type, pts, edges)){
+		calc_bounds();
 		return true;
 	}
 
@@ -275,6 +276,12 @@ bool s_model::load(const char * afname)
 		fe["e"] >> edges[ie].e;
 	}
 
+	calc_bounds();
+	return true;
+}
+
+void s_model::calc_bounds()
+{
 	xmin = ymin = zmin = FLT_MAX;
 	xmax = ymax = zmax = -FLT_MAX;
 	for(int i = 0; i < pts.size(); i++){
@@ -287,7 +294,6 @@ bool s_model::load(const char * afname)
 		zmin = min(zmin, pts[i].z);
 		zmax = max(ymax, pts[i].z);
 	}
-	return true;
 }
 
 s_obj * s_model::detect(Mat & img)
@@ -309,7 +315,7 @@ s_obj * s_model::detect(Mat & img)
 bool s_model::s_chsbd::parse(const char * name, e_model_type & type, 
 	vector<Point3f> & pts, vector<s_edge> & edges)
 {
-	char * tok[3];
+	char * tok[4];
 	char buf[128];
 	tok[0] = buf;
 	int i, itok;
@@ -323,7 +329,7 @@ bool s_model::s_chsbd::parse(const char * name, e_model_type & type,
 		}
 	}
 	buf[i] = '\0';
-	if(itok != 4)
+	if(itok != 3)
 		return false;
 	if(strcmp(tok[0], "chsbd") != 0)
 		return false;
@@ -335,6 +341,7 @@ bool s_model::s_chsbd::parse(const char * name, e_model_type & type,
 	int numpts = w * h;
 	int numedges = w * (h - 1) + (w - 1) * h;
 	pts.resize(numpts);
+	edges.resize(numedges);
 	i = 0;
 	int j = 0;
 	for (int y = 0; y < h; y++){
@@ -343,7 +350,6 @@ bool s_model::s_chsbd::parse(const char * name, e_model_type & type,
 			pt.x = (float)(x * p);
 			pt.y = (float)(y * p);
 			pt.z = 0;
-			i++;
 			if(x < w - 1){
 				s_edge & e = edges[j];
 				e.s = i;
@@ -356,6 +362,7 @@ bool s_model::s_chsbd::parse(const char * name, e_model_type & type,
 				e.e = i + w;
 				j++;
 			}
+			i++;
 		}
 	}
 
@@ -1110,6 +1117,9 @@ bool f_inspector::proc()
 		break;
 	case SOP_INS_CPTBL:
 		handle_sop_ins_cptbl();
+		break;
+	case SOP_DET:
+		handle_sop_det();
 		break;
 	}
 
@@ -3247,7 +3257,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'O': /* O key */ 
 		m_op = OBJ;
 		if(m_cur_obj < 0)
-			m_cur_obj = m_fobjs[m_cur_frm]->objs.size() - 1;
+			m_cur_obj = (int) m_fobjs[m_cur_frm]->objs.size() - 1;
 		break;
 	case 'M':
 		m_op = MODEL;
@@ -3507,7 +3517,12 @@ bool f_inspector::load_fobjs()
 		file.getline(fname, 1024);
 		m_fobjs[ifobj] = new s_frame_obj();
 		m_fobjs[ifobj]->tfrm = atoll(fname);
-		m_fobjs[ifobj]->load(m_name, m_models);
+		if(!m_fobjs[ifobj]->load(m_name, m_models)){
+			delete m_fobjs[ifobj];
+			m_fobjs.erase(m_fobjs.begin() + ifobj);
+			ifobj--;
+			continue;
+		}
 		if(m_timg == m_fobjs[ifobj]->tfrm){
 			m_cur_frm = ifobj;
 			m_cur_obj = (int) m_fobjs[ifobj]->objs.size() - 1;
@@ -3620,4 +3635,21 @@ void f_inspector::handle_sop_guess()
 		}
 		break;
 	}
+}
+
+void f_inspector::handle_sop_ins_cptbl()	
+{
+	addCamparTbl();
+	m_sop = SOP_NULL;
+}
+
+void f_inspector::handle_sop_det(){
+	if(m_cur_model >= 0 && m_cur_model < m_models.size()){
+		s_obj * pobj;
+		s_model * pmdl = &m_models[m_cur_model];
+		pobj = pmdl->detect(m_img);
+		vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+		objs.push_back(pobj);
+	}
+	m_sop = SOP_NULL;
 }
