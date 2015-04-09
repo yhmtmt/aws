@@ -303,6 +303,14 @@ s_obj * s_model::detect(Mat & img)
 		pobj->pmdl = this;
 
 		if(par_chsbd.detect(img, pobj->pt2d)){
+			int len_name = (int) strlen(name.c_str()) + 4 + 1;
+			pobj->name = new char[len_name];
+			if(pobj->name == NULL){
+				delete pobj;
+				return NULL;
+			}
+			snprintf(pobj->name, len_name, "%s_%03d", name.c_str(), ref);
+			ref++;
 			pobj->visible.resize(pobj->pt2d.size(), true);
 			return pobj;
 		}
@@ -365,7 +373,7 @@ bool s_model::s_chsbd::parse(const char * name, e_model_type & type,
 			i++;
 		}
 	}
-
+	type = EMT_CHSBD;
 	return true;
 }
 
@@ -3596,8 +3604,10 @@ void f_inspector::handle_sop_guess()
 	case FRAME:
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 			vector<s_obj*> & objs = m_fobjs[ifrm]->objs;
+			m_fobjs[ifrm]->is_prj = false;
 			for(int iobj = 0; iobj < objs.size(); iobj++){
 				help_guess(*objs[iobj], z, cx, cy, sfx, sfy);
+				objs[iobj]->is_prj = false;
 				num_objs++;
 			}
 		}
@@ -3606,6 +3616,7 @@ void f_inspector::handle_sop_guess()
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj < objs.size()){
 				help_guess(*objs[m_cur_obj], z, cx, cy, sfx, sfy);
+				objs[m_cur_obj]->is_prj = false;
 				num_objs++;
 			}else{
 				return;
@@ -3647,9 +3658,15 @@ void f_inspector::handle_sop_det(){
 	if(m_cur_model >= 0 && m_cur_model < m_models.size()){
 		s_obj * pobj;
 		s_model * pmdl = &m_models[m_cur_model];
-		pobj = pmdl->detect(m_img);
+		pobj = pmdl->detect(m_img_gry);
+		if(pobj == NULL)
+			return;
 		vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 		objs.push_back(pobj);
 	}
 	m_sop = SOP_NULL;
+	m_op = OBJ;
+	if(m_cur_obj < 0){
+		m_cur_obj = (int) m_fobjs[m_cur_frm]->objs.size() - 1;
+	}
 }
