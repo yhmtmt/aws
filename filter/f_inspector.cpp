@@ -42,6 +42,9 @@ using namespace cv;
 
 #include "f_inspector.h"
 
+const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  
+
+
 bool is_equal(Mat & a, Mat & b)
 {
 	if(a.type() != b.type())
@@ -65,7 +68,23 @@ bool is_equal(Mat & a, Mat & b)
 	return true;
 }
 
-const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  
+void mat2csv(ofstream & out, Mat & m)
+{
+	if(m.type() != CV_64FC1){
+		return;
+	}
+
+	double * ptr = m.ptr<double>(0);
+	for(int i = 0; i < m.rows; i++){
+		for(int j = 0; j< m.cols; j++){
+			out << *ptr;
+			if(j != m.cols - 1)
+				out << ",";
+			ptr++;
+		}
+		out << endl;
+	}
+}
 
 //////////////////////////////////////////////////////////////// helper function
 void get_cursor_point(vector<Point2f> & pt2ds, float x, float y, int & idx, double & dist)
@@ -561,6 +580,50 @@ bool s_obj::save(FileStorage & fs)
 	fs << "]";
 	return true;
 }
+
+
+int s_obj::calc_num_matched_points(){
+	match_count = 0;
+	for(int i = 0; i < visible.size(); i++)
+		if(visible[i])
+			match_count++;
+	return match_count;
+}
+
+double s_obj::calc_ssd(){
+	ssd = 0;
+	err = Mat::zeros((int) visible.size() * 2, 1, CV_64FC1);
+	double * ptr = err.ptr<double>(0);
+	for(int i = 0; i < visible.size(); i++, ptr+=2){
+		//			ptr[0] = (double) visible[i] * (pt2d[i].x - pt2dprj[i].x);
+		//			ptr[1] = (double) visible[i] * (pt2d[i].y - pt2dprj[i].y);
+		ptr[0] = (double) visible[i] * (pt2dprj[i].x - pt2d[i].x);
+		ptr[1] = (double) visible[i] * (pt2dprj[i].y - pt2d[i].y);
+		ssd += (ptr[0] * ptr[0] + ptr[1] * ptr[1]);
+	}
+	return ssd;
+}
+
+void s_obj::get_bb_pt2d(Rect & bb)
+{
+	float xmin, ymin, xmax, ymax;
+	xmin = ymin = FLT_MAX;
+	xmax = ymax = 0;
+	bb = Rect(0, 0, 0, 0);
+	for(int i = 0; i < visible.size(); i++){
+		if(!visible[i])
+			continue;
+		xmin = min(pt2d[i].x, xmin);
+		xmax = max(pt2d[i].x, xmax);
+		ymin = min(pt2d[i].y, ymin);
+		ymax = max(pt2d[i].y, ymax);
+	}
+	bb.x = (int) xmin;
+	bb.y = (int) ymin;
+	bb.width = (int)(xmax - xmin);
+	bb.height = (int)(ymax - ymin);
+}
+
 
 void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ratio)
 {
@@ -3647,6 +3710,26 @@ void f_inspector::handle_sop_guess()
 		break;
 	}
 }
+
+void f_inspector::help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy)
+{
+	double * ptr = obj.tvec.ptr<double>(0);
+	s_model * pmdl = obj.pmdl;
+	double sx = pmdl->get_xsize();
+	double sy = pmdl->get_ysize();
+	ptr[2] = z;
+	Rect bb;
+	obj.get_bb_pt2d(bb);
+	double fx = (double) bb.width * z / (double) sx;
+	double fy = (double) bb.height * z / (double) sy;
+
+	ptr[0] = ((double) bb.x + (double) bb.width * (-pmdl->xmin / sx) - cx) / fx;
+	ptr[1] = ((double) bb.y + (double) bb.height * (-pmdl->ymin / sy) - cy) / fy;
+
+	sfx += fx;
+	sfy += fy;
+}
+
 
 void f_inspector::handle_sop_ins_cptbl()	
 {

@@ -19,23 +19,7 @@
 #include "f_ds_window.h"
 
 bool is_equal(Mat & a, Mat & b);
-
-inline void mat2csv(ofstream & out, Mat & m)
-{
-	if(m.type() != CV_64FC1){
-		return;
-	}
-	double * ptr = m.ptr<double>(0);
-	for(int i = 0; i < m.rows; i++){
-		for(int j = 0; j< m.cols; j++){
-			out << *ptr;
-			if(j != m.cols - 1)
-				out << ",";
-			ptr++;
-		}
-		out << endl;
-	}
-}
+void mat2csv(ofstream & out, Mat & m);
 
 ////////////////// procedure for model pose estimation
 // for calibration phase
@@ -187,7 +171,8 @@ struct s_obj
 	double ssd;
 	int match_count;
 
-	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false), is_prj(false){
+	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false), is_prj(false)
+	{
 		tvec = Mat::zeros(3, 1, CV_64FC1);
 		rvec = Mat::zeros(3, 1, CV_64FC1);
 	};
@@ -198,51 +183,14 @@ struct s_obj
 		name = NULL;
 	}
 
-	int calc_num_matched_points(){
-		match_count = 0;
-		for(int i = 0; i < visible.size(); i++)
-			if(visible[i])
-				match_count++;
-		return match_count;
-	}
-
-	double calc_ssd(){
-		ssd = 0;
-		err = Mat::zeros((int) visible.size() * 2, 1, CV_64FC1);
-		double * ptr = err.ptr<double>(0);
-		for(int i = 0; i < visible.size(); i++, ptr+=2){
-//			ptr[0] = (double) visible[i] * (pt2d[i].x - pt2dprj[i].x);
-//			ptr[1] = (double) visible[i] * (pt2d[i].y - pt2dprj[i].y);
-			ptr[0] = (double) visible[i] * (pt2dprj[i].x - pt2d[i].x);
-			ptr[1] = (double) visible[i] * (pt2dprj[i].y - pt2d[i].y);
-			ssd += (ptr[0] * ptr[0] + ptr[1] * ptr[1]);
-		}
-		return ssd;
-	}
+	int calc_num_matched_points();
+	double calc_ssd();
 
 	int get_num_points(){
 		return (int) pt2d.size();
 	}
 
-	void get_bb_pt2d(Rect & bb)
-	{
-		float xmin, ymin, xmax, ymax;
-		xmin = ymin = FLT_MAX;
-		xmax = ymax = 0;
-		bb = Rect(0, 0, 0, 0);
-		for(int i = 0; i < visible.size(); i++){
-			if(!visible[i])
-				continue;
-			xmin = min(pt2d[i].x, xmin);
-			xmax = max(pt2d[i].x, xmax);
-			ymin = min(pt2d[i].y, ymin);
-			ymax = max(pt2d[i].y, ymax);
-		}
-		bb.x = (int) xmin;
-		bb.y = (int) ymin;
-		bb.width = (int)(xmax - xmin);
-		bb.height = (int)(ymax - ymin);
-	}
+	void get_bb_pt2d(Rect & bb);
 
 	// getting the nearest object point and the distance to (x, y)
 	void get_cursor_point(float x, float y, int & idx, double & dist)
@@ -279,7 +227,9 @@ struct s_obj
 
 	bool load(FileNode & fnobj, vector<s_model> & mdls);
 	bool save(FileStorage & fs);
-	void fixAttitude(bool val){
+
+	void fixAttitude(bool val)
+	{
 		is_attitude_fixed = val;
 	}
 
@@ -368,6 +318,7 @@ private:
 	enum e_operation {
 		MODEL, OBJ, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME
 	};
+
 	static const char * m_str_op[FRAME+1]; 
 	e_operation m_op;
 
@@ -375,33 +326,21 @@ private:
 	enum e_sub_operation{
 		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_DET, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ, SOP_INS_CPTBL
 	};
+
 	static const char * m_str_sop[SOP_INS_CPTBL + 1];
 	e_sub_operation m_sop;
+
 	void handle_sop_delete();
 	void handle_sop_save();
 	void handle_sop_load();
 	void handle_sop_guess();
-	void help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy){
-		double * ptr = obj.tvec.ptr<double>(0);
-		s_model * pmdl = obj.pmdl;
-		double sx = pmdl->get_xsize();
-		double sy = pmdl->get_ysize();
-		ptr[2] = z;
-		Rect bb;
-		obj.get_bb_pt2d(bb);
-		double fx = (double) bb.width * z / (double) sx;
-		double fy = (double) bb.height * z / (double) sy;
-
-		ptr[0] = ((double) bb.x + (double) bb.width * (-pmdl->xmin / sx) - cx) / fx;
-		ptr[1] = ((double) bb.y + (double) bb.height * (-pmdl->ymin / sy) - cy) / fy;
-
-		sfx += fx;
-		sfy += fy;
-	}
 	void handle_sop_inst_obj();
 	void handle_sop_reinit_fobj();
 	void handle_sop_ins_cptbl();
 	void handle_sop_det();
+
+	// helper function for handle_sop_guess()
+	void help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy);
 
 	bool m_bundistort;	// undistort flag. it cant be used with model handling mode.
 
@@ -411,7 +350,6 @@ private:
 	char m_fname_model[1024]; // name of the model file
 	int m_cur_model; // current selected model
 	vector<s_model> m_models; // storing models
-
 	bool load_model();
 
 	// 
@@ -609,7 +547,7 @@ public:
 //  Up: parameter adjustment step up
 //  Down: parameter adjustment step down
 //
-// State {Frame, Model, Obj, Point, Camera}
+// State {Frame, Model, Obj, Point, Camera, CamTbl, View3D}
 // State transition (always it can work)
 // <input>: <Action>
 //  M: op <= Model
@@ -619,6 +557,7 @@ public:
 //  T: op <= CameraTbl
 //  P: op <= Point
 //  F: op <= Frame
+//
 // op = Model
 //  * Show the model in full screen
 //	I: Instantiate and initialize New Object, op <= Obj, cur_obj = new_obj
@@ -660,7 +599,6 @@ public:
 //  ->: cur_par++
 //  <-: cur_par--
 //  Wheel: Change selected parameter value
-//  f : fix par[cur_par]
 //
 // op = CamTbl
 //  ->: cur_camtbl++
@@ -672,7 +610,6 @@ public:
 //	s : set current campar
 //
 // op = Estimate
-//  E: Estimate
 //  1: full parameter estimation EMD_FULL
 //  2: Camera parameter selection and attitude optimization mode EMD_SEL
 //  3: rotation/translation estimation EMD_RT
@@ -680,6 +617,15 @@ public:
 // op = Frame
 //  L : Load Camera parameter table
 //  S : Save Camera parameter table
-
-
+//
+// op = View3D
+// ParMode {ObjZ, ObjX, ObjY, Free, Cam}
+// ->: View mode ++
+// <-: View mode --
+//  x: axis <= x
+//  y: axis <= y
+//  z: axis <= z
+//  Ctrl+Wheel: rotation around axis (3D view campar, enabled in Free mode)
+//  Wheel: translation along axis (3D view campar, enabled in Free mode)
+// 
 #endif
