@@ -41,6 +41,8 @@ void mat2csv(ofstream & out, Mat & m);
 //	8.3 render model
 // 9. save model poses
 
+//#define VERB_LM
+
 struct ModelVertex   
 {   
     ModelVertex(){}   
@@ -139,7 +141,7 @@ struct s_model
 
 	bool load(const char * afname);
 
-	s_obj * detect(Mat & img);
+	s_obj * detect(Mat & img, s_obj * pobj = NULL);
 };
 
 ///////////////////////////////////////////////////////////////// s_obj
@@ -302,6 +304,7 @@ private:
 	double m_sh, m_sv; // horizontal and vertical scale. 
 
 	// Tracking module
+	bool m_btrack_obj;
 	e_warp_type m_wt;
 	c_imgalign m_ia;
 	int m_miss_tracks;
@@ -365,17 +368,21 @@ private:
 
 	void renderModel(long long timg);
 
+	//
 	// frame objects
+	// 
 	bool m_bauto_load_fobj, m_bauto_save_fobj;
 	vector<s_frame_obj*> m_fobjs;
 	int m_cur_frm;
 	bool save_fobjs();
 	bool load_fobjs();
+
 	//
 	// Object
 	// 
 	char m_name_obj[1024]; // name of the object file.
 	int m_cur_obj; // current object selected
+	int m_num_cur_objs;
 	int m_cur_point; // current selected point of the model
 	void renderObj();
 
@@ -397,8 +404,7 @@ private:
 	int m_cur_camtbl;
 	vector<Mat> m_cam_int_tbl;
 	vector<Mat> m_cam_dist_tbl;
-	double m_cam_erep;
-	
+
 	enum e_campar{
 		ECP_FX = 0, ECP_FY, ECP_CX, ECP_CY, ECP_K1, ECP_K2, ECP_P1, ECP_P2, ECP_K3, ECP_K4, ECP_K5, ECP_K6
 	};
@@ -411,13 +417,19 @@ private:
 	enum e_estimation_mode{
 		EMD_STOP = 0, EMD_FULL, EMD_RT, EMD_SEL
 	} m_emd;
+
 	static const char * m_str_emd[EMD_SEL + 1];
 	enum e_estimation_state{
 		EES_DIV, EES_CONV, EES_CONT
 	} m_eest;
+
 	int m_num_max_itrs;		// maximum gauss newton iteration
 	int m_num_max_frms_used; // frame counts used for the parameter estimation
 	int m_err_range; // error range of reprojection error of usable frame 
+	int m_num_pts_used;
+	vector<bool> m_frm_used;
+	double m_cam_erep;
+	void calc_erep();
 
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
 	CvLevMarq m_solver;

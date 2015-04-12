@@ -315,10 +315,11 @@ void s_model::calc_bounds()
 	}
 }
 
-s_obj * s_model::detect(Mat & img)
+s_obj * s_model::detect(Mat & img, s_obj * pobj)
 {
 	if(type == EMT_CHSBD){
-		s_obj * pobj = new s_obj;
+		if(!pobj)
+			pobj = new s_obj;
 		pobj->pmdl = this;
 
 		if(par_chsbd.detect(img, pobj->pt2d)){
@@ -946,13 +947,14 @@ const char * f_inspector::m_str_emd[EMD_SEL + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
+	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
 	m_bauto_load_fobj(false), m_bauto_save_fobj(false),
 	m_bundistort(false), m_bcam_tbl_loaded(false), m_cur_camtbl(-1),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
-	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), m_cur_obj(-1), m_cur_point(-1), 
+	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
+	m_num_cur_objs(0), m_cur_obj(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
 	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3)
@@ -983,16 +985,21 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("szptx", &m_sz_vtx_smpl.width, "Horizontal size of a point template.");
 	register_fpar("szpty", &m_sz_vtx_smpl.height, "Vertical size of a point template.");
 	register_fpar("miss_tracks", &m_miss_tracks, "Miss tracking counts of the points.");
+	register_fpar("track", &m_btrack_obj, "Flag enables inter frame object tracking.");
 
 	// model related parameters
 	register_fpar("mdl", &m_cur_model, "Model with specified index is selected.");
 	register_fpar("pt", &m_cur_point, "Model point of specified index is selected.");
+
+	// object related parameter
+	register_fpar("num_objs", &m_num_cur_objs, "Number of current objects in the frame");
 
 	// camera calibration and parameter
 	register_fpar("max_itrs", &m_num_max_itrs, "Number of maximum iteration of Gauss-Newton Iteration.");
 	register_fpar("max_frms", &m_num_max_frms_used, "Number of maximum frames used for the Gauss-Newton optimization.");
 	register_fpar("err_rng", &m_err_range, "Error range to discard frames used for optimization. Specified as number of standard deviation.");
 
+	// camera parameter
 	register_fpar("fx", m_cam_int.ptr<double>(0, 0), "x-directional focal length in milimeter");
 	register_fpar("fy", m_cam_int.ptr<double>(1, 1), "y-directional focal length in milimeter");
 	register_fpar("cx", m_cam_int.ptr<double>(0, 2), "x-coordinate of camera center in pixel.");
@@ -1126,7 +1133,7 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 
 		m_fobjs[m_cur_frm]->tfrm = timg;
 
-		if(!m_bauto_load_fobj || !m_fobjs[m_cur_frm]->load(m_name, m_models)){
+		if((!m_bauto_load_fobj || !m_fobjs[m_cur_frm]->load(m_name, m_models)) && m_btrack_obj){
 			// determining reference frame.
 			int iref_prev = m_cur_frm - 1;
 			int iref_next = m_cur_frm + 1;
@@ -1198,9 +1205,12 @@ bool f_inspector::proc()
 	if(m_cur_frm < 0)
 		return true;
 
+	m_num_cur_objs = (int) m_fobjs[m_cur_frm]->objs.size();
+
 	m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
 	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
 	m_fobjs[m_cur_frm]->proj_objs(true, m_bcalib_fix_aspect_ratio);
+
 	calc_jmax();
 
 	// sample point templates
@@ -1228,6 +1238,7 @@ bool f_inspector::proc()
 		}while(m_eest == EES_CONT && itr < m_num_max_itrs);
 		m_op = FRAME;
 		*/
+		calc_erep();
 	}
 
 	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
@@ -1769,6 +1780,9 @@ void f_inspector::renderInfo()
 		y += 20;
 		snprintf(information, 1023, "State: %s", m_str_emd[m_emd]);
 		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		y += 20;
+		snprintf(information, 1023, "NumFrmsUsd: %d NumItr: %d ErrPerPix: %f", m_num_max_frms_used, m_num_max_itrs, m_cam_erep);
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
 	case FRAME:
 		snprintf(information, 1023, "%d Frame Objs", (int)m_fobjs.size());
@@ -2186,10 +2200,13 @@ void f_inspector::estimate_rt_levmarq()
 	const CvMat * _param = NULL;
 	double * pparam = NULL;
 	int itr = 0;
+#ifdef VERB_LM
 	ofstream log("levmarq.csv");
-
+#endif
 	while(1){
+#ifdef VERB_LM
 		log << "Iteration " << itr << " state=" << m_solver.state << endl;
+#endif
 		double * errNorm = NULL;
 		CvMat * _JtJ = NULL, *_JtErr = NULL; // for each iteration, these data structure should be initialized.
 											 // This is because the ERROR_CHECK state of CvLevMarq assume the 
@@ -2197,12 +2214,13 @@ void f_inspector::estimate_rt_levmarq()
 		param = m_solver.param->data.db;
 		pparam = m_solver.prevParam->data.db;
 		bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
-
+#ifdef VERB_LM
 		//mat2csv(log, Mat(m_solver.JtJN));
 		log << "V = " << endl;
 		mat2csv(log, Mat(m_solver.JtJV));
 		log << "W = " << endl;
 		mat2csv(log, Mat(m_solver.JtJW));
+#endif
 
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			double * pext;
@@ -2210,26 +2228,29 @@ void f_inspector::estimate_rt_levmarq()
 			s_obj & obj = *objs[iobj];
 			pext = obj.rvec.ptr<double>();
 			memcpy((void*)pext, (void*)param, sizeof(double) * 3);
+#ifdef VERB_LM
 			log << "rvec[" << iobj << "]=" << endl;
 			mat2csv(log, obj.rvec);
-
+#endif
 			// copy tvec
 			pext = obj.tvec.ptr<double>();
 			memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
+#ifdef VERB_LM
 			log << "tvec[" << iobj << "]=" << endl;
 			mat2csv(log, obj.tvec);
-
+#endif
 			obj.is_prj = false;
 			param += 6;
 		}
 
 		// calculate projection
 		double ssd = 0.0;
+#ifdef VERB_LM
 		log << "Cam_int = " << endl;
 		mat2csv(log, m_cam_int);
 		log << "Cam_dist = " << endl;
 		mat2csv(log, m_cam_dist);
-
+#endif
 		bool updateJ = _JtJ != NULL && _JtErr != NULL;
 		m_fobjs[m_cur_frm]->is_prj = false;
 		// projection
@@ -2242,7 +2263,9 @@ void f_inspector::estimate_rt_levmarq()
 		}
 		if(errNorm){
 			*errNorm = sqrt(ssd);
+#ifdef VERB_LM
 			log << "errNorm," << *errNorm << endl;
+#endif
 		}
 
 		if(updateJ){
@@ -2252,27 +2275,30 @@ void f_inspector::estimate_rt_levmarq()
 			// Calculating Psuedo Hessian JtJ and JtErr
 			for(int iobj = 0, i = 0; iobj < objs.size(); iobj++, i+=6){
 				s_obj & obj = *objs[iobj];
+#ifdef VERB_LM
 				log << "J[" << iobj <<"] = " << endl;
 				mat2csv(log, obj.jacobian);
 				// JtJ
 				log << "H[" << iobj <<"] = " << endl;
 				mat2csv(log, obj.hessian);
+#endif
 				// JtJFrame
 				//      6  
 				// 6   RTRT
 				//
 				// JtJ(12+6ifrm:12+6ifrm+6, 12+6ifrm:12+6ifrm+6) = Hfrm(0:6, 0:6)
 				obj.hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
-
+#ifdef VERB_LM
 				// JtErr
 				log << "JtErr[" << iobj << "] = " << endl;
 				mat2csv(log, obj.jterr);
+#endif
 				// JtErrFrame
 				// 6  ERT
 				// 12 ECAM
 				obj.jterr(Rect(0, 0, 1, 6)).copyTo(JtErr(Rect(0, i, 1, 6)));
 			}
-
+#ifdef VERB_LM
 			log << "JtJ =" << endl;
 			mat2csv(log, JtJ);
 			Mat JtJN;
@@ -2293,6 +2319,7 @@ void f_inspector::estimate_rt_levmarq()
 			mat2csv(log, evc);
 			log << "JtErr =" << endl;
 			mat2csv(log, JtErr);
+#endif
 		}
 		itr++;
 	}
@@ -2302,30 +2329,29 @@ void f_inspector::estimate_rt_levmarq()
 void f_inspector::estimate_levmarq()
 {
 //	double ssd_avg, ssd_range;
-	// calculating valid flag. if the flag is asserted, the frame is used for the optimization
-	vector<bool> valid;
+	// calculating m_frm_used flag. if the flag is asserted, the frame is used for the optimization
 	int num_valid_frms = min((int)m_fobjs.size(), m_num_max_frms_used);
 	double step =  (double)m_fobjs.size() / (double) num_valid_frms; 
-	valid.resize(m_fobjs.size(), false);
+	m_frm_used.resize(m_fobjs.size(), false);
 	num_valid_frms = 0;
 	for(double ifrm = 0.; ifrm < (double) m_fobjs.size(); ifrm += step){
 		int i = (int) ifrm;
 //		if(m_fobjs[i]->ssd - ssd_avg < ssd_range){
-			valid[i] = true;
+			m_frm_used[i] = true;
 			num_valid_frms++;
 //		}
 	}
 
 	// current frame is forced to be used for the optimization
-	if(!valid[m_cur_frm]){
-		valid[m_cur_frm] = true;
+	if(!m_frm_used[m_cur_frm]){
+		m_frm_used[m_cur_frm] = true;
 		num_valid_frms++;
 	}
 
 	// counting extrinsic parameters (6 x number of objects)
 	int nparams = 12; // we assume the camera intrinsics are the same for every frames.
 	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
-		if(!valid[ifobj])
+		if(!m_frm_used[ifobj])
 			continue;
 		vector<s_obj*> & objs = m_fobjs[ifobj]->objs;		
 		nparams += (int) objs.size() * 6;
@@ -2400,7 +2426,7 @@ void f_inspector::estimate_levmarq()
 	// setting extrinsics
 	param += 12;
 	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
-		if(!valid[ifobj])
+		if(!m_frm_used[ifobj])
 			continue;
 		vector<s_obj*> & objs = m_fobjs[ifobj]->objs;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
@@ -2462,10 +2488,13 @@ void f_inspector::estimate_levmarq()
 	const CvMat * _param = NULL;
 	double * pparam = NULL;
 	int itr = 0;
+#ifdef VERB_LM
 	ofstream log("levmarq.csv");
-
+#endif
 	while(1){
+#ifdef VERB_LM
 		log << "Iteration " << itr << " state=" << m_solver.state << endl;
+#endif
 		double * errNorm = NULL;
 		CvMat * _JtJ = NULL, *_JtErr = NULL; // for each iteration, these data structure should be initialized.
 											 // This is because the ERROR_CHECK state of CvLevMarq assume the 
@@ -2473,13 +2502,14 @@ void f_inspector::estimate_levmarq()
 		param = m_solver.param->data.db;
 		pparam = m_solver.prevParam->data.db;
 		bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
-
+#ifdef VERB_LM
 		//mat2csv(log, Mat(m_solver.JtJN));
+
 		log << "V = " << endl;
 		mat2csv(log, Mat(m_solver.JtJV));
 		log << "W = " << endl;
 		mat2csv(log, Mat(m_solver.JtJW));
-
+#endif
 		// if we need to use fixed aspect ratio, this codes should be rewritten to multiply the aspect ratio
 		param[0] = param[1];
 		pparam[0] = pparam[1];
@@ -2496,7 +2526,7 @@ void f_inspector::estimate_levmarq()
 		// updating extrinsic parameters 
 		param += 12;
 		for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
-			if(!valid[ifobj])
+			if(!m_frm_used[ifobj])
 				continue;
 			vector<s_obj*> & objs = m_fobjs[ifobj]->objs;
 			for(int iobj = 0; iobj < objs.size(); iobj++){
@@ -2516,14 +2546,15 @@ void f_inspector::estimate_levmarq()
 		}
 		// calculate projection
 		double ssd = 0.0;
+#ifdef VERB_LM
 		log << "Cam_int = " << endl;
 		mat2csv(log, m_cam_int);
 		log << "Cam_dist = " << endl;
 		mat2csv(log, m_cam_dist);
-
+#endif
 		bool updateJ = _JtJ != NULL && _JtErr != NULL;
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-			if(!valid[ifrm])
+			if(!m_frm_used[ifrm])
 				continue;
 
 			// copy camera parameters
@@ -2543,7 +2574,9 @@ void f_inspector::estimate_levmarq()
 		}
 		if(errNorm){
 			*errNorm = sqrt(ssd);
+#ifdef VERB_LM
 			log << "errNorm," << *errNorm << endl;
+#endif
 		}
 		if(updateJ){
 			Mat JtJ(_JtJ);
@@ -2552,16 +2585,18 @@ void f_inspector::estimate_levmarq()
 			// Calculating Psuedo Hessian JtJ and JtErr
 			int i = 12;
 			for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-				if(!valid[ifrm])
+				if(!m_frm_used[ifrm])
 					continue;
 				vector<s_obj*> & objs = m_fobjs[ifrm]->objs;
 				for(int iobj = 0; iobj < objs.size(); iobj++, i+=6){
 					s_obj & obj = *objs[iobj];
+#ifdef VERB_LM
 					log << "J[" << ifrm << "][" << iobj <<"] = " << endl;
 					mat2csv(log, obj.jacobian);
 					// JtJ
 					log << "H[" << ifrm << "][" << iobj <<"] = " << endl;
 					mat2csv(log, obj.hessian);
+#endif
 					// JtJFrame
 					//      6     12
 					// 6   RTRT   CRTt
@@ -2575,10 +2610,11 @@ void f_inspector::estimate_levmarq()
 					obj.hessian(Rect(0, 0, 6, 6)).copyTo(JtJ(Rect(i, i, 6, 6)));
 					obj.hessian(Rect(6, 0, 12, 6)).copyTo(JtJ(Rect(0, i, 12, 6)));
 					obj.hessian(Rect(0, 6, 6, 12)).copyTo(JtJ(Rect(i, 0, 6, 12)));
-
+#ifdef VERB_LM
 					// JtErr
 					log << "JtErr[" << ifrm << "][" << iobj << "] = " << endl;
 					mat2csv(log, obj.jterr);
+#endif
 					// JtErrFrame
 					// 6  ERT
 					// 12 ECAM
@@ -2586,6 +2622,7 @@ void f_inspector::estimate_levmarq()
 					obj.jterr(Rect(0, 0, 1, 6)).copyTo(JtErr(Rect(0, i, 1, 6)));
 				}
 			}
+#ifdef VERB_LM
 			log << "JtJ =" << endl;
 			mat2csv(log, JtJ);
 			Mat JtJN;
@@ -2606,9 +2643,28 @@ void f_inspector::estimate_levmarq()
 			mat2csv(log, evc);
 			log << "JtErr =" << endl;
 			mat2csv(log, JtErr);
+#endif
 		}
 		itr++;
 	}
+}
+
+void f_inspector::calc_erep()
+{
+	m_num_pts_used = 0;
+	m_cam_erep = 0.0;
+	for(int ifrm = 0; ifrm < m_frm_used.size(); ifrm++){
+		if(!m_frm_used[ifrm])
+			continue;
+		vector<s_obj*> & objs = m_fobjs[ifrm]->objs;
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			m_num_pts_used += objs[iobj]->calc_num_matched_points();
+		}
+
+		m_cam_erep += m_fobjs[ifrm]->ssd;
+	}
+	m_cam_erep /= (double) m_num_pts_used;
+	m_cam_erep = sqrt(m_cam_erep);
 }
 
 
@@ -2661,40 +2717,39 @@ void f_inspector::estimate_fulltime()
 	double ssd_range = s_ssd * (double) m_err_range; 
 
 	// calculating valid flag. if the flag is asserted, the frame is used for the optimization
-	vector<bool> valid;
 	int num_valid_frms = min((int)m_fobjs.size(), m_num_max_frms_used);
 	double step =  (double)m_fobjs.size() / (double) num_valid_frms; 
-	valid.resize(m_fobjs.size(), false);
+	m_frm_used.resize(m_fobjs.size(), false);
 	num_valid_frms = 0;
 	for(double ifrm = 0.; ifrm < (double) m_fobjs.size(); ifrm += step){
 		int i = (int) ifrm;
 		if(m_fobjs[i]->ssd - ssd_avg < ssd_range){
-			valid[i] = true;
+			m_frm_used[i] = true;
 			num_valid_frms++;
 		}
 	}
 
 	// current frame is forced to be used for the optimization
-	valid[m_cur_frm] = true;
+	m_frm_used[m_cur_frm] = true;
 	num_valid_frms++;
 
 	// accumulating camera intrinsics part of the hessian
 	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-		if(!valid[ifrm])
+		if(!m_frm_used[ifrm])
 			continue;
 		acc_Hcamint(Hcamint, m_fobjs[ifrm]->objs);
 	}
 
 	// copying camera intrinsic part 
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-		if(!valid[ifrm])
+		if(!m_frm_used[ifrm])
 			continue;
 		copy_Hcamint(Hcamint, m_fobjs[ifrm]->objs);
 	}
 
 	for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
-		if(!valid[ifrm])
+		if(!m_frm_used[ifrm])
 			continue;
 		update_params(m_fobjs[ifrm]->objs);
 	}	
@@ -3738,18 +3793,33 @@ void f_inspector::handle_sop_ins_cptbl()
 }
 
 void f_inspector::handle_sop_det(){
-	if(m_cur_model >= 0 && m_cur_model < m_models.size()){
-		s_obj * pobj;
-		s_model * pmdl = &m_models[m_cur_model];
-		pobj = pmdl->detect(m_img_gry);
-		if(pobj == NULL)
-			return;
-		vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
-		objs.push_back(pobj);
-	}
-	m_sop = SOP_NULL;
-	m_op = OBJ;
-	if(m_cur_obj < 0){
-		m_cur_obj = (int) m_fobjs[m_cur_frm]->objs.size() - 1;
+	switch(m_op){
+	case MODEL:
+		if(m_cur_model >= 0 && m_cur_model < m_models.size()){
+			s_obj * pobj;
+			s_model * pmdl = &m_models[m_cur_model];
+			pobj = pmdl->detect(m_img_gry);
+			if(pobj == NULL)
+				return;
+			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+			objs.push_back(pobj);
+		}
+		m_sop = SOP_NULL;
+		m_op = OBJ;
+		if(m_cur_obj < 0){
+			m_cur_obj = (int) m_fobjs[m_cur_frm]->objs.size() - 1;
+		}
+		break;
+	case OBJ:
+		{
+			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
+				s_obj * pobj = objs[m_cur_obj];
+				pobj = pobj->pmdl->detect(m_img_gry, pobj);
+				if(!pobj)
+					objs.erase(objs.begin() + m_cur_obj);
+			}
+		}
+		break;
 	}
 }
