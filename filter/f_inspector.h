@@ -236,6 +236,9 @@ struct s_obj
 	}
 
 	void sample_tmpl(Mat & img, Size & sz); 
+	void free_tmpl(){
+		ptx_tmpl.clear();
+	}
 };
 
 ///////////////////////////////////////////////////////////////// s_frame_obj
@@ -263,6 +266,12 @@ struct s_frame_obj{
 	{
 		for(int i = 0; i < objs.size(); i++){
 			objs[i]->sample_tmpl(img, sz);
+		}
+	}
+
+	void free_tmpl(){
+		for(int i = 0; i < objs.size(); i++){
+			objs[i]->free_tmpl();
 		}
 	}
 

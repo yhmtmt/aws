@@ -843,6 +843,7 @@ bool s_frame_obj::init(const long long atfrm,
 			//cout << pt_prev << endl;
 			//cout << pt << endl;
 		}
+		tmpl.clear();
 	}
 	return true;
 }
@@ -1501,9 +1502,9 @@ void f_inspector::renderInfo()
 		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
 	case OBJ:
-		if(m_cur_obj < 0)
+		if(objs.size() == 0)
 			snprintf(information, 1023, "Obj[]=NULL");
-		else{
+		else if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 			s_obj & obj = *objs[m_cur_obj];
 			snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f rvec=(%f,%f,%f) tvec=(%f,%f,%f)",
 				m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd,
@@ -3820,6 +3821,8 @@ void f_inspector::handle_sop_det(){
 					objs.erase(objs.begin() + m_cur_obj);
 			}
 		}
+		m_sop = SOP_NULL;
+		m_op = OBJ;
 		break;
 	}
 }
