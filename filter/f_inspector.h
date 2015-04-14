@@ -328,10 +328,10 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		MODEL, OBJ, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME
+		MODEL, OBJ, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME, VIEW3D
 	};
 
-	static const char * m_str_op[FRAME+1]; 
+	static const char * m_str_op[VIEW3D+1]; 
 	e_operation m_op;
 
 	// sub operation
@@ -376,6 +376,16 @@ private:
 	Mat m_cam_int_mdl, m_cam_dist_mdl;
 
 	void renderModel(long long timg);
+
+	//
+	// Scene view
+	//
+	enum e_view{
+		EV_CAM, EV_OBJX, EV_OBJY, EV_OBJZ, EV_FREE
+	} m_ev;
+	static const char * m_str_view[EV_FREE + 1];
+	Mat m_cam_int_view, m_cam_dist_view, m_tvec_view, m_rvec_view;
+	void renderScene(long long timg);
 
 	//
 	// frame objects
@@ -462,9 +472,6 @@ private:
 	bool saveCamparTbl();
 	bool loadCamparTbl();
 	void clearCamparTbl();
-
-	void render3D(long long timg);
-	void renderChsbd(long long timg);
 
 	void acc_Hcamint(Mat & Hcamint, vector<s_obj*> & objs);
 	void copy_Hcamint(Mat & Hcamint, vector<s_obj*> & objs);
@@ -578,6 +585,7 @@ public:
 //  T: op <= CameraTbl
 //  P: op <= Point
 //  F: op <= Frame
+//  V: op <= View3D
 //
 // op = Model
 //  * Show the model in full screen

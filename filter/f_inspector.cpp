@@ -929,8 +929,8 @@ bool s_frame_obj::load(const char * aname, vector<s_model> & mdls)
 }
 
 //////////////////////////////////////////////////////////////////// class f_inspector
-const char * f_inspector::m_str_op[FRAME+1]
-	= {"model", "obj", "point", "camera", "camtbl", "estimate", "frame"};
+const char * f_inspector::m_str_op[VIEW3D+1]
+	= {"model", "obj", "point", "camera", "camtbl", "estimate", "frame", "v3d"};
 
 const char * f_inspector::m_str_sop[SOP_INS_CPTBL+1]
 	= {"null", "save", "load", "guess", "det", "ins", "del", "fobj", "icp"};
@@ -947,6 +947,10 @@ const char * f_inspector::m_str_emd[EMD_SEL + 1] = {
 	"stop", "full", "rt", "sel"
 };
 
+const char * f_inspector::m_str_view[EV_FREE + 1] = {
+	"cam", "objx", "objy", "objz", "free"
+};
+
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
 	m_bauto_load_fobj(false), m_bauto_save_fobj(false),
@@ -958,7 +962,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_num_cur_objs(0), m_cur_obj(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
-	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3)
+	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3),
+	m_ev(EV_CAM)
 {
 	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
@@ -972,7 +977,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
 	register_fpar("fcp", m_fname_campar, 1024, "File path of camera parameter.");
-	register_fpar("op", (int*)&m_op, ESTIMATE+1, m_str_op,"Operation ");
+	register_fpar("op", (int*)&m_op, VIEW3D+1, m_str_op,"Operation ");
 	register_fpar("sop", (int*)&m_sop, SOP_INS_CPTBL+1, m_str_sop, "Sub operation.");
 	register_fpar("asave", &m_bauto_save_fobj, "Automatically save frame object.");
 	register_fpar("aload", &m_bauto_load_fobj, "Automatically load frame object.");
@@ -1037,6 +1042,10 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 	register_fpar("fcptbl", m_fname_campar_tbl, 1024, "File path of table of the camera parameters with multiple magnifications.");
 	register_fpar("cptbl", &m_cur_camtbl, "Current camera parameter index in thetable.");
+
+	// scene view paramters
+	register_fpar("view", (int*)&m_ev, EV_FREE + 1, m_str_view, "Camera position in scene view.");
+
 
 	// object/camera manipulation
 	register_fpar("axis", (int*)&m_axis, (int)AX_Z + 1, m_axis_str, "Axis for rotation and translation. {x, y, z}");
@@ -1434,6 +1443,9 @@ void f_inspector::render(Mat & imgs, long long timg)
 	case MODEL:
 	case OBJ:
 		renderModel(timg);
+		break;
+	case VIEW3D:
+		break;
 	default:
 		break;
 	}
@@ -1444,6 +1456,7 @@ void f_inspector::render(Mat & imgs, long long timg)
 
 	switch(m_op){
 	case MODEL:
+	case VIEW3D:
 		m_model_view.show(m_pd3dev, 0, (float) m_ViewPort.Height);
 		break;
 	case OBJ:
@@ -1876,6 +1889,56 @@ void f_inspector::renderObj()
 		m_pline->Draw(v, 2, D3DCOLOR_RGBA(255, 0, 0, 255));
 	}
 	m_pline->End();
+}
+
+void f_inspector::renderScene(long long timg)
+{
+	m_model_view.SetAsRenderTarget(m_pd3dev);
+	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
+		D3DCOLOR_COLORVALUE(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
+	switch(m_ev){
+	case EV_CAM:
+		m_cam_int.copyTo(m_cam_int_view);
+		m_cam_dist.copyTo(m_cam_dist_view);
+		m_tvec_view = Mat::zeros(3, 1, CV_64FC1);
+		m_rvec_view = Mat::zeros(3, 1, CV_64FC1);
+		m_ev = EV_CAM;
+		break;
+	case EV_OBJX:
+		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
+			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
+				Mat R, Rcam;
+				double * ptr0, * ptr1, * ptr2;
+				Rodrigues(objs[m_cur_obj]->rvec, R);
+				Rcam = Mat(3, 3, CV_64FC1);
+				ptr0 = R.ptr<double>();
+				ptr1 = Rcam.ptr<double>();
+
+				// x-axis to z-axis
+				ptr1[6] = ptr0[0]; ptr1[7] = ptr0[1]; ptr1[8] = ptr0[2];
+				ptr1[0] = ptr0[3]; ptr1[1] = ptr0[4]; ptr1[2] = ptr0[5];
+				ptr1[3] = ptr0[6]; ptr1[4] = ptr0[7]; ptr1[5] = ptr0[8];
+
+				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
+				double d = ptr0[2]; // Z value is the scene depth for the camera 
+				m_tvec_view = Mat::zeros(3, 1, CV_64FC1);
+				m_rvec_view = Mat::zeros(3, 1, CV_64FC1);
+				ptr1 = m_tvec_view.ptr<double>();
+				ptr2 = R.ptr<double>(0); // x axis is the first row of the rotation matrix
+				m_cam_int.copyTo(m_cam_int_view);
+				m_cam_dist.copyTo(m_cam_dist_view);
+				m_ev = EV_CAM;
+			}
+		}
+		break;
+	case EV_OBJY:
+	case EV_OBJZ:
+	case EV_FREE:
+	}
+
+
+	m_model_view.ResetRenderTarget(m_pd3dev);
 }
 
 void f_inspector::renderModel(long long timg)
