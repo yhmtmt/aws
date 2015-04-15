@@ -1143,7 +1143,10 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 
 		m_fobjs[m_cur_frm]->tfrm = timg;
 
-		if((!m_bauto_load_fobj || !m_fobjs[m_cur_frm]->load(m_name, m_models)) && m_btrack_obj){
+		if(m_bauto_load_fobj && m_fobjs[m_cur_frm]->load(m_name, m_models)){
+				m_fobjs[m_cur_frm]->camint.copyTo(m_cam_int);
+				m_fobjs[m_cur_frm]->camdist.copyTo(m_cam_dist);
+		}else if(m_btrack_obj){
 			// determining reference frame.
 			int iref_prev = m_cur_frm - 1;
 			int iref_next = m_cur_frm + 1;
@@ -1157,7 +1160,10 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 				if(iref_prev >= 0)
 					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia, m_miss_tracks);
 			}
+			m_fobjs[m_cur_frm]->camint.copyTo(m_cam_int);
+			m_fobjs[m_cur_frm]->camdist.copyTo(m_cam_dist);
 		}
+
 		m_cur_obj = (int) m_fobjs[m_cur_frm]->objs.size() - 1;
 	}
 
@@ -1217,8 +1223,6 @@ bool f_inspector::proc()
 
 	m_num_cur_objs = (int) m_fobjs[m_cur_frm]->objs.size();
 
-	m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
-	m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
 	m_fobjs[m_cur_frm]->proj_objs(true, m_bcalib_fix_aspect_ratio);
 
 	calc_jmax();
@@ -1445,6 +1449,7 @@ void f_inspector::render(Mat & imgs, long long timg)
 		renderModel(timg);
 		break;
 	case VIEW3D:
+		renderScene(timg);
 		break;
 	default:
 		break;
@@ -1909,35 +1914,120 @@ void f_inspector::renderScene(long long timg)
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 				Mat R, Rcam;
-				double * ptr0, * ptr1, * ptr2;
+				double * ptr0, * ptr1;
 				Rodrigues(objs[m_cur_obj]->rvec, R);
 				Rcam = Mat(3, 3, CV_64FC1);
 				ptr0 = R.ptr<double>();
 				ptr1 = Rcam.ptr<double>();
-
+		
 				// x-axis to z-axis
-				ptr1[6] = ptr0[0]; ptr1[7] = ptr0[1]; ptr1[8] = ptr0[2];
-				ptr1[0] = ptr0[3]; ptr1[1] = ptr0[4]; ptr1[2] = ptr0[5];
-				ptr1[3] = ptr0[6]; ptr1[4] = ptr0[7]; ptr1[5] = ptr0[8];
+				ptr1[0] = ptr0[2];
+				ptr1[3] = ptr0[1];
+				ptr1[6] = -ptr0[0];
+				ptr1[1] = ptr0[5];
+				ptr1[4] = ptr0[4];
+				ptr1[7] = -ptr0[3];
+				ptr1[2] = ptr0[8];
+				ptr1[5] = ptr0[7];
+				ptr1[8] = -ptr0[6];
+
+				Rodrigues(Rcam, m_rvec_view);
 
 				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
 				double d = ptr0[2]; // Z value is the scene depth for the camera 
-				m_tvec_view = Mat::zeros(3, 1, CV_64FC1);
-				m_rvec_view = Mat::zeros(3, 1, CV_64FC1);
+				m_tvec_view = Mat(3, 1, CV_64FC1);
 				ptr1 = m_tvec_view.ptr<double>();
-				ptr2 = R.ptr<double>(0); // x axis is the first row of the rotation matrix
-				m_cam_int.copyTo(m_cam_int_view);
-				m_cam_dist.copyTo(m_cam_dist_view);
-				m_ev = EV_CAM;
+				ptr1[0] = -ptr0[0];
+				ptr1[1] = -ptr0[1];
+				ptr1[2] = 0;
 			}
 		}
 		break;
 	case EV_OBJY:
+		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
+			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
+				Mat R, Rcam;
+				double * ptr0, * ptr1;
+				Rodrigues(objs[m_cur_obj]->rvec, R);
+				Rcam = Mat(3, 3, CV_64FC1);
+				ptr0 = R.ptr<double>();
+				ptr1 = Rcam.ptr<double>();
+		
+				// y-axis to z-axis
+				ptr1[0] = ptr0[0];
+				ptr1[3] = ptr0[2];
+				ptr1[6] = -ptr0[1];
+				ptr1[1] = ptr0[3];
+				ptr1[4] = ptr0[5];
+				ptr1[7] = -ptr0[4];
+				ptr1[2] = ptr0[6];
+				ptr1[5] = ptr0[8];
+				ptr1[8] = -ptr0[7];
+
+				Rodrigues(Rcam, m_rvec_view);
+
+				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
+				m_tvec_view = Mat(3, 1, CV_64FC1);
+				ptr1 = m_tvec_view.ptr<double>();
+				ptr1[0] = -ptr0[0];
+				ptr1[1] = -ptr0[1];
+				ptr1[2] = 0;
+			}
+		}
+		break;
 	case EV_OBJZ:
+		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
+			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
+				Mat R, Rcam;
+				double * ptr0, * ptr1;
+				Rodrigues(objs[m_cur_obj]->rvec, R);
+				Rcam = Mat(3, 3, CV_64FC1);
+				ptr0 = R.ptr<double>();
+				ptr1 = Rcam.ptr<double>();
+		
+				// x-axis to z-axis
+				ptr1[0] = ptr0[0];
+				ptr1[3] = ptr0[1];
+				ptr1[6] = -ptr0[2];
+				ptr1[1] = ptr0[3];
+				ptr1[4] = ptr0[4];
+				ptr1[7] = -ptr0[5];
+				ptr1[2] = ptr0[6];
+				ptr1[5] = ptr0[7];
+				ptr1[8] = -ptr0[8];
+
+				Rodrigues(Rcam, m_rvec_view);
+
+				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
+				double d = ptr0[2]; // Z value is the scene depth for the camera 
+				m_tvec_view = Mat(3, 1, CV_64FC1);
+				ptr1 = m_tvec_view.ptr<double>();
+				ptr1[0] = -ptr0[0];
+				ptr1[1] = -ptr0[1];
+				ptr1[2] = 0;
+			}
+		}
+		break;
 	case EV_FREE:
+		break;
 	}
 
-
+	Mat rvec, tvec;
+	vector<Point2f> pts;
+	if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
+		vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			composeRT(m_rvec_view, m_tvec_view, objs[iobj]->rvec, objs[iobj]->tvec, rvec, tvec);
+			projectPoints(objs[iobj]->pt2d, rvec, tvec, m_cam_int, m_cam_dist, pts);
+			if(m_cur_obj == iobj)
+				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 0, -1);	
+			else
+				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 1, -1);	
+			objs[iobj]->render_axis(m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
+		}
+	}
 	m_model_view.ResetRenderTarget(m_pd3dev);
 }
 
