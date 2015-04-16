@@ -227,7 +227,7 @@ struct s_obj
 
 	bool init(const s_obj & obj);
 
-	bool load(FileNode & fnobj, vector<s_model> & mdls);
+	bool load(FileNode & fnobj, vector<s_model*> & mdls);
 	bool save(FileStorage & fs);
 
 	void fixAttitude(bool val)
@@ -279,7 +279,7 @@ struct s_frame_obj{
 		vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks);
 
 	bool save(const char * aname);
-	bool load(const char * aname, vector<s_model> & mdls);
+	bool load(const char * aname, vector<s_model*> & mdls);
 };
 
 //////////////////////////////////////////////////////////////// The filter
@@ -361,7 +361,7 @@ private:
 	//
 	char m_fname_model[1024]; // name of the model file
 	int m_cur_model; // current selected model
-	vector<s_model> m_models; // storing models
+	vector<s_model*> m_models; // storing models
 	bool load_model();
 
 	// 

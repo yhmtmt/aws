@@ -474,7 +474,7 @@ bool s_obj::init(const s_obj & obj)
 	return true;
 }
 
-bool s_obj::load(FileNode & fnobj, vector<s_model> & mdls)
+bool s_obj::load(FileNode & fnobj, vector<s_model*> & mdls)
 {
 	FileNode fn;
 
@@ -501,20 +501,20 @@ bool s_obj::load(FileNode & fnobj, vector<s_model> & mdls)
 	fn >> str;
 	pmdl = NULL;
 	for(int i = 0; i < mdls.size(); i++){
-		if(mdls[i].fname == str){
-			pmdl = &mdls[i];
+		if(mdls[i]->fname == str){
+			pmdl = mdls[i];
 			break;
 		}
 	}
 	if(pmdl == NULL){
-		mdls.push_back(s_model());
-		vector<s_model>::iterator itr = mdls.end() - 1;
-		if(!itr->load(str.c_str())){
+		mdls.push_back(new s_model());
+		vector<s_model*>::iterator itr = mdls.end() - 1;
+		if(!(*itr)->load(str.c_str())){
 			mdls.pop_back();
 			cerr << "Failed to load model " << str << endl;
 			return false;
 		}
-		pmdl = &(*itr);
+		pmdl = (*itr);
 	}
 
 	// allocating memories
@@ -876,7 +876,7 @@ bool s_frame_obj::save(const char * aname)
 	return true;
 }
 
-bool s_frame_obj::load(const char * aname, vector<s_model> & mdls)
+bool s_frame_obj::load(const char * aname, vector<s_model*> & mdls)
 {
 	char buf[1024];
 	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
@@ -1054,6 +1054,12 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 f_inspector::~f_inspector()
 {
+	for (int ifrm = 0; ifrm < m_fobjs.size(); ifrm++)
+		delete m_fobjs[ifrm];
+	for (int imdl = 0; imdl < m_models.size(); imdl++)
+		delete m_models[imdl];
+	m_fobjs.clear();
+	m_models.clear();
 }
 
 bool f_inspector::alloc_d3dres()
@@ -1140,11 +1146,15 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 			cerr << "Cannot allocate memory for frame object" << endl;
 			return false;
 		}
+		m_cam_int.copyTo(m_fobjs[m_cur_frm]->camint);
+		m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
 
 		m_fobjs[m_cur_frm]->tfrm = timg;
 
 		if(m_bauto_load_fobj && m_fobjs[m_cur_frm]->load(m_name, m_models)){
+			if (!m_fobjs[m_cur_frm]->camint.empty())
 				m_fobjs[m_cur_frm]->camint.copyTo(m_cam_int);
+			if (!m_fobjs[m_cur_frm]->camdist.empty())
 				m_fobjs[m_cur_frm]->camdist.copyTo(m_cam_dist);
 		}else if(m_btrack_obj){
 			// determining reference frame.
@@ -1160,11 +1170,17 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 				if(iref_prev >= 0)
 					m_fobjs[m_cur_frm]->init(timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia, m_miss_tracks);
 			}
-			m_fobjs[m_cur_frm]->camint.copyTo(m_cam_int);
-			m_fobjs[m_cur_frm]->camdist.copyTo(m_cam_dist);
+			if (!m_fobjs[m_cur_frm]->camint.empty())
+				m_fobjs[m_cur_frm]->camint.copyTo(m_cam_int);
+			if (!m_fobjs[m_cur_frm]->camdist.empty())
+				m_fobjs[m_cur_frm]->camdist.copyTo(m_cam_dist);
 		}
 
 		m_cur_obj = (int) m_fobjs[m_cur_frm]->objs.size() - 1;
+		if (m_cur_frm >= 0)
+			m_cur_point = (int)m_fobjs[m_cur_frm]->objs[m_cur_obj]->pt2d.size() - 1;
+		else
+			m_cur_point = 0;
 	}
 
 	// update time and image.
@@ -1403,8 +1419,11 @@ void f_inspector::clearCamparTbl()
 
 bool f_inspector::load_model()
 {
-	s_model mdl;
-	if(mdl.load(m_fname_model)){
+	s_model * mdl = new s_model();
+	if (!mdl)
+		return false;
+
+	if(mdl->load(m_fname_model)){
 		m_models.push_back(mdl);
 		m_cur_model = (int)(m_models.size() - 1);
 		return true;
@@ -1515,8 +1534,8 @@ void f_inspector::renderInfo()
 			snprintf(information, 1023, "Model[]=NULL");
 		else
 			snprintf(information, 1023, "Model[%d]=%s (%d Points, %d Edges)", m_cur_model, 
-			m_models[m_cur_model].fname,
-			m_models[m_cur_model].pts.size(), m_models[m_cur_model].edges.size());
+			m_models[m_cur_model]->fname,
+			m_models[m_cur_model]->pts.size(), m_models[m_cur_model]->edges.size());
 		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
 	case OBJ:
@@ -2048,7 +2067,7 @@ void f_inspector::renderModel(long long timg)
 		ptr[2] = 0.;
 
 		// twice the maximum length of the model
-		m_dist_mdl = 2 * m_models[m_cur_model].get_max_dist(); 
+		m_dist_mdl = 2 * m_models[m_cur_model]->get_max_dist(); 
 
 		// calculating translation vector
 		m_tvec_mdl = Mat(3, 1, CV_64F);
@@ -2083,8 +2102,8 @@ void f_inspector::renderModel(long long timg)
 		m_tvec_cam_mdl = Mat::zeros(3, 1, CV_64FC1);
 
 		vector<Point2f> pts;
-		m_models[m_cur_model].proj(pts, m_cam_int_mdl, m_cam_dist_mdl, m_rvec_cam_mdl, m_tvec_cam_mdl, m_rvec_mdl, m_tvec_mdl);
-		render_prjpts(m_models[m_cur_model], pts, m_pd3dev, NULL, m_pline, m_cur_model, 0, -1);	
+		m_models[m_cur_model]->proj(pts, m_cam_int_mdl, m_cam_dist_mdl, m_rvec_cam_mdl, m_tvec_cam_mdl, m_rvec_mdl, m_tvec_mdl);
+		render_prjpts(*m_models[m_cur_model], pts, m_pd3dev, NULL, m_pline, m_cur_model, 0, -1);	
 	}
 	m_model_view.ResetRenderTarget(m_pd3dev);
 }
@@ -3672,9 +3691,10 @@ void f_inspector::handle_sop_delete(){
 	case MODEL:
 		// delete current Model
 		if(m_cur_model >= 0){
-			vector<s_model>::iterator itr = m_models.begin() + m_cur_model;
-			if(itr->ref > 0)
+			vector<s_model*>::iterator itr = m_models.begin() + m_cur_model;
+			if((*itr)->ref > 0)
 				break;
+			delete (*itr);
 			m_models.erase(itr);
 			m_cur_model = (int) m_models.size() - 1;
 		}
@@ -3827,9 +3847,9 @@ void f_inspector::handle_sop_inst_obj()
 		double width =(double) m_maincam.get_surface_width();
 		double height = (double) m_maincam.get_surface_height();
 		s_obj * pobj = new s_obj;
-		if(!pobj->init(&m_models[m_cur_model], m_timg, m_cam_int, m_cam_dist, width, height)){
+		if(!pobj->init(m_models[m_cur_model], m_timg, m_cam_int, m_cam_dist, width, height)){
 			delete pobj;
-			cerr << "Failed to create an instance of model " << m_models[m_cur_model].name << endl;		
+			cerr << "Failed to create an instance of model " << m_models[m_cur_model]->name << endl;		
 		}else{
 			objs.push_back(pobj);
 			m_cur_obj = (int) objs.size() - 1;
@@ -3951,7 +3971,7 @@ void f_inspector::handle_sop_det(){
 	case MODEL:
 		if(m_cur_model >= 0 && m_cur_model < m_models.size()){
 			s_obj * pobj;
-			s_model * pmdl = &m_models[m_cur_model];
+			s_model * pmdl = m_models[m_cur_model];
 			pobj = pmdl->detect(m_img_gry);
 			if(pobj == NULL)
 				return;
