@@ -1177,7 +1177,7 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 		}
 
 		m_cur_obj = (int) m_fobjs[m_cur_frm]->objs.size() - 1;
-		if (m_cur_frm >= 0)
+		if (m_cur_obj >= 0)
 			m_cur_point = (int)m_fobjs[m_cur_frm]->objs[m_cur_obj]->pt2d.size() - 1;
 		else
 			m_cur_point = 0;
