@@ -671,9 +671,7 @@ void s_obj::render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam
 	p3d[2].y = fac; // pt3d[2] is y axis
 	p3d[3].z = fac; // pt3d[3] is z axis
 
-	Mat rvec_comp, tvec_comp;
-	composeRT(rvec_cam, tvec_cam, rvec, tvec, rvec_comp, tvec_comp);
-	projectPoints(p3d, rvec_comp, tvec_comp, cam_int, cam_dist, p2d);
+	projectPoints(p3d, rvec_cam, tvec_cam, cam_int, cam_dist, p2d);
 	pline->Begin();
 	D3DXVECTOR2 v[2];
 	D3DCOLOR color;
@@ -1419,6 +1417,13 @@ void f_inspector::clearCamparTbl()
 
 bool f_inspector::load_model()
 {
+	for (int imdl = 0; imdl < m_models.size(); imdl++){
+		if (m_models[imdl]->fname == m_fname_model){
+			m_cur_model = imdl;
+			return true;
+		}
+	}
+
 	s_model * mdl = new s_model();
 	if (!mdl)
 		return false;
@@ -1898,7 +1903,7 @@ void f_inspector::renderObj()
 
 		// render selected axis
 		obj.render_axis(
-			m_rvec_cam, m_tvec_cam, m_cam_int, m_cam_dist,
+			m_cam_int, m_cam_dist,
 			m_pd3dev, m_pline, (int) m_axis);
 	}
 
@@ -1920,6 +1925,8 @@ void f_inspector::renderScene(long long timg)
 	m_model_view.SetAsRenderTarget(m_pd3dev);
 	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
 		D3DCOLOR_COLORVALUE(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
+	double d;
+	Mat Rcam;
 	switch(m_ev){
 	case EV_CAM:
 		m_cam_int.copyTo(m_cam_int_view);
@@ -1932,7 +1939,7 @@ void f_inspector::renderScene(long long timg)
 		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
-				Mat R, Rcam;
+				Mat R;
 				double * ptr0, * ptr1;
 				Rodrigues(objs[m_cur_obj]->rvec, R);
 				Rcam = Mat(3, 3, CV_64FC1);
@@ -1950,15 +1957,8 @@ void f_inspector::renderScene(long long timg)
 				ptr1[5] = ptr0[7];
 				ptr1[8] = -ptr0[6];
 
-				Rodrigues(Rcam, m_rvec_view);
-
 				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
-				double d = ptr0[2]; // Z value is the scene depth for the camera 
-				m_tvec_view = Mat(3, 1, CV_64FC1);
-				ptr1 = m_tvec_view.ptr<double>();
-				ptr1[0] = -ptr0[0];
-				ptr1[1] = -ptr0[1];
-				ptr1[2] = 0;
+				d = ptr0[2]; // Z value is the scene depth for the camera 
 			}
 		}
 		break;
@@ -1966,7 +1966,7 @@ void f_inspector::renderScene(long long timg)
 		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
-				Mat R, Rcam;
+				Mat R;
 				double * ptr0, * ptr1;
 				Rodrigues(objs[m_cur_obj]->rvec, R);
 				Rcam = Mat(3, 3, CV_64FC1);
@@ -1984,14 +1984,8 @@ void f_inspector::renderScene(long long timg)
 				ptr1[5] = ptr0[8];
 				ptr1[8] = -ptr0[7];
 
-				Rodrigues(Rcam, m_rvec_view);
-
 				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
-				m_tvec_view = Mat(3, 1, CV_64FC1);
-				ptr1 = m_tvec_view.ptr<double>();
-				ptr1[0] = -ptr0[0];
-				ptr1[1] = -ptr0[1];
-				ptr1[2] = 0;
+				d = ptr0[2]; // Z value is the scene depth for the camera 
 			}
 		}
 		break;
@@ -1999,7 +1993,7 @@ void f_inspector::renderScene(long long timg)
 		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
-				Mat R, Rcam;
+				Mat R;
 				double * ptr0, * ptr1;
 				Rodrigues(objs[m_cur_obj]->rvec, R);
 				Rcam = Mat(3, 3, CV_64FC1);
@@ -2009,23 +2003,16 @@ void f_inspector::renderScene(long long timg)
 				// x-axis to z-axis
 				ptr1[0] = ptr0[0];
 				ptr1[3] = ptr0[1];
-				ptr1[6] = -ptr0[2];
+				ptr1[6] = ptr0[2];
 				ptr1[1] = ptr0[3];
 				ptr1[4] = ptr0[4];
-				ptr1[7] = -ptr0[5];
+				ptr1[7] = ptr0[5];
 				ptr1[2] = ptr0[6];
 				ptr1[5] = ptr0[7];
-				ptr1[8] = -ptr0[8];
-
-				Rodrigues(Rcam, m_rvec_view);
+				ptr1[8] = ptr0[8];
 
 				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
-				double d = ptr0[2]; // Z value is the scene depth for the camera 
-				m_tvec_view = Mat(3, 1, CV_64FC1);
-				ptr1 = m_tvec_view.ptr<double>();
-				ptr1[0] = -ptr0[0];
-				ptr1[1] = -ptr0[1];
-				ptr1[2] = 0;
+				d = ptr0[2]; // Z value is the scene depth for the camera 
 			}
 		}
 		break;
@@ -2037,14 +2024,28 @@ void f_inspector::renderScene(long long timg)
 	vector<Point2f> pts;
 	if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 		vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+		Mat tvec_org = objs[m_cur_obj]->tvec;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
-			composeRT(m_rvec_view, m_tvec_view, objs[iobj]->rvec, objs[iobj]->tvec, rvec, tvec);
-			projectPoints(objs[iobj]->pt2d, rvec, tvec, m_cam_int, m_cam_dist, pts);
+			if (m_ev == EV_CAM){
+				rvec = objs[iobj]->rvec;
+				tvec = objs[iobj]->tvec;
+			}
+			else{
+				tvec = Rcam * (objs[iobj]->tvec - tvec_org);
+				tvec.ptr<double>()[2] += d;
+
+				Mat R;
+				Rodrigues(objs[iobj]->rvec, R);
+				R = Rcam * R;
+				Rodrigues(R, rvec);
+			}
+			projectPoints(objs[iobj]->pmdl->pts, rvec, tvec, m_cam_int, m_cam_dist, pts);
 			if(m_cur_obj == iobj)
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 0, -1);	
 			else
-				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 1, -1);	
-			objs[iobj]->render_axis(m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
+				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 1, -1);
+
+			objs[iobj]->render_axis(rvec, tvec, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
 		}
 	}
 	m_model_view.ResetRenderTarget(m_pd3dev);
@@ -3600,6 +3601,9 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'C':
 		m_op = CAMERA;
 		break;
+	case 'V':
+		m_op = VIEW3D;
+		break;
 	case 'x':
 		m_axis = AX_X;
 		break;
@@ -3667,18 +3671,36 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		if(m_op == ESTIMATE){
 			m_emd = EMD_FULL;
 		}
+		else if (m_op == VIEW3D){
+			m_ev = EV_CAM;
+		}
 		break;
 	case '2':
 		if(m_op == ESTIMATE){
 			m_emd = EMD_RT;
+		}
+		else if (m_op == VIEW3D){
+			m_ev = EV_OBJX;
 		}
 		break;
 	case '3':
 		if(m_op == ESTIMATE){
 			m_emd = EMD_SEL;
 		}
+		else if (m_op == VIEW3D){
+			m_ev = EV_OBJY;
+		}
 		break;
-
+	case '4':
+		if (m_op == VIEW3D){
+			m_ev = EV_OBJZ;
+		}
+		break;
+	case '5':
+		if (m_op == VIEW3D){
+			m_ev = EV_FREE;
+		}
+		break;
 	default:
 		break;
 	}

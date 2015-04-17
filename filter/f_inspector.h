@@ -222,6 +222,12 @@ struct s_obj
 	void render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis = -1);
 
+	void render_axis(Mat & cam_int, Mat & cam_dist,
+		LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis = -1)
+	{
+		render_axis(rvec, tvec, cam_int, cam_dist, pd3dev, pline, axis);
+	}
+
 	bool init(s_model * apmdl, long long at, const Mat & camint, const Mat & camdist,
 		const double width, const double height);
 
