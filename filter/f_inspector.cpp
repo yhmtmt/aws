@@ -1418,7 +1418,7 @@ void f_inspector::clearCamparTbl()
 bool f_inspector::load_model()
 {
 	for (int imdl = 0; imdl < m_models.size(); imdl++){
-		if (m_models[imdl]->fname == m_fname_model){
+		if (strcmp(m_models[imdl]->fname, m_fname_model) == 0){
 			m_cur_model = imdl;
 			return true;
 		}
@@ -1935,7 +1935,7 @@ void f_inspector::renderScene(long long timg)
 		m_rvec_view = Mat::zeros(3, 1, CV_64FC1);
 		m_ev = EV_CAM;
 		break;
-	case EV_OBJX:
+	case EV_OBJX://
 		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
@@ -1947,14 +1947,14 @@ void f_inspector::renderScene(long long timg)
 				ptr1 = Rcam.ptr<double>();
 		
 				// x-axis to z-axis
-				ptr1[0] = ptr0[2];
-				ptr1[3] = ptr0[1];
+				ptr1[0] = ptr0[1];
+				ptr1[3] = -ptr0[2];
 				ptr1[6] = -ptr0[0];
-				ptr1[1] = ptr0[5];
-				ptr1[4] = ptr0[4];
+				ptr1[1] = ptr0[4];
+				ptr1[4] = -ptr0[5];
 				ptr1[7] = -ptr0[3];
-				ptr1[2] = ptr0[8];
-				ptr1[5] = ptr0[7];
+				ptr1[2] = ptr0[7];
+				ptr1[5] = -ptr0[8];
 				ptr1[8] = -ptr0[6];
 
 				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
@@ -1974,14 +1974,14 @@ void f_inspector::renderScene(long long timg)
 				ptr1 = Rcam.ptr<double>();
 		
 				// y-axis to z-axis
-				ptr1[0] = ptr0[0];
-				ptr1[3] = ptr0[2];
+				ptr1[0] = -ptr0[0];
+				ptr1[3] = -ptr0[2];
 				ptr1[6] = -ptr0[1];
-				ptr1[1] = ptr0[3];
-				ptr1[4] = ptr0[5];
+				ptr1[1] = -ptr0[3];
+				ptr1[4] = -ptr0[5];
 				ptr1[7] = -ptr0[4];
-				ptr1[2] = ptr0[6];
-				ptr1[5] = ptr0[8];
+				ptr1[2] = -ptr0[6];
+				ptr1[5] = -ptr0[8];
 				ptr1[8] = -ptr0[7];
 
 				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
@@ -2020,32 +2020,31 @@ void f_inspector::renderScene(long long timg)
 		break;
 	}
 
-	Mat rvec, tvec;
 	vector<Point2f> pts;
 	if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 		vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 		Mat tvec_org = objs[m_cur_obj]->tvec;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			if (m_ev == EV_CAM){
-				rvec = objs[iobj]->rvec;
-				tvec = objs[iobj]->tvec;
+				m_rvec_view = objs[iobj]->rvec;
+				m_tvec_view = objs[iobj]->tvec;
 			}
 			else{
-				tvec = Rcam * (objs[iobj]->tvec - tvec_org);
-				tvec.ptr<double>()[2] += d;
+				m_tvec_view = Rcam * (objs[iobj]->tvec - tvec_org);
+				m_tvec_view.ptr<double>()[2] += d;
 
 				Mat R;
 				Rodrigues(objs[iobj]->rvec, R);
 				R = Rcam * R;
-				Rodrigues(R, rvec);
+				Rodrigues(R, m_rvec_view);
 			}
-			projectPoints(objs[iobj]->pmdl->pts, rvec, tvec, m_cam_int, m_cam_dist, pts);
+			projectPoints(objs[iobj]->pmdl->pts, m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, pts);
 			if(m_cur_obj == iobj)
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 0, -1);	
 			else
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 1, -1);
 
-			objs[iobj]->render_axis(rvec, tvec, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
+			objs[iobj]->render_axis(m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
 		}
 	}
 	m_model_view.ResetRenderTarget(m_pd3dev);
@@ -3229,8 +3228,10 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 	// mouse related message. We need to subtract origin of the client screen
 	// from the point sent by the message. 
 	extractPointlParam(lParam, m_mc);
-	m_mc.x -= m_client_org.x;
-	m_mc.y -= m_client_org.y;
+	RECT rc;
+	GetWindowRect(m_hwnd, &rc);
+	m_mc.x -= (rc.left + m_client_org.x);
+	m_mc.y -= (rc.top + m_client_org.y);
 
 	short delta = GET_WHEEL_DELTA_WPARAM(wParam);
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
@@ -3244,6 +3245,7 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 		switch(m_op){
 		case OBJ:
 		case POINT:
+		case VIEW3D:
 			rotate_obj(delta);
 			break;
 		}
@@ -3251,6 +3253,7 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 		switch(m_op){
 		case OBJ:
 		case POINT:
+		case VIEW3D:
 			translate_obj(delta);
 			break;
 		case CAMERA:
@@ -3357,15 +3360,18 @@ void f_inspector::translate_obj(short delta)
 		tvec.at<double>(2, 0) = step / div;
 		break;
 	}
-
-	obj.tvec += tvec;
-	double * tptr = obj.tvec.ptr<double>(0);
-	if(tptr[m_axis] != tptr[m_axis]){
-		tptr[m_axis] = 1.0;
-		cout << "Not a number detected." << endl;
+	if(m_op == VIEW3D){
+		m_tvec_view += tvec;
+	}else{
+		obj.tvec += tvec;
+		double * tptr = obj.tvec.ptr<double>(0);
+		if(tptr[m_axis] != tptr[m_axis]){
+			tptr[m_axis] = 1.0;
+			cout << "Not a number detected." << endl;
+		}
+		m_fobjs[m_cur_frm]->is_prj = false;
+		obj.is_prj = false;
 	}
-	m_fobjs[m_cur_frm]->is_prj = false;
-	obj.is_prj = false;
 }
 
 void f_inspector::rotate_obj(short delta)
@@ -3388,14 +3394,22 @@ void f_inspector::rotate_obj(short delta)
 		rvec.at<double>(2, 0) = step;
 		break;
 	}
-	s_obj & obj = *objs[m_cur_obj];
-	Mat R1, R2;
-	Rodrigues(obj.rvec, R1);
-	Rodrigues(rvec, R2);
-	Mat R = R2 * R1;
-	Rodrigues(R, obj.rvec);
-	m_fobjs[m_cur_frm]->is_prj = false;
-	obj.is_prj = false;
+	if(m_op == VIEW3D){
+		Mat R1, R2;
+		Rodrigues(m_rvec_view, R1);
+		Rodrigues(rvec, R2);
+		Mat R = R2 * R1;
+		Rodrigues(R, m_rvec_view);
+	}else{
+		s_obj & obj = *objs[m_cur_obj];
+		Mat R1, R2;
+		Rodrigues(obj.rvec, R1);
+		Rodrigues(rvec, R2);
+		Mat R = R2 * R1;
+		Rodrigues(R, obj.rvec);
+		m_fobjs[m_cur_frm]->is_prj = false;
+		obj.is_prj = false;
+	}
 }
 
 void f_inspector::adjust_cam(short delta)

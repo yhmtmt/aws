@@ -130,7 +130,7 @@ void f_ds_window::fit_win_mode(){
 	rc.top = rc.left = 0;
 	rc.bottom = m_Vwin;
 	rc.right = m_Hwin; 
-	AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW | WS_VISIBLE, FALSE);
+	AdjustWindowRect(&rc, (WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME) | WS_VISIBLE, FALSE);
 	rc.right = min((int) (rc.right - rc.left), (int)m_d3ddm.Width);
 	rc.bottom = min((int) (rc.bottom - rc.top), (int) m_d3ddm.Height);
 	rc.top = rc.left = 0;
@@ -151,7 +151,7 @@ bool f_ds_window::init_d3d()
 	hr = m_pd3d->GetAdapterDisplayMode(m_iadapter, &m_d3ddm);
 
 	// initialize d3d device
-	SetWindowLong(m_hwnd, GWL_STYLE, (m_bwin ? WS_OVERLAPPEDWINDOW | WS_VISIBLE : WS_EX_TOPMOST | WS_POPUP | WS_VISIBLE));
+	SetWindowLong(m_hwnd, GWL_STYLE, (m_bwin ? (WS_OVERLAPPEDWINDOW ^ WS_THICKFRAME) | WS_VISIBLE : WS_EX_TOPMOST | WS_POPUP | WS_VISIBLE));
 
 	if(m_bwin){
 		fit_win_mode();
