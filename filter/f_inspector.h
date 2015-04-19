@@ -335,18 +335,16 @@ private:
 	//
 	enum e_operation {
 		MODEL, OBJ, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME, VIEW3D
-	};
+	} m_op;
 
 	static const char * m_str_op[VIEW3D+1]; 
-	e_operation m_op;
 
 	// sub operation
 	enum e_sub_operation{
 		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_DET, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ, SOP_INS_CPTBL
-	};
+	} m_sop;
 
 	static const char * m_str_sop[SOP_INS_CPTBL + 1];
-	e_sub_operation m_sop;
 
 	void handle_sop_delete();
 	void handle_sop_save();
@@ -444,6 +442,7 @@ private:
 	} m_emd;
 
 	static const char * m_str_emd[EMD_SEL + 1];
+
 	enum e_estimation_state{
 		EES_DIV, EES_CONV, EES_CONT
 	} m_eest;

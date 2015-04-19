@@ -1241,6 +1241,7 @@ bool f_inspector::proc()
 
 	calc_jmax();
 
+
 	// sample point templates
 	m_fobjs[m_cur_frm]->sample_tmpl(m_img_gry_blur, m_sz_vtx_smpl);
 
@@ -1925,6 +1926,7 @@ void f_inspector::renderScene(long long timg)
 	m_model_view.SetAsRenderTarget(m_pd3dev);
 	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
 		D3DCOLOR_COLORVALUE(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
+	Mat rvec, tvec;
 	double d;
 	Mat Rcam;
 	switch(m_ev){
@@ -2017,34 +2019,51 @@ void f_inspector::renderScene(long long timg)
 		}
 		break;
 	case EV_FREE:
+		Rodrigues(m_rvec_view, Rcam);
 		break;
 	}
-
 	vector<Point2f> pts;
 	if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 		vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 		Mat tvec_org = objs[m_cur_obj]->tvec;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			if (m_ev == EV_CAM){
-				m_rvec_view = objs[iobj]->rvec;
-				m_tvec_view = objs[iobj]->tvec;
+				rvec = objs[iobj]->rvec;
+				tvec = objs[iobj]->tvec;
+
+//				m_rvec_view = objs[iobj]->rvec;
+//				m_tvec_view = objs[iobj]->tvec;
 			}
-			else{
-				m_tvec_view = Rcam * (objs[iobj]->tvec - tvec_org);
-				m_tvec_view.ptr<double>()[2] += d;
+			else if(m_ev == EV_FREE){
+				tvec = Rcam * (objs[iobj]->tvec - tvec_org);
+				tvec += m_tvec_view;
 
 				Mat R;
 				Rodrigues(objs[iobj]->rvec, R);
 				R = Rcam * R;
-				Rodrigues(R, m_rvec_view);
+				Rodrigues(R, rvec);
+			}else{
+				tvec = Rcam * (objs[iobj]->tvec - tvec_org);
+				tvec.ptr<double>()[2] += d;
+
+//				m_tvec_view = Rcam * (objs[iobj]->tvec - tvec_org);
+//				m_tvec_view.ptr<double>()[2] += d;
+				Mat R;
+				Rodrigues(objs[iobj]->rvec, R);
+				R = Rcam * R;
+				Rodrigues(R, rvec);
+//				Rodrigues(R, m_rvec_view);
 			}
-			projectPoints(objs[iobj]->pmdl->pts, m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, pts);
+
+			projectPoints(objs[iobj]->pmdl->pts, rvec, tvec, m_cam_int, m_cam_dist, pts);
+//			projectPoints(objs[iobj]->pmdl->pts, m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, pts);
 			if(m_cur_obj == iobj)
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 0, -1);	
 			else
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 1, -1);
 
-			objs[iobj]->render_axis(m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
+			objs[iobj]->render_axis(rvec, tvec, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
+//			objs[iobj]->render_axis(m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
 		}
 	}
 	m_model_view.ResetRenderTarget(m_pd3dev);
@@ -3181,9 +3200,6 @@ void f_inspector::handle_lbuttondown(WPARAM wParam, LPARAM lParam)
 			m_mm = MM_POINT;
 		}
 		break;
-	case CAMERA:
-		m_mm = MM_CAMINT;
-		break;
 	case MODEL:
 		break;
 	}
@@ -3195,9 +3211,6 @@ void f_inspector::handle_lbuttonup(WPARAM wParam, LPARAM lParam)
 	switch(m_mm){
 	case MM_SCROLL:
 		scroll_screen();
-		break;
-	case MM_CAMINT:
-		shift_cam_center();
 		break;
 	case MM_POINT:
 		assign_point2d();
@@ -3213,14 +3226,10 @@ void f_inspector::handle_mousemove(WPARAM wParam, LPARAM lParam)
 	case MM_SCROLL:
 		scroll_screen();
 		break;
-	case MM_CAMINT:
-		shift_cam_center();
-		break;
 	default:
 		break;
 	}
 }
-
 
 void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 {
@@ -3263,7 +3272,6 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 		}
 	}
 }
-
 
 void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 {
