@@ -569,6 +569,17 @@ public:
 	virtual void handle_char(WPARAM wParam, LPARAM lParam);
 };
 
+// img = (view - ofst) / (scale * rat)
+//  
+// m_main_cam.show() changes scale as (scale * rat)
+//      (rendering surface always be the same size as the original image)
+//      (rendering coordinate is right-top coordinate. the rendering offset should be careful (ofst.x, ofst.y+height)
+//
+// changes are in
+// zoom_screen
+// assign_point2d
+// handle_cahr 'R' m_main_scale returns to rat
+
 // Function definition
 // * Main window shows always video image
 // * Main window can be scrolled and scaled at any operation state
