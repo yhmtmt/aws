@@ -1274,11 +1274,16 @@ bool f_inspector::proc()
 	m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
 
 	// fit the viewport size to the image
-	if(m_img_s.cols != m_ViewPort.Width ||
-		m_img_s.rows != m_ViewPort.Height){
+	if(m_sz_img.width !=  m_img_s.cols &&
+		m_sz_img.height != m_img_s.rows){
 		if(!init_viewport(m_img_s)){
 			return false;
 		}
+		m_main_scale = (float) m_rat;
+		m_main_scale_inv = (float) (1.0 / m_main_scale_inv);
+		m_main_offset = Point2f(0., 0.);
+		m_sz_img.width = m_img_s.cols;
+		m_sz_img.height = m_img_s.rows;
 	}
 
 	// fit the direct 3d surface to the image
@@ -1288,7 +1293,7 @@ bool f_inspector::proc()
 		m_maincam.release();
 		if(!m_maincam.init(m_pd3dev,  
 			(float) m_img_s.cols, (float) m_img_s.rows, 
-			(float) m_ViewPort.Width, (float) m_ViewPort.Height, 
+			(float) m_img_s.cols, (float) m_img_s.rows, 
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height))
 			return false;
 	}
@@ -1300,7 +1305,7 @@ bool f_inspector::proc()
 		m_model_view.release();
 		if(!m_model_view.init(m_pd3dev,
 			(float) m_img_s.cols, (float) m_img_s.rows,
-			(float) m_ViewPort.Width, (float) m_ViewPort.Height,
+			(float) m_img_s.cols, (float) m_img_s.rows,
 			(float) m_ViewPort.Width, (float) m_ViewPort.Height))
 			return false;
 	}
@@ -1440,8 +1445,6 @@ bool f_inspector::load_model()
 //////////////////////////////////////////////// renderer
 void f_inspector::render(Mat & imgs, long long timg)
 {
-	// Image level rendering
-
 	// undistort if the flag is enabled.
 	if(m_bundistort){
 		Mat img;
@@ -1481,8 +1484,10 @@ void f_inspector::render(Mat & imgs, long long timg)
 	}
 
 	//////////////////// render total view port /////////////////////
+	m_sz_img_view.width = (int)(m_sz_img.width * m_main_scale + 0.5);
+	m_sz_img_view.height = (int)(m_sz_img.height * m_main_scale + 0.5);
 	m_maincam.show(m_pd3dev, (float)(0. + m_main_offset.x),
-		(float) ((float) m_ViewPort.Height + m_main_offset.y), m_main_scale);
+		(float) ((float) m_sz_img_view.height + m_main_offset.y), m_main_scale);
 
 	switch(m_op){
 	case MODEL:
@@ -1911,8 +1916,8 @@ void f_inspector::renderObj()
 	m_pline->Begin();
 	if(m_op == POINT && m_cur_obj != -1 && m_cur_point != -1){
 		D3DXVECTOR2 v[2];
-		Point2f pt1 = Point2f((float) (m_mc.x - m_main_offset.x) / m_main_scale, 
-			(float) (m_mc.y - (int) m_ViewPort.Height -m_main_offset.y) / m_main_scale + m_ViewPort.Height);
+		Point2f pt1;
+		cnv_view2img(m_mc, pt1);
 		Point2f & pt2 = objs[m_cur_obj]->pt2dprj[m_cur_point];
 		v[0] = D3DXVECTOR2(pt1.x, pt1.y);
 		v[1] = D3DXVECTOR2(pt2.x, pt2.y);
@@ -3237,10 +3242,11 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 	// mouse related message. We need to subtract origin of the client screen
 	// from the point sent by the message. 
 	extractPointlParam(lParam, m_mc);
-	RECT rc;
-	GetWindowRect(m_hwnd, &rc);
-	m_mc.x -= (rc.left + m_client_org.x);
-	m_mc.y -= (rc.top + m_client_org.y);
+	ScreenToClient(m_hwnd, (LPPOINT)&m_mc);
+//	RECT rc;
+//	GetWindowRect(m_hwnd, &rc);
+//	m_mc.x -= (rc.left + m_client_org.x);
+//	m_mc.y -= (rc.top + m_client_org.y);
 
 	short delta = GET_WHEEL_DELTA_WPARAM(wParam);
 	if(GET_KEYSTATE_WPARAM(wParam) & MK_SHIFT){
@@ -3306,11 +3312,7 @@ void f_inspector::assign_point2d()
 		return;
 
 	Point2f pt;
-	double iscale = 1.0 / m_main_scale;
-	pt.x = (float)((m_mc.x - m_main_offset.x) * iscale);
-	pt.y = (float)(m_mc.y - (int) m_ViewPort.Height - m_main_offset.y); 
-	pt.y *= (float) iscale;
-	pt.y += (float) m_ViewPort.Height;
+	cnv_view2img(m_mc, pt);
 	s_obj & obj = *objs[m_cur_obj];
 	obj.pt2d[m_cur_point] = pt;
 	obj.visible[m_cur_point] = 1;
@@ -3326,19 +3328,20 @@ void f_inspector::scroll_screen()
 void f_inspector::shift_cam_center()
 {
 	m_cam_int.at<double>(0, 2) += (float)(m_mc.x - m_pt_sc_start.x);
-	m_cam_int.at<double>(1, 2)  += (float)(m_mc.y - m_pt_sc_start.y);
+	m_cam_int.at<double>(1, 2) += (float)(m_mc.y - m_pt_sc_start.y);
 }
 
 void f_inspector::zoom_screen(short delta)
 {
 	short step = delta / WHEEL_DELTA;
 	float scale = (float) pow(1.1, (double) step);
-	m_main_scale *=  scale;
+	m_main_scale *=  (float) scale;
+	m_main_scale_inv = (float) (1.0 / m_main_scale);
 	float x, y;
 	x = (float)(m_main_offset.x - m_mc.x) * scale;
-	y = (float)((int) m_ViewPort.Height + m_main_offset.y - m_mc.y) * scale;
+	y = (float)(m_main_offset.y - m_mc.y) * scale;
 	m_main_offset.x =  (float)(x + (double) m_mc.x);
-	m_main_offset.y =  (float)(y + (double) m_mc.y - (double) m_ViewPort.Height);
+	m_main_offset.y =  (float)(y + (double) m_mc.y);
 }
 
 void f_inspector::translate_obj(short delta)
@@ -3568,7 +3571,8 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case 'R': // reset window
 		m_main_offset = Point2f(0., 0.);
-		m_main_scale = 1.0;
+		m_main_scale = (float) m_rat;
+		m_main_scale_inv = (float)(1.0 / m_main_scale);
 		break;
 	case 'L':
 		m_sop = SOP_LOAD;

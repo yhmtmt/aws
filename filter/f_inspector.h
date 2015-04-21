@@ -505,6 +505,10 @@ public:
 		if(!f_ds_window::init_run())
 			return false;
 
+		m_main_offset = Point2d(0, 0);
+		m_main_scale = (float) m_rat;
+		m_main_scale_inv = (float)(1.0 / m_main_scale);
+
 		return true;
 	}
 
@@ -536,7 +540,19 @@ public:
 	Point2i m_mc; // mouse cursor
 	Point2i m_pt_sc_start; // scroll start
 	Point2f m_main_offset;
-	float m_main_scale;
+	float m_main_scale, m_main_scale_inv;
+
+	Size m_sz_img_view, m_sz_img;
+	void cnv_view2img(const Point2f & pview, Point2f & pimg){
+		pimg = (pview - m_main_offset);
+		pimg *= m_main_scale_inv;
+	}
+
+	void cnv_img2view(const Point2f & pimg, Point2f & pview){
+		pview = m_main_scale * pimg;
+		pview += m_main_offset;
+	}
+
 	virtual void handle_lbuttondown(WPARAM wParam, LPARAM lParam);
 	virtual void handle_lbuttonup(WPARAM wParam, LPARAM lParam);
 	void assign_point2d();
