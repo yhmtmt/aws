@@ -74,6 +74,16 @@ struct s_edge{
 	s_edge():s(0), e(0){};
 };
 
+// s_part describe the part's structure. translation, rotation axis and the origin relative to the body
+// part's nesting is not supported yet. it could be the future issue.
+struct s_part{
+	vector<int> pts; // point indices of the parts (the points are that in the s_model object contains this object)
+	int org; // point index for the rotation origin. 
+	Point3f axis; // translation or rotation vector
+	bool rot, trn; // translation / rotation flag
+	s_part():org(0), axis(0., 0., 0.), rot(true), trn(true){	}
+};
+
 ///////////////////////////////////////////////////////////////// s_model
 // s_model represents a 3D model tracked in the scene by f_inspector.
 // It contains points and edges, and their projection method.
@@ -83,9 +93,10 @@ struct s_model
 	char fname[1024];
 	int ref;
 	string name;
-	vector<Point3f> pts;
-	vector<s_edge> edges;
-
+	vector<Point3f> pts; // model points
+	vector<Point3f> pts_deformed; // temporal data strucuture. immediately before projection, the data structure should have deformed model points.
+	vector<s_edge> edges; // model edges
+	vector<s_part> parts;
 	enum e_model_type{
 		EMT_NORMAL, EMT_CHSBD, EMT_UNKNOWN
 	} type;
@@ -162,6 +173,10 @@ struct s_obj
 	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
+	// note: The part's deformation code is now under construction. I need to modify followings:
+	// s_obj::load, save, init, proj
+	vector<double> dpart; // part's deformation value.
+
 	bool is_prj;
 
 	Mat jacobian;
@@ -232,6 +247,8 @@ struct s_obj
 		const double width, const double height);
 
 	bool init(const s_obj & obj);
+
+	void calc_part_deformation();
 
 	bool load(FileNode & fnobj, vector<s_model*> & mdls);
 	bool save(FileStorage & fs);

@@ -247,7 +247,7 @@ bool s_model::load(const char * afname)
 		return false;
 	}
 	fn >> numPoints;
-
+	
 	int numEdges; 
 	fn = fs["NumEdges"];
 	if(fn.empty()){
@@ -256,8 +256,14 @@ bool s_model::load(const char * afname)
 	}
 	fn >> numEdges;
 
-	fn = fs["Points"];
+	int numParts;
+	fn = fs["NumParts"];
+	if(fn.empty()){
+		cerr << "Cannot find node NumParts" << endl;
+	}
+	fn >> numParts;
 
+	fn = fs["Points"];
 	if(fn.empty()){
 		cerr << "Cannot find node Points." << endl;
 		return false;
@@ -265,6 +271,7 @@ bool s_model::load(const char * afname)
 
 	char buf[64];
 	pts.resize(numPoints);
+	pts_deformed.resize(numPoints);
 	for(int ip = 0; ip < numPoints; ip++){
 		snprintf(buf, 63, "Point%05d", ip);
 		FileNode fpt = fn[buf];
@@ -275,6 +282,7 @@ bool s_model::load(const char * afname)
 		fpt["x"] >> pts[ip].x;
 		fpt["y"] >> pts[ip].y;
 		fpt["z"] >> pts[ip].z;
+		pts[ip] = pts_deformed[ip];
 	}
 
 	fn = fs["Edges"];
@@ -293,6 +301,65 @@ bool s_model::load(const char * afname)
 		}
 		fe["s"] >> edges[ie].s;
 		fe["e"] >> edges[ie].e;
+	}
+
+	fn = fs["Parts"];
+	parts.resize(numParts);
+	for(int ipart = 0; ipart < numParts; ipart++){
+		snprintf(buf, 63, "Part05d", ipart);
+		FileNode fpart = fn[buf];
+		if(fpart.empty()){
+			cerr << "Cannot find part " << buf << "." << endl;
+			return false;
+		}
+
+		FileNode fpts = fpart["pts"];
+		if(fpts.empty()){
+			cerr << "Cannot find points in " << buf << "." << endl;
+			return false;
+		}
+
+		FileNodeIterator itr = fpart.begin();
+		for(; itr != fpart.end(); itr++){
+			int val;
+			*itr >> val;
+			parts[ipart].pts.push_back(val);
+			
+		}
+
+		FileNode faxis = fpart["axis"];
+		if(faxis.empty()){
+			cerr << "Cannot find axis in " << buf << "." << endl;
+			return false;
+		}
+
+		Point3f & axis = parts[ipart].axis;
+		faxis["x"] >> axis.x;
+		faxis["y"] >> axis.y;
+		faxis["z"] >> axis.z;
+
+		FileNode ftrn = fpart["trn"];
+		if(ftrn.empty()){
+			cerr << "Cannot find trn in " << buf << "." << endl;
+			return false;
+		}
+		ftrn >> parts[ipart].trn;
+
+		FileNode frot = fpart["rot"];
+		if(frot.empty()){
+			cerr << "Cannot find rot in " << buf << "." << endl;
+			return false;
+		}
+		frot >> parts[ipart].rot;
+
+		if(parts[ipart].rot){
+			FileNode forg = fpart["org"];
+			if(forg.empty()){
+				cerr << "Cannot find org in " << buf << "." << endl;
+				return false;
+			}
+			forg >> parts[ipart].org;
+		}
 	}
 
 	calc_bounds();
@@ -442,6 +509,9 @@ bool s_obj::init(s_model * apmdl, long long at, const Mat & camint, const Mat & 
 	pt2dprj.resize(pmdl->pts.size());
 	visible.resize(pmdl->pts.size(), false);
 
+	int num_parts = pmdl->parts.size();
+	dpart.resize(num_parts, 0.0);
+
 	apmdl->ref++;
 	return true;
 }
@@ -471,7 +541,67 @@ bool s_obj::init(const s_obj & obj)
 	obj.err.copyTo(err);
 	ssd = obj.ssd;
 	match_count = obj.match_count;
+
+	int num_parts = pmdl->parts.size();
+	dpart.resize(num_parts, 0.0);
+
 	return true;
+}
+
+// this method calculate positions of the part's points in the model coordinate
+// deformation parameter dparts should be calculated before calling this.
+void s_obj::calc_part_deformation()
+{
+	vector<s_part> & parts = pmdl->parts;
+	vector<Point3f> & pt3d = pmdl->pts;
+	vector<Point3f> & pt3d_deformed = pmdl->pts_deformed;
+	int num_parts = parts.size();
+
+	for(int ipart = 0;ipart < num_parts;ipart++){
+		s_part & part = parts[ipart];
+		vector<int> & ptis = parts[ipart].pts;
+		Point3f & axis = part.axis;
+		double d = dpart[ipart];
+		if(part.trn){
+			for(int ipt = 0; ipt < ptis.size(); ipt++){
+				int pti = ptis[ipt];
+				pt3d_deformed[pti] = d * axis;
+				pt3d_deformed[pti] += pt3d[pti];
+			}
+		}else if(part.rot){
+			Point3f & org = pt3d[part.org];
+
+			// calcurating rotatin matrix 
+			double * ptr;
+			Mat rvec = Mat(3, 1, CV_64FC1);
+			ptr = rvec.ptr<double>();
+			ptr[0] = d * axis.x;
+			ptr[1] = d * axis.y;
+			ptr[2] = d * axis.z;
+			Mat R;
+			Rodrigues(rvec, R);
+			ptr = R.ptr<double>();
+
+			for(int ipt = 0; ipt < ptis.size(); ipt++){
+				int pti = ptis[ipt];
+				Point3f & pt = pt3d_deformed[pti];
+				// 1. subtract origin
+				pt = pt3d[pti];
+				pt -= org;
+
+				// 2. rotate
+				double rx, ry, rz;
+				rx = ptr[0] * pt.x + ptr[1] * pt.y + ptr[2] * pt.z;
+				ry = ptr[3] * pt.x + ptr[4] * pt.y + ptr[5] * pt.z;
+				rz = ptr[6] * pt.x + ptr[7] * pt.y + ptr[8] * pt.z;
+
+				// 3. add origin
+				pt.x = rx + org.x;
+				pt.y = ry + org.y;
+				pt.z = rz + org.z;
+			}
+		}
+	}
 }
 
 bool s_obj::load(FileNode & fnobj, vector<s_model*> & mdls)
@@ -556,6 +686,20 @@ bool s_obj::load(FileNode & fnobj, vector<s_model*> & mdls)
 			return false;
 		(*itr) >> pt2d[i];
 	}
+
+	int num_parts = pmdl->parts.size();
+	dpart.resize(num_parts, 0.0);
+	fn = fnobj["Deformation"];
+	if(fn.empty()){
+		return true;
+	}
+	itr = fn.begin();
+	for(int ipart = 0; ipart < num_parts; ipart++, itr++){
+		if((*itr).empty())
+			return false;
+		(*itr) >> dpart[ipart];
+	}
+
 	return true;
 }
 
@@ -577,6 +721,13 @@ bool s_obj::save(FileStorage & fs)
 	fs << "Points" << "[";
 	for(int i = 0; i < pt2d.size(); i++){
 		fs << pt2d[i];
+	}
+	fs << "]";
+
+	char buf[64];
+	fs << "Deformation" << "[";
+	for(int ipart = 0; ipart < pmdl->parts.size(); ipart++){
+		fs << dpart[ipart];
 	}
 	fs << "]";
 	return true;
@@ -628,8 +779,11 @@ void s_obj::get_bb_pt2d(Rect & bb)
 
 void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ratio)
 {
+	// parts transformation
+	calc_part_deformation();
+
 	if(bjacobian){
-		projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj, jacobian,
+		projectPoints(pmdl->pts_deformed, rvec, tvec, camint, camdist, pt2dprj, jacobian,
 			fix_aspect_ratio ? 1.0 : 0.0);
 		// jacobian 
 		// rows: 2N 
@@ -638,9 +792,10 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 		mulTransposed(jacobian, hessian, true);
 		jterr = jacobian.t() * err;
 	}else{
-		projectPoints(pmdl->pts, rvec, tvec, camint, camdist, pt2dprj);
+		projectPoints(pmdl->pts_deformed, rvec, tvec, camint, camdist, pt2dprj);
 		calc_ssd();
 	}
+
 	/*
 	cout << "Camint = " << endl << camint << endl;
 	cout << "Camdist = " << endl << camdist << endl;
