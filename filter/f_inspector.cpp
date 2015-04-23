@@ -282,7 +282,7 @@ bool s_model::load(const char * afname)
 		fpt["x"] >> pts[ip].x;
 		fpt["y"] >> pts[ip].y;
 		fpt["z"] >> pts[ip].z;
-		pts[ip] = pts_deformed[ip];
+		pts_deformed[ip] = pts[ip];
 	}
 
 	fn = fs["Edges"];
@@ -306,7 +306,7 @@ bool s_model::load(const char * afname)
 	fn = fs["Parts"];
 	parts.resize(numParts);
 	for(int ipart = 0; ipart < numParts; ipart++){
-		snprintf(buf, 63, "Part05d", ipart);
+		snprintf(buf, 63, "Part%05d", ipart);
 		FileNode fpart = fn[buf];
 		if(fpart.empty()){
 			cerr << "Cannot find part " << buf << "." << endl;
@@ -509,7 +509,7 @@ bool s_obj::init(s_model * apmdl, long long at, const Mat & camint, const Mat & 
 	pt2dprj.resize(pmdl->pts.size());
 	visible.resize(pmdl->pts.size(), false);
 
-	int num_parts = pmdl->parts.size();
+	int num_parts = (int) pmdl->parts.size();
 	dpart.resize(num_parts, 0.0);
 
 	apmdl->ref++;
@@ -542,7 +542,7 @@ bool s_obj::init(const s_obj & obj)
 	ssd = obj.ssd;
 	match_count = obj.match_count;
 
-	int num_parts = pmdl->parts.size();
+	int num_parts = (int) pmdl->parts.size();
 	dpart.resize(num_parts, 0.0);
 
 	return true;
@@ -555,7 +555,7 @@ void s_obj::calc_part_deformation()
 	vector<s_part> & parts = pmdl->parts;
 	vector<Point3f> & pt3d = pmdl->pts;
 	vector<Point3f> & pt3d_deformed = pmdl->pts_deformed;
-	int num_parts = parts.size();
+	int num_parts = (int) parts.size();
 
 	for(int ipart = 0;ipart < num_parts;ipart++){
 		s_part & part = parts[ipart];
@@ -596,9 +596,9 @@ void s_obj::calc_part_deformation()
 				rz = ptr[6] * pt.x + ptr[7] * pt.y + ptr[8] * pt.z;
 
 				// 3. add origin
-				pt.x = rx + org.x;
-				pt.y = ry + org.y;
-				pt.z = rz + org.z;
+				pt.x = (float)(rx + org.x);
+				pt.y = (float)(ry + org.y);
+				pt.z = (float)(rz + org.z);
 			}
 		}
 	}
@@ -687,7 +687,7 @@ bool s_obj::load(FileNode & fnobj, vector<s_model*> & mdls)
 		(*itr) >> pt2d[i];
 	}
 
-	int num_parts = pmdl->parts.size();
+	int num_parts = (int) pmdl->parts.size();
 	dpart.resize(num_parts, 0.0);
 	fn = fnobj["Deformation"];
 	if(fn.empty()){
@@ -724,7 +724,6 @@ bool s_obj::save(FileStorage & fs)
 	}
 	fs << "]";
 
-	char buf[64];
 	fs << "Deformation" << "[";
 	for(int ipart = 0; ipart < pmdl->parts.size(); ipart++){
 		fs << dpart[ipart];
