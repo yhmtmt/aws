@@ -351,7 +351,7 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		MODEL, OBJ, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME, VIEW3D
+		MODEL, OBJ, PARTS, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME, VIEW3D
 	} m_op;
 
 	static const char * m_str_op[VIEW3D+1]; 
@@ -424,6 +424,7 @@ private:
 	int m_cur_obj; // current object selected
 	int m_num_cur_objs;
 	int m_cur_point; // current selected point of the model
+	int m_cur_part;
 	void renderObj();
 
 	//
@@ -586,6 +587,7 @@ public:
 	void translate_obj(short delta);
 	void rotate_obj(short delta);
 	void adjust_cam(short delta);
+	void adjust_part(short delta);
 
 	virtual void handle_mousemove(WPARAM wParam, LPARAM lParam);
 	void scroll_screen();
@@ -629,6 +631,7 @@ public:
 // <input>: <Action>
 //  M: op <= Model
 //  O: op <= Obj
+//  Q: op <= Parts
 //  E: op <= Estimate
 //  C: op <= Camera
 //  T: op <= CameraTbl
@@ -658,6 +661,9 @@ public:
 //  Wheel: translation along axis
 //  f: fix attitude[cur_obj]
 //  Del: Delete the object
+// 
+// op = Part
+// * overlay the object, and highlight the selecte part
 // 
 // op = Point
 //  * overlay the bounded model with the given attitude, and highlight the selected point

@@ -319,8 +319,8 @@ bool s_model::load(const char * afname)
 			return false;
 		}
 
-		FileNodeIterator itr = fpart.begin();
-		for(; itr != fpart.end(); itr++){
+		FileNodeIterator itr = fpts.begin();
+		for(; itr != fpts.end(); itr++){
 			int val;
 			*itr >> val;
 			parts[ipart].pts.push_back(val);
@@ -649,9 +649,9 @@ bool s_obj::load(FileNode & fnobj, vector<s_model*> & mdls)
 
 	// allocating memories
 	int num_points = (int) pmdl->pts.size();
-	pt2d.resize(num_points);
-	pt2dprj.resize(num_points);
-	visible.resize(num_points);
+	pt2d.resize(num_points, Point2f(0, 0));
+	pt2dprj.resize(num_points, Point2f(0, 0));
+	visible.resize(num_points, false);
 
 	fn = fnobj["rvec"];
 	if(fn.empty()){
@@ -669,7 +669,7 @@ bool s_obj::load(FileNode & fnobj, vector<s_model*> & mdls)
 	if(fn.empty())
 		return false;
 	FileNodeIterator itr = fn.begin();
-	for(int i = 0; i < num_points; i++, itr++){
+	for(int i = 0; i < num_points && itr != fn.end(); i++, itr++){
 		if((*itr).empty())
 			return false;
 		int b;
@@ -681,7 +681,7 @@ bool s_obj::load(FileNode & fnobj, vector<s_model*> & mdls)
 	if(fn.empty())
 		return false;
 	itr = fn.begin();
-	for(int i = 0; i < num_points; i++, itr++){
+	for(int i = 0; i < num_points && itr != fn.end(); i++, itr++){
 		if((*itr).empty())
 			return false;
 		(*itr) >> pt2d[i];
@@ -694,7 +694,7 @@ bool s_obj::load(FileNode & fnobj, vector<s_model*> & mdls)
 		return true;
 	}
 	itr = fn.begin();
-	for(int ipart = 0; ipart < num_parts; ipart++, itr++){
+	for(int ipart = 0; ipart < num_parts && itr != fn.end(); ipart++, itr++){
 		if((*itr).empty())
 			return false;
 		(*itr) >> dpart[ipart];
@@ -1082,7 +1082,7 @@ bool s_frame_obj::load(const char * aname, vector<s_model*> & mdls)
 
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[VIEW3D+1]
-	= {"model", "obj", "point", "camera", "camtbl", "estimate", "frame", "v3d"};
+	= {"model", "obj", "part", "point", "camera", "camtbl", "estimate", "frame", "v3d"};
 
 const char * f_inspector::m_str_sop[SOP_INS_CPTBL+1]
 	= {"null", "save", "load", "guess", "det", "ins", "del", "fobj", "icp"};
@@ -1111,7 +1111,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
 	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
-	m_num_cur_objs(0), m_cur_obj(-1), m_cur_point(-1), 
+	m_num_cur_objs(0), m_cur_obj(-1), m_cur_part(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
 	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3),
@@ -1148,6 +1148,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	// model related parameters
 	register_fpar("mdl", &m_cur_model, "Model with specified index is selected.");
 	register_fpar("pt", &m_cur_point, "Model point of specified index is selected.");
+	register_fpar("part", &m_cur_part, "Index of the currentlly selected object part.");
 
 	// object related parameter
 	register_fpar("num_objs", &m_num_cur_objs, "Number of current objects in the frame");
@@ -1197,7 +1198,6 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 	// scene view paramters
 	register_fpar("view", (int*)&m_ev, EV_FREE + 1, m_str_view, "Camera position in scene view.");
-
 
 	// object/camera manipulation
 	register_fpar("axis", (int*)&m_axis, (int)AX_Z + 1, m_axis_str, "Axis for rotation and translation. {x, y, z}");
@@ -1412,15 +1412,6 @@ bool f_inspector::proc()
 			break;
 		}
 		m_emd = EMD_STOP;
-		/*
-		int itr = 0;
-		m_cam_erep = DBL_MAX;
-		do{
-			estimate_fulltime();
-			itr++;
-		}while(m_eest == EES_CONT && itr < m_num_max_itrs);
-		m_op = FRAME;
-		*/
 		calc_erep();
 	}
 
@@ -1434,7 +1425,7 @@ bool f_inspector::proc()
 			return false;
 		}
 		m_main_scale = (float) m_rat;
-		m_main_scale_inv = (float) (1.0 / m_main_scale_inv);
+		m_main_scale_inv = (float) (1.0 / m_main_scale);
 		m_main_offset = Point2f(0., 0.);
 		m_sz_img.width = m_img_s.cols;
 		m_sz_img.height = m_img_s.rows;
@@ -1686,7 +1677,7 @@ void f_inspector::renderInfo()
 		m_time_str, m_timg, (float) m_adj_step);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
-	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (E)->Estimate (C)->Camera", m_str_op[m_op]);
+	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (Q)->Part P->Point (E)->Estimate (C)->Camera (T)->CamTable", m_str_op[m_op]);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
 	snprintf(information, 1023, "%d Objects, %d Models, %d Miss Tracking", 
@@ -1712,6 +1703,19 @@ void f_inspector::renderInfo()
 				m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd,
 				obj.rvec.at<double>(0), obj.rvec.at<double>(1), obj.rvec.at<double>(2),
 				obj.tvec.at<double>(0), obj.tvec.at<double>(1), obj.tvec.at<double>(2));
+		}
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		break;
+	case PARTS:
+		if(objs.size() == 0)
+			snprintf(information, 1023, "Part[]=NULL");
+		else if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
+			s_obj & obj = * objs[m_cur_obj];
+			if(m_cur_part < 0 || m_cur_part >= obj.dpart.size()){
+				snprintf(information, 1023, "Part[]=NULL");
+			}else{
+				snprintf(information, 1023, "Part[%d] parameter=%f", m_cur_part, obj.dpart[m_cur_part]);
+			}
 		}
 		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
 		break;
@@ -2019,7 +2023,7 @@ void f_inspector::renderObj()
 	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = *objs[iobj];
-		if(m_op == OBJ){
+		if(m_op == OBJ || m_op == PARTS){
 			if(iobj == m_cur_obj){
 				drawPoint2d(m_pd3dev, 
 					NULL, m_pline,
@@ -3429,6 +3433,9 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 			adjust_cam(delta);
 			// change the focal length of the camera
 			break;
+		case PARTS:
+			adjust_part(delta);
+			break;
 		}
 	}
 }
@@ -3577,6 +3584,23 @@ void f_inspector::rotate_obj(short delta)
 	}
 }
 
+void f_inspector::adjust_part(short delta)
+{
+	if(m_cur_frm < 0 || m_cur_frm >= m_fobjs.size())
+		return ;
+	s_frame_obj & fobj = *m_fobjs[m_cur_frm];
+
+	if(m_cur_obj < 0 || m_cur_obj >= fobj.objs.size())
+		return;
+
+	s_obj & obj = *m_fobjs[m_cur_frm]->objs[m_cur_obj];
+	if(m_cur_part < 0 || m_cur_part >= obj.dpart.size())
+		return;
+
+	obj.dpart[m_cur_part] += m_adj_step * delta / WHEEL_DELTA;
+	m_fobjs[m_cur_frm]->is_prj = false;
+}
+
 void f_inspector::adjust_cam(short delta)
 {
 	short step = delta / WHEEL_DELTA;
@@ -3640,6 +3664,18 @@ void f_inspector::handle_vk_left()
 			m_cur_point = objs[m_cur_obj]->get_num_points() - 1;
 		}
 		break;
+	case PARTS:
+		{
+			if(m_cur_obj < 0 || m_cur_obj >= objs.size())
+				return;
+			vector<double> & dpart = objs[m_cur_obj]->dpart;
+			if(m_cur_part < 0 || m_cur_part >= dpart.size())
+				return;
+			m_cur_part--;
+			if(m_cur_part < 0)
+				m_cur_part += (int) dpart.size();
+		}
+		break;
 	case POINT: // decrement current object point. 3d-object point is also. 
 		if(m_cur_obj < 0)
 			return;
@@ -3647,7 +3683,6 @@ void f_inspector::handle_vk_left()
 		if(m_cur_point < 0){
 			m_cur_point += (int) objs[m_cur_obj]->get_num_points();
 		}
-
 		break;
 	case MODEL: // decrement the current model index
 		if(m_models.size() == 0)
@@ -3687,6 +3722,16 @@ void f_inspector::handle_vk_right()
 			m_cur_point = obj.get_num_points() - 1;
 		}
 		break;
+	case PARTS:
+		{
+			if(m_cur_obj < 0 || m_cur_obj >= objs.size())
+				return;
+			vector<double> & dpart = objs[m_cur_obj]->dpart;
+			if(m_cur_part < 0 || m_cur_part >= dpart.size())
+				return;
+			m_cur_part++;
+			m_cur_part %= (int) dpart.size();
+		}
 	case POINT: // increment the current object point index. The 3d-object point index as well.
 		{
 			if(m_cur_obj < 0)
@@ -3738,6 +3783,12 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		m_op = OBJ;
 		if(m_cur_obj < 0)
 			m_cur_obj = (int) m_fobjs[m_cur_frm]->objs.size() - 1;
+		break;
+	case 'Q':
+		m_op = PARTS;
+		if(m_cur_obj >= 0 && m_cur_obj < m_fobjs[m_cur_frm]->objs.size()){
+			m_cur_part = (int) m_fobjs[m_cur_frm]->objs[m_cur_obj]->dpart.size() - 1;
+		}
 		break;
 	case 'M':
 		m_op = MODEL;
