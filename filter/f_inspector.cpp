@@ -2088,7 +2088,7 @@ void f_inspector::renderScene(long long timg)
 {
 	m_model_view.SetAsRenderTarget(m_pd3dev);
 	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
-		D3DCOLOR_COLORVALUE(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
+		D3DCOLOR_COLORVALUE(0.5f, 0.5f, 0.5f, 0.0f), 1.0f, 0);
 	Mat rvec, tvec;
 	double d;
 	Mat Rcam;
@@ -2236,7 +2236,7 @@ void f_inspector::renderModel(long long timg)
 {
 	m_model_view.SetAsRenderTarget(m_pd3dev);
 	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
-		D3DCOLOR_COLORVALUE(0.0f, 0.0f, 0.0f, 0.0f), 1.0f, 0);
+		D3DCOLOR_COLORVALUE(0.5f, 0.5f, 0.5f, 0.0f), 1.0f, 0);
 	// 3D model is rotated in the model view with the angle speed of 1 deg/sec
 	// Camera parameter is set as 
 	if(m_cur_model != -1){
@@ -2482,6 +2482,9 @@ void f_inspector::estimate_rt_levmarq()
 {
 	// counting extrinsic parameters (6 x number of objects)
 	int nparams = 0; // we assume the camera intrinsics are the same for every frames.
+	m_frm_used.resize(m_fobjs.size(), false);
+	m_frm_used[m_cur_frm] = true;
+
 	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;		
 	nparams += (int) objs.size() * 6;
 

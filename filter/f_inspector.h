@@ -623,6 +623,7 @@ public:
 //  R: Reset Window
 //  L: Load Frame object
 //  S: Save Frame object
+//  h: help overlay mode enable
 //  Up: parameter adjustment step up
 //  Down: parameter adjustment step down
 //
@@ -638,7 +639,7 @@ public:
 //  P: op <= Point
 //  F: op <= Frame
 //  V: op <= View3D
-//
+// 
 // op = Model
 //  * Show the model in full screen
 //	I: Instantiate and initialize New Object, op <= Obj, cur_obj = new_obj
@@ -663,7 +664,7 @@ public:
 //  Del: Delete the object
 // 
 // op = Part
-// * overlay the object, and highlight the selecte part
+// * overlay the object, and highlight the selected part
 // 
 // op = Point
 //  * overlay the bounded model with the given attitude, and highlight the selected point
