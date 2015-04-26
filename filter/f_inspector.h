@@ -345,6 +345,14 @@ private:
 	// Rendering method for whole view
 	void render(Mat & imgs, long long timg);
 	void renderInfo();
+	void renderModelInfo(char * buf, int len, int & y);
+	void renderObjInfo(vector<s_obj*> & objs, char * buf, int len, int & y);
+	void renderPartsInfo(vector<s_obj*> & objs, char * buf, int len, int & y);
+	void renderPointInfo(vector<s_obj*> & objs, char * buf, int len, int & y);
+	void renderCamparInfo(char * buf, int len, int & y);
+	void renderCamparTblInfo(char * buf, int len, int & y);
+	void renderEstimateInfo(char * buf, int len, int & y);
+	void renderFrameInfo(char * buf, int len, int & y);
 	void renderCursor();
 
 	//

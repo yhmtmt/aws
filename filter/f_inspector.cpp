@@ -1669,7 +1669,6 @@ void f_inspector::renderInfo()
 	// Allowed key list
 	// Cursor position
 	char information[1024];
-	float sx, sy;
 	int y = 0, x = 0;
 	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 
@@ -1677,7 +1676,7 @@ void f_inspector::renderInfo()
 		m_time_str, m_timg, (float) m_adj_step);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
-	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (Q)->Part P->Point (E)->Estimate (C)->Camera (T)->CamTable", m_str_op[m_op]);
+	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (Q)->Part (P)->Point (E)->Estimate (C)->Camera (T)->CamTable", m_str_op[m_op]);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
 	snprintf(information, 1023, "%d Objects, %d Models, %d Miss Tracking", 
@@ -1686,319 +1685,363 @@ void f_inspector::renderInfo()
 	y += 20;
 	switch(m_op){
 	case MODEL:
-		if(m_cur_model < 0)
-			snprintf(information, 1023, "Model[]=NULL");
-		else
-			snprintf(information, 1023, "Model[%d]=%s (%d Points, %d Edges)", m_cur_model, 
-			m_models[m_cur_model]->fname,
-			m_models[m_cur_model]->pts.size(), m_models[m_cur_model]->edges.size());
-		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		renderModelInfo(information, 1023, y);
 		break;
 	case OBJ:
-		if(objs.size() == 0)
-			snprintf(information, 1023, "Obj[]=NULL");
-		else if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
-			s_obj & obj = *objs[m_cur_obj];
-			snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f rvec=(%f,%f,%f) tvec=(%f,%f,%f)",
-				m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd,
-				obj.rvec.at<double>(0), obj.rvec.at<double>(1), obj.rvec.at<double>(2),
-				obj.tvec.at<double>(0), obj.tvec.at<double>(1), obj.tvec.at<double>(2));
-		}
-		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		renderObjInfo(objs, information, 1023, y);
 		break;
 	case PARTS:
-		if(objs.size() == 0)
-			snprintf(information, 1023, "Part[]=NULL");
-		else if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
-			s_obj & obj = * objs[m_cur_obj];
-			if(m_cur_part < 0 || m_cur_part >= obj.dpart.size()){
-				snprintf(information, 1023, "Part[]=NULL");
-			}else{
-				snprintf(information, 1023, "Part[%d] parameter=%f", m_cur_part, obj.dpart[m_cur_part]);
-			}
-		}
-		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		renderPartsInfo(objs, information, 1023, y);
 		break;
 	case POINT:
-		if(m_cur_obj < 0)
-			snprintf(information, 1023, "Obj[]=NULL");
-		else{
-			s_obj & obj = *objs[m_cur_obj];
-			if(m_cur_point < 0){
-				snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f", 
-					m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd);
-			}else{
-				Point3f & pt3d = obj.pmdl->pts[m_cur_point];
-				Point2f & pt2d = obj.pt2d[m_cur_point];
-				int matched = obj.visible[m_cur_point];
-				if(matched){
-					snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->(%f,%f)", 
-						m_cur_obj, obj.name, obj.pmdl->fname, 
-						obj.match_count, obj.ssd,
-						m_cur_point, pt3d.x, pt3d.y, pt3d.z, pt2d.x, pt2d.y);
-				}else{
-					snprintf(information, 1023, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->NULL", 
-						m_cur_obj, obj.name, obj.pmdl->fname, 
-						obj.match_count, obj.ssd,
-						m_cur_point, pt3d.x, pt3d.y, pt3d.z);
-				}
-			}
-		}
-		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		renderPointInfo(objs, information, 1023, y);
 		break;
 	case CAMERA:
 	case CAMTBL:
-		{
-			int cr, cg, cb;
-			int val;
-			bool sel;
-
-			// camera intrinsics, fx,fy,cx,cy,p0,p1,k1-k6 
-			x = 0;
-			snprintf(information, 1023, "Camera ");
-
-			m_d3d_txt.render(m_pd3dev, information, (float)x, (float)y, 1.0, 0, EDTC_LT);
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			// focal length
-			sel = m_cur_campar == ECP_FX || m_cur_campar == ECP_FY;
-			val = sel ? 255 : 128;
-			snprintf(information, 1023, "fx=%f fy=%f", m_cam_int.at<double>(0,0), m_cam_int.at<double>(1,1));
-			
-			if(m_bcalib_fix_campar || m_bcalib_fix_focus){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			// principal points
-			sel = m_cur_campar == ECP_CX;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_fix_principal_point){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "cx=%f", m_cam_int.at<double>(0,2));
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			sel = m_cur_campar == ECP_CY;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_fix_principal_point){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "cy=%f", m_cam_int.at<double>(1,2));
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			//k1 to k6
-			double * ptr = m_cam_dist.ptr<double>(0);
-			sel = m_cur_campar == ECP_K1;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_fix_k1){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "k1=%f", (float)ptr[0]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			sel = m_cur_campar == ECP_K2;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_fix_k2){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "k2=%f", (float)ptr[1]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			sel = m_cur_campar == ECP_P1;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_zero_tangent_dist){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "p1=%f", (float)ptr[2]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			sel = m_cur_campar == ECP_P2;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_zero_tangent_dist){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "p2=%f", (float)ptr[3]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			sel = m_cur_campar == ECP_K3;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_fix_k3){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "k3=%f", (float)ptr[4]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			sel = m_cur_campar == ECP_K4;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_fix_k4){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "k4=%f", (float)ptr[5]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			sel = m_cur_campar == ECP_K5;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_fix_k5){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "k5=%f", (float)ptr[6]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			sel = m_cur_campar == ECP_K6;
-			val = sel ? 255 : 128;
-			if(m_bcalib_fix_campar || m_bcalib_fix_k6){
-				cr = val; cg = 0; cb = 0;
-			}else{
-				cr = 0; cg = val; cb = 0;
-			}
-			snprintf(information, 1023, "k6=%f", (float)ptr[7]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-		}
+		renderCamparInfo(information, 1023, y);
 
 		if(m_op != CAMTBL){
 			break;
 		}
 
-		y += 20;
-		for(int icp = 0; icp < m_cam_int_tbl.size(); icp++, y += 20){
-			Mat camint = m_cam_int_tbl[icp];
-			Mat camdist = m_cam_dist_tbl[icp];
-			int cr, cg, cb;
-
-			cr = cg = cb = (icp == m_cur_camtbl ? 255 : 128);
-			// camera intrinsics, fx,fy,cx,cy,p0,p1,k1-k6 
-			x = 0;
-			snprintf(information, 1023, "Param[%d]:", icp);
-
-			m_d3d_txt.render(m_pd3dev, information, (float)x, (float)y, 1.0, 0, EDTC_LT);
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			// focal length
-			snprintf(information, 1023, "fx=%f fy=%f", camint.at<double>(0,0), camint.at<double>(1,1));			
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			// principal points
-			snprintf(information, 1023, "cx=%f", camint.at<double>(0,2));
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			snprintf(information, 1023, "cy=%f", camint.at<double>(1,2));
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			//k1 to k6
-			double * ptr = camdist.ptr<double>(0);
-			snprintf(information, 1023, "k1=%f", (float)ptr[0]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			snprintf(information, 1023, "k2=%f", (float)ptr[1]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			snprintf(information, 1023, "p1=%f", (float)ptr[2]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			snprintf(information, 1023, "p2=%f", (float)ptr[3]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			snprintf(information, 1023, "k3=%f", (float)ptr[4]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			snprintf(information, 1023, "k4=%f", (float)ptr[5]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			snprintf(information, 1023, "k5=%f", (float)ptr[6]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-
-			snprintf(information, 1023, "k6=%f", (float)ptr[7]);
-			m_d3d_txt.render(m_pd3dev, information, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
-			m_d3d_txt.get_text_size(sx, sy, information);
-			x += (int)sx + 10;
-		}
-		if(m_op != CAMTBL){
-			break;
-		}
+		renderCamparTblInfo(information, 1023, y);
 		break;
 	case ESTIMATE:
-		snprintf(information, 1023, "Estimate");
-		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
-		y += 20;
-		snprintf(information, 1023, "State: %s", m_str_emd[m_emd]);
-		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
-		y += 20;
-		snprintf(information, 1023, "NumFrmsUsd: %d NumItr: %d ErrPerPix: %f", m_num_max_frms_used, m_num_max_itrs, m_cam_erep);
-		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		renderEstimateInfo(information, 1023, y);
 		break;
 	case FRAME:
-		snprintf(information, 1023, "%d Frame Objs", (int)m_fobjs.size());
-		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+		renderFrameInfo(information, 1023, y);
 		break;
 	}
 
 	snprintf(information, 1023, "(%d, %d)", m_mc.x, m_mc.y);
 	m_d3d_txt.render(m_pd3dev, information, (float)(m_mc.x + 20), (float)(m_mc.y + 20), 1.0, 0, EDTC_LT);
+}
+
+// helper functions for renderInfo
+void f_inspector::renderModelInfo(char *buf, int len, int & y)
+{
+	if(m_cur_model < 0 || m_cur_model >= m_models.size())
+		snprintf(buf, len, "Model[]=NULL");
+	else
+		snprintf(buf, len, "Model[%d]=%s (%d Points, %d Edges)", m_cur_model, 
+		m_models[m_cur_model]->fname,
+		m_models[m_cur_model]->pts.size(), m_models[m_cur_model]->edges.size());
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+}
+
+void f_inspector::renderObjInfo(vector<s_obj*> & objs, char * buf, int len, int & y)
+{
+	if(objs.size() == 0)
+		snprintf(buf, len, "Obj[]=NULL");
+	else if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
+		s_obj & obj = *objs[m_cur_obj];
+		snprintf(buf, len, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f rvec=(%f,%f,%f) tvec=(%f,%f,%f)",
+			m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd,
+			obj.rvec.at<double>(0), obj.rvec.at<double>(1), obj.rvec.at<double>(2),
+			obj.tvec.at<double>(0), obj.tvec.at<double>(1), obj.tvec.at<double>(2));
+	}
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+}
+
+void f_inspector::renderPartsInfo(vector<s_obj*> & objs, char * buf, int len, int & y)
+{
+	if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
+		s_obj & obj = * objs[m_cur_obj];
+		if(m_cur_part < 0 || m_cur_part >= obj.dpart.size()){
+			snprintf(buf, len, "Part[]=NULL");
+		}else{
+			snprintf(buf, len, "Part[%d] parameter=%f", m_cur_part, obj.dpart[m_cur_part]);
+		}
+	}
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+}
+
+void f_inspector::renderPointInfo(vector<s_obj*> & objs, char * buf, int len, int & y)
+{
+	if(m_cur_obj < 0 || m_cur_obj >= objs.size())
+		snprintf(buf, len, "Obj[]=NULL");
+	else{
+		s_obj & obj = *objs[m_cur_obj];
+		if(m_cur_point < 0){
+			snprintf(buf, len, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f", 
+				m_cur_obj, obj.name, obj.pmdl->fname, obj.match_count, obj.ssd);
+		}else{
+			Point3f & pt3d = obj.pmdl->pts[m_cur_point];
+			Point2f & pt2d = obj.pt2d[m_cur_point];
+			int matched = obj.visible[m_cur_point];
+			if(matched){
+				snprintf(buf, len, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->(%f,%f)", 
+					m_cur_obj, obj.name, obj.pmdl->fname, 
+					obj.match_count, obj.ssd,
+					m_cur_point, pt3d.x, pt3d.y, pt3d.z, pt2d.x, pt2d.y);
+			}else{
+				snprintf(buf, len, "Obj[%d]=%s (Model=%s) Matched=%d SSD=%f Point[%d]=(%f,%f,%f)->NULL", 
+					m_cur_obj, obj.name, obj.pmdl->fname, 
+					obj.match_count, obj.ssd,
+					m_cur_point, pt3d.x, pt3d.y, pt3d.z);
+			}
+		}
+	}
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+}
+
+void f_inspector::renderCamparInfo(char * buf, int len, int & y)
+{
+	float sx, sy;
+	int cr, cg, cb;
+	int val;
+	bool sel;
+
+	// camera intrinsics, fx,fy,cx,cy,p0,p1,k1-k6 
+	int x = 0;
+	snprintf(buf, len, "Camera ");
+
+	m_d3d_txt.render(m_pd3dev, buf, (float)x, (float)y, 1.0, 0, EDTC_LT);
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	// focal length
+	sel = m_cur_campar == ECP_FX || m_cur_campar == ECP_FY;
+	val = sel ? 255 : 128;
+	snprintf(buf, len, "fx=%f fy=%f", m_cam_int.at<double>(0,0), m_cam_int.at<double>(1,1));
+
+	if(m_bcalib_fix_campar || m_bcalib_fix_focus){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	// principal points
+	sel = m_cur_campar == ECP_CX;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_fix_principal_point){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "cx=%f", m_cam_int.at<double>(0,2));
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	sel = m_cur_campar == ECP_CY;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_fix_principal_point){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "cy=%f", m_cam_int.at<double>(1,2));
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	//k1 to k6
+	double * ptr = m_cam_dist.ptr<double>(0);
+	sel = m_cur_campar == ECP_K1;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_fix_k1){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "k1=%f", (float)ptr[0]);
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	sel = m_cur_campar == ECP_K2;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_fix_k2){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "k2=%f", (float)ptr[1]);
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	sel = m_cur_campar == ECP_P1;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_zero_tangent_dist){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "p1=%f", (float)ptr[2]);
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	sel = m_cur_campar == ECP_P2;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_zero_tangent_dist){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "p2=%f", (float)ptr[3]);
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	sel = m_cur_campar == ECP_K3;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_fix_k3){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "k3=%f", (float)ptr[4]);
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	sel = m_cur_campar == ECP_K4;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_fix_k4){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "k4=%f", (float)ptr[5]);
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	sel = m_cur_campar == ECP_K5;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_fix_k5){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "k5=%f", (float)ptr[6]);
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+
+	sel = m_cur_campar == ECP_K6;
+	val = sel ? 255 : 128;
+	if(m_bcalib_fix_campar || m_bcalib_fix_k6){
+		cr = val; cg = 0; cb = 0;
+	}else{
+		cr = 0; cg = val; cb = 0;
+	}
+	snprintf(buf, len, "k6=%f", (float)ptr[7]);
+	m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+	m_d3d_txt.get_text_size(sx, sy, buf);
+	x += (int)sx + 10;
+	y += 20;
+}
+
+void f_inspector::renderCamparTblInfo(char * buf, int len, int & y)
+{
+	float sx, sy;
+	int x;
+	for(int icp = 0; icp < m_cam_int_tbl.size(); icp++, y += 20){
+		Mat camint = m_cam_int_tbl[icp];
+		Mat camdist = m_cam_dist_tbl[icp];
+		int cr, cg, cb;
+
+		cr = cg = cb = (icp == m_cur_camtbl ? 255 : 128);
+		// camera intrinsics, fx,fy,cx,cy,p0,p1,k1-k6 
+		x = 0;
+		snprintf(buf, len, "Param[%d]:", icp);
+
+		m_d3d_txt.render(m_pd3dev, buf, (float)x, (float)y, 1.0, 0, EDTC_LT);
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		// focal length
+		snprintf(buf, len, "fx=%f fy=%f", camint.at<double>(0,0), camint.at<double>(1,1));			
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		// principal points
+		snprintf(buf, len, "cx=%f", camint.at<double>(0,2));
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		snprintf(buf, len, "cy=%f", camint.at<double>(1,2));
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		//k1 to k6
+		double * ptr = camdist.ptr<double>(0);
+		snprintf(buf, len, "k1=%f", (float)ptr[0]);
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		snprintf(buf, len, "k2=%f", (float)ptr[1]);
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		snprintf(buf, len, "p1=%f", (float)ptr[2]);
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		snprintf(buf, len, "p2=%f", (float)ptr[3]);
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		snprintf(buf, len, "k3=%f", (float)ptr[4]);
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		snprintf(buf, len, "k4=%f", (float)ptr[5]);
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		snprintf(buf, len, "k5=%f", (float)ptr[6]);
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+
+		snprintf(buf, len, "k6=%f", (float)ptr[7]);
+		m_d3d_txt.render(m_pd3dev, buf, (float)x,  (float)y, 1.0, 0., EDTC_LT, D3DCOLOR_RGBA(cr, cg, cb, 255));
+		m_d3d_txt.get_text_size(sx, sy, buf);
+		x += (int)sx + 10;
+	}
+	y += 20;
+}
+
+void f_inspector::renderEstimateInfo(char * buf, int len, int & y)
+{
+	snprintf(buf, len, "Estimate");
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+	snprintf(buf, len, "State: %s", m_str_emd[m_emd]);
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+	snprintf(buf, len, "NumFrmsUsd: %d NumItr: %d ErrPerPix: %f", m_num_max_frms_used, m_num_max_itrs, m_cam_erep);
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+}
+
+void f_inspector::renderFrameInfo(char * buf, int len, int & y)
+{
+	snprintf(buf, len, "%d Frame Objs", (int)m_fobjs.size());
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
 }
 
 // Decorating mouse cursor
