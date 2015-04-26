@@ -1713,9 +1713,6 @@ void f_inspector::renderInfo()
 		renderFrameInfo(information, 1023, y);
 		break;
 	}
-
-	snprintf(information, 1023, "(%d, %d)", m_mc.x, m_mc.y);
-	m_d3d_txt.render(m_pd3dev, information, (float)(m_mc.x + 20), (float)(m_mc.y + 20), 1.0, 0, EDTC_LT);
 }
 
 // helper functions for renderInfo
@@ -2057,7 +2054,32 @@ void f_inspector::renderCursor()
 	v[1] = D3DXVECTOR2((float) m_mc.x, (float) 0);
 	m_pline->Draw(v, 2, D3DCOLOR_RGBA(0, 255, 0, 255));
 	m_pline->End();
+
 	m_pd3dev->EndScene();
+	char buf[128];
+	Point2f ptimg;
+	cnv_view2img(m_mc, ptimg);
+	snprintf(buf, 127, "(%f, %f)", ptimg.x, ptimg.y);
+	e_d3d_txt_center etxtc;
+	Point2f txtofst;
+	if(m_mc.x < (float) (m_ViewPort.Width >> 2)){
+		if(m_mc.y < (float) (m_ViewPort.Height >> 2)){
+			etxtc = EDTC_LT;
+			txtofst = Point2f(20, 20);
+		}else{
+			etxtc = EDTC_LB;
+			txtofst = Point2f(20, -20);
+		}
+	}else{
+		if(m_mc.y < (float) (m_ViewPort.Height >> 2)){
+			etxtc = EDTC_RT;
+			txtofst = Point2f(-20, 20);
+		}else{
+			etxtc = EDTC_RB;
+			txtofst = Point2f(-20, -20);
+		}		
+	}
+	m_d3d_txt.render(m_pd3dev, buf, (float)(m_mc.x + txtofst.x), (float)(m_mc.y + txtofst.y), 1.0, 0, etxtc);
 }
 
 void f_inspector::renderObj()
