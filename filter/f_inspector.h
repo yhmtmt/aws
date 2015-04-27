@@ -164,6 +164,7 @@ struct s_obj
 	s_model * pmdl;
 	long long t;
 	char * name;
+	Rect bb2d;
 	vector<Point2f> pt2d;
 	vector<Point2f> pt2dprj;
 	vector<int> visible; // true if 2d point is visible in the image
@@ -188,7 +189,7 @@ struct s_obj
 	double ssd;
 	int match_count;
 
-	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false), is_prj(false)
+	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false), is_prj(false), bb2d(0, 0, 0, 0)
 	{
 		tvec = Mat::zeros(3, 1, CV_64FC1);
 		rvec = Mat::zeros(3, 1, CV_64FC1);
@@ -270,6 +271,10 @@ struct s_frame_obj{
 	double ssd; // sum of square projection errors
 	vector<s_obj*> objs;
 	Mat camint, camdist;
+
+	// Other possible frame objects
+	// key points and the descriptors, coners, edges, something like that.
+	// gray image, differential image, image pyramid, 
 	bool is_prj;
 
 	s_frame_obj():is_prj(false)
@@ -366,10 +371,11 @@ private:
 
 	// sub operation
 	enum e_sub_operation{
-		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_DET, SOP_INST_OBJ, SOP_DELETE, SOP_REINIT_FOBJ, SOP_INS_CPTBL
+		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_DET, SOP_INST_OBJ, SOP_DELETE, 
+		SOP_REINIT_FOBJ, SOP_INS_CPTBL, SOP_AWSCMD
 	} m_sop;
 
-	static const char * m_str_sop[SOP_INS_CPTBL + 1];
+	static const char * m_str_sop[SOP_AWSCMD + 1];
 
 	void handle_sop_delete();
 	void handle_sop_save();
@@ -379,6 +385,7 @@ private:
 	void handle_sop_reinit_fobj();
 	void handle_sop_ins_cptbl();
 	void handle_sop_det();
+	void handle_sop_awscmd();
 
 	// helper function for handle_sop_guess()
 	void help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy);
@@ -422,8 +429,13 @@ private:
 	bool m_bauto_load_fobj, m_bauto_save_fobj;
 	vector<s_frame_obj*> m_fobjs;
 	int m_cur_frm;
+	char m_cmd_buf[1024];
+	char m_cmd_ret[1024];
+	int m_frm_step;
 	bool save_fobjs();
 	bool load_fobjs();
+
+
 
 	//
 	// Object

@@ -573,4 +573,5 @@ public:
 	bool get_par(s_cmd & cmd);
 };
 
+#include "../c_aws.h"
 #endif

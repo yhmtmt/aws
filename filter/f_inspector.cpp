@@ -1084,8 +1084,8 @@ bool s_frame_obj::load(const char * aname, vector<s_model*> & mdls)
 const char * f_inspector::m_str_op[VIEW3D+1]
 	= {"model", "obj", "part", "point", "camera", "camtbl", "estimate", "frame", "v3d"};
 
-const char * f_inspector::m_str_sop[SOP_INS_CPTBL+1]
-	= {"null", "save", "load", "guess", "det", "ins", "del", "fobj", "icp"};
+const char * f_inspector::m_str_sop[SOP_AWSCMD+1]
+	= {"null", "save", "load", "guess", "det", "ins", "del", "fobj", "icp", "awscmd"};
 
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
@@ -1110,7 +1110,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
-	m_cur_frm(-1), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
+	m_cur_frm(-1), m_frm_step(30), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
 	m_num_cur_objs(0), m_cur_obj(-1), m_cur_part(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
@@ -1383,6 +1383,8 @@ bool f_inspector::proc()
 	case SOP_DET:
 		handle_sop_det();
 		break;
+	case SOP_AWSCMD:
+		handle_sop_awscmd();
 	}
 
 	// projection 
@@ -2037,6 +2039,10 @@ void f_inspector::renderEstimateInfo(char * buf, int len, int & y)
 void f_inspector::renderFrameInfo(char * buf, int len, int & y)
 {
 	snprintf(buf, len, "%d Frame Objs", (int)m_fobjs.size());
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+
+	snprintf(buf, len, "Frame Step: %d", (int) m_frm_step);
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 }
@@ -3773,6 +3779,12 @@ void f_inspector::handle_vk_left()
 				m_cur_camtbl = (int) m_cam_int_tbl.size() - 1;
 		}
 		break;
+	case FRAME:
+		{
+			snprintf(m_cmd_buf, CMD_LEN, "step c -%d", m_frm_step);
+			m_sop = SOP_AWSCMD;
+		}
+		break;
 	}
 }
 
@@ -3823,6 +3835,12 @@ void f_inspector::handle_vk_right()
 		if(m_cam_int_tbl.size()){
 			m_cur_camtbl = m_cur_camtbl + 1;
 			m_cur_camtbl %= m_cam_int_tbl.size();
+		}
+		break;
+	case FRAME:
+		{
+			snprintf(m_cmd_buf, CMD_LEN, "step c %d", m_frm_step);
+			m_sop = SOP_AWSCMD;
 		}
 		break;
 	}
@@ -4319,4 +4337,16 @@ void f_inspector::handle_sop_det(){
 		m_op = OBJ;
 		break;
 	}
+}
+
+void f_inspector::handle_sop_awscmd()
+{
+	bool ret;
+	if(!m_paws->push_command(m_cmd_buf, m_cmd_ret, ret))
+		cerr << "Unknown command issued." << endl;
+	if(!ret){
+		cerr << "Command " << m_cmd_buf << " Failed." << endl;
+	}
+	m_sop = SOP_NULL;
+	return;
 }
