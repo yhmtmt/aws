@@ -1,0 +1,15 @@
+#!/bin/sh
+
+if [ $# -ne 1 ]; then
+    echo "vdev.aws <Number>"
+    exit
+fi
+
+channel imgr img
+filter vdev cam -i -o img
+fset cam device $1
+filter dswin win -i img -o
+fset win Hwin 640 Vwin 480 Hfull 640 Hwin 480
+fset win wmd yes
+cyc 0.03333
+go

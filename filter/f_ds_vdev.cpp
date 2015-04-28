@@ -261,14 +261,6 @@ bool f_ds_vdev::open(int dev)
 
 		cout << "Graphics size (" << m_pVih->bmiHeader.biHeight << "," << 
 			m_pVih->bmiHeader.biWidth << ")" << endl;
-		if(m_chout[1]){
-			ch_campar * pcamparout = dynamic_cast<ch_campar*>(m_chout[1]);
-			if(pcamparout == NULL){
-				throw "1st channel is bad ";
-			}
-
-			pcamparout->set_Pix(m_pVih->bmiHeader.biWidth, m_pVih->bmiHeader.biHeight);
-		}
 
 		hr = m_pControl->Run();
 
@@ -296,10 +288,10 @@ void f_ds_vdev::close()
 
 	if(m_pGrabber != NULL)
 		m_pGrabber->Release();
-	
+
 	if(m_pNullF != NULL)
 		m_pNullF->Release();
-
+	
 	// if(m_pSNullF != NULL)
 	//	m_pSNullF->Release();
 
@@ -323,11 +315,13 @@ void f_ds_vdev::close()
 
 	m_pGrabberF = NULL;
 	m_pGrabber = NULL;
+	m_pYUVConv = NULL;
 	m_pNullF = NULL;
 	//m_pSNullF = NULL;
 	m_pSrcF = NULL;
 	m_pControl = NULL;
 	m_pEvent = NULL;
+	m_pSeek = NULL;
 	m_pGraph = NULL;
 }
 
