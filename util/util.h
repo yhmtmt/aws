@@ -20,8 +20,109 @@
 #include "aws_stdlib.h"
 
 // Lie-gropu to Lie-algebra mapping function
-// SO(3)->so(3) log Rodrigues gives this mapping 
+
+// SO(3)->so(3) log Rodrigues gives this mapping
+inline void log_so3(const double * R, double * r)
+{
+	double rx, ry, rz, s, c, theta;
+	// calculate 
+	// r1     R32 - R23
+	// r2  =  R13 - R31
+	// r3     R21 - R12
+	rx = R[7] - R[5];
+	ry = R[2] - R[6];
+	rz = R[3] - R[1];
+
+	s = sqrt((rx*rx + ry*ry + rz*rz)*0.25);
+	c = (R[0] + R[4] + R[8] - 1)*0.5;
+	c = c > 1. ? 1. : c < -1. ? -1. : c;
+	theta = acos(c);
+
+	if( s < 1e-5 )
+	{
+		double t;
+
+		if( c > 0 ) // theta ~ 0
+			rx = ry = rz = 0;
+		else // theta ~ +/- PI
+		{
+			t = (R[0] + 1)*0.5;
+			rx = sqrt(MAX(t,0.));
+			t = (R[4] + 1)*0.5;
+			ry = sqrt(MAX(t,0.))*(R[1] < 0 ? -1. : 1.);
+			t = (R[8] + 1)*0.5;
+			rz = sqrt(MAX(t,0.))*(R[2] < 0 ? -1. : 1.);
+			if( fabs(rx) < fabs(ry) && fabs(rx) < fabs(rz) && (R[5] > 0) != (ry*rz > 0) )
+				rz = -rz;
+			theta /= sqrt(rx*rx + ry*ry + rz*rz);
+			rx *= theta;
+			ry *= theta;
+			rz *= theta;
+		}
+	}
+	else
+	{
+		double vth = 1/(2*s);
+		vth *= theta;
+		rx *= vth; ry *= vth; rz *= vth;
+	}
+}
+
 // so(3)->SO(3) exp Rodrigues gives this mapping
+inline void exp_so3(const double * r, double * R)
+{
+	double rx = r[0], ry = r[1], rz = r[2];
+	double theta = sqrt(rx*rx + ry*ry + rz*rz);
+	if(theta < DBL_EPSILON){
+		memset((void*) R, 0, sizeof(double) * 9);
+		R[0] = R[4] = R[8] = 1.0;
+		return;
+	}
+
+	double itheta = 1.0 / theta;
+
+	rx *= itheta;
+	ry *= itheta;
+	rz *= itheta;
+
+	double rx2 = rx * rx, ry2 = ry * ry, rz2 = rz * rz, 
+		rxry = rx * ry, rxrz = rx * rz, ryrz = ry * rz;
+
+	// skew symmetric matrix A
+	// 0   -rz   ry
+	// rz    0  -rx
+	// -ry  rx    0
+
+	// A^2
+	// -rz2-ry2 rxry     rxrz
+	// rxry     -rx2-rz2 ryrz
+	// rxrz     ryrz     -rx2-ry2
+	//
+	// rx2+ry2+rz2=1.0 simplify A^2 as
+	// rx2-1    rxry     rxrz
+	// rxry     ry2-1    ryrz
+	// rxrz     ryrz     rz2-1
+
+	// Resulting matrix R
+	// R0  R1  R2 
+	// R3  R4  R5
+	// R6  R7  R8
+
+	//
+	// R=I + s A + (1-c) A^2
+	// ic rx2 + c      ic rxry - s rz  ic rxrz + s ry
+	// ic rxry + s rz  ic ry2 + c      ic ryrz - s rx
+	// ic rxrz - s ry  ic ryrz + s rx  ic rz2 + c
+	double s = sin(theta);
+	double c = cos(theta);
+	double ic = 1.0 - c;
+	double icrxry = ic * rxry, icryrz = ic * ryrz, icrxrz = ic * rxrz;
+	double srx = s * rx, sry = s * ry, srz = s * rz;
+	R[0] = ic * rx2 + c; R[1] = icrxry - srz; R[2] = icrxrz + sry;
+	R[3] = icrxry + srz; R[4] = ic * ry2 + c; R[5] = icryrz - srx;
+	R[6] = icrxrz - sry; R[7] = icryrz + srx; R[8] = ic * rz2 +  c;
+}
+
 // SE(3)->se(3) log 
 // se(3)->SE(3) exp
 inline void exp_se3(const double * r, const double * v, double * T)
@@ -87,9 +188,9 @@ inline void exp_se3(const double * r, const double * v, double * T)
 	double ic = 1.0 - c;
 	double icrxry = ic * rxry, icryrz = ic * ryrz, icrxrz = ic * rxrz;
 	double srx = s * rx, sry = s * ry, srz = s * rz;
-	T[0] = ic * (rx2 - 1.) + c; T[1] = icrxry - srz;        T[2] = icrxrz + sry;
-	T[4] = icrxry + srz;        T[5] = ic * (ry2 - 1.) + c; T[6] = icryrz - srx;
-	T[8] = icrxrz - sry;        T[9] = icryrz + srx;        T[10] = ic * (rz2 - 1) +  c;
+	T[0] = ic * rx2 + c; T[1] = icrxry - srz; T[2] = icrxrz + sry;
+	T[4] = icrxry + srz; T[5] = ic * ry2 + c; T[6] = icryrz - srx;
+	T[8] = icrxrz - sry; T[9] = icryrz + srx; T[10] = ic * rz2 +  c;
 
 	// V=I + (1-c)/th A + (1-s/th) A^2
 	// (1-s/th) rx2 + s/th          (1-s/th) rxry - (1-c)/th rz (1-s/th) rxrz + (1-c)/th ry
