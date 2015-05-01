@@ -25,39 +25,71 @@
 inline void log_so3(const double * R, double * r)
 {
 	double rx, ry, rz, s, c, theta;
-	// calculate 
-	// r1     R32 - R23
-	// r2  =  R13 - R31
-	// r3     R21 - R12
+
+	// Note rx, ry, rz are often used as temporal variable. Be careful.
+	// here calculating
+	// 2s * rx     R32 - R23
+	// 2s * ry  =  R13 - R31
+	// 2s * rz     R21 - R12
 	rx = R[7] - R[5];
 	ry = R[2] - R[6];
 	rz = R[3] - R[1];
 
+	// s^2 = sqrt((2s * rx)^2 + (2s * ry)^2 + (2s * rz)^2)/2
+	// note: here the sign of the sin is missed.
 	s = sqrt((rx*rx + ry*ry + rz*rz)*0.25);
+
+	// trace(R)-1 gives 2cos(theta)
 	c = (R[0] + R[4] + R[8] - 1)*0.5;
+
+	// clamping cosine in (-1,1)
 	c = c > 1. ? 1. : c < -1. ? -1. : c;
 	theta = acos(c);
 
 	if( s < 1e-5 )
 	{
-		double t;
-
 		if( c > 0 ) // theta ~ 0
 			rx = ry = rz = 0;
 		else // theta ~ +/- PI
 		{
-			t = (R[0] + 1)*0.5;
+			// This relys on quarternion.
+
+			// SO(3) to SU(2)
+			// Quarternion |q| = (q0, q1, q2, q3)
+			// Here I assume sgn(q0) is positive
+			// q0 = sqrt(0.25(R11+R22+R33+1))=sqrt(0.25*(2+2cos th)=sqrt(cos^2th/2)
+			// q1 = sqrt(0.25(R11-R22-R33+1)) sgn(R32-R23) = sqrt(R11-cos(th))sgn(R32-R23) = sin th/2 rx sgn(q0q1)
+ 			// q2 = sqrt(0.25(-R11+R22-R33+1)) sgn(R13-R31) = sqrt(R22-cos(th))sgn(R13-R31) = sin th/2 ry sgn(q0q2)
+			// q3 = sqrt(0.25(-R11-R22+R33+1)) sgn(R21-R12) = sqrt(R33-cos(th))sgn(R21-R12) = sin th/2 rz sgn(q0q3)
+
+			// SU(2) to so(3)
+			// q = cos th/2 + n sin th/2 ... where n is unit vector
+			// cos th/2 = q0
+			// sin th/2 = |(q1,q2, q3)|
+			// r = (q1,q2,q3) / (sin th/2)
+
+/* These are the OpenCV's Rodrigues. It may be coded assuming quarternion, but I think it's wrong.
+			t = (R[0] + 1)*0.5;  
 			rx = sqrt(MAX(t,0.));
-			t = (R[4] + 1)*0.5;
+			t = (R[4] + 1)*0.5; 
 			ry = sqrt(MAX(t,0.))*(R[1] < 0 ? -1. : 1.);
-			t = (R[8] + 1)*0.5;
+			t = (R[8] + 1)*0.5; 
 			rz = sqrt(MAX(t,0.))*(R[2] < 0 ? -1. : 1.);
 			if( fabs(rx) < fabs(ry) && fabs(rx) < fabs(rz) && (R[5] > 0) != (ry*rz > 0) )
 				rz = -rz;
-			theta /= sqrt(rx*rx + ry*ry + rz*rz);
-			rx *= theta;
-			ry *= theta;
-			rz *= theta;
+*/		
+			// calculatign q1,q2,q3, we do not need to calculate q0 because theta has already been calculated as theta.
+			// at this line, rx = R32-R23, ry = R13-R31, rz = R21-R12, calculated in the begining
+			// their sign is just those of resulting q1, q2, q3 respectively!
+			// Furthermore, the cosine value has also been calculated as c.
+			rx = sqrt(max(R[0] - c, 0.)) * (rx < 0 ? -1.: 1.); // q1 
+			ry = sqrt(max(R[4] - c, 0.)) * (ry < 0 ? -1.: 1.); // q2
+			rz = sqrt(max(R[8] - c, 0.)) * (rz < 0 ? -1. :1.); // q3 
+
+			theta /= sqrt(rx*rx + ry*ry + rz*rz); // sin th/2
+			rx *= theta; // * theta / sin th/2 => theta rx
+			ry *= theta; // * theta / sin th/2 => theta ry
+			rz *= theta; // * theta / sin th/2 => theta rz
 		}
 	}
 	else
