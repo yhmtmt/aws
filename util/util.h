@@ -313,7 +313,42 @@ inline void exp_se3(const double * r, const double * v, double * T)
 }
 
 // SIM(3)->sim(3) log
+inline void log_sim3(const double * S, double & s, double * r, double * v)
+{
+	double es = sqrt(S[0] * S[0] + S[1] * S[1] + S[2] * S[2]);
+	double ies = 1.0 / es;
+	double T[16];
+	memcpy((void*) T, (void*) S, sizeof(double) * 16);
+
+	T[0] *= ies;
+	T[1] *= ies;
+	T[2] *= ies;
+	T[4] *= ies;
+	T[5] *= ies;
+	T[6] *= ies;
+	T[8] *= ies;
+	T[9] *= ies;
+	T[10] *= ies;
+
+	log_se3(T, r, v);
+	s = log(es);
+}
+
 // sim(3)->SIM(3) exp
+inline void exp_sim3(double & s, const double * r, const double * v, double * S)
+{
+	exp_se3(r, v, S);
+	double es = exp(s);
+	S[0] *= es;
+	S[1] *= es;
+	S[2] *= es;
+	S[4] *= es;
+	S[5] *= es;
+	S[6] *= es;
+	S[8] *= es;
+	S[9] *= es;
+	S[10] *= es;
+}
 
 // these codes are partially from OpenCV calibrate.cpp
 inline void awsProjPt(const Point3f & M, Point2f & m, 
