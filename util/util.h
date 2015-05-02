@@ -36,7 +36,7 @@ inline void log_so3(const double * R, double * r)
 	rz = R[3] - R[1];
 
 	// s^2 = sqrt((2s * rx)^2 + (2s * ry)^2 + (2s * rz)^2)/2
-	// note: here the sign of the sin is missed.
+	// note: here the sign of the sin is missed. But we dont need to distinguish it.
 	s = sqrt((rx*rx + ry*ry + rz*rz)*0.25);
 
 	// trace(R)-1 gives 2cos(theta)
@@ -48,9 +48,9 @@ inline void log_so3(const double * R, double * r)
 
 	if( s < 1e-5 )
 	{
-		if( c > 0 ) // theta ~ 0
+		if( c > 0 ) // theta -> 0
 			rx = ry = rz = 0;
-		else // theta ~ +/- PI
+		else // theta -> PI
 		{
 			// This relys on quarternion.
 
@@ -156,6 +156,76 @@ inline void exp_so3(const double * r, double * R)
 }
 
 // SE(3)->se(3) log 
+inline void log_se3(const double * T, double * r, double * v)
+{
+	double rx, ry, rz, s, c, theta;
+
+	// T0  T1  T2  T3
+	// T4  T5  T6  T7
+	// T8  T9  T10 T11
+	// T12 T13 T14 T15
+
+	// Note rx, ry, rz are often used as temporal variable. Be careful.
+	// here calculating
+	// 2s * rx     R32 - R23
+	// 2s * ry  =  R13 - R31
+	// 2s * rz     R21 - R12
+	rx = T[9] - T[6];
+	ry = T[2] - T[8];
+	rz = T[4] - T[1];
+
+	// s^2 = sqrt((2s * rx)^2 + (2s * ry)^2 + (2s * rz)^2)/2
+	s = sqrt((rx*rx + ry*ry + rz*rz)*0.25);
+
+	// trace(R)-1 gives 2cos(theta)
+	c = (T[0] + T[5] + T[10] - 1)*0.5;
+
+	// clamping cosine in (-1,1)
+	c = c > 1. ? 1. : c < -1. ? -1. : c;
+	theta = acos(c);
+
+	if( s < 1e-5 )
+	{
+		if( c > 0 ) // theta -> 0
+			rx = ry = rz = 0;
+		else // theta -> PI
+		{
+			rx = sqrt(max(T[0] - c, 0.)) * (rx < 0 ? -1.: 1.); // q1 
+			ry = sqrt(max(T[5] - c, 0.)) * (ry < 0 ? -1.: 1.); // q2
+			rz = sqrt(max(T[10] - c, 0.)) * (rz < 0 ? -1. :1.); // q3 
+
+			double vth = 1.0 / sqrt(rx*rx + ry*ry + rz*rz);
+			rx *= vth; // / sin th/2 => rx
+			ry *= vth; // / sin th/2 => ry
+			rz *= vth; // / sin th/2 => rz
+		}
+	}
+	else
+	{
+		double vth = 1/(2*s);
+		rx *= vth; ry *= vth; rz *= vth;
+	}
+
+	double rx2 = rx * rx, ry2 = ry * ry, rz2 = rz * rz, 
+		rxry = rx * ry, rxrz = rx * rz, ryrz = ry * rz;
+
+	double itheta = 1.0 / theta;
+	double ic = 1.0 - c;
+	double icrxry = ic * rxry, icryrz = ic * ryrz, icrxrz = ic * rxrz;
+	double srx = s * rx, sry = s * ry, srz = s * rz;
+	double ict = ic * itheta, st = s * itheta, ist = 1 - st;
+	double istrxry = ist * rxry, istrxrz = ist * rxrz, istryrz = ist * ryrz;
+	double ictrx = ict * rx, ictry = ict * ry, ictrz = ict * rz;
+
+	//multiply V^t to T. (V is the rotation matrix appeared in the exponential map)
+	v[0] = (ist * rx2 + st)  * T[3] + (istrxry + ictrz) * T[7] + (istrxrz - ictry) * T[11];
+	v[1] = (istrxry - ictrz) * T[3] + (ist * ry2 + st)  * T[7] + (istryrz + ictrx) * T[11];
+	v[2] = (istrxrz + ictry) * T[3] + (istryrz - ictrx) * T[7] + (ist * rz2 + st)  * T[11];
+	r[0] = theta * rx;
+	r[1] = theta * ry;
+	r[2] = theta * rz;
+}
+
 // se(3)->SE(3) exp
 inline void exp_se3(const double * r, const double * v, double * T)
 {
@@ -224,6 +294,7 @@ inline void exp_se3(const double * r, const double * v, double * T)
 	T[4] = icrxry + srz; T[5] = ic * ry2 + c; T[6] = icryrz - srx;
 	T[8] = icrxrz - sry; T[9] = icryrz + srx; T[10] = ic * rz2 +  c;
 
+	// calculating rotation of the translation
 	// V=I + (1-c)/th A + (1-s/th) A^2
 	// (1-s/th) rx2 + s/th          (1-s/th) rxry - (1-c)/th rz (1-s/th) rxrz + (1-c)/th ry
 	// (1-s/th) rxry + (1-c)/th rz  (1-s/th) ry2 + s/th         (1-s/th) ryrz - (1-c)/th rx
