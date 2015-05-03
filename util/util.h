@@ -19,6 +19,17 @@
 #include "aws_thread.h"
 #include "aws_stdlib.h"
 
+inline void angleRxyz(const double * R, double & x, double & y, double &z)
+{
+	// R0  R1  R2 
+	// R3  R4  R5
+	// R6  R7  R8
+
+	x = asin(-R[2]);
+	z = atan(-R[1]/R[0]);
+	y = atan(-R[5]/R[7]);
+}
+
 // Lie-gropu to Lie-algebra mapping function
 
 // SO(3)->so(3) log Rodrigues gives this mapping
