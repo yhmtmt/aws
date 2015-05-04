@@ -21,13 +21,66 @@
 
 inline void angleRxyz(const double * R, double & x, double & y, double &z)
 {
+	// R
+	// r11 r12 r13
+	// r21 r22 r23
+	// r31 r32 r33
+	//
 	// R0  R1  R2 
 	// R3  R4  R5
 	// R6  R7  R8
-
+/*
 	x = asin(-R[2]);
 	z = atan(-R[1]/R[0]);
 	y = atan(-R[5]/R[7]);
+*/
+	// left multiplication decompose Rz^t Ry^t Rx^t I = R(because our rotation order is RxRyRz x)
+
+	// Find Givens rotation Rx^t to make r23->0
+	// Rx^t
+	// 1  0  0
+	// 0  c  s
+	// 0 -s  c
+	//
+	// r = sqrt(r23^2+r33^2)
+	// s = -r23/r
+	// c = r33/r
+	
+	// then Rx^tR=>R
+	
+	// Find Givens rotation Ry^t to make r13->0
+	// Ry^t
+	// c  0 -s
+	// 0  1  0
+	// s  0  c
+	//
+	// r= sqrt(r13^2+r33^2)
+	// s = r13/r
+	// c = r33/r
+
+	// then Ry^tR=>R
+
+	// Find Givens rotation Rz^t to make r12->0
+	// Rz^t
+	// c  s  0
+	//-s  c  0
+	// 0  0  1
+	// 
+	// r = sqrt(r12^2 + r22^2)
+	// 
+	// s = -r12/r
+	// c = r22/r
+
+	// then Rz^tR=>R
+	// here R should be an identity matrix. if the diagonal elements are not positive, reverse the rotation angle by PI rad	// resolve 180 degree ambiguity
+	// diag(R)[1] < 0 && diag(R)[2] < 0 -> multiply -1 to Rx^t's c/s values, and transpose Ry^t, Rz^t
+	//  means cx = -Rx^t(1,1), sx = -Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(0,2), cz = Rz^t(0,0), sz = Rz^t(1,0)
+	// diag(R)[0] < 0 && diag(R)[2] < 0 -> multiply -1 to Ry^t's c/s values, and transpose Rz^t
+	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = -Ry^t(0,0), sy = -Ry^t(2,0), cz = Rz^t(0,0), sz = Rz^t(1,0)
+	// diag(R)[0] < 0 && diag(R)[1] < 0 -> multiply -1 to Rz^t's c_s values
+	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(2,0), cz = -Rz^t(0,0), sz = -Rz^t(0,1)
+	// diag(R) are positive - no need to rotate
+	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(2,0), cz = Rz^t(0,0), sz = Rz^t(0,1)
 }
 
 // Lie-gropu to Lie-algebra mapping function
