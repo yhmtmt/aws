@@ -19,7 +19,7 @@
 #include "aws_thread.h"
 #include "aws_stdlib.h"
 
-inline void angleRxyz(const double * R, double & x, double & y, double &z)
+inline void angleRxyz(double * R, double & x, double & y, double &z)
 {
 	// R
 	// r11 r12 r13
@@ -29,12 +29,9 @@ inline void angleRxyz(const double * R, double & x, double & y, double &z)
 	// R0  R1  R2 
 	// R3  R4  R5
 	// R6  R7  R8
-/*
-	x = asin(-R[2]);
-	z = atan(-R[1]/R[0]);
-	y = atan(-R[5]/R[7]);
-*/
 	// left multiplication decompose Rz^t Ry^t Rx^t I = R(because our rotation order is RxRyRz x)
+	double r, cx, sx, cy, sy, cz, sz;
+	double Rtmp[9];
 
 	// Find Givens rotation Rx^t to make r23->0
 	// Rx^t
@@ -45,9 +42,23 @@ inline void angleRxyz(const double * R, double & x, double & y, double &z)
 	// r = sqrt(r23^2+r33^2)
 	// s = -r23/r
 	// c = r33/r
-	
+	r = 1./sqrt(R[5]*R[5] + R[8]*R[8]);
+	sx = -R[5]  * r;
+	cx = R[8] * r;
+
 	// then Rx^tR=>R
-	
+	Rtmp[0] = R[0];
+	Rtmp[1] = R[1];
+	Rtmp[2] = R[2];
+
+	Rtmp[3] = cx * R[3] + sx * R[6];
+	Rtmp[4] = cx * R[4] + sx * R[7];
+	Rtmp[5] = cx * R[5] + sx * R[8];
+
+	Rtmp[6] = -sx * R[3] + cx * R[6];
+	Rtmp[7] = -sx * R[4] + cx * R[7];
+	Rtmp[8] = -sx * R[5] + cx * R[8];
+
 	// Find Givens rotation Ry^t to make r13->0
 	// Ry^t
 	// c  0 -s
@@ -57,8 +68,22 @@ inline void angleRxyz(const double * R, double & x, double & y, double &z)
 	// r= sqrt(r13^2+r33^2)
 	// s = r13/r
 	// c = r33/r
+	r = 1./sqrt(Rtmp[2] * Rtmp[2] + Rtmp[8] * Rtmp[8]);
+	sy = Rtmp[2] * r;
+	cy = Rtmp[8] * r;
 
 	// then Ry^tR=>R
+	R[0] = cy * Rtmp[0] - sy * Rtmp[6];
+	R[1] = cy * Rtmp[1] - sy * Rtmp[7];
+	R[2] = cy * Rtmp[2] - sy * Rtmp[8];
+
+	R[3] = Rtmp[3];
+	R[4] = Rtmp[4];
+	R[5] = Rtmp[5];
+
+	R[6] = sy * Rtmp[0] + cy * Rtmp[6];
+	R[7] = sy * Rtmp[1] + cy * Rtmp[7];
+	R[8] = sy * Rtmp[2] + cy * Rtmp[8];
 
 	// Find Givens rotation Rz^t to make r12->0
 	// Rz^t
@@ -67,11 +92,25 @@ inline void angleRxyz(const double * R, double & x, double & y, double &z)
 	// 0  0  1
 	// 
 	// r = sqrt(r12^2 + r22^2)
-	// 
 	// s = -r12/r
 	// c = r22/r
+	r = 1./sqrt(R[1]*R[1] + R[4]*R[4]);
+	sz = -R[1] * r;
+	cz  = R[4] * r;
 
 	// then Rz^tR=>R
+	Rtmp[0] = cz * R[0] + sz * R[3];
+	Rtmp[1] = cz * R[1] + sz * R[4];
+	Rtmp[2] = cz * R[2] + sz * R[5];
+
+	Rtmp[3] = -sz * R[0] + cz * R[3];
+	Rtmp[4] = -sz * R[1] + cz * R[4];
+	Rtmp[5] = -sz * R[2] + cz * R[5];
+
+	Rtmp[6] = R[6];
+	Rtmp[7] = R[7];
+	Rtmp[8] = R[8];
+
 	// here R should be an identity matrix. if the diagonal elements are not positive, reverse the rotation angle by PI rad	// resolve 180 degree ambiguity
 	// diag(R)[1] < 0 && diag(R)[2] < 0 -> multiply -1 to Rx^t's c/s values, and transpose Ry^t, Rz^t
 	//  means cx = -Rx^t(1,1), sx = -Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(0,2), cz = Rz^t(0,0), sz = Rz^t(1,0)
@@ -81,6 +120,35 @@ inline void angleRxyz(const double * R, double & x, double & y, double &z)
 	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(2,0), cz = -Rz^t(0,0), sz = -Rz^t(0,1)
 	// diag(R) are positive - no need to rotate
 	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(2,0), cz = Rz^t(0,0), sz = Rz^t(0,1)
+	if(Rtmp[0] < 0){
+		if(Rtmp[4] < 0){
+			// z rotation + PI
+			sz = -sz;
+			cz = -sz;
+		}else{
+			// y rotation + PI
+			sy = -sy;
+			cy = -cy;
+
+			// transpose z rotation
+			sz = -sz;
+		}
+	}else{
+		if(Rtmp[4] < 0){
+			// x rotation + PI
+			sx = -sx;
+			sy = -sy;
+
+			// transpose y rotation
+			sy = -sy;
+			// transpose z rotation
+			sz = -sz;
+		}
+	}
+
+	x = atan2(sx, cx);
+	y = atan2(sy, cy);
+	z = atan2(sz, cz);
 }
 
 // Lie-gropu to Lie-algebra mapping function
