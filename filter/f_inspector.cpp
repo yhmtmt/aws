@@ -1236,6 +1236,8 @@ void f_inspector::release_d3dres()
 	return;
 }
 
+// if a new frame is recieved, a new frame object is created.
+// The corresponding frame object is in the list, it is sat as current frame object.
 bool f_inspector::new_frame(Mat & img, long long & timg)
 {
 	int bfound = false;
@@ -3931,50 +3933,8 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		m_axis = AX_Z;
 		break;
 	case 'f':
-		// fix parameter
-		switch(m_op){
-		case OBJ: 
-		case POINT:
-			// fix selected object's attitude
-			break;
-		case CAMERA:
-			// fix selected camera parameter
-			switch(m_cur_campar){
-			case ECP_FX:
-			case ECP_FY:
-				m_bcalib_fix_focus = !m_bcalib_fix_focus;
-				break;
-			case ECP_CX:
-			case ECP_CY:
-				m_bcalib_fix_principal_point = !m_bcalib_fix_principal_point;
-				break;
-			case ECP_K1:
-				m_bcalib_fix_k1 = !m_bcalib_fix_k1;
-				break;
-			case ECP_K2:
-				m_bcalib_fix_k2 = !m_bcalib_fix_k2;
-				break;
-			case ECP_P1:
-			case ECP_P2:
-				m_bcalib_zero_tangent_dist = !m_bcalib_zero_tangent_dist;
-				break;
-			case ECP_K3:
-				m_bcalib_fix_k3 = !m_bcalib_fix_k3;
-				break;
-			case ECP_K4:
-				m_bcalib_fix_k4 = !m_bcalib_fix_k4;
-				break;
-			case ECP_K5:
-				m_bcalib_fix_k5 = !m_bcalib_fix_k5;
-				break;
-			case ECP_K6:
-				m_bcalib_fix_k6 = !m_bcalib_fix_k6;
-				break;
-			}
-			break;
-		default:
-			break;
-		}
+		handle_char_f();
+		break;
 	case 's':
 		if(m_op == CAMTBL){
 			if(m_cur_camtbl >= 0 && m_cur_camtbl < m_cam_int_tbl.size()){
@@ -4023,6 +3983,53 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	}
 }
 
+void f_inspector::handle_char_f()
+{
+	// fix parameter
+	switch(m_op){
+	case OBJ: 
+	case POINT:
+		// fix selected object's attitude
+		break;
+	case CAMERA:
+		// fix selected camera parameter
+		switch(m_cur_campar){
+		case ECP_FX:
+		case ECP_FY:
+			m_bcalib_fix_focus = !m_bcalib_fix_focus;
+			break;
+		case ECP_CX:
+		case ECP_CY:
+			m_bcalib_fix_principal_point = !m_bcalib_fix_principal_point;
+			break;
+		case ECP_K1:
+			m_bcalib_fix_k1 = !m_bcalib_fix_k1;
+			break;
+		case ECP_K2:
+			m_bcalib_fix_k2 = !m_bcalib_fix_k2;
+			break;
+		case ECP_P1:
+		case ECP_P2:
+			m_bcalib_zero_tangent_dist = !m_bcalib_zero_tangent_dist;
+			break;
+		case ECP_K3:
+			m_bcalib_fix_k3 = !m_bcalib_fix_k3;
+			break;
+		case ECP_K4:
+			m_bcalib_fix_k4 = !m_bcalib_fix_k4;
+			break;
+		case ECP_K5:
+			m_bcalib_fix_k5 = !m_bcalib_fix_k5;
+			break;
+		case ECP_K6:
+			m_bcalib_fix_k6 = !m_bcalib_fix_k6;
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+}
 
 void f_inspector::handle_sop_delete(){
 	vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
