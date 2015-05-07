@@ -1717,6 +1717,9 @@ void f_inspector::renderInfo()
 	case FRAME:
 		renderFrameInfo(information, 1023, y);
 		break;
+	case VIEW3D:
+		renderSceneInfo(information, 1023, y);
+		break;
 	}
 }
 
@@ -2048,6 +2051,28 @@ void f_inspector::renderFrameInfo(char * buf, int len, int & y)
 	snprintf(buf, len, "Frame Step: %d", (int) m_frm_step);
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
+}
+
+void f_inspector::renderSceneInfo(char * buf, int len, int & y)
+{
+	snprintf(buf, len, "Scene mode = %s", m_str_view[m_ev]);
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y+= 20;
+
+	// object attitude 
+	if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
+		vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
+		if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
+			for(int iobj = 0; iobj < objs.size(); iobj++){
+				s_obj & obj = *objs[iobj];
+				snprintf(buf, len, "%s Roll: %5.2f, Pitch: %5.2f, Yaw: %5.2f Serge: %5.2f Sway: %5.2f Heave %5.2f", 
+					obj.name, (float)obj.roll * 180./CV_PI, (float)obj.pitch * 180./CV_PI, (float)obj.yaw * 180./CV_PI,
+					(float)obj.serge, (float)obj.sway, (float)obj.heave);
+				m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+				y += 20;
+			}	
+		}
+	}
 }
 
 // Decorating mouse cursor
@@ -3202,13 +3227,14 @@ void s_frame_obj::proj_objs(bool bjacobian, bool fix_aspect_ratio)
 	}
 }
 
+// calc_rpy calculates roll pitch yaw serge sway heave of the objects relative to the base_obj.
 void s_frame_obj::calc_rpy(int base_obj)
 {
 	if(update)
 		return;
 
 	if(base_obj >= 0 && base_obj < objs.size()){
-		Mat Rorg, R;
+		Mat Rorg, R, T;
 		Mat & Torg = objs[base_obj]->tvec;
 		Rodrigues(objs[base_obj]->rvec, Rorg);
 		Rorg = Rorg.t();
@@ -3218,19 +3244,27 @@ void s_frame_obj::calc_rpy(int base_obj)
 				obj.roll = obj.pitch = obj.yaw = 0.;
 				continue;
 			}
-			double * p0, *p1;
-			Mat & T = obj.tvec;
-			p0 = T.ptr<double>();
-			p1 = Torg.ptr<double>();
-			Point3f t((float)(p0[0] - p1[0]), 
-				(float)(p0[1] - p1[1]), (float)(p0[2] - p1[2]));
-
+			double * p0;
 			Rodrigues(obj.rvec, R);
+			obj.tvec.copyTo(T);
+			T -= Torg;
+			T = R.t() * T;
+			p0 = T.ptr<double>();
+			Point3f t((float)(p0[0]), 
+				(float)(p0[1]), (float)(p0[2]));
+			
 			R = Rorg * R;
 			p0 = R.ptr<double>();
+			/*
 			obj.serge = t.x * p0[0] + t.y * p0[1] + t.z * p0[2];
 			obj.sway = t.x * p0[3] + t.y * p0[4] + t.z * p0[5];
 			obj.heave = t.x * p0[6] + t.y * p0[7] + t.z * p0[8];
+			*/
+
+			obj.serge = t.x;
+			obj.sway = t.y;
+			obj.heave = t.z;
+
 			angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
 			cout << "obj[" << iobj << "] roll " << obj.roll * 180. / CV_PI
 				<< " pitch " << obj.pitch * 180. / CV_PI

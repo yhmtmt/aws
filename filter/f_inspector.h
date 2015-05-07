@@ -433,6 +433,7 @@ private:
 	static const char * m_str_view[EV_FREE + 1];
 	Mat m_cam_int_view, m_cam_dist_view, m_tvec_view, m_rvec_view;
 	void renderScene(long long timg);
+	void renderSceneInfo(char * buf, int len, int & y);
 
 	//
 	// frame objects
