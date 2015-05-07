@@ -435,8 +435,6 @@ private:
 	bool save_fobjs();
 	bool load_fobjs();
 
-
-
 	//
 	// Object
 	// 
@@ -622,6 +620,7 @@ public:
 	virtual void handle_syskeydown(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_keyup(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_char(WPARAM wParam, LPARAM lParam);
+	void handle_char_f();
 };
 
 // img = (view - ofst) / (scale * rat)
