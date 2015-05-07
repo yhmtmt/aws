@@ -174,11 +174,13 @@ struct s_obj
 	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
+	double roll, pitch, yaw, serge, sway, heave;
+
 	// note: The part's deformation code is now under construction. I need to modify followings:
 	// s_obj::load, save, init, proj
 	vector<double> dpart; // part's deformation value.
 
-	bool is_prj;
+	bool update;
 
 	Mat jacobian;
 	Mat jmax; // maximum values of jacobian for each parameter
@@ -189,7 +191,10 @@ struct s_obj
 	double ssd;
 	int match_count;
 
-	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false), is_prj(false), bb2d(0, 0, 0, 0)
+	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false), 
+		roll(0.0), pitch(0.0), yaw(0.0),
+		serge(0.0), sway(0.0), heave(0.0),
+		update(false), bb2d(0, 0, 0, 0)
 	{
 		tvec = Mat::zeros(3, 1, CV_64FC1);
 		rvec = Mat::zeros(3, 1, CV_64FC1);
@@ -275,9 +280,9 @@ struct s_frame_obj{
 	// Other possible frame objects
 	// key points and the descriptors, coners, edges, something like that.
 	// gray image, differential image, image pyramid, 
-	bool is_prj;
+	bool update;
 
-	s_frame_obj():is_prj(false)
+	s_frame_obj():update(false)
 	{
 	}
 
@@ -289,6 +294,7 @@ struct s_frame_obj{
 	}
 
 	void proj_objs(bool bjacobian = true, bool fix_aspect_ratio = true);
+	void calc_rpy(int base_obj = 0);
 
 	void sample_tmpl(Mat & img, Size & sz)
 	{
@@ -308,6 +314,11 @@ struct s_frame_obj{
 
 	bool save(const char * aname);
 	bool load(const char * aname, vector<s_model*> & mdls);
+
+	void set_update()
+	{
+		update = true;
+	}
 };
 
 //////////////////////////////////////////////////////////////// The filter

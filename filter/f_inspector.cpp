@@ -802,9 +802,7 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 	cout << "tvec = " << endl << tvec << endl;
 	cout << "Projecting " << name << endl;
 	cout << "J=" << jacobian << endl;
-	*/
-	
-	is_prj = true;
+	*/	
 }
 
 void s_obj::render(LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
@@ -1399,6 +1397,8 @@ bool f_inspector::proc()
 
 	calc_jmax();
 
+	// calcurate roll pitch yaw surge sway heave relative to current object
+	m_fobjs[m_cur_frm]->calc_rpy(m_cur_obj);
 
 	// sample point templates
 	m_fobjs[m_cur_frm]->sample_tmpl(m_img_gry_blur, m_sz_vtx_smpl);
@@ -1462,6 +1462,7 @@ bool f_inspector::proc()
 	// rendering main view
 	render(m_img_s, timg);
 
+	m_fobjs[m_cur_frm]->set_update();
 	return true;
 }
 
@@ -2164,7 +2165,9 @@ void f_inspector::renderScene(long long timg)
 		D3DCOLOR_COLORVALUE(0.5f, 0.5f, 0.5f, 0.0f), 1.0f, 0);
 	Mat rvec, tvec;
 	double d;
-	Mat Rcam;
+	Mat Rcam, Rorg;
+
+	// EV_OBJX, EV_OBJY, EV_OBJZ view object's attitude with a coordinate frame fixed at the current object.
 	switch(m_ev){
 	case EV_CAM:
 		m_cam_int.copyTo(m_cam_int_view);
@@ -2173,15 +2176,15 @@ void f_inspector::renderScene(long long timg)
 		m_rvec_view = Mat::zeros(3, 1, CV_64FC1);
 		m_ev = EV_CAM;
 		break;
-	case EV_OBJX://
+	case EV_OBJX:
 		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
-				Mat R;
+				// preparing rotation matrix viewing from x-axis of the current object.
 				double * ptr0, * ptr1;
-				Rodrigues(objs[m_cur_obj]->rvec, R);
+				Rodrigues(objs[m_cur_obj]->rvec, Rorg);
 				Rcam = Mat(3, 3, CV_64FC1);
-				ptr0 = R.ptr<double>();
+				ptr0 = Rorg.ptr<double>();
 				ptr1 = Rcam.ptr<double>();
 		
 				// x-axis to z-axis
@@ -2204,11 +2207,11 @@ void f_inspector::renderScene(long long timg)
 		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
-				Mat R;
+				// preparing rotation matrix viewing from y-axis of the current object.
 				double * ptr0, * ptr1;
-				Rodrigues(objs[m_cur_obj]->rvec, R);
+				Rodrigues(objs[m_cur_obj]->rvec, Rorg);
 				Rcam = Mat(3, 3, CV_64FC1);
-				ptr0 = R.ptr<double>();
+				ptr0 = Rorg.ptr<double>();
 				ptr1 = Rcam.ptr<double>();
 		
 				// y-axis to z-axis
@@ -2231,11 +2234,11 @@ void f_inspector::renderScene(long long timg)
 		if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
-				Mat R;
+				// preparing rotation matrix viewing from z-axis of the current object.
 				double * ptr0, * ptr1;
-				Rodrigues(objs[m_cur_obj]->rvec, R);
+				Rodrigues(objs[m_cur_obj]->rvec, Rorg);
 				Rcam = Mat(3, 3, CV_64FC1);
-				ptr0 = R.ptr<double>();
+				ptr0 = Rorg.ptr<double>();
 				ptr1 = Rcam.ptr<double>();
 		
 				// x-axis to z-axis
@@ -2258,24 +2261,24 @@ void f_inspector::renderScene(long long timg)
 		Rodrigues(m_rvec_view, Rcam);
 		break;
 	}
+
 	vector<Point2f> pts;
 	if(m_cur_frm >= 0 && m_cur_frm < m_fobjs.size()){
 		vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 		Mat tvec_org = objs[m_cur_obj]->tvec;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
+			Mat R;
+			Rodrigues(objs[iobj]->rvec, R);
 			if (m_ev == EV_CAM){
 				rvec = objs[iobj]->rvec;
 				tvec = objs[iobj]->tvec;
 
 //				m_rvec_view = objs[iobj]->rvec;
 //				m_tvec_view = objs[iobj]->tvec;
-			}
-			else if(m_ev == EV_FREE){
+			}else if(m_ev == EV_FREE){
 				tvec = Rcam * (objs[iobj]->tvec - tvec_org);
 				tvec += m_tvec_view;
 
-				Mat R;
-				Rodrigues(objs[iobj]->rvec, R);
 				R = Rcam * R;
 				Rodrigues(R, rvec);
 			}else{
@@ -2284,11 +2287,11 @@ void f_inspector::renderScene(long long timg)
 
 //				m_tvec_view = Rcam * (objs[iobj]->tvec - tvec_org);
 //				m_tvec_view.ptr<double>()[2] += d;
-				Mat R;
-				Rodrigues(objs[iobj]->rvec, R);
 				R = Rcam * R;
 				Rodrigues(R, rvec);
 //				Rodrigues(R, m_rvec_view);
+				// calculating roll pitch yaw relative to the cur_obj coordinate frame
+				// relative rotation matrix (here Rorg is the transpose of the rotation matrix of the current object
 			}
 
 			projectPoints(objs[iobj]->pmdl->pts, rvec, tvec, m_cam_int, m_cam_dist, pts);
@@ -2670,7 +2673,7 @@ void f_inspector::estimate_rt_levmarq()
 			log << "tvec[" << iobj << "]=" << endl;
 			mat2csv(log, obj.tvec);
 #endif
-			obj.is_prj = false;
+			obj.update = false;
 			param += 6;
 		}
 
@@ -2683,7 +2686,7 @@ void f_inspector::estimate_rt_levmarq()
 		mat2csv(log, m_cam_dist);
 #endif
 		bool updateJ = _JtJ != NULL && _JtErr != NULL;
-		m_fobjs[m_cur_frm]->is_prj = false;
+		m_fobjs[m_cur_frm]->update = false;
 		// projection
 		m_fobjs[m_cur_frm]->proj_objs(updateJ, m_bcalib_fix_aspect_ratio);
 		// accumulating frame's projection ssd
@@ -2971,7 +2974,7 @@ void f_inspector::estimate_levmarq()
 				pext = obj.tvec.ptr<double>();
 				memcpy((void*)pext, (void*)(param + 3), sizeof(double) * 3);
 
-				obj.is_prj = false;
+				obj.update = false;
 				param += 6;
 			}
 		}
@@ -2991,7 +2994,7 @@ void f_inspector::estimate_levmarq()
 			// copy camera parameters
 			m_cam_int.copyTo(m_fobjs[ifrm]->camint);
 			m_cam_dist.copyTo(m_fobjs[ifrm]->camdist);
-			m_fobjs[ifrm]->is_prj = false;
+			m_fobjs[ifrm]->update = false;
 
 			// projection
 			m_fobjs[ifrm]->proj_objs(updateJ, m_bcalib_fix_aspect_ratio);
@@ -3191,13 +3194,53 @@ void s_frame_obj::proj_objs(bool bjacobian, bool fix_aspect_ratio)
 	ssd = 0.0;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = *objs[iobj];
-		if(is_prj && obj.is_prj)
+		if(update && obj.update)
 			continue;
 		obj.proj(camint, camdist, bjacobian, fix_aspect_ratio);
 	
 		ssd += obj.ssd;
 	}
-	is_prj = true;
+}
+
+void s_frame_obj::calc_rpy(int base_obj)
+{
+	if(update)
+		return;
+
+	if(base_obj >= 0 && base_obj < objs.size()){
+		Mat Rorg, R;
+		Mat & Torg = objs[base_obj]->tvec;
+		Rodrigues(objs[base_obj]->rvec, Rorg);
+		Rorg = Rorg.t();
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = *objs[iobj];
+			if(iobj == base_obj){
+				obj.roll = obj.pitch = obj.yaw = 0.;
+				continue;
+			}
+			double * p0, *p1;
+			Mat & T = obj.tvec;
+			p0 = T.ptr<double>();
+			p1 = Torg.ptr<double>();
+			Point3f t((float)(p0[0] - p1[0]), 
+				(float)(p0[1] - p1[1]), (float)(p0[2] - p1[2]));
+
+			Rodrigues(obj.rvec, R);
+			R = Rorg * R;
+			p0 = R.ptr<double>();
+			obj.serge = t.x * p0[0] + t.y * p0[1] + t.z * p0[2];
+			obj.sway = t.x * p0[3] + t.y * p0[4] + t.z * p0[5];
+			obj.heave = t.x * p0[6] + t.y * p0[7] + t.z * p0[8];
+			angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
+			cout << "obj[" << iobj << "] roll " << obj.roll * 180. / CV_PI
+				<< " pitch " << obj.pitch * 180. / CV_PI
+				<< " yaw " << obj.yaw * 180. / CV_PI
+				<< " serge " << obj.serge 
+				<< " sway " << obj.sway
+				<< " heave " << obj.heave
+				<< endl;
+		}
+	}
 }
 
 void f_inspector::acc_Hcamint(Mat & Hcamint, vector<s_obj*> & objs){
@@ -3617,8 +3660,8 @@ void f_inspector::translate_obj(short delta)
 			tptr[m_axis] = 1.0;
 			cout << "Not a number detected." << endl;
 		}
-		m_fobjs[m_cur_frm]->is_prj = false;
-		obj.is_prj = false;
+		m_fobjs[m_cur_frm]->update = false;
+		obj.update = false;
 	}
 }
 
@@ -3655,8 +3698,8 @@ void f_inspector::rotate_obj(short delta)
 		Rodrigues(rvec, R2);
 		Mat R = R2 * R1;
 		Rodrigues(R, obj.rvec);
-		m_fobjs[m_cur_frm]->is_prj = false;
-		obj.is_prj = false;
+		m_fobjs[m_cur_frm]->update = false;
+		obj.update = false;
 	}
 }
 
@@ -3674,7 +3717,7 @@ void f_inspector::adjust_part(short delta)
 		return;
 
 	obj.dpart[m_cur_part] += m_adj_step * delta / WHEEL_DELTA;
-	m_fobjs[m_cur_frm]->is_prj = false;
+	m_fobjs[m_cur_frm]->update = false;
 }
 
 void f_inspector::adjust_cam(short delta)
@@ -3708,7 +3751,7 @@ void f_inspector::adjust_cam(short delta)
 		}
 		break;
 	}
-	m_fobjs[m_cur_obj]->is_prj = false;
+	m_fobjs[m_cur_obj]->update = false;
 }
 
 void f_inspector::handle_vk_up()
@@ -3940,7 +3983,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			if(m_cur_camtbl >= 0 && m_cur_camtbl < m_cam_int_tbl.size()){
 				m_cam_int_tbl[m_cur_camtbl].copyTo(m_cam_int);
 				m_cam_dist_tbl[m_cur_camtbl].copyTo(m_cam_dist);
-				m_fobjs[m_cur_frm]->is_prj = false;
+				m_fobjs[m_cur_frm]->update = false;
 			}
 		}
 		break;
@@ -4242,10 +4285,10 @@ void f_inspector::handle_sop_guess()
 	case FRAME:
 		for(int ifrm = 0; ifrm < m_fobjs.size(); ifrm++){
 			vector<s_obj*> & objs = m_fobjs[ifrm]->objs;
-			m_fobjs[ifrm]->is_prj = false;
+			m_fobjs[ifrm]->update = false;
 			for(int iobj = 0; iobj < objs.size(); iobj++){
 				help_guess(*objs[iobj], z, cx, cy, sfx, sfy);
-				objs[iobj]->is_prj = false;
+				objs[iobj]->update = false;
 				num_objs++;
 			}
 		}
@@ -4254,7 +4297,7 @@ void f_inspector::handle_sop_guess()
 			vector<s_obj*> & objs = m_fobjs[m_cur_frm]->objs;
 			if(m_cur_obj < objs.size()){
 				help_guess(*objs[m_cur_obj], z, cx, cy, sfx, sfy);
-				objs[m_cur_obj]->is_prj = false;
+				objs[m_cur_obj]->update = false;
 				num_objs++;
 			}else{
 				return;
