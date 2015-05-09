@@ -211,7 +211,8 @@ void s_model::proj(vector<Point2f> & pt2ds,  Mat & cam_int, Mat & cam_dist, Mat 
 {
 	Mat rvec, tvec;
 	composeRT(rvec_cam, tvec_cam, rvec_obj, tvec_obj, rvec, tvec);
-	projectPoints(pts, rvec, tvec, cam_int, cam_dist, pt2ds);
+	//projectPoints(pts, rvec, tvec, cam_int, cam_dist, pt2ds);
+	awsProjPts(pts, pt2ds, cam_int, cam_dist, rvec, tvec);
 }
 
 bool s_model::load(const char * afname)
@@ -791,7 +792,8 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 		mulTransposed(jacobian, hessian, true);
 		jterr = jacobian.t() * err;
 	}else{
-		projectPoints(pmdl->pts_deformed, rvec, tvec, camint, camdist, pt2dprj);
+	//	projectPoints(pmdl->pts_deformed, rvec, tvec, camint, camdist, pt2dprj);
+		awsProjPts(pmdl->pts_deformed, pt2dprj, camint, camdist, rvec, tvec);
 		calc_ssd();
 	}
 
@@ -823,7 +825,8 @@ void s_obj::render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam
 	p3d[2].y = fac; // pt3d[2] is y axis
 	p3d[3].z = fac; // pt3d[3] is z axis
 
-	projectPoints(p3d, rvec_cam, tvec_cam, cam_int, cam_dist, p2d);
+//	projectPoints(p3d, rvec_cam, tvec_cam, cam_int, cam_dist, p2d);
+	awsProjPts(p3d, p2d, cam_int, cam_dist, rvec_cam, tvec_cam);
 	pline->Begin();
 	D3DXVECTOR2 v[2];
 	D3DCOLOR color;
@@ -874,7 +877,8 @@ void s_obj::render_vector(Point3f & vec,
 	vec3d[1] = vec;
 	Mat rvec_comp, tvec_comp;
 	composeRT(rvec_cam, tvec_cam, rvec, tvec, rvec_comp, tvec_comp);
-	projectPoints(vec3d, rvec_comp, tvec_comp, cam_int, cam_dist, vec2d);
+	//projectPoints(vec3d, rvec_comp, tvec_comp, cam_int, cam_dist, vec2d);
+	awsProjPts(vec3d, vec2d, cam_int, cam_dist, rvec_comp, tvec_comp);
 	pline->Begin();
 	D3DCOLOR color = D3DCOLOR_RGBA(255, 255, 255, 255);
 
@@ -2424,7 +2428,10 @@ void f_inspector::renderCampar()
 		}
 	}
 
-	projectPoints(pt3d, Mat::zeros(3, 1, CV_64FC1), Mat::zeros(3, 1, CV_64FC1), m_cam_int, m_cam_dist, pt2d);
+	//projectPoints(pt3d, Mat::zeros(3, 1, CV_64FC1), Mat::zeros(3, 1, CV_64FC1), m_cam_int, m_cam_dist, pt2d);
+	double R[9] = {1,0,0, 0,1,0, 0,0,1};
+	double t[3] = {0, 0, 0};
+	awsProjPts(pt3d, pt2d, fx, fy, cx, cy, m_cam_dist.ptr<double>(), R, t);
 
 	D3DXVECTOR2 v[2];
 	m_pline->Begin();
