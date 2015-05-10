@@ -581,6 +581,31 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 }
 
 
+// awsProjPts with Jacobian
+inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+		const Mat & camint, const Mat & camdist,
+		const Mat & rvec, const Mat & tvec,
+		double * jfx, double * jfy, double * jcx, double * jk, 
+		double * jr, double * jt)
+{
+};
+
+// awsProjPts with Jacobian of rotation and translation
+inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+		const Mat & camint, const Mat & camdist,
+		const Mat & rvec, const Mat & tvec,
+		double * jr, double * jt)
+{
+};
+
+// Rotation/Translation Jacobian at r=0, t=0
+inline void calcJ0rt(Mat & camint, const Mat & camdist,
+	const Mat & rvec, const Mat & tvec, 
+	double * jr, double * jt)
+{
+}
+
+
 
 bool synth_afn(Mat & l, Mat & r, Mat & res);
 bool afn(Mat & A, Point2f & in, Point2f & pt_out);
