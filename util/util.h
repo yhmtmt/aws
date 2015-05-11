@@ -585,9 +585,81 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		const Mat & camint, const Mat & camdist,
 		const Mat & rvec, const Mat & tvec,
-		double * jfx, double * jfy, double * jcx, double * jk, 
+		double * jf, double * jc, double * jk, double * jp,
 		double * jr, double * jt)
 {
+	const double * R, * t, * k;
+	Mat _R, _jR;
+	Rodrigues(rvec, _R, _jR);
+
+	R = _R.ptr<double>();
+	t = tvec.ptr<double>();
+	k = camdist.ptr<double>();
+	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
+		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
+
+	if(M.size() != m.size())
+		m.resize(M.size());
+
+	for(int i = 0; i < M.size(); i++){
+		double X = M[i].x, Y = M[i].y, Z = M[i].z;
+		double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
+		double y = R[3]*X + R[4]*Y + R[5]*Z + t[1];
+		double z = R[6]*X + R[7]*Y + R[8]*Z + t[2];
+		double r2, r4, r6, a1, a2, a3, cdist, icdist2;
+		double xd, yd;
+
+		z = z ? 1./z : 1;
+		x *= z; y *= z;
+
+		r2 = x*x + y*y;
+		r4 = r2*r2;
+		r6 = r4*r2;
+		a1 = 2*x*y;
+		a2 = r2 + 2*x*x;
+		a3 = r2 + 2*y*y;
+		cdist = 1 + k[0]*r2 + k[1]*r4 + k[4]*r6;
+		icdist2 = 1./(1 + k[5]*r2 + k[6]*r4 + k[7]*r6);
+		xd = x*cdist*icdist2 + k[2]*a1 + k[3]*a2;
+		yd = y*cdist*icdist2 + k[2]*a3 + k[3]*a1;
+
+		m[i].x = (float)(xd*fx + cx);
+		m[i].y = (float)(yd*fy + cy);
+
+		// calculate jacboian for fx, fy ( this version is free aspect ratio)
+		jf[0] = xd; jf[1] = 0;
+		jf += sizeof(double) * 2;
+		jf[0] = 0; jf[1] = yd;
+		jf += sizeof(double) * 2;
+
+		// calculate jacobian for cx, cy
+		jc[0] = 1; jc[1] = 0;
+		jc += sizeof(double) * 2;
+		jc[0] = 0; jc[1] = 1;
+		jc += sizeof(double) * 2;
+
+		// calculate jacobian for radial distortion coefficient
+		jk[0] = fx * x * r2 * icdist2; 
+		jk[1] = fx * x * r4 * icdist2; 
+		jk[2] = fx * x * r6 * icdist2;
+		jk[3] = -fx * x * r2 * cdist * icdist2 * icdist2;
+		jk[4] = -fx * x * r4 * cdist * icdist2 * icdist2;
+		jk[5] = -fx * x * r6 * cdist * icdist2 * icdist2;
+		jk += sizeof(double) * 6;
+		jk[0] = fy * y * r2 * icdist2; 
+		jk[1] = fy * y * r4 * icdist2; 
+		jk[2] = fy * y * r6 * icdist2;
+		jk[3] = -fy * y * r2 * cdist * icdist2 * icdist2;
+		jk[4] = -fy * y * r4 * cdist * icdist2 * icdist2;
+		jk[5] = -fy * y * r6 * cdist * icdist2 * icdist2;
+		jk += sizeof(double) * 6;
+
+		// calculate jacobian for tangential distortion coefficient
+		jp[0] = a1; jp[1] = a2;
+		jp += sizeof(double) * 2;
+		jp[0] = a3; jp[1] = a1;
+		jp += sizeof(double) * 2;
+	}
 };
 
 // awsProjPts with Jacobian of rotation and translation
