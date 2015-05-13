@@ -2100,8 +2100,8 @@ void f_inspector::renderCursor()
 	snprintf(buf, 127, "(%f, %f)", ptimg.x, ptimg.y);
 	e_d3d_txt_center etxtc;
 	Point2f txtofst;
-	if(m_mc.x < (float) (m_ViewPort.Width >> 2)){
-		if(m_mc.y < (float) (m_ViewPort.Height >> 2)){
+	if(m_mc.x < (float) (m_ViewPort.Width >> 1)){
+		if(m_mc.y < (float) (m_ViewPort.Height >> 1)){
 			etxtc = EDTC_LT;
 			txtofst = Point2f(20, 20);
 		}else{
@@ -2109,7 +2109,7 @@ void f_inspector::renderCursor()
 			txtofst = Point2f(20, -20);
 		}
 	}else{
-		if(m_mc.y < (float) (m_ViewPort.Height >> 2)){
+		if(m_mc.y < (float) (m_ViewPort.Height >> 1)){
 			etxtc = EDTC_RT;
 			txtofst = Point2f(-20, 20);
 		}else{
