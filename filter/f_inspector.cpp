@@ -813,6 +813,23 @@ void s_obj::render(LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLI
 	render_prjpts(*pmdl, pt2dprj, pd3dev, ptxt, pline, pttype, state, cur_point);
 }
 
+void s_obj::render(Mat & img)
+{
+	for (int ipt = 0; ipt < pt2d.size(); ipt++){
+		if (visible[ipt])
+			circle(img, pt2d[ipt], 4, CV_RGB(255, 0, 0));
+	}
+
+	for (int ipt = 0; ipt < pt2d.size(); ipt++){
+		circle(img, pt2dprj[ipt], 4, CV_RGB(0,255, 0));
+	}
+
+	for (int iedge = 0; iedge < pmdl->edges.size(); iedge++){
+		s_edge & edge = pmdl->edges[iedge];
+		line(img, pt2dprj[edge.s], pt2dprj[edge.e], CV_RGB(255, 255, 0));
+	}
+}
+
 void s_obj::render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
 	LPDIRECT3DDEVICE9 pd3dev, LPD3DXLINE pline, int axis)
 {
@@ -1615,6 +1632,14 @@ void f_inspector::render(Mat & imgs, long long timg)
 
 	/////////////////////// render main view //////////////////////////
 	m_maincam.SetAsRenderTarget(m_pd3dev);
+
+	// for debug-->
+	vector<s_obj*> objs = m_fobjs[m_cur_frm]->objs;
+
+	for (int iobj = 0; iobj < objs.size(); iobj++){
+		objs[iobj]->render(imgs);
+	}
+	// <-- for debug
 
 	m_maincam.blt_offsrf(m_pd3dev, imgs);
 

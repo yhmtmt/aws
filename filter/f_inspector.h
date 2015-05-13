@@ -234,6 +234,8 @@ struct s_obj
 	void render(LPDIRECT3DDEVICE9 pd3dev, c_d3d_dynamic_text * ptxt, LPD3DXLINE pline,
 		int pttype, int state, int cur_point = -1);
 
+	void render(Mat & img);
+
 	// render vector in comparable size to the object  
 	void render_vector(Point3f & vec,
 		Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam_dist,
