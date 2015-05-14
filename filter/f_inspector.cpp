@@ -1020,7 +1020,7 @@ bool s_frame_obj::init(const long long atfrm,
 }
 
 
-bool s_frame_obj::save(const char * aname)
+bool s_frame_obj::save(const char * aname, Mat & frm)
 {
 	char buf[1024];
 	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
@@ -1044,10 +1044,15 @@ bool s_frame_obj::save(const char * aname)
 	}
 	fs << "}";
 
+	if(!frm.empty()){
+		snprintf(buf, 1024, "%s_%lld.png", aname, tfrm);
+		imwrite(buf, frm);
+		fs << "ImageFile" << buf;
+	}
 	return true;
 }
 
-bool s_frame_obj::load(const char * aname, vector<s_model*> & mdls)
+bool s_frame_obj::load(const char * aname, Mat & frm, vector<s_model*> & mdls)
 {
 	char buf[1024];
 	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
@@ -1096,6 +1101,16 @@ bool s_frame_obj::load(const char * aname, vector<s_model*> & mdls)
 		}
 		
 	}
+
+	fn = fs["ImageFile"];
+	string imgpath;
+	if(!fn.empty()){
+		fn >> imgpath;
+		frm = imread(imgpath);
+		if(frm.empty())
+			return false;
+	}
+
 	return true;
 }
 
@@ -1278,7 +1293,7 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 
 		// save current frame object
 		if(m_bauto_save_fobj){
-			if(!m_fobjs[m_cur_frm]->save(m_name)){
+			if(!m_fobjs[m_cur_frm]->save(m_name, m_img_s)){
 				cerr << "Failed to save filter objects in time " << m_fobjs[m_cur_frm]->tfrm << "." << endl;
 			}
 		}
@@ -1323,12 +1338,22 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 		m_cam_dist.copyTo(m_fobjs[m_cur_frm]->camdist);
 
 		m_fobjs[m_cur_frm]->tfrm = timg;
-
-		if(m_bauto_load_fobj && m_fobjs[m_cur_frm]->load(m_name, m_models)){
+		Mat imgld;
+		if(m_bauto_load_fobj && m_fobjs[m_cur_frm]->load(m_name, imgld, m_models)){
 			if (!m_fobjs[m_cur_frm]->camint.empty())
 				m_fobjs[m_cur_frm]->camint.copyTo(m_cam_int);
 			if (!m_fobjs[m_cur_frm]->camdist.empty())
 				m_fobjs[m_cur_frm]->camdist.copyTo(m_cam_dist);
+			if(!imgld.empty()){
+				// generate gray scale image
+				m_img_s = imgld;
+				cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
+
+				// build image pyramid
+				GaussianBlur(m_img_gry, m_img_gry_blur, Size(0, 0), m_sig_gb);
+
+				buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
+			}
 		}else if(m_btrack_obj){
 			// determining reference frame.
 			int iref_prev = m_cur_frm - 1;
@@ -1634,11 +1659,13 @@ void f_inspector::render(Mat & imgs, long long timg)
 	m_maincam.SetAsRenderTarget(m_pd3dev);
 
 	// for debug-->
+	/*
 	vector<s_obj*> objs = m_fobjs[m_cur_frm]->objs;
 
 	for (int iobj = 0; iobj < objs.size(); iobj++){
 		objs[iobj]->render(imgs);
 	}
+	*/
 	// <-- for debug
 
 	m_maincam.blt_offsrf(m_pd3dev, imgs);
@@ -4225,12 +4252,15 @@ void f_inspector::handle_sop_load()
 		break;
 	case OBJ:
 	case POINT:
-		m_fobjs[m_cur_frm]->load(m_name, m_models);
-		if(m_cur_obj < 0)
-			m_cur_obj = (int)(m_fobjs[m_cur_frm]->objs.size() - 1);
-		if(m_cur_model < 0)
-			m_cur_model = (int) (m_models.size() - 1);
-		break;
+		{
+			Mat imgld;
+			m_fobjs[m_cur_frm]->load(m_name, imgld, m_models);
+			if(m_cur_obj < 0)
+				m_cur_obj = (int)(m_fobjs[m_cur_frm]->objs.size() - 1);
+			if(m_cur_model < 0)
+				m_cur_model = (int) (m_models.size() - 1);
+			break;
+		}
 	case CAMERA:
 	case CAMTBL:
 		loadCamparTbl();
@@ -4269,10 +4299,11 @@ bool f_inspector::load_fobjs()
 
 	m_fobjs.resize(num_fobjs);
 	for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++){
+		Mat imgld;
 		file.getline(fname, 1024);
 		m_fobjs[ifobj] = new s_frame_obj();
 		m_fobjs[ifobj]->tfrm = atoll(fname);
-		if(!m_fobjs[ifobj]->load(m_name, m_models)){
+		if(!m_fobjs[ifobj]->load(m_name, imgld, m_models)){
 			delete m_fobjs[ifobj];
 			m_fobjs.erase(m_fobjs.begin() + ifobj);
 			ifobj--;
@@ -4285,6 +4316,16 @@ bool f_inspector::load_fobjs()
 				m_fobjs[ifobj]->camint.copyTo(m_cam_int);
 			if(!m_fobjs[ifobj]->camdist.empty())
 				m_fobjs[ifobj]->camdist.copyTo(m_cam_dist);
+			if(!imgld.empty()){
+				// generate gray scale image
+				m_img_s = imgld;
+				cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
+
+				// build image pyramid
+				GaussianBlur(m_img_gry, m_img_gry_blur, Size(0, 0), m_sig_gb);
+
+				buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
+			}
 		}
 	}
 

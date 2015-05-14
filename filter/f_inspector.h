@@ -314,8 +314,8 @@ struct s_frame_obj{
 	bool init(const long long atfrm, s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
 		vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks);
 
-	bool save(const char * aname);
-	bool load(const char * aname, vector<s_model*> & mdls);
+	bool save(const char * aname, Mat & frm = Mat());
+	bool load(const char * aname, Mat & frm, vector<s_model*> & mdls);
 
 	void set_update()
 	{
