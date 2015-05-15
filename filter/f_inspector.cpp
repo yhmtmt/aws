@@ -936,6 +936,8 @@ void s_obj::sample_tmpl(Mat & img, Size & sz)
 }
 
 //////////////////////////////////////////////////////////////////// s_frame_obj
+s_frame_obj * s_frame_obj::pool = NULL;
+
 bool s_frame_obj::init(const long long atfrm, 
 	s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
 	vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks)
@@ -1020,7 +1022,7 @@ bool s_frame_obj::init(const long long atfrm,
 }
 
 
-bool s_frame_obj::save(const char * aname, Mat & frm)
+bool s_frame_obj::save(const char * aname)
 {
 	char buf[1024];
 	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
@@ -1044,15 +1046,16 @@ bool s_frame_obj::save(const char * aname, Mat & frm)
 	}
 	fs << "}";
 
-	if(!frm.empty()){
+	fs << "KeyFrame" << kfrm;
+	if(kfrm && !img.empty()){
 		snprintf(buf, 1024, "%s_%lld.png", aname, tfrm);
-		imwrite(buf, frm);
+		imwrite(buf, img);
 		fs << "ImageFile" << buf;
 	}
 	return true;
 }
 
-bool s_frame_obj::load(const char * aname, Mat & frm, vector<s_model*> & mdls)
+bool s_frame_obj::load(const char * aname, vector<s_model*> & mdls)
 {
 	char buf[1024];
 	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
@@ -1102,12 +1105,17 @@ bool s_frame_obj::load(const char * aname, Mat & frm, vector<s_model*> & mdls)
 		
 	}
 
+	fn = fs["KeyFrame"];
+	if(!fn.empty()){
+		fn >> kfrm;
+	}
+
 	fn = fs["ImageFile"];
 	string imgpath;
-	if(!fn.empty()){
+	if(kfrm && !fn.empty()){
 		fn >> imgpath;
-		frm = imread(imgpath);
-		if(frm.empty())
+		img = imread(imgpath);
+		if(img.empty())
 			return false;
 	}
 
@@ -1116,10 +1124,10 @@ bool s_frame_obj::load(const char * aname, Mat & frm, vector<s_model*> & mdls)
 
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[VIEW3D+1]
-	= {"model", "obj", "part", "point", "camera", "camtbl", "estimate", "frame", "v3d"};
+	= {"model", "obj", "part", "point", "camera", "camtbl", "estimate", "frame", "kframe", "v3d"};
 
 const char * f_inspector::m_str_sop[SOP_AWSCMD+1]
-	= {"null", "save", "load", "guess", "det", "ins", "del", "fobj", "icp", "awscmd"};
+	= {"null", "save", "load", "guess", "det", "ins", "del", "fobj", "kf", "icp", "awscmd"};
 
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
@@ -1149,7 +1157,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
 	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3),
-	m_ev(EV_CAM)
+	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100)
 {
 	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
@@ -1164,7 +1172,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("fmodel", m_fname_model, 1024, "File path of 3D model frame.");
 	register_fpar("fcp", m_fname_campar, 1024, "File path of camera parameter.");
 	register_fpar("op", (int*)&m_op, VIEW3D+1, m_str_op,"Operation ");
-	register_fpar("sop", (int*)&m_sop, SOP_INS_CPTBL+1, m_str_sop, "Sub operation.");
+	register_fpar("sop", (int*)&m_sop, SOP_AWSCMD+1, m_str_sop, "Sub operation.");
 	register_fpar("asave", &m_bauto_save_fobj, "Automatically save frame object.");
 	register_fpar("aload", &m_bauto_load_fobj, "Automatically load frame object.");
 	register_fpar("sh", &m_sh, "Horizontal scaling value. Image size is multiplied by the value. (default 1.0)");
@@ -1178,6 +1186,12 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("szpty", &m_sz_vtx_smpl.height, "Vertical size of a point template.");
 	register_fpar("miss_tracks", &m_miss_tracks, "Miss tracking counts of the points.");
 	register_fpar("track", &m_btrack_obj, "Flag enables inter frame object tracking.");
+
+	// Key frame related parameter
+	register_fpar("ldkf", &m_bald_kfrms, "Flag auto loading key frames");
+	register_fpar("svkf", &m_basv_kfrms, "Flag auto saving key frames");
+	register_fpar("kfrms", &m_num_kfrms, "Number of key frames cached in the memory.");
+	register_fpar("intkf", &m_int_kfrms, "Interval between key frames.");
 
 	// model related parameters
 	register_fpar("mdl", &m_cur_model, "Model with specified index is selected.");
@@ -1282,10 +1296,10 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 	// generate gray scale image
 	cvtColor(m_img_s, m_img_gry, CV_BGR2GRAY);
 
-	// build image pyramid
+	// build image pyramid to track between frames
 	GaussianBlur(m_img_gry, m_img_gry_blur, Size(0, 0), m_sig_gb);
-
 	buildPyramid(m_img_gry_blur, m_impyr, m_lvpyr - 1);
+
 	if(m_cur_frm >= 0){
 		if(is_equal(m_img, img)){
 			cout << "Same frame with previous frame." << endl;
@@ -1429,8 +1443,39 @@ bool f_inspector::proc()
 	case SOP_DET:
 		handle_sop_det();
 		break;
+	case SOP_SET_KF:
+		handle_sop_set_kf();
+		break;
 	case SOP_AWSCMD:
 		handle_sop_awscmd();
+		break;
+	}
+
+	if(m_cur_kfrm < 0){
+		m_kfrms[m_cur_frm] = m_fobjs[m_cur_frm];
+		m_cur_kfrm = 0;
+		m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
+	}else if(m_kfrms[m_cur_kfrm]->tfrm + m_int_kfrms < m_cur_time){
+		m_cur_kfrm = (m_cur_kfrm + 1) % m_num_kfrms;
+		bool done = false;
+		if(m_kfrms[m_cur_kfrm] != NULL){
+			if(m_kfrms[m_cur_kfrm]->tfrm != m_cur_time){ // if the frame is already in cache, nothing won't occur.
+				if(m_basv_kfrms)
+					m_kfrms[m_cur_kfrm]->save(m_name);
+
+				s_frame_obj::free(m_kfrms[m_cur_kfrm]);
+				m_kfrms[m_cur_kfrm] = NULL;
+			}
+		}
+		if(!m_kfrms[m_cur_kfrm]){ // if the key frame is not allocated 
+			m_kfrms[m_cur_kfrm] = s_frame_obj::alloc();
+			m_kfrms[m_cur_kfrm]->tfrm = m_cur_time;
+			if(!m_bald_kfrms || !m_kfrms[m_cur_kfrm]->load(m_name, m_models)){
+				s_frame_obj::free(m_kfrms[m_cur_kfrm]);
+				m_kfrms[m_cur_kfrm] = m_fobjs[m_cur_frm];
+				m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
+			}
+		}
 	}
 
 	// projection 

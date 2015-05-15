@@ -274,7 +274,14 @@ struct s_obj
 
 ///////////////////////////////////////////////////////////////// s_frame_obj
 struct s_frame_obj{
-	long long tfrm;
+	bool kfrm;
+	Mat img; // Image data. This field is used only for key frame
+
+	union {
+		long long tfrm;
+		s_frame_obj * ptr;
+	};
+
 	double ssd; // sum of square projection errors
 	vector<s_obj*> objs;
 	Mat camint, camdist;
@@ -284,11 +291,16 @@ struct s_frame_obj{
 	// gray image, differential image, image pyramid, 
 	bool update;
 
-	s_frame_obj():update(false)
+	s_frame_obj():update(false), kfrm(false)
 	{
 	}
 
 	~s_frame_obj()
+	{
+		init();
+	}
+
+	void init()
 	{
 		for (int i = 0; i < objs.size(); i++)
 			delete objs[i];
@@ -314,13 +326,37 @@ struct s_frame_obj{
 	bool init(const long long atfrm, s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
 		vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks);
 
-	bool save(const char * aname, Mat & frm = Mat());
-	bool load(const char * aname, Mat & frm, vector<s_model*> & mdls);
+	bool save(const char * aname);
+	bool load(const char * aname, vector<s_model*> & mdls);
 
 	void set_update()
 	{
 		update = true;
 	}
+
+	void set_as_key(Mat & _img){
+		_img.copyTo(img);
+	}
+
+	// memory pool for frame object
+	static s_frame_obj * pool;
+	static void free(s_frame_obj * pfobj)
+	{
+		pfobj->init();
+		pfobj->ptr = pool;
+		pool = pfobj;
+	}
+
+	static s_frame_obj * alloc(){
+		if(pool != NULL){
+			s_frame_obj * pfobj = pool;
+			pool = pool->ptr;
+			return pfobj;
+		}
+
+		return new s_frame_obj;
+	}
+
 };
 
 //////////////////////////////////////////////////////////////// The filter
@@ -377,7 +413,7 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		MODEL, OBJ, PARTS, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME, VIEW3D
+		MODEL, OBJ, PARTS, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME, KFRAME, VIEW3D
 	} m_op;
 
 	static const char * m_str_op[VIEW3D+1]; 
@@ -385,7 +421,7 @@ private:
 	// sub operation
 	enum e_sub_operation{
 		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_DET, SOP_INST_OBJ, SOP_DELETE, 
-		SOP_REINIT_FOBJ, SOP_INS_CPTBL, SOP_AWSCMD
+		SOP_REINIT_FOBJ, SOP_SET_KF, SOP_INS_CPTBL, SOP_AWSCMD
 	} m_sop;
 
 	static const char * m_str_sop[SOP_AWSCMD + 1];
@@ -399,6 +435,7 @@ private:
 	void handle_sop_ins_cptbl();
 	void handle_sop_det();
 	void handle_sop_awscmd();
+	void handle_sop_set_kf();
 
 	// helper function for handle_sop_guess()
 	void help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy);
@@ -437,10 +474,24 @@ private:
 	void renderScene(long long timg);
 	void renderSceneInfo(char * buf, int len, int & y);
 
+
+	// Key frames 
+	// * Key frames are automatically allocated with the interval m_int_kfrms, 
+	//   and automatically deallocated if the buffer is full.
+	// * Key frames are stored in ring buffer m_kfrms, and m_cur_kfrm points the current key frame
+	// * we can view all key frames by key frame view mode 'K'
+	// * we can set arbitraly current frame as a key frame by 'k'. Next key frame is just after m_int_kfrms.
+	bool m_bald_kfrms, m_basv_kfrms; // flags for auto load and save key frames
+	int m_num_kfrms;				// number of key frames cached in the memory.
+	int m_cur_kfrm;					// current key frame
+	long long  m_int_kfrms;			// Interval between key frames
+	vector<s_frame_obj*> m_kfrms;	// Key frames (ring buffer)
+
 	//
 	// frame objects
 	// 
 	bool m_bauto_load_fobj, m_bauto_save_fobj;
+
 	vector<s_frame_obj*> m_fobjs;
 	int m_cur_frm;
 	char m_cmd_buf[1024];
@@ -559,6 +610,9 @@ public:
 		m_main_scale = (float) m_rat;
 		m_main_scale_inv = (float)(1.0 / m_main_scale);
 
+		m_kfrms.resize(m_num_kfrms, NULL);
+		m_cur_kfrm = -1;
+
 		return true;
 	}
 
@@ -671,6 +725,7 @@ public:
 //  T: op <= CameraTbl
 //  P: op <= Point
 //  F: op <= Frame
+//  K: op <= KeyFrame
 //  V: op <= View3D
 // 
 // op = Model
@@ -735,7 +790,14 @@ public:
 // op = Frame
 //  L : Load Camera parameter table
 //  S : Save Camera parameter table
-//
+//	k : Set as Key frame
+// -> : step to the later frame. (depending on m_frm_step)
+// <- : step back to the former frame. (depending on m_frm_step)
+// 
+// op = KeyFrame
+// -> : See Next Key Frame
+// <- : See Previous Key Frame
+
 // op = View3D
 // ParMode {ObjZ, ObjX, ObjY, Free, Cam}
 // ->: View mode ++
