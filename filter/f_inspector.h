@@ -297,14 +297,7 @@ struct s_frame_obj{
 
 	~s_frame_obj()
 	{
-		init();
-	}
-
-	void init()
-	{
-		for (int i = 0; i < objs.size(); i++)
-			delete objs[i];
-		objs.clear();
+		release();
 	}
 
 	void proj_objs(bool bjacobian = true, bool fix_aspect_ratio = true);
@@ -323,11 +316,25 @@ struct s_frame_obj{
 		}
 	}
 
+	void release()
+	{
+		for (int i = 0; i < objs.size(); i++)
+			delete objs[i];
+		objs.clear();
+	}
+
 	bool init(const long long atfrm, s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
 		vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks);
+	bool init(const long long atfrm, Mat & acamint, Mat & acamdist)
+	{
+		tfrm = atfrm;
+		acamint.copyTo(camint);
+		acamdist.copyTo(camdist);
+		return true;
+	}
 
 	bool save(const char * aname);
-	bool load(const char * aname, vector<s_model*> & mdls);
+	bool load(const char * aname, long long atfrm, vector<s_model*> & mdls);
 
 	void set_update()
 	{
@@ -342,7 +349,10 @@ struct s_frame_obj{
 	static s_frame_obj * pool;
 	static void free(s_frame_obj * pfobj)
 	{
-		pfobj->init();
+		if(pfobj == NULL)
+			return;
+
+		pfobj->release();
 		pfobj->ptr = pool;
 		pool = pfobj;
 	}
@@ -486,6 +496,7 @@ private:
 	int m_cur_kfrm;					// current key frame
 	long long  m_int_kfrms;			// Interval between key frames
 	vector<s_frame_obj*> m_kfrms;	// Key frames (ring buffer)
+	s_frame_obj * m_pfrm;			// temporal frame object
 
 	//
 	// frame objects
@@ -552,7 +563,7 @@ private:
 	int m_num_max_frms_used; // frame counts used for the parameter estimation
 	int m_err_range; // error range of reprojection error of usable frame 
 	int m_num_pts_used;
-	vector<bool> m_frm_used;
+	vector<bool> m_kfrm_used;
 	double m_cam_erep;
 	void calc_erep();
 
