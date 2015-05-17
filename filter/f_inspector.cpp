@@ -1129,7 +1129,7 @@ const char * f_inspector::m_str_op[VIEW3D+1]
 	= {"model", "obj", "part", "point", "camera", "camtbl", "estimate", "frame", "kframe", "v3d"};
 
 const char * f_inspector::m_str_sop[SOP_AWSCMD+1]
-	= {"null", "save", "load", "guess", "det", "ins", "del", "fobj", "kf", "icp", "awscmd"};
+	= {"null", "save", "load", "guess", "det", "ins", "del", "kf", "icp", "awscmd"};
 
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
@@ -1154,12 +1154,12 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
-	m_cur_frm(-1), m_frm_step(30), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
+	/*m_cur_frm(-1),*/ m_frm_step(30), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
 	m_num_cur_objs(0), m_cur_obj(-1), m_cur_part(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
 	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3),
-	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_pfrm(NULL)
+	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_pfrm(NULL)
 {
 	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
@@ -1256,14 +1256,14 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 f_inspector::~f_inspector()
 {
-	for (int ifrm = 0; ifrm < m_fobjs.size(); ifrm++)
-		delete m_fobjs[ifrm];
+/*	for (int ifrm = 0; ifrm < m_fobjs.size(); ifrm++)
+		delete m_fobjs[ifrm];*/
 	for (int imdl = 0; imdl < m_models.size(); imdl++)
 		delete m_models[imdl];
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++)
 		s_frame_obj::free(m_kfrms[ikf]);
 
-	m_fobjs.clear();
+/*	m_fobjs.clear();*/
 	m_kfrms.clear();
 	m_models.clear();
 }
@@ -1472,9 +1472,6 @@ bool f_inspector::proc()
 	case SOP_INST_OBJ:
 		handle_sop_inst_obj();
 		break;
-	case SOP_REINIT_FOBJ:
-		handle_sop_reinit_fobj();
-		break;
 	case SOP_INS_CPTBL:
 		handle_sop_ins_cptbl();
 		break;
@@ -1489,25 +1486,32 @@ bool f_inspector::proc()
 		break;
 	}
 
+	if(!m_pfrm)
+		return true;
+
 	if(m_cur_kfrm < 0){
 		m_kfrms[m_cur_kfrm] = m_pfrm;
 		m_cur_kfrm = 0;
 		m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
 	}else if(m_kfrms[m_cur_kfrm]->tfrm + m_int_kfrms < m_cur_time){
 		m_cur_kfrm = (m_cur_kfrm + 1) % m_num_kfrms;
-		bool done = false;
 		if(m_kfrms[m_cur_kfrm] != NULL){
-			if(m_kfrms[m_cur_kfrm]->tfrm != m_cur_time){ // if the frame is already in cache, nothing won't occur.
+			if(m_kfrms[m_cur_kfrm]->tfrm != m_cur_time){ // if the frame is already in cache
 				if(m_basv_kfrms)
 					m_kfrms[m_cur_kfrm]->save(m_name);
 
 				s_frame_obj::free(m_kfrms[m_cur_kfrm]);
 				m_kfrms[m_cur_kfrm] = NULL;
+				// current implementation, this condition could not occur, because we dont have any method to load future key frame.
 			}
 		}
+
 		if(!m_kfrms[m_cur_kfrm]){ // if the key frame is not allocated 
 			m_kfrms[m_cur_kfrm] = s_frame_obj::alloc();
-			if(!m_bald_kfrms || !m_kfrms[m_cur_kfrm]->load(m_name, m_cur_time, m_models)){
+			if(m_bald_kfrms && m_kfrms[m_cur_kfrm]->load(m_name, m_cur_time, m_models)){ // if the key frame is loaded from file
+				m_img_s = m_kfrms[m_cur_kfrm]->img;
+				m_timg = m_kfrms[m_cur_kfrm]->tfrm;
+			}else{ // otherwise, current frame is sat as key frame.
 				s_frame_obj::free(m_kfrms[m_cur_kfrm]);
 				m_kfrms[m_cur_kfrm] = m_pfrm;
 				m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
@@ -1516,8 +1520,10 @@ bool f_inspector::proc()
 	}
 
 	// projection 
+	/*
 	if(m_cur_frm < 0)
 		return true;
+		*/
 
 	m_num_cur_objs = (int) m_pfrm->objs.size();
 
@@ -1588,7 +1594,11 @@ bool f_inspector::proc()
 	}
 
 	// rendering main view
-	render(m_img_s, timg);
+	if(m_op == KFRAME){
+		render(m_kfrms[m_sel_kfrm]->img, m_kfrms[m_sel_kfrm]->tfrm);
+	}else{
+		render(m_img_s, timg);
+	}
 
 	m_pfrm->set_update();
 	return true;
@@ -1853,6 +1863,7 @@ void f_inspector::renderInfo()
 		renderEstimateInfo(information, 1023, y);
 		break;
 	case FRAME:
+	case KFRAME:
 		renderFrameInfo(information, 1023, y);
 		break;
 	case VIEW3D:
@@ -2182,10 +2193,10 @@ void f_inspector::renderEstimateInfo(char * buf, int len, int & y)
 
 void f_inspector::renderFrameInfo(char * buf, int len, int & y)
 {
-	snprintf(buf, len, "%d Frame Objs", (int)m_fobjs.size());
+/*	snprintf(buf, len, "%d Frame Objs", (int)m_fobjs.size());
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
-
+*/
 	snprintf(buf, len, "Frame Step: %d", (int) m_frm_step);
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
@@ -2943,8 +2954,8 @@ void f_inspector::estimate_levmarq()
 	}
 
 	// current frame is forced to be used for the optimization
-	if(!m_kfrm_used[m_cur_frm]){
-		m_kfrm_used[m_cur_frm] = true;
+	if(!m_kfrm_used[m_cur_kfrm]){
+		m_kfrm_used[m_cur_kfrm] = true;
 		num_valid_frms++;
 	}
 
@@ -3330,7 +3341,7 @@ void f_inspector::estimate_fulltime()
 	}
 
 	// current frame is forced to be used for the optimization
-	m_kfrm_used[m_cur_frm] = true;
+	m_kfrm_used[m_cur_kfrm] = true;
 	num_valid_frms++;
 
 	// accumulating camera intrinsics part of the hessian
@@ -4005,6 +4016,13 @@ void f_inspector::handle_vk_left()
 			m_sop = SOP_AWSCMD;
 		}
 		break;
+	case KFRAME:
+		{
+			m_sel_kfrm = (m_sel_kfrm - 1);
+			if(m_sel_kfrm < 0)
+				m_sel_kfrm += m_num_kfrms;
+		}
+		break;
 	}
 }
 
@@ -4063,48 +4081,31 @@ void f_inspector::handle_vk_right()
 			m_sop = SOP_AWSCMD;
 		}
 		break;
+	case KFRAME:
+		{
+			m_sel_kfrm = (m_sel_kfrm + 1) % m_num_kfrms;
+		}
+		break;
 	}
 }
 
 void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 {
 	switch(wParam){
+	case 'C':
+		m_op = CAMERA;
+		break;
 	case 'D':
 		if(m_op == MODEL){
 			m_sop = SOP_DET;
 		}
 		break;
-	case 'R': // reset window
-		m_main_offset = Point2f(0., 0.);
-		m_main_scale = (float) m_rat;
-		m_main_scale_inv = (float)(1.0 / m_main_scale);
-		break;
-	case 'L':
-		m_sop = SOP_LOAD;
-		break;
-	case 'S':
-		m_sop = SOP_SAVE;
-		break;
-	case 'O': /* O key */ 
-		m_op = OBJ;
-		if(m_cur_obj < 0)
-			m_cur_obj = (int) m_pfrm->objs.size() - 1;
-		break;
-	case 'Q':
-		m_op = PARTS;
-		if(m_cur_obj >= 0 && m_cur_obj < m_pfrm->objs.size()){
-			m_cur_part = (int) m_pfrm->objs[m_cur_obj]->dpart.size() - 1;
-		}
-		break;
-	case 'M':
-		m_op = MODEL;
-		break;
-	case 'P':
-		m_op = POINT;
-		break;
 	case 'E':
 		m_op = ESTIMATE;
 		m_emd = EMD_STOP;
+		break;
+	case 'F':
+		m_op = FRAME;
 		break;
 	case 'G':
 		switch(m_op){
@@ -4120,23 +4121,45 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		case MODEL:
 			m_sop = SOP_INST_OBJ;
 			break;
-		case FRAME:
-			m_sop = SOP_REINIT_FOBJ;
-			break;
 		case CAMERA:
 		case CAMTBL:
 			m_sop = SOP_INS_CPTBL;
 			break;
 		}
 		break;
-	case 'F':
-		m_op = FRAME;
+	case 'K':
+		m_op = KFRAME;
+		break;
+	case 'L':
+		m_sop = SOP_LOAD;
+		break;
+	case 'M':
+		m_op = MODEL;
+		break;
+	case 'O': /* O key */ 
+		m_op = OBJ;
+		if(m_cur_obj < 0)
+			m_cur_obj = (int) m_pfrm->objs.size() - 1;
+		break;
+	case 'P':
+		m_op = POINT;
+		break;
+	case 'Q':
+		m_op = PARTS;
+		if(m_cur_obj >= 0 && m_cur_obj < m_pfrm->objs.size()){
+			m_cur_part = (int) m_pfrm->objs[m_cur_obj]->dpart.size() - 1;
+		}
+		break;
+	case 'R': // reset window
+		m_main_offset = Point2f(0., 0.);
+		m_main_scale = (float) m_rat;
+		m_main_scale_inv = (float)(1.0 / m_main_scale);
+		break;
+	case 'S':
+		m_sop = SOP_SAVE;
 		break;
 	case 'T':
 		m_op = CAMTBL;
-		break;
-	case 'C':
-		m_op = CAMERA;
 		break;
 	case 'V':
 		m_op = VIEW3D;
@@ -4301,7 +4324,7 @@ void f_inspector::handle_sop_save()
 		saveCamparTbl();
 		break;
 	case FRAME:
-		if(!save_fobjs()){
+		if(!save_kfrms()){
 			cerr << "Failed to save fobjs." << endl;
 		}
 		break;
@@ -4309,7 +4332,7 @@ void f_inspector::handle_sop_save()
 	m_sop = SOP_NULL;
 }
 
-bool f_inspector::save_fobjs()
+bool f_inspector::save_kfrms()
 {
 	ofstream file;
 	char fname[1024];
@@ -4339,7 +4362,7 @@ void f_inspector::handle_sop_load()
 		loadCamparTbl();
 		break;
 	case FRAME:
-		if(!load_fobjs()){
+		if(!load_kfrms()){
 			cerr << "Failed to load fobjs." << endl;
 		}
 		break;
@@ -4347,7 +4370,7 @@ void f_inspector::handle_sop_load()
 	m_sop = SOP_NULL;
 }
 
-bool f_inspector::load_fobjs()
+bool f_inspector::load_kfrms()
 {
 	ifstream file;
 	char fname[1024];
@@ -4403,23 +4426,6 @@ void f_inspector::handle_sop_inst_obj()
 }
 
 
-void f_inspector::handle_sop_reinit_fobj()
-{
-	// determining reference frame.
-	int iref_prev = m_cur_frm - 1;
-	int iref_next = m_cur_frm + 1;
-
-	if(iref_next < m_fobjs.size()){
-		if(iref_prev >= 0)
-			m_pfrm->init(m_timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia, m_miss_tracks);
-		else
-			m_pfrm->init(m_timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia, m_miss_tracks);
-	}else{
-		if(iref_prev >= 0)
-			m_pfrm->init(m_timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia, m_miss_tracks);
-	}
-	m_sop = SOP_NULL;
-}
 
 void f_inspector::handle_sop_guess()
 {
@@ -4438,7 +4444,7 @@ void f_inspector::handle_sop_guess()
 	case FRAME:
 		for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
 			vector<s_obj*> & objs = m_kfrms[ikf]->objs;
-			m_fobjs[ikf]->update = false;
+			m_kfrms[ikf]->update = false;
 			for(int iobj = 0; iobj < objs.size(); iobj++){
 				help_guess(*objs[iobj], z, cx, cy, sfx, sfy);
 				objs[iobj]->update = false;
@@ -4553,3 +4559,24 @@ void f_inspector::handle_sop_awscmd()
 	m_sop = SOP_NULL;
 	return;
 }
+
+void f_inspector::handle_sop_set_kf()
+{
+	if(!m_pfrm)
+		return;
+	if(m_cur_kfrm != 0 &&  m_pfrm == m_kfrms[m_cur_kfrm])
+		return;
+
+	m_cur_kfrm = (m_cur_kfrm + 1) % m_num_kfrms;
+	if(m_kfrms[m_cur_kfrm] != NULL){
+		if(m_basv_kfrms){
+			m_kfrms[m_cur_kfrm]->save(m_name);
+		}
+		s_frame_obj::free(m_kfrms[m_cur_kfrm]);
+		m_kfrms[m_cur_kfrm] = NULL;
+	}
+
+	m_kfrms[m_cur_kfrm] = m_pfrm;
+	m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
+}
+

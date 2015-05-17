@@ -431,7 +431,7 @@ private:
 	// sub operation
 	enum e_sub_operation{
 		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_DET, SOP_INST_OBJ, SOP_DELETE, 
-		SOP_REINIT_FOBJ, SOP_SET_KF, SOP_INS_CPTBL, SOP_AWSCMD
+		 SOP_SET_KF, SOP_INS_CPTBL, SOP_AWSCMD
 	} m_sop;
 
 	static const char * m_str_sop[SOP_AWSCMD + 1];
@@ -441,7 +441,6 @@ private:
 	void handle_sop_load();
 	void handle_sop_guess();
 	void handle_sop_inst_obj();
-	void handle_sop_reinit_fobj();
 	void handle_sop_ins_cptbl();
 	void handle_sop_det();
 	void handle_sop_awscmd();
@@ -494,8 +493,12 @@ private:
 	bool m_bald_kfrms, m_basv_kfrms; // flags for auto load and save key frames
 	int m_num_kfrms;				// number of key frames cached in the memory.
 	int m_cur_kfrm;					// current key frame
+	int m_sel_kfrm;					// selected key frame in KFRAME mode.
 	long long  m_int_kfrms;			// Interval between key frames
 	vector<s_frame_obj*> m_kfrms;	// Key frames (ring buffer)
+	bool save_kfrms();
+	bool load_kfrms();
+
 	s_frame_obj * m_pfrm;			// temporal frame object
 
 	//
@@ -503,13 +506,11 @@ private:
 	// 
 	bool m_bauto_load_fobj, m_bauto_save_fobj;
 
-	vector<s_frame_obj*> m_fobjs;
-	int m_cur_frm;
+//	vector<s_frame_obj*> m_fobjs;
+//	int m_cur_frm;
 	char m_cmd_buf[1024];
 	char m_cmd_ret[1024];
 	int m_frm_step;
-	bool save_fobjs();
-	bool load_fobjs();
 
 	//
 	// Object
@@ -631,9 +632,11 @@ public:
 	{
 		f_ds_window::destroy_run();
 		m_model_view.release();
+		/*
 		for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++)
 			delete m_fobjs[ifobj];
 		m_fobjs.clear();
+		*/
 	}
 
 	virtual bool proc();
