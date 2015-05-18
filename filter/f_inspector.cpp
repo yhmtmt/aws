@@ -4398,22 +4398,37 @@ bool f_inspector::load_kfrms()
 	if(!file.is_open())
 		return false;
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
-		m_kfrms[ikf]->release();
+		s_frame_obj::free(m_kfrms[ikf]);
+		m_kfrms[ikf] = NULL;
 	}
 
 	int ikf = 0;
+	m_cur_kfrm = -1;
 	while(!file.eof()){
+		if(m_kfrms[ikf] != NULL){
+			if(m_cur_kfrm > 0)// current key frame is found and the cache of key frame is full.
+				break;
+		}else{
+			s_frame_obj::free(m_kfrms[ikf]); 
+			m_kfrms[ikf] = NULL;
+		}
+
 		file.getline(fname, 1024);
 		long long tfrm = atoll(fname);
-		if(tfrm > m_cur_time){
+
+		// first key frame with the time exceeding current time is the current key frame
+		if(m_cur_kfrm < 0 && tfrm > m_cur_time){
 			m_cur_kfrm = ikf;
-			break;
 		}
+
+		m_kfrms[ikf] = s_frame_obj::alloc();
 		m_kfrms[ikf]->tfrm = tfrm;
 		ikf = (ikf + 1) % m_num_kfrms;
 	}
 
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
+		if(m_kfrms[ikf] == NULL)
+			break;
 		m_kfrms[ikf]->load(m_name, m_kfrms[ikf]->tfrm, m_models);
 	}
 
