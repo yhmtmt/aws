@@ -1865,8 +1865,10 @@ void f_inspector::renderInfo()
 		renderEstimateInfo(information, 1023, y);
 		break;
 	case FRAME:
-	case KFRAME:
 		renderFrameInfo(information, 1023, y);
+		break;
+	case KFRAME:
+		renderKeyFrameInfo(information, 1023, y);
 		break;
 	case VIEW3D:
 		renderSceneInfo(information, 1023, y);
@@ -2200,6 +2202,18 @@ void f_inspector::renderFrameInfo(char * buf, int len, int & y)
 	y += 20;
 */
 	snprintf(buf, len, "Frame Step: %d", (int) m_frm_step);
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+}
+
+void f_inspector::renderKeyFrameInfo(char * buf, int len, int & y)
+{
+	snprintf(buf, len, "%d Key Frames", (int)m_kfrms.size());
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+
+	snprintf(buf, len, "Key Frame Interval: %f(sec), Cache Size: %d",
+		(float)((double)m_int_kfrms / (double) SEC), m_num_kfrms);
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 }

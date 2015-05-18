@@ -418,6 +418,7 @@ private:
 	void renderCamparTblInfo(char * buf, int len, int & y);
 	void renderEstimateInfo(char * buf, int len, int & y);
 	void renderFrameInfo(char * buf, int len, int & y);
+	void renderKeyFrameInfo(char * buf, int len, int & y);
 	void renderCursor();
 
 	//
