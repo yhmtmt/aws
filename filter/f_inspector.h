@@ -342,6 +342,7 @@ struct s_frame_obj{
 	}
 
 	void set_as_key(Mat & _img){
+		kfrm = true;
 		_img.copyTo(img);
 	}
 

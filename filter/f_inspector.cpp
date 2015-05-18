@@ -1057,7 +1057,7 @@ bool s_frame_obj::save(const char * aname)
 
 bool s_frame_obj::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
 {
-	tfrm = tfrm;
+	tfrm = atfrm;
 
 	char buf[1024];
 	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
@@ -1313,12 +1313,12 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 	m_img = img;
 	m_timg = timg;
 
-	if(m_bauto_save_fobj){
+	if(m_bauto_save_fobj && m_pfrm){
 		m_pfrm->save(m_name);
 	}
 
 	if(m_bauto_load_fobj){
-		if(m_pfrm)
+		if(m_pfrm && !m_pfrm->kfrm)
 			s_frame_obj::free(m_pfrm);
 
 		m_pfrm = s_frame_obj::alloc();
@@ -1490,10 +1490,11 @@ bool f_inspector::proc()
 		return true;
 
 	if(m_cur_kfrm < 0){
+		m_cur_kfrm = 0;
 		m_kfrms[m_cur_kfrm] = m_pfrm;
 		m_cur_kfrm = 0;
 		m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
-	}else if(m_kfrms[m_cur_kfrm]->tfrm + m_int_kfrms < m_cur_time){
+	}else if(m_kfrms[m_cur_kfrm]->tfrm + m_int_kfrms <= m_timg){
 		m_cur_kfrm = (m_cur_kfrm + 1) % m_num_kfrms;
 		if(m_kfrms[m_cur_kfrm] != NULL){
 			if(m_kfrms[m_cur_kfrm]->tfrm != m_cur_time){ // if the frame is already in cache
@@ -1509,7 +1510,8 @@ bool f_inspector::proc()
 		if(!m_kfrms[m_cur_kfrm]){ // if the key frame is not allocated 
 			m_kfrms[m_cur_kfrm] = s_frame_obj::alloc();
 			if(m_bald_kfrms && m_kfrms[m_cur_kfrm]->load(m_name, m_cur_time, m_models)){ // if the key frame is loaded from file
-				m_img_s = m_kfrms[m_cur_kfrm]->img;
+				if(!m_kfrms[m_cur_kfrm]->img.empty())
+					m_img_s = m_kfrms[m_cur_kfrm]->img;
 				m_timg = m_kfrms[m_cur_kfrm]->tfrm;
 			}else{ // otherwise, current frame is sat as key frame.
 				s_frame_obj::free(m_kfrms[m_cur_kfrm]);
@@ -4164,15 +4166,6 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'V':
 		m_op = VIEW3D;
 		break;
-	case 'x':
-		m_axis = AX_X;
-		break;
-	case 'y':
-		m_axis = AX_Y;
-		break;
-	case 'z':
-		m_axis = AX_Z;
-		break;
 	case 'f':
 		handle_char_f();
 		break;
@@ -4184,6 +4177,18 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 				m_pfrm->update = false;
 			}
 		}
+		break;
+	case 'k':
+		m_sop = SOP_SET_KF;
+		break;
+	case 'x':
+		m_axis = AX_X;
+		break;
+	case 'y':
+		m_axis = AX_Y;
+		break;
+	case 'z':
+		m_axis = AX_Z;
 		break;
 	case '1':
 		if(m_op == ESTIMATE){
@@ -4578,5 +4583,6 @@ void f_inspector::handle_sop_set_kf()
 
 	m_kfrms[m_cur_kfrm] = m_pfrm;
 	m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
+	m_sop = SOP_NULL;
 }
 
