@@ -232,6 +232,123 @@ inline void log_so3(const double * R, double * r)
 	}
 }
 
+inline void exp_so3(const double * r, 
+	double * R /* 3x3 matrix */, 
+	double * J /* 9x3 matrix */)
+{
+	double rx = r[0], ry = r[1], rz = r[2];
+	double theta = sqrt(rx*rx + ry*ry + rz*rz);
+	if(theta < DBL_EPSILON){
+		memset((void*) R, 0, sizeof(double) * 9);
+		R[0] = R[4] = R[8] = 1.0;
+		return;
+	}
+
+	double itheta = 1.0 / theta;
+	rx *= itheta;
+	ry *= itheta;
+	rz *= itheta;
+
+	double rx2 = rx * rx, ry2 = ry * ry, rz2 = rz * rz, 
+		rxry = rx * ry, rxrz = rx * rz, ryrz = ry * rz;
+
+	// skew symmetric matrix A
+	// 0   -rz   ry
+	// rz    0  -rx
+	// -ry  rx    0
+
+	// A^2
+	// -rz2-ry2 rxry     rxrz
+	// rxry     -rx2-rz2 ryrz
+	// rxrz     ryrz     -rx2-ry2
+	//
+	// rx2+ry2+rz2=1.0 simplify A^2 as
+	// rx2-1    rxry     rxrz
+	// rxry     ry2-1    ryrz
+	// rxrz     ryrz     rz2-1
+
+	// Resulting matrix R
+	// R0  R1  R2 
+	// R3  R4  R5
+	// R6  R7  R8
+
+	//
+	// R=I + s A + (1-c) A^2
+	// ic rx2 + c      ic rxry - s rz  ic rxrz + s ry
+	// ic rxry + s rz  ic ry2 + c      ic ryrz - s rx
+	// ic rxrz - s ry  ic ryrz + s rx  ic rz2 + c
+	double s = sin(theta);
+	double c = cos(theta);
+	double ic = 1.0 - c;
+	double icrxry = ic * rxry, icryrz = ic * ryrz, icrxrz = ic * rxrz;
+	double srx = s * rx, sry = s * ry, srz = s * rz;
+	R[0] = ic * rx2 + c; R[1] = icrxry - srz; R[2] = icrxrz + sry;
+	R[3] = icrxry + srz; R[4] = ic * ry2 + c; R[5] = icryrz - srx;
+	R[6] = icrxrz - sry; R[7] = icryrz + srx; R[8] = ic * rz2 +  c;
+
+	double rx3 = rx2 * rx, ry3 = ry2 * ry, rz3 = rz2 * rz;
+	double dC1drx, dC2drx, dC3drx;
+	double dC1dry, dC2dry, dC3dry;	
+	double dC1drz, dC2drz, dC3drz;
+	double dS1drx, dS2drx, dS3drx;
+	double dS1dry, dS2dry, dS3dry;
+	double dS1drz, dS2drz, dS3drz;
+
+	double icith = ic * itheta;
+	double sith = s * itheta;
+	double sm2icith = (s - 2 * ic * itheta);
+	double cmsith = (c - s * itheta);
+	double irx2 = 1. - rx2, iry2 = 1. - ry2, irz2 = 1. - rz2;
+
+	dC1drx = rx3 * s + 2 * irx2 * rx2 * icith;
+	dC1dry = ry * rx2 * sm2icith;
+	dC1drz = rz * rx2 * sm2icith;
+	dS1drx = rx2 * c + (1. - rx2) * sith;
+	dS1dry = rxry * cmsith;
+	dS1drz = rxrz * cmsith;
+
+	dC2drx = rx * ry2 * sm2icith;
+	dC2dry = ry3 * s + 2 * iry2 * ry2 * icith;
+	dC2drz = rz * ry2 * sm2icith;
+	dS2drx = dS1dry;
+	dS2dry = ry2 * c + (1. - ry2) * sith;
+	dS2drz = ryrz * cmsith;
+
+	dC3drx = rx * rz2 * sm2icith;
+	dC3dry = ry * rz2 * sm2icith;
+	dC3drz = rz3 * s + 2 * irz2 * rz2 * icith;
+	dS3drx = dS1drz;
+	dS3dry = dS2drz;
+	dS3drz = rz2 * c + (1. - rz2) * sith;
+
+	double dC12drx, dC13drx, dC23drx;
+	double dC12dry, dC13dry, dC23dry;
+	double dC12drz, dC13drz, dC23drz;
+
+	double 
+		irxrx2icith = (irx2 - rx) * icith, 
+		iryry2icith = (iry2 - ry) * icith, 
+		irzrz2icith = (irz2 - rz) * icith;
+
+	dC12drx = rx * ry2 * s + irxrx2icith * ry;
+	dC13drx = rx * rz2 * s + irxrx2icith * rz;
+	dC12dry = ry * rx2 * s + iryry2icith * rx;
+	dC23dry = ry * rz2 * s + iryry2icith * rz;
+	dC13drz = rz * rx2 * s + irzrz2icith * rx;
+	dC23drz = rz * ry2 * s + irzrz2icith * ry;
+	dC23drx = dC13dry = dC12drz = rxry * rz * cmsith;
+
+	J[0]  = dC1drx - srx;     J[1]  = dC1dry - sry;     J[2] = dC1drz - srz;
+	J[3]  = dC12drx - dS3drx; J[4]  = dC12dry - dS3dry; J[5] = dC12drz - dS3drz;
+	J[6]  = dC13drx + dS2drx; J[7]  = dC13dry + dS2dry; J[8] = dC13drz + dS2drz;
+	J[9]  = dC1drx + dS3drx;  J[10] = dC1dry + dS3dry;  J[11] = dC1drz + dS3drz;
+	J[12] = dC2drx -srx;      J[13] = dC2dry -sry;      J[14] = dC2drz -srz;
+	J[15] = dC23drx - dS1drx; J[16] = dC23dry - dS1dry; J[17] = dC23drz - dS1drz;
+	J[18] = dC12drx - dS2drx; J[19] = dC12dry - dS2dry; J[20] = dC12drz - dS2drz;
+	J[21] = dC23drx + dS1drx; J[22] = dC23dry + dS1dry; J[23] = dC23drz + dS1drz;
+	J[24] = dC3drx - srx;     J[25] = dC3dry - sry;     J[26] = dC3drz - srz;
+}
+
 // so(3)->SO(3) exp Rodrigues gives this mapping
 inline void exp_so3(const double * r, double * R)
 {
