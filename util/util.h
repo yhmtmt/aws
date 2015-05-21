@@ -705,11 +705,12 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		double * jf, double * jc, double * jk, double * jp,
 		double * jr, double * jt)
 {
-	const double * R, * t, * k;
-	Mat _R, _jR;
-	Rodrigues(rvec, _R, _jR);
+	const double * t, * k;
 
-	R = _R.ptr<double>();
+	double R[9], jR[27];
+	//Rodrigues(rvec, _R, _jR);
+	exp_so3(rvec.ptr<double>(), R, jR);
+
 	t = tvec.ptr<double>();
 	k = camdist.ptr<double>();
 	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
@@ -723,12 +724,12 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
 		double y = R[3]*X + R[4]*Y + R[5]*Z + t[1];
 		double z = R[6]*X + R[7]*Y + R[8]*Z + t[2];
-		double r2, r4, r6, a1, a2, a3, cdist, icdist2;
+		double r2, r4, r6, a1, a2, a3, cdist, icdist2, D, D2;
 		double xd, yd;
 
 		z = z ? 1./z : 1;
 		x *= z; y *= z;
-
+		
 		r2 = x*x + y*y;
 		r4 = r2*r2;
 		r6 = r4*r2;
@@ -737,8 +738,10 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		a3 = r2 + 2*y*y;
 		cdist = 1 + k[0]*r2 + k[1]*r4 + k[4]*r6;
 		icdist2 = 1./(1 + k[5]*r2 + k[6]*r4 + k[7]*r6);
-		xd = x*cdist*icdist2 + k[2]*a1 + k[3]*a2;
-		yd = y*cdist*icdist2 + k[2]*a3 + k[3]*a1;
+		D = cdist * icdist2;
+		D2 = D * icdist2;
+		xd = x * D + k[2]*a1 + k[3]*a2;
+		yd = y * D + k[2]*a3 + k[3]*a1;
 
 		m[i].x = (float)(xd*fx + cx);
 		m[i].y = (float)(yd*fy + cy);
@@ -759,16 +762,16 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		jk[0] = fx * x * r2 * icdist2; 
 		jk[1] = fx * x * r4 * icdist2; 
 		jk[2] = fx * x * r6 * icdist2;
-		jk[3] = -fx * x * r2 * cdist * icdist2 * icdist2;
-		jk[4] = -fx * x * r4 * cdist * icdist2 * icdist2;
-		jk[5] = -fx * x * r6 * cdist * icdist2 * icdist2;
+		jk[3] = -fx * x * r2 * D2;
+		jk[4] = -fx * x * r4 * D2;
+		jk[5] = -fx * x * r6 * D2;
 		jk += sizeof(double) * 6;
 		jk[0] = fy * y * r2 * icdist2; 
 		jk[1] = fy * y * r4 * icdist2; 
 		jk[2] = fy * y * r6 * icdist2;
-		jk[3] = -fy * y * r2 * cdist * icdist2 * icdist2;
-		jk[4] = -fy * y * r4 * cdist * icdist2 * icdist2;
-		jk[5] = -fy * y * r6 * cdist * icdist2 * icdist2;
+		jk[3] = -fy * y * r2 * D2;
+		jk[4] = -fy * y * r4 * D2;
+		jk[5] = -fy * y * r6 * D2;
 		jk += sizeof(double) * 6;
 
 		// calculate jacobian for tangential distortion coefficient
@@ -776,6 +779,24 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		jp += sizeof(double) * 2;
 		jp[0] = a3; jp[1] = a1;
 		jp += sizeof(double) * 2;
+
+		double dDdl2 = (3 * k[4] * r4 + 2 * k[1] * r2 + k[0]) * icdist2 
+			- (3 * k[7] * r4 + 2 * k[6] * r2 + k[5]) * D2;
+		double dl2dxp = 2*x;
+		double dl2dyp = 2*y;
+
+		double dxdz = -x * z; // here x and y has already been mutiplied with 1/z. And note that z is actuall 1/z here.
+		double dydz = -y * z;
+
+		// calculate jacobian for translation
+		double dxdxp = fx * (D + x * dDdl2 * dl2dxp + 2 * k[2] * y + k[3] * (dl2dxp + 4 * x));
+		double dxdyp = fx * (x * dDdl2 * dl2dyp + 2 * k[2] * x + k[3] * dl2dyp);
+		double dydxp = fy * (y * dDdl2 * dl2dxp + 2 * k[3] * y + k[2] * dl2dxp);
+		double dydyp = fy * (D + y * dDdl2 * dl2dxp + 2 * k[3] * x + k[2] * (dl2dyp + 4 * y));
+		jr[0] = dxdxp * z; jr[1] = dxdyp * z; jr[2] = dxdxp * dxdz + dxdyp * dydz;
+		jr[3] = dydxp * z; jr[4] = dydyp * z; jr[5] = dydxp * dxdz + dydyp * dydz;
+
+		// calculate jacobian for rotation 
 	}
 };
 
