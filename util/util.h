@@ -19,6 +19,11 @@
 #include "aws_thread.h"
 #include "aws_stdlib.h"
 
+inline double rerr(double a, double b){
+	return fabs((a - b) / b);
+}
+
+
 inline void angleRxyz(double * R, double & x, double & y, double &z)
 {
 	// R
@@ -351,6 +356,8 @@ inline void exp_so3(const double * r,
 	J[21] = dC23drx + dS1drx; J[22] = dC23dry + dS1dry; J[23] = dC23drz + dS1drz;
 	J[24] = dC3drx - srx;     J[25] = dC3dry - sry;     J[26] = dC3drz - srz;
 }
+
+bool test_exp_so3(const double * r, double * R, Mat & jR);
 
 // so(3)->SO(3) exp Rodrigues gives this mapping
 inline void exp_so3(const double * r, double * R)

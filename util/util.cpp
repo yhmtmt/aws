@@ -31,6 +31,54 @@ using namespace cv;
 #include "util.h"
 
 
+bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
+{
+	// R and jRcv are the OpenCV's rotation matrix and jacobian.
+	double jR[27];
+	double errjR[27];
+	double R[9];
+	double errR[9];
+	exp_so3(r, R, jR);
+	memset((void*)errjR, 0, sizeof(errjR));
+	memset((void*)errR, 0, sizeof(errR));
+
+	// jacobian is [dR/drx, dR/dry, dR/drz]
+	// Note: OpenCV's jacobian assumes 3-tensor form
+	// exp_so3's jacobian assumes stacked column vector 
+	for(int i = 0, j=0; i < 3; i++, j+=3){
+		errjR[0+i] = rerr(jR[0+i], jRcv[0+j]);
+		errjR[3+i] = rerr(jR[3+i], jRcv[1+j]);
+		errjR[6+i] = rerr(jR[6+i], jRcv[2+j]);
+		errjR[9+i] = rerr(jR[9+i], jRcv[9+j]);
+		errjR[12+i] = rerr(jR[12+i], jRcv[10+j]);
+		errjR[15+i] = rerr(jR[15+i], jRcv[11+j]);
+		errjR[18+i] = rerr(jR[18+i], jRcv[18+j]);
+		errjR[21+i] = rerr(jR[21+i], jRcv[19+j]);
+		errjR[24+i] = rerr(jR[24+i], jRcv[20+j]);
+	}
+
+	for(int i = 0; i < 9; i++){
+		errR[i] = rerr(R[i], Rcv[i]);
+	}
+
+	bool res = true;
+	for(int i = 0; i < 27; i++){
+		if(errjR[i] > 0.001){
+			cerr << "Jacobian[" << i << "] exp_so3 is erroneous." << endl;
+			res = false;
+		}
+	}
+
+	for(int j = 0; j < 9; j++){
+		if(errR[j] > 0.001){
+			cerr << "R[" << j << "] is erroneous." << endl;
+			res = false;
+		}
+	}
+
+	return false;
+}
+
 bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vector<Point3f> & pt3d, Mat & jacobian, double arf)
 {
 	int neq = pt3d.size() * 2;
@@ -93,9 +141,12 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vecto
 		jcv += 18;
 	}
 
+	bool res = true;
 	for(int i = 0; i < 18; i++){
-		if(err[i] > 0.001)
+		if(err[i] > 0.001){
 			cerr << "Jacobian parameter " << i << " in awsProjPts is erroneous." << endl;
+			res = false;
+		}
 	}
 
 	delete[] jf;
@@ -105,7 +156,7 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vecto
 	delete[] jr;
 	delete[] jt;
 
-	return true;
+	return res;
 }
 
 
