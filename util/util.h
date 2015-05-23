@@ -240,7 +240,10 @@ inline void exp_so3(const double * r,
 	double theta = sqrt(rx*rx + ry*ry + rz*rz);
 	if(theta < DBL_EPSILON){
 		memset((void*) R, 0, sizeof(double) * 9);
+		memset((void*) J, 0, sizeof(double) * 27);
 		R[0] = R[4] = R[8] = 1.0;
+		J[5] = J[15] = J[19] = -1.0;
+		J[7] = J[11] = J[21] = 1.0;
 		return;
 	}
 
