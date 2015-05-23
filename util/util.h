@@ -703,8 +703,11 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		const Mat & camint, const Mat & camdist,
 		const Mat & rvec, const Mat & tvec,
 		double * jf, double * jc, double * jk, double * jp,
-		double * jr, double * jt)
+		double * jr, double * jt, double arf = 0.0)
 {
+	// if arf equals to 0.0, the jacobian for jf is calculated for fx and fy distinctively. (jf is 2Nx2 array)
+	// Otherwise, jf is caluclated related only to fy. (jf is 2Nx1 array)
+
 	const double * t, * k;
 
 	double R[9], jR[27];
@@ -747,10 +750,17 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		m[i].y = (float)(yd*fy + cy);
 
 		// calculate jacboian for fx, fy ( this version is free aspect ratio)
-		jf[0] = xd; jf[1] = 0;
-		jf += sizeof(double) * 2;
-		jf[0] = 0; jf[1] = yd;
-		jf += sizeof(double) * 2;
+		if(arf == 0.0){
+			jf[0] = xd; jf[1] = 0;
+			jf += sizeof(double) * 2;
+			jf[0] = 0; jf[1] = yd;
+			jf += sizeof(double) * 2;
+		}else{
+			jf[0] = xd * arf;
+			jf += sizeof(double);
+			jf[0] = yd;
+			jf += sizeof(double);
+		}
 
 		// calculate jacobian for cx, cy
 		jc[0] = 1; jc[1] = 0;
@@ -825,7 +835,7 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 	}
 };
 
-bool test_awsProjPtsj(Mat & camint, Mat & camdist, vector<Point3f> & pt3d, Mat & jacobian);
+bool test_awsProjPtsj(Mat & camint, Mat & camdist, vector<Point3f> & pt3d, Mat & jacobian, double arf = 0.0);
 
 // awsProjPts with Jacobian of rotation and translation
 inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,

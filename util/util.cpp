@@ -31,7 +31,7 @@ using namespace cv;
 #include "util.h"
 
 
-bool test_awsProjPtsj(Mat & camint, Mat & camdist, vector<Point3f> & pt3d, Mat & jacobian)
+bool test_awsProjPtsj(Mat & camint, Mat & camdist, vector<Point3f> & pt3d, Mat & jacobian, double arf)
 {
 	int neq = pt3d.size() * 2;
 	vector<Point2f> pt2d(pt3d.size());
@@ -45,7 +45,7 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, vector<Point3f> & pt3d, Mat &
 	jt = new double [neq * 3];
 
 	awsProjPts(pt3d, pt2d, camint, camdist, rvec, tvec,
-		jf, jc, jk, jp, jr, jt);
+		jf, jc, jk, jp, jr, jt, arf);
 	// comparation with OpenCV's jacobian
 	// OpenCV's jacobian has cols | rotation | translation | focal length | principal point | distortion coefficient |
 	//                            |     3    |      3      |       2      |        2        |            8           |
