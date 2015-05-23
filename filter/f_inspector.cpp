@@ -788,7 +788,7 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 		// jacobian 
 		// rows: 2N 
 		// cols: r, t, f, c, k
-		if(!test_awsProjPtsj(camint, camdist, pmdl->pts_deformed, jacobian, fix_aspect_ratio ? 1.0 : 0.0)){
+		if(!test_awsProjPtsj(camint, camdist, rvec, tvec, pmdl->pts_deformed, jacobian, fix_aspect_ratio ? 1.0 : 0.0)){
 			cerr << "Jacobian calculated by awsProjPts may be wrong." << endl;
 		}
 

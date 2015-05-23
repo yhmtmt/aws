@@ -31,11 +31,10 @@ using namespace cv;
 #include "util.h"
 
 
-bool test_awsProjPtsj(Mat & camint, Mat & camdist, vector<Point3f> & pt3d, Mat & jacobian, double arf)
+bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vector<Point3f> & pt3d, Mat & jacobian, double arf)
 {
 	int neq = pt3d.size() * 2;
 	vector<Point2f> pt2d(pt3d.size());
-	Mat rvec,tvec;
 	double * jf, * jc, * jk, * jp, * jr, * jt;
 	jf = new double [neq * 2];
 	jc = new double [neq * 2];
