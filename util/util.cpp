@@ -30,6 +30,86 @@ using namespace cv;
 
 #include "util.h"
 
+
+bool test_awsProjPtsj(Mat & camint, Mat & camdist, vector<Point3f> & pt3d, Mat & jacobian)
+{
+	int neq = pt3d.size() * 2;
+	vector<Point2f> pt2d(pt3d.size());
+	Mat rvec,tvec;
+	double * jf, * jc, * jk, * jp, * jr, * jt;
+	jf = new double [neq * 2];
+	jc = new double [neq * 2];
+	jk = new double [neq * 6];
+	jp = new double [neq * 2];
+	jr = new double [neq * 3];
+	jt = new double [neq * 3];
+
+	awsProjPts(pt3d, pt2d, camint, camdist, rvec, tvec,
+		jf, jc, jk, jp, jr, jt);
+	// comparation with OpenCV's jacobian
+	// OpenCV's jacobian has cols | rotation | translation | focal length | principal point | distortion coefficient |
+	//                            |     3    |      3      |       2      |        2        |            8           |
+	//                                                                                      |  2   |  2  |    4      |
+	//                                                                                      | k1 k2 p1 p2 k3 k4 k5 k6
+	int row_step = sizeof(double) * 18;
+	double * jcv = jacobian.ptr<double>();
+	double err[18] = {0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0., 0.};
+
+	double * _jf = jf, * _jc = jc, * _jk = jk, * _jp = jp, * _jr = jr, * _jt = jt;
+
+	for(int i = 0; i < neq; i++){
+
+		// focal length
+		err[6] += fabs((jf[0] - jcv[6]) / jcv[6]);
+		err[7] += fabs((jf[1] - jcv[7]) / jcv[7]);
+		_jf += 2;
+
+		// principal point
+		err[8] += fabs((jc[0] - jcv[8]) / jcv[8]);
+		err[9] += fabs((jc[1] - jcv[9]) / jcv[9]);
+		_jc += 2;
+
+		// distortion coefficient
+		err[10] += fabs((jk[0] - jcv[10]) / jcv[10]);
+		err[11] += fabs((jk[1] - jcv[11]) / jcv[11]);
+		err[12] += fabs((jp[0] - jcv[12]) / jcv[12]);
+		err[13] += fabs((jp[1] - jcv[13]) / jcv[13]);
+		err[14] += fabs((jk[2] - jcv[14]) / jcv[14]);
+		err[15] += fabs((jk[3] - jcv[15]) / jcv[15]);
+		err[16] += fabs((jk[4] - jcv[16]) / jcv[16]);
+		err[17] += fabs((jk[5] - jcv[17]) / jcv[17]);	
+		_jk += 6;
+		_jp += 2;
+
+		err[0] += fabs((jr[0] - jcv[0]) / jcv[0]);
+		err[1] += fabs((jr[1] - jcv[1]) / jcv[1]);
+		err[2] += fabs((jr[2] - jcv[2]) / jcv[2]);
+		_jr += 3;
+
+		err[3] += fabs((jt[0] - jcv[3]) / jcv[3]);
+		err[4] += fabs((jt[1] - jcv[4]) / jcv[4]);
+		err[5] += fabs((jt[2] - jcv[5]) / jcv[5]);
+		_jt += 3;
+
+		jcv += 18;
+	}
+
+	for(int i = 0; i < 18; i++){
+		if(err[i] > 0.001)
+			cerr << "Jacobian parameter " << i << " in awsProjPts is erroneous." << endl;
+	}
+
+	delete[] jf;
+	delete[] jc;
+	delete[] jk;
+	delete[] jp;
+	delete[] jr;
+	delete[] jt;
+
+	return true;
+}
+
+
 // Synthesize two affine trasformations
 // res = l * r 
 bool synth_afn(Mat & l, Mat & r, Mat & res)

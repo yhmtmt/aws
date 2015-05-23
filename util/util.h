@@ -825,6 +825,8 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 	}
 };
 
+bool test_awsProjPtsj(Mat & camint, Mat & camdist, vector<Point3f> & pt3d, Mat & jacobian);
+
 // awsProjPts with Jacobian of rotation and translation
 inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		const Mat & camint, const Mat & camdist,
