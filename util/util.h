@@ -712,7 +712,8 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 		const Mat & rvec, const Mat & tvec,
 		double * jr, double * jt);
 
-bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vector<Point3f> & pt3d, Mat & jacobian, double arf = 0.0);
+bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
+	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf = 0.0);
 
 
 ////////////////////////////////////////////////////////////////////////// related to affine transformation

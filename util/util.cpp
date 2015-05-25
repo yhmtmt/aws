@@ -79,7 +79,8 @@ bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
 	return false;
 }
 
-bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vector<Point3f> & pt3d, Mat & jacobian, double arf)
+bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
+	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf)
 {
 	int neq = pt3d.size() * 2;
 	vector<Point2f> pt2d(pt3d.size());
@@ -91,7 +92,7 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vecto
 	jr = new double [neq * 3];
 	jt = new double [neq * 3];
 
-	awsProjPts(pt3d, pt2d, camint, camdist, rvec, tvec,
+	awsProjPts(pt3d, pt2d, valid, camint, camdist, rvec, tvec,
 		jf, jc, jk, jp, jr, jt, arf);
 	// comparation with OpenCV's jacobian
 	// OpenCV's jacobian has cols | rotation | translation | focal length | principal point | distortion coefficient |

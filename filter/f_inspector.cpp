@@ -788,7 +788,8 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 		// jacobian 
 		// rows: 2N 
 		// cols: r, t, f, c, k
-		if(!test_awsProjPtsj(camint, camdist, rvec, tvec, pmdl->pts_deformed, jacobian, fix_aspect_ratio ? 1.0 : 0.0)){
+		if(!test_awsProjPtsj(camint, camdist, rvec, tvec, pmdl->pts_deformed,
+			visible, jacobian, fix_aspect_ratio ? 1.0 : 0.0)){
 			cerr << "Jacobian calculated by awsProjPts may be wrong." << endl;
 		}
 
@@ -2490,7 +2491,7 @@ void f_inspector::renderScene(long long timg)
 
 			
 			//projectPoints(objs[iobj]->pmdl->pts, rvec, tvec, m_cam_int, m_cam_dist, pts);
-			awsProjPts(objs[iobj]->pmdl->pts, pts, m_cam_int, m_cam_dist, rvec, tvec);
+			awsProjPts(objs[iobj]->pmdl->pts, pts, objs[iobj]->visible, m_cam_int, m_cam_dist, rvec, tvec);
 //			projectPoints(objs[iobj]->pmdl->pts, m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, pts);
 			if(m_cur_obj == iobj)
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 0, -1);	
