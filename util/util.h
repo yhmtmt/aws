@@ -677,270 +677,28 @@ inline void awsProjPt(const Point3f & M, Point2f & m,
 	m.y = (float)(yd*fy + cy);
 }
 
-inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
-	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec)
-{
-	const double * R, * t, * k;
-	Mat _R;
-	Rodrigues(rvec, _R);
-	R = _R.ptr<double>();
-	t = tvec.ptr<double>();
-	k = camdist.ptr<double>();
-	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
-		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
-
-	m.resize(M.size());
-
-	for(int i = 0; i < M.size(); i++){
-		awsProjPt(M[i], m[i], fx, fy, cx, cy, k, R, t);
-	}
-}
-
-inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
-		const double fx, const double fy, const double cx, const double cy,
-	const double * k, const double * R, const double * t)
-{
-	m.resize(M.size());
-
-	for(int i = 0; i < M.size(); i++){
-		awsProjPt(M[i], m[i], fx, fy, cx, cy, k, R, t);
-	}
-}
-
-
 // awsProjPts with Jacobian
-inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vector<Point3f> & pt3d, Mat & jacobian, double arf = 0.0);
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec);
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+		const double fx, const double fy, const double cx, const double cy,
+	const double * k, const double * R, const double * t);
+
+// awsProjPts with Jacobian of rotation and translation
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		const Mat & camint, const Mat & camdist,
 		const Mat & rvec, const Mat & tvec,
 		double * jf, double * jc, double * jk, double * jp,
-		double * jr, double * jt, double arf = 0.0)
-{
-	// if arf equals to 0.0, the jacobian for jf is calculated for fx and fy distinctively. (jf is 2Nx2 array)
-	// Otherwise, jf is caluclated related only to fy. (jf is 2Nx1 array)
+		double * jr, double * jt, double arf = 0.0);
 
-	const double * t, * k;
-
-	double R[9], jR[27];
-	Mat _R, _jR;
-	Rodrigues(rvec, _R, _jR);
-	if(test_exp_so3(rvec.ptr<double>(), _R.ptr<double>(), _jR.ptr<double>())){
-		cerr << "exp_so3 may be erroneous." << endl;
-	}
-
-	t = tvec.ptr<double>();
-	k = camdist.ptr<double>();
-	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
-		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
-
-	if(M.size() != m.size())
-		m.resize(M.size());
-
-	for(int i = 0; i < M.size(); i++){
-		double X = M[i].x, Y = M[i].y, Z = M[i].z;
-		double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
-		double y = R[3]*X + R[4]*Y + R[5]*Z + t[1];
-		double z = R[6]*X + R[7]*Y + R[8]*Z + t[2];
-		double r2, r4, r6, a1, a2, a3, cdist, icdist2, D, D2;
-		double xd, yd;
-
-		z = z ? 1./z : 1;
-		x *= z; y *= z;
-		
-		r2 = x*x + y*y;
-		r4 = r2*r2;
-		r6 = r4*r2;
-		a1 = 2*x*y;
-		a2 = r2 + 2*x*x;
-		a3 = r2 + 2*y*y;
-		cdist = 1 + k[0]*r2 + k[1]*r4 + k[4]*r6;
-		icdist2 = 1./(1 + k[5]*r2 + k[6]*r4 + k[7]*r6);
-		D = cdist * icdist2;
-		D2 = D * icdist2;
-		xd = x * D + k[2]*a1 + k[3]*a2;
-		yd = y * D + k[2]*a3 + k[3]*a1;
-
-		m[i].x = (float)(xd*fx + cx);
-		m[i].y = (float)(yd*fy + cy);
-
-		// calculate jacboian for fx, fy ( this version is free aspect ratio)
-		if(arf == 0.0){
-			jf[0] = xd; jf[1] = 0;
-			jf += sizeof(double) * 2;
-			jf[0] = 0; jf[1] = yd;
-			jf += sizeof(double) * 2;
-		}else{
-			jf[0] = xd * arf;
-			jf += sizeof(double);
-			jf[0] = yd;
-			jf += sizeof(double);
-		}
-
-		// calculate jacobian for cx, cy
-		jc[0] = 1; jc[1] = 0;
-		jc += sizeof(double) * 2;
-		jc[0] = 0; jc[1] = 1;
-		jc += sizeof(double) * 2;
-
-		// calculate jacobian for radial distortion coefficient
-		jk[0] = fx * x * r2 * icdist2; 
-		jk[1] = fx * x * r4 * icdist2; 
-		jk[2] = fx * x * r6 * icdist2;
-		jk[3] = -fx * x * r2 * D2;
-		jk[4] = -fx * x * r4 * D2;
-		jk[5] = -fx * x * r6 * D2;
-		jk += sizeof(double) * 6;
-		jk[0] = fy * y * r2 * icdist2; 
-		jk[1] = fy * y * r4 * icdist2; 
-		jk[2] = fy * y * r6 * icdist2;
-		jk[3] = -fy * y * r2 * D2;
-		jk[4] = -fy * y * r4 * D2;
-		jk[5] = -fy * y * r6 * D2;
-		jk += sizeof(double) * 6;
-
-		// calculate jacobian for tangential distortion coefficient
-		jp[0] = a1; jp[1] = a2;
-		jp += sizeof(double) * 2;
-		jp[0] = a3; jp[1] = a1;
-		jp += sizeof(double) * 2;
-
-		double dDdl2 = (3 * k[4] * r4 + 2 * k[1] * r2 + k[0]) * icdist2 
-			- (3 * k[7] * r4 + 2 * k[6] * r2 + k[5]) * D2;
-		double dl2dxp = 2*x;
-		double dl2dyp = 2*y;
-
-		double dxdz = -x * z; // here x and y has already been mutiplied with 1/z. And note that z is actuall 1/z here.
-		double dydz = -y * z;
-
-		// calculate jacobian for translation
-		double dxdxp = fx * (D + x * dDdl2 * dl2dxp + 2 * k[2] * y + k[3] * (dl2dxp + 4 * x));
-		double dxdyp = fx * (x * dDdl2 * dl2dyp + 2 * k[2] * x + k[3] * dl2dyp);
-		double dydxp = fy * (y * dDdl2 * dl2dxp + 2 * k[3] * y + k[2] * dl2dxp);
-		double dydyp = fy * (D + y * dDdl2 * dl2dxp + 2 * k[3] * x + k[2] * (dl2dyp + 4 * y));
-		jt[0] = dxdxp * z; jt[1] = dxdyp * z; jt[2] = dxdxp * dxdz + dxdyp * dydz;
-		jt[3] = dydxp * z; jt[4] = dydyp * z; jt[5] = dydxp * dxdz + dydyp * dydz;
-
-		// calculate jacobian for rotation 
-		double dXdr[3] = {
-			X * jR[0] + Y * jR[3] + Z * jR[6], 
-			X * jR[1] + Y * jR[4] + Z * jR[7], 
-			X * jR[2] + Y * jR[5] + Z * jR[8]
-		};
-
-		double dYdr[3] = {
-			X * jR[9] +  Y * jR[12] + Z * jR[15], 
-			X * jR[10] + Y * jR[13] + Z * jR[16], 
-			X * jR[11] + Y * jR[14] + Z * jR[17]
-		};
-
-		double dZdr[3] = {
-			X * jR[18] + Y * jR[21] + Z * jR[24], 
-			X * jR[19] + Y * jR[22] + Z * jR[25], 
-			X * jR[20] + Y * jR[23] + Z * jR[26]
-		};
-
-		jr[0] = jt[0] * dXdr[0] + jt[1] * dYdr[0] + jt[2] * dZdr[0];
-		jr[1] = jt[0] * dXdr[1] + jt[1] * dYdr[1] + jt[2] * dZdr[1];
-		jr[2] = jt[0] * dXdr[2] + jt[1] * dYdr[2] + jt[2] * dZdr[2];
-
-		jr[3] = jt[3] * dXdr[0] + jt[4] * dYdr[0] + jt[5] * dZdr[0];
-		jr[4] = jt[3] * dXdr[1] + jt[4] * dYdr[1] + jt[5] * dZdr[1];
-		jr[5] = jt[3] * dXdr[2] + jt[4] * dYdr[2] + jt[5] * dZdr[2];
-	}
-};
-
-bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vector<Point3f> & pt3d, Mat & jacobian, double arf = 0.0);
-
-// awsProjPts with Jacobian of rotation and translation
-inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		const Mat & camint, const Mat & camdist,
 		const Mat & rvec, const Mat & tvec,
-		double * jr, double * jt)
-{
-	const double * t, * k;
+		double * jr, double * jt);
 
-	double R[9], jR[27];
-	//Rodrigues(rvec, _R, _jR);
-	exp_so3(rvec.ptr<double>(), R, jR);
-
-	t = tvec.ptr<double>();
-	k = camdist.ptr<double>();
-	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
-		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
-
-	if(M.size() != m.size())
-		m.resize(M.size());
-
-	for(int i = 0; i < M.size(); i++){
-		double X = M[i].x, Y = M[i].y, Z = M[i].z;
-		double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
-		double y = R[3]*X + R[4]*Y + R[5]*Z + t[1];
-		double z = R[6]*X + R[7]*Y + R[8]*Z + t[2];
-		double r2, r4, r6, a1, a2, a3, cdist, icdist2, D, D2;
-		double xd, yd;
-
-		z = z ? 1./z : 1;
-		x *= z; y *= z;
-		
-		r2 = x*x + y*y;
-		r4 = r2*r2;
-		r6 = r4*r2;
-		a1 = 2*x*y;
-		a2 = r2 + 2*x*x;
-		a3 = r2 + 2*y*y;
-		cdist = 1 + k[0]*r2 + k[1]*r4 + k[4]*r6;
-		icdist2 = 1./(1 + k[5]*r2 + k[6]*r4 + k[7]*r6);
-		D = cdist * icdist2;
-		D2 = D * icdist2;
-		xd = x * D + k[2]*a1 + k[3]*a2;
-		yd = y * D + k[2]*a3 + k[3]*a1;
-
-		m[i].x = (float)(xd*fx + cx);
-		m[i].y = (float)(yd*fy + cy);
-
-		double dDdl2 = (3 * k[4] * r4 + 2 * k[1] * r2 + k[0]) * icdist2 
-			- (3 * k[7] * r4 + 2 * k[6] * r2 + k[5]) * D2;
-		double dl2dxp = 2*x;
-		double dl2dyp = 2*y;
-
-		double dxdz = -x * z; // here x and y has already been mutiplied with 1/z. And note that z is actuall 1/z here.
-		double dydz = -y * z;
-
-		// calculate jacobian for translation
-		double dxdxp = fx * (D + x * dDdl2 * dl2dxp + 2 * k[2] * y + k[3] * (dl2dxp + 4 * x));
-		double dxdyp = fx * (x * dDdl2 * dl2dyp + 2 * k[2] * x + k[3] * dl2dyp);
-		double dydxp = fy * (y * dDdl2 * dl2dxp + 2 * k[3] * y + k[2] * dl2dxp);
-		double dydyp = fy * (D + y * dDdl2 * dl2dxp + 2 * k[3] * x + k[2] * (dl2dyp + 4 * y));
-		jt[0] = dxdxp * z; jt[1] = dxdyp * z; jt[2] = dxdxp * dxdz + dxdyp * dydz;
-		jt[3] = dydxp * z; jt[4] = dydyp * z; jt[5] = dydxp * dxdz + dydyp * dydz;
-
-		// calculate jacobian for rotation 
-		double dXdr[3] = {
-			X * jR[0] + Y * jR[3] + Z * jR[6], 
-			X * jR[1] + Y * jR[4] + Z * jR[7], 
-			X * jR[2] + Y * jR[5] + Z * jR[8]
-		};
-
-		double dYdr[3] = {
-			X * jR[9] +  Y * jR[12] + Z * jR[15], 
-			X * jR[10] + Y * jR[13] + Z * jR[16], 
-			X * jR[11] + Y * jR[14] + Z * jR[17]
-		};
-
-		double dZdr[3] = {
-			X * jR[18] + Y * jR[21] + Z * jR[24], 
-			X * jR[19] + Y * jR[22] + Z * jR[25], 
-			X * jR[20] + Y * jR[23] + Z * jR[26]
-		};
-
-		jr[0] = jt[0] * dXdr[0] + jt[1] * dYdr[0] + jt[2] * dZdr[0];
-		jr[1] = jt[0] * dXdr[1] + jt[1] * dYdr[1] + jt[2] * dZdr[1];
-		jr[2] = jt[0] * dXdr[2] + jt[1] * dYdr[2] + jt[2] * dZdr[2];
-
-		jr[3] = jt[3] * dXdr[0] + jt[4] * dYdr[0] + jt[5] * dZdr[0];
-		jr[4] = jt[3] * dXdr[1] + jt[4] * dYdr[1] + jt[5] * dZdr[1];
-		jr[5] = jt[3] * dXdr[2] + jt[4] * dYdr[2] + jt[5] * dZdr[2];
-	}
-};
 
 bool synth_afn(Mat & l, Mat & r, Mat & res);
 bool afn(Mat & A, Point2f & in, Point2f & pt_out);
