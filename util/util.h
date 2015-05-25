@@ -721,8 +721,11 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 	const double * t, * k;
 
 	double R[9], jR[27];
-	//Rodrigues(rvec, _R, _jR);
-	exp_so3(rvec.ptr<double>(), R, jR);
+	Mat _R, _jR;
+	Rodrigues(rvec, _R, _jR);
+	if(test_exp_so3(rvec.ptr<double>(), _R.ptr<double>(), _jR.ptr<double>())){
+		cerr << "exp_so3 may be erroneous." << endl;
+	}
 
 	t = tvec.ptr<double>();
 	k = camdist.ptr<double>();
