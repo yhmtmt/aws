@@ -161,7 +161,7 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vecto
 
 
 // awsProjPts
-inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec)
 {
 	const double * R, * t, * k;
@@ -180,7 +180,7 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 	}
 }
 
-inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		const double fx, const double fy, const double cx, const double cy,
 	const double * k, const double * R, const double * t)
 {
@@ -192,11 +192,46 @@ inline void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 }
 
 
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec)
+{
+	const double * R, * t, * k;
+	Mat _R;
+	Rodrigues(rvec, _R);
+	R = _R.ptr<double>();
+	t = tvec.ptr<double>();
+	k = camdist.ptr<double>();
+	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
+		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
+
+	m.resize(M.size());
+
+	for(int i = 0; i < M.size(); i++){
+		if(!valid[i])
+			continue;
+
+		awsProjPt(M[i], m[i], fx, fy, cx, cy, k, R, t);
+	}
+}
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const double fx, const double fy, const double cx, const double cy,
+	const double * k, const double * R, const double * t)
+{
+	m.resize(M.size());
+
+	for(int i = 0; i < M.size(); i++){
+		if(!valid[i])
+			continue;
+		awsProjPt(M[i], m[i], fx, fy, cx, cy, k, R, t);
+	}
+}
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
 		const Mat & camint, const Mat & camdist,
 		const Mat & rvec, const Mat & tvec,
 		double * jf, double * jc, double * jk, double * jp,
-		double * jr, double * jt, double arf = 0.0)
+		double * jr, double * jt, double arf)
 {
 	// if arf equals to 0.0, the jacobian for jf is calculated for fx and fy distinctively. (jf is 2Nx2 array)
 	// Otherwise, jf is caluclated related only to fy. (jf is 2Nx1 array)
@@ -219,6 +254,9 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		m.resize(M.size());
 
 	for(int i = 0; i < M.size(); i++){
+		if(!valid[i])
+			continue;
+
 		double X = M[i].x, Y = M[i].y, Z = M[i].z;
 		double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
 		double y = R[3]*X + R[4]*Y + R[5]*Z + t[1];
@@ -332,7 +370,7 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 };
 
 
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
 		const Mat & camint, const Mat & camdist,
 		const Mat & rvec, const Mat & tvec,
 		double * jr, double * jt)
@@ -352,6 +390,9 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		m.resize(M.size());
 
 	for(int i = 0; i < M.size(); i++){
+		if(!valid[i])
+			continue;
+
 		double X = M[i].x, Y = M[i].y, Z = M[i].z;
 		double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
 		double y = R[3]*X + R[4]*Y + R[5]*Z + t[1];

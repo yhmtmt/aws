@@ -677,32 +677,49 @@ inline void awsProjPt(const Point3f & M, Point2f & m,
 	m.y = (float)(yd*fy + cy);
 }
 
-// awsProjPts with Jacobian
-bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vector<Point3f> & pt3d, Mat & jacobian, double arf = 0.0);
+/////////////////////////////////////////////////////////////////////////// awsProjPts series
+// awsProjPts basically convert 3d points to 2d points according to the projection parameters.
+// The variants are defined here for various optimization problems.
 
+// parameters are given as Mat capsulated array.
 void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec);
 
+// parameters are given as raw double pointers.
 void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
 		const double fx, const double fy, const double cx, const double cy,
 	const double * k, const double * R, const double * t);
 
-// awsProjPts with Jacobian of rotation and translation
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+// valid flag prevents from calculating specific points.
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec);
+
+// valid flag prevents from calculating specific points.
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,  const vector<int> & valid,
+		const double fx, const double fy, const double cx, const double cy,
+	const double * k, const double * R, const double * t);
+
+// calculating jacobians for both camera intrinsics and extrinsics
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
 		const Mat & camint, const Mat & camdist,
 		const Mat & rvec, const Mat & tvec,
 		double * jf, double * jc, double * jk, double * jp,
 		double * jr, double * jt, double arf = 0.0);
 
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+// calculating jacobians only for camera extrinsics (rotation and translation)
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
 		const Mat & camint, const Mat & camdist,
 		const Mat & rvec, const Mat & tvec,
 		double * jr, double * jt);
 
+bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, vector<Point3f> & pt3d, Mat & jacobian, double arf = 0.0);
 
+
+////////////////////////////////////////////////////////////////////////// related to affine transformation
 bool synth_afn(Mat & l, Mat & r, Mat & res);
 bool afn(Mat & A, Point2f & in, Point2f & pt_out);
 
+///////////////////////////////////////////////////////////////////////// related to Bayer pattern handling.
 void cnvBayerRG8ToBGR8(Mat & src, Mat & dst);
 void cnvBayerRG16ToBGR16(Mat & src, Mat & dst);
 void cnvBayerGR8ToBGR8(Mat & src, Mat & dst);
@@ -723,8 +740,7 @@ struct cmp {
 	} 
 };
 
-// HEX char to integer
-
+// h2i converts HEX char to integer
 inline unsigned char h2i(char h){
 	unsigned char i;
 	i = h - '0';
