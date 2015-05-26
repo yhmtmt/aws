@@ -20,7 +20,7 @@
 #include "aws_stdlib.h"
 
 inline double rerr(double a, double b){
-	return fabs((a - b) / b);
+	return fabs((a - b) / max(fabs(b), (double)1e-12));
 }
 
 

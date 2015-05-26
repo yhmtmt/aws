@@ -45,20 +45,14 @@ bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
 	// jacobian is [dR/drx, dR/dry, dR/drz]
 	// Note: OpenCV's jacobian assumes 3-tensor form
 	// exp_so3's jacobian assumes stacked column vector 
-	for(int i = 0, j=0; i < 3; i++, j+=3){
-		errjR[0+i] = rerr(jR[0+i], jRcv[0+j]);
-		errjR[3+i] = rerr(jR[3+i], jRcv[1+j]);
-		errjR[6+i] = rerr(jR[6+i], jRcv[2+j]);
-		errjR[9+i] = rerr(jR[9+i], jRcv[9+j]);
-		errjR[12+i] = rerr(jR[12+i], jRcv[10+j]);
-		errjR[15+i] = rerr(jR[15+i], jRcv[11+j]);
-		errjR[18+i] = rerr(jR[18+i], jRcv[18+j]);
-		errjR[21+i] = rerr(jR[21+i], jRcv[19+j]);
-		errjR[24+i] = rerr(jR[24+i], jRcv[20+j]);
-	}
-
 	for(int i = 0; i < 9; i++){
 		errR[i] = rerr(R[i], Rcv[i]);
+	}
+
+	for (int i = 0; i < 9; i++){
+		for(int j = 0; j < 3; j++){
+			errjR[i] = rerr(jR[i*3 + j], jRcv[j*9+i]);
+		}
 	}
 
 	bool res = true;
@@ -76,7 +70,7 @@ bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
 		}
 	}
 
-	return false;
+	return res;
 }
 
 bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
@@ -242,7 +236,7 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 	double R[9], jR[27];
 	Mat _R, _jR;
 	Rodrigues(rvec, _R, _jR);
-	if(test_exp_so3(rvec.ptr<double>(), _R.ptr<double>(), _jR.ptr<double>())){
+	if(!test_exp_so3(rvec.ptr<double>(), _R.ptr<double>(), _jR.ptr<double>())){
 		cerr << "exp_so3 may be erroneous." << endl;
 	}
 
