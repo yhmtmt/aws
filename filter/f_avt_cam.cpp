@@ -292,7 +292,7 @@ bool f_avt_cam::config_param()
 			return false;
 		}
 	}
-
+	/*
 	if(m_DecimationHorizontal == 0){
 		long long val;
 		err = PvAttrInt64Get(m_hcam, "DecimationHorizontal", (tPvInt64*)&val);
@@ -326,7 +326,7 @@ bool f_avt_cam::config_param()
 			return false;
 		}
 	}
-
+	*/
 	return config_param_dynamic();
 }
 
@@ -410,7 +410,7 @@ bool f_avt_cam::config_param_dynamic()
 	}
 
 	if(m_ExposureAutoMax == UINT_MAX){
-		err = PvAttrUint32Get(m_hcam, "ExposureAutoMax", (tPvUint32*)m_ExposureAutoMax);
+		err = PvAttrUint32Get(m_hcam, "ExposureAutoMax", (tPvUint32*)&m_ExposureAutoMax);
 		if(err != ePvErrSuccess){
 			cerr << "Failed to get ExposureAutomax" << endl;
 			return false;
@@ -539,7 +539,7 @@ bool f_avt_cam::config_param_dynamic()
 	}
 
 	if(m_GainAutoMin == UINT_MAX){
-		err = PvAttrUint32Get(m_hcam, "GainAutoMin", (tPvUint32*)m_GainAutoMin);
+		err = PvAttrUint32Get(m_hcam, "GainAutoMin", (tPvUint32*)&m_GainAutoMin);
 		if(err != ePvErrSuccess){
 			cerr << "Failed to get GainAutoMin" << endl;
 			return false;
