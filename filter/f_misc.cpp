@@ -93,18 +93,25 @@ bool f_debayer::proc(){
 
 ////////////////////////////////////////////////////////// f_imwrite members
 const char * f_imwrite::m_strImgType[eitPNG+1] = {
-	"tiff", "jpg", "png"
+	"tiff", "jpg", "jp2", "png"
 };
 
 bool f_imwrite::proc()
 {
 	long long timg;
 	Mat img = m_pin->get_img(timg);
+
+	if(m_cur_timg == timg || img.empty()) 
+		return true;
+
+	m_cur_timg = timg;
+
 	char buf[1024];
 	vector<int> param(2);
 	snprintf(buf, 1024, "%s/%s_%lld.%s", m_path, m_name, timg, m_strImgType[m_type]);
 
 	switch(m_type){
+	case eitJP2:
 	case eitTIFF:
 		imwrite(buf, img);
 		break;

@@ -92,14 +92,16 @@ class f_imwrite: public f_misc
 protected:
 	ch_image * m_pin;
 	enum eImgType{
-		eitTIFF, eitJPG, eitPNG
+		eitTIFF, eitJPG, eitJP2, eitPNG
 	} m_type;
+
 	static const char * m_strImgType[eitPNG+1];
 	int m_qjpg; // 0 to 100
 	int m_qpng; // 0 to 10
 	char m_path[1024];
+	long long m_cur_timg;
 public:
-	f_imwrite(const char * name): f_misc(name), m_pin(NULL), m_type(eitJPG)
+	f_imwrite(const char * name): f_misc(name), m_pin(NULL), m_type(eitJPG), m_cur_timg(0)
 	{
 		m_path[0] = '.';
 		m_path[1] = '\0';
