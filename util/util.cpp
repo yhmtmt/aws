@@ -51,7 +51,7 @@ bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
 
 	for (int i = 0; i < 9; i++){
 		for(int j = 0; j < 3; j++){
-			errjR[i] = rerr(jR[i*3 + j], jRcv[j*9+i]);
+			errjR[i*3 + j] = rerr(jR[i*3 + j], jRcv[j*9+i]);
 		}
 	}
 

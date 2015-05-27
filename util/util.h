@@ -349,10 +349,10 @@ inline void exp_so3(const double * r,
 	J[0]  = dC1drx - srx;     J[1]  = dC1dry - sry;     J[2] = dC1drz - srz;
 	J[3]  = dC12drx - dS3drx; J[4]  = dC12dry - dS3dry; J[5] = dC12drz - dS3drz;
 	J[6]  = dC13drx + dS2drx; J[7]  = dC13dry + dS2dry; J[8] = dC13drz + dS2drz;
-	J[9]  = dC1drx + dS3drx;  J[10] = dC1dry + dS3dry;  J[11] = dC1drz + dS3drz;
+	J[9]  = dC12drx + dS3drx; J[10] = dC12dry + dS3dry; J[11] = dC12drz + dS3drz;
 	J[12] = dC2drx -srx;      J[13] = dC2dry -sry;      J[14] = dC2drz -srz;
 	J[15] = dC23drx - dS1drx; J[16] = dC23dry - dS1dry; J[17] = dC23drz - dS1drz;
-	J[18] = dC12drx - dS2drx; J[19] = dC12dry - dS2dry; J[20] = dC12drz - dS2drz;
+	J[18] = dC13drx - dS2drx; J[19] = dC13dry - dS2dry; J[20] = dC13drz - dS2drz;
 	J[21] = dC23drx + dS1drx; J[22] = dC23dry + dS1dry; J[23] = dC23drz + dS1drz;
 	J[24] = dC3drx - srx;     J[25] = dC3dry - sry;     J[26] = dC3drz - srz;
 }
