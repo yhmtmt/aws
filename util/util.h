@@ -308,7 +308,7 @@ inline void exp_so3(const double * r,
 	double cmsith = (c - s * itheta);
 	double irx2 = 1. - rx2, iry2 = 1. - ry2, irz2 = 1. - rz2;
 
-	dC1drx = rx3 * s + 2 * irx2 * rx2 * icith;
+	dC1drx = rx3 * s + 2 * irx2 * rx * icith;
 	dC1dry = ry * rx2 * sm2icith;
 	dC1drz = rz * rx2 * sm2icith;
 	dS1drx = rx2 * c + (1. - rx2) * sith;
@@ -316,7 +316,7 @@ inline void exp_so3(const double * r,
 	dS1drz = rxrz * cmsith;
 
 	dC2drx = rx * ry2 * sm2icith;
-	dC2dry = ry3 * s + 2 * iry2 * ry2 * icith;
+	dC2dry = ry3 * s + 2 * iry2 * ry * icith;
 	dC2drz = rz * ry2 * sm2icith;
 	dS2drx = dS1dry;
 	dS2dry = ry2 * c + (1. - ry2) * sith;
@@ -324,7 +324,7 @@ inline void exp_so3(const double * r,
 
 	dC3drx = rx * rz2 * sm2icith;
 	dC3dry = ry * rz2 * sm2icith;
-	dC3drz = rz3 * s + 2 * irz2 * rz2 * icith;
+	dC3drz = rz3 * s + 2 * irz2 * rz * icith;
 	dS3drx = dS1drz;
 	dS3dry = dS2drz;
 	dS3drz = rz2 * c + (1. - rz2) * sith;
@@ -332,18 +332,18 @@ inline void exp_so3(const double * r,
 	double dC12drx, dC13drx, dC23drx;
 	double dC12dry, dC13dry, dC23dry;
 	double dC12drz, dC13drz, dC23drz;
-
+/*
 	double 
 		irxrx2icith = (irx2 - rx) * icith, 
 		iryry2icith = (iry2 - ry) * icith, 
 		irzrz2icith = (irz2 - rz) * icith;
-
-	dC12drx = rx * ry2 * s + irxrx2icith * ry;
-	dC13drx = rx * rz2 * s + irxrx2icith * rz;
-	dC12dry = ry * rx2 * s + iryry2icith * rx;
-	dC23dry = ry * rz2 * s + iryry2icith * rz;
-	dC13drz = rz * rx2 * s + irzrz2icith * rx;
-	dC23drz = rz * ry2 * s + irzrz2icith * ry;
+		*/
+	dC12dry = rx * (ry2 * sm2icith + icith);
+	dC13drz = rx * (rz2 * sm2icith + icith);
+	dC12drx = ry * (rx2 * sm2icith + icith);
+	dC23drz = ry * (rz2 * sm2icith + icith);
+	dC13drx = rz * (rx2 * sm2icith + icith);
+	dC23dry = rz * (ry2 * sm2icith + icith);
 	dC23drx = dC13dry = dC12drz = rxry * rz * cmsith;
 
 	J[0]  = dC1drx - srx;     J[1]  = dC1dry - sry;     J[2] = dC1drz - srz;
