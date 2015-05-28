@@ -61,6 +61,7 @@ bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
 			cerr << "Jacobian[" << i << "] exp_so3 is erroneous." << endl;
 			res = false;
 		}
+		jRcv[i] = jR[i];
 	}
 
 	for(int j = 0; j < 9; j++){
@@ -102,40 +103,45 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec,
 	bool res = true;
 
 	for(int i = 0; i < neq; i++){
-		if(!valid[i/2])
+		if(!valid[i/2]){
+			_jf += (arf == 0.0 ? 2 : 1);
+			_jc += 2;
+			_jk += 6;
+			_jp += 2;
+			_jr += 3;
+			_jt += 3;
+			jcv += 18;
 			continue;
+		}
 
 		// focal length
-		err[6] = rerr(jf[0], jcv[6]);
-		err[7] = rerr(jf[1], jcv[7]);
-		_jf += 2;
-
+		if(arf == 0.0){
+			err[6] = rerr(_jf[0], jcv[6]);
+			err[7] = rerr(_jf[1], jcv[7]);
+		}else{
+			err[6] = err[7] = rerr(_jf[0], jcv[7]);
+		}
 		// principal point
-		err[8] = rerr(jc[0], jcv[8]);
-		err[9] = rerr(jc[0], jcv[9]);
-		_jc += 2;
+		err[8] = rerr(_jc[0], jcv[8]);
+		err[9] = rerr(_jc[1], jcv[9]);
 
 		// distortion coefficient
-		err[10] = rerr(jk[0], jcv[10]);
-		err[11] = rerr(jk[1], jcv[11]);
-		err[12] = rerr(jk[0], jcv[12]);
-		err[13] = rerr(jk[0], jcv[13]);
-		err[14] = rerr(jk[0], jcv[14]);
-		err[15] = rerr(jk[0], jcv[15]);
-		err[16] = rerr(jk[0], jcv[16]);
-		err[17] = rerr(jk[0], jcv[17]);
-		_jk += 6;
-		_jp += 2;
+		err[10] = rerr(_jk[0], jcv[10]);
+		err[11] = rerr(_jk[1], jcv[11]);
+		err[12] = rerr(_jp[0], jcv[12]);
+		err[13] = rerr(_jp[1], jcv[13]);
+		err[14] = rerr(_jk[2], jcv[14]);
+		err[15] = rerr(_jk[3], jcv[15]);
+		err[16] = rerr(_jk[4], jcv[16]);
+		err[17] = rerr(_jk[5], jcv[17]);
 
-		err[0] = rerr(jr[0], jcv[0]);
-		err[1] = rerr(jr[1], jcv[1]);
-		err[2] = rerr(jr[2], jcv[2]);
-		_jr += 3;
+		err[0] = rerr(_jr[0], jcv[0]);
+		err[1] = rerr(_jr[1], jcv[1]);
+		err[2] = rerr(_jr[2], jcv[2]);
 
-		err[3] = rerr(jt[0], jcv[3]);
-		err[4] = rerr(jt[1], jcv[4]);
-		err[5] = rerr(jt[2], jcv[5]);
-		_jt += 3;
+		err[3] = rerr(_jt[0], jcv[3]);
+		err[4] = rerr(_jt[1], jcv[4]);
+		err[5] = rerr(_jt[2], jcv[5]);
 
 		for(int j = 0; j < 18; j++){
 			if(err[j] > 0.001){
@@ -143,7 +149,12 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec,
 				res = false;
 			}
 		}
-
+		_jf += 2;
+		_jc += 2;
+		_jk += 6;
+		_jp += 2;
+		_jr += 3;
+		_jt += 3;
 		jcv += 18;
 	}
 
@@ -236,9 +247,11 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 
 	const double * t, * k;
 
-	double R[9], jR[27];
+//	double R[9], jR[27];
 	Mat _R, _jR;
 	Rodrigues(rvec, _R, _jR);
+	double *R = _R.ptr<double>(), *jR = _jR.ptr<double>();
+
 	if(!test_exp_so3(rvec.ptr<double>(), _R.ptr<double>(), _jR.ptr<double>())){
 		cerr << "exp_so3 may be erroneous." << endl;
 	}
@@ -252,8 +265,15 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 		m.resize(M.size());
 
 	for(int i = 0; i < M.size(); i++){
-		if(!valid[i])
+		if(!valid[i]){
+			jf += (arf == 0.0 ? 4 : 2);
+			jc += 4;
+			jk += 12;
+			jp += 4;
+			jr += 6;
+			jt += 6;
 			continue;
+		}
 
 		double X = M[i].x, Y = M[i].y, Z = M[i].z;
 		double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
@@ -284,21 +304,21 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 		// calculate jacboian for fx, fy ( this version is free aspect ratio)
 		if(arf == 0.0){
 			jf[0] = xd; jf[1] = 0;
-			jf += sizeof(double) * 2;
+			jf += 2;
 			jf[0] = 0; jf[1] = yd;
-			jf += sizeof(double) * 2;
+			jf += 2;
 		}else{
 			jf[0] = xd * arf;
-			jf += sizeof(double);
+			jf += 1;
 			jf[0] = yd;
-			jf += sizeof(double);
+			jf += 1;
 		}
 
 		// calculate jacobian for cx, cy
 		jc[0] = 1; jc[1] = 0;
-		jc += sizeof(double) * 2;
+		jc += 2;
 		jc[0] = 0; jc[1] = 1;
-		jc += sizeof(double) * 2;
+		jc += 2;
 
 		// calculate jacobian for radial distortion coefficient
 		jk[0] = fx * x * r2 * icdist2; 
@@ -307,27 +327,27 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 		jk[3] = -fx * x * r2 * D2;
 		jk[4] = -fx * x * r4 * D2;
 		jk[5] = -fx * x * r6 * D2;
-		jk += sizeof(double) * 6;
+		jk += 6;
 		jk[0] = fy * y * r2 * icdist2; 
 		jk[1] = fy * y * r4 * icdist2; 
 		jk[2] = fy * y * r6 * icdist2;
 		jk[3] = -fy * y * r2 * D2;
 		jk[4] = -fy * y * r4 * D2;
 		jk[5] = -fy * y * r6 * D2;
-		jk += sizeof(double) * 6;
+		jk += 6;
 
 		// calculate jacobian for tangential distortion coefficient
-		jp[0] = a1; jp[1] = a2;
-		jp += sizeof(double) * 2;
-		jp[0] = a3; jp[1] = a1;
-		jp += sizeof(double) * 2;
+		jp[0] = fx * a1; jp[1] = fx * a2;
+		jp += 2;
+		jp[0] = fy * a3; jp[1] = fy * a1;
+		jp += 2;
 
 		double dDdl2 = (3 * k[4] * r4 + 2 * k[1] * r2 + k[0]) * icdist2 
 			- (3 * k[7] * r4 + 2 * k[6] * r2 + k[5]) * D2;
 		double dl2dxp = 2*x;
 		double dl2dyp = 2*y;
 
-		double dxdz = -x * z; // here x and y has already been mutiplied with 1/z. And note that z is actuall 1/z here.
+		double dxdz = -x * z; // here x and y has already been mutiplied with 1/z. And note that z is actually 1/z here.
 		double dydz = -y * z;
 
 		// calculate jacobian for translation
@@ -339,6 +359,11 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 		jt[3] = dydxp * z; jt[4] = dydyp * z; jt[5] = dydxp * dxdz + dydyp * dydz;
 
 		// calculate jacobian for rotation 
+		// [ dm/jt = dm/dM ] [ dM/jr ]
+		// [dx/jt][ dX/dr ]
+		// [dy/jt][ dY/dr ]
+		//        [ dZ/dr ]
+
 		double dXdr[3] = {
 			X * jR[0] + Y * jR[3] + Z * jR[6], 
 			X * jR[1] + Y * jR[4] + Z * jR[7], 
@@ -356,7 +381,69 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 			X * jR[19] + Y * jR[22] + Z * jR[25], 
 			X * jR[20] + Y * jR[23] + Z * jR[26]
 		};
+		/*
+		for( int j = 0; j < 3; j++ )
+		{
+			double dxdr = z*(dXdr[j] - x*dZdr[j]);
+			double dydr = z*(dYdr[j] - y*dZdr[j]);
+			double dr2dr = 2*x*dxdr + 2*y*dydr;
+			double dcdist_dr = k[0]*dr2dr + 2*k[1]*r2*dr2dr + 3*k[4]*r4*dr2dr;
+			double dicdist2_dr = -icdist2*icdist2*(k[5]*dr2dr + 2*k[6]*r2*dr2dr + 3*k[7]*r4*dr2dr);
+			double da1dr = 2*(x*dydr + y*dxdr);
+			double dmxdr = fx*(dxdr*cdist*icdist2 + x*dcdist_dr*icdist2 + x*cdist*dicdist2_dr +
+				k[2]*da1dr + k[3]*(dr2dr + 2*x*dxdr));
+			double dmydr = fy*(dydr*cdist*icdist2 + y*dcdist_dr*icdist2 + y*cdist*dicdist2_dr +
+				k[2]*(dr2dr + 2*y*dydr) + k[3]*da1dr);
+			jr[j] = dmxdr;
+			jr[j+3] = dmydr;
+		}
+		/*
+		double dxdrx, dydrx, dxdry, dydry, dxdrz, dydrz;
+		dxdrx = z * (dXdr[0] - x * dZdr[0]);
+		dxdry = z * (dXdr[1] - x * dZdr[1]);
+		dxdrz = z * (dXdr[2] - x * dZdr[2]);
 
+		dydrx = z * (dYdr[0] - y * dZdr[0]);
+		dydry = z * (dYdr[1] - y * dZdr[1]);
+		dydrz = z * (dYdr[2] - y * dZdr[2]);
+
+		double dl2drx, dl2dry, dl2drz;
+		dl2drx = dl2dxp * dxdrx + dl2dyp * dydrx;
+		dl2dry = dl2dxp * dxdry + dl2dyp * dydry;
+		dl2drz = dl2dxp * dxdrz + dl2dyp * dydrz;
+
+		jr[0] = fx * (
+			D * dxdrx 
+			+ x * dDdl2 * dl2drx 
+			+ 2 * k[2] * (x * dxdrx + y * dydrx) 
+			+ k[3] * (dl2drx + 2 * x * dxdrx));
+		jr[3] = fy * (
+			D * dxdrx 
+			+ x * dDdl2 * dl2drx 
+			+ 2 * k[3] * (x * dxdrx + y * dydrx) 
+			+ k[2] * (dl2drx + 2 * y * dydrx));
+		jr[1] = fx * (
+			D * dxdry 
+			+ x * dDdl2 * dl2dry 
+			+ 2 * k[2] * (x * dxdry + y * dydry) 
+			+ k[3] * (dl2dry + 2 * x * dxdry));
+		jr[4] = fy * (
+			D * dxdry 
+			+ x * dDdl2 * dl2dry 
+			+ 2 * k[3] * (x * dxdry + y * dydry) 
+			+ k[2] * (dl2dry + 2 * y * dydry));
+		jr[2] = fx * (
+			D * dxdrz 
+			+ x * dDdl2 * dl2drz 
+			+ 2 * k[2] * (x * dxdrz + y * dydrz) 
+			+ k[3] * (dl2drz + 2 * x * dxdrz));
+		jr[5] = fy * (
+			D * dxdrz 
+			+ x * dDdl2 * dl2drz 
+			+ 2 * k[3] * (x * dxdrz + y * dydrz) 
+			+ k[2] * (dl2drz + 2 * y * dydrz));
+		*/
+		
 		jr[0] = jt[0] * dXdr[0] + jt[1] * dYdr[0] + jt[2] * dZdr[0];
 		jr[1] = jt[0] * dXdr[1] + jt[1] * dYdr[1] + jt[2] * dZdr[1];
 		jr[2] = jt[0] * dXdr[2] + jt[1] * dYdr[2] + jt[2] * dZdr[2];
@@ -364,6 +451,9 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 		jr[3] = jt[3] * dXdr[0] + jt[4] * dYdr[0] + jt[5] * dZdr[0];
 		jr[4] = jt[3] * dXdr[1] + jt[4] * dYdr[1] + jt[5] * dZdr[1];
 		jr[5] = jt[3] * dXdr[2] + jt[4] * dYdr[2] + jt[5] * dZdr[2];
+		
+		jr += 6;
+		jt += 6;
 	}
 };
 
@@ -388,8 +478,11 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 		m.resize(M.size());
 
 	for(int i = 0; i < M.size(); i++){
-		if(!valid[i])
+		if(!valid[i]){
+			jr += 6;
+			jt += 6;
 			continue;
+		}
 
 		double X = M[i].x, Y = M[i].y, Z = M[i].z;
 		double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
@@ -459,6 +552,8 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 		jr[3] = jt[3] * dXdr[0] + jt[4] * dYdr[0] + jt[5] * dZdr[0];
 		jr[4] = jt[3] * dXdr[1] + jt[4] * dYdr[1] + jt[5] * dZdr[1];
 		jr[5] = jt[3] * dXdr[2] + jt[4] * dYdr[2] + jt[5] * dZdr[2];
+		jr += 6;
+		jt += 6;
 	}
 };
 

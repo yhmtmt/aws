@@ -86,6 +86,7 @@ public:
 				long long pos;
 				m_pSeek->GetCurrentPosition(&pos);
 				cout << "Grabbed Pos " << pos << endl;
+				cout << "Current Time " << m_cur_time << endl;
 			}while(ofs != State_Running);
 		}
 		
