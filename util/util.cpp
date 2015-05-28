@@ -57,7 +57,7 @@ bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
 
 	bool res = true;
 	for(int i = 0; i < 27; i++){
-		if(errjR[i] > 0.001){
+		if(errjR[i] > 0.1){
 			cerr << "Jacobian[" << i << "] exp_so3 is erroneous." << endl;
 			res = false;
 		}
