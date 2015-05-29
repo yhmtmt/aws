@@ -1602,7 +1602,10 @@ bool f_inspector::proc()
 
 	// rendering main view
 	if(m_op == KFRAME){
-		render(m_kfrms[m_sel_kfrm]->img, m_kfrms[m_sel_kfrm]->tfrm);
+		if(m_sel_kfrm < 0)
+			render(m_img_s, timg);
+		else
+			render(m_kfrms[m_sel_kfrm]->img, m_kfrms[m_sel_kfrm]->tfrm);
 	}else{
 		render(m_img_s, timg);
 	}
@@ -2970,6 +2973,9 @@ void f_inspector::estimate_levmarq()
 	num_valid_frms = 0;
 	for(double ifrm = 0.; ifrm < (double) m_kfrms.size(); ifrm += step){
 		int i = (int) ifrm;
+		if(!m_kfrms[i])
+			continue;
+
 //		if(m_fobjs[i]->ssd - ssd_avg < ssd_range){
 			m_kfrm_used[i] = true;
 			num_valid_frms++;
@@ -4152,6 +4158,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case 'K':
 		m_op = KFRAME;
+		m_sel_kfrm = m_cur_kfrm;
 		break;
 	case 'L':
 		m_sop = SOP_LOAD;
