@@ -496,7 +496,9 @@ private:
 	int m_num_kfrms;				// number of key frames cached in the memory.
 	int m_cur_kfrm;					// current key frame
 	int m_sel_kfrm;					// selected key frame in KFRAME mode.
-	long long  m_int_kfrms;			// Interval between key frames
+	int m_int_cyc_kfrm;					// it defines the keyframe's interval as the number of aws cycles. The number of cycle skiped by right vk_left and vk_right in frame operation.
+	long long  m_int_kfrms;			// Keframe's interval in 10e-7 second. Subject to m_int_cyc_kfrm
+
 	vector<s_frame_obj*> m_kfrms;	// Key frames (ring buffer)
 	bool save_kfrms();
 	bool load_kfrms();
@@ -512,7 +514,6 @@ private:
 //	int m_cur_frm;
 	char m_cmd_buf[1024];
 	char m_cmd_ret[1024];
-	int m_frm_step;
 
 	//
 	// Object
@@ -807,8 +808,8 @@ public:
 //  L : Load Camera parameter table
 //  S : Save Camera parameter table
 //	k : Set as Key frame
-// -> : step to the later frame. (depending on m_frm_step)
-// <- : step back to the former frame. (depending on m_frm_step)
+// -> : step to the later frame. (depending on m_int_cyc_kfrm)
+// <- : step back to the former frame. (depending on m_int_cyc_kfrm)
 // 
 // op = KeyFrame
 // -> : See Next Key Frame

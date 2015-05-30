@@ -1159,7 +1159,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
-	/*m_cur_frm(-1),*/ m_frm_step(30), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
+	/*m_cur_frm(-1),*/ m_int_cyc_kfrm(30), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
 	m_num_cur_objs(0), m_cur_obj(-1), m_cur_part(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
@@ -1198,7 +1198,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("ldkf", &m_bald_kfrms, "Flag auto loading key frames");
 	register_fpar("svkf", &m_basv_kfrms, "Flag auto saving key frames");
 	register_fpar("kfrms", &m_num_kfrms, "Number of key frames cached in the memory.");
-	register_fpar("intkf", &m_int_kfrms, "Interval between key frames.");
+	register_fpar("cyckf", &m_int_cyc_kfrm, "Key frame interval in cycle counts.");
+	register_fpar("intkf", &m_int_kfrms, "Key frame interval in 10e-7 second, subjects to cyckf");
 
 	// model related parameters
 	register_fpar("mdl", &m_cur_model, "Model with specified index is selected.");
@@ -1318,37 +1319,31 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 	m_img = img;
 	m_timg = timg;
 
-	if(m_bauto_save_fobj && m_pfrm){
-		m_pfrm->save(m_name);
-	}
+	s_frame_obj * pfrm_new = s_frame_obj::alloc();
 
-	if(m_bauto_load_fobj){
-		if(m_pfrm && !m_pfrm->kfrm)
-			s_frame_obj::free(m_pfrm);
-
-		m_pfrm = s_frame_obj::alloc();
-		if(m_pfrm->load(m_name, timg, m_models)){
-			m_pfrm->camint.copyTo(m_cam_int);
-			m_pfrm->camdist.copyTo(m_cam_dist);
-			return true;
-		}
-	}
-
-	if(m_pfrm){
-		s_frame_obj * pfrm_new = s_frame_obj::alloc();
-
+	// new frame can be loaded from file
+	if(m_bauto_load_fobj && pfrm_new->load(m_name, timg, m_models)){
+		pfrm_new->camint.copyTo(m_cam_int);
+		pfrm_new->camdist.copyTo(m_cam_dist);
+	}else if(m_pfrm){ // if previous frame is not null, initialize new frame with previous frame
 		// frame tracking
 		if(m_btrack_obj)
 			pfrm_new->init(timg, m_pfrm, NULL, m_impyr, &m_ia, m_miss_tracks);
 		else
 			pfrm_new->init(timg, m_cam_int, m_cam_dist);
-
-		s_frame_obj::free(m_pfrm);
-		m_pfrm = pfrm_new;
-	}else{
-		m_pfrm = s_frame_obj::alloc();
-		m_pfrm->init(timg, m_cam_int, m_cam_dist);
+	}else{ 
+		pfrm_new->init(timg, m_cam_int, m_cam_dist);
 	}
+
+	if(m_pfrm){
+		if(!m_pfrm->kfrm){
+			s_frame_obj::free(m_pfrm);
+		}
+		if(m_bauto_save_fobj){
+			m_pfrm->save(m_name);
+		}
+	}
+	m_pfrm = pfrm_new;
 
 	return true;
 
@@ -1494,6 +1489,7 @@ bool f_inspector::proc()
 	if(!m_pfrm)
 		return true;
 
+	m_int_kfrms = m_int_cyc_kfrm * f_base::m_paws->get_cycle_time();
 	if(m_cur_kfrm < 0){
 		m_cur_kfrm = 0;
 		m_kfrms[m_cur_kfrm] = m_pfrm;
@@ -2209,7 +2205,7 @@ void f_inspector::renderFrameInfo(char * buf, int len, int & y)
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 */
-	snprintf(buf, len, "Frame Step: %d", (int) m_frm_step);
+	snprintf(buf, len, "Frame Step: %d", (int) m_int_cyc_kfrm);
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 }
@@ -4041,7 +4037,7 @@ void f_inspector::handle_vk_left()
 		break;
 	case FRAME:
 		{
-			snprintf(m_cmd_buf, CMD_LEN, "step c -%d", m_frm_step);
+			snprintf(m_cmd_buf, CMD_LEN, "step c -%d", m_int_cyc_kfrm);
 			m_sop = SOP_AWSCMD;
 		}
 		break;
@@ -4106,7 +4102,7 @@ void f_inspector::handle_vk_right()
 		break;
 	case FRAME:
 		{
-			snprintf(m_cmd_buf, CMD_LEN, "step c %d", m_frm_step);
+			snprintf(m_cmd_buf, CMD_LEN, "step c %d", m_int_cyc_kfrm);
 			m_sop = SOP_AWSCMD;
 		}
 		break;
@@ -4357,6 +4353,7 @@ void f_inspector::handle_sop_save()
 		saveCamparTbl();
 		break;
 	case FRAME:
+	case KFRAME:
 		if(!save_kfrms()){
 			cerr << "Failed to save fobjs." << endl;
 		}
@@ -4375,7 +4372,10 @@ bool f_inspector::save_kfrms()
 		return false;
 
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
+		if(!m_kfrms[ikf])
+			continue;
 		m_kfrms[ikf]->save(m_name);
+
 		file << m_kfrms[ikf]->tfrm << endl;
 	}
 
@@ -4394,7 +4394,8 @@ void f_inspector::handle_sop_load()
 	case CAMTBL:
 		loadCamparTbl();
 		break;
-	case FRAME:
+	case FRAME:	
+	case KFRAME:
 		if(!load_kfrms()){
 			cerr << "Failed to load fobjs." << endl;
 		}
@@ -4419,6 +4420,12 @@ bool f_inspector::load_kfrms()
 	int ikf = 0;
 	m_cur_kfrm = -1;
 	while(!file.eof()){
+		file.getline(fname, 1024);
+		long long tfrm = atoll(fname);
+		if(tfrm <= 0){
+			continue;
+		}
+
 		if(m_kfrms[ikf] != NULL){
 			if(m_cur_kfrm > 0)// current key frame is found and the cache of key frame is full.
 				break;
@@ -4427,11 +4434,9 @@ bool f_inspector::load_kfrms()
 			m_kfrms[ikf] = NULL;
 		}
 
-		file.getline(fname, 1024);
-		long long tfrm = atoll(fname);
 
 		// first key frame with the time exceeding current time is the current key frame
-		if(m_cur_kfrm < 0 && tfrm > m_cur_time){
+		if(m_cur_kfrm < 0 && tfrm >= m_cur_time){
 			m_cur_kfrm = ikf;
 		}
 
@@ -4444,6 +4449,11 @@ bool f_inspector::load_kfrms()
 		if(m_kfrms[ikf] == NULL)
 			break;
 		m_kfrms[ikf]->load(m_name, m_kfrms[ikf]->tfrm, m_models);
+	}
+
+	if(m_pfrm->tfrm == m_kfrms[m_cur_kfrm]->tfrm && m_pfrm != m_kfrms[m_cur_kfrm]){
+		s_frame_obj::free(m_pfrm);
+		m_pfrm = m_kfrms[m_cur_kfrm];
 	}
 
 	return true;
