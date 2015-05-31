@@ -272,14 +272,14 @@ struct s_obj
 	}
 };
 
-///////////////////////////////////////////////////////////////// s_frame_obj
-struct s_frame_obj{
+///////////////////////////////////////////////////////////////// s_frame
+struct s_frame{
 	bool kfrm;
 	Mat img; // Image data. This field is used only for key frame
 
 	union {
 		long long tfrm;
-		s_frame_obj * ptr;
+		s_frame * ptr;
 	};
 
 	double ssd; // sum of square projection errors
@@ -291,11 +291,11 @@ struct s_frame_obj{
 	// gray image, differential image, image pyramid, 
 	bool update;
 
-	s_frame_obj():update(false), kfrm(false)
+	s_frame():update(false), kfrm(false)
 	{
 	}
 
-	~s_frame_obj()
+	~s_frame()
 	{
 		release();
 	}
@@ -323,7 +323,7 @@ struct s_frame_obj{
 		objs.clear();
 	}
 
-	bool init(const long long atfrm, s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
+	bool init(const long long atfrm, s_frame * pfobj0, s_frame * pfobj1, 
 		vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks);
 	bool init(const long long atfrm, Mat & acamint, Mat & acamdist)
 	{
@@ -347,8 +347,8 @@ struct s_frame_obj{
 	}
 
 	// memory pool for frame object
-	static s_frame_obj * pool;
-	static void free(s_frame_obj * pfobj)
+	static s_frame * pool;
+	static void free(s_frame * pfobj)
 	{
 		if(pfobj == NULL)
 			return;
@@ -358,14 +358,14 @@ struct s_frame_obj{
 		pool = pfobj;
 	}
 
-	static s_frame_obj * alloc(){
+	static s_frame * alloc(){
 		if(pool != NULL){
-			s_frame_obj * pfobj = pool;
+			s_frame * pfobj = pool;
 			pool = pool->ptr;
 			return pfobj;
 		}
 
-		return new s_frame_obj;
+		return new s_frame;
 	}
 
 };
@@ -499,19 +499,17 @@ private:
 	int m_int_cyc_kfrm;					// it defines the keyframe's interval as the number of aws cycles. The number of cycle skiped by right vk_left and vk_right in frame operation.
 	long long  m_int_kfrms;			// Keframe's interval in 10e-7 second. Subject to m_int_cyc_kfrm
 
-	vector<s_frame_obj*> m_kfrms;	// Key frames (ring buffer)
+	vector<s_frame*> m_kfrms;	// Key frames (ring buffer)
 	bool save_kfrms();
 	bool load_kfrms();
 
-	s_frame_obj * m_pfrm;			// temporal frame object
+	s_frame * m_pfrm;			// temporal frame object
 
 	//
 	// frame objects
 	// 
 	bool m_bauto_load_fobj, m_bauto_save_fobj;
 
-//	vector<s_frame_obj*> m_fobjs;
-//	int m_cur_frm;
 	char m_cmd_buf[1024];
 	char m_cmd_ret[1024];
 
@@ -725,9 +723,10 @@ public:
 //  Shift+LDrag: scroll
 //  Shift+Wheel: scaling
 //  R: Reset Window
-//  L: Load Frame object
-//  S: Save Frame object
 //  h: help overlay mode enable
+//	k : Set as Key frame
+//  < : step backward
+//  > : step forward
 //  Up: parameter adjustment step up
 //  Down: parameter adjustment step down
 //
@@ -805,13 +804,12 @@ public:
 //  3: rotation/translation estimation EMD_RT
 //
 // op = Frame
-//  L : Load Camera parameter table
-//  S : Save Camera parameter table
-//	k : Set as Key frame
 // -> : step to the later frame. (depending on m_int_cyc_kfrm)
 // <- : step back to the former frame. (depending on m_int_cyc_kfrm)
 // 
 // op = KeyFrame
+// L : Load key frame
+// S : Save key frame
 // -> : See Next Key Frame
 // <- : See Previous Key Frame
 

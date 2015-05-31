@@ -588,7 +588,7 @@ bool c_aws::handle_cyc(s_cmd & cmd)
 		sprintf(cmd.get_ret_str(), "Cycle cannot be changed during execution");
 		result = false;
 	}else{
-		m_cycle_time = (long long) (atof(cmd.args[1]) * 1e7);
+		m_cycle_time = (long long) (atof(cmd.args[1]) * SEC);
 		result = true;
 	}
 	return result;

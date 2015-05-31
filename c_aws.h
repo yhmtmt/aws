@@ -109,6 +109,11 @@ public:
 
 	bool push_command(const char * cmd_str, char * ret_str, bool & ret_stat);
 
+	long long  get_cycle_time()
+	{
+		return m_cycle_time;
+	}
+
 	bool is_exit(){
 		return m_exit;
 	}

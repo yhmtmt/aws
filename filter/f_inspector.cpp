@@ -940,11 +940,11 @@ void s_obj::sample_tmpl(Mat & img, Size & sz)
 	}
 }
 
-//////////////////////////////////////////////////////////////////// s_frame_obj
-s_frame_obj * s_frame_obj::pool = NULL;
+//////////////////////////////////////////////////////////////////// s_frame
+s_frame * s_frame::pool = NULL;
 
-bool s_frame_obj::init(const long long atfrm, 
-	s_frame_obj * pfobj0, s_frame_obj * pfobj1, 
+bool s_frame::init(const long long atfrm, 
+	s_frame * pfobj0, s_frame * pfobj1, 
 	vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks)
 {
 	tfrm = atfrm;
@@ -1027,7 +1027,7 @@ bool s_frame_obj::init(const long long atfrm,
 }
 
 
-bool s_frame_obj::save(const char * aname)
+bool s_frame::save(const char * aname)
 {
 	char buf[1024];
 	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
@@ -1060,7 +1060,7 @@ bool s_frame_obj::save(const char * aname)
 	return true;
 }
 
-bool s_frame_obj::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
+bool s_frame::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
 {
 	tfrm = atfrm;
 
@@ -1267,7 +1267,7 @@ f_inspector::~f_inspector()
 	for (int imdl = 0; imdl < m_models.size(); imdl++)
 		delete m_models[imdl];
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++)
-		s_frame_obj::free(m_kfrms[ikf]);
+		s_frame::free(m_kfrms[ikf]);
 
 /*	m_fobjs.clear();*/
 	m_kfrms.clear();
@@ -1318,31 +1318,36 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 
 	m_img = img;
 	m_timg = timg;
+	s_frame * pfrm_new;
+	if(m_kfrms[m_cur_kfrm+1] && m_kfrms[m_cur_kfrm+1]->tfrm == m_timg){ // the frame is already in the key frame cache
+		pfrm_new = m_kfrms[m_cur_kfrm+1];
+	}else{
+		pfrm_new = s_frame::alloc();
 
-	s_frame_obj * pfrm_new = s_frame_obj::alloc();
-
-	// new frame can be loaded from file
-	if(m_bauto_load_fobj && pfrm_new->load(m_name, timg, m_models)){
-		pfrm_new->camint.copyTo(m_cam_int);
-		pfrm_new->camdist.copyTo(m_cam_dist);
-	}else if(m_pfrm){ // if previous frame is not null, initialize new frame with previous frame
-		// frame tracking
-		if(m_btrack_obj)
-			pfrm_new->init(timg, m_pfrm, NULL, m_impyr, &m_ia, m_miss_tracks);
-		else
+		// new frame can be loaded from file
+		if(m_bauto_load_fobj && pfrm_new->load(m_name, timg, m_models)){
+			pfrm_new->camint.copyTo(m_cam_int);
+			pfrm_new->camdist.copyTo(m_cam_dist);
+		}else if(m_pfrm){ // if previous frame is not null, initialize new frame with previous frame
+			// frame tracking
+			if(m_btrack_obj)
+				pfrm_new->init(timg, m_pfrm, NULL, m_impyr, &m_ia, m_miss_tracks);
+			else
+				pfrm_new->init(timg, m_cam_int, m_cam_dist);
+		}else{ 
 			pfrm_new->init(timg, m_cam_int, m_cam_dist);
-	}else{ 
-		pfrm_new->init(timg, m_cam_int, m_cam_dist);
+		}
 	}
 
 	if(m_pfrm){
 		if(!m_pfrm->kfrm){
-			s_frame_obj::free(m_pfrm);
+			s_frame::free(m_pfrm);
 		}
 		if(m_bauto_save_fobj){
 			m_pfrm->save(m_name);
 		}
 	}
+
 	m_pfrm = pfrm_new;
 
 	return true;
@@ -1391,7 +1396,7 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 
 	if(!bfound){
 		// new frame object added
-		m_fobjs.insert(m_fobjs.begin() + m_cur_frm, new s_frame_obj);
+		m_fobjs.insert(m_fobjs.begin() + m_cur_frm, new s_frame);
 		if(m_pfrm == NULL){
 			cerr << "Cannot allocate memory for frame object" << endl;
 			return false;
@@ -1502,20 +1507,20 @@ bool f_inspector::proc()
 				if(m_basv_kfrms)
 					m_kfrms[m_cur_kfrm]->save(m_name);
 
-				s_frame_obj::free(m_kfrms[m_cur_kfrm]);
+				s_frame::free(m_kfrms[m_cur_kfrm]);
 				m_kfrms[m_cur_kfrm] = NULL;
 				// current implementation, this condition could not occur, because we dont have any method to load future key frame.
 			}
 		}
 
 		if(!m_kfrms[m_cur_kfrm]){ // if the key frame is not allocated 
-			m_kfrms[m_cur_kfrm] = s_frame_obj::alloc();
+			m_kfrms[m_cur_kfrm] = s_frame::alloc();
 			if(m_bald_kfrms && m_kfrms[m_cur_kfrm]->load(m_name, m_cur_time, m_models)){ // if the key frame is loaded from file
 				if(!m_kfrms[m_cur_kfrm]->img.empty())
 					m_img_s = m_kfrms[m_cur_kfrm]->img;
 				m_timg = m_kfrms[m_cur_kfrm]->tfrm;
 			}else{ // otherwise, current frame is sat as key frame.
-				s_frame_obj::free(m_kfrms[m_cur_kfrm]);
+				s_frame::free(m_kfrms[m_cur_kfrm]);
 				m_kfrms[m_cur_kfrm] = m_pfrm;
 				m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
 			}
@@ -1533,9 +1538,6 @@ bool f_inspector::proc()
 	m_pfrm->proj_objs(true, m_bcalib_fix_aspect_ratio);
 
 	calc_jmax();
-
-	// calcurate roll pitch yaw surge sway heave relative to current object
-	m_pfrm->calc_rpy(m_cur_obj);
 
 	// sample point templates
 	m_pfrm->sample_tmpl(m_img_gry_blur, m_sz_vtx_smpl);
@@ -1558,6 +1560,9 @@ bool f_inspector::proc()
 
 	m_cam_int.copyTo(m_pfrm->camint);
 	m_cam_dist.copyTo(m_pfrm->camdist);
+
+	// calcurate roll pitch yaw surge sway heave relative to current object
+	m_pfrm->calc_rpy(m_cur_obj);
 
 	// fit the viewport size to the image
 	if(m_sz_img.width !=  m_img_s.cols &&
@@ -2188,7 +2193,7 @@ void f_inspector::renderCamparTblInfo(char * buf, int len, int & y)
 
 void f_inspector::renderEstimateInfo(char * buf, int len, int & y)
 {
-	snprintf(buf, len, "Estimate");
+	snprintf(buf, len, "Estimate (1): All KFs All Ps (2): Current KF RT ");
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 	snprintf(buf, len, "State: %s", m_str_emd[m_emd]);
@@ -2224,7 +2229,7 @@ void f_inspector::renderKeyFrameInfo(char * buf, int len, int & y)
 
 void f_inspector::renderSceneInfo(char * buf, int len, int & y)
 {
-	snprintf(buf, len, "Scene mode = %s", m_str_view[m_ev]);
+	snprintf(buf, len, "Scene mode = %s (1): Camera (2): Current Obj X (3): Current Obj Y (4): Current Obj Z", m_str_view[m_ev]);
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y+= 20;
 
@@ -2487,10 +2492,9 @@ void f_inspector::renderScene(long long timg)
 				// calculating roll pitch yaw relative to the cur_obj coordinate frame
 				// relative rotation matrix (here Rorg is the transpose of the rotation matrix of the current object
 			}
-
 			
 			//projectPoints(objs[iobj]->pmdl->pts, rvec, tvec, m_cam_int, m_cam_dist, pts);
-			awsProjPts(objs[iobj]->pmdl->pts, pts, objs[iobj]->visible, m_cam_int, m_cam_dist, rvec, tvec);
+			awsProjPts(objs[iobj]->pmdl->pts, pts, m_cam_int, m_cam_dist, rvec, tvec);
 //			projectPoints(objs[iobj]->pmdl->pts, m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, pts);
 			if(m_cur_obj == iobj)
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 0, -1);	
@@ -3180,6 +3184,7 @@ void f_inspector::estimate_levmarq()
 				param += 6;
 			}
 		}
+
 		// calculate projection
 		double ssd = 0.0;
 #ifdef VERB_LM
@@ -3391,7 +3396,7 @@ void f_inspector::estimate_fulltime()
 	}	
 }
 
-void s_frame_obj::proj_objs(bool bjacobian, bool fix_aspect_ratio)
+void s_frame::proj_objs(bool bjacobian, bool fix_aspect_ratio)
 {
 	ssd = 0.0;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
@@ -3405,7 +3410,7 @@ void s_frame_obj::proj_objs(bool bjacobian, bool fix_aspect_ratio)
 }
 
 // calc_rpy calculates roll pitch yaw serge sway heave of the objects relative to the base_obj.
-void s_frame_obj::calc_rpy(int base_obj)
+void s_frame::calc_rpy(int base_obj)
 {
 	if(update)
 		return;
@@ -3918,7 +3923,7 @@ void f_inspector::adjust_part(short delta)
 {
 	if(!m_pfrm)
 		return ;
-	s_frame_obj & fobj = *m_pfrm;
+	s_frame & fobj = *m_pfrm;
 
 	if(m_cur_obj < 0 || m_cur_obj >= fobj.objs.size())
 		return;
@@ -4214,6 +4219,14 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'z':
 		m_axis = AX_Z;
 		break;
+	case '>':
+		snprintf(m_cmd_buf, CMD_LEN, "step c %d", m_int_cyc_kfrm);
+		m_sop = SOP_AWSCMD;
+		break;
+	case '<':
+		snprintf(m_cmd_buf, CMD_LEN, "step c -%d", m_int_cyc_kfrm);
+		m_sop = SOP_AWSCMD;
+		break;
 	case '1':
 		if(m_op == ESTIMATE){
 			m_emd = EMD_FULL;
@@ -4413,7 +4426,7 @@ bool f_inspector::load_kfrms()
 	if(!file.is_open())
 		return false;
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
-		s_frame_obj::free(m_kfrms[ikf]);
+		s_frame::free(m_kfrms[ikf]);
 		m_kfrms[ikf] = NULL;
 	}
 
@@ -4430,7 +4443,7 @@ bool f_inspector::load_kfrms()
 			if(m_cur_kfrm > 0)// current key frame is found and the cache of key frame is full.
 				break;
 		}else{
-			s_frame_obj::free(m_kfrms[ikf]); 
+			s_frame::free(m_kfrms[ikf]); 
 			m_kfrms[ikf] = NULL;
 		}
 
@@ -4440,7 +4453,7 @@ bool f_inspector::load_kfrms()
 			m_cur_kfrm = ikf;
 		}
 
-		m_kfrms[ikf] = s_frame_obj::alloc();
+		m_kfrms[ikf] = s_frame::alloc();
 		m_kfrms[ikf]->tfrm = tfrm;
 		ikf = (ikf + 1) % m_num_kfrms;
 	}
@@ -4452,7 +4465,7 @@ bool f_inspector::load_kfrms()
 	}
 
 	if(m_pfrm->tfrm == m_kfrms[m_cur_kfrm]->tfrm && m_pfrm != m_kfrms[m_cur_kfrm]){
-		s_frame_obj::free(m_pfrm);
+		s_frame::free(m_pfrm);
 		m_pfrm = m_kfrms[m_cur_kfrm];
 	}
 
@@ -4630,7 +4643,7 @@ void f_inspector::handle_sop_set_kf()
 		if(m_basv_kfrms){
 			m_kfrms[m_cur_kfrm]->save(m_name);
 		}
-		s_frame_obj::free(m_kfrms[m_cur_kfrm]);
+		s_frame::free(m_kfrms[m_cur_kfrm]);
 		m_kfrms[m_cur_kfrm] = NULL;
 	}
 
