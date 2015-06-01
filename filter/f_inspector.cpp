@@ -1319,8 +1319,10 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 	m_img = img;
 	m_timg = timg;
 	s_frame * pfrm_new;
-	if(m_kfrms[m_cur_kfrm+1] && m_kfrms[m_cur_kfrm+1]->tfrm == m_timg){ // the frame is already in the key frame cache
-		pfrm_new = m_kfrms[m_cur_kfrm+1];
+	m_next_kfrm = (m_cur_kfrm  + 1) % m_kfrms.size();
+
+	if(m_kfrms[m_next_kfrm] && m_kfrms[m_next_kfrm]->tfrm == m_timg){ // the frame is already in the key frame cache
+		pfrm_new = m_kfrms[m_next_kfrm];
 	}else{
 		pfrm_new = s_frame::alloc();
 
