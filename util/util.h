@@ -677,6 +677,46 @@ inline void awsProjPt(const Point3f & M, Point2f & m,
 	m.y = (float)(yd*fy + cy);
 }
 
+// no distortion version
+inline void awsProjPt(const Point3f & M, Point2f & m, 
+	const Mat & camint,	const Mat & rvec, const Mat & tvec)
+{
+	const double * R, * t;
+	Mat _R;
+	Rodrigues(rvec, _R);
+	R = _R.ptr<double>();
+	t = tvec.ptr<double>();
+	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
+		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
+
+	double X = M.x, Y = M.y, Z = M.z;
+	double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
+	double y = R[3]*X + R[4]*Y + R[5]*Z + t[1];
+	double z = R[6]*X + R[7]*Y + R[8]*Z + t[2];
+
+	z = z ? 1./z : 1;
+	x *= z; y *= z;
+
+	m.x = (float)(x*fx + cx);
+	m.y = (float)(y*fy + cy);
+}
+
+inline void awsProjPt(const Point3f & M, Point2f & m,
+	const double fx, const double fy, const double cx, const double cy, 
+	const double * R, const double * t)
+{
+	double X = M.x, Y = M.y, Z = M.z;
+	double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
+	double y = R[3]*X + R[4]*Y + R[5]*Z + t[1];
+	double z = R[6]*X + R[7]*Y + R[8]*Z + t[2];
+
+	z = z ? 1./z : 1;
+	x *= z; y *= z;
+
+	m.x = (float)(x*fx + cx);
+	m.y = (float)(y*fy + cy);
+}
+
 /////////////////////////////////////////////////////////////////////////// awsProjPts series
 // awsProjPts basically convert 3d points to 2d points according to the projection parameters.
 // The variants are defined here for various optimization problems.
@@ -710,6 +750,23 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
 		const Mat & camint, const Mat & camdist,
 		const Mat & rvec, const Mat & tvec,
+		double * jr, double * jt);
+
+// no distortion version
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+	const Mat & camint, const Mat & rvec, const Mat & tvec);
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+		const double fx, const double fy, const double cx, const double cy, const double * R, const double * t);
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const Mat & camint,	const Mat & rvec, const Mat & tvec);
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const double fx, const double fy, const double cx, const double cy, const double * R, const double * t);
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const Mat & camint,	const Mat & rvec, const Mat & tvec,
 		double * jr, double * jt);
 
 bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 

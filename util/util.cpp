@@ -558,6 +558,138 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 };
 
 
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+	const Mat & camint, const Mat & rvec, const Mat & tvec)
+{
+	const double * R, * t;
+	Mat _R;
+	Rodrigues(rvec, _R);
+	R = _R.ptr<double>();
+	t = tvec.ptr<double>();
+	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
+		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
+
+	m.resize(M.size());
+
+	for(int i = 0; i < M.size(); i++){
+		awsProjPt(M[i], m[i], fx, fy, cx, cy, R, t);
+	}
+}
+
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
+		const double fx, const double fy, const double cx, const double cy, const double * R, const double * t)
+{
+	m.resize(M.size());
+
+	for(int i = 0; i < M.size(); i++){
+		awsProjPt(M[i], m[i], fx, fy, cx, cy, R, t);
+	}
+}
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const Mat & camint,	const Mat & rvec, const Mat & tvec)
+{
+	const double * R, * t;
+	Mat _R;
+	Rodrigues(rvec, _R);
+	R = _R.ptr<double>();
+	t = tvec.ptr<double>();
+	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
+		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
+
+	m.resize(M.size());
+
+	for(int i = 0; i < M.size(); i++){
+		if(!valid[i])
+			continue;
+
+		awsProjPt(M[i], m[i], fx, fy, cx, cy, R, t);
+	}
+}
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const double fx, const double fy, const double cx, const double cy, const double * R, const double * t)
+{
+	m.resize(M.size());
+
+	for(int i = 0; i < M.size(); i++){
+		if(!valid[i])
+			continue;
+
+		awsProjPt(M[i], m[i], fx, fy, cx, cy, R, t);
+	}
+}
+
+void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const Mat & camint,	const Mat & rvec, const Mat & tvec,
+		double * jr, double * jt)
+{
+	const double * t;
+
+	double R[9], jR[27];
+	//Rodrigues(rvec, _R, _jR);
+	exp_so3(rvec.ptr<double>(), R, jR);
+
+	t = tvec.ptr<double>();
+	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
+		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
+
+	if(M.size() != m.size())
+		m.resize(M.size());
+
+	for(int i = 0; i < M.size(); i++){
+		if(!valid[i]){
+			jr += 6;
+			jt += 6;
+			continue;
+		}
+
+		double X = M[i].x, Y = M[i].y, Z = M[i].z;
+		double x = R[0]*X + R[1]*Y + R[2]*Z + t[0];
+		double y = R[3]*X + R[4]*Y + R[5]*Z + t[1];
+		double z = R[6]*X + R[7]*Y + R[8]*Z + t[2];
+
+		z = z ? 1./z : 1;
+		x *= z; y *= z;
+		
+		m[i].x = (float)(x*fx + cx);
+		m[i].y = (float)(y*fy + cy);
+
+		jt[0] = fx * z; jt[1] = 0; jt[2] = -fx * x * z;
+		jt[3] = 0; jt[4] = fy * z; jt[5] = -fy * y * z;
+
+		// calculate jacobian for rotation 
+		double dXdr[3] = {
+			X * jR[0] + Y * jR[3] + Z * jR[6], 
+			X * jR[1] + Y * jR[4] + Z * jR[7], 
+			X * jR[2] + Y * jR[5] + Z * jR[8]
+		};
+
+		double dYdr[3] = {
+			X * jR[9] +  Y * jR[12] + Z * jR[15], 
+			X * jR[10] + Y * jR[13] + Z * jR[16], 
+			X * jR[11] + Y * jR[14] + Z * jR[17]
+		};
+
+		double dZdr[3] = {
+			X * jR[18] + Y * jR[21] + Z * jR[24], 
+			X * jR[19] + Y * jR[22] + Z * jR[25], 
+			X * jR[20] + Y * jR[23] + Z * jR[26]
+		};
+
+		jr[0] = jt[0] * dXdr[0] + jt[1] * dYdr[0] + jt[2] * dZdr[0];
+		jr[1] = jt[0] * dXdr[1] + jt[1] * dYdr[1] + jt[2] * dZdr[1];
+		jr[2] = jt[0] * dXdr[2] + jt[1] * dYdr[2] + jt[2] * dZdr[2];
+
+		jr[3] = jt[3] * dXdr[0] + jt[4] * dYdr[0] + jt[5] * dZdr[0];
+		jr[4] = jt[3] * dXdr[1] + jt[4] * dYdr[1] + jt[5] * dZdr[1];
+		jr[5] = jt[3] * dXdr[2] + jt[4] * dYdr[2] + jt[5] * dZdr[2];
+		jr += 6;
+		jt += 6;
+	}
+}
+
 
 // Synthesize two affine trasformations
 // res = l * r 
