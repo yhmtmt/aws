@@ -1319,10 +1319,10 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 	m_img = img;
 	m_timg = timg;
 	s_frame * pfrm_new;
-	m_next_kfrm = (m_cur_kfrm  + 1) % m_kfrms.size();
+	int next_kfrm = (m_cur_kfrm  + 1) % m_kfrms.size();
 
-	if(m_kfrms[m_next_kfrm] && m_kfrms[m_next_kfrm]->tfrm == m_timg){ // the frame is already in the key frame cache
-		pfrm_new = m_kfrms[m_next_kfrm];
+	if(m_kfrms[next_kfrm] && m_kfrms[next_kfrm]->tfrm == m_timg){ // the frame is already in the key frame cache
+		pfrm_new = m_kfrms[next_kfrm];
 	}else{
 		pfrm_new = s_frame::alloc();
 
@@ -2474,8 +2474,6 @@ void f_inspector::renderScene(long long timg)
 				rvec = objs[iobj]->rvec;
 				tvec = objs[iobj]->tvec;
 
-//				m_rvec_view = objs[iobj]->rvec;
-//				m_tvec_view = objs[iobj]->tvec;
 			}else if(m_ev == EV_FREE){
 				tvec = Rcam * (objs[iobj]->tvec - tvec_org);
 				tvec += m_tvec_view;
@@ -2486,25 +2484,19 @@ void f_inspector::renderScene(long long timg)
 				tvec = Rcam * (objs[iobj]->tvec - tvec_org);
 				tvec.ptr<double>()[2] += d;
 
-//				m_tvec_view = Rcam * (objs[iobj]->tvec - tvec_org);
-//				m_tvec_view.ptr<double>()[2] += d;
 				R = Rcam * R;
 				Rodrigues(R, rvec);
-//				Rodrigues(R, m_rvec_view);
 				// calculating roll pitch yaw relative to the cur_obj coordinate frame
 				// relative rotation matrix (here Rorg is the transpose of the rotation matrix of the current object
 			}
 			
-			//projectPoints(objs[iobj]->pmdl->pts, rvec, tvec, m_cam_int, m_cam_dist, pts);
 			awsProjPts(objs[iobj]->pmdl->pts, pts, m_cam_int, m_cam_dist, rvec, tvec);
-//			projectPoints(objs[iobj]->pmdl->pts, m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, pts);
 			if(m_cur_obj == iobj)
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 0, -1);	
 			else
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 1, -1);
 
 			objs[iobj]->render_axis(rvec, tvec, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
-//			objs[iobj]->render_axis(m_rvec_view, m_tvec_view, m_cam_int, m_cam_dist, m_pd3dev, m_pline);
 		}
 	}
 	m_model_view.ResetRenderTarget(m_pd3dev);
@@ -3989,6 +3981,7 @@ void f_inspector::handle_vk_left()
 	vector<s_obj*> & objs = m_pfrm->objs;
 	switch(m_op){
 	case OBJ:
+	case VIEW3D:
 		{
 			if(objs.size() == 0)
 				return ;
@@ -3999,6 +3992,7 @@ void f_inspector::handle_vk_left()
 			}
 			// the current object point index is initialized
 			m_cur_point = objs[m_cur_obj]->get_num_points() - 1;
+			m_pfrm->set_update();
 		}
 		break;
 	case PARTS:
@@ -4063,6 +4057,7 @@ void f_inspector::handle_vk_right()
 	vector<s_obj*> & objs = m_pfrm->objs;
 	switch(m_op){
 	case OBJ:
+	case VIEW3D:
 		{
 			if(objs.size() == 0)
 				return ;
@@ -4070,6 +4065,7 @@ void f_inspector::handle_vk_right()
 			m_cur_obj %= (int) objs.size();
 			s_obj & obj = *objs[m_cur_obj];
 			m_cur_point = obj.get_num_points() - 1;
+			m_pfrm->set_update();
 		}
 		break;
 	case PARTS:
