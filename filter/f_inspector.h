@@ -445,7 +445,11 @@ private:
 	void handle_sop_inst_obj();
 	void handle_sop_ins_cptbl();
 	void handle_sop_det();
+
 	void handle_sop_awscmd();
+	char m_cmd_buf[1024]; // storing command string. used in awscmd.
+	char m_cmd_ret[1024]; // storing returned string. used in awscmd.
+
 	void handle_sop_set_kf();
 
 	// helper function for handle_sop_guess()
@@ -492,40 +496,44 @@ private:
 	// * Key frames are stored in ring buffer m_kfrms, and m_cur_kfrm points the current key frame
 	// * we can view all key frames by key frame view mode 'K'
 	// * we can set arbitraly current frame as a key frame by 'k'. Next key frame is just after m_int_kfrms.
-	bool m_bald_kfrms, m_basv_kfrms; // flags for auto load and save key frames
+	bool m_bald_kfrms, m_basv_kfrms;// flags for auto load and save key frames
 	int m_num_kfrms;				// number of key frames cached in the memory.
 	int m_cur_kfrm;					// current key frame
 	int m_sel_kfrm;					// selected key frame in KFRAME mode.
-	int m_int_cyc_kfrm;					// it defines the keyframe's interval as the number of aws cycles. The number of cycle skiped by right vk_left and vk_right in frame operation.
+	int m_int_cyc_kfrm;				// it defines the keyframe's interval as the number of aws cycles. The number of cycle skiped by right vk_left and vk_right in frame operation.
 	long long  m_int_kfrms;			// Keframe's interval in 10e-7 second. Subject to m_int_cyc_kfrm
 
-	vector<s_frame*> m_kfrms;	// Key frames (ring buffer)
+	vector<s_frame*> m_kfrms;		// Key frames (ring buffer)
 	bool save_kfrms();
 	bool load_kfrms();
 
-	s_frame * m_pfrm;			// temporal frame object
+	s_frame * m_pfrm;				// temporal frame object
 
 	//
 	// frame objects
 	// 
 	bool m_bauto_load_fobj, m_bauto_save_fobj;
 
-	char m_cmd_buf[1024];
-	char m_cmd_ret[1024];
-
 	//
 	// Object
 	// 
-	char m_name_obj[1024]; // name of the object file.
-	int m_cur_obj; // current object selected
-	int m_num_cur_objs;
-	int m_cur_point; // current selected point of the model
-	int m_cur_part;
+	char m_name_obj[1024];	// name of the object file.
+	int m_cur_obj;			// current object selected
+	int m_num_cur_objs;		// number of objects in current frame
+	int m_cur_point;		// current selected point of the model
+	int m_cur_part;			// number of parts in current object.
+
+	// Drawing object in the view.
 	void renderObj();
 
 	//
 	// Camera Parameter
 	//
+	enum e_campar{
+		ECP_FX = 0, ECP_FY, ECP_CX, ECP_CY, ECP_K1, ECP_K2, ECP_P1, ECP_P2, ECP_K3, ECP_K4, ECP_K5, ECP_K6
+	};
+	static const char * m_str_campar[ECP_K6+1];
+
 	char m_fname_campar[1024]; // name of camera parameter file
 	char m_fname_campar_tbl[1024]; // name of camera parameter table for multiple magnifications
 	double m_depth_min, m_depth_max;
@@ -536,18 +544,12 @@ private:
 	Mat m_jcam_max;
 	void calc_jmax();
 
-	// master camera parameter (increasing order in f_x)
 	bool m_bcam_tbl_loaded;
-	int m_cur_camtbl;
-	vector<Mat> m_cam_int_tbl;
-	vector<Mat> m_cam_dist_tbl;
+	int m_cur_camtbl;			// Selected parameter in the camera parameter table here
+	vector<Mat> m_cam_int_tbl;  // Table of camera intrinsic parameters
+	vector<Mat> m_cam_dist_tbl; // Table of camera distortion parameters
 
-	enum e_campar{
-		ECP_FX = 0, ECP_FY, ECP_CX, ECP_CY, ECP_K1, ECP_K2, ECP_P1, ECP_P2, ECP_K3, ECP_K4, ECP_K5, ECP_K6
-	};
-
-	static const char * m_str_campar[ECP_K6+1];
-	int m_cur_campar;
+	int m_cur_campar;			// currently selected camera parameter. Valid only if the operation is CAMERA.
 
 	// for parameter estimation
 #define ERROR_TOL 0.01
@@ -561,17 +563,17 @@ private:
 		EES_DIV, EES_CONV, EES_CONT
 	} m_eest;
 
-	int m_num_max_itrs;		// maximum gauss newton iteration
-	int m_num_max_frms_used; // frame counts used for the parameter estimation
-	int m_err_range; // error range of reprojection error of usable frame 
-	int m_num_pts_used;
-	vector<bool> m_kfrm_used;
-	double m_cam_erep;
-	void calc_erep();
+	int m_num_max_itrs;			// maximum gauss newton iteration
+	int m_num_max_frms_used;	// frame counts used for the parameter estimation
+	int m_err_range;			// error range of reprojection error of usable frame 
+	int m_num_pts_used;			// number of points used for the estimation
+	vector<bool> m_kfrm_used;	// number of key frames used for the estimation
+	double m_cam_erep;			// SSD of the estimation
+	void calc_erep();			// SSD calcuration method
+
+	CvLevMarq m_solver;			// LM solver from openCV
 
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
-	CvLevMarq m_solver;
-
 	bool m_bcalib_fix_campar;
 	bool m_bcalib_fix_focus;
 	bool m_bcalib_use_intrinsic_guess;
@@ -662,11 +664,13 @@ public:
 	float m_main_scale, m_main_scale_inv;
 
 	Size m_sz_img_view, m_sz_img;
+	// coordinate conversion. Screen(View) coordinate to Image coordinate.
 	void cnv_view2img(const Point2f & pview, Point2f & pimg){
 		pimg = (pview - m_main_offset);
 		pimg *= m_main_scale_inv;
 	}
 
+	// coordinate conversion. Image coordinate to Screen(View) coordinate.
 	void cnv_img2view(const Point2f & pimg, Point2f & pview){
 		pview = m_main_scale * pimg;
 		pview += m_main_offset;
