@@ -1153,8 +1153,8 @@ const char * f_inspector::m_str_view[EV_FREE + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),
-	m_bauto_load_fobj(false), m_bauto_save_fobj(false),
+	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN),
+	m_lvpyr(2), m_sig_gb(3.0),m_bauto_load_fobj(false), m_bauto_save_fobj(false),
 	m_bundistort(false), m_bcam_tbl_loaded(false), m_cur_camtbl(-1),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
@@ -1164,7 +1164,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
 	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3),
-	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_pfrm(NULL)
+	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_pfrm(NULL),
+	m_rat_z(1.0)
 {
 	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
@@ -2482,7 +2483,7 @@ void f_inspector::renderScene(long long timg)
 				Rodrigues(R, rvec);
 			}else{
 				tvec = Rcam * (objs[iobj]->tvec - tvec_org);
-				tvec.ptr<double>()[2] += d;
+				tvec.ptr<double>()[2] += m_rat_z * d;
 
 				R = Rcam * R;
 				Rodrigues(R, rvec);
@@ -3740,6 +3741,7 @@ void f_inspector::handle_mousewheel(WPARAM wParam, LPARAM lParam)
 		switch(m_op){
 		case OBJ:
 		case POINT:
+		case VIEW3D:
 			zoom_screen(delta);
 			break;
 		}
@@ -3825,13 +3827,17 @@ void f_inspector::zoom_screen(short delta)
 {
 	short step = delta / WHEEL_DELTA;
 	float scale = (float) pow(1.1, (double) step);
-	m_main_scale *=  (float) scale;
-	m_main_scale_inv = (float) (1.0 / m_main_scale);
-	float x, y;
-	x = (float)(m_main_offset.x - m_mc.x) * scale;
-	y = (float)(m_main_offset.y - m_mc.y) * scale;
-	m_main_offset.x =  (float)(x + (double) m_mc.x);
-	m_main_offset.y =  (float)(y + (double) m_mc.y);
+	if(m_op == VIEW3D){
+		m_rat_z *= scale;
+	}else{
+		m_main_scale *=  (float) scale;
+		m_main_scale_inv = (float) (1.0 / m_main_scale);
+		float x, y;
+		x = (float)(m_main_offset.x - m_mc.x) * scale;
+		y = (float)(m_main_offset.y - m_mc.y) * scale;
+		m_main_offset.x =  (float)(x + (double) m_mc.x);
+		m_main_offset.y =  (float)(y + (double) m_mc.y);
+	}
 }
 
 void f_inspector::translate_obj(short delta)
@@ -4180,9 +4186,13 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	case 'R': // reset window
-		m_main_offset = Point2f(0., 0.);
-		m_main_scale = (float) m_rat;
-		m_main_scale_inv = (float)(1.0 / m_main_scale);
+		if(m_op == VIEW3D){
+			m_rat = 1.0;
+		}else{
+			m_main_offset = Point2f(0., 0.);
+			m_main_scale = (float) m_rat;
+			m_main_scale_inv = (float)(1.0 / m_main_scale);
+		}
 		break;
 	case 'S':
 		m_sop = SOP_SAVE;
