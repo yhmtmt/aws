@@ -1145,7 +1145,7 @@ const char * f_inspector::m_str_campar[ECP_K6 + 1] = {
 };
 
 const char * f_inspector::m_str_emd[EMD_SEL + 1] = {
-	"stop", "full", "rt", "sel"
+	"stop", "full", "rt", "rtfull", "sel"
 };
 
 const char * f_inspector::m_str_view[EV_FREE + 1] = {
@@ -1497,6 +1497,11 @@ bool f_inspector::proc()
 	if(!m_pfrm)
 		return true;
 
+	if(m_cur_obj >= m_pfrm->objs.size()){
+		m_cur_obj = m_pfrm->objs.size() - 1;
+		m_cur_point = -1;
+	}
+
 	m_int_kfrms = m_int_cyc_kfrm * f_base::m_paws->get_cycle_time();
 	if(m_cur_kfrm < 0){
 		m_cur_kfrm = 0;
@@ -1547,18 +1552,22 @@ bool f_inspector::proc()
 
 	// estimate
 	if(m_op == ESTIMATE){
+		m_kfrm_used.resize(m_kfrms.size(), false);
 		switch(m_emd){
 		case EMD_FULL:
 			estimate_levmarq();
 			break;
 		case EMD_RT:
-			estimate_rt_levmarq();
+			estimate_rt_levmarq(m_pfrm);
+			break;
+		case EMD_RT_FULL:
+			estimate_rt_full_levmarq();
 			break;
 		case EMD_SEL:
 			break;
 		}
-		m_emd = EMD_STOP;
 		calc_erep();
+		m_emd = EMD_STOP;
 	}
 
 	m_cam_int.copyTo(m_pfrm->camint);
@@ -2196,7 +2205,7 @@ void f_inspector::renderCamparTblInfo(char * buf, int len, int & y)
 
 void f_inspector::renderEstimateInfo(char * buf, int len, int & y)
 {
-	snprintf(buf, len, "Estimate (1): All KFs All Ps (2): Current KF RT ");
+	snprintf(buf, len, "Estimate (1): All KF's RT and CamPars (2): Current Frame's RT (3): All KF's RT");
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 	snprintf(buf, len, "State: %s", m_str_emd[m_emd]);
@@ -2752,15 +2761,33 @@ void f_inspector::estimate()
 }
 
 
-void f_inspector::estimate_rt_levmarq()
+void f_inspector::estimate_rt_full_levmarq()
+{
+	for(int ikfrm = 0; ikfrm < m_kfrms.size(); ikfrm++){
+		if(m_kfrms[ikfrm] == NULL){
+			m_kfrm_used[ikfrm] = false;
+			continue;
+		}
+		estimate_rt_levmarq(m_kfrms[ikfrm]);
+		m_kfrm_used[ikfrm] = true;
+	}
+}
+
+void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 {
 	// counting extrinsic parameters (6 x number of objects)
 	int nparams = 0; // we assume the camera intrinsics are the same for every frames.
-	m_kfrm_used.resize(m_kfrms.size(), false);
-	m_kfrm_used[m_cur_kfrm] = true;
 
-	vector<s_obj*> & objs = m_pfrm->objs;		
+	// current camera intrinsic parameters (including distortion) are used 
+	m_cam_int.copyTo(pfrm->camint);
+	m_cam_dist.copyTo(pfrm->camdist);
+
+	pfrm->proj_objs(true, m_bcalib_fix_aspect_ratio);
+
+	vector<s_obj*> & objs = pfrm->objs;		
 	nparams += (int) objs.size() * 6;
+	if(nparams == 0)
+		return ;
 
 	// initializing LM-solver
 	CvTermCriteria tc;
@@ -2884,11 +2911,11 @@ void f_inspector::estimate_rt_levmarq()
 		mat2csv(log, m_cam_dist);
 #endif
 		bool updateJ = _JtJ != NULL && _JtErr != NULL;
-		m_pfrm->update = false;
+		pfrm->update = false;
 		// projection
-		m_pfrm->proj_objs(updateJ, m_bcalib_fix_aspect_ratio);
+		pfrm->proj_objs(updateJ, m_bcalib_fix_aspect_ratio);
 		// accumulating frame's projection ssd
-		ssd += m_pfrm->ssd;
+		ssd += pfrm->ssd;
 
 		if(!proceed){
 			return ;
@@ -2964,7 +2991,6 @@ void f_inspector::estimate_levmarq()
 	// calculating m_frm_used flag. if the flag is asserted, the frame is used for the optimization
 	int num_valid_frms = min((int)m_kfrms.size(), m_num_max_frms_used);
 	double step =  (double)m_kfrms.size() / (double) num_valid_frms; 
-	m_kfrm_used.resize(m_kfrms.size(), false);
 	num_valid_frms = 0;
 	for(double ifrm = 0.; ifrm < (double) m_kfrms.size(); ifrm += step){
 		int i = (int) ifrm;
@@ -2988,6 +3014,14 @@ void f_inspector::estimate_levmarq()
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
 		if(!m_kfrm_used[ikf])
 			continue;
+
+		// setting initial camera parameter 
+		m_cam_int.copyTo(m_kfrms[ikf]->camint);
+		m_cam_dist.copyTo(m_kfrms[ikf]->camdist);
+
+		// and initial projection with full jacobian calculation
+		m_kfrms[ikf]->proj_objs(true, m_bcalib_fix_aspect_ratio);
+
 		vector<s_obj*> & objs = m_kfrms[ikf]->objs;		
 		nparams += (int) objs.size() * 6;
 	}
@@ -3287,20 +3321,35 @@ void f_inspector::estimate_levmarq()
 
 void f_inspector::calc_erep()
 {
+	if(m_emd == EMD_STOP)
+		return;
+
 	m_num_pts_used = 0;
 	m_cam_erep = 0.0;
-	for(int ifrm = 0; ifrm < m_kfrm_used.size(); ifrm++){
-		if(!m_kfrm_used[ifrm])
-			continue;
-		vector<s_obj*> & objs = m_kfrms[ifrm]->objs;
+	if(m_emd == EMD_RT){
+		vector<s_obj*> & objs = m_pfrm->objs;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			m_num_pts_used += objs[iobj]->calc_num_matched_points();
 		}
+		m_cam_erep += m_pfrm->ssd;
+	}else{
+		for(int ifrm = 0; ifrm < m_kfrm_used.size(); ifrm++){
+			if(!m_kfrm_used[ifrm])
+				continue;
+			vector<s_obj*> & objs = m_kfrms[ifrm]->objs;
+			for(int iobj = 0; iobj < objs.size(); iobj++){
+				m_num_pts_used += objs[iobj]->calc_num_matched_points();
+			}
 
-		m_cam_erep += m_kfrms[ifrm]->ssd;
+			m_cam_erep += m_kfrms[ifrm]->ssd;
+		}
 	}
-	m_cam_erep /= (double) m_num_pts_used;
-	m_cam_erep = sqrt(m_cam_erep);
+	if(m_num_pts_used){
+		m_cam_erep /= (double) m_num_pts_used;
+		m_cam_erep = sqrt(m_cam_erep);
+	}else{
+		m_cam_erep = 0.;
+	}
 }
 
 
@@ -4253,14 +4302,16 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case '3':
 		if(m_op == ESTIMATE){
-			m_emd = EMD_SEL;
+			m_emd = EMD_RT_FULL;
 		}
 		else if (m_op == VIEW3D){
 			m_ev = EV_OBJY;
 		}
 		break;
 	case '4':
-		if (m_op == VIEW3D){
+		if(m_op == ESTIMATE){
+			m_emd = EMD_SEL;
+		}else if (m_op == VIEW3D){
 			m_ev = EV_OBJZ;
 		}
 		break;
@@ -4440,12 +4491,15 @@ bool f_inspector::load_kfrms()
 
 	int ikf = 0;
 	m_cur_kfrm = -1;
+
+	long long tfrm_prev = 0;
 	while(!file.eof()){
 		file.getline(fname, 1024);
 		long long tfrm = atoll(fname);
-		if(tfrm <= 0){
+		if(tfrm <= tfrm_prev){
 			continue;
 		}
+		tfrm_prev = tfrm;
 
 		if(m_kfrms[ikf] != NULL){
 			if(m_cur_kfrm > 0)// current key frame is found and the cache of key frame is full.
@@ -4454,7 +4508,6 @@ bool f_inspector::load_kfrms()
 			s_frame::free(m_kfrms[ikf]); 
 			m_kfrms[ikf] = NULL;
 		}
-
 
 		// first key frame with the time exceeding current time is the current key frame
 		if(m_cur_kfrm < 0 && tfrm >= m_cur_time){

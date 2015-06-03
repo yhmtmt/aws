@@ -557,7 +557,7 @@ private:
 	// for parameter estimation
 #define ERROR_TOL 0.01
 	enum e_estimation_mode{
-		EMD_STOP = 0, EMD_FULL, EMD_RT, EMD_SEL
+		EMD_STOP = 0, EMD_FULL, EMD_RT, EMD_RT_FULL, EMD_SEL
 	} m_emd;
 
 	static const char * m_str_emd[EMD_SEL + 1];
@@ -571,7 +571,7 @@ private:
 	int m_err_range;			// error range of reprojection error of usable frame 
 	int m_num_pts_used;			// number of points used for the estimation
 	vector<bool> m_kfrm_used;	// number of key frames used for the estimation
-	double m_cam_erep;			// SSD of the estimation
+	double m_cam_erep;			// RMSE of the estimation (sqrt(SSD / num_points))
 	void calc_erep();			// SSD calcuration method
 
 	CvLevMarq m_solver;			// LM solver from openCV
@@ -605,7 +605,8 @@ private:
 	void estimate_fulltime();
 	void estimate_levmarq();
 	void select_opt_campar();
-	void estimate_rt_levmarq();
+	void estimate_rt_levmarq(s_frame * pfrm);
+	void estimate_rt_full_levmarq();
 	virtual bool alloc_d3dres();
 	virtual void release_d3dres();
 public:
