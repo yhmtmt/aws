@@ -31,6 +31,113 @@ using namespace cv;
 #include "util.h"
 
 
+////////////////////////////////////////////////////////////////
+void AWSLevMarq::clear_ex()
+{
+	Cov.release();
+}
+
+bool AWSLevMarq::updateAlt_ex( const CvMat*& _param, CvMat*& _JtJ, CvMat*& _JtErr, double*& _errNorm)
+{
+    double change;
+
+    CV_Assert( err.empty() );
+    if( state == DONE )
+    {
+        _param = param;
+        return false;
+    }
+
+    if( state == STARTED )
+    {
+        _param = param;
+        cvZero( JtJ );
+        cvZero( JtErr );
+        errNorm = 0;
+        _JtJ = JtJ;
+        _JtErr = JtErr;
+        _errNorm = &errNorm;
+        state = CALC_J;
+        return true;
+    }
+
+    if( state == CALC_J )
+    {
+        cvCopy( param, prevParam );
+        step();
+        _param = param;
+        prevErrNorm = errNorm;
+        errNorm = 0;
+        _errNorm = &errNorm;
+        state = CHECK_ERR;
+        return true;
+    }
+
+    assert( state == CHECK_ERR );
+    if( errNorm > prevErrNorm )
+    {
+        if( ++lambdaLg10 <= 16 )
+        {
+            step();
+            _param = param;
+            errNorm = 0;
+            _errNorm = &errNorm;
+            state = CHECK_ERR;
+            return true;
+        }
+    }
+
+    lambdaLg10 = MAX(lambdaLg10-1, -16);
+    if( ++iters >= criteria.max_iter ||
+        (change = cvNorm(param, prevParam, CV_RELATIVE_L2)) < criteria.epsilon )
+    {
+        _param = param;
+		calcCov();
+        state = DONE;
+        return false;
+    }
+
+    prevErrNorm = errNorm;
+    cvZero( JtJ );
+    cvZero( JtErr );
+    _param = param;
+    _JtJ = JtJ;
+    _JtErr = JtErr;
+    state = CALC_J;
+    return true;
+}
+
+void AWSLevMarq::calcCov()
+{		
+	double sum = 0.0;
+	int nparams = param->rows;
+	for(int i = 0; i < nparams; i++)
+		sum += JtJW->data.db[i];
+	// Note that cvSVD is called with CV_SVD_V_T in step(). 
+	// So we now assume, JtJV is transpose of V, equals to U.
+	// And calculating (JtJV * W^-1) * JtJV^t
+	double * ptr0, * ptr1;
+	for(int i = 0; i < nparams; i++){
+		double iw = JtJW->data.db[i];
+		ptr0 = JtJV->data.db + i;
+		ptr1 = JtJN->data.db + i;
+		if(iw < sum * 1e-10){
+			iw = 0;
+		}else{
+			iw = 1.0 / iw;
+		}
+
+		for(int j = 0; j < nparams; 
+			j++, ptr0 += nparams, ptr1 += nparams){
+			*ptr1 = *ptr0 * iw;
+		}
+	}
+
+	cvGEMM(JtJN, JtJV, 1.0, NULL, 1.0, Cov, CV_GEMM_B_T);
+}
+
+/////////////////////////////////////////////////////////////////
+
 bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
 {
 	// R and jRcv are the OpenCV's rotation matrix and jacobian.

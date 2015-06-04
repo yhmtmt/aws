@@ -19,6 +19,47 @@
 #include "aws_thread.h"
 #include "aws_stdlib.h"
 
+// AWSLevMarq is the extension of CvLevMarq.
+// Because we need to evaluate Hessian inverse of the last iteration, the 
+class AWSLevMarq: public CvLevMarq
+{
+public:
+	AWSLevMarq():CvLevMarq()
+	{
+		Cov = Ptr<CvMat>();
+	}
+
+	AWSLevMarq(int nparams, int nerrs, CvTermCriteria criteria0 =
+              cvTermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER,30,DBL_EPSILON), 
+			  bool _completeSymmFlag = false):CvLevMarq()
+	{
+		Cov = Ptr<CvMat>();
+		init_ex(nparams, nerrs, criteria0, _completeSymmFlag);
+	}
+
+	~AWSLevMarq()
+	{
+		clear_ex();
+	}
+
+	cv::Ptr<CvMat> Cov;
+
+	void init_ex(int nparams, int nerrs, CvTermCriteria criteria0 =
+              cvTermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER,30,DBL_EPSILON), 
+			  bool _completeSymmFlag = false)
+	{
+		init(nparams, nerrs, criteria0, _completeSymmFlag);
+		Cov = cvCreateMat(nparams, nparams, CV_64F);
+	}
+
+    void clear_ex();
+
+	bool updateAlt_ex( const CvMat*& param, CvMat*& JtJ, CvMat*& JtErr, double*& errNorm );
+
+	// call immediately after the iteration terminated.
+	void calcCov();
+};
+
 inline double rerr(double a, double b){
 	return fabs((a - b) / max(fabs(b), (double)1e-12));
 }
