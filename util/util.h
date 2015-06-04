@@ -34,17 +34,17 @@ public:
 			  bool _completeSymmFlag = false):CvLevMarq()
 	{
 		Cov = Ptr<CvMat>();
-		init_ex(nparams, nerrs, criteria0, _completeSymmFlag);
+		initEx(nparams, nerrs, criteria0, _completeSymmFlag);
 	}
 
 	~AWSLevMarq()
 	{
-		clear_ex();
+		clearEx();
 	}
 
 	cv::Ptr<CvMat> Cov;
 
-	void init_ex(int nparams, int nerrs, CvTermCriteria criteria0 =
+	void initEx(int nparams, int nerrs, CvTermCriteria criteria0 =
               cvTermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER,30,DBL_EPSILON), 
 			  bool _completeSymmFlag = false)
 	{
@@ -52,9 +52,9 @@ public:
 		Cov = cvCreateMat(nparams, nparams, CV_64F);
 	}
 
-    void clear_ex();
+    void clearEx();
 
-	bool updateAlt_ex( const CvMat*& param, CvMat*& JtJ, CvMat*& JtErr, double*& errNorm );
+	bool updateAltEx( const CvMat*& param, CvMat*& JtJ, CvMat*& JtErr, double*& errNorm );
 
 	// call immediately after the iteration terminated.
 	void calcCov();

@@ -32,12 +32,13 @@ using namespace cv;
 
 
 ////////////////////////////////////////////////////////////////
-void AWSLevMarq::clear_ex()
+void AWSLevMarq::clearEx()
 {
 	Cov.release();
 }
 
-bool AWSLevMarq::updateAlt_ex( const CvMat*& _param, CvMat*& _JtJ, CvMat*& _JtErr, double*& _errNorm)
+// The codes are almost from OpenCV's CVLevMarq::updateAlt. I only added a line for covariance calculation.
+bool AWSLevMarq::updateAltEx( const CvMat*& _param, CvMat*& _JtJ, CvMat*& _JtErr, double*& _errNorm)
 {
     double change;
 
