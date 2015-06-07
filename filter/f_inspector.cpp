@@ -1536,11 +1536,6 @@ bool f_inspector::proc()
 	}
 
 	// projection 
-	/*
-	if(m_cur_frm < 0)
-		return true;
-		*/
-
 	m_num_cur_objs = (int) m_pfrm->objs.size();
 
 	m_pfrm->proj_objs(true, m_bcalib_fix_aspect_ratio);
@@ -2251,9 +2246,9 @@ void f_inspector::renderSceneInfo(char * buf, int len, int & y)
 		if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 			for(int iobj = 0; iobj < objs.size(); iobj++){
 				s_obj & obj = *objs[iobj];
-				snprintf(buf, len, "%s Roll: %5.2f, Pitch: %5.2f, Yaw: %5.2f Serge: %5.2f Sway: %5.2f Heave %5.2f", 
+				snprintf(buf, len, "%s Roll: %5.2f, Pitch: %5.2f, Yaw: %5.2f X: %5.2f Y: %5.2f Z: %5.2f", 
 					obj.name, (float)obj.roll * 180./CV_PI, (float)obj.pitch * 180./CV_PI, (float)obj.yaw * 180./CV_PI,
-					(float)obj.serge, (float)obj.sway, (float)obj.heave);
+					(float)obj.pos.x, (float)obj.pos.y, (float)obj.pos.z);
 				m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 				y += 20;
 			}	
@@ -3466,39 +3461,33 @@ void s_frame::calc_rpy(int base_obj)
 		Rorg = Rorg.t();
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			s_obj & obj = *objs[iobj];
+
 			if(iobj == base_obj){
 				obj.roll = obj.pitch = obj.yaw = 0.;
+				obj.pos.x = obj.pos.y = obj.pos.z = 0.;
 				continue;
 			}
+
 			double * p0;
 			Rodrigues(obj.rvec, R);
 			obj.tvec.copyTo(T);
-			T -= Torg;
-			T = R.t() * T;
-			p0 = T.ptr<double>();
-			Point3f t((float)(p0[0]), 
-				(float)(p0[1]), (float)(p0[2]));
-			
-			R = Rorg * R;
-			p0 = R.ptr<double>();
-			/*
-			obj.serge = t.x * p0[0] + t.y * p0[1] + t.z * p0[2];
-			obj.sway = t.x * p0[3] + t.y * p0[4] + t.z * p0[5];
-			obj.heave = t.x * p0[6] + t.y * p0[7] + t.z * p0[8];
-			*/
 
-			obj.serge = t.x;
-			obj.sway = t.y;
-			obj.heave = t.z;
+			// translation Relative to the base_obj in the camera coordinate frame
+			T -= Torg;
+
+			// projection to the object's coordinate frame
+			T = Rorg.t() * T;
+
+			p0 = T.ptr<double>();
+			obj.pos.x = (float)(p0[0]);
+			obj.pos.y = (float)(p0[1]);
+			obj.pos.z = (float)(p0[2]);
+
+			// Calculate relative rotation to the base_obj as R
+ 			R = Rorg * R;
+			p0 = R.ptr<double>();
 
 			angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
-			cout << "obj[" << iobj << "] roll " << obj.roll * 180. / CV_PI
-				<< " pitch " << obj.pitch * 180. / CV_PI
-				<< " yaw " << obj.yaw * 180. / CV_PI
-				<< " serge " << obj.serge 
-				<< " sway " << obj.sway
-				<< " heave " << obj.heave
-				<< endl;
 		}
 	}
 }

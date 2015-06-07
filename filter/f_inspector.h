@@ -174,7 +174,8 @@ struct s_obj
 	bool is_attitude_fixed;
 	Mat tvec, rvec;
 
-	double roll, pitch, yaw, serge, sway, heave;
+	double roll, pitch, yaw;
+	Point3f pos;
 
 	// note: The part's deformation code is now under construction. I need to modify followings:
 	// s_obj::load, save, init, proj
@@ -192,8 +193,7 @@ struct s_obj
 	int match_count;
 
 	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false), 
-		roll(0.0), pitch(0.0), yaw(0.0),
-		serge(0.0), sway(0.0), heave(0.0),
+		roll(0.0), pitch(0.0), yaw(0.0), pos(0., 0., 0.),
 		update(false), bb2d(0, 0, 0, 0)
 	{
 		tvec = Mat::zeros(3, 1, CV_64FC1);
@@ -639,11 +639,6 @@ public:
 	{
 		f_ds_window::destroy_run();
 		m_model_view.release();
-		/*
-		for(int ifobj = 0; ifobj < m_fobjs.size(); ifobj++)
-			delete m_fobjs[ifobj];
-		m_fobjs.clear();
-		*/
 	}
 
 	virtual bool proc();
