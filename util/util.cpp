@@ -115,26 +115,28 @@ void AWSLevMarq::calcCov()
 	for(int i = 0; i < nparams; i++)
 		sum += JtJW->data.db[i];
 	// Note that cvSVD is called with CV_SVD_V_T in step(). 
-	// So we now assume, JtJV is transpose of V, equals to U.
-	// And calculating (JtJV * W^-1) * JtJV^t
+	// So we now assume, JtJV is transpose of V
+	// And calculating JtJV^t * (W^-1 * JtJV)
+
+	// Now JtJN is used as temporal variable for (W^-1 * JtJV)
 	double * ptr0, * ptr1;
+	ptr0 = JtJV->data.db;
+	ptr1 = JtJN->data.db;
+
 	for(int i = 0; i < nparams; i++){
 		double iw = JtJW->data.db[i];
-		ptr0 = JtJV->data.db + i;
-		ptr1 = JtJN->data.db + i;
 		if(iw < sum * 1e-10){
 			iw = 0;
 		}else{
 			iw = 1.0 / iw;
 		}
 
-		for(int j = 0; j < nparams; 
-			j++, ptr0 += nparams, ptr1 += nparams){
+		for(int j = 0; j < nparams; j++, ptr0++, ptr1++){
 			*ptr1 = *ptr0 * iw;
 		}
 	}
 
-	cvGEMM(JtJN, JtJV, 1.0, NULL, 1.0, Cov, CV_GEMM_B_T);
+	cvGEMM(JtJV, JtJN, 1.0, NULL, 1.0, Cov, CV_GEMM_A_T);
 }
 
 /////////////////////////////////////////////////////////////////
