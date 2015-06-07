@@ -3476,7 +3476,7 @@ void s_frame::calc_rpy(int base_obj)
 			T -= Torg;
 
 			// projection to the object's coordinate frame
-			T = Rorg.t() * T;
+			T = Rorg * T;
 
 			p0 = T.ptr<double>();
 			obj.pos.x = (float)(p0[0]);
