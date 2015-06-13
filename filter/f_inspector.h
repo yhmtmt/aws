@@ -574,7 +574,8 @@ private:
 	double m_cam_erep;			// RMSE of the estimation (sqrt(SSD / num_points))
 	void calc_erep();			// SSD calcuration method
 
-	CvLevMarq m_solver;			// LM solver from openCV
+	//CvLevMarq m_solver;			// LM solver from openCV
+	AWSLevMarq m_solver;
 
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
 	bool m_bcalib_fix_campar;

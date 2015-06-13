@@ -2789,7 +2789,8 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 	tc.epsilon = FLT_EPSILON;
 	tc.max_iter = m_num_max_itrs;
 	tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
-	m_solver.init(nparams, 0, tc);
+	//m_solver.init(nparams, 0, tc);
+	m_solver.initEx(nparams, 0, tc);
 
 	//set initial parameter and parameter mask
 	double * param = m_solver.param->data.db;
@@ -2867,7 +2868,8 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 											 // outerloop does not update their JtJ and JtErr
 		param = m_solver.param->data.db;
 		pparam = m_solver.prevParam->data.db;
-		bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
+		//bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
+		bool proceed = m_solver.updateAltEx(_param, _JtJ, _JtErr, errNorm);
 #ifdef VERB_LM
 		//mat2csv(log, Mat(m_solver.JtJN));
 		log << "V = " << endl;
@@ -3026,7 +3028,7 @@ void f_inspector::estimate_levmarq()
 	tc.epsilon = FLT_EPSILON;
 	tc.max_iter = m_num_max_itrs;
 	tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
-	m_solver.init(nparams, 0, tc);
+	m_solver.initEx(nparams, 0, tc);
 
 	//set initial parameter and parameter mask
 
@@ -3165,7 +3167,7 @@ void f_inspector::estimate_levmarq()
 											 // outerloop does not update their JtJ and JtErr
 		param = m_solver.param->data.db;
 		pparam = m_solver.prevParam->data.db;
-		bool proceed = m_solver.updateAlt(_param, _JtJ, _JtErr, errNorm);
+		bool proceed = m_solver.updateAltEx(_param, _JtJ, _JtErr, errNorm);
 #ifdef VERB_LM
 		//mat2csv(log, Mat(m_solver.JtJN));
 
