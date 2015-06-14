@@ -19,6 +19,7 @@
 #include "aws_thread.h"
 #include "aws_stdlib.h"
 
+
 // AWSLevMarq is the extension of CvLevMarq.
 // Because we need to evaluate Hessian inverse of the last iteration, the 
 class AWSLevMarq: public CvLevMarq
@@ -813,6 +814,27 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
 	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf = 0.0);
 
+
+
+//////////////////////////////////////////////////////////////////////////// 3D model tracking 
+// 1. set initial parameter p = (r, t), and transformation T(p) 
+// 2. calculate point matching error, jacobian, hessian inverse, and delta_p  
+// 3. set new transformation T(p) = T(delta_p)T(p)
+class ModelTrack
+{
+private:
+	Mat delta; // step parameter correction
+	AWSLevMarq solver; // LM solver
+public:
+	// Ipyr is the grayscaled Image pyramid.
+	// P is the set of image patches around model points.
+	// D is the set of depth maps corresponding to patches in P.
+	// M is the set of 3D points in the model.
+	// T is the initial value of the transformation, and the resulting transformation.
+	// m is tracked points. 
+	bool align(vector<Mat> & Ipyr, vector<Point3f> & M,
+		vector<Mat> & P, vector<Mat> & D, Mat & T, vector<Point2f> & m);
+};
 
 ////////////////////////////////////////////////////////////////////////// related to affine transformation
 bool synth_afn(Mat & l, Mat & r, Mat & res);

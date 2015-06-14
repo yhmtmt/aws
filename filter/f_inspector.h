@@ -575,7 +575,7 @@ private:
 	void calc_erep();			// SSD calcuration method
 
 	//CvLevMarq m_solver;			// LM solver from openCV
-	AWSLevMarq m_solver;
+	AWSLevMarq m_solver;		// Modified LM solver oriinaly from openCV
 
 	// calibration flag. these flags are interpreted into OpenCV's flag of calibrateCamera.
 	bool m_bcalib_fix_campar;
