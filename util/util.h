@@ -833,7 +833,8 @@ public:
 	// T is the initial value of the transformation, and the resulting transformation.
 	// m is tracked points. 
 	bool align(vector<Mat> & Ipyr, vector<Point3f> & M,
-		vector<Mat> & P, vector<Mat> & D, Mat & T, vector<Point2f> & m);
+		vector<Mat> & P, vector<Mat> & D, Mat & camint, 
+		Mat & camdist, Mat & R, Mat & t, vector<Point2f> & m);
 };
 
 ////////////////////////////////////////////////////////////////////////// related to affine transformation

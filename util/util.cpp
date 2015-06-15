@@ -800,6 +800,55 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking
+bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M,
+		vector<Mat> & P, vector<Mat> & D, Mat & camint, Mat & camdist, Mat & R, Mat & t, vector<Point2f> & m)
+{
+	// building point patch pyramid
+	vector<vector<Mat>> Ppyr;
+	Ppyr.resize(P.size());
+	for(int ipt = 0; ipt < P.size(); ipt++){
+		buildPyramid(P[ipt], Ppyr[ipt], Ipyr.size() - 1);
+	}
+
+	// Preparing differential filter kernel
+	Mat dxr, dxc, dyr, dyc; 
+	getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
+	getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
+
+	// Preparing temporal camera parameters. These are adjusted for each pyramid level.
+	Mat _camint, _camdist;
+	camint.copyTo(_camint);
+	camdist.copyTo(_camdist);
+
+	///////// parameter optimization for each pyramid level.
+	for(int ilv = Ipyr.size() - 1; ilv >= 0; ilv++){
+
+		///////// gauss newton optimization at level ilv.
+		// Initialize LM solver.
+		solver.initEx(6, M.size() * 2);
+
+		// Set fx, fy, cx, cy as 2^{-ilv} times the original.
+		double scale = 1.0 / (1 >> ilv);
+		_camdist.at<double>(0, 0) = camdist.at<double>(0, 0) * scale;
+		_camdist.at<double>(1, 1) = camdist.at<double>(1, 1) * scale;
+		_camdist.at<double>(0, 2) = camdist.at<double>(0, 2) * scale;
+		_camdist.at<double>(1, 2) = camdist.at<double>(1, 2) * scale;
+
+		// calculate differential image.
+		Mat Ix, Iy;
+
+		while(1){
+			// calculate J
+			// calculate E
+			//	calculate projection
+			// calculate JtJ and JtE
+		}
+	}
+
+	return true;
+}
+
 
 // Synthesize two affine trasformations
 // res = l * r 
