@@ -237,6 +237,9 @@ bool s_model::load(const char * afname)
 	// decode the model name. Some names are reserved for specific models
 	// If model head is "chsbd", the name should have the format "chsbd_<x>_<y>_<p>". Here <x>, <y> are non-negative integer, <p> is fixed point number.
 	if(par_chsbd.parse(name.c_str(), type, pts, edges)){
+		pts_deformed.resize(pts.size());
+		for(int i = 0; i < pts.size(); i++)
+			pts_deformed[i] = pts[i];
 		calc_bounds();
 		return true;
 	}
