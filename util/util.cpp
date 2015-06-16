@@ -254,7 +254,7 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec,
 		err[5] = rerr(_jt[2], jcv[5]);
 
 		for(int j = 0; j < 18; j++){
-			if(err[j] > 0.001){
+			if(err[j] > 0.1){
 				cerr << "Jacobian parameter " << j << " in awsProjPts is erroneous." << endl;
 				res = false;
 			}

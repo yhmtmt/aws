@@ -567,8 +567,8 @@ private:
 	} m_eest;
 
 	int m_num_max_itrs;			// maximum gauss newton iteration
-	int m_num_max_frms_used;	// frame counts used for the parameter estimation
-	int m_err_range;			// error range of reprojection error of usable frame 
+	int m_num_max_frms_used;	// frame counts used for the parameter estimation (now used only in estimate_fulltime. this is old code to be discarded in the future)
+ 	int m_err_range;			// error range of reprojection error of usable frame 
 	int m_num_pts_used;			// number of points used for the estimation
 	vector<bool> m_kfrm_used;	// number of key frames used for the estimation
 	double m_cam_erep;			// RMSE of the estimation (sqrt(SSD / num_points))

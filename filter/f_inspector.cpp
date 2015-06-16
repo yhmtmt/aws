@@ -1112,7 +1112,6 @@ bool s_frame::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
 			objs.clear();
 			return false;
 		}
-		
 	}
 
 	fn = fs["KeyFrame"];
@@ -1166,7 +1165,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	/*m_cur_frm(-1),*/ m_int_cyc_kfrm(30), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
 	m_num_cur_objs(0), m_cur_obj(-1), m_cur_part(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
-	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(DBL_MAX),
+	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(-1.0),
 	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3),
 	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_pfrm(NULL),
 	m_rat_z(1.0)
@@ -2209,17 +2208,13 @@ void f_inspector::renderEstimateInfo(char * buf, int len, int & y)
 	snprintf(buf, len, "State: %s", m_str_emd[m_emd]);
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
-	snprintf(buf, len, "NumFrmsUsd: %d NumItr: %d ErrPerPix: %f", m_num_max_frms_used, m_num_max_itrs, m_cam_erep);
+	snprintf(buf, len, "NumItr: %d ErrPerPix: %f", m_num_max_itrs, m_cam_erep);
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 }
 
 void f_inspector::renderFrameInfo(char * buf, int len, int & y)
 {
-/*	snprintf(buf, len, "%d Frame Objs", (int)m_fobjs.size());
-	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
-	y += 20;
-*/
 	snprintf(buf, len, "Frame Step: %d", (int) m_int_cyc_kfrm);
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
@@ -2228,6 +2223,14 @@ void f_inspector::renderFrameInfo(char * buf, int len, int & y)
 void f_inspector::renderKeyFrameInfo(char * buf, int len, int & y)
 {
 	snprintf(buf, len, "%d Key Frames", (int)m_kfrms.size());
+	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	y += 20;
+
+	if(m_sel_kfrm >= 0 && m_kfrms[m_sel_kfrm]){
+		snprintf(buf, len, "Key Frame Time %lld", m_kfrms[m_sel_kfrm]->tfrm);
+	}else{
+		snprintf(buf, len, "Key Frame NULL");
+	}
 	m_d3d_txt.render(m_pd3dev, buf, 0.f, (float)y, 1.0, 0, EDTC_LT);
 	y += 20;
 
@@ -4187,6 +4190,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'G':
 		switch(m_op){
 		case MODEL:
+		case KFRAME:
 		case FRAME:
 		case OBJ:
 			m_sop = SOP_GUESS;
@@ -4576,7 +4580,6 @@ void f_inspector::handle_sop_guess()
 			m_kfrms[ikf]->update = false;
 			for(int iobj = 0; iobj < objs.size(); iobj++){
 				help_guess(*objs[iobj], z, cx, cy, sfx, sfy, m_bcalib_fix_aspect_ratio);
-				objs[iobj]->update = false;
 				num_objs++;
 			}
 		}
@@ -4602,10 +4605,15 @@ void f_inspector::handle_sop_guess()
 	m_sop = SOP_NULL;
 
 	switch(m_op){
+	case KFRAME:
 	case FRAME:
 		for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
+			if(!m_kfrms[ikf])
+				continue;
+
 			m_cam_int.copyTo(m_kfrms[ikf]->camint);
 			m_cam_dist.copyTo(m_kfrms[ikf]->camdist);
+			m_kfrms[ikf]->proj_objs(true, m_bcalib_fix_aspect_ratio);
 		}
 		break;
 	case OBJ:
@@ -4634,10 +4642,6 @@ void f_inspector::help_guess(s_obj & obj, double z, double cx, double cy, double
 
 	sfx += fx;
 	sfy += fy;
-
-	if(fix_aspect_ratio){
-		sfx = sfy;
-	}
 }
 
 
