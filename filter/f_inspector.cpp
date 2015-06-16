@@ -1159,7 +1159,8 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN),
 	m_lvpyr(2), m_sig_gb(3.0),m_bauto_load_fobj(false), m_bauto_save_fobj(false),
 	m_bundistort(false), m_bcam_tbl_loaded(false), m_cur_camtbl(-1),
-	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
+	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false),
+	m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
 	/*m_cur_frm(-1),*/ m_int_cyc_kfrm(30), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
@@ -1613,12 +1614,14 @@ bool f_inspector::proc()
 
 	// rendering main view
 	if(m_op == KFRAME){
-		if(m_sel_kfrm < 0)
-			render(m_img_s, timg);
-		else
-			render(m_kfrms[m_sel_kfrm]->img, m_kfrms[m_sel_kfrm]->tfrm);
+		if(m_sel_kfrm >= 0 && m_kfrms[m_sel_kfrm])
+			render(m_kfrms[m_sel_kfrm]->img);
+		else{
+			Mat black = Mat::zeros(m_img_s.rows, m_img_s.cols, m_img_s.type());
+			render(black);
+		}
 	}else{
-		render(m_img_s, timg);
+		render(m_img_s);
 	}
 
 	m_pfrm->set_update();
@@ -1636,6 +1639,7 @@ bool f_inspector::addCamparTbl()
 			break;
 		}
 	}
+
 	// insert current camera parameter here
 	m_cam_int_tbl.insert(m_cam_int_tbl.begin() + icp, Mat());
 	m_cam_dist_tbl.insert(m_cam_dist_tbl.begin() + icp, Mat());
@@ -1752,7 +1756,7 @@ bool f_inspector::load_model()
 }
 
 //////////////////////////////////////////////// renderer
-void f_inspector::render(Mat & imgs, long long timg)
+void f_inspector::render(Mat & imgs)
 {
 	// undistort if the flag is enabled.
 	if(m_bundistort){
@@ -1771,19 +1775,15 @@ void f_inspector::render(Mat & imgs, long long timg)
 	/////////////////////// render main view //////////////////////////
 	m_maincam.SetAsRenderTarget(m_pd3dev);
 
-	// for debug-->
-	/*
-	vector<s_obj*> objs = m_pfrm->objs;
-
-	for (int iobj = 0; iobj < objs.size(); iobj++){
-		objs[iobj]->render(imgs);
-	}
-	*/
-	// <-- for debug
-
 	m_maincam.blt_offsrf(m_pd3dev, imgs);
 
-	renderObj();
+	if(m_op == KFRAME){
+		if(m_sel_kfrm >= 0 && m_kfrms[m_sel_kfrm]){
+			renderObj(m_kfrms[m_sel_kfrm]);
+		}
+	}else
+		renderObj(m_pfrm);
+
 	renderCampar();
 
 	m_maincam.ResetRenderTarget(m_pd3dev);
@@ -1793,10 +1793,10 @@ void f_inspector::render(Mat & imgs, long long timg)
 	switch(m_op){
 	case MODEL:
 	case OBJ:
-		renderModel(timg);
+		renderModel();
 		break;
 	case VIEW3D:
-		renderScene(timg);
+		renderScene();
 		break;
 	default:
 		break;
@@ -2300,10 +2300,13 @@ void f_inspector::renderCursor()
 	m_d3d_txt.render(m_pd3dev, buf, (float)(m_mc.x + txtofst.x), (float)(m_mc.y + txtofst.y), 1.0, 0, etxtc);
 }
 
-void f_inspector::renderObj()
+void f_inspector::renderObj(s_frame * pfrm)
 {
 	// Drawing object (2d and 3d)
-	vector<s_obj*> & objs = m_pfrm->objs;
+	vector<s_obj*> & objs = pfrm->objs;
+	if(m_cur_obj >= objs.size())
+		return;
+
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = *objs[iobj];
 		if(m_op == OBJ || m_op == PARTS){
@@ -2367,7 +2370,7 @@ void f_inspector::renderObj()
 	m_pline->End();
 }
 
-void f_inspector::renderScene(long long timg)
+void f_inspector::renderScene()
 {
 	m_model_view.SetAsRenderTarget(m_pd3dev);
 	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
@@ -2510,7 +2513,7 @@ void f_inspector::renderScene(long long timg)
 	m_model_view.ResetRenderTarget(m_pd3dev);
 }
 
-void f_inspector::renderModel(long long timg)
+void f_inspector::renderModel()
 {
 	m_model_view.SetAsRenderTarget(m_pd3dev);
 	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
@@ -2988,19 +2991,16 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 void f_inspector::estimate_levmarq()
 {
 //	double ssd_avg, ssd_range;
-	// calculating m_frm_used flag. if the flag is asserted, the frame is used for the optimization
-	int num_valid_frms = min((int)m_kfrms.size(), m_num_max_frms_used);
-	double step =  (double)m_kfrms.size() / (double) num_valid_frms; 
-	num_valid_frms = 0;
-	for(double ifrm = 0.; ifrm < (double) m_kfrms.size(); ifrm += step){
-		int i = (int) ifrm;
-		if(!m_kfrms[i])
+	// calculating m_frm_used flag. if the flag is asserted, the frame is used for the optimization	double step =  (double)m_kfrms.size() / (double) num_valid_frms; 
+	int num_valid_frms = 0;
+	for(int ifrm = 0; ifrm < m_kfrms.size(); ifrm ++){
+		if(!m_kfrms[ifrm])
+			continue;
+		if(m_kfrms[ifrm]->objs.size() == 0)
 			continue;
 
-//		if(m_fobjs[i]->ssd - ssd_avg < ssd_range){
-			m_kfrm_used[i] = true;
-			num_valid_frms++;
-//		}
+		m_kfrm_used[ifrm] = true;
+		num_valid_frms++;
 	}
 
 	// current frame is forced to be used for the optimization
@@ -4567,12 +4567,15 @@ void f_inspector::handle_sop_guess()
 	sfx = sfy = 0.0;
 	num_objs = 0;
 	switch(m_op){
+	case KFRAME:
 	case FRAME:
 		for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
+			if(!m_kfrms[ikf])
+				continue;
 			vector<s_obj*> & objs = m_kfrms[ikf]->objs;
 			m_kfrms[ikf]->update = false;
 			for(int iobj = 0; iobj < objs.size(); iobj++){
-				help_guess(*objs[iobj], z, cx, cy, sfx, sfy);
+				help_guess(*objs[iobj], z, cx, cy, sfx, sfy, m_bcalib_fix_aspect_ratio);
 				objs[iobj]->update = false;
 				num_objs++;
 			}
@@ -4614,7 +4617,7 @@ void f_inspector::handle_sop_guess()
 	}
 }
 
-void f_inspector::help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy)
+void f_inspector::help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy, bool fix_aspect_ratio)
 {
 	double * ptr = obj.tvec.ptr<double>(0);
 	s_model * pmdl = obj.pmdl;
@@ -4631,6 +4634,10 @@ void f_inspector::help_guess(s_obj & obj, double z, double cx, double cy, double
 
 	sfx += fx;
 	sfy += fy;
+
+	if(fix_aspect_ratio){
+		sfx = sfy;
+	}
 }
 
 

@@ -410,7 +410,7 @@ private:
 	Size m_sz_vtx_smpl;
 
 	// Rendering method for whole view
-	void render(Mat & imgs, long long timg);
+	void render(Mat & imgs);
 	void renderInfo();
 	void renderModelInfo(char * buf, int len, int & y);
 	void renderObjInfo(vector<s_obj*> & objs, char * buf, int len, int & y);
@@ -455,7 +455,7 @@ private:
 	void handle_sop_set_kf();
 
 	// helper function for handle_sop_guess()
-	void help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy);
+	void help_guess(s_obj & obj, double z, double cx, double cy, double & sfx, double & sfy, bool fix_aspect_ratio = true);
 
 	bool m_bundistort;	// undistort flag. it cant be used with model handling mode.
 
@@ -478,7 +478,7 @@ private:
 	Mat m_rvec_cam_mdl, m_tvec_cam_mdl;
 	Mat m_cam_int_mdl, m_cam_dist_mdl;
 
-	void renderModel(long long timg);
+	void renderModel();
 
 	//
 	// Scene view
@@ -489,7 +489,7 @@ private:
 	static const char * m_str_view[EV_FREE + 1];
 	Mat m_cam_int_view, m_cam_dist_view, m_tvec_view, m_rvec_view;
 	double m_rat_z;
-	void renderScene(long long timg);
+	void renderScene();
 	void renderSceneInfo(char * buf, int len, int & y);
 
 
@@ -527,7 +527,7 @@ private:
 	int m_cur_part;			// number of parts in current object.
 
 	// Drawing object in the view.
-	void renderObj();
+	void renderObj(s_frame * pfrm);
 
 	//
 	// Camera Parameter
