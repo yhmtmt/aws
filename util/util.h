@@ -814,7 +814,72 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
 	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf = 0.0);
 
+// Calcurate dT(r',t')T(r,t)/d(r', t') at (r', t') = 0. T(r, t) is the transformation matrix of [R|t], R is rotation matrix the exponential map of r
+// If R and t given is NULL, simply dT(r', t')/d(r', t') at (r', t') = 0 is calculated.
+// Resulting jacobian is column stacked. 
+// Assuming the target transformation 
+// T(r',t')T(r,t) = 
+//		r11 r12 r13 t1
+//		r21 r22 r23 t2
+//		r31 r32 r33 t3
+// Resulting jacobian is 12x6 matrix
+// J =
+//     /dr1 /dr2 /dr3 /dt1 /dt2 /dt3
+// dr11
+// dr21     -rc1_x          O_3
+// dr31
+// dr12
+// dr22     -rc2_x          O_3
+// dr32
+// dr13
+// dr23     -rc3_x          O_3
+// dr33
+// dt1     
+// dt2      -t_x            I_3
+// dt3
+// 
+// Here rc1 = [r11 r21 r31]^t and the rc1_x is the skew-symmetric matrix.
+void calcJ0_SE3(Mat & J, double * R = NULL, double * t = NULL)
+{
+	J = Mat::zeros(12, 6, CV_64FC1);
+	double * p = J.ptr<double>();
 
+	// left-top 9x3 block
+	if(R){
+		p[ 0] =    0.; p[ 1] =  R[6]; p[ 2] = -R[3];
+		p[ 6] = -R[6]; p[ 7] =    0.; p[ 8] =  R[0];
+		p[12] =  R[3]; p[13] = -R[0]; p[14] =    0.;
+
+		p[18] =    0.; p[19] =  R[7]; p[20] = -R[4];
+		p[24] = -R[7]; p[25] =    0.; p[26] =  R[1];
+		p[30] =  R[4]; p[31] = -R[1]; p[32] =    0.;
+
+		p[36] =    0.; p[37] =  R[8]; p[38] = -R[5];
+		p[42] = -R[8]; p[43] =    0.; p[44] =  R[2];
+		p[48] =  R[5]; p[49] = -R[2]; p[50] =    0.;
+	}else{
+		p[ 8] = 1.;
+		p[13] = -1.;
+
+		p[21] = -1.;
+		p[30] = 1.;
+
+		p[37] = 1.;
+		p[42] = -1.;
+	}
+
+	// left-bottom 3x3 block
+	if(t){
+		p[54] =    0.; p[55] =  t[2]; p[56] = -t[1];
+		p[60] = -t[2]; p[61] =    0.; p[62] =  t[0];
+		p[66] =  t[1]; p[67] = -t[0]; p[68] =    0.;
+	}
+
+	// right bottom 3x3 block (I_3)
+	p[57] = 1.;
+	p[64] = 1.;
+	p[71] = 1.;
+}
 
 //////////////////////////////////////////////////////////////////////////// 3D model tracking 
 // 1. set initial parameter p = (r, t), and transformation T(p) 
@@ -832,8 +897,8 @@ public:
 	// M is the set of 3D points in the model.
 	// T is the initial value of the transformation, and the resulting transformation.
 	// m is tracked points. 
-	bool align(vector<Mat> & Ipyr, vector<Point3f> & M,
-		vector<Mat> & P, vector<Mat> & D, Mat & camint, 
+	bool align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & valid, 
+		vector<Mat> & P, Mat & camint, 
 		Mat & camdist, Mat & R, Mat & t, vector<Point2f> & m);
 };
 

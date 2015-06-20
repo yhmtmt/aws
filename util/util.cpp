@@ -801,25 +801,63 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking
-bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M,
-		vector<Mat> & P, vector<Mat> & D, Mat & camint, Mat & camdist, Mat & R, Mat & t, vector<Point2f> & m)
+bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & valid, 
+		vector<Mat> & P, Mat & camint, Mat & camdist, Mat & R, Mat & t, vector<Point2f> & m)
 {
-	// building point patch pyramid
-	vector<vector<Mat>> Ppyr;
-	Ppyr.resize(P.size());
-	for(int ipt = 0; ipt < P.size(); ipt++){
-		buildPyramid(P[ipt], Ppyr[ipt], Ipyr.size() - 1);
-	}
+	Mat Rini, tini; // initial transformation
+	Mat Racc, tacc; // Accumulating Transformation caluclated in this method
+	double * pRacc, * ptacc;
+	Mat Rnew, tnew;
+	double * pRnew, * ptnew;
 
-	// Preparing differential filter kernel
-	Mat dxr, dxc, dyr, dyc; 
-	getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
-	getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
+	if(R.empty())
+		Rini = Mat::eye(3, 3, CV_64FC1);
+	else
+		Rini = R.clone();
+
+	if(t.empty())
+		tini = Mat::zeros(3, 1, CV_64FC1);
+	else 
+		tini = t.clone();
+
+	Racc = Mat::eye(3, 3, CV_64FC1);
+	tacc = Mat::zeros(3, 1, CV_64FC1);
+	pRacc = Racc.ptr<double>();
+	ptacc = tacc.ptr<double>();
+
+	Rini.copyTo(Rnew);
+	tini.copyTo(tnew);
+
+	pRnew = Rnew.ptr<double>();
+	ptnew = tnew.ptr<double>();
+
+	// building point patch pyramid and its derivative
+	vector<vector<Mat>> Ppyr;
+	vector<vector<Mat>> dPpyrdx;
+	vector<vector<Mat>> dPpyrdy;
+	Ppyr.resize(P.size());
+	dPpyrdx.resize(P.size());
+	dPpyrdy.resize(P.size());
+
+	{// Preparing differential filter kernel
+		Mat dxr, dxc, dyr, dyc; 
+		getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
+		getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
+
+		for(int ipt = 0; ipt < P.size(); ipt++){
+			buildPyramid(P[ipt], Ppyr[ipt], Ipyr.size() - 1);
+			for(int ilv = 0; ilv < Ppyr[ipt].size(); ilv++){
+				sepFilter2D(Ppyr[ipt][ilv], dPpyrdx[ilv], CV_64F, dxr, dxc);
+				sepFilter2D(Ppyr[ipt][ilv], dPpyrdy[ilv], CV_64F, dyr, dyc);
+			}
+		}
+	}
 
 	// Preparing temporal camera parameters. These are adjusted for each pyramid level.
 	Mat _camint, _camdist;
 	camint.copyTo(_camint);
 	camdist.copyTo(_camdist);
+	double * pcamint = _camint.ptr<double>(), * pcamdist = _camdist.ptr<double>();
 
 	///////// parameter optimization for each pyramid level.
 	for(int ilv = Ipyr.size() - 1; ilv >= 0; ilv++){
@@ -836,12 +874,21 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M,
 		_camdist.at<double>(1, 2) = camdist.at<double>(1, 2) * scale;
 
 		// calculate differential image.
-		Mat Ix, Iy;
-
+		Mat Jrt0, Jrt0acc;
 		while(1){
+			// calculate projection
+			awsProjPts(M, m, valid, pcamint[0], pcamint[4], pcamint[2], pcamint[5], pcamdist, pRnew, ptnew); 
+
 			// calculate J
+			calcJ0_SE3(Jrt0, pRnew, ptnew);
+			calcJ0_SE3(Jrt0acc, pRacc, ptacc);
+
+			// for each point template, calculate projection jacobian and image difference
+			for(int ipt = 0; ipt < M.size(); ipt++){
+				
+			}
 			// calculate E
-			//	calculate projection
+			
 			// calculate JtJ and JtE
 		}
 	}

@@ -4555,8 +4555,6 @@ void f_inspector::handle_sop_inst_obj()
 	m_sop = SOP_NULL;
 }
 
-
-
 void f_inspector::handle_sop_guess()
 {
 	// translation of objects 
