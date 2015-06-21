@@ -858,6 +858,19 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 	camint.copyTo(_camint);
 	camdist.copyTo(_camdist);
 	double * pcamint = _camint.ptr<double>(), * pcamdist = _camdist.ptr<double>();
+	// Preparing previous frame's model points in camera's coordinate
+	vector<Point3f> Mcam_prev;
+	vector<Point2f> m_prev;
+	trnPts(M, Mcam_prev, R, t);
+	prjPts(Mcam_prev, m_prev, camint, camdist);
+	double ifx = 1.0 / pcamint[0], ify = 1.0 / pcamint[4];
+	for(int ipt = 0; ipt < m_prev.size(); ipt++){
+		m_prev[ipt].x *= M[ipt].z * ifx;
+		m_prev[ipt].y *= M[ipt].z * ify;
+	}
+
+	// calculate center of the image patch (we do not check all the point patches.)
+	int ox = 0, oy = 0, sx = 0, sy = 0;
 
 	///////// parameter optimization for each pyramid level.
 	for(int ilv = Ipyr.size() - 1; ilv >= 0; ilv++){
@@ -867,7 +880,9 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		solver.initEx(6, M.size() * 2);
 
 		// Set fx, fy, cx, cy as 2^{-ilv} times the original.
-		double scale = 1.0 / (1 >> ilv);
+		double iscale = (1 >> ilv);
+		double scale = 1.0 / iscale;
+
 		_camdist.at<double>(0, 0) = camdist.at<double>(0, 0) * scale;
 		_camdist.at<double>(1, 1) = camdist.at<double>(1, 1) * scale;
 		_camdist.at<double>(0, 2) = camdist.at<double>(0, 2) * scale;
@@ -875,17 +890,42 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 		// calculate differential image.
 		Mat Jrt0, Jrt0acc;
+		Mat JM0, JM0acc;
+
 		while(1){
 			// calculate projection
 			awsProjPts(M, m, valid, pcamint[0], pcamint[4], pcamint[2], pcamint[5], pcamdist, pRnew, ptnew); 
 
 			// calculate J
-			calcJ0_SE3(Jrt0, pRnew, ptnew);
-			calcJ0_SE3(Jrt0acc, pRacc, ptacc);
+			calcJT0_SE3(Jrt0, pRnew, ptnew);
+			calcJT0_SE3(Jrt0acc, pRacc, ptacc);
 
 			// for each point template, calculate projection jacobian and image difference
 			for(int ipt = 0; ipt < M.size(); ipt++){
-				
+				if(!valid[ipt])
+					continue;
+
+				Mat & tmpl = Ppyr[ipt][ilv];
+				Point3f & Mcam = Mcam_prev[ipt];
+				Point2f & m_prev_i = m_prev[ipt];
+				sx = tmpl.cols;
+				sy = tmpl.rows;
+				ox = sx >> 1;
+				oy = sy >> 1;
+
+				calcJM0_SE3(JM0, M[ipt], Jrt0);
+
+				Point3f p;
+				p.z = 0.;
+				for(int u = 0; u < sx; u++){
+					for(int v = 0; v < sy; v++){
+						p.x = ((u - ox) + iscale * m_prev_i.x) * Mcam.z;
+						p.y = ((v - oy) + iscale * m_prev_i.y) * Mcam.z;
+						calcJM0_SE3(JM0acc, p, Jrt0acc);
+						JM0acc += JM0;
+
+					}
+				}
 			}
 			// calculate E
 			

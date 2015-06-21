@@ -814,6 +814,37 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
 	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf = 0.0);
 
+void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R, const Mat & t)
+{
+	const double * pR = R.ptr<double>(), * pt = t.ptr<double>();
+	if(Msrc.size() != Mdst.size())
+		Mdst.resize(Msrc.size());
+
+	for(int i = 0; i < Msrc.size(); i++){
+		double X = Msrc[i].x, Y = Msrc[i].y, Z = Msrc[i].z;
+		Mdst[i].x = pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0];
+		Mdst[i].y = pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1];
+		Mdst[i].z = pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2];
+	}
+}
+
+void prjPts(const vector<Point3f> & Mcam, vector<Point2f> m, const Mat & camint, const Mat & camdist)
+{
+	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
+		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
+
+	for(int i = 0; i < Mcam.size(); i++){
+		double x = Mcam[i].x;
+		double y = Mcam[i].y;
+		double z = Mcam[i].z;
+		z = z ? 1./z : 1;
+		x *= z; y *= z;
+		
+		m[i].x = (float)(x * fx + cx);
+		m[i].y = (float)(y * fy + cy);
+	}
+}
+
 // Calcurate dT(r',t')T(r,t)/d(r', t') at (r', t') = 0. T(r, t) is the transformation matrix of [R|t], R is rotation matrix the exponential map of r
 // If R and t given is NULL, simply dT(r', t')/d(r', t') at (r', t') = 0 is calculated.
 // Resulting jacobian is column stacked. 
@@ -839,7 +870,7 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec,
 // dt3
 // 
 // Here rc1 = [r11 r21 r31]^t and the rc1_x is the skew-symmetric matrix.
-void calcJ0_SE3(Mat & J, double * R = NULL, double * t = NULL)
+void calcJT0_SE3(Mat & J, double * R = NULL, double * t = NULL)
 {
 	J = Mat::zeros(12, 6, CV_64FC1);
 	double * p = J.ptr<double>();
@@ -879,6 +910,33 @@ void calcJ0_SE3(Mat & J, double * R = NULL, double * t = NULL)
 	p[57] = 1.;
 	p[64] = 1.;
 	p[71] = 1.;
+}
+
+
+// Calculate dM/d(r, t) using chain rule.
+// assuming JT (dT/d(r,t)) is calcurated with calcJT0_SE3 defined above.
+// J =
+//            /dr1 /dr2 /dr3                  /dt1 /dt2 /dt3
+// dX
+// dY  -(Xrc1_x+Yrc2_x+Zrc2_x+t_x)                  I_3
+// dZ
+void calcJM0_SE3(Mat & J, const Point3f & M, const Mat & JT)
+{
+	const double * pJT = JT.ptr<double>();
+	J = Mat::zeros(3, 6, CV_64FC1);
+	double * pJ = J.ptr<double>();
+
+	//  Of course it contains much wasteful codes. Half of the multiplication can be eliminated because the
+	// multiplications are all for skew-symmetric matrices.
+	for(int i = 0; i < 3; i++){
+		for(int j = 0; j < 3; j++){
+			int i6 = i * 6;
+			pJ[i6 + j] = pJT[i6 + j] * M.x + pJT[i6 + 3 * 6 + j] * M.y
+				+ pJT[i6 + 6 * 6 + j] * M.z + pJT[i + 9 * 6 + j];
+		}
+	}
+
+	pJ[3] = pJ[10] = pJ[17] = 1.0;
 }
 
 //////////////////////////////////////////////////////////////////////////// 3D model tracking 
