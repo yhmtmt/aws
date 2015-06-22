@@ -828,7 +828,7 @@ void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R,
 	}
 }
 
-void prjPts(const vector<Point3f> & Mcam, vector<Point2f> m, const Mat & camint, const Mat & camdist)
+void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const Mat & camint)
 {
 	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
 		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
@@ -837,6 +837,24 @@ void prjPts(const vector<Point3f> & Mcam, vector<Point2f> m, const Mat & camint,
 		double x = Mcam[i].x;
 		double y = Mcam[i].y;
 		double z = Mcam[i].z;
+		z = z ? 1./z : 1;
+		x *= z; y *= z;
+		
+		m[i].x = (float)(x * fx + cx);
+		m[i].y = (float)(y * fy + cy);
+	}
+}
+
+void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & valid, 
+	const double fx, const double fy, const double cx, const double cy,
+	const double * pR, const double * pt)
+{
+	for(int i = 0; i < Mobj.size(); i++){
+		double X = Mobj[i].x, Y = Mobj[i].y, Z = Mobj[i].z;
+		double x = pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0];
+		double y = pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1];
+		double z = pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2];
+
 		z = z ? 1./z : 1;
 		x *= z; y *= z;
 		
@@ -956,8 +974,7 @@ public:
 	// T is the initial value of the transformation, and the resulting transformation.
 	// m is tracked points. 
 	bool align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & valid, 
-		vector<Mat> & P, Mat & camint, 
-		Mat & camdist, Mat & R, Mat & t, vector<Point2f> & m);
+		vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m);
 };
 
 ////////////////////////////////////////////////////////////////////////// related to affine transformation

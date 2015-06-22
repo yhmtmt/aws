@@ -802,7 +802,7 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 
 //////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking
 bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & valid, 
-		vector<Mat> & P, Mat & camint, Mat & camdist, Mat & R, Mat & t, vector<Point2f> & m)
+		vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m)
 {
 	Mat Rini, tini; // initial transformation
 	Mat Racc, tacc; // Accumulating Transformation caluclated in this method
@@ -854,15 +854,14 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 	}
 
 	// Preparing temporal camera parameters. These are adjusted for each pyramid level.
-	Mat _camint, _camdist;
+	Mat _camint;
 	camint.copyTo(_camint);
-	camdist.copyTo(_camdist);
-	double * pcamint = _camint.ptr<double>(), * pcamdist = _camdist.ptr<double>();
+	double * pcamint = _camint.ptr<double>();
 	// Preparing previous frame's model points in camera's coordinate
-	vector<Point3f> Mcam_prev;
+	vector<Point3f> Mcam;
 	vector<Point2f> m_prev;
-	trnPts(M, Mcam_prev, R, t);
-	prjPts(Mcam_prev, m_prev, camint, camdist);
+	trnPts(M, Mcam, R, t);
+	prjPts(Mcam, m_prev, camint);
 	double ifx = 1.0 / pcamint[0], ify = 1.0 / pcamint[4];
 	for(int ipt = 0; ipt < m_prev.size(); ipt++){
 		m_prev[ipt].x *= M[ipt].z * ifx;
@@ -883,10 +882,10 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		double iscale = (1 >> ilv);
 		double scale = 1.0 / iscale;
 
-		_camdist.at<double>(0, 0) = camdist.at<double>(0, 0) * scale;
-		_camdist.at<double>(1, 1) = camdist.at<double>(1, 1) * scale;
-		_camdist.at<double>(0, 2) = camdist.at<double>(0, 2) * scale;
-		_camdist.at<double>(1, 2) = camdist.at<double>(1, 2) * scale;
+		_camint.at<double>(0, 0) = camint.at<double>(0, 0) * scale;
+		_camint.at<double>(1, 1) = camint.at<double>(1, 1) * scale;
+		_camint.at<double>(0, 2) = camint.at<double>(0, 2) * scale;
+		_camint.at<double>(1, 2) = camint.at<double>(1, 2) * scale;
 
 		// calculate differential image.
 		Mat Jrt0, Jrt0acc;
@@ -894,7 +893,9 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 		while(1){
 			// calculate projection
-			awsProjPts(M, m, valid, pcamint[0], pcamint[4], pcamint[2], pcamint[5], pcamdist, pRnew, ptnew); 
+			trnPts(M, Mcam, Rnew, tnew);
+			prjPts(Mcam, m, camint);
+			//prjPts(M, m, valid, pcamint[0], pcamint[4], pcamint[2], pcamint[5], pRnew, ptnew); 
 
 			// calculate J
 			calcJT0_SE3(Jrt0, pRnew, ptnew);
@@ -906,7 +907,6 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 					continue;
 
 				Mat & tmpl = Ppyr[ipt][ilv];
-				Point3f & Mcam = Mcam_prev[ipt];
 				Point2f & m_prev_i = m_prev[ipt];
 				sx = tmpl.cols;
 				sy = tmpl.rows;
@@ -923,7 +923,10 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 						p.y = ((v - oy) + iscale * m_prev_i.y) * Mcam.z;
 						calcJM0_SE3(JM0acc, p, Jrt0acc);
 						JM0acc += JM0;
+						double * pJM0acc = JM0acc.ptr<double>();
 
+						// Here we have dMc/dp as pJM0acc. we want dm/dp using chain rule (dm/dMc)(dMc/dp)
+						// Calculating (dm/dMc).
 					}
 				}
 			}
