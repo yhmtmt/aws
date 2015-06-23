@@ -858,15 +858,11 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 	camint.copyTo(_camint);
 	double * pcamint = _camint.ptr<double>();
 	// Preparing previous frame's model points in camera's coordinate
-	vector<Point3f> Mcam;
+	vector<Point3f> Mcam_prev, Mcam;
 	vector<Point2f> m_prev;
-	trnPts(M, Mcam, R, t);
-	prjPts(Mcam, m_prev, camint);
-	double ifx = 1.0 / pcamint[0], ify = 1.0 / pcamint[4];
-	for(int ipt = 0; ipt < m_prev.size(); ipt++){
-		m_prev[ipt].x *= M[ipt].z * ifx;
-		m_prev[ipt].y *= M[ipt].z * ify;
-	}
+	trnPts(M, Mcam_prev, R, t);
+	prjPts(Mcam_prev, m_prev, camint);
+	Mcam.resize(Mcam_prev.size());
 
 	// calculate center of the image patch (we do not check all the point patches.)
 	int ox = 0, oy = 0, sx = 0, sy = 0;
@@ -886,6 +882,7 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		_camint.at<double>(1, 1) = camint.at<double>(1, 1) * scale;
 		_camint.at<double>(0, 2) = camint.at<double>(0, 2) * scale;
 		_camint.at<double>(1, 2) = camint.at<double>(1, 2) * scale;
+		double ifx = 1.0 / pcamint[0], ify = 1.0 / pcamint[4];
 
 		// calculate differential image.
 		Mat Jrt0, Jrt0acc;
@@ -919,8 +916,8 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 				p.z = 0.;
 				for(int u = 0; u < sx; u++){
 					for(int v = 0; v < sy; v++){
-						p.x = ((u - ox) + iscale * m_prev_i.x) * Mcam.z;
-						p.y = ((v - oy) + iscale * m_prev_i.y) * Mcam.z;
+						p.x = ((u - ox) + iscale * m_prev_i.x) * Mcam_prev[ipt].z * ifx;
+						p.y = ((v - oy) + iscale * m_prev_i.y) * Mcam_prev[ipt].z * ify;
 						calcJM0_SE3(JM0acc, p, Jrt0acc);
 						JM0acc += JM0;
 						double * pJM0acc = JM0acc.ptr<double>();
