@@ -1166,7 +1166,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_num_cur_objs(0), m_cur_obj(-1), m_cur_part(-1), m_cur_point(-1), 
 	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(-1.0),
-	m_eest(EES_CONV), m_num_max_itrs(10), m_num_max_frms_used(100), m_err_range(3),
+	m_eest(EES_CONV), m_num_max_itrs(30), m_num_max_frms_used(100), m_err_range(3),
 	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_pfrm(NULL),
 	m_rat_z(1.0)
 {
@@ -1562,6 +1562,7 @@ bool f_inspector::proc()
 			estimate_rt_full_levmarq();
 			break;
 		case EMD_SEL:
+			estimate_rt_full_and_sel_cptbl();
 			break;
 		}
 		calc_erep();
@@ -2764,6 +2765,27 @@ void f_inspector::estimate()
 	cout << "camdist=" << m_cam_dist << endl;
 }
 
+void f_inspector::estimate_rt_full_and_sel_cptbl()
+{
+	int icp_min = 0;
+	double ssd_min = DBL_MAX;
+	for(int icp = 0; icp < m_cam_int_tbl.size(); icp++){
+		m_cam_int_tbl[icp].copyTo(m_cam_int);
+		m_cam_dist_tbl[icp].copyTo(m_cam_dist);
+		estimate_rt_full_levmarq();
+		double ssd = 0.;
+		for(int ikfrm = 0; ikfrm < m_kfrms.size(); ikfrm++){
+			ssd += m_kfrms[ikfrm]->ssd;
+		}
+		if(ssd < ssd_min){
+			icp_min = icp;
+		}
+	}
+
+	m_cam_int_tbl[icp_min].copyTo(m_cam_int);
+	m_cam_dist_tbl[icp_min].copyTo(m_cam_dist);
+	estimate_rt_full_levmarq();
+}
 
 void f_inspector::estimate_rt_full_levmarq()
 {

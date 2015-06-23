@@ -608,6 +608,7 @@ private:
 	void select_opt_campar();
 	void estimate_rt_levmarq(s_frame * pfrm);
 	void estimate_rt_full_levmarq();
+	void estimate_rt_full_and_sel_cptbl();
 	virtual bool alloc_d3dres();
 	virtual void release_d3dres();
 public:
