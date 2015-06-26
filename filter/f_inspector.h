@@ -427,8 +427,9 @@ private:
 	// operation mode
 	//
 	enum e_operation {
-		MODEL, OBJ, PARTS, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME, KFRAME, VIEW3D
+		MODEL, OBJ, PARTS, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME, VIEW3D
 	} m_op;
+	bool m_bkfrm;
 
 	static const char * m_str_op[VIEW3D+1]; 
 
@@ -511,6 +512,7 @@ private:
 	bool load_kfrms();
 
 	s_frame * m_pfrm;				// temporal frame object
+	s_frame * m_pfrm_int;
 
 	//
 	// frame objects

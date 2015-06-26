@@ -1133,7 +1133,7 @@ bool s_frame::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
 
 //////////////////////////////////////////////////////////////////// class f_inspector
 const char * f_inspector::m_str_op[VIEW3D+1]
-	= {"model", "obj", "part", "point", "camera", "camtbl", "estimate", "frame", "kframe", "v3d"};
+	= {"model", "obj", "part", "point", "camera", "camtbl", "estimate", "frame", "v3d"};
 
 const char * f_inspector::m_str_sop[SOP_AWSCMD+1]
 	= {"null", "save", "load", "guess", "det", "ins", "del", "kf", "icp", "awscmd"};
@@ -1164,10 +1164,10 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
 	/*m_cur_frm(-1),*/ m_int_cyc_kfrm(30), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
 	m_num_cur_objs(0), m_cur_obj(-1), m_cur_part(-1), m_cur_point(-1), 
-	m_op(OBJ), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
+	m_op(OBJ), m_bkfrm(false), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(-1.0),
 	m_eest(EES_CONV), m_num_max_itrs(30), m_num_max_frms_used(100), m_err_range(3),
-	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_pfrm(NULL),
+	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_pfrm(NULL), m_pfrm_int(NULL),
 	m_rat_z(1.0)
 {
 	m_name_obj[0] = '\0';
@@ -1465,6 +1465,47 @@ bool f_inspector::proc()
 	if(m_timg != timg){ // new frame arrived
 		if(!new_frame(img, timg))
 			return false;
+
+		if(!m_pfrm)
+			return true;
+
+		// sample point templates
+		m_pfrm->sample_tmpl(m_img_gry_blur, m_sz_vtx_smpl);
+
+		m_int_kfrms = m_int_cyc_kfrm * f_base::m_paws->get_cycle_time();
+
+		// initial frame is forced to be key frame
+		if(m_cur_kfrm < 0){
+			m_cur_kfrm = 0;
+			m_kfrms[m_cur_kfrm] = m_pfrm;
+			m_cur_kfrm = 0;
+			m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
+		}else if(m_kfrms[m_cur_kfrm]->tfrm + m_int_kfrms <= m_timg){ // after interval m_int_kfrms, the frame is key frame.
+			m_cur_kfrm = (m_cur_kfrm + 1) % m_num_kfrms;
+			if(m_kfrms[m_cur_kfrm] != NULL){
+				if(m_kfrms[m_cur_kfrm]->tfrm != m_cur_time){ // if the frame is already in cache
+					if(m_basv_kfrms)
+						m_kfrms[m_cur_kfrm]->save(m_name);
+
+					s_frame::free(m_kfrms[m_cur_kfrm]);
+					m_kfrms[m_cur_kfrm] = NULL;
+					// current implementation, this condition could not occur, because we dont have any method to load future key frame.
+				}
+			}
+
+			if(!m_kfrms[m_cur_kfrm]){ // if the key frame is not allocated 
+				m_kfrms[m_cur_kfrm] = s_frame::alloc();
+				if(m_bald_kfrms && m_kfrms[m_cur_kfrm]->load(m_name, m_cur_time, m_models)){ // if the key frame is loaded from file
+					if(!m_kfrms[m_cur_kfrm]->img.empty())
+						m_img_s = m_kfrms[m_cur_kfrm]->img;
+					m_timg = m_kfrms[m_cur_kfrm]->tfrm;
+				}else{ // otherwise, current frame is sat as key frame.
+					s_frame::free(m_kfrms[m_cur_kfrm]);
+					m_kfrms[m_cur_kfrm] = m_pfrm;
+					m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
+				}
+			}
+		}
 	}
 
 	switch(m_sop){
@@ -1497,56 +1538,26 @@ bool f_inspector::proc()
 		break;
 	}
 
-	if(!m_pfrm)
-		return true;
+	// selecting frame of interest (we can choose from video stream and key frame)
+	if(m_bkfrm){
+		if(m_sel_kfrm >= 0)
+			m_pfrm_int = m_kfrms[m_sel_kfrm];
+	}else{
+		m_pfrm_int = m_pfrm;
+	}
 
-	if(m_cur_obj >= m_pfrm->objs.size()){
-		m_cur_obj = m_pfrm->objs.size() - 1;
+	if(!m_pfrm_int){
+		m_cur_obj = -1;
 		m_cur_point = -1;
+	}else if(m_cur_obj >= m_pfrm_int->objs.size()){
+		m_cur_obj = m_pfrm_int->objs.size() - 1;
+		m_cur_point = -1;
+		// projection 
+		m_num_cur_objs = (int) m_pfrm_int->objs.size();
+
+		m_pfrm_int->proj_objs(true, m_bcalib_fix_aspect_ratio);
+		calc_jmax();
 	}
-
-	m_int_kfrms = m_int_cyc_kfrm * f_base::m_paws->get_cycle_time();
-	if(m_cur_kfrm < 0){
-		m_cur_kfrm = 0;
-		m_kfrms[m_cur_kfrm] = m_pfrm;
-		m_cur_kfrm = 0;
-		m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
-	}else if(m_kfrms[m_cur_kfrm]->tfrm + m_int_kfrms <= m_timg){
-		m_cur_kfrm = (m_cur_kfrm + 1) % m_num_kfrms;
-		if(m_kfrms[m_cur_kfrm] != NULL){
-			if(m_kfrms[m_cur_kfrm]->tfrm != m_cur_time){ // if the frame is already in cache
-				if(m_basv_kfrms)
-					m_kfrms[m_cur_kfrm]->save(m_name);
-
-				s_frame::free(m_kfrms[m_cur_kfrm]);
-				m_kfrms[m_cur_kfrm] = NULL;
-				// current implementation, this condition could not occur, because we dont have any method to load future key frame.
-			}
-		}
-
-		if(!m_kfrms[m_cur_kfrm]){ // if the key frame is not allocated 
-			m_kfrms[m_cur_kfrm] = s_frame::alloc();
-			if(m_bald_kfrms && m_kfrms[m_cur_kfrm]->load(m_name, m_cur_time, m_models)){ // if the key frame is loaded from file
-				if(!m_kfrms[m_cur_kfrm]->img.empty())
-					m_img_s = m_kfrms[m_cur_kfrm]->img;
-				m_timg = m_kfrms[m_cur_kfrm]->tfrm;
-			}else{ // otherwise, current frame is sat as key frame.
-				s_frame::free(m_kfrms[m_cur_kfrm]);
-				m_kfrms[m_cur_kfrm] = m_pfrm;
-				m_kfrms[m_cur_kfrm]->set_as_key(m_img_s);
-			}
-		}
-	}
-
-	// projection 
-	m_num_cur_objs = (int) m_pfrm->objs.size();
-
-	m_pfrm->proj_objs(true, m_bcalib_fix_aspect_ratio);
-
-	calc_jmax();
-
-	// sample point templates
-	m_pfrm->sample_tmpl(m_img_gry_blur, m_sz_vtx_smpl);
 
 	// estimate
 	if(m_op == ESTIMATE){
@@ -1556,7 +1567,7 @@ bool f_inspector::proc()
 			estimate_levmarq();
 			break;
 		case EMD_RT:
-			estimate_rt_levmarq(m_pfrm);
+			estimate_rt_levmarq(m_pfrm_int);
 			break;
 		case EMD_RT_FULL:
 			estimate_rt_full_levmarq();
@@ -1569,11 +1580,6 @@ bool f_inspector::proc()
 		m_emd = EMD_STOP;
 	}
 
-	m_cam_int.copyTo(m_pfrm->camint);
-	m_cam_dist.copyTo(m_pfrm->camdist);
-
-	// calcurate roll pitch yaw surge sway heave relative to current object
-	m_pfrm->calc_rpy(m_cur_obj);
 
 	// fit the viewport size to the image
 	if(m_sz_img.width !=  m_img_s.cols &&
@@ -1613,18 +1619,20 @@ bool f_inspector::proc()
 	}
 
 	// rendering main view
-	if(m_op == KFRAME){
-		if(m_sel_kfrm >= 0 && m_kfrms[m_sel_kfrm])
-			render(m_kfrms[m_sel_kfrm]->img);
-		else{
-			Mat black = Mat::zeros(m_img_s.rows, m_img_s.cols, m_img_s.type());
-			render(black);
-		}
-	}else{
-		render(m_img_s);
-	}
+	if(m_pfrm_int){
+		m_cam_int.copyTo(m_pfrm_int->camint);
+		m_cam_dist.copyTo(m_pfrm_int->camdist);
 
-	m_pfrm->set_update();
+		// calcurate roll pitch yaw surge sway heave relative to current object
+		m_pfrm_int->calc_rpy(m_cur_obj);
+
+		render(m_pfrm_int->img);
+		m_pfrm_int->set_update();
+	}else{
+		Mat black = Mat::zeros(m_img_s.rows, m_img_s.cols, m_img_s.type());
+		render(black);
+	}
+	
 	return true;
 }
 
@@ -1777,7 +1785,7 @@ void f_inspector::render(Mat & imgs)
 
 	m_maincam.blt_offsrf(m_pd3dev, imgs);
 
-	if(m_op == KFRAME){
+	if(m_bkfrm){
 		if(m_sel_kfrm >= 0 && m_kfrms[m_sel_kfrm]){
 			renderObj(m_kfrms[m_sel_kfrm]);
 		}
@@ -1844,31 +1852,62 @@ void f_inspector::renderInfo()
 	// Cursor position
 	char information[1024];
 	int y = 0, x = 0;
-	vector<s_obj*> & objs = m_pfrm->objs;
-
-	snprintf(information, 1023, "AWS Time %s (Image Time %lld) Adjust Step x%f", 
-		m_time_str, m_timg, (float) m_adj_step);
+	if(m_bkfrm && m_sel_kfrm >= 0){
+		if(m_kfrms[m_sel_kfrm]){
+			snprintf(information, 1023, "AWS Time %s (Key Frame Time %lld) Adjust Step x%f", 
+				m_time_str, m_kfrms[m_sel_kfrm]->tfrm, (float) m_adj_step);
+		}else{
+			snprintf(information, 1023, "AWS Time %s (Key Frame Time NaN) Adjust Step x%f", 
+				m_time_str, (float) m_adj_step);
+		}
+	}else{
+		snprintf(information, 1023, "AWS Time %s (Image Time %lld) Adjust Step x%f", 
+			m_time_str, m_timg, (float) m_adj_step);
+	}
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
 	snprintf(information, 1023, "Operation: %s (M)->Model (O)->Obj (Q)->Part (P)->Point (E)->Estimate (C)->Camera (T)->CamTable", m_str_op[m_op]);
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
+	y += 20;	
+	if(m_pfrm_int){
+		vector<s_obj*> & objs = m_pfrm_int->objs;
+		snprintf(information, 1023, "%d Objects, %d Models, %d Miss Tracking", 
+			objs.size(), m_models.size(), m_miss_tracks);
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	}else{
+		snprintf(information, 1023, "%d Models, %d Miss Tracking", 
+			m_models.size(), m_miss_tracks);
+		m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
+	}
 	y += 20;
-	snprintf(information, 1023, "%d Objects, %d Models, %d Miss Tracking", 
-		objs.size(), m_models.size(), m_miss_tracks);
-	m_d3d_txt.render(m_pd3dev, information, 0.f, (float)y, 1.0, 0, EDTC_LT);
-	y += 20;
+
 	switch(m_op){
 	case MODEL:
 		renderModelInfo(information, 1023, y);
 		break;
 	case OBJ:
-		renderObjInfo(objs, information, 1023, y);
+		if(m_pfrm_int){
+			vector<s_obj*> & objs = m_pfrm_int->objs;
+			renderObjInfo(objs, information, 1023, y);
+		}else{
+			renderObjInfo(vector<s_obj*>(), information, 1023, y);
+		}
 		break;
 	case PARTS:
-		renderPartsInfo(objs, information, 1023, y);
+		if(m_pfrm_int){
+			vector<s_obj*> & objs = m_pfrm_int->objs;
+			renderPartsInfo(objs, information, 1023, y);
+		}else{
+			renderPartsInfo(vector<s_obj*>(), information, 1023, y);
+		}
 		break;
 	case POINT:
-		renderPointInfo(objs, information, 1023, y);
+		if(m_pfrm_int){
+			vector<s_obj*> & objs = m_pfrm_int->objs;
+			renderPointInfo(objs, information, 1023, y);
+		}else{
+			renderPointInfo(vector<s_obj*>(), information, 1023, y);
+		}
 		break;
 	case CAMERA:
 	case CAMTBL:
@@ -1885,9 +1924,6 @@ void f_inspector::renderInfo()
 		break;
 	case FRAME:
 		renderFrameInfo(information, 1023, y);
-		break;
-	case KFRAME:
-		renderKeyFrameInfo(information, 1023, y);
 		break;
 	case VIEW3D:
 		renderSceneInfo(information, 1023, y);
@@ -2248,8 +2284,8 @@ void f_inspector::renderSceneInfo(char * buf, int len, int & y)
 	y+= 20;
 
 	// object attitude 
-	if(m_pfrm){
-		vector<s_obj*> & objs = m_pfrm->objs;
+	if(m_pfrm_int){
+		vector<s_obj*> & objs = m_pfrm_int->objs;
 		if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 			for(int iobj = 0; iobj < objs.size(); iobj++){
 				s_obj & obj = *objs[iobj];
@@ -2393,8 +2429,8 @@ void f_inspector::renderScene()
 		m_ev = EV_CAM;
 		break;
 	case EV_OBJX:
-		if(m_pfrm){
-			vector<s_obj*> & objs = m_pfrm->objs;
+		if(m_pfrm_int){
+			vector<s_obj*> & objs = m_pfrm_int->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 				// preparing rotation matrix viewing from x-axis of the current object.
 				double * ptr0, * ptr1;
@@ -2420,8 +2456,8 @@ void f_inspector::renderScene()
 		}
 		break;
 	case EV_OBJY:
-		if(m_pfrm){
-			vector<s_obj*> & objs = m_pfrm->objs;
+		if(m_pfrm_int){
+			vector<s_obj*> & objs = m_pfrm_int->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 				// preparing rotation matrix viewing from y-axis of the current object.
 				double * ptr0, * ptr1;
@@ -2447,8 +2483,8 @@ void f_inspector::renderScene()
 		}
 		break;
 	case EV_OBJZ:
-		if(m_pfrm){
-			vector<s_obj*> & objs = m_pfrm->objs;
+		if(m_pfrm_int){
+			vector<s_obj*> & objs = m_pfrm_int->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 				// preparing rotation matrix viewing from z-axis of the current object.
 				double * ptr0, * ptr1;
@@ -2479,8 +2515,8 @@ void f_inspector::renderScene()
 	}
 
 	vector<Point2f> pts;
-	if(m_pfrm){
-		vector<s_obj*> & objs = m_pfrm->objs;
+	if(m_pfrm_int){
+		vector<s_obj*> & objs = m_pfrm_int->objs;
 		Mat tvec_org = objs[m_cur_obj]->tvec;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			Mat R;
@@ -2702,8 +2738,11 @@ void f_inspector::renderCampar()
 
 void f_inspector::estimate()
 {
+	if(!m_pfrm_int)
+		return;
+
 	Mat Hcamint = Mat::zeros(12, 12, CV_64FC1);
-	vector<s_obj*> & objs = m_pfrm->objs;
+	vector<s_obj*> & objs = m_pfrm_int->objs;
 	for(int i = 0; i < objs.size(); i++){
 		s_obj & obj = *objs[i];
 		cout << "obj[" << i << "].hessian=" << obj.hessian << endl;
@@ -2775,6 +2814,9 @@ void f_inspector::estimate_rt_full_and_sel_cptbl()
 		estimate_rt_full_levmarq();
 		double ssd = 0.;
 		for(int ikfrm = 0; ikfrm < m_kfrms.size(); ikfrm++){
+			if(!m_kfrm_used[ikfrm])
+				continue;
+
 			ssd += m_kfrms[ikfrm]->ssd;
 		}
 		if(ssd < ssd_min){
@@ -2801,6 +2843,9 @@ void f_inspector::estimate_rt_full_levmarq()
 
 void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 {
+	if(pfrm == NULL)
+		return;
+
 	// counting extrinsic parameters (6 x number of objects)
 	int nparams = 0; // we assume the camera intrinsics are the same for every frames.
 
@@ -3351,12 +3396,12 @@ void f_inspector::calc_erep()
 
 	m_num_pts_used = 0;
 	m_cam_erep = 0.0;
-	if(m_emd == EMD_RT){
-		vector<s_obj*> & objs = m_pfrm->objs;
+	if(m_emd == EMD_RT && m_pfrm_int){
+		vector<s_obj*> & objs = m_pfrm_int->objs;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			m_num_pts_used += objs[iobj]->calc_num_matched_points();
 		}
-		m_cam_erep += m_pfrm->ssd;
+		m_cam_erep += m_pfrm_int->ssd;
 	}else{
 		for(int ifrm = 0; ifrm < m_kfrm_used.size(); ifrm++){
 			if(!m_kfrm_used[ifrm])
@@ -3721,7 +3766,7 @@ void f_inspector::update_params(vector<s_obj*> & objs)
 void f_inspector::calc_jmax(){
 	m_jcam_max = Mat::zeros(1, 12, CV_64FC1);
 	double * ptr_max, * ptr;
-	vector<s_obj*> & objs = m_pfrm->objs;
+	vector<s_obj*> & objs = m_pfrm_int->objs;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = *objs[iobj];
 		obj.jmax = Mat::zeros(1, obj.jacobian.cols, CV_64FC1);
@@ -3864,7 +3909,10 @@ void f_inspector::handle_keydown(WPARAM wParam, LPARAM lParam)
 
 void f_inspector::assign_point2d()
 {
-	vector<s_obj*> & objs = m_pfrm->objs;
+	if(!m_pfrm_int)
+		return;
+
+	vector<s_obj*> & objs = m_pfrm_int->objs;
 	if(objs.size() == 0)
 		return;
 
@@ -3910,9 +3958,9 @@ void f_inspector::zoom_screen(short delta)
 
 void f_inspector::translate_obj(short delta)
 {
-	if(m_cur_obj < 0)
+	if(m_cur_obj < 0 || !m_pfrm_int)
 		return ;
-	vector<s_obj*> & objs = m_pfrm->objs;
+	vector<s_obj*> & objs = m_pfrm_int->objs;
 	s_obj & obj = *objs[m_cur_obj];
 	double * ptr = obj.jmax.ptr<double>(0) + 3;
 	double step = (double)(delta / WHEEL_DELTA) * m_adj_step;
@@ -3944,17 +3992,17 @@ void f_inspector::translate_obj(short delta)
 			tptr[m_axis] = 1.0;
 			cout << "Not a number detected." << endl;
 		}
-		m_pfrm->update = false;
+		m_pfrm_int->update = false;
 		obj.update = false;
 	}
 }
 
 void f_inspector::rotate_obj(short delta)
 {
-	if(m_cur_obj < 0)
+	if(m_cur_obj < 0 || !m_pfrm_int)
 		return;	
 
-	vector<s_obj*> & objs = m_pfrm->objs;
+	vector<s_obj*> & objs = m_pfrm_int->objs;
 	// m_rot_step degree per wheel step
 	double step = (double) (delta / WHEEL_DELTA) * (CV_PI / 180.) * m_adj_step;
 	Mat rvec = Mat::zeros(3, 1, CV_64FC1);
@@ -3982,26 +4030,26 @@ void f_inspector::rotate_obj(short delta)
 		Rodrigues(rvec, R2);
 		Mat R = R2 * R1;
 		Rodrigues(R, obj.rvec);
-		m_pfrm->update = false;
+		m_pfrm_int->update = false;
 		obj.update = false;
 	}
 }
 
 void f_inspector::adjust_part(short delta)
 {
-	if(!m_pfrm)
+	if(!m_pfrm_int)
 		return ;
 	s_frame & fobj = *m_pfrm;
 
 	if(m_cur_obj < 0 || m_cur_obj >= fobj.objs.size())
 		return;
 
-	s_obj & obj = *m_pfrm->objs[m_cur_obj];
+	s_obj & obj = *m_pfrm_int->objs[m_cur_obj];
 	if(m_cur_part < 0 || m_cur_part >= obj.dpart.size())
 		return;
 
 	obj.dpart[m_cur_part] += m_adj_step * delta / WHEEL_DELTA;
-	m_pfrm->update = false;
+	m_pfrm_int->update = false;
 }
 
 void f_inspector::adjust_cam(short delta)
@@ -4035,7 +4083,8 @@ void f_inspector::adjust_cam(short delta)
 		}
 		break;
 	}
-	m_pfrm->update = false;
+	if(m_pfrm_int)
+		m_pfrm_int->update = false;
 }
 
 void f_inspector::handle_vk_up()
@@ -4052,7 +4101,11 @@ void f_inspector::handle_vk_down()
 
 void f_inspector::handle_vk_left()
 {	
-	vector<s_obj*> & objs = m_pfrm->objs;
+	if(!m_pfrm_int){
+		return;
+	}
+
+	vector<s_obj*> & objs = m_pfrm_int->objs;
 	switch(m_op){
 	case OBJ:
 	case VIEW3D:
@@ -4066,7 +4119,7 @@ void f_inspector::handle_vk_left()
 			}
 			// the current object point index is initialized
 			m_cur_point = objs[m_cur_obj]->get_num_points() - 1;
-			m_pfrm->set_update();
+			m_pfrm_int->set_update();
 		}
 		break;
 	case PARTS:
@@ -4116,19 +4169,15 @@ void f_inspector::handle_vk_left()
 			m_sop = SOP_AWSCMD;
 		}
 		break;
-	case KFRAME:
-		{
-			m_sel_kfrm = (m_sel_kfrm - 1);
-			if(m_sel_kfrm < 0)
-				m_sel_kfrm += m_num_kfrms;
-		}
-		break;
 	}
 }
 
 void f_inspector::handle_vk_right()
 {
-	vector<s_obj*> & objs = m_pfrm->objs;
+	if(!m_pfrm_int)
+		return;
+
+	vector<s_obj*> & objs = m_pfrm_int->objs;
 	switch(m_op){
 	case OBJ:
 	case VIEW3D:
@@ -4139,7 +4188,7 @@ void f_inspector::handle_vk_right()
 			m_cur_obj %= (int) objs.size();
 			s_obj & obj = *objs[m_cur_obj];
 			m_cur_point = obj.get_num_points() - 1;
-			m_pfrm->set_update();
+			m_pfrm_int->set_update();
 		}
 		break;
 	case PARTS:
@@ -4183,11 +4232,6 @@ void f_inspector::handle_vk_right()
 			m_sop = SOP_AWSCMD;
 		}
 		break;
-	case KFRAME:
-		{
-			m_sel_kfrm = (m_sel_kfrm + 1) % m_num_kfrms;
-		}
-		break;
 	}
 }
 
@@ -4212,7 +4256,6 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'G':
 		switch(m_op){
 		case MODEL:
-		case KFRAME:
 		case FRAME:
 		case OBJ:
 			m_sop = SOP_GUESS;
@@ -4231,7 +4274,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		}
 		break;
 	case 'K':
-		m_op = KFRAME;
+		m_bkfrm = !m_bkfrm;
 		m_sel_kfrm = m_cur_kfrm;
 		break;
 	case 'L':
@@ -4242,16 +4285,16 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case 'O': /* O key */ 
 		m_op = OBJ;
-		if(m_cur_obj < 0)
-			m_cur_obj = (int) m_pfrm->objs.size() - 1;
+		if(m_cur_obj < 0 && m_pfrm_int)
+			m_cur_obj = (int) m_pfrm_int->objs.size() - 1;
 		break;
 	case 'P':
 		m_op = POINT;
 		break;
 	case 'Q':
 		m_op = PARTS;
-		if(m_cur_obj >= 0 && m_cur_obj < m_pfrm->objs.size()){
-			m_cur_part = (int) m_pfrm->objs[m_cur_obj]->dpart.size() - 1;
+		if(m_cur_obj >= 0 && m_pfrm_int && m_cur_obj < m_pfrm_int->objs.size()){
+			m_cur_part = (int) m_pfrm_int->objs[m_cur_obj]->dpart.size() - 1;
 		}
 		break;
 	case 'R': // reset window
@@ -4276,11 +4319,11 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		handle_char_f();
 		break;
 	case 's':
-		if(m_op == CAMTBL){
+		if(m_op == CAMTBL && m_pfrm_int){
 			if(m_cur_camtbl >= 0 && m_cur_camtbl < m_cam_int_tbl.size()){
 				m_cam_int_tbl[m_cur_camtbl].copyTo(m_cam_int);
 				m_cam_dist_tbl[m_cur_camtbl].copyTo(m_cam_dist);
-				m_pfrm->update = false;
+				m_pfrm_int->update = false;
 			}
 		}
 		break;
@@ -4297,12 +4340,23 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		m_axis = AX_Z;
 		break;
 	case '>':
-		snprintf(m_cmd_buf, CMD_LEN, "step c %d", m_int_cyc_kfrm);
-		m_sop = SOP_AWSCMD;
+		if(m_bkfrm){
+			m_sel_kfrm += 1;
+			m_sel_kfrm %= m_kfrms.size();
+		}else{
+			snprintf(m_cmd_buf, CMD_LEN, "step c %d", m_int_cyc_kfrm);
+			m_sop = SOP_AWSCMD;
+		}
 		break;
 	case '<':
-		snprintf(m_cmd_buf, CMD_LEN, "step c -%d", m_int_cyc_kfrm);
-		m_sop = SOP_AWSCMD;
+		if(m_bkfrm){
+			m_sel_kfrm -= 1;
+			if(m_sel_kfrm < 0)
+				m_sel_kfrm += m_kfrms.size();
+		}else{
+			snprintf(m_cmd_buf, CMD_LEN, "step c -%d", m_int_cyc_kfrm);
+			m_sop = SOP_AWSCMD;
+		}
 		break;
 	case '1':
 		if(m_op == ESTIMATE){
@@ -4394,7 +4448,9 @@ void f_inspector::handle_char_f()
 }
 
 void f_inspector::handle_sop_delete(){
-	vector<s_obj*> & objs = m_pfrm->objs;
+	if(!m_pfrm_int)
+		return;
+	vector<s_obj*> & objs = m_pfrm_int->objs;
 	switch(m_op){
 	case MODEL:
 		// delete current Model
@@ -4438,14 +4494,13 @@ void f_inspector::handle_sop_save()
 	switch(m_op){
 	case OBJ:
 	case POINT:
-		m_pfrm->save(m_name);
+		m_pfrm_int->save(m_name);
 		break;
 	case CAMERA:
 	case CAMTBL:
 		saveCamparTbl();
 		break;
 	case FRAME:
-	case KFRAME:
 		if(!save_kfrms()){
 			cerr << "Failed to save fobjs." << endl;
 		}
@@ -4487,7 +4542,6 @@ void f_inspector::handle_sop_load()
 		loadCamparTbl();
 		break;
 	case FRAME:	
-	case KFRAME:
 		if(!load_kfrms()){
 			cerr << "Failed to load fobjs." << endl;
 		}
@@ -4555,7 +4609,10 @@ bool f_inspector::load_kfrms()
 
 void f_inspector::handle_sop_inst_obj()
 {
-	vector<s_obj*> & objs = m_pfrm->objs;
+	if(!m_pfrm_int)
+		return;
+
+	vector<s_obj*> & objs = m_pfrm_int->objs;
 	if(m_op == MODEL){
 		if(m_cur_model < 0){
 			return;
@@ -4591,7 +4648,6 @@ void f_inspector::handle_sop_guess()
 	sfx = sfy = 0.0;
 	num_objs = 0;
 	switch(m_op){
-	case KFRAME:
 	case FRAME:
 		for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
 			if(!m_kfrms[ikf])
@@ -4604,8 +4660,8 @@ void f_inspector::handle_sop_guess()
 			}
 		}
 	case OBJ:
-		if(m_cur_obj >= 0){
-			vector<s_obj*> & objs = m_pfrm->objs;
+		if(m_cur_obj >= 0 && m_pfrm_int){
+			vector<s_obj*> & objs = m_pfrm_int->objs;
 			if(m_cur_obj < objs.size()){
 				help_guess(*objs[m_cur_obj], z, cx, cy, sfx, sfy);
 				objs[m_cur_obj]->update = false;
@@ -4625,7 +4681,6 @@ void f_inspector::handle_sop_guess()
 	m_sop = SOP_NULL;
 
 	switch(m_op){
-	case KFRAME:
 	case FRAME:
 		for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
 			if(!m_kfrms[ikf])
@@ -4637,9 +4692,9 @@ void f_inspector::handle_sop_guess()
 		}
 		break;
 	case OBJ:
-		if(m_cur_obj >= 0){
-			m_cam_int.copyTo(m_pfrm->camint);
-			m_cam_dist.copyTo(m_pfrm->camdist);
+		if(m_cur_obj >= 0 && m_pfrm_int){
+			m_cam_int.copyTo(m_pfrm_int->camint);
+			m_cam_dist.copyTo(m_pfrm_int->camdist);
 		}
 		break;
 	}
@@ -4672,6 +4727,9 @@ void f_inspector::handle_sop_ins_cptbl()
 }
 
 void f_inspector::handle_sop_det(){
+	if(!m_pfrm_int)
+		return;
+
 	switch(m_op){
 	case MODEL:
 		if(m_cur_model >= 0 && m_cur_model < m_models.size()){
@@ -4680,18 +4738,18 @@ void f_inspector::handle_sop_det(){
 			pobj = pmdl->detect(m_img_gry);
 			if(pobj == NULL)
 				return;
-			vector<s_obj*> & objs = m_pfrm->objs;
+			vector<s_obj*> & objs = m_pfrm_int->objs;
 			objs.push_back(pobj);
 		}
 		m_sop = SOP_NULL;
 		m_op = OBJ;
 		if(m_cur_obj < 0){
-			m_cur_obj = (int) m_pfrm->objs.size() - 1;
+			m_cur_obj = (int) m_pfrm_int->objs.size() - 1;
 		}
 		break;
 	case OBJ:
 		{
-			vector<s_obj*> & objs = m_pfrm->objs;
+			vector<s_obj*> & objs = m_pfrm_int->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 				s_obj * pobj = objs[m_cur_obj];
 				pobj = pobj->pmdl->detect(m_img_gry, pobj);

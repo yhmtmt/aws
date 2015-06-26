@@ -814,7 +814,7 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
 	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf = 0.0);
 
-void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R, const Mat & t)
+inline void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R, const Mat & t)
 {
 	const double * pR = R.ptr<double>(), * pt = t.ptr<double>();
 	if(Msrc.size() != Mdst.size())
@@ -828,7 +828,7 @@ void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R,
 	}
 }
 
-void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const Mat & camint)
+inline void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const Mat & camint)
 {
 	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
 		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
@@ -845,7 +845,7 @@ void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const Mat & camin
 	}
 }
 
-void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & valid, 
+inline void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & valid, 
 	const double fx, const double fy, const double cx, const double cy,
 	const double * pR, const double * pt)
 {
@@ -888,7 +888,7 @@ void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & val
 // dt3
 // 
 // Here rc1 = [r11 r21 r31]^t and the rc1_x is the skew-symmetric matrix.
-void calcJT0_SE3(Mat & J, double * R = NULL, double * t = NULL)
+inline void calcJT0_SE3(Mat & J, double * R = NULL, double * t = NULL)
 {
 	J = Mat::zeros(12, 6, CV_64FC1);
 	double * p = J.ptr<double>();
@@ -938,7 +938,7 @@ void calcJT0_SE3(Mat & J, double * R = NULL, double * t = NULL)
 // dX
 // dY  -(Xrc1_x+Yrc2_x+Zrc2_x+t_x)                  I_3
 // dZ
-void calcJM0_SE3(Mat & J, const Point3f & M, const Mat & JT)
+inline void calcJM0_SE3(Mat & J, const Point3f & M, const Mat & JT)
 {
 	const double * pJT = JT.ptr<double>();
 	J = Mat::zeros(3, 6, CV_64FC1);
