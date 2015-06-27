@@ -1128,6 +1128,8 @@ bool s_frame::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
 			return false;
 	}
 
+	update = false;
+
 	return true;
 }
 
@@ -3564,7 +3566,7 @@ void s_frame::calc_rpy(int base_obj)
 			// Calculate relative rotation to the base_obj as R
  			R = Rorg * R;
 			p0 = R.ptr<double>();
-
+			
 			angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
 		}
 	}
@@ -4521,14 +4523,43 @@ bool f_inspector::save_kfrms()
 	if(!file.is_open())
 		return false;
 
+	int num_objs = 0;
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
 		if(!m_kfrms[ikf])
 			continue;
 		m_kfrms[ikf]->save(m_name);
 
 		file << m_kfrms[ikf]->tfrm << endl;
+		num_objs = max(num_objs, m_kfrms[ikf]->objs.size());
 	}
+	file.close();
 
+	snprintf(fname, 1024, "%s.csv", m_name);
+	file.open(fname);
+	if(!file.is_open())
+		return false;
+
+	file << "Time(100ns),";
+	for(int iobj = 0; iobj < num_objs; iobj++){
+		file << "roll,pitch,yaw,x,y,z";
+	}
+	file << endl;
+
+	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
+		if(!m_kfrms[ikf])
+			continue;
+		file << m_kfrms[ikf]->tfrm << ",";
+		vector<s_obj*> & objs = m_kfrms[ikf]->objs;
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			file << objs[iobj]->roll << ",";
+			file << objs[iobj]->pitch << ",";
+			file << objs[iobj]->yaw << ",";
+			file << objs[iobj]->pos.x << ",";
+			file << objs[iobj]->pos.y << ",";
+			file << objs[iobj]->pos.z << ",";
+		}
+		file << endl;
+	}
 	return true;
 }
 

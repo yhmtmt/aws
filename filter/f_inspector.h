@@ -484,6 +484,7 @@ private:
 	//
 	// Scene view
 	//
+	bool m_bdecomp_xyz; // decompose rotation matrix in x-y-z order.
 	enum e_view{
 		EV_CAM, EV_OBJX, EV_OBJY, EV_OBJZ, EV_FREE
 	} m_ev;
@@ -512,7 +513,7 @@ private:
 	bool load_kfrms();
 
 	s_frame * m_pfrm;				// temporal frame object
-	s_frame * m_pfrm_int;
+	s_frame * m_pfrm_int;			// frame object of interest
 
 	//
 	// frame objects
