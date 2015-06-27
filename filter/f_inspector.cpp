@@ -2412,6 +2412,9 @@ void f_inspector::renderObj(s_frame * pfrm)
 
 void f_inspector::renderScene()
 {
+	if(!m_pfrm_int || m_cur_obj < 0 || m_cur_obj >= m_pfrm_int->objs.size())
+		return;
+
 	m_model_view.SetAsRenderTarget(m_pd3dev);
 	m_pd3dev->Clear(0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER,
 		D3DCOLOR_COLORVALUE(0.5f, 0.5f, 0.5f, 0.0f), 1.0f, 0);
@@ -2429,7 +2432,7 @@ void f_inspector::renderScene()
 		m_ev = EV_CAM;
 		break;
 	case EV_OBJX:
-		if(m_pfrm_int){
+		{
 			vector<s_obj*> & objs = m_pfrm_int->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 				// preparing rotation matrix viewing from x-axis of the current object.
@@ -2456,7 +2459,7 @@ void f_inspector::renderScene()
 		}
 		break;
 	case EV_OBJY:
-		if(m_pfrm_int){
+		{
 			vector<s_obj*> & objs = m_pfrm_int->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 				// preparing rotation matrix viewing from y-axis of the current object.
@@ -2483,7 +2486,7 @@ void f_inspector::renderScene()
 		}
 		break;
 	case EV_OBJZ:
-		if(m_pfrm_int){
+		{
 			vector<s_obj*> & objs = m_pfrm_int->objs;
 			if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 				// preparing rotation matrix viewing from z-axis of the current object.
