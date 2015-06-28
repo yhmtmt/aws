@@ -212,31 +212,32 @@ inline void angleRzyx(double * R, double & x, double & y, double &z)
 	double r, cx, sx, cy, sy, cz, sz;
 	double Rtmp[9];
 
-	// Find Givens rotation Rx^t to make r23->0
-	// Rx^t
-	// 1  0  0
-	// 0  c  s
-	// 0 -s  c
-	//
-	// r = sqrt(r23^2+r33^2)
-	// s = -r23/r
-	// c = r33/r
-	r = 1./sqrt(R[5]*R[5] + R[8]*R[8]);
-	sx = -R[5]  * r;
-	cx = R[8] * r;
+	// Find Givens rotation Rz^t to make r12->0
+	// Rz^t
+	// c  s  0
+	//-s  c  0
+	// 0  0  1
+	// 
+	// r = sqrt(r12^2 + r22^2)
+	// s = -r12/r
+	// c = r22/r
+	r = 1./sqrt(R[1]*R[1] + R[4]*R[4]);
+	sz = -R[1] * r;
+	cz  = R[4] * r;
 
-	// then Rx^tR=>R
-	Rtmp[0] = R[0];
-	Rtmp[1] = R[1];
-	Rtmp[2] = R[2];
+	// then Rz^tR=>R
+	Rtmp[0] = cz * R[0] + sz * R[3];
+	Rtmp[1] = cz * R[1] + sz * R[4];
+	Rtmp[2] = cz * R[2] + sz * R[5];
 
-	Rtmp[3] = cx * R[3] + sx * R[6];
-	Rtmp[4] = cx * R[4] + sx * R[7];
-	Rtmp[5] = cx * R[5] + sx * R[8];
+	Rtmp[3] = -sz * R[0] + cz * R[3];
+	Rtmp[4] = -sz * R[1] + cz * R[4];
+	Rtmp[5] = -sz * R[2] + cz * R[5];
 
-	Rtmp[6] = -sx * R[3] + cx * R[6];
-	Rtmp[7] = -sx * R[4] + cx * R[7];
-	Rtmp[8] = -sx * R[5] + cx * R[8];
+	Rtmp[6] = R[6];
+	Rtmp[7] = R[7];
+	Rtmp[8] = R[8];
+
 
 	// Find Givens rotation Ry^t to make r13->0
 	// Ry^t
@@ -264,32 +265,31 @@ inline void angleRzyx(double * R, double & x, double & y, double &z)
 	R[7] = sy * Rtmp[1] + cy * Rtmp[7];
 	R[8] = sy * Rtmp[2] + cy * Rtmp[8];
 
-	// Find Givens rotation Rz^t to make r12->0
-	// Rz^t
-	// c  s  0
-	//-s  c  0
-	// 0  0  1
-	// 
-	// r = sqrt(r12^2 + r22^2)
-	// s = -r12/r
-	// c = r22/r
-	r = 1./sqrt(R[1]*R[1] + R[4]*R[4]);
-	sz = -R[1] * r;
-	cz  = R[4] * r;
+	// Find Givens rotation Rx^t to make r23->0
+	// Rx^t
+	// 1  0  0
+	// 0  c  s
+	// 0 -s  c
+	//
+	// r = sqrt(r23^2+r33^2)
+	// s = -r23/r
+	// c = r33/r
+	r = 1./sqrt(R[5]*R[5] + R[8]*R[8]);
+	sx = -R[5]  * r;
+	cx = R[8] * r;
 
-	// then Rz^tR=>R
-	Rtmp[0] = cz * R[0] + sz * R[3];
-	Rtmp[1] = cz * R[1] + sz * R[4];
-	Rtmp[2] = cz * R[2] + sz * R[5];
+	// then Rx^tR=>R
+	Rtmp[0] = R[0];
+	Rtmp[1] = R[1];
+	Rtmp[2] = R[2];
 
-	Rtmp[3] = -sz * R[0] + cz * R[3];
-	Rtmp[4] = -sz * R[1] + cz * R[4];
-	Rtmp[5] = -sz * R[2] + cz * R[5];
+	Rtmp[3] = cx * R[3] + sx * R[6];
+	Rtmp[4] = cx * R[4] + sx * R[7];
+	Rtmp[5] = cx * R[5] + sx * R[8];
 
-	Rtmp[6] = R[6];
-	Rtmp[7] = R[7];
-	Rtmp[8] = R[8];
-
+	Rtmp[6] = -sx * R[3] + cx * R[6];
+	Rtmp[7] = -sx * R[4] + cx * R[7];
+	Rtmp[8] = -sx * R[5] + cx * R[8];
 
 	// here R should be an identity matrix. if the diagonal elements are not positive, reverse the rotation angle by PI rad	// resolve 180 degree ambiguity
 	// diag(R)[1] < 0 && diag(R)[2] < 0 -> multiply -1 to Rx^t's c/s values, and transpose Ry^t, Rz^t
@@ -955,9 +955,9 @@ inline void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const M
 
 	for(int i = 0; i < Msrc.size(); i++){
 		double X = Msrc[i].x, Y = Msrc[i].y, Z = Msrc[i].z;
-		Mdst[i].x = pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0];
-		Mdst[i].y = pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1];
-		Mdst[i].z = pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2];
+		Mdst[i].x = (float)(pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0]);
+		Mdst[i].y = (float)(pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1]);
+		Mdst[i].z = (float)(pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2]);
 	}
 }
 
