@@ -301,7 +301,7 @@ struct s_frame{
 	}
 
 	void proj_objs(bool bjacobian = true, bool fix_aspect_ratio = true);
-	void calc_rpy(int base_obj = 0);
+	void calc_rpy(int base_obj = 0, bool xyz = true);
 
 	void sample_tmpl(Mat & img, Size & sz)
 	{
@@ -493,7 +493,6 @@ private:
 	double m_rat_z;
 	void renderScene();
 	void renderSceneInfo(char * buf, int len, int & y);
-
 
 	// Key frames 
 	// * Key frames are automatically allocated with the interval m_int_kfrms, 

@@ -1164,13 +1164,13 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
-	/*m_cur_frm(-1),*/ m_int_cyc_kfrm(30), m_cur_campar(0),  m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
+	/*m_cur_frm(-1),*/ m_int_cyc_kfrm(30), m_cur_campar(0), m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
 	m_num_cur_objs(0), m_cur_obj(-1), m_cur_part(-1), m_cur_point(-1), 
 	m_op(OBJ), m_bkfrm(false), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(-1.0),
 	m_eest(EES_CONV), m_num_max_itrs(30), m_num_max_frms_used(100), m_err_range(3),
 	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_pfrm(NULL), m_pfrm_int(NULL),
-	m_rat_z(1.0)
+	m_rat_z(1.0), m_bdecomp_xyz(true)
 {
 	m_name_obj[0] = '\0';
 	m_fname_model[0] = '\0';
@@ -1260,6 +1260,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 	// scene view paramters
 	register_fpar("view", (int*)&m_ev, EV_FREE + 1, m_str_view, "Camera position in scene view.");
+	register_fpar("decxyz", &m_bdecomp_xyz, "If true, decomposition of rotation matrix is x-y-z, otherwise z-y-x. ");
 
 	// object/camera manipulation
 	register_fpar("axis", (int*)&m_axis, (int)AX_Z + 1, m_axis_str, "Axis for rotation and translation. {x, y, z}");
@@ -1268,14 +1269,11 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 f_inspector::~f_inspector()
 {
-/*	for (int ifrm = 0; ifrm < m_fobjs.size(); ifrm++)
-		delete m_fobjs[ifrm];*/
 	for (int imdl = 0; imdl < m_models.size(); imdl++)
 		delete m_models[imdl];
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++)
 		s_frame::free(m_kfrms[ikf]);
 
-/*	m_fobjs.clear();*/
 	m_kfrms.clear();
 	m_models.clear();
 }
@@ -1551,7 +1549,7 @@ bool f_inspector::proc()
 	if(!m_pfrm_int){
 		m_cur_obj = -1;
 		m_cur_point = -1;
-	}else if(m_cur_obj >= m_pfrm_int->objs.size()){
+	}else{
 		m_cur_obj = m_pfrm_int->objs.size() - 1;
 		m_cur_point = -1;
 		// projection 
@@ -1581,7 +1579,6 @@ bool f_inspector::proc()
 		calc_erep();
 		m_emd = EMD_STOP;
 	}
-
 
 	// fit the viewport size to the image
 	if(m_sz_img.width !=  m_img_s.cols &&
@@ -1626,7 +1623,7 @@ bool f_inspector::proc()
 		m_cam_dist.copyTo(m_pfrm_int->camdist);
 
 		// calcurate roll pitch yaw surge sway heave relative to current object
-		m_pfrm_int->calc_rpy(m_cur_obj);
+		m_pfrm_int->calc_rpy(m_cur_obj, m_bdecomp_xyz);
 
 		render(m_pfrm_int->img);
 		m_pfrm_int->set_update();
@@ -3529,7 +3526,7 @@ void s_frame::proj_objs(bool bjacobian, bool fix_aspect_ratio)
 }
 
 // calc_rpy calculates roll pitch yaw serge sway heave of the objects relative to the base_obj.
-void s_frame::calc_rpy(int base_obj)
+void s_frame::calc_rpy(int base_obj, bool xyz)
 {
 	if(update)
 		return;
@@ -3566,8 +3563,10 @@ void s_frame::calc_rpy(int base_obj)
 			// Calculate relative rotation to the base_obj as R
  			R = Rorg * R;
 			p0 = R.ptr<double>();
-			
-			angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
+			if(xyz)
+				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
+			else
+				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
 		}
 	}
 }
@@ -3774,6 +3773,9 @@ void f_inspector::calc_jmax(){
 	vector<s_obj*> & objs = m_pfrm_int->objs;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = *objs[iobj];
+		if(m_pfrm_int->update && obj.update)
+			continue;
+
 		obj.jmax = Mat::zeros(1, obj.jacobian.cols, CV_64FC1);
 		for(int i = 0; i < obj.jacobian.rows; i++){
 			ptr = obj.jacobian.ptr<double>(i);
@@ -4334,6 +4336,11 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		break;
 	case 'k':
 		m_sop = SOP_SET_KF;
+		break;
+	case 'u':
+		if(m_pfrm_int){
+			m_pfrm_int->update = false;
+		}
 		break;
 	case 'x':
 		m_axis = AX_X;
