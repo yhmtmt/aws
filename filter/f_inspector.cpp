@@ -1473,9 +1473,7 @@ bool f_inspector::proc()
 		m_pfrm->sample_tmpl(m_img_gry_blur, m_sz_vtx_smpl);
 
 		m_int_kfrms = m_int_cyc_kfrm * f_base::m_paws->get_cycle_time();
-
-		// initial frame is forced to be key frame
-		if(m_cur_kfrm < 0){
+		if(m_cur_kfrm < 0){ // initial frame is forced to be key frame
 			m_cur_kfrm = 0;
 			m_kfrms[m_cur_kfrm] = m_pfrm;
 			m_cur_kfrm = 0;
@@ -1489,7 +1487,6 @@ bool f_inspector::proc()
 
 					s_frame::free(m_kfrms[m_cur_kfrm]);
 					m_kfrms[m_cur_kfrm] = NULL;
-					// current implementation, this condition could not occur, because we dont have any method to load future key frame.
 				}
 			}
 
@@ -1508,6 +1505,7 @@ bool f_inspector::proc()
 		}
 	}
 
+	// executing sub-operation
 	switch(m_sop){
 	case SOP_LOAD:
 		handle_sop_load();
@@ -1546,17 +1544,15 @@ bool f_inspector::proc()
 		m_pfrm_int = m_pfrm;
 	}
 
+	// re-selecting current object and point if needed.
 	if(!m_pfrm_int){
 		m_cur_obj = -1;
 		m_cur_point = -1;
 	}else{
-		m_cur_obj = m_pfrm_int->objs.size() - 1;
-		m_cur_point = -1;
-		// projection 
-		m_num_cur_objs = (int) m_pfrm_int->objs.size();
-
-		m_pfrm_int->proj_objs(true, m_bcalib_fix_aspect_ratio);
-		calc_jmax();
+		if(m_cur_obj < 0 || m_cur_obj >= m_pfrm_int->objs.size()){
+			m_cur_obj = (int) m_pfrm_int->objs.size() - 1;
+			m_cur_point = -1;
+		}
 	}
 
 	// estimate
@@ -1621,6 +1617,10 @@ bool f_inspector::proc()
 	if(m_pfrm_int){
 		m_cam_int.copyTo(m_pfrm_int->camint);
 		m_cam_dist.copyTo(m_pfrm_int->camdist);
+		m_num_cur_objs = (int) m_pfrm_int->objs.size();
+		// projection 
+		m_pfrm_int->proj_objs(true, m_bcalib_fix_aspect_ratio);
+		calc_jmax();
 
 		// calcurate roll pitch yaw surge sway heave relative to current object
 		m_pfrm_int->calc_rpy(m_cur_obj, m_bdecomp_xyz);
@@ -4364,7 +4364,7 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 		if(m_bkfrm){
 			m_sel_kfrm -= 1;
 			if(m_sel_kfrm < 0)
-				m_sel_kfrm += m_kfrms.size();
+				m_sel_kfrm += (int) m_kfrms.size();
 		}else{
 			snprintf(m_cmd_buf, CMD_LEN, "step c -%d", m_int_cyc_kfrm);
 			m_sop = SOP_AWSCMD;
@@ -4537,7 +4537,7 @@ bool f_inspector::save_kfrms()
 		m_kfrms[ikf]->save(m_name);
 
 		file << m_kfrms[ikf]->tfrm << endl;
-		num_objs = max(num_objs, m_kfrms[ikf]->objs.size());
+		num_objs = max(num_objs, (int) m_kfrms[ikf]->objs.size());
 	}
 	file.close();
 
@@ -4548,19 +4548,22 @@ bool f_inspector::save_kfrms()
 
 	file << "Time(100ns),";
 	for(int iobj = 0; iobj < num_objs; iobj++){
-		file << "roll,pitch,yaw,x,y,z";
+		file << "roll,pitch,yaw,x,y,z,";
 	}
 	file << endl;
 
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
 		if(!m_kfrms[ikf])
 			continue;
+
+		m_kfrms[ikf]->calc_rpy(m_cur_obj, m_bdecomp_xyz);
+
 		file << m_kfrms[ikf]->tfrm << ",";
 		vector<s_obj*> & objs = m_kfrms[ikf]->objs;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
-			file << objs[iobj]->roll << ",";
-			file << objs[iobj]->pitch << ",";
-			file << objs[iobj]->yaw << ",";
+			file << objs[iobj]->roll * 180 / PI << ",";
+			file << objs[iobj]->pitch * 180 / PI<< ",";
+			file << objs[iobj]->yaw * 180 / PI << ",";
 			file << objs[iobj]->pos.x << ",";
 			file << objs[iobj]->pos.y << ",";
 			file << objs[iobj]->pos.z << ",";
