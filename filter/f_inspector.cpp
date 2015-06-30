@@ -4531,7 +4531,20 @@ bool f_inspector::save_kfrms()
 		return false;
 
 	int num_objs = 0;
+	long long tmin = LLONG_MAX;
+	int ikf0 = 0;
 	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
+		if(!m_kfrms[ikf])
+			continue;
+
+		if(tmin > m_kfrms[ikf]->tfrm){
+			tmin = m_kfrms[ikf]->tfrm;
+			ikf0 = ikf;
+		}
+	}
+
+
+	for(int i = 0, ikf = ikf0 ; i < m_kfrms.size(); i++, ikf = (ikf + 1) % m_kfrms.size()){
 		if(!m_kfrms[ikf])
 			continue;
 		m_kfrms[ikf]->save(m_name);
@@ -4546,19 +4559,19 @@ bool f_inspector::save_kfrms()
 	if(!file.is_open())
 		return false;
 
-	file << "Time(100ns),";
+	file << "Time(sec),";
 	for(int iobj = 0; iobj < num_objs; iobj++){
 		file << "roll,pitch,yaw,x,y,z,";
 	}
 	file << endl;
 
-	for(int ikf = 0; ikf < m_kfrms.size(); ikf++){
+	for(int i = 0, ikf = ikf0 ; i < m_kfrms.size(); i++, ikf = (ikf + 1) % m_kfrms.size()){
 		if(!m_kfrms[ikf])
 			continue;
-
+		m_kfrms[ikf]->update = false;
 		m_kfrms[ikf]->calc_rpy(m_cur_obj, m_bdecomp_xyz);
 
-		file << m_kfrms[ikf]->tfrm << ",";
+		file << (double)(m_kfrms[ikf]->tfrm - tmin) / (double)SEC << ",";
 		vector<s_obj*> & objs = m_kfrms[ikf]->objs;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			file << objs[iobj]->roll * 180 / PI << ",";
