@@ -1260,6 +1260,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 
 	// scene view paramters
 	register_fpar("view", (int*)&m_ev, EV_FREE + 1, m_str_view, "Camera position in scene view.");
+	register_fpar("vkey", &m_bkfrm, "Image source is from key frame cache.");
 	register_fpar("decxyz", &m_bdecomp_xyz, "If true, decomposition of rotation matrix is x-y-z, otherwise z-y-x. ");
 
 	// object/camera manipulation
