@@ -140,6 +140,270 @@ void AWSLevMarq::calcCov()
 }
 
 /////////////////////////////////////////////////////////////////
+void angleRxyz(double * R, double & x, double & y, double &z){
+	// R
+	// r11 r12 r13
+	// r21 r22 r23
+	// r31 r32 r33
+	//
+	// R0  R1  R2 
+	// R3  R4  R5
+	// R6  R7  R8
+	// left multiplication decompose Rz^t Ry^t Rx^t I = R(because our rotation order is RxRyRz x)
+	double r, cx, sx, cy, sy, cz, sz;
+	double Rtmp[9];
+
+	// Find Givens rotation Rx^t to make r23->0
+	// Rx^t
+	// 1  0  0
+	// 0  c  s
+	// 0 -s  c
+	//
+	// r = sqrt(r23^2+r33^2)
+	// s = -r23/r
+	// c = r33/r
+	r = 1./sqrt(R[5]*R[5] + R[8]*R[8]);
+	sx = -R[5]  * r;
+	cx = R[8] * r;
+
+	// then Rx^tR=>R
+	Rtmp[0] = R[0];
+	Rtmp[1] = R[1];
+	Rtmp[2] = R[2];
+
+	Rtmp[3] = cx * R[3] + sx * R[6];
+	Rtmp[4] = cx * R[4] + sx * R[7];
+	Rtmp[5] = cx * R[5] + sx * R[8];
+
+	Rtmp[6] = -sx * R[3] + cx * R[6];
+	Rtmp[7] = -sx * R[4] + cx * R[7];
+	Rtmp[8] = -sx * R[5] + cx * R[8];
+
+	// Find Givens rotation Ry^t to make r13->0
+	// Ry^t
+	// c  0 -s
+	// 0  1  0
+	// s  0  c
+	//
+	// r= sqrt(r13^2+r33^2)
+	// s = r13/r
+	// c = r33/r
+	r = 1./sqrt(Rtmp[2] * Rtmp[2] + Rtmp[8] * Rtmp[8]);
+	sy = Rtmp[2] * r;
+	cy = Rtmp[8] * r;
+
+	// then Ry^tR=>R
+	R[0] = cy * Rtmp[0] - sy * Rtmp[6];
+	R[1] = cy * Rtmp[1] - sy * Rtmp[7];
+	R[2] = cy * Rtmp[2] - sy * Rtmp[8];
+
+	R[3] = Rtmp[3];
+	R[4] = Rtmp[4];
+	R[5] = Rtmp[5];
+
+	R[6] = sy * Rtmp[0] + cy * Rtmp[6];
+	R[7] = sy * Rtmp[1] + cy * Rtmp[7];
+	R[8] = sy * Rtmp[2] + cy * Rtmp[8];
+
+	// Find Givens rotation Rz^t to make r12->0
+	// Rz^t
+	// c  s  0
+	//-s  c  0
+	// 0  0  1
+	// 
+	// r = sqrt(r12^2 + r22^2)
+	// s = -r12/r
+	// c = r22/r
+	r = 1./sqrt(R[1]*R[1] + R[4]*R[4]);
+	sz = -R[1] * r;
+	cz  = R[4] * r;
+
+	// then Rz^tR=>R
+	Rtmp[0] = cz * R[0] + sz * R[3];
+	Rtmp[1] = cz * R[1] + sz * R[4];
+	Rtmp[2] = cz * R[2] + sz * R[5];
+
+	Rtmp[3] = -sz * R[0] + cz * R[3];
+	Rtmp[4] = -sz * R[1] + cz * R[4];
+	Rtmp[5] = -sz * R[2] + cz * R[5];
+
+	Rtmp[6] = R[6];
+	Rtmp[7] = R[7];
+	Rtmp[8] = R[8];
+
+	// here R should be an identity matrix. if the diagonal elements are not positive, reverse the rotation angle by PI rad	// resolve 180 degree ambiguity
+	// diag(R)[1] < 0 && diag(R)[2] < 0 -> multiply -1 to Rx^t's c/s values, and transpose Ry^t, Rz^t
+	//  means cx = -Rx^t(1,1), sx = -Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(0,2), cz = Rz^t(0,0), sz = Rz^t(1,0)
+	// diag(R)[0] < 0 && diag(R)[2] < 0 -> multiply -1 to Ry^t's c/s values, and transpose Rz^t
+	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = -Ry^t(0,0), sy = -Ry^t(2,0), cz = Rz^t(0,0), sz = Rz^t(1,0)
+	// diag(R)[0] < 0 && diag(R)[1] < 0 -> multiply -1 to Rz^t's c_s values
+	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(2,0), cz = -Rz^t(0,0), sz = -Rz^t(0,1)
+	// diag(R) are positive - no need to rotate
+	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(2,0), cz = Rz^t(0,0), sz = Rz^t(0,1)
+	if(Rtmp[0] < 0){
+		if(Rtmp[4] < 0){
+			// z rotation + PI
+			sz = -sz;
+			cz = -sz;
+		}else{
+			// y rotation + PI
+			sy = -sy;
+			cy = -cy;
+
+			// transpose z rotation
+			sz = -sz;
+		}
+	}else{
+		if(Rtmp[4] < 0){
+			// x rotation + PI
+			sx = -sx;
+			sy = -sy;
+
+			// transpose y rotation
+			sy = -sy;
+			// transpose z rotation
+			sz = -sz;
+		}
+	}
+
+	x = atan2(sx, cx);
+	y = atan2(sy, cy);
+	z = atan2(sz, cz);
+}
+
+void angleRzyx(double * R, double & x, double & y, double &z)
+{
+	// R
+	// r11 r12 r13
+	// r21 r22 r23
+	// r31 r32 r33
+	//
+	// R0  R1  R2 
+	// R3  R4  R5
+	// R6  R7  R8
+	// left multiplication decompose Rz^t Ry^t Rx^t I = R(because our rotation order is RxRyRz x)
+	double r, cx, sx, cy, sy, cz, sz;
+	double Rtmp[9];
+
+	// Find Givens rotation Rz^t to make r12->0
+	// Rz^t
+	// c  s  0
+	//-s  c  0
+	// 0  0  1
+	// 
+	// r = sqrt(r12^2 + r22^2)
+	// s = -r12/r
+	// c = r22/r
+	r = 1./sqrt(R[1]*R[1] + R[4]*R[4]);
+	sz = -R[1] * r;
+	cz  = R[4] * r;
+
+	// then Rz^tR=>R
+	Rtmp[0] = cz * R[0] + sz * R[3];
+	Rtmp[1] = cz * R[1] + sz * R[4];
+	Rtmp[2] = cz * R[2] + sz * R[5];
+
+	Rtmp[3] = -sz * R[0] + cz * R[3];
+	Rtmp[4] = -sz * R[1] + cz * R[4];
+	Rtmp[5] = -sz * R[2] + cz * R[5];
+
+	Rtmp[6] = R[6];
+	Rtmp[7] = R[7];
+	Rtmp[8] = R[8];
+
+
+	// Find Givens rotation Ry^t to make r13->0
+	// Ry^t
+	// c  0 -s
+	// 0  1  0
+	// s  0  c
+	//
+	// r= sqrt(r13^2+r33^2)
+	// s = r13/r
+	// c = r33/r
+	r = 1./sqrt(Rtmp[2] * Rtmp[2] + Rtmp[8] * Rtmp[8]);
+	sy = Rtmp[2] * r;
+	cy = Rtmp[8] * r;
+
+	// then Ry^tR=>R
+	R[0] = cy * Rtmp[0] - sy * Rtmp[6];
+	R[1] = cy * Rtmp[1] - sy * Rtmp[7];
+	R[2] = cy * Rtmp[2] - sy * Rtmp[8];
+
+	R[3] = Rtmp[3];
+	R[4] = Rtmp[4];
+	R[5] = Rtmp[5];
+
+	R[6] = sy * Rtmp[0] + cy * Rtmp[6];
+	R[7] = sy * Rtmp[1] + cy * Rtmp[7];
+	R[8] = sy * Rtmp[2] + cy * Rtmp[8];
+
+	// Find Givens rotation Rx^t to make r23->0
+	// Rx^t
+	// 1  0  0
+	// 0  c  s
+	// 0 -s  c
+	//
+	// r = sqrt(r23^2+r33^2)
+	// s = -r23/r
+	// c = r33/r
+	r = 1./sqrt(R[5]*R[5] + R[8]*R[8]);
+	sx = -R[5]  * r;
+	cx = R[8] * r;
+
+	// then Rx^tR=>R
+	Rtmp[0] = R[0];
+	Rtmp[1] = R[1];
+	Rtmp[2] = R[2];
+
+	Rtmp[3] = cx * R[3] + sx * R[6];
+	Rtmp[4] = cx * R[4] + sx * R[7];
+	Rtmp[5] = cx * R[5] + sx * R[8];
+
+	Rtmp[6] = -sx * R[3] + cx * R[6];
+	Rtmp[7] = -sx * R[4] + cx * R[7];
+	Rtmp[8] = -sx * R[5] + cx * R[8];
+
+	// here R should be an identity matrix. if the diagonal elements are not positive, reverse the rotation angle by PI rad	// resolve 180 degree ambiguity
+	// diag(R)[1] < 0 && diag(R)[2] < 0 -> multiply -1 to Rx^t's c/s values, and transpose Ry^t, Rz^t
+	//  means cx = -Rx^t(1,1), sx = -Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(0,2), cz = Rz^t(0,0), sz = Rz^t(1,0)
+	// diag(R)[0] < 0 && diag(R)[2] < 0 -> multiply -1 to Ry^t's c/s values, and transpose Rz^t
+	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = -Ry^t(0,0), sy = -Ry^t(2,0), cz = Rz^t(0,0), sz = Rz^t(1,0)
+	// diag(R)[0] < 0 && diag(R)[1] < 0 -> multiply -1 to Rz^t's c_s values
+	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(2,0), cz = -Rz^t(0,0), sz = -Rz^t(0,1)
+	// diag(R) are positive - no need to rotate
+	//  means cx = Rx^t(1,1), sx = Rx^t(1,2), cy = Ry^t(0,0), sy = Ry^t(2,0), cz = Rz^t(0,0), sz = Rz^t(0,1)
+	if(Rtmp[0] < 0){
+		if(Rtmp[4] < 0){
+			// z rotation + PI
+			sz = -sz;
+			cz = -sz;
+		}else{
+			// y rotation + PI
+			sy = -sy;
+			cy = -cy;
+
+			// transpose z rotation
+			sz = -sz;
+		}
+	}else{
+		if(Rtmp[4] < 0){
+			// x rotation + PI
+			sx = -sx;
+			sy = -sy;
+
+			// transpose y rotation
+			sy = -sy;
+			// transpose z rotation
+			sz = -sz;
+		}
+	}
+
+	x = atan2(sx, cx);
+	y = atan2(sy, cy);
+	z = atan2(sz, cz);
+}
+
 
 bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
 {
@@ -187,7 +451,7 @@ bool test_exp_so3(const double * r, double * Rcv, double * jRcv)
 bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
 	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf)
 {
-	int neq = pt3d.size() * 2;
+	int neq = (int) pt3d.size() * 2;
 	vector<Point2f> pt2d(pt3d.size());
 	double * jf, * jc, * jk, * jp, * jr, * jt;
 	jf = new double [neq * 2];
@@ -800,6 +1064,56 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 	}
 }
 
+void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R, const Mat & t)
+{
+	const double * pR = R.ptr<double>(), * pt = t.ptr<double>();
+	if(Msrc.size() != Mdst.size())
+		Mdst.resize(Msrc.size());
+
+	for(int i = 0; i < Msrc.size(); i++){
+		double X = Msrc[i].x, Y = Msrc[i].y, Z = Msrc[i].z;
+		Mdst[i].x = (float)(pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0]);
+		Mdst[i].y = (float)(pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1]);
+		Mdst[i].z = (float)(pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2]);
+	}
+}
+
+void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const Mat & camint)
+{
+	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
+		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
+
+	for(int i = 0; i < Mcam.size(); i++){
+		double x = Mcam[i].x;
+		double y = Mcam[i].y;
+		double z = Mcam[i].z;
+		z = z ? 1./z : 1;
+		x *= z; y *= z;
+		
+		m[i].x = (float)(x * fx + cx);
+		m[i].y = (float)(y * fy + cy);
+	}
+}
+
+void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & valid, 
+	const double fx, const double fy, const double cx, const double cy,
+	const double * pR, const double * pt)
+{
+	for(int i = 0; i < Mobj.size(); i++){
+		double X = Mobj[i].x, Y = Mobj[i].y, Z = Mobj[i].z;
+		double x = pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0];
+		double y = pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1];
+		double z = pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2];
+
+		z = z ? 1./z : 1;
+		x *= z; y *= z;
+		
+		m[i].x = (float)(x * fx + cx);
+		m[i].y = (float)(y * fy + cy);
+	}
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking
 bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & valid, 
 		vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m)
@@ -845,7 +1159,7 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
 
 		for(int ipt = 0; ipt < P.size(); ipt++){
-			buildPyramid(P[ipt], Ppyr[ipt], Ipyr.size() - 1);
+			buildPyramid(P[ipt], Ppyr[ipt], (int) Ipyr.size() - 1);
 			for(int ilv = 0; ilv < Ppyr[ipt].size(); ilv++){
 				sepFilter2D(Ppyr[ipt][ilv], dPpyrdx[ilv], CV_64F, dxr, dxc);
 				sepFilter2D(Ppyr[ipt][ilv], dPpyrdy[ilv], CV_64F, dyr, dyc);
@@ -868,11 +1182,11 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 	int ox = 0, oy = 0, sx = 0, sy = 0;
 
 	///////// parameter optimization for each pyramid level.
-	for(int ilv = Ipyr.size() - 1; ilv >= 0; ilv++){
+	for(int ilv = (int) Ipyr.size() - 1; ilv >= 0; ilv++){
 
 		///////// gauss newton optimization at level ilv.
 		// Initialize LM solver.
-		solver.initEx(6, M.size() * 2);
+		solver.initEx(6, (int) M.size() * 2);
 
 		// Set fx, fy, cx, cy as 2^{-ilv} times the original.
 		double iscale = (1 >> ilv);
@@ -916,8 +1230,8 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 				p.z = 0.;
 				for(int u = 0; u < sx; u++){
 					for(int v = 0; v < sy; v++){
-						p.x = ((u - ox) + iscale * m_prev_i.x) * Mcam_prev[ipt].z * ifx;
-						p.y = ((v - oy) + iscale * m_prev_i.y) * Mcam_prev[ipt].z * ify;
+						p.x = (float)(((u - ox) + iscale * m_prev_i.x) * Mcam_prev[ipt].z * ifx);
+						p.y = (float)(((v - oy) + iscale * m_prev_i.y) * Mcam_prev[ipt].z * ify);
 						calcJM0_SE3(JM0acc, p, Jrt0acc);
 						JM0acc += JM0;
 						double * pJM0acc = JM0acc.ptr<double>();
