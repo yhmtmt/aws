@@ -697,7 +697,8 @@ void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & val
 	const double fx, const double fy, const double cx, const double cy,
 	const double * pR, const double * pt);
 
-// Calcurate dT(r',t')T(r,t)/d(r', t') at (r', t') = 0. T(r, t) is the transformation matrix of [R|t], R is rotation matrix the exponential map of r
+// Calcurate dT(r',t')T(r,t)/d(r', t') at (r', t') = 0. T(r, t) is the transformation matrix of [R|t],
+// R is rotation matrix the exponential map of r
 // If R and t given is NULL, simply dT(r', t')/d(r', t') at (r', t') = 0 is calculated.
 // Resulting jacobian is column stacked. 
 // Assuming the target transformation 
@@ -789,6 +790,29 @@ inline void calcJM0_SE3(Mat & J, const Point3f & M, const Mat & JT)
 	}
 
 	pJ[3] = pJ[10] = pJ[17] = 1.0;
+}
+
+// calculate [Ix, Iy]_m+(u,v) * dm/dMc * dMc/dp
+// resulting jacobian is 
+inline void calc_dmdMc(const double & Ix, const double & Iy, 
+	const Point3f & Mc,
+	const double fx, const double fy,
+	const double * pdMcdp, double * pdIdp)
+{
+	// pdMcdp 3 x 6
+
+	double iMz = 1.0 / Mc.z;
+	double dmxdMx = fx * iMz;
+	double dmydMy = fy * iMz;
+	double dmxdMz = - dmxdMx * Mc.x * iMz;
+	double dmydMz = - dmydMy * Mc.y * iMz;
+
+	double dmxdp, dmydp;
+	for(int i = 0; i < 6; i++){
+		dmxdp = pdMcdp[  i  ] * dmxdMx + pdMcdp[12 + i] * dmxdMz;
+		dmydp = pdMcdp[6 + i] * dmydMy + pdMcdp[12 + i] * dmydMz;
+		pdIdp[i] = Ix * dmxdp + Iy * dmydp;
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////// 3D model tracking 

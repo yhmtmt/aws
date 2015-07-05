@@ -1147,11 +1147,11 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 	// building point patch pyramid and its derivative
 	vector<vector<Mat>> Ppyr;
-	vector<vector<Mat>> dPpyrdx;
-	vector<vector<Mat>> dPpyrdy;
+	vector<Mat> dIpyrdx;
+	vector<Mat> dIpyrdy;
 	Ppyr.resize(P.size());
-	dPpyrdx.resize(P.size());
-	dPpyrdy.resize(P.size());
+	dIpyrdx.resize(P.size());
+	dIpyrdy.resize(P.size());
 
 	{// Preparing differential filter kernel
 		Mat dxr, dxc, dyr, dyc; 
@@ -1160,17 +1160,15 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 		for(int ipt = 0; ipt < P.size(); ipt++){
 			buildPyramid(P[ipt], Ppyr[ipt], (int) Ipyr.size() - 1);
-			for(int ilv = 0; ilv < Ppyr[ipt].size(); ilv++){
-				sepFilter2D(Ppyr[ipt][ilv], dPpyrdx[ilv], CV_64F, dxr, dxc);
-				sepFilter2D(Ppyr[ipt][ilv], dPpyrdy[ilv], CV_64F, dyr, dyc);
-			}
+		}
+
+		for(int ilv = 0; ilv < Ipyr.size(); ilv++){
+			sepFilter2D(Ipyr, dIpyrdx[ilv], CV_64F, dxr, dxc);
+			sepFilter2D(Ipyr, dIpyrdy[ilv], CV_64F, dyr, dyc);
 		}
 	}
 
 	// Preparing temporal camera parameters. These are adjusted for each pyramid level.
-	Mat _camint;
-	camint.copyTo(_camint);
-	double * pcamint = _camint.ptr<double>();
 	// Preparing previous frame's model points in camera's coordinate
 	vector<Point3f> Mcam_prev, Mcam;
 	vector<Point2f> m_prev;
@@ -1179,68 +1177,116 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 	Mcam.resize(Mcam_prev.size());
 
 	// calculate center of the image patch (we do not check all the point patches.)
-	int ox = 0, oy = 0, sx = 0, sy = 0;
+	double ox = 0, oy = 0;
+	int sx = 0, sy = 0;
 
 	///////// parameter optimization for each pyramid level.
 	for(int ilv = (int) Ipyr.size() - 1; ilv >= 0; ilv++){
+		Mat & I = Ipyr[ilv];
+		Mat & Ix = dIpyrdx[ilv];
+		Mat & Iy = dIpyrdy[ilv];
+		int w = I.cols, h = I.rows;
+		uchar * pI = I.ptr<uchar>();
+		double * pIx = Ix.ptr<double>(), * pIy = Iy.ptr<double>();
 
 		///////// gauss newton optimization at level ilv.
-		// Initialize LM solver.
-		solver.initEx(6, (int) M.size() * 2);
-
 		// Set fx, fy, cx, cy as 2^{-ilv} times the original.
-		double iscale = (1 >> ilv);
+		double iscale = (1 << ilv);
 		double scale = 1.0 / iscale;
+		double fx = camint.at<double>(0, 0) * scale, fy = camint.at<double>(1, 1) * scale;
+		double cx = camint.at<double>(0, 2) * scale, cy = camint.at<double>(1, 2) * scale;
+		double ifx = 1.0 / fx, ify = 1.0 / fy;
 
-		_camint.at<double>(0, 0) = camint.at<double>(0, 0) * scale;
-		_camint.at<double>(1, 1) = camint.at<double>(1, 1) * scale;
-		_camint.at<double>(0, 2) = camint.at<double>(0, 2) * scale;
-		_camint.at<double>(1, 2) = camint.at<double>(1, 2) * scale;
-		double ifx = 1.0 / pcamint[0], ify = 1.0 / pcamint[4];
-
-		// calculate differential image.
 		Mat Jrt0, Jrt0acc;
 		Mat JM0, JM0acc;
+		Mat J, E;
+
+		// counting equations
+		int neq = 0;
+		for(int ipt = 0; ipt < M.size(); ipt++){
+			if(!valid[ipt]){
+				continue;
+			}
+
+			Mat & tmpl = Ppyr[ipt][ilv];
+			Point2f & m_prev_i = m_prev[ipt];
+			sx = tmpl.cols;
+			sy = tmpl.rows;
+
+			neq += sx * sy;
+		}
+
+		J = Mat::zeros(neq, 6, CV_64FC1);
+		E = Mat::zeros(neq, 1, CV_64FC1);
+		double * pJ = J.ptr<double>();
+		double * pE = E.ptr<double>();
+
+		// Initialize LM solver.
+		solver.initEx(6, neq);
 
 		while(1){
 			// calculate projection
 			trnPts(M, Mcam, Rnew, tnew);
 			prjPts(Mcam, m, camint);
-			//prjPts(M, m, valid, pcamint[0], pcamint[4], pcamint[2], pcamint[5], pRnew, ptnew); 
 
 			// calculate J
 			calcJT0_SE3(Jrt0, pRnew, ptnew);
 			calcJT0_SE3(Jrt0acc, pRacc, ptacc);
 
+			int ieq = 0;
 			// for each point template, calculate projection jacobian and image difference
 			for(int ipt = 0; ipt < M.size(); ipt++){
 				if(!valid[ipt])
 					continue;
 
 				Mat & tmpl = Ppyr[ipt][ilv];
+				uchar * ptmpl = tmpl.ptr<uchar>();
+
 				Point2f & m_prev_i = m_prev[ipt];
 				sx = tmpl.cols;
 				sy = tmpl.rows;
-				ox = sx >> 1;
-				oy = sy >> 1;
+				ox = (double) sx / 2.;
+				oy = (double) sy / 2.;
 
 				calcJM0_SE3(JM0, M[ipt], Jrt0);
 
-				Point3f p;
-				p.z = 0.;
+				Point3f P;
+				Point2f pnew;
+				Point2i pold(m_prev[ipt]);
+				P.z = 0.;
+
+				Point3f & Mc_prev = Mcam_prev[ipt];
+				float z_prev = Mc_prev.z;
+				float fx_iz_prev = fx / z_prev;
+				float fy_iz_prev = fy / z_prev;
+				float ifx_z_prev = z_prev * ifx;
+				float ify_z_prev = z_prev * ify;
 				for(int u = 0; u < sx; u++){
 					for(int v = 0; v < sy; v++){
-						p.x = (float)(((u - ox) + iscale * m_prev_i.x) * Mcam_prev[ipt].z * ifx);
-						p.y = (float)(((v - oy) + iscale * m_prev_i.y) * Mcam_prev[ipt].z * ify);
-						calcJM0_SE3(JM0acc, p, Jrt0acc);
+						P.x = (float)((u - ox) * ifx_z_prev);
+						P.y = (float)((v - oy) * ify_z_prev);
+						calcJM0_SE3(JM0acc, P, Jrt0acc);
 						JM0acc += JM0;
 						double * pJM0acc = JM0acc.ptr<double>();
-
+						
 						// Here we have dMc/dp as pJM0acc. we want dm/dp using chain rule (dm/dMc)(dMc/dp)
 						// Calculating (dm/dMc).
+						P.x += Mc_prev.x;
+						P.y += Mc_prev.y;
+						P.z += Mc_prev.z;
+						pnew.x = P.x * fx_iz_prev + cx;
+						pnew.y = P.y * fy_iz_prev + cy;
+
+						int idx = pold.x + (int)(u - ox + 0.5) + (pold.y + (int)(v - oy + 0.5)) * w;
+						calc_dmdMc(pIx[idx], pIy[idx], Mc_prev, fx, fy, pJM0acc, pJ + ieq * 6);
+
+						pE[ieq] = pI[idx]- ptmpl[u + v * sx];
+
+						ieq++;
 					}
 				}
 			}
+
 			// calculate E
 			
 			// calculate JtJ and JtE
