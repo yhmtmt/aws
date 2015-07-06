@@ -1123,6 +1123,10 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 	double * pRacc, * ptacc;
 	Mat Rnew, tnew;
 	double * pRnew, * ptnew;
+	Mat Rdelta, tdelta;
+	double * pRdelta, *ptdelta;
+	Mat Rtmp, ttmp;
+	double * pRtmp, *pttmp;
 
 	if(R.empty())
 		Rini = Mat::eye(3, 3, CV_64FC1);
@@ -1138,6 +1142,16 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 	tacc = Mat::zeros(3, 1, CV_64FC1);
 	pRacc = Racc.ptr<double>();
 	ptacc = tacc.ptr<double>();
+
+	Rdelta = Mat::eye(3, 3, CV_64FC1);
+	tdelta = Mat::zeros(3, 1, CV_64FC1);
+	pRdelta = Rdelta.ptr<double>();
+	ptdelta = tdelta.ptr<double>();
+
+	Rtmp = Mat::eye(3, 3, CV_64FC1);
+	ttmp = Mat::zeros(3, 1, CV_64FC1);
+	pRtmp = Rtmp.ptr<double>();
+	pttmp = ttmp.ptr<double>();
 
 	Rini.copyTo(Rnew);
 	tini.copyTo(tnew);
@@ -1222,74 +1236,151 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		double * pE = E.ptr<double>();
 
 		// Initialize LM solver.
-		solver.initEx(6, neq);
+		
+		CvTermCriteria tc;
+		tc.epsilon = FLT_EPSILON;
+		tc.max_iter = 30;
+		tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
+
+		solver.initEx(6, neq, tc);
+		double * param = solver.param->data.db;
+		memset((void*) param, 0, sizeof(double) * 6);
+
+		const CvMat * _param = NULL;
+		double * pparam = NULL;
 
 		while(1){
+			double * errNorm = NULL;
+			CvMat * _JtJ = NULL, *_JtErr = NULL;
+
+			param = solver.param->data.db;
+			pparam = solver.prevParam->data.db;
+			bool proceed = solver.updateAltEx(_param, _JtJ, _JtErr, errNorm);
+			if(!proceed)
+				break;
+
+			bool updateJ = _JtJ != NULL && _JtErr != NULL;
+
+			exp_so3(param, pRdelta);
+			ptdelta[0] = param[3]; ptdelta[1] = param[4]; ptdelta[2] = param[5];
+			compRt(pRdelta, ptdelta, pRnew, ptnew, pRtmp, pttmp);
+
 			// calculate projection
-			trnPts(M, Mcam, Rnew, tnew);
+			trnPts(M, Mcam, Rtmp, ttmp);
 			prjPts(Mcam, m, camint);
 
-			// calculate J
-			calcJT0_SE3(Jrt0, pRnew, ptnew);
-			calcJT0_SE3(Jrt0acc, pRacc, ptacc);
+			if(updateJ){
+				Rtmp.copyTo(Rnew);
+				ttmp.copyTo(tnew);
+				memset((void*)param, 0, sizeof(double) * 6);
+				
+				// calculate both Jacobian and photometric error
+ 				calcJT0_SE3(Jrt0, pRnew, ptnew);
+				calcJT0_SE3(Jrt0acc, pRacc, ptacc);
 
-			int ieq = 0;
-			// for each point template, calculate projection jacobian and image difference
-			for(int ipt = 0; ipt < M.size(); ipt++){
-				if(!valid[ipt])
-					continue;
+				// for each point template, calculate projection jacobian and image difference
+				int ieq = 0;
+				for(int ipt = 0; ipt < M.size(); ipt++){
+					if(!valid[ipt])
+						continue;
 
-				Mat & tmpl = Ppyr[ipt][ilv];
-				uchar * ptmpl = tmpl.ptr<uchar>();
+					Mat & tmpl = Ppyr[ipt][ilv];
+					uchar * ptmpl = tmpl.ptr<uchar>();
 
-				Point2f & m_prev_i = m_prev[ipt];
-				sx = tmpl.cols;
-				sy = tmpl.rows;
-				ox = (double) sx / 2.;
-				oy = (double) sy / 2.;
+					Point2f & m_prev_i = m_prev[ipt];
+					sx = tmpl.cols;
+					sy = tmpl.rows;
+					ox = (double) sx / 2.;
+					oy = (double) sy / 2.;
 
-				calcJM0_SE3(JM0, M[ipt], Jrt0);
+					calcJM0_SE3(JM0, M[ipt], Jrt0);
 
-				Point3f P;
-				Point2f pnew;
-				Point2i pold(m_prev[ipt]);
-				P.z = 0.;
+					Point3f P;
+					Point2f pnew;
+					Point2i pold(m_prev[ipt]);
+					P.z = 0.;
 
-				Point3f & Mc_prev = Mcam_prev[ipt];
-				float z_prev = Mc_prev.z;
-				float fx_iz_prev = fx / z_prev;
-				float fy_iz_prev = fy / z_prev;
-				float ifx_z_prev = z_prev * ifx;
-				float ify_z_prev = z_prev * ify;
-				for(int u = 0; u < sx; u++){
-					for(int v = 0; v < sy; v++){
-						P.x = (float)((u - ox) * ifx_z_prev);
-						P.y = (float)((v - oy) * ify_z_prev);
-						calcJM0_SE3(JM0acc, P, Jrt0acc);
-						JM0acc += JM0;
-						double * pJM0acc = JM0acc.ptr<double>();
-						
-						// Here we have dMc/dp as pJM0acc. we want dm/dp using chain rule (dm/dMc)(dMc/dp)
-						// Calculating (dm/dMc).
-						P.x += Mc_prev.x;
-						P.y += Mc_prev.y;
-						P.z += Mc_prev.z;
-						pnew.x = P.x * fx_iz_prev + cx;
-						pnew.y = P.y * fy_iz_prev + cy;
+					Point3f & Mc_prev = Mcam_prev[ipt];
+					float z_prev = Mc_prev.z;
+					float fx_iz_prev = fx / z_prev;
+					float fy_iz_prev = fy / z_prev;
+					float ifx_z_prev = z_prev * ifx;
+					float ify_z_prev = z_prev * ify;
+					for(int u = 0; u < sx; u++){
+						for(int v = 0; v < sy; v++){
+							P.x = (float)((u - ox) * ifx_z_prev);
+							P.y = (float)((v - oy) * ify_z_prev);
+							calcJM0_SE3(JM0acc, P, Jrt0acc);
+							JM0acc += JM0;
+							double * pJM0acc = JM0acc.ptr<double>();
 
-						int idx = pold.x + (int)(u - ox + 0.5) + (pold.y + (int)(v - oy + 0.5)) * w;
-						calc_dmdMc(pIx[idx], pIy[idx], Mc_prev, fx, fy, pJM0acc, pJ + ieq * 6);
+							// Here we have dMc/dp as pJM0acc. we want dm/dp using chain rule (dm/dMc)(dMc/dp)
+							// Calculating (dm/dMc).
+							P.x += Mc_prev.x;
+							P.y += Mc_prev.y;
+							P.z += Mc_prev.z;
+							pnew.x = P.x * fx_iz_prev + cx;
+							pnew.y = P.y * fy_iz_prev + cy;
 
-						pE[ieq] = pI[idx]- ptmpl[u + v * sx];
+							int idx = pold.x + (int)(u - ox + 0.5) + (pold.y + (int)(v - oy + 0.5)) * w;
+							calc_dmdMc(pIx[idx], pIy[idx], Mc_prev, fx, fy, pJM0acc, pJ + ieq * 6);
 
-						ieq++;
+							pE[ieq] = pI[idx]- ptmpl[u + v * sx];
+							pE[ieq] *= pE[ieq]; //L2 norm
+							 
+							ieq++;
+						}
+					}
+				}
+				// calculate JtJ and JtE
+
+			}else{ // calculate only error.
+				int ieq = 0;
+				for(int ipt = 0; ipt < M.size(); ipt++){
+					if(!valid[ipt])
+						continue;
+
+					Mat & tmpl = Ppyr[ipt][ilv];
+					uchar * ptmpl = tmpl.ptr<uchar>();
+
+					Point2f & m_prev_i = m_prev[ipt];
+					sx = tmpl.cols;
+					sy = tmpl.rows;
+					ox = (double) sx / 2.;
+					oy = (double) sy / 2.;
+
+					Point3f P;
+					Point2f pnew;
+					Point2i pold(m_prev[ipt]);
+					P.z = 0.;
+
+					Point3f & Mc_prev = Mcam_prev[ipt];
+					float z_prev = Mc_prev.z;
+					float fx_iz_prev = fx / z_prev;
+					float fy_iz_prev = fy / z_prev;
+					float ifx_z_prev = z_prev * ifx;
+					float ify_z_prev = z_prev * ify;
+					for(int u = 0; u < sx; u++){
+						for(int v = 0; v < sy; v++){
+							P.x = (float)((u - ox) * ifx_z_prev);
+							P.y = (float)((v - oy) * ify_z_prev);
+							P.x += Mc_prev.x;
+							P.y += Mc_prev.y;
+							P.z += Mc_prev.z;
+
+							pnew.x = P.x * fx_iz_prev + cx;
+							pnew.y = P.y * fy_iz_prev + cy;
+
+							int idx = pold.x + (int)(u - ox + 0.5) + (pold.y + (int)(v - oy + 0.5)) * w;
+
+							pE[ieq] = pI[idx]- ptmpl[u + v * sx];
+							pE[ieq] *= pE[ieq]; //L2 norm
+							 
+							ieq++;
+						}
 					}
 				}
 			}
-
-			// calculate E
-			
-			// calculate JtJ and JtE
 		}
 	}
 

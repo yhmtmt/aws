@@ -836,6 +836,34 @@ public:
 };
 
 ////////////////////////////////////////////////////////////////////////// related to affine transformation
+// calculates
+// [R3|t3] = [R1|t1][R2|t2]
+// [0 | 1]   [0 | 1][0 | 1]
+// R3 = R1R2
+// t3 = R1t2+t1
+inline void compRt(const double * R1, const double * t1, 
+	const double *R2, const double *t2, double *R3, double *t3)
+{
+	for(int i = 0; i < 3; i++){
+		for(int j = 0; j < 3; j++){
+			int idx1 = i * 3;
+			int idx2 = j;
+			int idx3 = idx1 + idx2;
+
+			R3[idx3] = 0.;
+			for(int k = 0; k < 3; k++, idx1++, idx2+=3){
+				R3[idx3] += R1[idx1] * R2[idx2];
+			}
+		}
+
+		int idx1 = i * 3;
+		for(int k = 0; k < 3; k++, idx1++){
+			t3[i] = t2[k] * R1[idx1];
+		}
+		t3[i] += t1[i];
+	}
+}
+
 bool synth_afn(Mat & l, Mat & r, Mat & res);
 bool afn(Mat & A, Point2f & in, Point2f & pt_out);
 
