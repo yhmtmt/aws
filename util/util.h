@@ -19,7 +19,6 @@
 #include "aws_thread.h"
 #include "aws_stdlib.h"
 
-
 // AWSLevMarq is the extension of CvLevMarq.
 // Because we need to evaluate Hessian inverse of the last iteration, the 
 class AWSLevMarq: public CvLevMarq
@@ -824,7 +823,15 @@ class ModelTrack
 private:
 	Mat delta; // step parameter correction
 	AWSLevMarq solver; // LM solver
+	CvTermCriteria tc;
 public:
+	ModelTrack()
+	{
+		tc.epsilon = FLT_EPSILON;
+		tc.max_iter = 30;
+		tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
+	}
+
 	// Ipyr is the grayscaled Image pyramid.
 	// P is the set of image patches around model points.
 	// D is the set of depth maps corresponding to patches in P.
@@ -878,7 +885,7 @@ inline void calcAtV(const double * A, const double * V, int rows, int cols, doub
 // pI is the pointer to the image, w and h are its width and height.
 // x and y are the location to be sampled.
 
-// uchar version
+// sampleBL the uchar version
 inline uchar sampleBL(uchar * pI, int w, int h, float x, float y)
 {
 	int ix = (int)x, iy = (int) y;
@@ -905,7 +912,7 @@ inline uchar sampleBL(uchar * pI, int w, int h, float x, float y)
 		+ rx * ry * ((int)RB - (int)RT - (int)LB - (int)LT));
 }
 
-// double version
+// sampleBL the double version
 inline double sampleBL(double * pI, int w, int h, float x, float y)
 {
 	int ix = (int)x, iy = (int) y;
@@ -914,7 +921,7 @@ inline double sampleBL(double * pI, int w, int h, float x, float y)
 
 	// basically we calculate 
 	// (1-ry)*[(1-rx)*I(ix,iy) + rx*I(ix2, iy)] + ry*[(1-rx)*I(ix,iy2) + rx*I(ix2, iy2)]
-	// but we can reduce it
+	// but we can reduce it to
 	// (1-ry)*[I(ix,iy) + rx*(I(ix2, iy)-I(ix,iy))] + ry*[I(ix,iy2) + rx*(I(ix2, iy2) - I(ix,iy2))]
 	// I(ix,iy) + ry*[I(ix,iy2) - I(ix,iy)] + rx*ry*[I(ix2, iy2) - I(ix,iy2) - I(ix2, iy) + I(ix,iy)]
 	// here I denote I(ix,iy), I(ix2, iy), I(ix,iy2), I(ix2, iy2) as LT, RT, LB, RB,

@@ -1118,52 +1118,69 @@ void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & val
 bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & valid, 
 		vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m)
 {
-	Mat Rini, tini; // initial transformation
-	Mat Racc, tacc; // Accumulating Transformation caluclated in this method
-	double * pRacc, * ptacc;
-	Mat Rnew, tnew;
-	double * pRnew, * ptnew;
-	Mat Rdelta, tdelta;
-	double * pRdelta, *ptdelta;
-	Mat Rtmp, ttmp;
-	double * pRtmp, *pttmp;
-
+	// Rini and tini are the initial transformation (Rotation and Translation)
+	// If the parameter is not given (means empty) initialized as an identity matrix and a zero vector.
+	Mat Rini, tini; 
 	if(R.empty())
 		Rini = Mat::eye(3, 3, CV_64FC1);
 	else
 		Rini = R.clone();
-
 	if(t.empty())
 		tini = Mat::zeros(3, 1, CV_64FC1);
 	else 
 		tini = t.clone();
 
-	Racc = Mat::eye(3, 3, CV_64FC1);
-	tacc = Mat::zeros(3, 1, CV_64FC1);
-	pRacc = Racc.ptr<double>();
-	ptacc = tacc.ptr<double>();
-
-	Rdelta = Mat::eye(3, 3, CV_64FC1);
-	tdelta = Mat::zeros(3, 1, CV_64FC1);
-	pRdelta = Rdelta.ptr<double>();
-	ptdelta = tdelta.ptr<double>();
-
-	Rtmp = Mat::eye(3, 3, CV_64FC1);
-	ttmp = Mat::zeros(3, 1, CV_64FC1);
-	pRtmp = Rtmp.ptr<double>();
-	pttmp = ttmp.ptr<double>();
-
+	// Rnew ant tnew are the current transformation in the iteration. 
+	// It contains the component given in Rini and tini. Therefore, they are initialized by Rini and tini.
+	Mat Rnew, tnew;
+	double * pRnew, * ptnew;
 	Rini.copyTo(Rnew);
 	tini.copyTo(tnew);
 
 	pRnew = Rnew.ptr<double>();
 	ptnew = tnew.ptr<double>();
 
+	// Racc and tacc are the transformation component accumulating all the update.
+	// Note that these do not include Rini and tini, and are initialized with an identity matrix and a zero vector.
+	// These are required to calculate the move of pixels around points approximated as planer in the previous frame.
+	Mat Racc, tacc; 
+	double * pRacc, * ptacc;
+	Racc = Mat::eye(3, 3, CV_64FC1);
+	tacc = Mat::zeros(3, 1, CV_64FC1);
+	pRacc = Racc.ptr<double>();
+	ptacc = tacc.ptr<double>();
+
+	// Rdelta and tdelta are the update of the transformation in each iteration.
+	// They are multiplied to both [Rnew|tnew] and [Racc|tacc] from their left side.
+	// For multiplication with [Rnew|tnew], because CvLevMarq requires convergence check, temporalily we need 
+	// to treate new transformation as temporal value, and rewind it to the original if the error was not reduced.
+	// For the purpose, Rtmp and ttmp are prepared below.
+	Mat Rdelta, tdelta;
+	double * pRdelta, *ptdelta;
+	Rdelta = Mat::eye(3, 3, CV_64FC1);
+	tdelta = Mat::zeros(3, 1, CV_64FC1);
+	pRdelta = Rdelta.ptr<double>();
+	ptdelta = tdelta.ptr<double>();
+
+	// Rtmp and ttmp are the temporal variables for Rnew and tnew during checking phase of error divergence.
+	Mat Rtmp, ttmp;
+	double * pRtmp, *pttmp;
+	Rtmp = Mat::eye(3, 3, CV_64FC1);
+	ttmp = Mat::zeros(3, 1, CV_64FC1);
+	pRtmp = Rtmp.ptr<double>();
+	pttmp = ttmp.ptr<double>();
+
+
 	// building point patch pyramid and its derivative
+
+	// Ppyr is the pyramid image of the point patch. 
+	// (We use rectangler region around the object points as point patch to be tracked."
 	vector<vector<Mat>> Ppyr;
+	Ppyr.resize(P.size());
+
+	// dIpyrdx and dIpyrdy is the derivative of the image pyramid Ipyr given as the argument.
 	vector<Mat> dIpyrdx;
 	vector<Mat> dIpyrdy;
-	Ppyr.resize(P.size());
 	dIpyrdx.resize(P.size());
 	dIpyrdy.resize(P.size());
 
@@ -1172,17 +1189,18 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
 		getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
 
+		// for every point patches, pyramids are built.
 		for(int ipt = 0; ipt < P.size(); ipt++){
 			buildPyramid(P[ipt], Ppyr[ipt], (int) Ipyr.size() - 1);
 		}
 
+		// for every pyramid level, the derivatives are calcurated.
 		for(int ilv = 0; ilv < Ipyr.size(); ilv++){
 			sepFilter2D(Ipyr, dIpyrdx[ilv], CV_64F, dxr, dxc);
 			sepFilter2D(Ipyr, dIpyrdy[ilv], CV_64F, dyr, dyc);
 		}
 	}
 
-	// Preparing temporal camera parameters. These are adjusted for each pyramid level.
 	// Preparing previous frame's model points in camera's coordinate
 	vector<Point3f> Mcam_prev, Mcam;
 	vector<Point2f> m_prev;
@@ -1199,9 +1217,10 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		Mat & I = Ipyr[ilv];
 		Mat & Ix = dIpyrdx[ilv];
 		Mat & Iy = dIpyrdy[ilv];
-		int w = I.cols, h = I.rows;
 		uchar * pI = I.ptr<uchar>();
 		double * pIx = Ix.ptr<double>(), * pIy = Iy.ptr<double>();
+
+		int w = I.cols, h = I.rows;
 
 		///////// gauss newton optimization at level ilv.
 		// Set fx, fy, cx, cy as 2^{-ilv} times the original.
@@ -1215,7 +1234,8 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		Mat JM0, JM0acc;
 		Mat J, E;
 
-		// counting equations
+		// counting equations in this level. 
+		// Equations are built for all pixels of point patches.
 		int neq = 0;
 		for(int ipt = 0; ipt < M.size(); ipt++){
 			if(!valid[ipt]){
@@ -1236,17 +1256,11 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		double * pE = E.ptr<double>();
 
 		// Initialize LM solver.
-		
-		CvTermCriteria tc;
-		tc.epsilon = FLT_EPSILON;
-		tc.max_iter = 30;
-		tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
-
 		solver.initEx(6, neq, tc);
-		double * param = solver.param->data.db;
-		memset((void*) param, 0, sizeof(double) * 6);
+		memset((void*) solver.param->data.db, 0, sizeof(double) * 6);
 
 		const CvMat * _param = NULL;
+		double * param = NULL;
 		double * pparam = NULL;
 
 		while(1){
