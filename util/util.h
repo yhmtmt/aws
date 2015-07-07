@@ -835,7 +835,66 @@ public:
 		vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m);
 };
 
-////////////////////////////////////////////////////////////////////////// related to affine transformation
+////////////////////////////////////////////////////////////////////////// bilinear sampling
+// bi-linear sampler for 8bit gray scale image
+// pI is the pointer to the image, w and h are its width and height.
+// x and y are the location to be sampled.
+
+// uchar version
+inline uchar sampleBL(uchar * pI, int w, int h, float x, float y)
+{
+	int ix = (int)x, iy = (int) y;
+	int ix2 = x + 1, iy2 = y + 1;
+	double rx = (x - (double)ix), ry = (y - (double)iy);
+
+	// basically we calculate 
+	// (1-ry)*[(1-rx)*I(ix,iy) + rx*I(ix2, iy)] + ry*[(1-rx)*I(ix,iy2) + rx*I(ix2, iy2)]
+	// but we can reduce it
+	// (1-ry)*[I(ix,iy) + rx*(I(ix2, iy)-I(ix,iy))] + ry*[I(ix,iy2) + rx*(I(ix2, iy2) - I(ix,iy2))]
+	// I(ix,iy) + ry*[I(ix,iy2) - I(ix,iy)] + rx*ry*[I(ix2, iy2) - I(ix,iy2) - I(ix2, iy) + I(ix,iy)]
+	// here I denote I(ix,iy), I(ix2, iy), I(ix,iy2), I(ix2, iy2) as LT, RT, LB, RB,
+	// and LB - LT as LBmLT. Sampled value is
+	// LT + ry * LBmLT + rx * ry ( RB - RT - LBmLT)
+
+	uchar LT, RT, LB, RB;
+
+	LT = pI[w * iy + ix];
+	RT = pI[w * iy + ix2];
+	LB = pI[w * iy2 + ix];
+	RB = pI[w * iy2 + ix2];
+
+	return saturate_cast<uchar>((double) LT + ry * ((int)LB - (int)LT)
+		+ rx * ry * ((int)RB - (int)RT - (int)LB - (int)LT));
+}
+
+// double version
+inline double sampleBL(double * pI, int w, int h, float x, float y)
+{
+	int ix = (int)x, iy = (int) y;
+	int ix2 = x + 1, iy2 = y + 1;
+	double rx = (x - (double)ix), ry = (y - (double)iy);
+
+	// basically we calculate 
+	// (1-ry)*[(1-rx)*I(ix,iy) + rx*I(ix2, iy)] + ry*[(1-rx)*I(ix,iy2) + rx*I(ix2, iy2)]
+	// but we can reduce it
+	// (1-ry)*[I(ix,iy) + rx*(I(ix2, iy)-I(ix,iy))] + ry*[I(ix,iy2) + rx*(I(ix2, iy2) - I(ix,iy2))]
+	// I(ix,iy) + ry*[I(ix,iy2) - I(ix,iy)] + rx*ry*[I(ix2, iy2) - I(ix,iy2) - I(ix2, iy) + I(ix,iy)]
+	// here I denote I(ix,iy), I(ix2, iy), I(ix,iy2), I(ix2, iy2) as LT, RT, LB, RB,
+	// and LB - LT as LBmLT. Sampled value is
+	// LT + ry * LBmLT + rx * ry ( RB - RT - LBmLT)
+
+	double LT, RT, LB, RB;
+
+	LT = pI[w * iy + ix];
+	RT = pI[w * iy + ix2];
+	LB = pI[w * iy2 + ix];
+	RB = pI[w * iy2 + ix2];
+
+	return (LT + ry * (LB - LT) + rx * ry * (RB - RT - LB - LT));
+}
+
+
+////////////////////////////////////////////////////////////////////////// transformation
 // calculates
 // [R3|t3] = [R1|t1][R2|t2]
 // [0 | 1]   [0 | 1][0 | 1]
@@ -865,6 +924,7 @@ inline void compRt(const double * R1, const double * t1,
 }
 
 bool synth_afn(Mat & l, Mat & r, Mat & res);
+
 bool afn(Mat & A, Point2f & in, Point2f & pt_out);
 
 ///////////////////////////////////////////////////////////////////////// related to Bayer pattern handling.

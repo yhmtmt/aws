@@ -1322,10 +1322,12 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 							pnew.x = P.x * fx_iz_prev + cx;
 							pnew.y = P.y * fy_iz_prev + cy;
 
-							int idx = pold.x + (int)(u - ox + 0.5) + (pold.y + (int)(v - oy + 0.5)) * w;
-							calc_dmdMc(pIx[idx], pIy[idx], Mc_prev, fx, fy, pJM0acc, pJ + ieq * 6);
+							float xu = (float)((double)pold.x + u - ox), yv = (float)((double)pold.y + v - oy);
 
-							pE[ieq] = pI[idx]- ptmpl[u + v * sx];
+							calc_dmdMc(sampleBL(pIx, w, h, xu, yv), sampleBL(pIy, w, h, xu, yv),
+								Mc_prev, fx, fy, pJM0acc, pJ + ieq * 6);
+
+							pE[ieq] = (int) sampleBL(pI, w, h, xu, yv) - (int) sampleBL(ptmpl, sx, sy, u, v);
 							pE[ieq] *= pE[ieq]; //L2 norm
 							 
 							ieq++;
@@ -1370,10 +1372,9 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 							pnew.x = P.x * fx_iz_prev + cx;
 							pnew.y = P.y * fy_iz_prev + cy;
+							float xu = (float)((double)pold.x + u - ox), yv = (float)((double)pold.y + v - oy);
 
-							int idx = pold.x + (int)(u - ox + 0.5) + (pold.y + (int)(v - oy + 0.5)) * w;
-
-							pE[ieq] = pI[idx]- ptmpl[u + v * sx];
+							pE[ieq] = (double)((int) sampleBL(pI, w, h, xu, yv) - (int) sampleBL(ptmpl, sx, sy, u, v));
 							pE[ieq] *= pE[ieq]; //L2 norm
 							 
 							ieq++;
