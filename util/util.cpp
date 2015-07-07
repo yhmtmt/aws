@@ -1268,7 +1268,8 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 			// calculate projection
 			trnPts(M, Mcam, Rtmp, ttmp);
 			prjPts(Mcam, m, camint);
-
+			
+			double ssd = 0.;
 			if(updateJ){
 				Rtmp.copyTo(Rnew);
 				ttmp.copyTo(tnew);
@@ -1302,10 +1303,10 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 					Point3f & Mc_prev = Mcam_prev[ipt];
 					float z_prev = Mc_prev.z;
-					float fx_iz_prev = fx / z_prev;
-					float fy_iz_prev = fy / z_prev;
-					float ifx_z_prev = z_prev * ifx;
-					float ify_z_prev = z_prev * ify;
+					float fx_iz_prev = (float)(fx / z_prev);
+					float fy_iz_prev = (float)(fy / z_prev);
+					float ifx_z_prev = (float)(z_prev * ifx);
+					float ify_z_prev = (float)(z_prev * ify);
 					for(int u = 0; u < sx; u++){
 						for(int v = 0; v < sy; v++){
 							P.x = (float)((u - ox) * ifx_z_prev);
@@ -1319,23 +1320,29 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 							P.x += Mc_prev.x;
 							P.y += Mc_prev.y;
 							P.z += Mc_prev.z;
-							pnew.x = P.x * fx_iz_prev + cx;
-							pnew.y = P.y * fy_iz_prev + cy;
+							pnew.x = (float)(P.x * fx_iz_prev + cx);
+							pnew.y = (float)(P.y * fy_iz_prev + cy);
 
-							float xu = (float)((double)pold.x + u - ox), yv = (float)((double)pold.y + v - oy);
+							float xu = (float)((double)pold.x + u - ox), 
+								yv = (float)((double)pold.y + v - oy);
 
 							calc_dmdMc(sampleBL(pIx, w, h, xu, yv), sampleBL(pIy, w, h, xu, yv),
 								Mc_prev, fx, fy, pJM0acc, pJ + ieq * 6);
 
-							pE[ieq] = (int) sampleBL(pI, w, h, xu, yv) - (int) sampleBL(ptmpl, sx, sy, u, v);
+							pE[ieq] = (double)((int) sampleBL(pI, w, h, xu, yv) 
+								- (int) *(ptmpl + u + v * sx));
 							pE[ieq] *= pE[ieq]; //L2 norm
-							 
+							ssd += pE[ieq];
 							ieq++;
 						}
 					}
 				}
-				// calculate JtJ and JtE
 
+				// calculate JtJ and JtE
+				double * pJtJ = _JtJ->data.db;
+				double * pJtErr = _JtErr->data.db;
+				calcAtA(pJ, neq, 6, pJtJ);
+				calcAtV(pJ, pE, neq, 6, pJtErr);
 			}else{ // calculate only error.
 				int ieq = 0;
 				for(int ipt = 0; ipt < M.size(); ipt++){
@@ -1358,10 +1365,10 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 					Point3f & Mc_prev = Mcam_prev[ipt];
 					float z_prev = Mc_prev.z;
-					float fx_iz_prev = fx / z_prev;
-					float fy_iz_prev = fy / z_prev;
-					float ifx_z_prev = z_prev * ifx;
-					float ify_z_prev = z_prev * ify;
+					float fx_iz_prev = (float)(fx / z_prev);
+					float fy_iz_prev = (float)(fy / z_prev);
+					float ifx_z_prev = (float)(z_prev * ifx);
+					float ify_z_prev = (float)(z_prev * ify);
 					for(int u = 0; u < sx; u++){
 						for(int v = 0; v < sy; v++){
 							P.x = (float)((u - ox) * ifx_z_prev);
@@ -1370,17 +1377,23 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 							P.y += Mc_prev.y;
 							P.z += Mc_prev.z;
 
-							pnew.x = P.x * fx_iz_prev + cx;
-							pnew.y = P.y * fy_iz_prev + cy;
-							float xu = (float)((double)pold.x + u - ox), yv = (float)((double)pold.y + v - oy);
+							pnew.x = (float)(P.x * fx_iz_prev + cx);
+							pnew.y = (float)(P.y * fy_iz_prev + cy);
+							float xu = (float)((double)pold.x + u - ox), 
+								yv = (float)((double)pold.y + v - oy);
 
-							pE[ieq] = (double)((int) sampleBL(pI, w, h, xu, yv) - (int) sampleBL(ptmpl, sx, sy, u, v));
+							pE[ieq] = (double)((int) sampleBL(pI, w, h, xu, yv) 
+								- (int) *(ptmpl + u + v * sx));
 							pE[ieq] *= pE[ieq]; //L2 norm
-							 
+							ssd += pE[ieq];
 							ieq++;
 						}
 					}
 				}
+			}
+
+			if(errNorm){
+				*errNorm = sqrt(ssd);
 			}
 		}
 	}

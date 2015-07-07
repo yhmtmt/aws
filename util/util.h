@@ -835,6 +835,44 @@ public:
 		vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m);
 };
 
+
+// calculates AtA. A is a rowsxcols matrix, and the resulting matrix AtA is cols x cols
+inline void calcAtA(const double * A, int rows, int cols, double * AtA)
+{
+	const double * p0 = A, * p1 = A;
+	double * p2 = AtA;
+
+	for(int i = 0; i < cols; i++){
+		for(int j = i; j < cols; j++){
+			
+			p0 = A + i;
+			p1 = A + j;
+			p2 = AtA + j + i * cols;
+			*p2 = 0.;
+			for(int k = 0; k < rows; k++, p0 += cols, p1 += cols){
+				*p2 += *p0 * *p1;
+			}
+
+			// note that AtA(i,j) = AtA(j,i)
+			*(AtA + i + j * cols) = *p2;
+		}
+	}
+}
+
+// calculate AtA, where is a rows x cols matrix, V is a rows dimensional vector.
+inline void calcAtV(const double * A, const double * V, int rows, int cols, double * AtV)
+{
+	for(int i = 0; i < cols; i++){
+		const double * pa = A + i;
+		const double * pv = V;
+		double * p = AtV + i;
+		*p = 0.;
+		for(int j = 0; j< rows; j++, pa += cols, pv++){
+			*p +=  *pa * *pv;
+		}
+	}
+}
+
 ////////////////////////////////////////////////////////////////////////// bilinear sampling
 // bi-linear sampler for 8bit gray scale image
 // pI is the pointer to the image, w and h are its width and height.
@@ -844,7 +882,7 @@ public:
 inline uchar sampleBL(uchar * pI, int w, int h, float x, float y)
 {
 	int ix = (int)x, iy = (int) y;
-	int ix2 = x + 1, iy2 = y + 1;
+	int ix2 = ix + 1, iy2 = iy + 1;
 	double rx = (x - (double)ix), ry = (y - (double)iy);
 
 	// basically we calculate 
@@ -871,7 +909,7 @@ inline uchar sampleBL(uchar * pI, int w, int h, float x, float y)
 inline double sampleBL(double * pI, int w, int h, float x, float y)
 {
 	int ix = (int)x, iy = (int) y;
-	int ix2 = x + 1, iy2 = y + 1;
+	int ix2 = ix + 1, iy2 = iy + 1;
 	double rx = (x - (double)ix), ry = (y - (double)iy);
 
 	// basically we calculate 
@@ -892,7 +930,6 @@ inline double sampleBL(double * pI, int w, int h, float x, float y)
 
 	return (LT + ry * (LB - LT) + rx * ry * (RB - RT - LB - LT));
 }
-
 
 ////////////////////////////////////////////////////////////////////////// transformation
 // calculates
