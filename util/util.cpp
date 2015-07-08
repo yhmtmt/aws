@@ -1115,8 +1115,16 @@ void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & val
 
 
 //////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking
-bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & valid, 
-		vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m)
+
+// Ipyr: The gray scale image pyramid of the current frame.
+// Mo: Object points in the object coordinate.
+// valid: Flag assigned for each object point, represents the image patch for the point is aviailable in the previous frame.
+// P: Image patches correspoinding to the object points.
+// camint: Camera intrinsic parameters (actually 3x3 matrix)
+// [R|t]: Rotation and translation. Initially the given values are used as the initial value. And the resulting transformation is returned to the arguments.
+// m: Projected object points. The argument is used to return resulting reprojection with returned [R|t].
+bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, const vector<int> & valid, 
+		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m)
 {
 	// Rini and tini are the initial transformation (Rotation and Translation)
 	// If the parameter is not given (means empty) initialized as an identity matrix and a zero vector.
@@ -1172,7 +1180,6 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 
 	// building point patch pyramid and its derivative
-
 	// Ppyr is the pyramid image of the point patch. 
 	// (We use rectangler region around the object points as point patch to be tracked."
 	vector<vector<Mat>> Ppyr;
@@ -1184,29 +1191,23 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 	dIpyrdx.resize(P.size());
 	dIpyrdy.resize(P.size());
 
-	{// Preparing differential filter kernel
-		Mat dxr, dxc, dyr, dyc; 
-		getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
-		getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
+	// for every point patches, pyramids are built.
+	for(int ipt = 0; ipt < P.size(); ipt++){
+		buildPyramid(P[ipt], Ppyr[ipt], (int) Ipyr.size() - 1);
+	}
 
-		// for every point patches, pyramids are built.
-		for(int ipt = 0; ipt < P.size(); ipt++){
-			buildPyramid(P[ipt], Ppyr[ipt], (int) Ipyr.size() - 1);
-		}
-
-		// for every pyramid level, the derivatives are calcurated.
-		for(int ilv = 0; ilv < Ipyr.size(); ilv++){
-			sepFilter2D(Ipyr, dIpyrdx[ilv], CV_64F, dxr, dxc);
-			sepFilter2D(Ipyr, dIpyrdy[ilv], CV_64F, dyr, dyc);
-		}
+	// for every pyramid level, the derivatives are calcurated.
+	for(int ilv = 0; ilv < Ipyr.size(); ilv++){
+		sepFilter2D(Ipyr, dIpyrdx[ilv], CV_64F, dxr, dxc);
+		sepFilter2D(Ipyr, dIpyrdy[ilv], CV_64F, dyr, dyc);
 	}
 
 	// Preparing previous frame's model points in camera's coordinate
-	vector<Point3f> Mcam_prev, Mcam;
-	vector<Point2f> m_prev;
-	trnPts(M, Mcam_prev, R, t);
-	prjPts(Mcam_prev, m_prev, camint);
-	Mcam.resize(Mcam_prev.size());
+	vector<Point3f> Mcam_old, Mcam;
+	vector<Point2f> m_old;
+	trnPts(Mo, Mcam_old, R, t);
+	prjPts(Mcam_old, m_old, camint);
+	Mcam.resize(Mcam_old.size());
 
 	// calculate center of the image patch (we do not check all the point patches.)
 	double ox = 0, oy = 0;
@@ -1214,10 +1215,10 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 	///////// parameter optimization for each pyramid level.
 	for(int ilv = (int) Ipyr.size() - 1; ilv >= 0; ilv++){
-		Mat & I = Ipyr[ilv];
+		const Mat & I = Ipyr[ilv];
 		Mat & Ix = dIpyrdx[ilv];
 		Mat & Iy = dIpyrdy[ilv];
-		uchar * pI = I.ptr<uchar>();
+		const uchar * pI = I.ptr<uchar>();
 		double * pIx = Ix.ptr<double>(), * pIy = Iy.ptr<double>();
 
 		int w = I.cols, h = I.rows;
@@ -1230,25 +1231,25 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		double cx = camint.at<double>(0, 2) * scale, cy = camint.at<double>(1, 2) * scale;
 		double ifx = 1.0 / fx, ify = 1.0 / fy;
 
-		Mat Jrt0, Jrt0acc;
-		Mat JM0, JM0acc;
-		Mat J, E;
-
 		// counting equations in this level. 
 		// Equations are built for all pixels of point patches.
 		int neq = 0;
-		for(int ipt = 0; ipt < M.size(); ipt++){
+		for(int ipt = 0; ipt < Mo.size(); ipt++){
 			if(!valid[ipt]){
 				continue;
 			}
 
 			Mat & tmpl = Ppyr[ipt][ilv];
-			Point2f & m_prev_i = m_prev[ipt];
+			Point2f & m_old_i = m_old[ipt];
 			sx = tmpl.cols;
 			sy = tmpl.rows;
 
 			neq += sx * sy;
 		}
+
+		Mat Jrt0, Jrt0acc;
+		Mat JM0, JM0acc;
+		Mat J, E;
 
 		J = Mat::zeros(neq, 6, CV_64FC1);
 		E = Mat::zeros(neq, 1, CV_64FC1);
@@ -1263,6 +1264,7 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 		double * param = NULL;
 		double * pparam = NULL;
 
+		// LM iteration.
 		while(1){
 			double * errNorm = NULL;
 			CvMat * _JtJ = NULL, *_JtErr = NULL;
@@ -1273,16 +1275,24 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 			if(!proceed)
 				break;
 
+			// Note: CvLevMarq returns _JtJ and _JtErr when in the calculation step. 
+			//       If not, we don't need to calculate Jacobian.
 			bool updateJ = _JtJ != NULL && _JtErr != NULL;
 
+			// Update transformation assuming first 3 of the param are the rotation vector,
+			//   and the second 3 of the param are the translation vector.
 			exp_so3(param, pRdelta);
 			ptdelta[0] = param[3]; ptdelta[1] = param[4]; ptdelta[2] = param[5];
+
+			// The transformation above calculated is composed with the transformation in the previous iteration.
+			//    But we should be aware of the iteration could be the error checking phase. We need to prepare the
+			//    composed transformation as the temporal variable.
 			compRt(pRdelta, ptdelta, pRnew, ptnew, pRtmp, pttmp);
 
-			// calculate projection
-			trnPts(M, Mcam, Rtmp, ttmp);
+			// calculate new transformation and projection
+			//    
+			trnPts(Mo, Mcam, Rtmp, ttmp);
 			prjPts(Mcam, m, camint);
-			
 			double ssd = 0.;
 			if(updateJ){
 				Rtmp.copyTo(Rnew);
@@ -1295,53 +1305,53 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 				// for each point template, calculate projection jacobian and image difference
 				int ieq = 0;
-				for(int ipt = 0; ipt < M.size(); ipt++){
+				for(int ipt = 0; ipt < Mo.size(); ipt++){
 					if(!valid[ipt])
 						continue;
 
 					Mat & tmpl = Ppyr[ipt][ilv];
 					uchar * ptmpl = tmpl.ptr<uchar>();
 
-					Point2f & m_prev_i = m_prev[ipt];
+					Point2f & m_old_i = m_old[ipt];
 					sx = tmpl.cols;
 					sy = tmpl.rows;
 					ox = (double) sx / 2.;
 					oy = (double) sy / 2.;
 
-					calcJM0_SE3(JM0, M[ipt], Jrt0);
+					calcJM0_SE3(JM0, Mo[ipt], Jrt0);
 
 					Point3f P;
 					Point2f pnew;
-					Point2i pold(m_prev[ipt]);
+					Point2i pold(m_old[ipt]);
 					P.z = 0.;
 
-					Point3f & Mc_prev = Mcam_prev[ipt];
-					float z_prev = Mc_prev.z;
-					float fx_iz_prev = (float)(fx / z_prev);
-					float fy_iz_prev = (float)(fy / z_prev);
-					float ifx_z_prev = (float)(z_prev * ifx);
-					float ify_z_prev = (float)(z_prev * ify);
+					Point3f & Mc_old = Mcam_old[ipt];
+					float z_old = Mc_old.z;
+					float fx_iz_old = (float)(fx / z_old);
+					float fy_iz_old = (float)(fy / z_old);
+					float ifx_z_old = (float)(z_old * ifx);
+					float ify_z_old = (float)(z_old * ify);
 					for(int u = 0; u < sx; u++){
 						for(int v = 0; v < sy; v++){
-							P.x = (float)((u - ox) * ifx_z_prev);
-							P.y = (float)((v - oy) * ify_z_prev);
+							P.x = (float)((u - ox) * ifx_z_old);
+							P.y = (float)((v - oy) * ify_z_old);
 							calcJM0_SE3(JM0acc, P, Jrt0acc);
 							JM0acc += JM0;
 							double * pJM0acc = JM0acc.ptr<double>();
 
 							// Here we have dMc/dp as pJM0acc. we want dm/dp using chain rule (dm/dMc)(dMc/dp)
 							// Calculating (dm/dMc).
-							P.x += Mc_prev.x;
-							P.y += Mc_prev.y;
-							P.z += Mc_prev.z;
-							pnew.x = (float)(P.x * fx_iz_prev + cx);
-							pnew.y = (float)(P.y * fy_iz_prev + cy);
+							P.x += Mc_old.x;
+							P.y += Mc_old.y;
+							P.z += Mc_old.z;
+							pnew.x = (float)(P.x * fx_iz_old + cx);
+							pnew.y = (float)(P.y * fy_iz_old + cy);
 
 							float xu = (float)((double)pold.x + u - ox), 
 								yv = (float)((double)pold.y + v - oy);
 
 							calc_dmdMc(sampleBL(pIx, w, h, xu, yv), sampleBL(pIy, w, h, xu, yv),
-								Mc_prev, fx, fy, pJM0acc, pJ + ieq * 6);
+								Mc_old, fx, fy, pJM0acc, pJ + ieq * 6);
 
 							pE[ieq] = (double)((int) sampleBL(pI, w, h, xu, yv) 
 								- (int) *(ptmpl + u + v * sx));
@@ -1359,14 +1369,14 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 				calcAtV(pJ, pE, neq, 6, pJtErr);
 			}else{ // calculate only error.
 				int ieq = 0;
-				for(int ipt = 0; ipt < M.size(); ipt++){
+				for(int ipt = 0; ipt < Mo.size(); ipt++){
 					if(!valid[ipt])
 						continue;
 
 					Mat & tmpl = Ppyr[ipt][ilv];
 					uchar * ptmpl = tmpl.ptr<uchar>();
 
-					Point2f & m_prev_i = m_prev[ipt];
+					Point2f & m_old_i = m_old[ipt];
 					sx = tmpl.cols;
 					sy = tmpl.rows;
 					ox = (double) sx / 2.;
@@ -1374,25 +1384,25 @@ bool ModelTrack::align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & va
 
 					Point3f P;
 					Point2f pnew;
-					Point2i pold(m_prev[ipt]);
+					Point2i pold(m_old[ipt]);
 					P.z = 0.;
 
-					Point3f & Mc_prev = Mcam_prev[ipt];
-					float z_prev = Mc_prev.z;
-					float fx_iz_prev = (float)(fx / z_prev);
-					float fy_iz_prev = (float)(fy / z_prev);
-					float ifx_z_prev = (float)(z_prev * ifx);
-					float ify_z_prev = (float)(z_prev * ify);
+					Point3f & Mc_old = Mcam_old[ipt];
+					float z_old = Mc_old.z;
+					float fx_iz_old = (float)(fx / z_old);
+					float fy_iz_old = (float)(fy / z_old);
+					float ifx_z_old = (float)(z_old * ifx);
+					float ify_z_old = (float)(z_old * ify);
 					for(int u = 0; u < sx; u++){
 						for(int v = 0; v < sy; v++){
-							P.x = (float)((u - ox) * ifx_z_prev);
-							P.y = (float)((v - oy) * ify_z_prev);
-							P.x += Mc_prev.x;
-							P.y += Mc_prev.y;
-							P.z += Mc_prev.z;
+							P.x = (float)((u - ox) * ifx_z_old);
+							P.y = (float)((v - oy) * ify_z_old);
+							P.x += Mc_old.x;
+							P.y += Mc_old.y;
+							P.z += Mc_old.z;
 
-							pnew.x = (float)(P.x * fx_iz_prev + cx);
-							pnew.y = (float)(P.y * fy_iz_prev + cy);
+							pnew.x = (float)(P.x * fx_iz_old + cx);
+							pnew.y = (float)(P.y * fy_iz_old + cy);
 							float xu = (float)((double)pold.x + u - ox), 
 								yv = (float)((double)pold.y + v - oy);
 

@@ -821,15 +821,24 @@ inline void calc_dmdMc(const double & Ix, const double & Iy,
 class ModelTrack
 {
 private:
-	Mat delta; // step parameter correction
-	AWSLevMarq solver; // LM solver
+	AWSLevMarq solver;	// LM solver
 	CvTermCriteria tc;
+
+	// Differential filter kernel.
+	// dxr and dxc are the row and column filter for x derivative.
+	// dyr and dyc are those for y derivative.
+	Mat dxr, dxc, dyr, dyc; 
+
 public:
 	ModelTrack()
 	{
 		tc.epsilon = FLT_EPSILON;
 		tc.max_iter = 30;
 		tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
+
+		// preparing differential filter kernel
+		getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
+		getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
 	}
 
 	// Ipyr is the grayscaled Image pyramid.
@@ -838,8 +847,8 @@ public:
 	// M is the set of 3D points in the model.
 	// T is the initial value of the transformation, and the resulting transformation.
 	// m is tracked points. 
-	bool align(vector<Mat> & Ipyr, vector<Point3f> & M, vector<int> & valid, 
-		vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m);
+	bool align(const vector<Mat> & Ipyr, const vector<Point3f> & M, const vector<int> & valid, 
+		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m);
 };
 
 
@@ -886,7 +895,7 @@ inline void calcAtV(const double * A, const double * V, int rows, int cols, doub
 // x and y are the location to be sampled.
 
 // sampleBL the uchar version
-inline uchar sampleBL(uchar * pI, int w, int h, float x, float y)
+inline uchar sampleBL(const uchar * pI, const int w, const int h, const float x, const float y)
 {
 	int ix = (int)x, iy = (int) y;
 	int ix2 = ix + 1, iy2 = iy + 1;
@@ -913,7 +922,7 @@ inline uchar sampleBL(uchar * pI, int w, int h, float x, float y)
 }
 
 // sampleBL the double version
-inline double sampleBL(double * pI, int w, int h, float x, float y)
+inline double sampleBL(const double * pI, const int w, const int h, const float x, const float y)
 {
 	int ix = (int)x, iy = (int) y;
 	int ix2 = ix + 1, iy2 = iy + 1;
