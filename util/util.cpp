@@ -1064,13 +1064,17 @@ void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int
 	}
 }
 
-void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R, const Mat & t)
+void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const vector<int> & valid, 
+	const Mat & R, const Mat & t)
 {
 	const double * pR = R.ptr<double>(), * pt = t.ptr<double>();
 	if(Msrc.size() != Mdst.size())
 		Mdst.resize(Msrc.size());
 
 	for(int i = 0; i < Msrc.size(); i++){
+		if(!valid[i])
+			continue;
+
 		double X = Msrc[i].x, Y = Msrc[i].y, Z = Msrc[i].z;
 		Mdst[i].x = (float)(pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0]);
 		Mdst[i].y = (float)(pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1]);
@@ -1078,12 +1082,15 @@ void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R,
 	}
 }
 
-void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const Mat & camint)
+void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const vector<int> & valid, const Mat & camint)
 {
 	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
 		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
 
 	for(int i = 0; i < Mcam.size(); i++){
+		if(!valid[i])
+			continue;
+
 		double x = Mcam[i].x;
 		double y = Mcam[i].y;
 		double z = Mcam[i].z;
@@ -1095,11 +1102,14 @@ void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const Mat & camin
 	}
 }
 
-void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & valid, 
+void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, const vector<int> & valid, 
 	const double fx, const double fy, const double cx, const double cy,
 	const double * pR, const double * pt)
 {
 	for(int i = 0; i < Mobj.size(); i++){
+		if(!valid[i])
+			continue;
+
 		double X = Mobj[i].x, Y = Mobj[i].y, Z = Mobj[i].z;
 		double x = pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0];
 		double y = pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1];
@@ -1170,7 +1180,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 	pRdelta = Rdelta.ptr<double>();
 	ptdelta = tdelta.ptr<double>();
 
-	// Rtmp and ttmp are the temporal variables for Rnew and tnew during checking phase of error divergence.
+	// Rtmp and ttmp are the temporal variables for Rnew and tnew during error checking phase.
 	Mat Rtmp, ttmp;
 	double * pRtmp, *pttmp;
 	Rtmp = Mat::eye(3, 3, CV_64FC1);
@@ -1178,6 +1188,13 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 	pRtmp = Rtmp.ptr<double>();
 	pttmp = ttmp.ptr<double>();
 
+	// Racctmp and tacctmp are the temporal variables for Racc and tacc during error checking phsase. 
+	Mat Racctmp, tacctmp;
+	double * pRacctmp, * ptacctmp;
+	Racctmp = Mat::eye(3, 3, CV_64FC1);
+	tacctmp = Mat::zeros(3, 1, CV_64FC1);
+	pRacctmp = Racctmp.ptr<double>();
+	ptacctmp = tacctmp.ptr<double>();
 
 	// building point patch pyramid and its derivative
 	// Ppyr is the pyramid image of the point patch. 
@@ -1204,9 +1221,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 
 	// Preparing previous frame's model points in camera's coordinate
 	vector<Point3f> Mcam_old, Mcam;
-	vector<Point2f> m_old;
-	trnPts(Mo, Mcam_old, R, t);
-	prjPts(Mcam_old, m_old, camint);
+	trnPts(Mo, Mcam_old, valid, R, t);
 	Mcam.resize(Mcam_old.size());
 
 	// calculate center of the image patch (we do not check all the point patches.)
@@ -1240,7 +1255,6 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 			}
 
 			Mat & tmpl = Ppyr[ipt][ilv];
-			Point2f & m_old_i = m_old[ipt];
 			sx = tmpl.cols;
 			sy = tmpl.rows;
 
@@ -1260,20 +1274,22 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 		solver.initEx(6, neq, tc);
 		memset((void*) solver.param->data.db, 0, sizeof(double) * 6);
 
+		// _param is the parameter update obtained by calling CvLevMarqEx::updateAltEx
+		//    Actually the contents of _param is CvLevMarqEx::param. param defined here is 
+		//    for storing the pointer pointing to the data memory.
 		const CvMat * _param = NULL;
 		double * param = NULL;
-		double * pparam = NULL;
 
 		// LM iteration.
 		while(1){
 			double * errNorm = NULL;
 			CvMat * _JtJ = NULL, *_JtErr = NULL;
 
-			param = solver.param->data.db;
-			pparam = solver.prevParam->data.db;
 			bool proceed = solver.updateAltEx(_param, _JtJ, _JtErr, errNorm);
 			if(!proceed)
 				break;
+
+			param = solver.param->data.db;
 
 			// Note: CvLevMarq returns _JtJ and _JtErr when in the calculation step. 
 			//       If not, we don't need to calculate Jacobian.
@@ -1288,15 +1304,20 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 			//    But we should be aware of the iteration could be the error checking phase. We need to prepare the
 			//    composed transformation as the temporal variable.
 			compRt(pRdelta, ptdelta, pRnew, ptnew, pRtmp, pttmp);
+			compRt(pRdelta, ptdelta, pRacc, ptacc, pRacctmp, ptacctmp);
 
-			// calculate new transformation and projection
-			//    
-			trnPts(Mo, Mcam, Rtmp, ttmp);
-			prjPts(Mcam, m, camint);
+			// Calculating new transformation and projection
+			prjPts(Mo, m, valid, fx, fy, cx, cy, pRtmp, pttmp);
+
 			double ssd = 0.;
 			if(updateJ){
+				// updating transformation.
 				Rtmp.copyTo(Rnew);
 				ttmp.copyTo(tnew);
+				Racctmp.copyTo(Racc);
+				tacctmp.copyTo(tacc);
+
+				// resetting parameters. 
 				memset((void*)param, 0, sizeof(double) * 6);
 				
 				// calculate both Jacobian and photometric error
@@ -1312,7 +1333,6 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 					Mat & tmpl = Ppyr[ipt][ilv];
 					uchar * ptmpl = tmpl.ptr<uchar>();
 
-					Point2f & m_old_i = m_old[ipt];
 					sx = tmpl.cols;
 					sy = tmpl.rows;
 					ox = (double) sx / 2.;
@@ -1320,10 +1340,9 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 
 					calcJM0_SE3(JM0, Mo[ipt], Jrt0);
 
-					Point3f P;
+					Point3f U, Uc;
 					Point2f pnew;
-					Point2i pold(m_old[ipt]);
-					P.z = 0.;
+					U.z = 0.;
 
 					Point3f & Mc_old = Mcam_old[ipt];
 					float z_old = Mc_old.z;
@@ -1333,27 +1352,28 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 					float ify_z_old = (float)(z_old * ify);
 					for(int u = 0; u < sx; u++){
 						for(int v = 0; v < sy; v++){
-							P.x = (float)((u - ox) * ifx_z_old);
-							P.y = (float)((v - oy) * ify_z_old);
-							calcJM0_SE3(JM0acc, P, Jrt0acc);
+							U.x = (float)((u - ox) * ifx_z_old);
+							U.y = (float)((v - oy) * ify_z_old);
+
+							calcJM0_SE3(JM0acc, U, Jrt0acc);
 							JM0acc += JM0;
 							double * pJM0acc = JM0acc.ptr<double>();
 
 							// Here we have dMc/dp as pJM0acc. we want dm/dp using chain rule (dm/dMc)(dMc/dp)
 							// Calculating (dm/dMc).
-							P.x += Mc_old.x;
-							P.y += Mc_old.y;
-							P.z += Mc_old.z;
-							pnew.x = (float)(P.x * fx_iz_old + cx);
-							pnew.y = (float)(P.y * fy_iz_old + cy);
+							trnPt(U, Uc, pRacc, ptacc);
+							pnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
+							pnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
 
-							float xu = (float)((double)pold.x + u - ox), 
-								yv = (float)((double)pold.y + v - oy);
+							float xu = (float)((double)pnew.x + u - ox), 
+								yv = (float)((double)pnew.y + v - oy);
 
-							calc_dmdMc(sampleBL(pIx, w, h, xu, yv), sampleBL(pIy, w, h, xu, yv),
+							calc_dmdMc(
+								sampleBL(pIx, w, h,  pnew.x, pnew.y),
+								sampleBL(pIy, w, h,  pnew.x, pnew.y),
 								Mc_old, fx, fy, pJM0acc, pJ + ieq * 6);
 
-							pE[ieq] = (double)((int) sampleBL(pI, w, h, xu, yv) 
+							pE[ieq] = (double)((int) sampleBL(pI, w, h,  pnew.x, pnew.y) 
 								- (int) *(ptmpl + u + v * sx));
 							pE[ieq] *= pE[ieq]; //L2 norm
 							ssd += pE[ieq];
@@ -1376,16 +1396,14 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 					Mat & tmpl = Ppyr[ipt][ilv];
 					uchar * ptmpl = tmpl.ptr<uchar>();
 
-					Point2f & m_old_i = m_old[ipt];
 					sx = tmpl.cols;
 					sy = tmpl.rows;
 					ox = (double) sx / 2.;
 					oy = (double) sy / 2.;
 
-					Point3f P;
+					Point3f U, Uc;
 					Point2f pnew;
-					Point2i pold(m_old[ipt]);
-					P.z = 0.;
+					U.z = 0.;
 
 					Point3f & Mc_old = Mcam_old[ipt];
 					float z_old = Mc_old.z;
@@ -1395,18 +1413,14 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 					float ify_z_old = (float)(z_old * ify);
 					for(int u = 0; u < sx; u++){
 						for(int v = 0; v < sy; v++){
-							P.x = (float)((u - ox) * ifx_z_old);
-							P.y = (float)((v - oy) * ify_z_old);
-							P.x += Mc_old.x;
-							P.y += Mc_old.y;
-							P.z += Mc_old.z;
+							U.x = (float)((u - ox) * ifx_z_old);
+							U.y = (float)((v - oy) * ify_z_old);
 
-							pnew.x = (float)(P.x * fx_iz_old + cx);
-							pnew.y = (float)(P.y * fy_iz_old + cy);
-							float xu = (float)((double)pold.x + u - ox), 
-								yv = (float)((double)pold.y + v - oy);
+							trnPt(U, Uc, pRacctmp, ptacctmp);
+							pnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
+							pnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
 
-							pE[ieq] = (double)((int) sampleBL(pI, w, h, xu, yv) 
+							pE[ieq] = (double)((int) sampleBL(pI, w, h, pnew.x, pnew.y) 
 								- (int) *(ptmpl + u + v * sx));
 							pE[ieq] *= pE[ieq]; //L2 norm
 							ssd += pE[ieq];

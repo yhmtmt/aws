@@ -688,11 +688,19 @@ bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec,
 
 /////////////////////////////////////////// Partial transformation and projection functions (no distortion)
 // Transformation 3D pints with rotation and translation [R|t].
-void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R, const Mat & t);
+void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const vector<int> & valid, 
+	const Mat & R, const Mat & t);
+inline void trnPt(const Point3f & Msrc, Point3f & Mdst, const double * pR, const double * pt)
+{
+	double X = Msrc.x, Y = Msrc.y, Z = Msrc.z;
+	Mdst.x = (float)(pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0]);
+	Mdst.y = (float)(pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1]);
+	Mdst.z = (float)(pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2]);
+}
 
 // Project 3D points in camera coordinate to 2D points.
-void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const Mat & camint);
-void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, vector<int> & valid, 
+void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const vector<int> & valid, const Mat & camint);
+void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, const vector<int> & valid, 
 	const double fx, const double fy, const double cx, const double cy,
 	const double * pR, const double * pt);
 
