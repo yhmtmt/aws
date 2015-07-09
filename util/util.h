@@ -699,6 +699,18 @@ inline void trnPt(const Point3f & Msrc, Point3f & Mdst, const double * pR, const
 }
 
 // Project 3D points in camera coordinate to 2D points.
+inline void prjPt(const Point3f & Mcam, Point2f & m,
+	const double & fx, const double & fy, const double & cx, const double & cy)
+{
+	double x = Mcam.x, y = Mcam.y, z = Mcam.z;
+
+	z = z ? 1./z : 1;
+	x *= z; y *= z;
+
+	m.x = (float)(x*fx + cx);
+	m.y = (float)(y*fy + cy);
+}
+
 void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const vector<int> & valid, const Mat & camint);
 void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, const vector<int> & valid, 
 	const double fx, const double fy, const double cx, const double cy,

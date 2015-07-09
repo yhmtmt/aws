@@ -1322,16 +1322,28 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 				memset((void*)param, 0, sizeof(double) * 6);
 				
 				// Jacobian to be calculated is dI/dm dm/dMc dMc/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
-				// dMc/d(rdelta,tdelta) = dMc/dT 
-				//             [ (rdelta,tdelta) dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta)
-				//                   + dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) ]
+				// Calcurating dMc/d(rdelta,tdelta) = 
+				//               [ dT(rdelta,tdelta)T(rnew, tnew)M/dT(rdelta,tdelta)T(rnew, tnew)  dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta)
+				//                   + dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) ]
+				//      for each object point, 
+				//      where U is the Zcold [u, v, 0]^t, Zcold is the depth of the point in the previous frame, (u, v) is the 2D vector pointing 
+				//      near by point from the center of the image patch. We here denote T(rdelta,tdelta)T(rnew, tnew)M and T(rdelta,tdelta)T(rnew, tnew)U as Mc and Uc respectively.
+
 				// calculating dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
  				calc_dR0t0Rtdrt(JRtrt0, pRnew, ptnew);
 
 				// calculating dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
 				calc_dR0t0Rtdrt(JRtrt0acc, pRacc, ptacc);
 
-				// for each point template, calculate projection jacobian and image difference
+				// For each point patches, photometric error and the Jacobian is calculated.
+				// Note: In this model tracker I assume that pixels near by a projected object point are at 
+				//      the same depth as the point in camera coordinate. (I call this as planer point aproximation.)
+				//      Image patches around 2D points in the previous frame matched to the object points are sampled 
+				//      and given as an argument of this function. The image patches are assumed to have same depth 
+				//      as the point centered at the image patches. Then we need to calculate the projection of the image
+				//      patches to the current frame; this is given as mnew in the following loop. Moreover, we need
+				//      to calculate the Jacobian dm/dMc, where m is the projected point and Mc is a point in the 
+				//      camera coordinate, evaluated at Mcnew a point in the camera coordinate projected into mnew.
 				int ieq = 0;
 				for(int ipt = 0; ipt < Mo.size(); ipt++){
 					if(!valid[ipt])
@@ -1344,7 +1356,9 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 					sy = Patch.rows;
 					ox = (double) sx / 2.;
 					oy = (double) sy / 2.;
-
+					
+					// Calculating  dMc/dT(rdelta,tdelta) dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) as Jmcrt0
+					// dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) is calculated as JRtrt0 before entering the loop.
 					calcJMcrt0_SE3(JMcrt0, Mo[ipt], JRtrt0);
 
 					Point3f U, Uc, Mcnew;
@@ -1361,29 +1375,50 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 							U.x = (float)((u - ox) * ifx_z_old);
 							U.y = (float)((v - oy) * ify_z_old);
 
+							// Calculating dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta)
+							//    T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) is calculated as JRtrt0acc previously.
 							calcJMcrt0_SE3(JMcrt0acc, U, JRtrt0acc);
+
+							// Now the dMc/d(rdelta,tdelta) is given as the summation of JMcrt0 and JMcrt0acc.
+							//    Here I add JMcrt0 to JMcrt0acc because we need to preserve the value of JMcrt0 through the loop.
 							JMcrt0acc += JMcrt0;
 							double * pJMcrt0acc = JMcrt0acc.ptr<double>();
 
 							trnPt(U, Uc, pRacc, ptacc);
 
-							// because we assume U does not have z component, 
-							// proj(Mcnew) is simply be the addition of m[ipt] and proj(Uc)
+							// We assume U does not have z component, 
+							// proj(Mcnew) is simply the addition of m[ipt] and proj(Uc)
 							mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
 							mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
 
 							Mcnew.x = Uc.x + Mc[ipt].x;
 							Mcnew.y = Uc.y + Mc[ipt].y;
 							Mcnew.z = Uc.z + Mc[ipt].z;
+							
+							{ // error checking. Projected Mcnew should be the same as mnew. 
+								Point2f mnew2;
+								prjPt(Mcnew, mnew2, fx, fy, cx, cy);
+								if(fabs(mnew2.x - mnew.x) > 0.01 || fabs(mnew2.y - mnew.y) > 0.01){
+									cerr << "Something wrong in calculating Jacobian." << endl;
+								}
+							}
 
+							// Calculating dI/dm dm/dMc dMc/d(rdelta,tdelta) 
+							//     Note that dMc/d(rdelta,tdelta) is afore mentioned JMcrt0acc.
+							//     This is the final product for a pixel in a point patch.
 							calcJI(
 								sampleBL(pIx, w, h,  mnew.x, mnew.y),
 								sampleBL(pIy, w, h,  mnew.x, mnew.y),
 								Mcnew, fx, fy, pJMcrt0acc, pJ + ieq * 6);
 
+							// Calculating photometric error in this pixel. From current frame, 
+							// mnew is the point projected from (u, v) in the image patch.
 							pE[ieq] = (double)((int) sampleBL(pI, w, h,  mnew.x, mnew.y) 
 								- (int) *(pPatch + u + v * sx));
+
+							// I use L2 norm
 							pE[ieq] *= pE[ieq]; //L2 norm
+
 							ssd += pE[ieq];
 							ieq++;
 						}
@@ -1396,6 +1431,8 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 				calcAtA(pJ, neq, 6, pJtJ);
 				calcAtV(pJ, pE, neq, 6, pJtErr);
 			}else{ // calculate only error.
+				// This block is almost same as the above other than the calcuration of the Jacobian is omitted.
+
 				int ieq = 0;
 				for(int ipt = 0; ipt < Mo.size(); ipt++){
 					if(!valid[ipt])
