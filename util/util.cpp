@@ -1133,6 +1133,7 @@ void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, const vector<int>
 // camint: Camera intrinsic parameters (actually 3x3 matrix)
 // [R|t]: Rotation and translation. Initially the given values are used as the initial value. And the resulting transformation is returned to the arguments.
 // m: Projected object points. The argument is used to return resulting reprojection with returned [R|t].
+//    m always holds the recent projection of Mo.
 bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, const vector<int> & valid, 
 		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m)
 {
@@ -1220,9 +1221,9 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 	}
 
 	// Preparing previous frame's model points in camera's coordinate
-	vector<Point3f> Mcam_old, Mcam;
-	trnPts(Mo, Mcam_old, valid, R, t);
-	Mcam.resize(Mcam_old.size());
+	vector<Point3f> Mcold, Mc;
+	trnPts(Mo, Mcold, valid, R, t);
+	Mc.resize(Mcold.size());
 
 	// calculate center of the image patch (we do not check all the point patches.)
 	double ox = 0, oy = 0;
@@ -1238,7 +1239,6 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 
 		int w = I.cols, h = I.rows;
 
-		///////// gauss newton optimization at level ilv.
 		// Set fx, fy, cx, cy as 2^{-ilv} times the original.
 		double iscale = (1 << ilv);
 		double scale = 1.0 / iscale;
@@ -1254,15 +1254,15 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 				continue;
 			}
 
-			Mat & tmpl = Ppyr[ipt][ilv];
-			sx = tmpl.cols;
-			sy = tmpl.rows;
+			Mat & Patch = Ppyr[ipt][ilv];
+			sx = Patch.cols;
+			sy = Patch.rows;
 
 			neq += sx * sy;
 		}
 
-		Mat Jrt0, Jrt0acc;
-		Mat JM0, JM0acc;
+		Mat JRtrt0, JRtrt0acc;
+		Mat JMcrt0, JMcrt0acc;
 		Mat J, E;
 
 		J = Mat::zeros(neq, 6, CV_64FC1);
@@ -1307,7 +1307,8 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 			compRt(pRdelta, ptdelta, pRacc, ptacc, pRacctmp, ptacctmp);
 
 			// Calculating new transformation and projection
-			prjPts(Mo, m, valid, fx, fy, cx, cy, pRtmp, pttmp);
+			trnPts(Mo, Mc, valid, Rnew, tnew);
+			prjPts(Mc, m, valid, camint);
 
 			double ssd = 0.;
 			if(updateJ){
@@ -1320,9 +1321,15 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 				// resetting parameters. 
 				memset((void*)param, 0, sizeof(double) * 6);
 				
-				// calculate both Jacobian and photometric error
- 				calcJT0_SE3(Jrt0, pRnew, ptnew);
-				calcJT0_SE3(Jrt0acc, pRacc, ptacc);
+				// Jacobian to be calculated is dI/dm dm/dMc dMc/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
+				// dMc/d(rdelta,tdelta) = dMc/dT 
+				//             [ (rdelta,tdelta) dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta)
+				//                   + dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) ]
+				// calculating dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
+ 				calc_dR0t0Rtdrt(JRtrt0, pRnew, ptnew);
+
+				// calculating dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
+				calc_dR0t0Rtdrt(JRtrt0acc, pRacc, ptacc);
 
 				// for each point template, calculate projection jacobian and image difference
 				int ieq = 0;
@@ -1330,22 +1337,21 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 					if(!valid[ipt])
 						continue;
 
-					Mat & tmpl = Ppyr[ipt][ilv];
-					uchar * ptmpl = tmpl.ptr<uchar>();
+					Mat & Patch = Ppyr[ipt][ilv];
+					uchar * pPatch = Patch.ptr<uchar>();
 
-					sx = tmpl.cols;
-					sy = tmpl.rows;
+					sx = Patch.cols;
+					sy = Patch.rows;
 					ox = (double) sx / 2.;
 					oy = (double) sy / 2.;
 
-					calcJM0_SE3(JM0, Mo[ipt], Jrt0);
+					calcJMcrt0_SE3(JMcrt0, Mo[ipt], JRtrt0);
 
-					Point3f U, Uc;
-					Point2f pnew;
+					Point3f U, Uc, Mcnew;
+					Point2f mnew;
 					U.z = 0.;
 
-					Point3f & Mc_old = Mcam_old[ipt];
-					float z_old = Mc_old.z;
+					float z_old = Mcold[ipt].z;
 					float fx_iz_old = (float)(fx / z_old);
 					float fy_iz_old = (float)(fy / z_old);
 					float ifx_z_old = (float)(z_old * ifx);
@@ -1355,26 +1361,28 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 							U.x = (float)((u - ox) * ifx_z_old);
 							U.y = (float)((v - oy) * ify_z_old);
 
-							calcJM0_SE3(JM0acc, U, Jrt0acc);
-							JM0acc += JM0;
-							double * pJM0acc = JM0acc.ptr<double>();
+							calcJMcrt0_SE3(JMcrt0acc, U, JRtrt0acc);
+							JMcrt0acc += JMcrt0;
+							double * pJMcrt0acc = JMcrt0acc.ptr<double>();
 
-							// Here we have dMc/dp as pJM0acc. we want dm/dp using chain rule (dm/dMc)(dMc/dp)
-							// Calculating (dm/dMc).
 							trnPt(U, Uc, pRacc, ptacc);
-							pnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
-							pnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
 
-							float xu = (float)((double)pnew.x + u - ox), 
-								yv = (float)((double)pnew.y + v - oy);
+							// because we assume U does not have z component, 
+							// proj(Mcnew) is simply be the addition of m[ipt] and proj(Uc)
+							mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
+							mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
 
-							calc_dmdMc(
-								sampleBL(pIx, w, h,  pnew.x, pnew.y),
-								sampleBL(pIy, w, h,  pnew.x, pnew.y),
-								Mc_old, fx, fy, pJM0acc, pJ + ieq * 6);
+							Mcnew.x = Uc.x + Mc[ipt].x;
+							Mcnew.y = Uc.y + Mc[ipt].y;
+							Mcnew.z = Uc.z + Mc[ipt].z;
 
-							pE[ieq] = (double)((int) sampleBL(pI, w, h,  pnew.x, pnew.y) 
-								- (int) *(ptmpl + u + v * sx));
+							calcJI(
+								sampleBL(pIx, w, h,  mnew.x, mnew.y),
+								sampleBL(pIy, w, h,  mnew.x, mnew.y),
+								Mcnew, fx, fy, pJMcrt0acc, pJ + ieq * 6);
+
+							pE[ieq] = (double)((int) sampleBL(pI, w, h,  mnew.x, mnew.y) 
+								- (int) *(pPatch + u + v * sx));
 							pE[ieq] *= pE[ieq]; //L2 norm
 							ssd += pE[ieq];
 							ieq++;
@@ -1382,7 +1390,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 					}
 				}
 
-				// calculate JtJ and JtE
+				// calculating JtJ and JtE
 				double * pJtJ = _JtJ->data.db;
 				double * pJtErr = _JtErr->data.db;
 				calcAtA(pJ, neq, 6, pJtJ);
@@ -1393,20 +1401,19 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 					if(!valid[ipt])
 						continue;
 
-					Mat & tmpl = Ppyr[ipt][ilv];
-					uchar * ptmpl = tmpl.ptr<uchar>();
+					Mat & Patch = Ppyr[ipt][ilv];
+					uchar * pPatch = Patch.ptr<uchar>();
 
-					sx = tmpl.cols;
-					sy = tmpl.rows;
+					sx = Patch.cols;
+					sy = Patch.rows;
 					ox = (double) sx / 2.;
 					oy = (double) sy / 2.;
 
 					Point3f U, Uc;
-					Point2f pnew;
+					Point2f mnew;
 					U.z = 0.;
 
-					Point3f & Mc_old = Mcam_old[ipt];
-					float z_old = Mc_old.z;
+					float z_old = Mcold[ipt].z;
 					float fx_iz_old = (float)(fx / z_old);
 					float fy_iz_old = (float)(fy / z_old);
 					float ifx_z_old = (float)(z_old * ifx);
@@ -1417,11 +1424,11 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 							U.y = (float)((v - oy) * ify_z_old);
 
 							trnPt(U, Uc, pRacctmp, ptacctmp);
-							pnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
-							pnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
+							mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
+							mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
 
-							pE[ieq] = (double)((int) sampleBL(pI, w, h, pnew.x, pnew.y) 
-								- (int) *(ptmpl + u + v * sx));
+							pE[ieq] = (double)((int) sampleBL(pI, w, h, mnew.x, mnew.y) 
+								- (int) *(pPatch + u + v * sx));
 							pE[ieq] *= pE[ieq]; //L2 norm
 							ssd += pE[ieq];
 							ieq++;

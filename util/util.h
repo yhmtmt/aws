@@ -730,7 +730,8 @@ void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, const vector<int>
 // dt3
 // 
 // Here rc1 = [r11 r21 r31]^t and the rc1_x is the skew-symmetric matrix.
-inline void calcJT0_SE3(Mat & J, double * R = NULL, double * t = NULL)
+// 
+inline void calc_dR0t0Rtdrt(Mat & J, double * R = NULL, double * t = NULL)
 {
 	J = Mat::zeros(12, 6, CV_64FC1);
 	double * p = J.ptr<double>();
@@ -780,7 +781,7 @@ inline void calcJT0_SE3(Mat & J, double * R = NULL, double * t = NULL)
 // dX
 // dY  -(Xrc1_x+Yrc2_x+Zrc2_x+t_x)                  I_3
 // dZ
-inline void calcJM0_SE3(Mat & J, const Point3f & M, const Mat & JT)
+inline void calcJMcrt0_SE3(Mat & J, const Point3f & Mo, const Mat & JT)
 {
 	const double * pJT = JT.ptr<double>();
 	J = Mat::zeros(3, 6, CV_64FC1);
@@ -791,8 +792,8 @@ inline void calcJM0_SE3(Mat & J, const Point3f & M, const Mat & JT)
 	for(int i = 0; i < 3; i++){
 		for(int j = 0; j < 3; j++){
 			int i6 = i * 6;
-			pJ[i6 + j] = pJT[i6 + j] * M.x + pJT[i6 + 3 * 6 + j] * M.y
-				+ pJT[i6 + 6 * 6 + j] * M.z + pJT[i + 9 * 6 + j];
+			pJ[i6 + j] = pJT[i6 + j] * Mo.x + pJT[i6 + 3 * 6 + j] * Mo.y
+				+ pJT[i6 + 6 * 6 + j] * Mo.z + pJT[i + 9 * 6 + j];
 		}
 	}
 
@@ -801,7 +802,7 @@ inline void calcJM0_SE3(Mat & J, const Point3f & M, const Mat & JT)
 
 // calculate [Ix, Iy]_m+(u,v) * dm/dMc * dMc/dp
 // resulting jacobian is 
-inline void calc_dmdMc(const double & Ix, const double & Iy, 
+inline void calcJI(const double & Ix, const double & Iy, 
 	const Point3f & Mc,
 	const double fx, const double fy,
 	const double * pdMcdp, double * pdIdp)
@@ -859,7 +860,6 @@ public:
 		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m);
 };
 
-
 // calculates AtA. A is a rowsxcols matrix, and the resulting matrix AtA is cols x cols
 inline void calcAtA(const double * A, int rows, int cols, double * AtA)
 {
@@ -898,7 +898,7 @@ inline void calcAtV(const double * A, const double * V, int rows, int cols, doub
 }
 
 ////////////////////////////////////////////////////////////////////////// bilinear sampling
-// bi-linear sampler for 8bit gray scale image
+// bi-linear sampler for gray scale image
 // pI is the pointer to the image, w and h are its width and height.
 // x and y are the location to be sampled.
 
