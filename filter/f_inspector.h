@@ -172,6 +172,7 @@ struct s_obj
 	vector<Mat> ptx_tmpl; // point's template images.
 
 	bool is_attitude_fixed;
+	Mat R;
 	Mat tvec, rvec;
 
 	double roll, pitch, yaw;
@@ -327,6 +328,9 @@ struct s_frame{
 
 	bool init(const long long atfrm, s_frame * pfobj0, s_frame * pfobj1, 
 		vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks);
+	bool init(const long long atfrm, s_frame * pfobj0, 
+		vector<Mat> & impyr, ModelTrack * pmdlTrck, int & miss_tracks);
+
 	bool init(const long long atfrm, Mat & acamint, Mat & acamdist)
 	{
 		tfrm = atfrm;
@@ -406,6 +410,8 @@ private:
 	bool m_btrack_obj;
 	e_warp_type m_wt;
 	c_imgalign m_ia;
+	ModelTrack m_mdlTrck;
+
 	int m_miss_tracks;
 	Size m_sz_vtx_smpl;
 

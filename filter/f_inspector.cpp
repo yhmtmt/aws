@@ -537,6 +537,7 @@ bool s_obj::init(const s_obj & obj)
 	pt2dprj = obj.pt2dprj;
 	visible = obj.visible;
 	is_attitude_fixed = obj.is_attitude_fixed;
+	obj.R.copyTo(R);
 	obj.tvec.copyTo(tvec);
 	obj.rvec.copyTo(rvec);
 	obj.jacobian.copyTo(jacobian);
@@ -1029,6 +1030,40 @@ bool s_frame::init(const long long atfrm,
 	return true;
 }
 
+bool s_frame::init(const long long atfrm, 
+	s_frame * pfobj0, vector<Mat> & impyr, ModelTrack * pmdlTrck, int & miss_tracks)
+{
+	tfrm = atfrm;
+	vector<s_obj*> & objs_prev = pfobj0->objs;
+	objs.resize(objs_prev.size());
+	for(int i = 0; i < objs.size(); i++){
+		s_obj * pobj = new s_obj();
+		if(!pobj->init(*objs_prev[i])){
+			delete pobj;
+			i--;
+			for(; i >= 0; i--)
+				delete objs[i];
+			return false;
+		}
+		objs[i] = pobj;
+	}
+	pfobj0->camint.copyTo(camint);
+	pfobj0->camdist.copyTo(camdist);
+
+	// tracking points
+	miss_tracks = 0;
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		vector<Point2f> & pt2d = objs[iobj]->pt2d;
+		vector<int> & visible = objs[iobj]->visible;
+		vector<Mat> & tmpl = objs_prev[iobj]->ptx_tmpl;
+		if(pmdlTrck){
+			pmdlTrck->align(impyr, objs[iobj]->pmdl->pts_deformed, visible,
+				tmpl, camint, objs[iobj]->R, objs[iobj]->tvec, pt2d);
+		}
+		tmpl.clear();
+	}
+	return true;
+}
 
 bool s_frame::save(const char * aname)
 {

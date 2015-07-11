@@ -1201,7 +1201,10 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 	// Ppyr is the pyramid image of the point patch. 
 	// (We use rectangler region around the object points as point patch to be tracked."
 	vector<vector<Mat>> Ppyr;
+	vector<double> Pssd;
+
 	Ppyr.resize(P.size());
+	Pssd.resize(P.size());
 
 	// dIpyrdx and dIpyrdy is the derivative of the image pyramid Ipyr given as the argument.
 	vector<Mat> dIpyrdx;
@@ -1346,6 +1349,8 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 				//      camera coordinate, evaluated at Mcnew a point in the camera coordinate projected into mnew.
 				int ieq = 0;
 				for(int ipt = 0; ipt < Mo.size(); ipt++){
+					Pssd[ipt] = 0.0;
+
 					if(!valid[ipt])
 						continue;
 
@@ -1390,7 +1395,6 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 							// proj(Mcnew) is simply the addition of m[ipt] and proj(Uc)
 							mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
 							mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
-
 							Mcnew.x = Uc.x + Mc[ipt].x;
 							Mcnew.y = Uc.y + Mc[ipt].y;
 							Mcnew.z = Uc.z + Mc[ipt].z;
@@ -1419,7 +1423,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 							// I use L2 norm
 							pE[ieq] *= pE[ieq]; //L2 norm
 
-							ssd += pE[ieq];
+							Pssd[ipt] += pE[ieq];
 							ieq++;
 						}
 					}
@@ -1435,6 +1439,8 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 
 				int ieq = 0;
 				for(int ipt = 0; ipt < Mo.size(); ipt++){
+					Pssd[ipt] = 0.0;
+
 					if(!valid[ipt])
 						continue;
 
@@ -1467,7 +1473,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 							pE[ieq] = (double)((int) sampleBL(pI, w, h, mnew.x, mnew.y) 
 								- (int) *(pPatch + u + v * sx));
 							pE[ieq] *= pE[ieq]; //L2 norm
-							ssd += pE[ieq];
+							Pssd[ipt] += pE[ieq];
 							ieq++;
 						}
 					}
@@ -1475,6 +1481,9 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 			}
 
 			if(errNorm){
+				for(int ipt = 0; ipt < Mo.size(); ipt++)
+					ssd += Pssd[ipt];
+
 				*errNorm = sqrt(ssd);
 			}
 		}
