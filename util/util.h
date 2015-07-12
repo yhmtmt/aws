@@ -1,4 +1,4 @@
-// Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
+// Copyright(c) 2012, 2015 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
 // util.h is free software: you can redistribute it and/or modify
@@ -19,6 +19,7 @@
 #include "aws_thread.h"
 #include "aws_stdlib.h"
 
+///////////////////////////////////////////////////////////////////////////////////////////////// AWSLevMarq
 // AWSLevMarq is the extension of CvLevMarq.
 // Because we need to evaluate Hessian inverse of the last iteration, the 
 class AWSLevMarq: public CvLevMarq
@@ -64,14 +65,52 @@ inline double rerr(double a, double b){
 	return fabs((a - b) / max(fabs(b), (double)1e-12));
 }
 
+////////////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking 
+// 1. set initial parameter p = (r, t), and transformation T(p) 
+// 2. calculate point matching error, jacobian, hessian inverse, and delta_p  
+// 3. set new transformation T(p) = T(delta_p)T(p)
+class ModelTrack
+{
+private:
+	AWSLevMarq solver;	// LM solver
+	CvTermCriteria tc;
 
-// decompose rotation matrix and extract Euler angles
+	// Differential filter kernel.
+	// dxr and dxc are the row and column filter for x derivative.
+	// dyr and dyc are those for y derivative.
+	Mat dxr, dxc, dyr, dyc; 
+
+public:
+	ModelTrack()
+	{
+		tc.epsilon = FLT_EPSILON;
+		tc.max_iter = 30;
+		tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
+
+		// preparing differential filter kernel
+		getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
+		getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
+	}
+
+	// Ipyr is the grayscaled Image pyramid.
+	// P is the set of image patches around model points.
+	// D is the set of depth maps corresponding to patches in P.
+	// M is the set of 3D points in the model.
+	// T is the initial value of the transformation, and the resulting transformation.
+	// m is tracked points. 
+	bool align(const vector<Mat> & Ipyr, const vector<Point3f> & M, const vector<int> & valid, 
+		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m);
+};
+
+
+/////////////////////////////////////////////////////////////////////// extracting Euler angles from Rotation matrix
+// these codes are partially from OpenCV calibrate.cpp
 // angleRxyz decompose it assuming R=RxRyRz
 void angleRxyz(double * R, double & x, double & y, double &z);
 // angleRzyx decompose it assuming R=RzRyRx
 void angleRzyx(double * R, double & x, double & y, double &z);
 
-// Lie-group to Lie-algebra mapping function
+////////////////////////////////////////////////////////////////////////// Lie-group to Lie-algebra mapping function
 // SO(3)->so(3) log Rodrigues gives this mapping
 inline void log_so3(const double * R, double * r)
 {
@@ -453,7 +492,6 @@ inline void exp_se3(const double * r, const double * v, double * T)
 	// T7
 	// T11
 
-	//
 	// R=I + s A + (1-c) A^2
 	// ic(rx2-1) + c   ic rxry - s rz  ic rxrz + s ry
 	// ic rxry + s rz  ic(ry2-1) + c   ic ryrz - s rx
@@ -523,8 +561,10 @@ inline void exp_sim3(double & s, const double * r, const double * v, double * S)
 	S[10] *= es;
 }
 
-// these codes are partially from OpenCV calibrate.cpp
-inline void awsProjPt(const Point3f & M, Point2f & m, 
+
+//////////////////////////////////////////////////////////////////////////////////////////////// Projection Function
+////////////////////////////////////////////////////////////////////// Single point projection.
+inline void prjPt(const Point3f & M, Point2f & m, 
 	const Mat & camint, const Mat & camdist, 
 	const Mat & rvec, const Mat & tvec)
 {
@@ -562,7 +602,7 @@ inline void awsProjPt(const Point3f & M, Point2f & m,
 	m.y = (float)(yd*fy + cy);
 }
 
-inline void awsProjPt(const Point3f & M, Point2f & m,
+inline void prjPt(const Point3f & M, Point2f & m,
 	const double fx, const double fy, const double cx, const double cy,
 	const double * k, const double * R, const double * t)
 {
@@ -592,7 +632,7 @@ inline void awsProjPt(const Point3f & M, Point2f & m,
 }
 
 // no distortion version
-inline void awsProjPt(const Point3f & M, Point2f & m, 
+inline void prjPt(const Point3f & M, Point2f & m, 
 	const Mat & camint,	const Mat & rvec, const Mat & tvec)
 {
 	const double * R, * t;
@@ -615,7 +655,7 @@ inline void awsProjPt(const Point3f & M, Point2f & m,
 	m.y = (float)(y*fy + cy);
 }
 
-inline void awsProjPt(const Point3f & M, Point2f & m,
+inline void prjPt(const Point3f & M, Point2f & m,
 	const double fx, const double fy, const double cx, const double cy, 
 	const double * R, const double * t)
 {
@@ -631,74 +671,7 @@ inline void awsProjPt(const Point3f & M, Point2f & m,
 	m.y = (float)(y*fy + cy);
 }
 
-/////////////////////////////////////////////////////////////////////////// awsProjPts series
-// awsProjPts basically convert 3d points to 2d points according to the projection parameters.
-// The variants are defined here for various optimization problems.
-
-// parameters are given as Mat capsulated array.
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
-	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec);
-
-// parameters are given as raw double pointers.
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
-		const double fx, const double fy, const double cx, const double cy,
-	const double * k, const double * R, const double * t);
-
-// valid flag prevents from calculating specific points.
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
-	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec);
-
-// valid flag prevents from calculating specific points.
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,  const vector<int> & valid,
-		const double fx, const double fy, const double cx, const double cy,
-	const double * k, const double * R, const double * t);
-
-// calculating jacobians for both camera intrinsics and extrinsics
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
-		const Mat & camint, const Mat & camdist,
-		const Mat & rvec, const Mat & tvec,
-		double * jf, double * jc, double * jk, double * jp,
-		double * jr, double * jt, double arf = 0.0);
-
-// calculating jacobians only for camera extrinsics (rotation and translation)
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
-		const Mat & camint, const Mat & camdist,
-		const Mat & rvec, const Mat & tvec,
-		double * jr, double * jt);
-
-// no distortion version
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
-	const Mat & camint, const Mat & rvec, const Mat & tvec);
-
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m,
-		const double fx, const double fy, const double cx, const double cy, const double * R, const double * t);
-
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
-		const Mat & camint,	const Mat & rvec, const Mat & tvec);
-
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
-		const double fx, const double fy, const double cx, const double cy, const double * R, const double * t);
-
-void awsProjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
-		const Mat & camint,	const Mat & rvec, const Mat & tvec,
-		double * jr, double * jt);
-
-bool test_awsProjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
-	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf = 0.0);
-
-/////////////////////////////////////////// Partial transformation and projection functions (no distortion)
-// Transformation 3D pints with rotation and translation [R|t].
-void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const vector<int> & valid, 
-	const Mat & R, const Mat & t);
-inline void trnPt(const Point3f & Msrc, Point3f & Mdst, const double * pR, const double * pt)
-{
-	double X = Msrc.x, Y = Msrc.y, Z = Msrc.z;
-	Mdst.x = (float)(pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0]);
-	Mdst.y = (float)(pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1]);
-	Mdst.z = (float)(pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2]);
-}
-
-// Project 3D points in camera coordinate to 2D points.
+// Projects 3D point in camera coordinate (without transformation)
 inline void prjPt(const Point3f & Mcam, Point2f & m,
 	const double & fx, const double & fy, const double & cx, const double & cy)
 {
@@ -711,11 +684,74 @@ inline void prjPt(const Point3f & Mcam, Point2f & m,
 	m.y = (float)(y*fy + cy);
 }
 
-void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const vector<int> & valid, const Mat & camint);
-void prjPts(const vector<Point3f> & Mobj, vector<Point2f> & m, const vector<int> & valid, 
-	const double fx, const double fy, const double cx, const double cy,
-	const double * pR, const double * pt);
+////////////////////////////////////////////////////////////////////// Multiple points projection.
+// parameters are given as Mat capsulated array.
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m,
+	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec);
 
+// parameters are given as raw double pointers.
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m,
+		const double fx, const double fy, const double cx, const double cy,
+	const double * k, const double * R, const double * t);
+
+// valid flag prevents from calculating specific points.
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+	const Mat & camint, const Mat & camdist, const Mat & rvec, const Mat & tvec);
+
+// valid flag prevents from calculating specific points.
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m,  const vector<int> & valid,
+		const double fx, const double fy, const double cx, const double cy,
+	const double * k, const double * R, const double * t);
+
+// calculating jacobians for both camera intrinsics and extrinsics
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const Mat & camint, const Mat & camdist,
+		const Mat & rvec, const Mat & tvec,
+		double * jf, double * jc, double * jk, double * jp,
+		double * jr, double * jt, double arf = 0.0);
+
+// calculating jacobians only for camera extrinsics (rotation and translation)
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const Mat & camint, const Mat & camdist,
+		const Mat & rvec, const Mat & tvec,
+		double * jr, double * jt);
+
+// no distortion version
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m,
+	const Mat & camint, const Mat & rvec, const Mat & tvec);
+
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m,
+		const double fx, const double fy, const double cx, const double cy, const double * R, const double * t);
+
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const Mat & camint,	const Mat & rvec, const Mat & tvec);
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const double fx, const double fy, const double cx, const double cy, const double * R, const double * t);
+
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const Mat & camint,	const Mat & rvec, const Mat & tvec,
+		double * jr, double * jt);
+
+void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const vector<int> & valid, const Mat & camint);
+
+bool test_prjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
+	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf = 0.0);
+
+//////////////////////////////////////////////////////////////////////////////////////////////// Transformation
+// Transformation 3D pints with rotation and translation [R|t].
+inline void trnPt(const Point3f & Msrc, Point3f & Mdst, const double * pR, const double * pt)
+{
+	double X = Msrc.x, Y = Msrc.y, Z = Msrc.z;
+	Mdst.x = (float)(pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0]);
+	Mdst.y = (float)(pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1]);
+	Mdst.z = (float)(pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2]);
+}
+
+void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const vector<int> & valid, 
+	const Mat & R, const Mat & t);
+
+
+/////////////////////////////////////////////////////////////////////////////// Transformation related Jacobian
 // Calcurate dT(r',t')T(r,t)/d(r', t') at (r', t') = 0. T(r, t) is the transformation matrix of [R|t],
 // R is rotation matrix the exponential map of r
 // If R and t given is NULL, simply dT(r', t')/d(r', t') at (r', t') = 0 is calculated.
@@ -835,81 +871,7 @@ inline void calcJI(const double & Ix, const double & Iy,
 	}
 }
 
-//////////////////////////////////////////////////////////////////////////// 3D model tracking 
-// 1. set initial parameter p = (r, t), and transformation T(p) 
-// 2. calculate point matching error, jacobian, hessian inverse, and delta_p  
-// 3. set new transformation T(p) = T(delta_p)T(p)
-class ModelTrack
-{
-private:
-	AWSLevMarq solver;	// LM solver
-	CvTermCriteria tc;
-
-	// Differential filter kernel.
-	// dxr and dxc are the row and column filter for x derivative.
-	// dyr and dyc are those for y derivative.
-	Mat dxr, dxc, dyr, dyc; 
-
-public:
-	ModelTrack()
-	{
-		tc.epsilon = FLT_EPSILON;
-		tc.max_iter = 30;
-		tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
-
-		// preparing differential filter kernel
-		getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
-		getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
-	}
-
-	// Ipyr is the grayscaled Image pyramid.
-	// P is the set of image patches around model points.
-	// D is the set of depth maps corresponding to patches in P.
-	// M is the set of 3D points in the model.
-	// T is the initial value of the transformation, and the resulting transformation.
-	// m is tracked points. 
-	bool align(const vector<Mat> & Ipyr, const vector<Point3f> & M, const vector<int> & valid, 
-		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m);
-};
-
-// calculates AtA. A is a rowsxcols matrix, and the resulting matrix AtA is cols x cols
-inline void calcAtA(const double * A, int rows, int cols, double * AtA)
-{
-	const double * p0 = A, * p1 = A;
-	double * p2 = AtA;
-
-	for(int i = 0; i < cols; i++){
-		for(int j = i; j < cols; j++){
-			
-			p0 = A + i;
-			p1 = A + j;
-			p2 = AtA + j + i * cols;
-			*p2 = 0.;
-			for(int k = 0; k < rows; k++, p0 += cols, p1 += cols){
-				*p2 += *p0 * *p1;
-			}
-
-			// note that AtA(i,j) = AtA(j,i)
-			*(AtA + i + j * cols) = *p2;
-		}
-	}
-}
-
-// calculate AtA, where is a rows x cols matrix, V is a rows dimensional vector.
-inline void calcAtV(const double * A, const double * V, int rows, int cols, double * AtV)
-{
-	for(int i = 0; i < cols; i++){
-		const double * pa = A + i;
-		const double * pv = V;
-		double * p = AtV + i;
-		*p = 0.;
-		for(int j = 0; j< rows; j++, pa += cols, pv++){
-			*p +=  *pa * *pv;
-		}
-	}
-}
-
-////////////////////////////////////////////////////////////////////////// bilinear sampling
+/////////////////////////////////////////////////////////////////////////////////////////////// bilinear sampling
 // bi-linear sampler for gray scale image
 // pI is the pointer to the image, w and h are its width and height.
 // x and y are the location to be sampled.
@@ -967,7 +929,7 @@ inline double sampleBL(const double * pI, const int w, const int h, const float 
 	return (LT + ry * (LB - LT) + rx * ry * (RB - RT - LB - LT));
 }
 
-////////////////////////////////////////////////////////////////////////// transformation
+///////////////////////////////////////////////////////////////////////////////////////////////// transformation
 // calculates
 // [R3|t3] = [R1|t1][R2|t2]
 // [0 | 1]   [0 | 1][0 | 1]
@@ -1000,7 +962,7 @@ bool synth_afn(Mat & l, Mat & r, Mat & res);
 
 bool afn(Mat & A, Point2f & in, Point2f & pt_out);
 
-///////////////////////////////////////////////////////////////////////// related to Bayer pattern handling.
+//////////////////////////////////////////////////////////////////////////////////////// Bayer pattern handling.
 void cnvBayerRG8ToBGR8(Mat & src, Mat & dst);
 void cnvBayerRG16ToBGR16(Mat & src, Mat & dst);
 void cnvBayerGR8ToBGR8(Mat & src, Mat & dst);
@@ -1009,6 +971,44 @@ void cnvBayerGB8ToBGR8(Mat & src, Mat & dst);
 void cnvBayerGB16ToBGR16(Mat & src, Mat & dst);
 void cnvBayerBG8ToBGR8(Mat & src, Mat & dst);
 void cnvBayerBG16ToBGR16(Mat & src, Mat & dst);
+
+///////////////////////////////////////////////////////////////////////////////////////////////// Miscellaneous 
+// calculates AtA. A is a rowsxcols matrix, and the resulting matrix AtA is cols x cols
+inline void calcAtA(const double * A, int rows, int cols, double * AtA)
+{
+	const double * p0 = A, * p1 = A;
+	double * p2 = AtA;
+
+	for(int i = 0; i < cols; i++){
+		for(int j = i; j < cols; j++){
+			
+			p0 = A + i;
+			p1 = A + j;
+			p2 = AtA + j + i * cols;
+			*p2 = 0.;
+			for(int k = 0; k < rows; k++, p0 += cols, p1 += cols){
+				*p2 += *p0 * *p1;
+			}
+
+			// note that AtA(i,j) = AtA(j,i)
+			*(AtA + i + j * cols) = *p2;
+		}
+	}
+}
+
+// calculate AtA, where is a rows x cols matrix, V is a rows dimensional vector.
+inline void calcAtV(const double * A, const double * V, int rows, int cols, double * AtV)
+{
+	for(int i = 0; i < cols; i++){
+		const double * pa = A + i;
+		const double * pv = V;
+		double * p = AtV + i;
+		*p = 0.;
+		for(int j = 0; j< rows; j++, pa += cols, pv++){
+			*p +=  *pa * *pv;
+		}
+	}
+}
 
 // box-muller random normal variable
 double nrand(double u, double s);
