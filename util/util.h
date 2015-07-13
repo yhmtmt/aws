@@ -75,10 +75,61 @@ private:
 	AWSLevMarq solver;	// LM solver
 	CvTermCriteria tc;
 
+	// Rini and tini are the initial transformation (Rotation and Translation)
+	// If the parameter is not given (means empty) initialized as an identity matrix and a zero vector.
+	Mat Rini, tini; 
+
+	// Rnew ant tnew are the current transformation in the iteration. 
+	// It contains the component given in Rini and tini. Therefore, they are initialized by Rini and tini.
+	Mat Rnew, tnew;
+	double * pRnew, * ptnew;
+
+	// Racc and tacc are the transformation component accumulating all the update.
+	// Note that these do not include Rini and tini, and are initialized with an identity matrix and a zero vector.
+	// These are required to calculate the move of pixels around points approximated as planer in the previous frame.
+	Mat Racc, tacc; 
+	double * pRacc, * ptacc;
+
+	// Rdelta and tdelta are the update of the transformation in each iteration.
+	// They are multiplied to both [Rnew|tnew] and [Racc|tacc] from their left side.
+	// For multiplication with [Rnew|tnew], because CvLevMarq requires convergence check, temporalily we need 
+	// to treate new transformation as temporal value, and rewind it to the original if the error was not reduced.
+	// For the purpose, Rtmp and ttmp are prepared below.
+	Mat Rdelta, tdelta;
+	double * pRdelta, *ptdelta;
+
+	// Rtmp and ttmp are the temporal variables for Rnew and tnew during error checking phase.
+	Mat Rtmp, ttmp;
+	double * pRtmp, *pttmp;
+
+	// Racctmp and tacctmp are the temporal variables for Racc and tacc during error checking phsase. 
+	Mat Racctmp, tacctmp;
+	double * pRacctmp, * ptacctmp;
+
+	// building point patch pyramid and its derivative
+	// Ppyr is the pyramid image of the point patch. 
+	// (We use rectangler region around the object points as point patch to be tracked."
+	vector<vector<Mat>> Ppyr;
+	vector<double> Pssd;
+
+
+	Mat JRtrt0, JRtrt0acc;
+	Mat JMcrt0, JMcrt0acc;
+	Mat J, E;
+
 	// Differential filter kernel.
 	// dxr and dxc are the row and column filter for x derivative.
 	// dyr and dyc are those for y derivative.
 	Mat dxr, dxc, dyr, dyc; 
+
+	void reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
+	double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+	vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid, 
+	vector<Point3f> & Mc, double * pIx, double * pIy, double * pJ, CvMat * _JtJ, CvMat * _JtErr);
+
+	void reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
+	double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+	vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid);
 
 public:
 	ModelTrack()
@@ -98,8 +149,8 @@ public:
 	// M is the set of 3D points in the model.
 	// T is the initial value of the transformation, and the resulting transformation.
 	// m is tracked points. 
-	bool align(const vector<Mat> & Ipyr, const vector<Point3f> & M, const vector<int> & valid, 
-		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m);
+	bool align(const vector<Mat> & Ipyr, const vector<Point3f> & M, vector<int> & valid, 
+		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m, int & miss);
 };
 
 

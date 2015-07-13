@@ -149,12 +149,9 @@ void AWSLevMarq::calcCov()
 // [R|t]: Rotation and translation. Initially the given values are used as the initial value. And the resulting transformation is returned to the arguments.
 // m: Projected object points. The argument is used to return resulting reprojection with returned [R|t].
 //    m always holds the recent projection of Mo.
-bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, const vector<int> & valid, 
-		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m)
+bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vector<int> & valid, 
+		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m, int & miss)
 {
-	// Rini and tini are the initial transformation (Rotation and Translation)
-	// If the parameter is not given (means empty) initialized as an identity matrix and a zero vector.
-	Mat Rini, tini; 
 	if(R.empty())
 		Rini = Mat::eye(3, 3, CV_64FC1);
 	else
@@ -164,59 +161,32 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 	else 
 		tini = t.clone();
 
-	// Rnew ant tnew are the current transformation in the iteration. 
-	// It contains the component given in Rini and tini. Therefore, they are initialized by Rini and tini.
-	Mat Rnew, tnew;
-	double * pRnew, * ptnew;
 	Rini.copyTo(Rnew);
 	tini.copyTo(tnew);
 
 	pRnew = Rnew.ptr<double>();
 	ptnew = tnew.ptr<double>();
 
-	// Racc and tacc are the transformation component accumulating all the update.
-	// Note that these do not include Rini and tini, and are initialized with an identity matrix and a zero vector.
-	// These are required to calculate the move of pixels around points approximated as planer in the previous frame.
-	Mat Racc, tacc; 
-	double * pRacc, * ptacc;
 	Racc = Mat::eye(3, 3, CV_64FC1);
 	tacc = Mat::zeros(3, 1, CV_64FC1);
 	pRacc = Racc.ptr<double>();
 	ptacc = tacc.ptr<double>();
 
-	// Rdelta and tdelta are the update of the transformation in each iteration.
-	// They are multiplied to both [Rnew|tnew] and [Racc|tacc] from their left side.
-	// For multiplication with [Rnew|tnew], because CvLevMarq requires convergence check, temporalily we need 
-	// to treate new transformation as temporal value, and rewind it to the original if the error was not reduced.
-	// For the purpose, Rtmp and ttmp are prepared below.
-	Mat Rdelta, tdelta;
-	double * pRdelta, *ptdelta;
 	Rdelta = Mat::eye(3, 3, CV_64FC1);
 	tdelta = Mat::zeros(3, 1, CV_64FC1);
 	pRdelta = Rdelta.ptr<double>();
 	ptdelta = tdelta.ptr<double>();
 
-	// Rtmp and ttmp are the temporal variables for Rnew and tnew during error checking phase.
-	Mat Rtmp, ttmp;
-	double * pRtmp, *pttmp;
 	Rtmp = Mat::eye(3, 3, CV_64FC1);
 	ttmp = Mat::zeros(3, 1, CV_64FC1);
 	pRtmp = Rtmp.ptr<double>();
 	pttmp = ttmp.ptr<double>();
 
-	// Racctmp and tacctmp are the temporal variables for Racc and tacc during error checking phsase. 
-	Mat Racctmp, tacctmp;
-	double * pRacctmp, * ptacctmp;
 	Racctmp = Mat::eye(3, 3, CV_64FC1);
 	tacctmp = Mat::zeros(3, 1, CV_64FC1);
 	pRacctmp = Racctmp.ptr<double>();
 	ptacctmp = tacctmp.ptr<double>();
 
-	// building point patch pyramid and its derivative
-	// Ppyr is the pyramid image of the point patch. 
-	// (We use rectangler region around the object points as point patch to be tracked."
-	vector<vector<Mat>> Ppyr;
-	vector<double> Pssd;
 
 	Ppyr.resize(P.size());
 	Pssd.resize(P.size());
@@ -279,10 +249,6 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 			neq += sx * sy;
 		}
 
-		Mat JRtrt0, JRtrt0acc;
-		Mat JMcrt0, JMcrt0acc;
-		Mat J, E;
-
 		J = Mat::zeros(neq, 6, CV_64FC1);
 		E = Mat::zeros(neq, 1, CV_64FC1);
 		double * pJ = J.ptr<double>();
@@ -330,169 +296,15 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 
 			double ssd = 0.;
 			if(updateJ){
-				// updating transformation.
-				Rtmp.copyTo(Rnew);
-				ttmp.copyTo(tnew);
-				Racctmp.copyTo(Racc);
-				tacctmp.copyTo(tacc);
-
 				// resetting parameters. 
 				memset((void*)param, 0, sizeof(double) * 6);
-				
-				// Jacobian to be calculated is dI/dm dm/dMc dMc/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
-				// Calcurating dMc/d(rdelta,tdelta) = 
-				//               [ dT(rdelta,tdelta)T(rnew, tnew)M/dT(rdelta,tdelta)T(rnew, tnew)  dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta)
-				//                   + dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) ]
-				//      for each object point, 
-				//      where U is the Zcold [u, v, 0]^t, Zcold is the depth of the point in the previous frame, (u, v) is the 2D vector pointing 
-				//      near by point from the center of the image patch. We here denote T(rdelta,tdelta)T(rnew, tnew)M and T(rdelta,tdelta)T(rnew, tnew)U as Mc and Uc respectively.
 
-				// calculating dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
- 				calc_dR0t0Rtdrt(JRtrt0, pRnew, ptnew);
-
-				// calculating dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
-				calc_dR0t0Rtdrt(JRtrt0acc, pRacc, ptacc);
-
-				// For each point patches, photometric error and the Jacobian is calculated.
-				// Note: In this model tracker I assume that pixels near by a projected object point are at 
-				//      the same depth as the point in camera coordinate. (I call this as planer point aproximation.)
-				//      Image patches around 2D points in the previous frame matched to the object points are sampled 
-				//      and given as an argument of this function. The image patches are assumed to have same depth 
-				//      as the point centered at the image patches. Then we need to calculate the projection of the image
-				//      patches to the current frame; this is given as mnew in the following loop. Moreover, we need
-				//      to calculate the Jacobian dm/dMc, where m is the projected point and Mc is a point in the 
-				//      camera coordinate, evaluated at Mcnew a point in the camera coordinate projected into mnew.
-				int ieq = 0;
-				for(int ipt = 0; ipt < Mo.size(); ipt++){
-					Pssd[ipt] = 0.0;
-
-					if(!valid[ipt])
-						continue;
-
-					Mat & Patch = Ppyr[ipt][ilv];
-					uchar * pPatch = Patch.ptr<uchar>();
-
-					sx = Patch.cols;
-					sy = Patch.rows;
-					ox = (double) sx / 2.;
-					oy = (double) sy / 2.;
-					
-					// Calculating  dMc/dT(rdelta,tdelta) dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) as Jmcrt0
-					// dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) is calculated as JRtrt0 before entering the loop.
-					calcJMcrt0_SE3(JMcrt0, Mo[ipt], JRtrt0);
-
-					Point3f U, Uc, Mcnew;
-					Point2f mnew;
-					U.z = 0.;
-
-					float z_old = Mcold[ipt].z;
-					float fx_iz_old = (float)(fx / z_old);
-					float fy_iz_old = (float)(fy / z_old);
-					float ifx_z_old = (float)(z_old * ifx);
-					float ify_z_old = (float)(z_old * ify);
-					for(int u = 0; u < sx; u++){
-						for(int v = 0; v < sy; v++){
-							U.x = (float)((u - ox) * ifx_z_old);
-							U.y = (float)((v - oy) * ify_z_old);
-
-							// Calculating dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta)
-							//    T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) is calculated as JRtrt0acc previously.
-							calcJMcrt0_SE3(JMcrt0acc, U, JRtrt0acc);
-
-							// Now the dMc/d(rdelta,tdelta) is given as the summation of JMcrt0 and JMcrt0acc.
-							//    Here I add JMcrt0 to JMcrt0acc because we need to preserve the value of JMcrt0 through the loop.
-							JMcrt0acc += JMcrt0;
-							double * pJMcrt0acc = JMcrt0acc.ptr<double>();
-
-							trnPt(U, Uc, pRacc, ptacc);
-
-							// We assume U does not have z component, 
-							// proj(Mcnew) is simply the addition of m[ipt] and proj(Uc)
-							mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
-							mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
-							Mcnew.x = Uc.x + Mc[ipt].x;
-							Mcnew.y = Uc.y + Mc[ipt].y;
-							Mcnew.z = Uc.z + Mc[ipt].z;
-							
-							{ // error checking. Projected Mcnew should be the same as mnew. 
-								Point2f mnew2;
-								prjPt(Mcnew, mnew2, fx, fy, cx, cy);
-								if(fabs(mnew2.x - mnew.x) > 0.01 || fabs(mnew2.y - mnew.y) > 0.01){
-									cerr << "Something wrong in calculating Jacobian." << endl;
-								}
-							}
-
-							// Calculating dI/dm dm/dMc dMc/d(rdelta,tdelta) 
-							//     Note that dMc/d(rdelta,tdelta) is afore mentioned JMcrt0acc.
-							//     This is the final product for a pixel in a point patch.
-							calcJI(
-								sampleBL(pIx, w, h,  mnew.x, mnew.y),
-								sampleBL(pIy, w, h,  mnew.x, mnew.y),
-								Mcnew, fx, fy, pJMcrt0acc, pJ + ieq * 6);
-
-							// Calculating photometric error in this pixel. From current frame, 
-							// mnew is the point projected from (u, v) in the image patch.
-							pE[ieq] = (double)((int) sampleBL(pI, w, h,  mnew.x, mnew.y) 
-								- (int) *(pPatch + u + v * sx));
-
-							// I use L2 norm
-							pE[ieq] *= pE[ieq]; //L2 norm
-
-							Pssd[ipt] += pE[ieq];
-							ieq++;
-						}
-					}
-				}
-
-				// calculating JtJ and JtE
-				double * pJtJ = _JtJ->data.db;
-				double * pJtErr = _JtErr->data.db;
-				calcAtA(pJ, neq, 6, pJtJ);
-				calcAtV(pJ, pE, neq, 6, pJtErr);
+				reprj(ilv, pI, w, h, sx, sy, ox, oy, fx, fy,
+					ifx, ify, cx, cy, Mo, Mcold, m, neq, pE, valid,
+					Mc, pIx, pIy, pJ, _JtJ, _JtErr);
 			}else{ // calculate only error.
-				// This block is almost same as the above other than the calcuration of the Jacobian is omitted.
-
-				int ieq = 0;
-				for(int ipt = 0; ipt < Mo.size(); ipt++){
-					Pssd[ipt] = 0.0;
-
-					if(!valid[ipt])
-						continue;
-
-					Mat & Patch = Ppyr[ipt][ilv];
-					uchar * pPatch = Patch.ptr<uchar>();
-
-					sx = Patch.cols;
-					sy = Patch.rows;
-					ox = (double) sx / 2.;
-					oy = (double) sy / 2.;
-
-					Point3f U, Uc;
-					Point2f mnew;
-					U.z = 0.;
-
-					float z_old = Mcold[ipt].z;
-					float fx_iz_old = (float)(fx / z_old);
-					float fy_iz_old = (float)(fy / z_old);
-					float ifx_z_old = (float)(z_old * ifx);
-					float ify_z_old = (float)(z_old * ify);
-					for(int u = 0; u < sx; u++){
-						for(int v = 0; v < sy; v++){
-							U.x = (float)((u - ox) * ifx_z_old);
-							U.y = (float)((v - oy) * ify_z_old);
-
-							trnPt(U, Uc, pRacctmp, ptacctmp);
-							mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
-							mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
-
-							pE[ieq] = (double)((int) sampleBL(pI, w, h, mnew.x, mnew.y) 
-								- (int) *(pPatch + u + v * sx));
-							pE[ieq] *= pE[ieq]; //L2 norm
-							Pssd[ipt] += pE[ieq];
-							ieq++;
-						}
-					}
-				}
+				reprjNoJ(ilv, pI, w, h, sx, sy, ox, oy, fx, fy,
+					ifx, ify, cx, cy, Mo, Mcold, m, neq, pE, valid);
 			}
 
 			if(errNorm){
@@ -504,8 +316,216 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, con
 		}
 	}
 
+	double avg_err = 0.;
+	double max_err = 0.;
+	double min_err = DBL_MAX;
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		if(!valid[ipt])
+			continue;
+
+		int area = P[ipt].cols * P[ipt].rows;
+		Pssd[ipt] = Pssd[ipt] / (double) area;
+		avg_err += Pssd[ipt];
+		if(Pssd[ipt] > max_err){
+			max_err = Pssd[ipt];
+		}
+		if(Pssd[ipt] < min_err){
+			min_err = Pssd[ipt];
+		}
+	}
+
+	avg_err /= (double) Mo.size();
+
+	double norm = 1. / (max_err - min_err);
+	miss = 0;
+	for(int ipt = 0; ipt < Mo.size(); ipt++){		
+		if(!valid[ipt])
+			continue;
+
+		if((max_err - Pssd[ipt]) * norm > 0.9){
+			valid[ipt] = false;
+			miss++;
+		}
+	}
+
+	Rnew.copyTo(R);
+	tnew.copyTo(t);
+
 	return true;
 }
+
+void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
+	double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+	vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid, 
+	vector<Point3f> & Mc, double * pIx, double * pIy, double * pJ, CvMat * _JtJ, CvMat * _JtErr)
+{
+	// updating transformation.
+	Rtmp.copyTo(Rnew);
+	ttmp.copyTo(tnew);
+	Racctmp.copyTo(Racc);
+	tacctmp.copyTo(tacc);
+
+	// Jacobian to be calculated is dI/dm dm/dMc dMc/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
+	// Calcurating dMc/d(rdelta,tdelta) = 
+	//               [ dT(rdelta,tdelta)T(rnew, tnew)M/dT(rdelta,tdelta)T(rnew, tnew)  dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta)
+	//                   + dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) ]
+	//      for each object point, 
+	//      where U is the Zcold [u, v, 0]^t, Zcold is the depth of the point in the previous frame, (u, v) is the 2D vector pointing 
+	//      near by point from the center of the image patch. We here denote T(rdelta,tdelta)T(rnew, tnew)M and T(rdelta,tdelta)T(rnew, tnew)U as Mc and Uc respectively.
+
+	// calculating dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
+	calc_dR0t0Rtdrt(JRtrt0, pRnew, ptnew);
+
+	// calculating dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
+	calc_dR0t0Rtdrt(JRtrt0acc, pRacc, ptacc);
+
+	// For each point patches, photometric error and the Jacobian is calculated.
+	// Note: In this model tracker I assume that pixels near by a projected object point are at 
+	//      the same depth as the point in camera coordinate. (I call this as planer point aproximation.)
+	//      Image patches around 2D points in the previous frame matched to the object points are sampled 
+	//      and given as an argument of this function. The image patches are assumed to have same depth 
+	//      as the point centered at the image patches. Then we need to calculate the projection of the image
+	//      patches to the current frame; this is given as mnew in the following loop. Moreover, we need
+	//      to calculate the Jacobian dm/dMc, where m is the projected point and Mc is a point in the 
+	//      camera coordinate, evaluated at Mcnew a point in the camera coordinate projected into mnew.
+	int ieq = 0;
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		Pssd[ipt] = 0.0;
+
+		if(!valid[ipt])
+			continue;
+
+		Mat & Patch = Ppyr[ipt][ilv];
+		uchar * pPatch = Patch.ptr<uchar>();
+
+		sx = Patch.cols;
+		sy = Patch.rows;
+		ox = (double) sx / 2.;
+		oy = (double) sy / 2.;
+
+		// Calculating  dMc/dT(rdelta,tdelta) dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) as Jmcrt0
+		// dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) is calculated as JRtrt0 before entering the loop.
+		calcJMcrt0_SE3(JMcrt0, Mo[ipt], JRtrt0);
+
+		Point3f U, Uc, Mcnew;
+		Point2f mnew;
+		U.z = 0.;
+
+		float z_old = Mcold[ipt].z;
+		float fx_iz_old = (float)(fx / z_old);
+		float fy_iz_old = (float)(fy / z_old);
+		float ifx_z_old = (float)(z_old * ifx);
+		float ify_z_old = (float)(z_old * ify);
+		for(int u = 0; u < sx; u++){
+			for(int v = 0; v < sy; v++){
+				U.x = (float)((u - ox) * ifx_z_old);
+				U.y = (float)((v - oy) * ify_z_old);
+
+				// Calculating dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta)
+				//    T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) is calculated as JRtrt0acc previously.
+				calcJMcrt0_SE3(JMcrt0acc, U, JRtrt0acc);
+
+				// Now the dMc/d(rdelta,tdelta) is given as the summation of JMcrt0 and JMcrt0acc.
+				//    Here I add JMcrt0 to JMcrt0acc because we need to preserve the value of JMcrt0 through the loop.
+				JMcrt0acc += JMcrt0;
+				double * pJMcrt0acc = JMcrt0acc.ptr<double>();
+
+				trnPt(U, Uc, pRacc, ptacc);
+
+				// We assume U does not have z component, 
+				// proj(Mcnew) is simply the addition of m[ipt] and proj(Uc)
+				mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
+				mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
+				Mcnew.x = Uc.x + Mc[ipt].x;
+				Mcnew.y = Uc.y + Mc[ipt].y;
+				Mcnew.z = Uc.z + Mc[ipt].z;
+
+				{ // error checking. Projected Mcnew should be the same as mnew. 
+					Point2f mnew2;
+					prjPt(Mcnew, mnew2, fx, fy, cx, cy);
+					if(fabs(mnew2.x - mnew.x) > 0.01 || fabs(mnew2.y - mnew.y) > 0.01){
+						cerr << "Something wrong in calculating Jacobian." << endl;
+					}
+				}
+
+				// Calculating dI/dm dm/dMc dMc/d(rdelta,tdelta) 
+				//     Note that dMc/d(rdelta,tdelta) is afore mentioned JMcrt0acc.
+				//     This is the final product for a pixel in a point patch.
+				calcJI(
+					sampleBL(pIx, w, h,  mnew.x, mnew.y),
+					sampleBL(pIy, w, h,  mnew.x, mnew.y),
+					Mcnew, fx, fy, pJMcrt0acc, pJ + ieq * 6);
+
+				// Calculating photometric error in this pixel. From current frame, 
+				// mnew is the point projected from (u, v) in the image patch.
+				pE[ieq] = (double)((int) sampleBL(pI, w, h,  mnew.x, mnew.y) 
+					- (int) *(pPatch + u + v * sx));
+
+				// I use L2 norm
+				pE[ieq] *= pE[ieq]; //L2 norm
+
+				Pssd[ipt] += pE[ieq];
+				ieq++;
+			}
+		}
+	}
+
+	// calculating JtJ and JtE
+	double * pJtJ = _JtJ->data.db;
+	double * pJtErr = _JtErr->data.db;
+	calcAtA(pJ, neq, 6, pJtJ);
+	calcAtV(pJ, pE, neq, 6, pJtErr);
+}
+
+void ModelTrack::reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
+	double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+	vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid)
+{
+	// This block is almost same as the above other than the calcuration of the Jacobian is omitted.
+
+	int ieq = 0;
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		Pssd[ipt] = 0.0;
+
+		if(!valid[ipt])
+			continue;
+
+		Mat & Patch = Ppyr[ipt][ilv];
+		uchar * pPatch = Patch.ptr<uchar>();
+
+		sx = Patch.cols;
+		sy = Patch.rows;
+		ox = (double) sx / 2.;
+		oy = (double) sy / 2.;
+
+		Point3f U, Uc;
+		Point2f mnew;
+		U.z = 0.;
+
+		float z_old = Mcold[ipt].z;
+		float fx_iz_old = (float)(fx / z_old);
+		float fy_iz_old = (float)(fy / z_old);
+		float ifx_z_old = (float)(z_old * ifx);
+		float ify_z_old = (float)(z_old * ify);
+		for(int u = 0; u < sx; u++){
+			for(int v = 0; v < sy; v++){
+				U.x = (float)((u - ox) * ifx_z_old);
+				U.y = (float)((v - oy) * ify_z_old);
+
+				trnPt(U, Uc, pRacctmp, ptacctmp);
+				mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
+				mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
+
+				pE[ieq] = (double)((int) sampleBL(pI, w, h, mnew.x, mnew.y) 
+					- (int) *(pPatch + u + v * sx));
+				pE[ieq] *= pE[ieq]; //L2 norm
+				Pssd[ipt] += pE[ieq];
+				ieq++;
+			}
+		}
+	}
+}
+
 
 /////////////////////////////////////////////////////////////////////// extracting Euler angles from Rotation matrix
 void angleRxyz(double * R, double & x, double & y, double &z)
