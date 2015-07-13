@@ -66,6 +66,8 @@ inline double rerr(double a, double b){
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking 
+#define DEBUG_MODELTRACK
+
 // 1. set initial parameter p = (r, t), and transformation T(p) 
 // 2. calculate point matching error, jacobian, hessian inverse, and delta_p  
 // 3. set new transformation T(p) = T(delta_p)T(p)
@@ -1081,4 +1083,7 @@ inline unsigned char h2i(char h){
 	i = h - 'A' + 10;
 	return i;
 }
+
+void layoutPyramid(vector<Mat> & IPyr, Mat & out);
+void cnv64FC1to8UC1(Mat & in, Mat & out);
 #endif

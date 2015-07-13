@@ -2394,3 +2394,44 @@ bool afn(Mat & A, Point2f & pt_in, Point2f & pt_out)
 	pt_out.y = (float)(pt_in.x * ptr[0] + pt_in.y * ptr[1] + ptr[2]);
 	return true;
 }
+
+void layoutPyramid(vector<Mat> & IPyr, Mat & out)
+{
+	int lvs = (int) IPyr.size();
+	out = Mat::zeros(IPyr[0].rows, IPyr[0].cols * 2 + lvs, IPyr[0].type());
+	int icol = 0;
+	for(int ilv = 0; ilv < lvs; ilv++){
+		IPyr[ilv].copyTo(out(Range(0, IPyr[ilv].rows), Range(icol, icol + IPyr[ilv].cols)));
+		icol += IPyr[ilv].cols;
+	}
+}
+
+void cnv64FC1to8UC1(Mat & in, Mat & out)
+{
+	if(in.type() != CV_64FC1){
+		out = Mat();
+		return;
+	}
+
+	double * p = in.ptr<double>();
+
+	MatIterator_<double> itr = in.begin<double>();
+	const MatIterator_<double> itr_end = in.end<double>();
+
+	double vmin = DBL_MAX, vmax = 0;
+
+	for(;itr != itr_end; itr++){
+		vmin = min(*itr, vmin);
+		vmax = max(*itr, vmax);
+	}
+
+	double ivabs = 1.0 / (vmax - vmin);
+
+	out = Mat::zeros(in.rows, in.cols, CV_8UC1);
+
+	MatIterator_<uchar> itru = out.begin<uchar>();
+	itr = in.begin<double>();
+	for(;itr != itr_end; itr++, itru++){
+		*itru = saturate_cast<uchar>(ivabs* (*itr - vmin));
+	}
+}
