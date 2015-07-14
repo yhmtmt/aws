@@ -212,7 +212,7 @@ void s_model::proj(vector<Point2f> & pt2ds,  Mat & cam_int, Mat & cam_dist, Mat 
 	Mat rvec, tvec;
 	composeRT(rvec_cam, tvec_cam, rvec_obj, tvec_obj, rvec, tvec);
 	//projectPoints(pts, rvec, tvec, cam_int, cam_dist, pt2ds);
-	awsProjPts(pts, pt2ds, cam_int, cam_dist, rvec, tvec);
+	prjPts(pts, pt2ds, cam_int, cam_dist, rvec, tvec);
 }
 
 bool s_model::load(const char * afname)
@@ -792,9 +792,9 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 		// jacobian 
 		// rows: 2N 
 		// cols: r, t, f, c, k
-		if(!test_awsProjPtsj(camint, camdist, rvec, tvec, pmdl->pts_deformed,
+		if(!test_prjPtsj(camint, camdist, rvec, tvec, pmdl->pts_deformed,
 			visible, jacobian, fix_aspect_ratio ? 1.0 : 0.0)){
-			cerr << "Jacobian calculated by awsProjPts may be wrong." << endl;
+			cerr << "Jacobian calculated by prjPts may be wrong." << endl;
 		}
 
 		calc_ssd();
@@ -802,7 +802,7 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 		jterr = jacobian.t() * err;
 	}else{
 	//	projectPoints(pmdl->pts_deformed, rvec, tvec, camint, camdist, pt2dprj);
-		awsProjPts(pmdl->pts_deformed, pt2dprj, camint, camdist, rvec, tvec);
+		prjPts(pmdl->pts_deformed, pt2dprj, camint, camdist, rvec, tvec);
 		calc_ssd();
 	}
 
@@ -852,7 +852,7 @@ void s_obj::render_axis(Mat & rvec_cam, Mat & tvec_cam, Mat & cam_int, Mat & cam
 	p3d[3].z = fac; // pt3d[3] is z axis
 
 //	projectPoints(p3d, rvec_cam, tvec_cam, cam_int, cam_dist, p2d);
-	awsProjPts(p3d, p2d, cam_int, cam_dist, rvec_cam, tvec_cam);
+	prjPts(p3d, p2d, cam_int, cam_dist, rvec_cam, tvec_cam);
 	pline->Begin();
 	D3DXVECTOR2 v[2];
 	D3DCOLOR color;
@@ -904,7 +904,7 @@ void s_obj::render_vector(Point3f & vec,
 	Mat rvec_comp, tvec_comp;
 	composeRT(rvec_cam, tvec_cam, rvec, tvec, rvec_comp, tvec_comp);
 	//projectPoints(vec3d, rvec_comp, tvec_comp, cam_int, cam_dist, vec2d);
-	awsProjPts(vec3d, vec2d, cam_int, cam_dist, rvec_comp, tvec_comp);
+	prjPts(vec3d, vec2d, cam_int, cam_dist, rvec_comp, tvec_comp);
 	pline->Begin();
 	D3DCOLOR color = D3DCOLOR_RGBA(255, 255, 255, 255);
 
@@ -1020,10 +1020,7 @@ bool s_frame::init(const long long atfrm,
 					miss_tracks++;
 				}
 				afn(Warp, pt_prev, pt);
-			}
-			
-			//cout << pt_prev << endl;
-			//cout << pt << endl;
+			}			
 		}
 		tmpl.clear();
 	}
@@ -1053,15 +1050,13 @@ bool s_frame::init(const long long atfrm,
 	// tracking points
 	miss_tracks = 0;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
-		vector<Point2f> & pt2d = objs[iobj]->pt2d;
-		vector<int> & visible = objs[iobj]->visible;
-		vector<Mat> & tmpl = objs_prev[iobj]->ptx_tmpl;
 		if(pmdlTrck){
-			pmdlTrck->align(impyr, objs[iobj]->pmdl->pts_deformed, visible,
-				tmpl, camint, objs[iobj]->R, objs[iobj]->tvec, pt2d);
+			pmdlTrck->align(impyr, objs[iobj]->pmdl->pts_deformed, objs[iobj]->visible,
+				objs_prev[iobj]->ptx_tmpl, camint, objs[iobj]->R, objs[iobj]->tvec, objs[iobj]->pt2d, miss_tracks);
 		}
-		tmpl.clear();
+		objs_prev[iobj]->ptx_tmpl.clear();
 	}
+
 	return true;
 }
 
@@ -1192,11 +1187,11 @@ const char * f_inspector::m_str_view[EV_FREE + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_sz_vtx_smpl(128, 128), m_miss_tracks(0), m_wt(EWT_TRN),
-	m_lvpyr(2), m_sig_gb(3.0),m_bauto_load_fobj(false), m_bauto_save_fobj(false),
-	m_bundistort(false), m_bcam_tbl_loaded(false), m_cur_camtbl(-1),
-	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false), m_bcalib_fix_principal_point(false),
-	m_bcalib_fix_aspect_ratio(false),
+	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_btrack_obj_3d(true), m_sz_vtx_smpl(128, 128), 
+	m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),m_bauto_load_fobj(false),
+	m_bauto_save_fobj(false), m_bundistort(false), m_bcam_tbl_loaded(false), m_cur_camtbl(-1),
+	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false),
+	m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false),
 	m_bcalib_zero_tangent_dist(true), m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false),
 	/*m_cur_frm(-1),*/ m_int_cyc_kfrm(30), m_cur_campar(0), m_cur_model(-1), m_depth_min(0.5), m_depth_max(1.5), 
@@ -1234,6 +1229,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	register_fpar("szpty", &m_sz_vtx_smpl.height, "Vertical size of a point template.");
 	register_fpar("miss_tracks", &m_miss_tracks, "Miss tracking counts of the points.");
 	register_fpar("track", &m_btrack_obj, "Flag enables inter frame object tracking.");
+	register_fpar("track3d", &m_btrack_obj_3d, "Flag enables 3D model tracking.");
 
 	// Key frame related parameter
 	register_fpar("ldkf", &m_bald_kfrms, "Flag auto loading key frames");
@@ -1373,7 +1369,10 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 		}else if(m_pfrm){ // if previous frame is not null, initialize new frame with previous frame
 			// frame tracking
 			if(m_btrack_obj)
-				pfrm_new->init(timg, m_pfrm, NULL, m_impyr, &m_ia, m_miss_tracks);
+				if(m_btrack_obj_3d)
+					pfrm_new->init(timg, m_pfrm, m_impyr, &m_mdlTrck, m_miss_tracks);
+				else
+					pfrm_new->init(timg, m_pfrm, NULL, m_impyr, &m_ia, m_miss_tracks);
 			else
 				pfrm_new->init(timg, m_cam_int, m_cam_dist);
 		}else{ 
@@ -1393,98 +1392,6 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 	m_pfrm = pfrm_new;
 
 	return true;
-
-	/*
-	if(m_cur_frm >= 0){
-		if(is_equal(m_img, img)){
-			cout << "Same frame with previous frame." << endl;
-		}
-
-		// save current frame object
-		if(m_bauto_save_fobj){
-			if(!m_pfrm->save(m_name)){
-				cerr << "Failed to save filter objects in time " << m_pfrm->tfrm << "." << endl;
-			}
-		}
-
-		// if the next frame object is in the m_fobjs, we do not insert the new object
-		if(m_pfrm->tfrm < timg){ // for larger time
-			m_cur_frm++;
-			for(;  m_cur_frm < m_fobjs.size(); m_cur_frm++){
-				long long tfrm = m_pfrm->tfrm;
-				if(tfrm == timg){
-					bfound = true;
-					break;
-				}else if(tfrm > timg){
-					break;
-				}
-			}
-		}else{ // for smaller time 
-			m_cur_frm--;
-			for(; m_cur_frm >= 0; m_cur_frm--){
-				long long tfrm = m_pfrm->tfrm;
-				if(tfrm == timg){
-					bfound = true;
-					break;
-				}else if(tfrm < timg){
-					m_cur_frm++;
-					break;
-				}
-			}
-		}
-	}else{
-		m_cur_frm = 0;
-	}
-
-	if(!bfound){
-		// new frame object added
-		m_fobjs.insert(m_fobjs.begin() + m_cur_frm, new s_frame);
-		if(m_pfrm == NULL){
-			cerr << "Cannot allocate memory for frame object" << endl;
-			return false;
-		}
-
-		m_cam_int.copyTo(m_pfrm->camint);
-		m_cam_dist.copyTo(m_pfrm->camdist);
-
-		if(m_bauto_load_fobj && m_pfrm->load(m_name, timg, m_models)){
-			if (!m_pfrm->camint.empty())
-				m_pfrm->camint.copyTo(m_cam_int);
-			if (!m_pfrm->camdist.empty())
-				m_pfrm->camdist.copyTo(m_cam_dist);
-		}else if(m_btrack_obj){
-			// determining reference frame.
-			int iref_prev = m_cur_frm - 1;
-			int iref_next = m_cur_frm + 1;
-
-			if(iref_next < m_fobjs.size()){
-				if(iref_prev >= 0)
-					m_pfrm->init(timg, m_fobjs[iref_prev], m_fobjs[iref_next], m_impyr, &m_ia, m_miss_tracks);
-				else
-					m_pfrm->init(timg, m_fobjs[iref_next], NULL, m_impyr, &m_ia, m_miss_tracks);
-			}else{
-				if(iref_prev >= 0)
-					m_pfrm->init(timg, m_fobjs[iref_prev], NULL, m_impyr, &m_ia, m_miss_tracks);
-			}
-			if (!m_pfrm->camint.empty())
-				m_pfrm->camint.copyTo(m_cam_int);
-			if (!m_pfrm->camdist.empty())
-				m_pfrm->camdist.copyTo(m_cam_dist);
-		}
-
-		m_cur_obj = (int) m_pfrm->objs.size() - 1;
-		if (m_cur_obj >= 0)
-			m_cur_point = (int)m_pfrm->objs[m_cur_obj]->pt2d.size() - 1;
-		else
-			m_cur_point = 0;
-	}
-
-	// update time and image.
-	m_timg = timg;
-	m_img = img;
-
-	return true;
-	*/
 }
 
 bool f_inspector::proc()
@@ -2579,7 +2486,7 @@ void f_inspector::renderScene()
 				// relative rotation matrix (here Rorg is the transpose of the rotation matrix of the current object
 			}
 			
-			awsProjPts(objs[iobj]->pmdl->pts, pts, m_cam_int, m_cam_dist, rvec, tvec);
+			prjPts(objs[iobj]->pmdl->pts, pts, m_cam_int, m_cam_dist, rvec, tvec);
 			if(m_cur_obj == iobj)
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 0, -1);	
 			else
@@ -2685,7 +2592,7 @@ void f_inspector::renderCampar()
 	//projectPoints(pt3d, Mat::zeros(3, 1, CV_64FC1), Mat::zeros(3, 1, CV_64FC1), m_cam_int, m_cam_dist, pt2d);
 	double R[9] = {1,0,0, 0,1,0, 0,0,1};
 	double t[3] = {0, 0, 0};
-	awsProjPts(pt3d, pt2d, fx, fy, cx, cy, m_cam_dist.ptr<double>(), R, t);
+	prjPts(pt3d, pt2d, fx, fy, cx, cy, m_cam_dist.ptr<double>(), R, t);
 
 	D3DXVECTOR2 v[2];
 	m_pline->Begin();

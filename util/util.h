@@ -114,7 +114,6 @@ private:
 	vector<vector<Mat>> Ppyr;
 	vector<double> Pssd;
 
-
 	Mat JRtrt0, JRtrt0acc;
 	Mat JMcrt0, JMcrt0acc;
 	Mat J, E;
@@ -125,14 +124,22 @@ private:
 	Mat dxr, dxc, dyr, dyc; 
 
 	void reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
-	double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
-	vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid, 
-	vector<Point3f> & Mc, double * pIx, double * pIy, double * pJ, CvMat * _JtJ, CvMat * _JtErr);
+		double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+		vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid, 
+		vector<Point3f> & Mc, double * pIx, double * pIy, double * pJ, CvMat * _JtJ, CvMat * _JtErr);
 
 	void reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
-	double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
-	vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid);
+		double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+		vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid);
 
+	// debug method
+	// saves reprojected area 
+#ifdef DEBUG_MODELTRACK
+	char fsmpl[128];
+	vector<vector<Mat>> Pyrsmpl;
+	vector<vector<Mat>> Pyrsmplx;
+	vector<vector<Mat>> Pyrsmply;
+#endif
 public:
 	ModelTrack()
 	{
@@ -1084,6 +1091,6 @@ inline unsigned char h2i(char h){
 	return i;
 }
 
-void layoutPyramid(vector<Mat> & IPyr, Mat & out);
-void cnv64FC1to8UC1(Mat & in, Mat & out);
+void layoutPyramid(const vector<Mat> & IPyr, Mat & out);
+void cnv64FC1to8UC1(const Mat & in, Mat & out);
 #endif

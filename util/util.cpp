@@ -199,6 +199,9 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 
 	// for every point patches, pyramids are built.
 	for(int ipt = 0; ipt < P.size(); ipt++){
+		if(!valid[ipt]){
+			continue;
+		}
 		buildPyramid(P[ipt], Ppyr[ipt], (int) Ipyr.size() - 1);
 	}
 
@@ -207,6 +210,44 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 		sepFilter2D(Ipyr, dIpyrdx[ilv], CV_64F, dxr, dxc);
 		sepFilter2D(Ipyr, dIpyrdy[ilv], CV_64F, dyr, dyc);
 	}
+
+#ifdef DEBUG_MODELTRACK
+	Mat img;
+	Mat out;
+	char buf[128]; 
+
+	layoutPyramid(dIpyrdx, img);
+	cnv64FC1to8UC1(img, out);
+	imwrite("dIpyrdx.png", out);
+
+	layoutPyramid(dIpyrdy, img);
+	cnv64FC1to8UC1(img, out);
+	imwrite("dIpyrdy.png", out);
+
+	layoutPyramid(Ipyr, out);
+	imwrite("dIpyrdy.png", out);
+	
+	Pyrsmpl.resize(Mo.size());
+	Pyrsmplx.resize(Mo.size());
+	Pyrsmply.resize(Mo.size());
+
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		if(!valid[ipt])
+			continue;
+		layoutPyramid(Ppyr[ipt], out);
+		snprintf(buf, "Ppyr%03d.png", ipt);
+		imwrite(buf, out);
+		Pyrsmpl[ipt].resize(Ipyr.size());
+		Pyrsmplx[ipt].resize(Ipyr.size());
+		Pyrsmply[ipt].resize(Ipyr.size());
+		for(int ilv = 0; ilv < Ipyr.size(); ilv++){
+			int sy = Ppyr[ipt][ilv].rows, sx = Ppyr[ipt][ilv].cols;
+			Pyrsmpl[ipt][ilv] = Mat::zeros(sy, sx, CV_8UC1);
+			Pyrsmplx[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
+			Pyrsmplx[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
+		}
+	}
+#endif
 
 	// Preparing previous frame's model points in camera's coordinate
 	vector<Point3f> Mcold, Mc;
@@ -263,7 +304,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 		//    for storing the pointer pointing to the data memory.
 		const CvMat * _param = NULL;
 		double * param = NULL;
-
+		int itr = 0;
 		// LM iteration.
 		while(1){
 			double * errNorm = NULL;
@@ -302,6 +343,30 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 				reprj(ilv, pI, w, h, sx, sy, ox, oy, fx, fy,
 					ifx, ify, cx, cy, Mo, Mcold, m, neq, pE, valid,
 					Mc, pIx, pIy, pJ, _JtJ, _JtErr);
+				itr++;
+#ifdef DEBUG_MODELTRACK
+				for(int ipt = 0; ipt < Mo.size(); ipt++){
+					if(!valid[ipt])
+						continue;
+
+					Mat out;
+					layoutPyramid(Pyrsmpl[ipt], out);
+					sprintf(buf, "Pyrsmpl_lv%02d_pt%02d_itr%02d.png", ilv, ipt, itr);
+					imwrite(buf, out);
+
+					Mat tmp;
+					layoutPyramid(Pyrsmplx[ipt], tmp);
+					cnv64FC1to8UC1(tmp, out);
+					sprintf(buf, "Pyrsmplx_lv%02d_pt%02d_itr%02d.png", ilv, ipt, itr);
+					imwrite(buf, out);
+
+					layoutPyramid(Pyrsmply[ipt], tmp);
+					cnv64FC1to8UC1(tmp, out);
+					sprintf(buf, "Pyrsmply_lv%02d_pt%02d_itr%02d.png", ilv, ipt, itr);
+					imwrite(buf, out);
+				}
+#endif
+
 			}else{ // calculate only error.
 				reprjNoJ(ilv, pI, w, h, sx, sy, ox, oy, fx, fy,
 					ifx, ify, cx, cy, Mo, Mcold, m, neq, pE, valid);
@@ -314,8 +379,56 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 				*errNorm = sqrt(ssd);
 			}
 		}
+
+#ifdef DEBUG_MODELTRACK
+		for(int ipt = 0; ipt < Mo.size(); ipt++){
+			if(!valid[ipt])
+				continue;
+
+			Mat out;
+			layoutPyramid(Pyrsmpl[ipt], out);
+			sprintf(buf, "Pyrsmpl_lv%02d_pt%02d.png", ilv, ipt);
+			imwrite(buf, out);
+
+			Mat tmp;
+			layoutPyramid(Pyrsmplx[ipt], tmp);
+			cnv64FC1to8UC1(tmp, out);
+			sprintf(buf, "Pyrsmplx_lv%02d_pt%02d.png", ilv, ipt);
+			imwrite(buf, out);
+
+			layoutPyramid(Pyrsmply[ipt], tmp);
+			cnv64FC1to8UC1(tmp, out);
+			sprintf(buf, "Pyrsmply_lv%02d_pt%02d.png", ilv, ipt);
+			imwrite(buf, out);
+		}
+#endif
 	}
 
+#ifdef DEBUG_MODELTRACK
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		if(!valid[ipt])
+			continue;
+
+		Mat out;
+		layoutPyramid(Pyrsmpl[ipt], out);
+		sprintf(buf, "Pyrsmpl_pt%02d.png", ipt);
+		imwrite(buf, out);
+
+		Mat tmp;
+		layoutPyramid(Pyrsmplx[ipt], tmp);
+		cnv64FC1to8UC1(tmp, out);
+		sprintf(buf, "Pyrsmplx_pt%02d.png", ipt);
+		imwrite(buf, out);
+
+		layoutPyramid(Pyrsmply[ipt], tmp);
+		cnv64FC1to8UC1(tmp, out);
+		sprintf(buf, "Pyrsmply_pt%02d.png", ipt);
+		imwrite(buf, out);
+	}
+#endif
+
+	// Evaluating alignment errors of point patches. If the errors are over 90% of the maximum, the virtices are 
+	// invalidated.
 	double avg_err = 0.;
 	double max_err = 0.;
 	double min_err = DBL_MAX;
@@ -402,7 +515,13 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 		sy = Patch.rows;
 		ox = (double) sx / 2.;
 		oy = (double) sy / 2.;
-
+#ifdef DEBUG_MODELTRACK
+		Pyrsmpl[ipt][ilv] = Mat::zeros(sy, sx, CV_8UC1);
+		Pyrsmplx[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
+		Pyrsmply[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);		
+		double * px = Pyrsmplx[ipt][ilv].ptr<double>(), * py = Pyrsmply[ipt][ilv].ptr<double>();
+		uchar * pu = Pyrsmpl[ipt][ilv].ptr<uchar>();
+#endif
 		// Calculating  dMc/dT(rdelta,tdelta) dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) as Jmcrt0
 		// dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) is calculated as JRtrt0 before entering the loop.
 		calcJMcrt0_SE3(JMcrt0, Mo[ipt], JRtrt0);
@@ -410,7 +529,6 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 		Point3f U, Uc, Mcnew;
 		Point2f mnew;
 		U.z = 0.;
-
 		float z_old = Mcold[ipt].z;
 		float fx_iz_old = (float)(fx / z_old);
 		float fy_iz_old = (float)(fy / z_old);
@@ -433,7 +551,7 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 				trnPt(U, Uc, pRacc, ptacc);
 
 				// We assume U does not have z component, 
-				// proj(Mcnew) is simply the addition of m[ipt] and proj(Uc)
+				// proj(Mcnew) is simply the addition of m[ipt] and proj(Uc) 
 				mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
 				mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
 				Mcnew.x = Uc.x + Mc[ipt].x;
@@ -451,20 +569,29 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 				// Calculating dI/dm dm/dMc dMc/d(rdelta,tdelta) 
 				//     Note that dMc/d(rdelta,tdelta) is afore mentioned JMcrt0acc.
 				//     This is the final product for a pixel in a point patch.
+				double dx, dy;
+				dx = sampleBL(pIx, w, h,  mnew.x, mnew.y);
+				dy = sampleBL(pIy, w, h,  mnew.x, mnew.y); 
 				calcJI(
-					sampleBL(pIx, w, h,  mnew.x, mnew.y),
-					sampleBL(pIy, w, h,  mnew.x, mnew.y),
+					dx, dy,
 					Mcnew, fx, fy, pJMcrt0acc, pJ + ieq * 6);
 
 				// Calculating photometric error in this pixel. From current frame, 
 				// mnew is the point projected from (u, v) in the image patch.
-				pE[ieq] = (double)((int) sampleBL(pI, w, h,  mnew.x, mnew.y) 
-					- (int) *(pPatch + u + v * sx));
+				uchar u = sampleBL(pI, w, h,  mnew.x, mnew.y);
+				pE[ieq] = (double)((int) u - (int) *(pPatch + u + v * sx));
 
 				// I use L2 norm
 				pE[ieq] *= pE[ieq]; //L2 norm
 
 				Pssd[ipt] += pE[ieq];
+
+#ifdef DEBUG_MODELTRACK
+				pu[u + v * sx] = u;
+				px[u + v * sx] = dx;
+				py[u + v * sx] = dy;
+#endif
+
 				ieq++;
 			}
 		}
@@ -2395,7 +2522,7 @@ bool afn(Mat & A, Point2f & pt_in, Point2f & pt_out)
 	return true;
 }
 
-void layoutPyramid(vector<Mat> & IPyr, Mat & out)
+void layoutPyramid(const vector<Mat> & IPyr, Mat & out)
 {
 	int lvs = (int) IPyr.size();
 	out = Mat::zeros(IPyr[0].rows, IPyr[0].cols * 2 + lvs, IPyr[0].type());
@@ -2406,17 +2533,16 @@ void layoutPyramid(vector<Mat> & IPyr, Mat & out)
 	}
 }
 
-void cnv64FC1to8UC1(Mat & in, Mat & out)
+void cnv64FC1to8UC1(const Mat & in, Mat & out)
 {
 	if(in.type() != CV_64FC1){
 		out = Mat();
 		return;
 	}
 
-	double * p = in.ptr<double>();
 
-	MatIterator_<double> itr = in.begin<double>();
-	const MatIterator_<double> itr_end = in.end<double>();
+	MatConstIterator_<double> itr = in.begin<double>();
+	MatConstIterator_<double> itr_end = in.end<double>();
 
 	double vmin = DBL_MAX, vmax = 0;
 

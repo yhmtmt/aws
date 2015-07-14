@@ -408,6 +408,8 @@ private:
 
 	// Tracking module
 	bool m_btrack_obj;
+	bool m_btrack_obj_3d;
+
 	e_warp_type m_wt;
 	c_imgalign m_ia;
 	ModelTrack m_mdlTrck;
@@ -446,7 +448,7 @@ private:
 	} m_sop;
 
 	static const char * m_str_sop[SOP_AWSCMD + 1];
-
+	
 	void handle_sop_delete();
 	void handle_sop_save();
 	void handle_sop_load();
