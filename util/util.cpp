@@ -207,8 +207,8 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 
 	// for every pyramid level, the derivatives are calcurated.
 	for(int ilv = 0; ilv < Ipyr.size(); ilv++){
-		sepFilter2D(Ipyr, dIpyrdx[ilv], CV_64F, dxr, dxc);
-		sepFilter2D(Ipyr, dIpyrdy[ilv], CV_64F, dyr, dyc);
+		sepFilter2D(Ipyr[ilv], dIpyrdx[ilv], CV_64F, dxr, dxc);
+		sepFilter2D(Ipyr[ilv], dIpyrdy[ilv], CV_64F, dyr, dyc);
 	}
 
 #ifdef DEBUG_MODELTRACK
@@ -296,7 +296,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 		double * pE = E.ptr<double>();
 
 		// Initialize LM solver.
-		solver.initEx(6, neq, tc);
+		solver.initEx(6, 0, tc);
 		memset((void*) solver.param->data.db, 0, sizeof(double) * 6);
 
 		// _param is the parameter update obtained by calling CvLevMarqEx::updateAltEx
@@ -333,7 +333,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 
 			// Calculating new transformation and projection
 			trnPts(Mo, Mc, valid, Rnew, tnew);
-			prjPts(Mc, m, valid, camint);
+			prjPts(Mc, m, valid, fx, fy, cx, cy);
 
 			double ssd = 0.;
 			if(updateJ){
@@ -1603,6 +1603,24 @@ void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const vector<int>
 	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
 		cx = camint.at<double>(0,2), cy = camint.at<double>(1,2);
 
+	for(int i = 0; i < Mcam.size(); i++){
+		if(!valid[i])
+			continue;
+
+		double x = Mcam[i].x;
+		double y = Mcam[i].y;
+		double z = Mcam[i].z;
+		z = z ? 1./z : 1;
+		x *= z; y *= z;
+		
+		m[i].x = (float)(x * fx + cx);
+		m[i].y = (float)(y * fy + cy);
+	}
+}
+
+void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const vector<int> & valid, 
+	const double fx, const double fy, const double cx, const double cy)
+{
 	for(int i = 0; i < Mcam.size(); i++){
 		if(!valid[i])
 			continue;

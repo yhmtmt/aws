@@ -792,6 +792,8 @@ void s_obj::proj(Mat & camint, Mat & camdist, bool bjacobian, bool fix_aspect_ra
 		// jacobian 
 		// rows: 2N 
 		// cols: r, t, f, c, k
+		Rodrigues(rvec, R);
+
 		if(!test_prjPtsj(camint, camdist, rvec, tvec, pmdl->pts_deformed,
 			visible, jacobian, fix_aspect_ratio ? 1.0 : 0.0)){
 			cerr << "Jacobian calculated by prjPts may be wrong." << endl;
@@ -1051,6 +1053,7 @@ bool s_frame::init(const long long atfrm,
 	miss_tracks = 0;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		if(pmdlTrck){
+			objs[iobj]->calc_part_deformation();
 			pmdlTrck->align(impyr, objs[iobj]->pmdl->pts_deformed, objs[iobj]->visible,
 				objs_prev[iobj]->ptx_tmpl, camint, objs[iobj]->R, objs[iobj]->tvec, objs[iobj]->pt2d, miss_tracks);
 		}

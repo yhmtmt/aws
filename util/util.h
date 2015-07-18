@@ -793,6 +793,8 @@ void prjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & 
 		double * jr, double * jt);
 
 void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const vector<int> & valid, const Mat & camint);
+void prjPts(const vector<Point3f> & M, vector<Point2f> & m, const vector<int> & valid,
+		const double fx, const double fy, const double cx, const double cy);
 
 bool test_prjPtsj(Mat & camint, Mat & camdist, Mat & rvec, Mat & tvec, 
 	vector<Point3f> & pt3d, vector<int> & valid, Mat & jacobian, double arf = 0.0);
