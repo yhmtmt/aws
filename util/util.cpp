@@ -527,7 +527,7 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 		calcJMcrt0_SE3(JMcrt0, Mo[ipt], JRtrt0);
 
 		Point3f U, Uc, Mcnew;
-		Point2f mnew;
+		Point2f mnew, morg = m[ipt];
 		U.z = 0.;
 		float z_old = Mcold[ipt].z;
 		float fx_iz_old = (float)(fx / z_old);
@@ -552,8 +552,8 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 
 				// We assume U does not have z component, 
 				// proj(Mcnew) is simply the addition of m[ipt] and proj(Uc) 
-				mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
-				mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
+				mnew.x = (float)(morg.x + Uc.x * fx_iz_old);
+				mnew.y = (float)(morg.y + Uc.y * fy_iz_old);
 				Mcnew.x = Uc.x + Mc[ipt].x;
 				Mcnew.y = Uc.y + Mc[ipt].y;
 				Mcnew.z = Uc.z + Mc[ipt].z;
@@ -626,7 +626,7 @@ void ModelTrack::reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int s
 		oy = (double) sy / 2.;
 
 		Point3f U, Uc;
-		Point2f mnew;
+		Point2f mnew, morg = m[ipt];;
 		U.z = 0.;
 
 		float z_old = Mcold[ipt].z;
@@ -640,8 +640,8 @@ void ModelTrack::reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int s
 				U.y = (float)((v - oy) * ify_z_old);
 
 				trnPt(U, Uc, pRacctmp, ptacctmp);
-				mnew.x = (float)(m[ipt].x + Uc.x * fx_iz_old + cx);
-				mnew.y = (float)(m[ipt].y + Uc.y * fy_iz_old + cy);
+				mnew.x = (float)(morg.x + Uc.x * fx_iz_old);
+				mnew.y = (float)(morg.y + Uc.y * fy_iz_old);
 
 				pE[ieq] = (double)((int) sampleBL(pI, w, h, mnew.x, mnew.y) 
 					- (int) *(pPatch + u + v * sx));
