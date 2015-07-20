@@ -508,16 +508,13 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 		}
 	}
 #endif
-	// Jacobian to be calculated is dI/dm dm/dMc dMc/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
-	// Calcurating dMc/d(rdelta,tdelta) = 
-	//               [ dT(rdelta,tdelta)T(rnew, tnew)M/dT(rdelta,tdelta)T(rnew, tnew)  dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta)
-	//                   + dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) ]
-	//      for each object point, 
-	//      where U is the Zcold [u, v, 0]^t, Zcold is the depth of the point in the previous frame, (u, v) is the 2D vector pointing 
-	//      near by point from the center of the image patch. We here denote T(rdelta,tdelta)T(rnew, tnew)M and T(rdelta,tdelta)T(rnew, tnew)U as Mc and Uc respectively.
-
-	// calculating dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
-	calc_dR0t0Rtdrt(JRtrt0, pRnew, ptnew);
+	// Jacobian to be calculated is dI/dm dm/dU dU/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
+	// Calcurating dU/d(rdelta,tdelta) = 
+	//                   dT(rdelta,tdelta)T(racc, tacc)U/dT(rdelta,tdelta)T(racc, tacc) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta)
+	// 
+	//		where U = T(racc, tacc) Uold, and Uold is Zcold [ (x + u - cx) / fx, (y + v - cx) / fy, 1]
+	//		(u, v) is the vector such that -0.5sx < u < 0.5sx, -0.5 < v < 0.5 sy
+	//		Note that Uold is in the camera coordinate at the previous frame, and U is in that of the current frame.
 
 	// calculating dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
 	calc_dR0t0Rtdrt(JRtrt0acc, pRacc, ptacc);
@@ -556,47 +553,27 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 		// dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) is calculated as JRtrt0 before entering the loop.
 		calcJMcrt0_SE3(JMcrt0, Mo[ipt], JRtrt0);
 
-		Point3f U, Uc, Mcnew;
+		Point3f U, Uold;
 		Point2f mnew, morg = m[ipt];
-		U.z = 0.;
+		
 		float z_old = Mcold[ipt].z;
-		float fx_iz_old = (float)(fx / z_old);
-		float fy_iz_old = (float)(fy / z_old);
 		float ifx_z_old = (float)(z_old * ifx);
 		float ify_z_old = (float)(z_old * ify);
 		for(int u = 0; u < sx; u++){
 			for(int v = 0; v < sy; v++){
-				U.x = (float)((u - ox) * ifx_z_old);
-				U.y = (float)((v - oy) * ify_z_old);
+				Uold.x = (float)((morg.x + u - ox - cx) * ifx_z_old);
+				Uold.y = (float)((morg.y + v - oy - cy) * ify_z_old);
+				Uold.z = z_old;
 
 				// Calculating dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta)
 				//    T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) is calculated as JRtrt0acc previously.
-				calcJMcrt0_SE3(JMcrt0acc, U, JRtrt0acc);
+				calcJMcrt0_SE3(JMcrt0acc, Uold, JRtrt0acc);
 
-				// Now the dMc/d(rdelta,tdelta) is given as the summation of JMcrt0 and JMcrt0acc.
-				//    Here I add JMcrt0 to JMcrt0acc because we need to preserve the value of JMcrt0 through the loop.
-				JMcrt0acc += JMcrt0;
-				double * pJMcrt0acc = JMcrt0acc.ptr<double>();
+				// U = T(racc, tacc) Uold
+				trnPt(Uold, U, pRacc, ptacc);
 
-				trnPt(U, Uc, pRacc, ptacc);
-
-				// We assume U does not have z component, 
-				// proj(Mcnew) is simply the addition of m[ipt] and proj(Uc) 
-				mnew.x = (float)(morg.x + Uc.x * fx_iz_old);
-				mnew.y = (float)(morg.y + Uc.y * fy_iz_old);
-				Mcnew.x = Uc.x + Mc[ipt].x;
-				Mcnew.y = Uc.y + Mc[ipt].y;
-				Mcnew.z = Uc.z + Mc[ipt].z;
-
-#ifdef DEBUG_MODELTRACK
-				{ // error checking. Projected Mcnew should be the same as mnew. 
-					Point2f mnew2;
-					prjPt(Mcnew, mnew2, fx, fy, cx, cy);
-					if(fabs(mnew2.x - mnew.x) > 0.01 || fabs(mnew2.y - mnew.y) > 0.01){
-						cerr << "Something wrong in calculating Jacobian." << endl;
-					}
-				}
-#endif
+				mnew.x = (float)(U.x * fx / U.z);
+				mnew.y = (float)(U.y * fy / U.z);
 
 				// Calculating dI/dm dm/dMc dMc/d(rdelta,tdelta) 
 				//     Note that dMc/d(rdelta,tdelta) is afore mentioned JMcrt0acc.
@@ -606,7 +583,7 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 				dy = sampleBL(pIy, w, h,  mnew.x, mnew.y); 
 				calcJI(
 					dx, dy,
-					Mcnew, fx, fy, pJMcrt0acc, pJ + ieq * 6);
+					U, fx, fy, JMcrt0acc.ptr<double>(), pJ + ieq * 6);
 
 				// Calculating photometric error in this pixel. From current frame, 
 				// mnew is the point projected from (u, v) in the image patch.
@@ -631,7 +608,6 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 				px[u + v * sx] = dx;
 				py[u + v * sx] = dy;
 #endif
-
 				ieq++;
 			}
 		}
@@ -665,23 +641,24 @@ void ModelTrack::reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int s
 		ox = (double) sx / 2.;
 		oy = (double) sy / 2.;
 
-		Point3f U, Uc;
+		Point3f U, Uold;
 		Point2f mnew, morg = m[ipt];;
 		U.z = 0.;
 
 		float z_old = Mcold[ipt].z;
-		float fx_iz_old = (float)(fx / z_old);
-		float fy_iz_old = (float)(fy / z_old);
 		float ifx_z_old = (float)(z_old * ifx);
 		float ify_z_old = (float)(z_old * ify);
 		for(int u = 0; u < sx; u++){
 			for(int v = 0; v < sy; v++){
-				U.x = (float)((u - ox) * ifx_z_old);
-				U.y = (float)((v - oy) * ify_z_old);
+				Uold.x = (float)((morg.x + u - ox - cx) * ifx_z_old);
+				Uold.y = (float)((morg.y + v - oy - cy) * ify_z_old);
+				Uold.z = z_old;
 
-				trnPt(U, Uc, pRacctmp, ptacctmp);
-				mnew.x = (float)(morg.x + Uc.x * fx_iz_old);
-				mnew.y = (float)(morg.y + Uc.y * fy_iz_old);
+				trnPt(Uold, U, pRacctmp, ptacctmp);
+
+				mnew.x = (float)(U.x * fx / U.z);
+				mnew.y = (float)(U.y * fy / U.z);
+
 				uchar vpix;
 				if(mnew.x < w && mnew.x >= 0 && mnew.y < h && mnew.y >= 0)
 					vpix = sampleBL(pI, w, h, mnew.x, mnew.y);
