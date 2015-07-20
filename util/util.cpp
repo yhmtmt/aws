@@ -212,6 +212,9 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 	}
 
 #ifdef DEBUG_MODELTRACK
+	cout << "Starting model tracking" << endl;
+	cout << "Rinit = " << endl << R << endl;
+	cout << "tinit = " << endl << t << endl;
 	Mat img;
 	Mat out;
 	char buf[128]; 
@@ -225,7 +228,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 	imwrite("dIpyrdy.png", out);
 
 	layoutPyramid(Ipyr, out);
-	imwrite("dIpyrdy.png", out);
+	imwrite("Ipyr.png", out);
 	
 	Pyrsmpl.resize(Mo.size());
 	Pyrsmplx.resize(Mo.size());
@@ -244,7 +247,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 			int sy = Ppyr[ipt][ilv].rows, sx = Ppyr[ipt][ilv].cols;
 			Pyrsmpl[ipt][ilv] = Mat::zeros(sy, sx, CV_8UC1);
 			Pyrsmplx[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
-			Pyrsmplx[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
+			Pyrsmply[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
 		}
 	}
 #endif
@@ -332,9 +335,19 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 			compRt(pRdelta, ptdelta, pRacc, ptacc, pRacctmp, ptacctmp);
 
 			// Calculating new transformation and projection
-			trnPts(Mo, Mc, valid, Rnew, tnew);
+			trnPts(Mo, Mc, valid, Rtmp, ttmp);
 			prjPts(Mc, m, valid, fx, fy, cx, cy);
 
+#ifdef DEBUG_MODELTRACK
+			cout << itr << "th iteration." << endl;
+			cout << "Update Jacobian" << (updateJ ? "yes":"no") << endl;
+			cout << "Rdelta = " << endl << Rdelta << endl;
+			cout << "tdelta = " << endl << tdelta << endl;
+			cout << "Racctmp = " << endl << Racctmp << endl;
+			cout << "tacctmp = " << endl << tacctmp << endl;
+			cout << "Rtmp = " << endl << Rtmp << endl;
+			cout << "ttmp = " << endl << ttmp << endl;
+#endif
 			double ssd = 0.;
 			if(updateJ){
 				// resetting parameters. 
@@ -478,6 +491,23 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 	Racctmp.copyTo(Racc);
 	tacctmp.copyTo(tacc);
 
+#ifdef DEBUG_MODELTRACK
+	{
+		Mat Rnew2 = Rnew.clone(), tnew2 = tnew.clone();
+		double * pRnew2 = Rnew2.ptr<double>(), * ptnew2 = tnew2.ptr<double>();
+
+		compRt(pRacc, ptacc, Rini.ptr<double>(), tini.ptr<double>(), pRnew2, ptnew2);
+		for(int i = 0; i < 9; i++){
+			if(rerr(pRnew2[i], pRnew[i]) > 0.01)
+				cerr << i << "th element of Rotation is wrong." << endl;
+		}
+
+		for(int i = 0; i < 3; i++){
+			if(rerr(ptnew2[i], ptnew[i]) > 0.01)
+				cerr << i << "th element of translation is wrong." << endl;
+		}
+	}
+#endif
 	// Jacobian to be calculated is dI/dm dm/dMc dMc/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
 	// Calcurating dMc/d(rdelta,tdelta) = 
 	//               [ dT(rdelta,tdelta)T(rnew, tnew)M/dT(rdelta,tdelta)T(rnew, tnew)  dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta)
@@ -558,6 +588,7 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 				Mcnew.y = Uc.y + Mc[ipt].y;
 				Mcnew.z = Uc.z + Mc[ipt].z;
 
+#ifdef DEBUG_MODELTRACK
 				{ // error checking. Projected Mcnew should be the same as mnew. 
 					Point2f mnew2;
 					prjPt(Mcnew, mnew2, fx, fy, cx, cy);
@@ -565,6 +596,7 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 						cerr << "Something wrong in calculating Jacobian." << endl;
 					}
 				}
+#endif
 
 				// Calculating dI/dm dm/dMc dMc/d(rdelta,tdelta) 
 				//     Note that dMc/d(rdelta,tdelta) is afore mentioned JMcrt0acc.
@@ -578,8 +610,16 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 
 				// Calculating photometric error in this pixel. From current frame, 
 				// mnew is the point projected from (u, v) in the image patch.
-				uchar u = sampleBL(pI, w, h,  mnew.x, mnew.y);
-				pE[ieq] = (double)((int) u - (int) *(pPatch + u + v * sx));
+				uchar vpix;
+				if(mnew.x < w && mnew.x >= 0 && mnew.y < h && mnew.y >= 0)
+					vpix = sampleBL(pI, w, h, mnew.x, mnew.y);
+				else{
+					vpix = 0;
+#ifdef DEBUG_MODELTRACK
+					cerr << "The projected pixel is out of image." << endl;
+#endif
+				}
+				pE[ieq] = (double)((int) vpix - (int) *(pPatch + u + v * sx));
 
 				// I use L2 norm
 				pE[ieq] *= pE[ieq]; //L2 norm
@@ -587,7 +627,7 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 				Pssd[ipt] += pE[ieq];
 
 #ifdef DEBUG_MODELTRACK
-				pu[u + v * sx] = u;
+				pu[u + v * sx] = vpix;
 				px[u + v * sx] = dx;
 				py[u + v * sx] = dy;
 #endif
@@ -642,8 +682,16 @@ void ModelTrack::reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int s
 				trnPt(U, Uc, pRacctmp, ptacctmp);
 				mnew.x = (float)(morg.x + Uc.x * fx_iz_old);
 				mnew.y = (float)(morg.y + Uc.y * fy_iz_old);
-
-				pE[ieq] = (double)((int) sampleBL(pI, w, h, mnew.x, mnew.y) 
+				uchar vpix;
+				if(mnew.x < w && mnew.x >= 0 && mnew.y < h && mnew.y >= 0)
+					vpix = sampleBL(pI, w, h, mnew.x, mnew.y);
+				else{
+					vpix = 0;
+#ifdef DEBUG_MODELTRACK
+					cerr << "The projected pixel is out of image." << endl;
+#endif
+				}
+				pE[ieq] = (double)((int) vpix 
 					- (int) *(pPatch + u + v * sx));
 				pE[ieq] *= pE[ieq]; //L2 norm
 				Pssd[ipt] += pE[ieq];
@@ -2557,7 +2605,6 @@ void cnv64FC1to8UC1(const Mat & in, Mat & out)
 		out = Mat();
 		return;
 	}
-
 
 	MatConstIterator_<double> itr = in.begin<double>();
 	MatConstIterator_<double> itr_end = in.end<double>();
