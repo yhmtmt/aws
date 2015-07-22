@@ -114,8 +114,8 @@ private:
 	vector<vector<Mat>> Ppyr;
 	vector<double> Pssd;
 
-	Mat JRtrt0, JRtrt0acc;
-	Mat JMcrt0, JMcrt0acc;
+	Mat JRtrt0acc;
+	Mat JUrt0acc;
 	Mat J, E;
 
 	// Differential filter kernel.
@@ -1013,8 +1013,9 @@ inline void compRt(const double * R1, const double * t1,
 		}
 
 		int idx1 = i * 3;
+		t3[i] = 0.;
 		for(int k = 0; k < 3; k++, idx1++){
-			t3[i] = t2[k] * R1[idx1];
+			t3[i] += t2[k] * R1[idx1];
 		}
 		t3[i] += t1[i];
 	}

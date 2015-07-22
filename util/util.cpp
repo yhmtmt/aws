@@ -542,6 +542,7 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 		sy = Patch.rows;
 		ox = (double) sx / 2.;
 		oy = (double) sy / 2.;
+
 #ifdef DEBUG_MODELTRACK
 		Pyrsmpl[ipt][ilv] = Mat::zeros(sy, sx, CV_8UC1);
 		Pyrsmplx[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
@@ -549,9 +550,6 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 		double * px = Pyrsmplx[ipt][ilv].ptr<double>(), * py = Pyrsmply[ipt][ilv].ptr<double>();
 		uchar * pu = Pyrsmpl[ipt][ilv].ptr<uchar>();
 #endif
-		// Calculating  dMc/dT(rdelta,tdelta) dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) as Jmcrt0
-		// dT(rdelta,tdelta)T(rnew, tnew)/d(rdelta,tdelta) is calculated as JRtrt0 before entering the loop.
-		calcJMcrt0_SE3(JMcrt0, Mo[ipt], JRtrt0);
 
 		Point3f U, Uold;
 		Point2f mnew, morg = m[ipt];
@@ -567,35 +565,42 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 
 				// Calculating dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta)
 				//    T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) is calculated as JRtrt0acc previously.
-				calcJMcrt0_SE3(JMcrt0acc, Uold, JRtrt0acc);
+				calcJMcrt0_SE3(JUrt0acc, Uold, JRtrt0acc);
 
 				// U = T(racc, tacc) Uold
 				trnPt(Uold, U, pRacc, ptacc);
 
-				mnew.x = (float)(U.x * fx / U.z);
-				mnew.y = (float)(U.y * fy / U.z);
+				{
+					double iUz = 1.0 / U.z;
+					mnew.x = (float)(U.x * fx * iUz + cx);
+					mnew.y = (float)(U.y * fy * iUz + cy);
+				}
 
-				// Calculating dI/dm dm/dMc dMc/d(rdelta,tdelta) 
-				//     Note that dMc/d(rdelta,tdelta) is afore mentioned JMcrt0acc.
-				//     This is the final product for a pixel in a point patch.
 				double dx, dy;
-				dx = sampleBL(pIx, w, h,  mnew.x, mnew.y);
-				dy = sampleBL(pIy, w, h,  mnew.x, mnew.y); 
-				calcJI(
-					dx, dy,
-					U, fx, fy, JMcrt0acc.ptr<double>(), pJ + ieq * 6);
-
-				// Calculating photometric error in this pixel. From current frame, 
-				// mnew is the point projected from (u, v) in the image patch.
 				uchar vpix;
-				if(mnew.x < w && mnew.x >= 0 && mnew.y < h && mnew.y >= 0)
+
+				if(mnew.x < w && mnew.x >= 0 && mnew.y < h && mnew.y >= 0){
+					dx = sampleBL(pIx, w, h,  mnew.x, mnew.y);
+					dy = sampleBL(pIy, w, h,  mnew.x, mnew.y); 
 					vpix = sampleBL(pI, w, h, mnew.x, mnew.y);
-				else{
+				}else{
 					vpix = 0;
+					dx = 0.;
+					dy = 0.;
 #ifdef DEBUG_MODELTRACK
 					cerr << "The projected pixel is out of image." << endl;
 #endif
 				}
+
+				// Calculating dI/dm dm/dU dU/d(rdelta,tdelta) 
+				//     Note that dMc/d(rdelta,tdelta) is afore mentioned JMcrt0acc.
+				//     This is the final product for a pixel in a point patch.
+				calcJI(
+					dx, dy,
+					U, fx, fy, JUrt0acc.ptr<double>(), pJ + ieq * 6);
+
+				// Calculating photometric error in this pixel. From current frame, 
+				// mnew is the point projected from (u, v) in the image patch.
 				pE[ieq] = (double)((int) vpix - (int) *(pPatch + u + v * sx));
 
 				// I use L2 norm
@@ -656,8 +661,11 @@ void ModelTrack::reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int s
 
 				trnPt(Uold, U, pRacctmp, ptacctmp);
 
-				mnew.x = (float)(U.x * fx / U.z);
-				mnew.y = (float)(U.y * fy / U.z);
+				{
+					double iUz = 1.0 / U.z;
+					mnew.x = (float)(U.x * fx * iUz + cx);
+					mnew.y = (float)(U.y * fy * iUz + cy);
+				}
 
 				uchar vpix;
 				if(mnew.x < w && mnew.x >= 0 && mnew.y < h && mnew.y >= 0)
@@ -668,6 +676,7 @@ void ModelTrack::reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int s
 					cerr << "The projected pixel is out of image." << endl;
 #endif
 				}
+
 				pE[ieq] = (double)((int) vpix 
 					- (int) *(pPatch + u + v * sx));
 				pE[ieq] *= pE[ieq]; //L2 norm
