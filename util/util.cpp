@@ -530,6 +530,7 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 		}
 	}
 #endif
+
 	// For each point patches, photometric error and the Jacobian is calculated.
 	// Note: In this model tracker I assume that pixels near by a projected object point are at 
 	//      the same depth as the point in camera coordinate. (I call this as planer point aproximation.)
@@ -2567,13 +2568,15 @@ void calcn_dR0t0Rtdrt(Mat & J, double * R, double * t)
 		r1.ptr<double>()[i] = DIFF_STEP;
 		exp_so3(r1.ptr<double>(), R1.ptr<double>());		
 		compRt(R1.ptr<double>(), t1.ptr<double>(), R, t, R3_d.ptr<double>(), t3_d.ptr<double>());
+		
 		R3_d -= R3_0;
 		t3_d -= t3_0;
 		
 		int idx = i;
 		double * pR = R3_d.ptr<double>();
-		for(int j = 0; j < 9; j++, idx += 6){
-			p[idx] = pR[j * 3 + i] * IDIFF_STEP;
+		for(int j = 0; j < 3; j++){
+			for(int k = 0; k < 3; k++, idx += 6)
+				p[idx] = pR[k * 3 + j] * IDIFF_STEP;
 		}
 
 		double * pt = t3_d.ptr<double>();
@@ -2595,10 +2598,11 @@ void calcn_dR0t0Rtdrt(Mat & J, double * R, double * t)
 		t3_d -= t3_0;
 
 		// Actually, we don't need to calculate R3_d. Because it should always be zero here.
-		int idx = i;
+		int idx = i + 3;
 		double * pR = R3_d.ptr<double>();
-		for(int j = 0; j < 9; j++, idx += 6){
-			p[idx] = pR[j * 3 + i] * IDIFF_STEP;
+		for(int j = 0; j < 3; j++){
+			for(int k = 0; k < 3; k++, idx += 6)
+				p[idx] = pR[k * 3 + j] * IDIFF_STEP;
 		}
 
 		// Actually, we don't need to calculate it, because it should always be an identity matrix.
