@@ -883,6 +883,11 @@ inline void calc_dR0t0Rtdrt(Mat & J, double * R = NULL, double * t = NULL)
 	p[71] = 1.;
 }
 
+// numerical version of calc_dR0t0Rtdrt. Forward difference approximation is used.
+#define DIFF_STEP 1e-8
+#define IDIFF_STEP (1. / DIFF_STEP)
+
+void calcn_dR0t0Rtdrt(Mat & J, double * R = NULL, double * t = NULL);
 
 // Calculate dM/d(r, t) using chain rule.
 // assuming JT (dT/d(r,t)) is calcurated with calcJT0_SE3 defined above.

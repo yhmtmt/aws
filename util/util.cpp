@@ -2530,6 +2530,74 @@ void cnvBayerGB16ToBGR16(Mat & src, Mat & dst)
 	}
 }
 
+//////////////////////////////////////////////////////////////////////////////////////////////// Transform related jacobian
+void calcn_dR0t0Rtdrt(Mat & J, double * R, double * t)
+{
+	J = Mat::zeros(12, 6, CV_64FC1);
+	double * p = J.ptr<double>();
+
+	// First, the values at (r, t) = (0, 0) should be calculated.
+	Mat r1 = Mat::zeros(3, 1, CV_64FC1);
+	Mat R1 = Mat::zeros(3, 3, CV_64FC1);
+	Mat t1 = Mat::zeros(3, 1, CV_64FC1);
+
+	Mat R3_0 = Mat::zeros(3, 3, CV_64FC1);
+	Mat t3_0 = Mat::zeros(3, 1, CV_64FC1);
+
+	exp_so3(r1.ptr<double>(), R1.ptr<double>());
+	compRt(R1.ptr<double>(), t1.ptr<double>(), R, t, R3_0.ptr<double>(), t3_0.ptr<double>());
+
+	// Second, for each parameter, numerical difference is calculated.
+	Mat R3_d = Mat::zeros(3, 3, CV_64FC1);
+	Mat t3_d = Mat::zeros(3, 1, CV_64FC1);
+
+	// derivative in r_i
+	for(int i = 0; i < 3; i++){
+		r1.ptr<double>()[i] = DIFF_STEP;
+		exp_so3(r1.ptr<double>(), R1.ptr<double>());		
+		compRt(R1.ptr<double>(), t1.ptr<double>(), R, t, R3_d.ptr<double>(), t3_d.ptr<double>());
+		R3_d -= R3_0;
+		t3_d -= t3_0;
+		
+		int idx = i;
+		double * pR = R3_d.ptr<double>();
+		for(int j = 0; j < 9; j++, idx += 6){
+			p[idx] = pR[j * 3 + i] * IDIFF_STEP;
+		}
+
+		double * pt = t3_d.ptr<double>();
+		for(int j = 0; j < 3; j++, idx += 6){
+			p[idx] = pt[j] * IDIFF_STEP;
+		}
+
+		r1.ptr<double>()[i] = 0;
+	}
+
+	// derivative in t_i
+	for(int i = 0; i < 3; i++){
+		memcpy((void*)R3_d.ptr<double>(), (void*)R, sizeof(double) * 9);
+		memcpy(t3_d.ptr<double>(), (void*)t, sizeof(double) * 3);
+
+		t3_d.ptr<double>()[i] += DIFF_STEP;
+
+		R3_d -= R3_0; 
+		t3_d -= t3_0;
+
+		// Actually, we don't need to calculate R3_d. Because it should always be zero here.
+		int idx = i;
+		double * pR = R3_d.ptr<double>();
+		for(int j = 0; j < 9; j++, idx += 6){
+			p[idx] = pR[j * 3 + i] * IDIFF_STEP;
+		}
+
+		// Actually, we don't need to calculate it, because it should always be an identity matrix.
+		double * pt = t3_d.ptr<double>();
+		for(int j = 0; j < 3; j++, idx += 6){
+			p[idx] = pt[j] * IDIFF_STEP;
+		}	
+	}
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////// Miscellaneous 
 // Synthesize two affine trasformations
