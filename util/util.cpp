@@ -518,7 +518,18 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 
 	// calculating dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
 	calc_dR0t0Rtdrt(JRtrt0acc, pRacc, ptacc);
-
+#ifdef DEBUG_MODELTRACK
+	{
+		Mat JRtrt0acc2;
+		calcn_dR0t0Rtdrt(JRtrt0acc2, pRacc, ptacc);
+		double * p1 = JRtrt0acc.ptr<double>();
+		double * p2 = JRtrt0acc2.ptr<double>();
+		for(int i = 0; i < 6*12; i++){
+			if(rerr(p1[i], p2[i]) > 0.01)
+				cerr << "JRtrt0acc is erroneous in " << i << "th element." << endl;
+		}
+	}
+#endif
 	// For each point patches, photometric error and the Jacobian is calculated.
 	// Note: In this model tracker I assume that pixels near by a projected object point are at 
 	//      the same depth as the point in camera coordinate. (I call this as planer point aproximation.)
