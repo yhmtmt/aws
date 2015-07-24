@@ -254,6 +254,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 
 	// Preparing previous frame's model points in camera's coordinate
 	vector<Point3f> Mcold, Mc;
+
 	trnPts(Mo, Mcold, valid, R, t);
 	Mc.resize(Mcold.size());
 
@@ -262,7 +263,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 	int sx = 0, sy = 0;
 
 	///////// parameter optimization for each pyramid level.
-	for(int ilv = (int) Ipyr.size() - 1; ilv >= 0; ilv++){
+	for(int ilv = (int) Ipyr.size() - 1; ilv >= 0; ilv--){
 		const Mat & I = Ipyr[ilv];
 		Mat & Ix = dIpyrdx[ilv];
 		Mat & Iy = dIpyrdy[ilv];
@@ -390,6 +391,9 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 					ssd += Pssd[ipt];
 
 				*errNorm = sqrt(ssd);
+#ifdef DEBUG_MODETRACK
+				cout << "Error " << *errNorm << endl;
+#endif
 			}
 		}
 
@@ -566,13 +570,15 @@ void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, 
 		Point3f U, Uold;
 		Point2f mnew, morg = m[ipt];
 		
+		float x_old = Mcold[ipt].x;
+		float y_old = Mcold[ipt].y;
 		float z_old = Mcold[ipt].z;
 		float ifx_z_old = (float)(z_old * ifx);
 		float ify_z_old = (float)(z_old * ify);
 		for(int u = 0; u < sx; u++){
 			for(int v = 0; v < sy; v++){
-				Uold.x = (float)((morg.x + u - ox - cx) * ifx_z_old);
-				Uold.y = (float)((morg.y + v - oy - cy) * ify_z_old);
+				Uold.x = (float)(x_old + ((double) u - ox) * ifx_z_old);
+				Uold.y = (float)(y_old + ((double) v - oy) * ify_z_old);
 				Uold.z = z_old;
 
 				// Calculating dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta)
@@ -662,13 +668,15 @@ void ModelTrack::reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int s
 		Point2f mnew, morg = m[ipt];;
 		U.z = 0.;
 
+		float x_old = Mcold[ipt].x;
+		float y_old = Mcold[ipt].y;
 		float z_old = Mcold[ipt].z;
 		float ifx_z_old = (float)(z_old * ifx);
 		float ify_z_old = (float)(z_old * ify);
 		for(int u = 0; u < sx; u++){
 			for(int v = 0; v < sy; v++){
-				Uold.x = (float)((morg.x + u - ox - cx) * ifx_z_old);
-				Uold.y = (float)((morg.y + v - oy - cy) * ify_z_old);
+				Uold.x = (float)(x_old + ((double) u - ox) * ifx_z_old);
+				Uold.y = (float)(y_old + ((double) v - oy) * ify_z_old);
 				Uold.z = z_old;
 
 				trnPt(Uold, U, pRacctmp, ptacctmp);
