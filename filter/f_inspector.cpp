@@ -1005,7 +1005,7 @@ bool s_frame::init(const long long atfrm,
 				pt.y = (float)(fac * pt_prev.y + (1.0 - fac) * pt_next.y);
 			}
 
-			if(pia && tmpl.size() != 0){
+			if(pia && tmpl.size() != 0 && !tmpl[ipt].empty()){
 				//snprintf(buf, 128, "t%d.png", ipt);
 				//imwrite(buf, tmpl[ipt]);
 				buildPyramid(tmpl[ipt], tmplpyr, (int) impyr.size() - 1);
@@ -1190,7 +1190,7 @@ const char * f_inspector::m_str_view[EV_FREE + 1] = {
 };
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
-	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_btrack_obj_3d(true), m_sz_vtx_smpl(128, 128), 
+	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_btrack_obj_3d(false), m_sz_vtx_smpl(128, 128), 
 	m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),m_bauto_load_fobj(false),
 	m_bauto_save_fobj(false), m_bundistort(false), m_bcam_tbl_loaded(false), m_cur_camtbl(-1),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false),
@@ -1799,8 +1799,19 @@ void f_inspector::renderInfo()
 	int y = 0, x = 0;
 	if(m_bkfrm && m_sel_kfrm >= 0){
 		if(m_kfrms[m_sel_kfrm]){
-			snprintf(information, 1023, "AWS Time %s (Key Frame Time %lld) Adjust Step x%f", 
-				m_time_str, m_kfrms[m_sel_kfrm]->tfrm, (float) m_adj_step);
+			tmex tmkfrm;
+			gmtimeex(m_kfrms[m_sel_kfrm]->tfrm / MSEC + m_time_zone_minute * 60000, tmkfrm);
+			snprintf(information, 1023, "AWS Time %s (Key Frame Time %s %s %02d %02d:%02d:%02d.%03d %d) Adjust Step x%f", 
+				m_time_str, 		
+				getWeekStr(tmkfrm.tm_wday), 
+				getMonthStr(tmkfrm.tm_mon),
+				tmkfrm.tm_mday,
+				tmkfrm.tm_hour,
+				tmkfrm.tm_min,
+				tmkfrm.tm_sec,
+				tmkfrm.tm_msec,
+				tmkfrm.tm_year + 1900, 
+				(float) m_adj_step);
 		}else{
 			snprintf(information, 1023, "AWS Time %s (Key Frame Time NaN) Adjust Step x%f", 
 				m_time_str, (float) m_adj_step);
