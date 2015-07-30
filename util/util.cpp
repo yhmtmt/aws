@@ -194,8 +194,8 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 	// dIpyrdx and dIpyrdy is the derivative of the image pyramid Ipyr given as the argument.
 	vector<Mat> dIpyrdx;
 	vector<Mat> dIpyrdy;
-	dIpyrdx.resize(P.size());
-	dIpyrdy.resize(P.size());
+	dIpyrdx.resize(Ipyr.size());
+	dIpyrdy.resize(Ipyr.size());
 
 	// for every point patches, pyramids are built.
 	for(int ipt = 0; ipt < P.size(); ipt++){

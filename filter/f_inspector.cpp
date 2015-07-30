@@ -946,6 +946,31 @@ void s_obj::sample_tmpl(Mat & img, Size & sz)
 	}
 }
 
+void s_obj::sample_pt_tmpl(int ipt, Mat & img, Size & sz)
+{
+	int ox = sz.width >> 1;
+	int oy = sz.height >> 1;
+	Rect roi;
+	roi.width = sz.width;
+	roi.height = sz.height;
+
+	if(ptx_tmpl.size() != pt2d.size())
+		ptx_tmpl.resize(pt2d.size());
+
+	if(!visible[ipt])
+		return;
+	Point2f & pt = pt2d[ipt];
+
+	roi.x = (int)(pt.x + 0.5) - ox;
+	roi.y = (int)(pt.y + 0.5) - oy;
+	if(roi.x < 0 || roi.y < 0 || roi.x + roi.width >= img.cols || roi.y + roi.height >= img.rows){
+		visible[ipt] = false;
+		return;
+	}
+
+	img(roi).copyTo(ptx_tmpl[ipt]);
+}
+
 //////////////////////////////////////////////////////////////////// s_frame
 s_frame * s_frame::pool = NULL;
 
@@ -3888,6 +3913,7 @@ void f_inspector::assign_point2d()
 	s_obj & obj = *objs[m_cur_obj];
 	obj.pt2d[m_cur_point] = pt;
 	obj.visible[m_cur_point] = 1;
+	obj.sample_pt_tmpl(m_cur_point, m_img_gry_blur, m_sz_vtx_smpl);
 }
 
 void f_inspector::scroll_screen()
@@ -4753,6 +4779,7 @@ void f_inspector::handle_sop_det(){
 			if(pobj == NULL)
 				return;
 			vector<s_obj*> & objs = m_pfrm_int->objs;
+			pobj->sample_tmpl(m_img_gry_blur, m_sz_vtx_smpl);
 			objs.push_back(pobj);
 		}
 		m_sop = SOP_NULL;

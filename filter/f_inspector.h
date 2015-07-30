@@ -268,6 +268,7 @@ struct s_obj
 	}
 
 	void sample_tmpl(Mat & img, Size & sz); 
+	void sample_pt_tmpl(int ipt, Mat & img, Size & sz);
 	void free_tmpl(){
 		ptx_tmpl.clear();
 	}
