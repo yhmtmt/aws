@@ -87,6 +87,8 @@ struct s_part{
 ///////////////////////////////////////////////////////////////// s_model
 // s_model represents a 3D model tracked in the scene by f_inspector.
 // It contains points and edges, and their projection method.
+#define DEBUG_CHSBDDET
+
 struct s_obj;
 struct s_model
 {
@@ -325,6 +327,7 @@ struct s_frame{
 		for (int i = 0; i < objs.size(); i++)
 			delete objs[i];
 		objs.clear();
+		img.release();
 	}
 
 	bool init(const long long atfrm, s_frame * pfobj0, s_frame * pfobj1, 
@@ -350,7 +353,7 @@ struct s_frame{
 
 	void set_as_key(Mat & _img){
 		kfrm = true;
-		_img.copyTo(img);
+		img = _img.clone();
 	}
 
 	// memory pool for frame object
@@ -419,8 +422,12 @@ private:
 	Size m_sz_vtx_smpl;
 
 	// Rendering method for whole view
+#define DEBUG_IMALIGN
+	bool m_brender_grid;
+
 	void render(Mat & imgs);
 	void renderInfo();
+	void renderGrid();
 	void renderModelInfo(char * buf, int len, int & y);
 	void renderObjInfo(vector<s_obj*> & objs, char * buf, int len, int & y);
 	void renderPartsInfo(vector<s_obj*> & objs, char * buf, int len, int & y);
@@ -741,6 +748,7 @@ public:
 //  R: Reset Window
 //  h: help overlay mode enable
 //	k : Set as Key frame
+//  g : Show grid
 //  < : step backward
 //  > : step forward
 //  Up: parameter adjustment step up

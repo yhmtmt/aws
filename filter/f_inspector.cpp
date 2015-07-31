@@ -1216,6 +1216,7 @@ const char * f_inspector::m_str_view[EV_FREE + 1] = {
 
 f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_btrack_obj_3d(false), m_sz_vtx_smpl(128, 128), 
+	m_brender_grid(false),
 	m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),m_bauto_load_fobj(false),
 	m_bauto_save_fobj(false), m_bundistort(false), m_bcam_tbl_loaded(false), m_cur_camtbl(-1),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false),
@@ -1389,6 +1390,7 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 		pfrm_new = m_kfrms[next_kfrm];
 	}else{
 		pfrm_new = s_frame::alloc();
+		pfrm_new->img = m_img_s;
 
 		// new frame can be loaded from file
 		if(m_bauto_load_fobj && pfrm_new->load(m_name, timg, m_models)){
@@ -1762,6 +1764,9 @@ void f_inspector::render(Mat & imgs)
 	}else
 		renderObj(m_pfrm);
 
+	if(m_brender_grid)
+		renderGrid();
+
 	renderCampar();
 
 	m_maincam.ResetRenderTarget(m_pd3dev);
@@ -1910,6 +1915,32 @@ void f_inspector::renderInfo()
 		renderSceneInfo(information, 1023, y);
 		break;
 	}
+}
+
+void f_inspector::renderGrid()
+{
+	Point pt0, pt1, pt2, pt3;
+	pt0.x = pt1.x = (m_img_s.cols >> 1);
+	pt2.y = pt3.y = (m_img_s.rows >> 1);
+	pt0.y = pt2.y - 10;
+	pt1.y = pt2.y + 10;
+	pt2.x = pt0.x - 10;
+	pt3.x = pt0.x + 10;
+
+	D3DXVECTOR2 v[5];
+	m_pline->Begin();
+	v[0] = D3DXVECTOR2((float)(pt0.x), (float)(pt0.y));
+	v[1] = D3DXVECTOR2((float)(pt1.x), (float)(pt1.y));
+	m_pline->Draw(v, 2, D3DCOLOR_RGBA(255, 0, 0, 255));
+	v[0] = D3DXVECTOR2((float)(pt2.x), (float)(pt2.y));
+	v[1] = D3DXVECTOR2((float)(pt3.x), (float)(pt3.y));
+	m_pline->Draw(v, 2, D3DCOLOR_RGBA(255, 0, 0, 255));
+	m_pline->End();
+
+#ifdef DEBUG_IMALIGN
+	line(m_img_s, pt0, pt1, CV_RGB(0, 0, 255));
+	line(m_img_s, pt2, pt3, CV_RGB(0, 0, 255));
+#endif
 }
 
 // helper functions for renderInfo
@@ -4308,6 +4339,9 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 	case 'f':
 		handle_char_f();
 		break;
+	case 'g':
+		m_brender_grid = !m_brender_grid;
+		break;
 	case 's':
 		if(m_op == CAMTBL && m_pfrm_int){
 			if(m_cur_camtbl >= 0 && m_cur_camtbl < m_cam_int_tbl.size()){
@@ -4776,6 +4810,14 @@ void f_inspector::handle_sop_det(){
 			s_obj * pobj;
 			s_model * pmdl = m_models[m_cur_model];
 			pobj = pmdl->detect(m_img_gry);
+#ifdef DEBUG_CHSBDDET
+			if(pmdl->type == s_model::e_model_type::EMT_CHSBD && pobj){
+				Mat chsbd = m_img_s.clone();
+				drawChessboardCorners(chsbd, Size(pmdl->par_chsbd.w, pmdl->par_chsbd.h), pobj->pt2d, true);
+				imwrite("chsbd_det.png", chsbd);
+			}
+#endif
+
 			if(pobj == NULL)
 				return;
 			vector<s_obj*> & objs = m_pfrm_int->objs;
