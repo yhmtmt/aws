@@ -5,7 +5,7 @@ CC	= g++
 LD	= ld
 
 #debug option (y: build as debug binary)
-DEBUG = y
+#DEBUG = y
 
 #install Directory
 INST_DIR = ./bin
@@ -16,9 +16,9 @@ INST_DIR = ./bin
 ZYNQ	= n
 
 # cpu architecture (currently arm, x64, x86, WIN64)
-#CPU	= arm
+CPU	= arm
 #CPU	= x64
-CPU	= x86
+#CPU	= x86
 
 #operating system (currently only for LINUX)
 OS	= LINUX
@@ -50,11 +50,15 @@ CHANNEL = ch_base
 UTIL =  c_clock c_imgalign c_nmeadec c_ship coord util aws_serial aws_sock
 
 # listing include path 
-INC = -I/usr/local/include  -I$(CUR_DIR)/opencv/include 
+INC_CV_DIR = /usr/include
+INC = -I/usr/local/include  -I$(INC_CV_DIR) 
 
-LIB = -L$(CUR_DIR)/opencv/$(CPU)/lib -lrt -lpthread -lopencv_core -lopencv_contrib -lopencv_features2d -lopencv_imgproc -lopencv_imgproc -lopencv_calib3d -lopencv_ml  -lopencv_flann -lopencv_video -lopencv_legacy -lopencv_nonfree -lopencv_objdetect -lopencv_highgui -lopencv_photo -lopencv_gpu
+LIB_CV_DIR = /usr/lib
+#LIB = -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_core -lopencv_contrib -lopencv_features2d -lopencv_imgproc -lopencv_imgproc -lopencv_calib3d -lopencv_ml  -lopencv_flann -lopencv_video -lopencv_legacy -lopencv_nonfree -lopencv_objdetect -lopencv_highgui -lopencv_photo -lopencv_gpu
 
-LIB += -L$(CUR_DIR)/cminpack/$(OS)/$(CPU) -lcminpack
+LIB = -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_core -lopencv_contrib -lopencv_features2d -lopencv_imgproc -lopencv_imgproc -lopencv_calib3d -lopencv_ml  -lopencv_flann -lopencv_video -lopencv_legacy -lopencv_objdetect -lopencv_highgui -lopencv_photo -lopencv_gpu
+
+#LIB += -L$(CUR_DIR)/cminpack/$(OS)/$(CPU) -lcminpack
 
 # for x86 CPU architecture
 ifeq ($(CPU), x86)
@@ -88,9 +92,12 @@ ifeq ($(SANYO_HD5400),y)
 	DEFS += -DSANYO_HD5400
 endif
 
+INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
+LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
+
 ifeq ($(AVT_CAM),y)
-	INC += -I$(CUR_DIR)/PvAPI/include 
-	LIB += -L$(CUR_DIR)/PvAPI/bin/$(CPU) -lPvAPI
+	INC += -I$(INC_PVAPI_DIR) 
+	LIB += -L$(LIB_PVAPI_DIR) -lPvAPI
 	FILTER += f_avt_cam
 	DEFS += -DAVT_CAM
 endif

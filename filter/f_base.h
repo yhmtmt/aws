@@ -435,9 +435,9 @@ public:
 		st.wMilliseconds = m_tm.tm_msec;
 		SetLocalTime(&st);
 #else
-		timespect ts;
-		ts.ts_sec = m_cur_time / SEC;
-		ts.ts_nsec = (m_ruc_time - sec * ts.ts_sec) * 100;
+		timespec ts;
+		ts.tv_sec = m_cur_time / SEC;
+		ts.tv_nsec = (m_cur_time - SEC * ts.tv_sec) * 100;
 		clock_settime(CLOCK_REALTIME, &ts);
 #endif
 	}

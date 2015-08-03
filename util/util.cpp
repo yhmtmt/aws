@@ -238,7 +238,7 @@ bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vec
 		if(!valid[ipt])
 			continue;
 		layoutPyramid(Ppyr[ipt], out);
-		snprintf(buf, "Ppyr%03d.png", ipt);
+		sprintf(buf, "Ppyr%03d.png", ipt);
 		imwrite(buf, out);
 		Pyrsmpl[ipt].resize(Ipyr.size());
 		Pyrsmplx[ipt].resize(Ipyr.size());
