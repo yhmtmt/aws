@@ -15,7 +15,7 @@
 // along with f_avt_cam.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "stdafx.h"
-
+#ifdef AVT_CAM
 #include <cstdio>
 
 #include <iostream>
@@ -842,3 +842,4 @@ bool f_avt_cam::proc()
 	return true;
 }
 
+#endif

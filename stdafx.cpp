@@ -55,4 +55,6 @@
 #pragma comment(lib, "d2d1.lib")
 #endif
 
+#ifdef AVT_CAM
 #pragma comment(lib, "PvAPI.lib")
+#endif
