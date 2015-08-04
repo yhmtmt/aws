@@ -126,6 +126,12 @@ void ch_base::register_factory()
 #include "filter/f_ptz_window.h"
 #include "filter/f_inspector.h"
 #endif
+
+#ifdef GLFW_WINDOW
+#include <GLFW/glfw3.h>
+#include "filter/f_glfw_window.h"
+#endif
+
 #include "filter/f_nmea.h"
 #include "filter/f_shioji.h"
 #include "filter/f_ship_detector.h"
@@ -216,6 +222,10 @@ void f_base::register_factory()
 	register_factory<f_ptz_window>("ptzwin");
 	register_factory<f_inspector>("inspector");
 #endif
+#endif
+
+#ifdef GLFW_WINDOW
+	register_factory<f_glfw_window>("glwin");
 #endif
 	// video sources
 #ifdef SANYO_HD5400

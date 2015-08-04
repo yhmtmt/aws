@@ -58,3 +58,7 @@
 #ifdef AVT_CAM
 #pragma comment(lib, "PvAPI.lib")
 #endif
+
+#ifdef GLFW_WINDOW
+#pragma comment(lib, "glfw3dll.lib")
+#endif

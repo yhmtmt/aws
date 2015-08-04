@@ -1,0 +1,6 @@
+#!/bin/sh
+
+filter glwin win -i -o
+cyc 5 
+go
+
