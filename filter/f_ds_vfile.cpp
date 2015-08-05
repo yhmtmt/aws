@@ -370,6 +370,12 @@ bool f_ds_vfile::run(long long start_time, long long end_time)
 
 	m_bactive = true;
 	m_bstopped = false;
+	m_bactive = true;
+	m_bstopped = false;
+	m_count_proc =  0;	
+	m_max_cycle = 0;
+	m_cycle = 0;
+	m_count_pre = m_count_post = m_count_clock;
 
 	pthread_create(&m_fthread, NULL, fthread, (void*) this);
 	return true;

@@ -3,10 +3,10 @@
 channel imgc clr
 filter vfile video -i -o clr
 filter glimv win -i clr -o
-fset win width 1920 height 1080
+fset win width 1440 height 1080
 fset video file $1
 fset video abs_time "[Sun Jan 11 15:00:00.000 2015]"
 cyc 0.0344827
-
+online no
 go "[Sun Jan 11 15:00:00.000 2015]"
 

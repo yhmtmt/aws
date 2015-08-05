@@ -31,7 +31,18 @@ public:
 	f_glfw_window(const char * name);
 	virtual ~f_glfw_window();
 	
+	virtual bool is_main_thread()
+	{
+		return true;
+	}
+
 	virtual bool proc();
+
+	// glfw callbacks
+	static void err_cb(int e, const char * dsc)
+	{
+		fputs(dsc, stderr);
+	}
 };
 
 
@@ -41,17 +52,7 @@ protected:
 	ch_image * m_pin;
 	long long m_timg;
 
-	virtual bool init_run()
-	{
-		if(m_chin.size() == 0)
-			return false;
-
-		m_pin = dynamic_cast<ch_image*>(m_chin[0]);
-		if(m_pin == NULL)
-			return false;
-
-		return f_glfw_imview::init_run();
-	}
+	virtual bool init_run();
 
 public:
 	f_glfw_imview(const char * name): f_glfw_window(name), m_pin(NULL), m_timg(-1)

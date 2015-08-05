@@ -295,6 +295,8 @@ protected:
 	bool m_bactive; // if it is true, filter thread continues to loop
 	bool m_bstopped; //true indicates filter is stopped. 
 	// count number of proc() executed
+	long long m_count_pre, m_count_post;
+	int m_cycle;
 	long long m_count_proc;
 	double m_proc_rate;
 	int m_max_cycle;
@@ -348,7 +350,12 @@ public:
 
 		m_bactive = true;
 		m_bstopped = false;
-		pthread_create(&m_fthread, NULL, fthread, (void*) this);
+		m_count_proc =  0;	
+		m_max_cycle = 0;
+		m_cycle = 0;
+		m_count_pre = m_count_post = m_count_clock;
+		if(!is_main_thread())
+			pthread_create(&m_fthread, NULL, fthread, (void*) this);
 		return true;
 	}
 
@@ -356,7 +363,11 @@ public:
 	virtual bool stop()
 	{	
 		m_bactive= false;
-		if(m_bstopped){
+		if(m_bstopped || is_main_thread()){
+			cout << get_name() << " stopped." << endl;
+			cout << "Processing rate was " << m_proc_rate;
+			cout << "(" << m_count_proc << "/" << m_count_clock << ")" << endl;
+			cout << "Number of max cycles was " << m_max_cycle << endl;
 			destroy_run();
 			return true;
 		}
@@ -375,6 +386,16 @@ public:
 
 	bool is_pause(){
 		return m_time_diff == 0 && m_clk.is_pause();
+	}
+
+	// This is the function called in main thread when the filter should be executed in the main thread.
+	// The filter to be executed in main thread should return true for the call of is_main_thread().
+	// f_base::is_main_thread() returns false by default, please override it as you need.
+	void fthread();
+
+	virtual bool is_main_thread()
+	{
+		return false;
 	}
 
 	virtual bool proc() = 0;

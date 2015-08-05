@@ -60,5 +60,7 @@
 #endif
 
 #ifdef GLFW_WINDOW
+#pragma comment(lib, "OpenGL32.lib")
 #pragma comment(lib, "glfw3dll.lib")
+#pragma comment(lib, "glu32.lib")
 #endif

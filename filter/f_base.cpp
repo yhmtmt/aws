@@ -167,21 +167,40 @@ int f_base::m_err_head = 0;
 int f_base::m_err_tail = 0;
 pthread_mutex_t f_base::m_err_mtx;
 
+void f_base::fthread()
+{
+	if(m_cycle < m_intvl){
+		m_cycle++;
+		return;
+	}
+
+	if(m_bactive){		
+		tran_chout();
+		calc_time_diff();
+
+		if (!proc()){
+			m_bactive = false;
+		}
+
+		if(m_clk.is_run()){
+			m_count_proc++;
+			m_max_cycle = max(m_cycle, m_max_cycle);
+			m_proc_rate = (double)  m_count_proc / (double) m_count_clock;
+		}
+	}else{
+		m_bstopped = true;
+	}
+}
+
 void * f_base::fthread(void * ptr)
 {
 	f_base * filter = (f_base *) ptr;
-	filter->m_count_proc =  0;	
-	filter->m_max_cycle = 0;
-	long long count_pre, count_post;
-	int cycle;
-	cycle = 0;
-	count_pre = count_post = filter->m_count_clock;
 	while(filter->m_bactive){
-		count_pre = filter->m_count_clock;
+		filter->m_count_pre = filter->m_count_clock;
 		
-		while(cycle < (int) filter->m_intvl){
+		while(filter->m_cycle < (int) filter->m_intvl){
 			filter->clock_wait();
-			cycle++;
+			filter->m_cycle++;
 		}
 		filter->lock_cmd();
 		
@@ -194,10 +213,10 @@ void * f_base::fthread(void * ptr)
 
 		if(filter->m_clk.is_run()){
 			filter->m_count_proc++;
-			filter->m_max_cycle = max(cycle, filter->m_max_cycle);
-			count_post = filter->m_count_clock;
-			cycle = (int)(count_post - count_pre);
-			cycle -= filter->m_intvl;
+			filter->m_max_cycle = max(filter->m_cycle, filter->m_max_cycle);
+			filter->m_count_post = filter->m_count_clock;
+			filter->m_cycle = (int)(filter->m_count_post - filter->m_count_pre);
+			filter->m_cycle -= filter->m_intvl;
 			filter->m_proc_rate = (double)  filter->m_count_proc / (double) filter->m_count_clock;
 		}
 

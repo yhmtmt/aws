@@ -1058,6 +1058,8 @@ bool c_aws::main(){
 			// checking activity of filters. 
 			for(vector<f_base*>::iterator itr = m_filters.begin(); 
 				itr != m_filters.end(); itr++){
+					if((*itr)->is_main_thread())
+						(*itr)->fthread();
 				if(!(*itr)->is_active()){
 					cout << (*itr)->get_name() << " stopped." << endl;
 					f_base::m_clk.stop();
