@@ -226,6 +226,7 @@ void f_base::register_factory()
 
 #ifdef GLFW_WINDOW
 	register_factory<f_glfw_window>("glwin");
+	register_factory<f_glfw_imview>("glimv");
 #endif
 	// video sources
 #ifdef SANYO_HD5400

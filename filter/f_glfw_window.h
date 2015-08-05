@@ -17,6 +17,7 @@
 // along with f_glfw_window.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "f_base.h"
+#include "../channel/ch_image.h"
 
 class f_glfw_window: public f_base
 {
@@ -33,5 +34,34 @@ public:
 	virtual bool proc();
 };
 
+
+class f_glfw_imview: public f_glfw_window
+{
+protected:
+	ch_image * m_pin;
+	long long m_timg;
+
+	virtual bool init_run()
+	{
+		if(m_chin.size() == 0)
+			return false;
+
+		m_pin = dynamic_cast<ch_image*>(m_chin[0]);
+		if(m_pin == NULL)
+			return false;
+
+		return f_glfw_imview::init_run();
+	}
+
+public:
+	f_glfw_imview(const char * name): f_glfw_window(name), m_pin(NULL), m_timg(-1)
+	{
+	}
+	virtual ~f_glfw_imview()
+	{
+	}
+
+	virtual bool proc();
+};
 
 #endif

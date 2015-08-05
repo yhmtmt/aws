@@ -64,11 +64,42 @@ bool f_glfw_window::proc()
 	if(glfwWindowShouldClose(m_pwin))
 		return false;
 
+	glfwMakeContextCurrent(m_pwin);
+
+	// rendering codes >>>>>
+
+	// <<<<< rendering codes
+
 	glfwSwapBuffers(m_pwin);
 
 	glfwPollEvents();
 
 	return true;
+}
+
+
+//////////////////////////////////////////////////////// f_glfw_imview
+bool f_glfw_imview::proc()
+{
+	if(glfwWindowShouldClose(m_pwin))
+		return false;
+
+	long long timg;
+	Mat img = m_pin->get_img(timg);
+	if(m_timg == timg)
+		return true;
+	m_timg = timg;
+
+	glfwMakeContextCurrent(m_pwin);
+
+	// rendering codes >>>>>
+	glRasterPos2f(-1, 1);
+	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
+	// <<<<< rendering codes
+
+	glfwSwapBuffers(m_pwin);
+
+	glfwPollEvents();
 }
 
 #endif
