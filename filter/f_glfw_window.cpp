@@ -24,7 +24,11 @@ using namespace std;
 using namespace cv;
 
 #include <GLFW/glfw3.h>
+
+#ifdef _WIN32
 #include <Windows.h>
+#endif
+
 #include <gl/GLU.h>
 
 #include "f_glfw_window.h"
@@ -268,10 +272,6 @@ bool f_glfw_imview::proc()
 	glMatrixMode(matrixOld);
 	glClear(GL_DEPTH_BUFFER_BIT);
 	*/
-
-	glfwSwapBuffers(m_pwin);
-
-	glfwPollEvents();
 
 	return true;
 }
