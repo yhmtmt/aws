@@ -2,8 +2,12 @@
 
 channel imgr img
 filter uvcam cam -i -o img
-filter trnimg vtrn -i img -o
-fset vtrn qjpg 50
-cyc 0.03333
-
+filter glimv win -i img -o 
+fset win width 640 height 480
+#filter trnimg vtrn -i img -o
+#fset vtrn qjpg 50
+#filter imwrite iw -i img -o
+#fset iw type jpg
+#fset iw qjpg 20
+cyc 0.1
 go

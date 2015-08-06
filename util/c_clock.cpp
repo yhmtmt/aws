@@ -156,6 +156,8 @@ bool decTmStr(char * tmStr, tmex & tm)
 c_clock::c_clock(void):m_rate(1)
 #ifdef _WIN32
 	,m_token(NULL), m_offset(0), m_bonline(false), m_state(STOP)
+#else
+		      ,m_offset(0), m_bonline(false), m_state(STOP)
 #endif
 {
 }
@@ -197,9 +199,7 @@ bool c_clock::start(unsigned period, unsigned delay,
 		m_pclk->AdvisePeriodic(ts, (REFERENCE_TIME) period, m_sem, &m_token); 
 		
 #else 		
-		m_ts_period.tv_sec = period / SEC;
-		m_ts_period.tv_nsec = (period % SEC) * 100;
-		clock_gettime(CLOCK_REALTIME, &m_ts);
+		clock_gettime(CLOCK_REALTIME, &m_ts_start);
 #endif
 		m_tcur = offset;
 	}else if(m_state == RUN){
@@ -263,42 +263,38 @@ void c_clock::wait()
 	if(m_state == RUN)
 		m_tcur +=  (long long) m_rate * m_period;
 #else
-	timespec ts, ts_next, trem;
-	long long s, ns;
+	timespec ts, trem;
+	long long ttotal, tcur, tnext;	
 	clock_gettime(CLOCK_REALTIME, &ts);
-//	cout << "Cur" << ts.tv_sec << "sec" << ts.tv_nsec << "nsec" << endl;
 
-	ts_next.tv_sec = m_ts.tv_sec + m_ts_period.tv_sec;
-	ts_next.tv_nsec = m_ts.tv_nsec + m_ts_period.tv_nsec;
-	s = ts_next.tv_nsec / 1000000000;
-	ns = ts_next.tv_nsec - s * 1000000000;
-	ts_next.tv_sec += s;
-	ts_next.tv_nsec = ns;
-//	cout << "Next" << ts_next.tv_sec << "sec" << ts_next.tv_nsec << "nsec" << endl;
+	// calculating total time from the epoch in 100ns.
+	ttotal = (long long) ((ts.tv_sec - m_ts_start.tv_sec) * SEC) + 
+	  (long long)((ts.tv_nsec - m_ts_start.tv_nsec) / 100);
+ 
+	// then current time is the addition of the offset.
+	tcur = m_offset + (long long) m_rate * ttotal;
 
-	ts.tv_sec = ts_next.tv_sec - ts.tv_sec;
-	ts.tv_nsec = ts_next.tv_nsec - ts.tv_nsec;
-//	cout << "Wait" << ts.tv_sec << "sec" << ts.tv_nsec << "nsec" << endl;
+	// the next time should be a period ahead to previous time.
+	tnext = m_tcur + (long long) m_rate * m_period;
 
-	if(ts.tv_nsec < 0){
-		ts.tv_nsec += 1000000000;
-		ts.tv_sec -= 1;
-	}
-
-	s = ts.tv_nsec / 1000000000;
-	ns = ts.tv_nsec - s * 1000000000;
-//	cout << "s" << s << "ns" << ns << endl;
-	ts.tv_sec += s;
-	ts.tv_nsec = ns;
-//	cout << "Wait(Col)" << ts.tv_sec << "sec" << ts.tv_nsec << "nsec" << endl;
-
-	while(nanosleep(&ts, &trem)){
-		ts = trem;
-	}
-
-	m_ts = ts_next;
-	if(m_state == RUN){
-		m_tcur +=  (long long) m_rate * m_period;
+	//	cout << "ttotal " << ttotal << " tcur " << tcur << " tnext " << tnext << endl;
+	if(tcur >= tnext){
+	  // if current time is larger than the next time, 
+	  // current time is set at that calculated from ts 
+	  // obtained right above
+	  m_tcur = tcur;
+	}else{
+	  // if tnext is larger than the tcur, the difference 
+	  // is consumed here with the nanosleep. Then the current
+	  // time is set at tnext.
+	  long long tdiff = tnext - tcur;
+	  ts.tv_sec = tdiff / SEC;
+	  ts.tv_nsec = (tdiff - ts.tv_sec * SEC) * 100;
+	  //	  cout << "tdiff " << tdiff << endl;
+	  while(nanosleep(&ts, &trem)){
+	    ts = trem;
+	  }
+	  m_tcur = tnext;
 	}
 #endif
 }
