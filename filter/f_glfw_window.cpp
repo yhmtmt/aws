@@ -248,6 +248,7 @@ bool f_glfw_imview::proc()
 	m_timg = timg;
 
 	glRasterPos2i(-1, -1);
+	cnvCVBGR8toGLRGB8(img);
 	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
 
 	/*

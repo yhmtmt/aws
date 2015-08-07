@@ -2703,3 +2703,31 @@ void cnv64FC1to8UC1(const Mat & in, Mat & out)
 		*itru = saturate_cast<uchar>(ivabs* (*itr - vmin));
 	}
 }
+
+
+void cnvCVBGR8toGLRGB8(Mat & img)
+{
+	uchar * ptr0, * ptr1;
+
+	int cols = img.cols;
+	
+	for(int r0 = 0, r1 = img.rows - 1; r0 < r1; r0++, r1--)
+	{
+		ptr0 = img.ptr<uchar>(r0);
+		ptr1 = img.ptr<uchar>(r1);
+		for(int c = 0; c < cols; c++, ptr0+=3, ptr1+=3){
+			uchar tmp;
+			tmp = ptr0[0];
+			ptr0[0] = ptr1[2];
+			ptr1[2] = tmp;
+
+			tmp = ptr0[1];
+			ptr0[1] = ptr1[1];
+			ptr1[1] = tmp;
+
+			tmp = ptr0[2];
+			ptr0[2] = ptr1[0];
+			ptr1[0] = tmp;
+		}
+	}
+}

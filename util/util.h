@@ -1101,4 +1101,9 @@ inline unsigned char h2i(char h){
 
 void layoutPyramid(const vector<Mat> & IPyr, Mat & out);
 void cnv64FC1to8UC1(const Mat & in, Mat & out);
+
+// cnvCVBGR8toGLRGB8 converts OpenCV's 8bit BGR image to OpenGL's 8bit RGB format.
+// OpenCV uses a coordinate positive in right and bottom direction, and OpenGL does that in positive in right and top direction.
+// So the function swaps the color R and B saimultaneously the lines top and bottom.
+void cnvCVBGR8toGLRGB8(Mat & img);
 #endif

@@ -72,7 +72,6 @@ public:
 			m_pControl->GetState(INFINITE, &ofs);
 			if(ofs == State_Paused){	
 				long long pos = m_cur_time - m_start_time;
-				cout << "Seek Pos " << pos << endl;
 				m_pSeek->SetPositions(&pos,
 					AM_SEEKING_AbsolutePositioning,
 					&m_duration, AM_SEEKING_AbsolutePositioning);
@@ -85,8 +84,6 @@ public:
 				}
 				long long pos;
 				m_pSeek->GetCurrentPosition(&pos);
-				cout << "Grabbed Pos " << pos << endl;
-				cout << "Current Time " << m_cur_time << endl;
 			}while(ofs != State_Running);
 		}
 		
