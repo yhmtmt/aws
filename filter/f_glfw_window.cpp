@@ -29,7 +29,7 @@ using namespace cv;
 #include <Windows.h>
 #endif
 
-#include <gl/GLU.h>
+#include <GL/glu.h>
 
 #include "f_glfw_window.h"
 
@@ -63,8 +63,9 @@ bool f_glfw_window::init_run()
 
 void f_glfw_window::destroy_run()
 {
-	glfwTerminate();
-	m_pwin = NULL;
+  
+  glfwTerminate();
+  m_pwin = NULL;
 }
 
 bool f_glfw_window::proc()
@@ -228,7 +229,7 @@ void display(void)
 	glEnd();
 
 	glPopMatrix();
-	Sleep(10);
+	//sleep(10);
 
 }
 
@@ -239,38 +240,25 @@ bool f_glfw_imview::proc()
 
 	long long timg;
 	Mat img = m_pin->get_img(timg);
-	//	if(m_timg == timg)
-	//		return true;
+	if(img.empty())
+		return true;
+	if(m_timg == timg)
+		return true;
+
 	m_timg = timg;
 
 	glRasterPos2i(-1, -1);
 	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
-	/*
-	// rendering codes >>>>>
-	GLint matrixOld;
-	glGetIntegerv(GL_MATRIX_MODE, &matrixOld);
-	glMatrixMode(GL_PROJECTION);
-	glPushMatrix();
-	glLoadIdentity();
-	glRasterPos2i(-1, -1);
-	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
-	glPopMatrix();
-	glMatrixMode(matrixOld);
-	glClear(GL_DEPTH_BUFFER_BIT);
-	// <<<<< rendering codes
 
-	// rendering codes >>>>>
+	/*
 	int width, height;
 	glfwGetFramebufferSize(m_pwin, &width, &height);
 	reshape(width, height);
 	//idle();
-	Sleep(10);
+	//sleep(10);
 	display();
-	// <<<<< rendering codes
 	*/
-
 	glfwSwapBuffers(m_pwin);
-
 	glfwPollEvents();
 
 	return true;
@@ -289,22 +277,6 @@ bool f_glfw_imview::init_run()
 	if(!f_glfw_window::init_run())
 		return false;
 
-	/*
-	while(!glfwWindowShouldClose(m_pwin)){
-		// rendering codes >>>>>
-		int width, height;
-		glfwGetFramebufferSize(m_pwin, &width, &height);
-		reshape(width, height);
-		//idle();
-		Sleep(10);
-		display();
-		// <<<<< rendering codes
-
-		glfwSwapBuffers(m_pwin);
-
-		glfwPollEvents();
-	}
-	*/
 	return true;
 }
 

@@ -10,7 +10,7 @@ LD	= ld
 #install Directory
 INST_DIR = ./bin
 #optimization option
-#OFLAGS = -O3
+OFLAGS = -O3
 
 # Platform specification (y: Petalinux build environment is enabled)
 ZYNQ	= n
@@ -31,6 +31,7 @@ SANYO_HD5400 = n
 AVT_CAM = y
 UVC_CAM = y
 FWINDOW = n
+GLFW_WINDOW = y
 
 #directory settings 
 CUR_DIR = $(shell pwd)
@@ -82,6 +83,15 @@ endif
 ifeq ($(FWINDOW), y)
 	DEFS += -DFWINDOW
 	FILTER += f_window
+endif
+
+INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
+LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
+ifeq ($(GLFW_WINDOW), y)
+	INC += -I$(INC_GLFW_DIR)
+	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -dn -lglfw3 -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr 
+	DEFS += -DGLFW_WINDOW
+	FILTER += f_glfw_window
 endif
 
 ifeq ($(SANYO_HD5400),y)

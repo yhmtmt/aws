@@ -36,8 +36,13 @@ FMap f_base::m_fmap;
 f_base* f_base::create(const char * tname, const char * fname)
 {
 	FMap::iterator itr = m_fmap.find(tname);
-	if(itr == m_fmap.end())
-		return NULL;
+	if(itr == m_fmap.end()){
+	  cerr << "Cannot find " << tname << " in our filter list." << endl;
+	  cerr << "We have :" << endl;
+	  for(itr = m_fmap.begin(); itr != m_fmap.end(); itr++)
+	    cerr << "\t" << itr->first << endl;
+	  return NULL;
+	}
 	CreateFilter creator = itr->second;
 	return (f_base*) creator(fname);
 }
