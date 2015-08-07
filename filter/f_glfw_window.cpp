@@ -239,39 +239,39 @@ bool f_glfw_imview::proc()
 
 	long long timg;
 	Mat img = m_pin->get_img(timg);
-//	if(m_timg == timg)
-//		return true;
+	//	if(m_timg == timg)
+	//		return true;
 	m_timg = timg;
 
-	//glfwMakeContextCurrent(m_pwin);
-		// rendering codes >>>>>
-		int width, height;
-		glfwGetFramebufferSize(m_pwin, &width, &height);
-		reshape(width, height);
-		//idle();
-		Sleep(10);
-		display();
-		// <<<<< rendering codes
-
-		glfwSwapBuffers(m_pwin);
-
-		glfwPollEvents();
+	glRasterPos2i(-1, -1);
+	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
 	/*
+	// rendering codes >>>>>
 	GLint matrixOld;
 	glGetIntegerv(GL_MATRIX_MODE, &matrixOld);
 	glMatrixMode(GL_PROJECTION);
-
-	// rendering codes >>>>>
 	glPushMatrix();
 	glLoadIdentity();
-//	glRasterPos2i(-1, -1);
-	glClearColor(1.0, 1.0, 1.0, 1.0);
+	glRasterPos2i(-1, -1);
 	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
 	glPopMatrix();
-	// <<<<< rendering codes
 	glMatrixMode(matrixOld);
 	glClear(GL_DEPTH_BUFFER_BIT);
+	// <<<<< rendering codes
+
+	// rendering codes >>>>>
+	int width, height;
+	glfwGetFramebufferSize(m_pwin, &width, &height);
+	reshape(width, height);
+	//idle();
+	Sleep(10);
+	display();
+	// <<<<< rendering codes
 	*/
+
+	glfwSwapBuffers(m_pwin);
+
+	glfwPollEvents();
 
 	return true;
 }
