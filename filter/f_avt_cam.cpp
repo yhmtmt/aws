@@ -34,15 +34,9 @@ using namespace cv;
 #include "../util/aws_thread.h"
 #include "../util/c_clock.h"
 #include "../util/util.h"
-#include "f_base.h"
 #include "f_avt_cam.h"
 
 bool f_avt_cam::m_bready_api = false;
-#ifdef _WIN32
-#define _STDCALL __stdcall
-#else
-#define _STDCALL
-#endif
 
 // enum is defined in PvApi.h
 const char * f_avt_cam::strPvFmt[ePvFmtBayer12Packed+1] = {
@@ -71,13 +65,24 @@ const char * f_avt_cam::strWhitebalMode[ewmAutoOnce+1] = {
 	"Manual", "Auto", "AutoOnce"
 };
 
-void _STDCALL proc_frame(tPvFrame * pfrm)
+
+const char * f_avt_cam::m_strParams[32] = {
+	"host",	"nbuf", "update", "BandwidthCtrlMode", "StreamBytesPerSecond",
+	"ExposureMode", "ExposureAutoAdjustTol", "ExposureAutoAlg", "ExposureAutomax", "ExposureAutomin",
+	"ExposureAutoOutliers", "ExposureAutoRate", "ExposureAutoTarget", "ExposureValue", "GainMode",
+	"GainAutoAdjustTol", "GainAutomax", "GainAutomin", "GainAutoOutliers", "GainAutoRate",
+	"GainAutoTarget", "GainValue", "WhitebalMode", "WhitebalAutoAdjustTol", "WhitebalAutoRate",
+	"WhitebalValueRed", "WhitebalValueBlue", "Height", "Width", "RegionX",
+	"RegionY", "PixelFormat"
+};
+
+void _STDCALL f_avt_cam::s_cam_params::proc_frame(tPvFrame * pfrm)
 {
-	f_avt_cam * pcam = (f_avt_cam *) pfrm->Context[0];
-	pcam->set_new_frm(pfrm);
+	s_cam_params * pcam = (s_cam_params *) pfrm->Context[0];
+	pcam->set_new_frm(pfrm); 
 }
 
-f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5), 
+f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5), 
 	m_access(ePvAccessMaster), m_frame(NULL), 
 	m_PixelFormat(__ePvFmt_force_32),
 	m_update(false),
@@ -93,51 +98,81 @@ f_avt_cam::f_avt_cam(const char * name): f_base(name), m_num_buf(5),
 	m_Height(UINT_MAX), m_RegionX(UINT_MAX), m_RegionY(UINT_MAX), m_Width(UINT_MAX),
 	m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0)
 {
-	register_fpar("host", m_host, 1024, "Network address of the camera to be opened.");
-	register_fpar("nbuf", &m_num_buf, "Number of image buffers.");
-	register_fpar("update", &m_update, "Update flag.");
-	register_fpar("BandwidthCtrlMode", (int*)&m_BandwidthCtrlMode, bcmUndef, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
-	register_fpar("StreamBytesPerSecond", &m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
+	if(icam == -1){
+		strParams = m_strParams;
+	}else{
+		strParams = new const char*[sizeof(m_strParams)];
+		for(int i = 0; i < sizeof(m_strParams); i++){
+			int len = (int) strlen(m_strParams[i]) + 2;
+			char * ptr =  new char[len]; // number and termination character.
+			snprintf(ptr, len, "%s%d", m_strParams[i], icam);
+			strParams[i] = ptr;
+		}
+	}
+}
 
-	// about exposure
-	register_fpar("ExposureMode", (int*) &m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode (default Auto)");
-	register_fpar("ExposureAutoAdjustTol", &m_ExposureAutoAdjustTol, "ExposureAutoAdjusttol (default 5)");
-	register_fpar("ExposureAutoAlg", (int*)&m_ExposureAutoAlg, (int)eaaFitRange, strExposureAutoAlg, "ExposureAutoAlg (default Mean)");
-	register_fpar("ExposureAutomax", &m_ExposureAutoMax, "ExposureAutoMax (default 500000us)");
-	register_fpar("ExposureAutomin", &m_ExposureAutoMin, "ExposureAutoMin (default 1000us)");
-	register_fpar("ExposureAutoOutliers", &m_ExposureAutoOutliers, "ExposureAutoOutliers (default 0)");
-	register_fpar("ExposureAutoRate", &m_ExposureAutoRate, "ExposureAutoRate (default 100)");
-	register_fpar("ExposureAutoTarget", &m_ExposureAutoTarget, "ExposureAutoTarget (default 50)");
-	register_fpar("ExposureValue", &m_ExposureValue, "ExposureValue (default 100us)");
+f_avt_cam::s_cam_params::~s_cam_params()
+{
+	if(m_strParams == strParams)
+	{
+		for(int i = 0; i < sizeof(m_strParams); i++){
+			delete[] strParams[i];
+		}
+		delete[] strParams;
+	}
+}
 
-	// about gain
-	register_fpar("GainMode", (int*)&m_GainMode, (int)(egmExternal) + 1, strGainMode, "GainMode (default Auto)");
-	register_fpar("GainAutoAdjustTol", &m_GainAutoAdjustTol, "GainAutoAdjusttol (default 5)");
-	register_fpar("GainAutomax", &m_GainAutoMax, "GainAutoMax (default 30db)");
-	register_fpar("GainAutomin", &m_GainAutoMin, "GainAutoMin (default 5db)");
-	register_fpar("GainAutoOutliers", &m_GainAutoOutliers, "GainAutoOutliers (default 0)");
-	register_fpar("GainAutoRate", &m_GainAutoRate, "GainAutoRate (default 100)");
-	register_fpar("GainAutoTarget", &m_GainAutoTarget, "GainAutoTarget (default 50)");
-	register_fpar("GainValue", &m_GainValue, "GainValue (default 10db)");
-
-	// about white balance
-	register_fpar("WhitebalMode", (int*)&m_WhitebalMode, (int)ewmAutoOnce+1, strWhitebalMode, "WhitebalMode (default Auto)");
-	register_fpar("WhitebalAutoAdjustTol", &m_WhitebalAutoAdjustTol, "WhitebaAutoAdjustTol (percent, default 5)");
-	register_fpar("WhitebalAutoRate", &m_WhitebalAutoRate, "WhitebalAutoRate (percent, default 100)");
-	register_fpar("WhitebalValueRed", &m_WhitebalValueRed, "WhitebalValueRed (percent, default 0)");
-	register_fpar("WhitebalValueBlue", &m_WhitebalValueBlue, "WhitebalValueBlue (percent, default 0)");
-
-	// Image format
-	register_fpar("Height", &m_Height, "Height of the ROI (1 to Maximum Height)");
-	register_fpar("Width", &m_Width, "Width of the ROI(1 to Maximum Width)");
-	register_fpar("RegionX", &m_RegionX, "Top left x position of the ROI (0 to Maximum Camera Width - 1)");
-	register_fpar("RegionY", &m_RegionY, "Top left y position of the ROI (0 to Maximum Camera Height -1)");
-	register_fpar("PixelFormat", (int*)&m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
-
+f_avt_cam::f_avt_cam(const char * name): f_base(name)
+{
 }
 
 f_avt_cam::~f_avt_cam()
 {
+}
+
+void f_avt_cam::register_params(s_cam_params & cam)
+{
+	register_fpar(cam.strParams[0], cam.m_host, 1024, "Network address of the camera to be opened.");
+	register_fpar(cam.strParams[1], &cam.m_num_buf, "Number of image buffers.");
+	register_fpar(cam.strParams[2], &cam.m_update, "Update flag.");
+	register_fpar(cam.strParams[3], (int*)&cam.m_BandwidthCtrlMode, bcmUndef, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
+	register_fpar(cam.strParams[4], &cam.m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
+
+	// about exposure
+	register_fpar(cam.strParams[5], (int*) &cam.m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode (default Auto)");
+	register_fpar(cam.strParams[6], &cam.m_ExposureAutoAdjustTol, "ExposureAutoAdjusttol (default 5)");
+	register_fpar(cam.strParams[7], (int*)&cam.m_ExposureAutoAlg, (int)eaaFitRange, strExposureAutoAlg, "ExposureAutoAlg (default Mean)");
+	register_fpar(cam.strParams[8], &cam.m_ExposureAutoMax, "ExposureAutoMax (default 500000us)");
+	register_fpar(cam.strParams[9], &cam.m_ExposureAutoMin, "ExposureAutoMin (default 1000us)");
+	register_fpar(cam.strParams[10], &cam.m_ExposureAutoOutliers, "ExposureAutoOutliers (default 0)");
+	register_fpar(cam.strParams[11], &cam.m_ExposureAutoRate, "ExposureAutoRate (default 100)");
+	register_fpar(cam.strParams[12], &cam.m_ExposureAutoTarget, "ExposureAutoTarget (default 50)");
+	register_fpar(cam.strParams[13], &cam.m_ExposureValue, "ExposureValue (default 100us)");
+
+	// about gain
+	register_fpar(cam.strParams[14], (int*)&cam.m_GainMode, (int)(egmExternal) + 1, strGainMode, "GainMode (default Auto)");
+	register_fpar(cam.strParams[15], &cam.m_GainAutoAdjustTol, "GainAutoAdjusttol (default 5)");
+	register_fpar(cam.strParams[16], &cam.m_GainAutoMax, "GainAutoMax (default 30db)");
+	register_fpar(cam.strParams[17], &cam.m_GainAutoMin, "GainAutoMin (default 5db)");
+	register_fpar(cam.strParams[18], &cam.m_GainAutoOutliers, "GainAutoOutliers (default 0)");
+	register_fpar(cam.strParams[19], &cam.m_GainAutoRate, "GainAutoRate (default 100)");
+	register_fpar(cam.strParams[20], &cam.m_GainAutoTarget, "GainAutoTarget (default 50)");
+	register_fpar(cam.strParams[21], &cam.m_GainValue, "GainValue (default 10db)");
+
+	// about white balance
+	register_fpar(cam.strParams[22], (int*)&cam.m_WhitebalMode, (int)ewmAutoOnce+1, strWhitebalMode, "WhitebalMode (default Auto)");
+	register_fpar(cam.strParams[23], &cam.m_WhitebalAutoAdjustTol, "WhitebaAutoAdjustTol (percent, default 5)");
+	register_fpar(cam.strParams[24], &cam.m_WhitebalAutoRate, "WhitebalAutoRate (percent, default 100)");
+	register_fpar(cam.strParams[25], &cam.m_WhitebalValueRed, "WhitebalValueRed (percent, default 0)");
+	register_fpar(cam.strParams[26], &cam.m_WhitebalValueBlue, "WhitebalValueBlue (percent, default 0)");
+
+	// Image format
+	register_fpar(cam.strParams[27], &cam.m_Height, "Height of the ROI (1 to Maximum Height)");
+	register_fpar(cam.strParams[28], &cam.m_Width, "Width of the ROI(1 to Maximum Width)");
+	register_fpar(cam.strParams[29], &cam.m_RegionX, "Top left x position of the ROI (0 to Maximum Camera Width - 1)");
+	register_fpar(cam.strParams[30], &cam.m_RegionY, "Top left y position of the ROI (0 to Maximum Camera Height -1)");
+	register_fpar(cam.strParams[31], (int*)&cam.m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
+
 }
 
 const char * f_avt_cam::get_err_msg(int code)
@@ -189,7 +224,7 @@ void f_avt_cam::destroy_interface(){
 }
 
 
-bool f_avt_cam::config_param()
+bool f_avt_cam::s_cam_params::config_param()
 {
 	tPvErr err;
 
@@ -330,7 +365,168 @@ bool f_avt_cam::config_param()
 	return config_param_dynamic();
 }
 
-bool f_avt_cam::config_param_dynamic()
+
+bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
+{
+	m_bactive = true;
+	int m_size_buf = 0;
+
+	pout = dynamic_cast<ch_image_ref*>(pch);
+
+	if(!pout){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_CH);
+		return false;
+	}
+
+	tPvErr err;
+
+	// init_interface shoudl be called before running pcam filter
+	if(!m_bready_api){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_INIT);
+		return false;
+	}
+
+	// opening camera by IP address
+	unsigned long IpAddr = inet_addr(m_host);
+	err = PvCameraOpenByAddr(IpAddr, m_access, &m_hcam);
+
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_OPEN);
+		return false;
+	}
+
+	if(!config_param()){
+		goto cam_close;
+	}
+
+	// getting frame size sent from camera
+	err = PvAttrUint32Get(m_hcam, "TotalBytesPerFrame", (tPvUint32*)&m_size_buf);
+
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_ALLOC);
+		goto cam_close;
+	}
+	// allocating image buffer
+	m_frame = new tPvFrame[m_num_buf];
+	if(m_frame == NULL){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_ALLOC);
+		goto cam_close;
+	}
+
+	memset(m_frame, 0, sizeof(tPvFrame) * m_num_buf);
+	m_frm_done.resize(m_num_buf);
+
+	unsigned int ibuf;
+	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
+		m_frm_done[ibuf] = false;
+		m_frame[ibuf].Context[0] = (void*) this;
+		m_frame[ibuf].Context[1] = (void*) ibuf;
+		m_frame[ibuf].ImageBufferSize = m_size_buf;
+		m_frame[ibuf].ImageBuffer = (void*) new unsigned char[m_size_buf];
+		if(!m_frame[ibuf].ImageBuffer){
+			f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_ALLOC);
+			goto free_buf;
+		}
+	}
+
+	err = PvCaptureAdjustPacketSize(m_hcam, 8228);
+
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_CFETH);
+		goto free_buf;
+	}
+
+	err = PvCaptureStart(m_hcam);
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_START);
+		goto free_buf;
+	}
+
+	m_cur_frm = 0;
+	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
+		PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
+	}
+
+	err = PvAttrEnumSet(m_hcam, "FrameStartTriggerMode", "Freerun");
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_START);
+		goto free_buf;
+	}
+
+	err = PvAttrEnumSet(m_hcam, "AcquisitionMode", "Continuous");
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_START);
+		goto free_buf;
+	}
+
+	err = PvCommandRun(m_hcam, "AcquisitionStart");
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_START);
+		goto free_buf;
+	}
+
+	return true;
+
+free_buf:
+	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
+		delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
+	}
+	delete m_frame;
+	m_frame = NULL;
+
+cam_close:
+	err = PvCameraClose(m_hcam);
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_CLOSE);
+	}
+	return false;
+
+}
+
+void f_avt_cam::s_cam_params::destroy(f_avt_cam * pcam)
+{
+
+	tPvErr err;
+	err = PvCommandRun(m_hcam, "AcquisitionStop");
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_STOP);
+	}
+
+#ifdef _WIN32
+	Sleep(200);
+#else
+	sleep(1);
+#endif
+
+	err = PvCaptureQueueClear(m_hcam);
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_STOP);
+	}
+
+	err = PvCaptureEnd(m_hcam);
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_STOP);
+	}
+
+	if(m_frame != NULL){
+		int ibuf;
+		for(ibuf = 0; ibuf < m_num_buf; ibuf++){
+			if(m_frame[ibuf].ImageBuffer){
+				delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
+			}
+		}
+		delete[] m_frame;
+		m_frame = NULL;
+	}
+
+	err = PvCameraClose(m_hcam);
+
+	if(err != ePvErrSuccess){
+		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_CLOSE);
+	}
+}
+
+bool f_avt_cam::s_cam_params::config_param_dynamic()
 {
 	tPvErr err;
 	if(m_BandwidthCtrlMode == bcmUndef){
@@ -612,171 +808,11 @@ bool f_avt_cam::config_param_dynamic()
 }
 
 
-bool f_avt_cam::init_run()
+void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 {
-	int m_size_buf = 0;
-	if(!m_chout.size()){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CH);
-		return false;
+	if(!m_bactive){
+		return;
 	}
-
-	pout = dynamic_cast<ch_image_ref*>(m_chout[0]);
-
-	if(!pout){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CH);
-		return false;
-	}
-
-	tPvErr err;
-
-	// init_interface shoudl be called before running this filter
-	if(!m_bready_api){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_INIT);
-		return false;
-	}
-
-	// opening camera by IP address
-	unsigned long IpAddr = inet_addr(m_host);
-	err = PvCameraOpenByAddr(IpAddr, m_access, &m_hcam);
-
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_OPEN);
-		return false;
-	}
-
-	if(!config_param()){
-		goto cam_close;
-	}
-
-	// getting frame size sent from camera
-	err = PvAttrUint32Get(m_hcam, "TotalBytesPerFrame", (tPvUint32*)&m_size_buf);
-
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_ALLOC);
-		goto cam_close;
-	}
-	// allocating image buffer
-	m_frame = new tPvFrame[m_num_buf];
-	if(m_frame == NULL){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_ALLOC);
-		goto cam_close;
-	}
-
-	memset(m_frame, 0, sizeof(tPvFrame) * m_num_buf);
-	m_frm_done.resize(m_num_buf);
-
-	unsigned int ibuf;
-	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
-		m_frm_done[ibuf] = false;
-		m_frame[ibuf].Context[0] = (void*) this;
-		m_frame[ibuf].Context[1] = (void*) ibuf;
-		m_frame[ibuf].ImageBufferSize = m_size_buf;
-		m_frame[ibuf].ImageBuffer = (void*) new unsigned char[m_size_buf];
-		if(!m_frame[ibuf].ImageBuffer){
-			f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_ALLOC);
-			goto free_buf;
-		}
-	}
-
-	err = PvCaptureAdjustPacketSize(m_hcam, 8228);
-
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CFETH);
-		goto free_buf;
-	}
-
-	err = PvCaptureStart(m_hcam);
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_START);
-		goto free_buf;
-	}
-
-	m_cur_frm = 0;
-	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
-		PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
-	}
-
-	err = PvAttrEnumSet(m_hcam, "FrameStartTriggerMode", "Freerun");
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_START);
-		goto free_buf;
-	}
-
-	err = PvAttrEnumSet(m_hcam, "AcquisitionMode", "Continuous");
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_START);
-		goto free_buf;
-	}
-
-	err = PvCommandRun(m_hcam, "AcquisitionStart");
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_START);
-		goto free_buf;
-	}
-
-	return true;
-
-free_buf:
-	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
-		delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
-	}
-	delete m_frame;
-	m_frame = NULL;
-
-cam_close:
-	err = PvCameraClose(m_hcam);
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CLOSE);
-	}
-	return false;
-}
-
-void f_avt_cam::destroy_run()
-{
-	tPvErr err;
-	err = PvCommandRun(m_hcam, "AcquisitionStop");
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_STOP);
-	}
-
-#ifdef _WIN32
-	Sleep(200);
-#else
-	sleep(1);
-#endif
-
-	err = PvCaptureQueueClear(m_hcam);
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_STOP);
-	}
-
-	err = PvCaptureEnd(m_hcam);
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_STOP);
-	}
-
-	if(m_frame != NULL){
-		int ibuf;
-		for(ibuf = 0; ibuf < m_num_buf; ibuf++){
-			if(m_frame[ibuf].ImageBuffer){
-				delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
-			}
-		}
-		delete[] m_frame;
-		m_frame = NULL;
-	}
-
-	err = PvCameraClose(m_hcam);
-
-	if(err != ePvErrSuccess){
-		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CLOSE);
-	}
-}
-
-void f_avt_cam::set_new_frm(tPvFrame * pfrm)
-{
-  if(!m_bactive)
-    return;
 
 	unsigned int ibuf;
 	if(pfrm->Status == ePvErrSuccess){
@@ -829,17 +865,6 @@ void f_avt_cam::set_new_frm(tPvFrame * pfrm)
 				PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
 		}
 	}
-}
-
-bool f_avt_cam::proc()
-{
-	// if any, reconfigure camera
-	if(m_update){
-		config_param_dynamic();
-		m_update = false;
-	}
-
-	return true;
 }
 
 #endif
