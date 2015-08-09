@@ -28,6 +28,12 @@
 
 class f_avt_cam: public f_base
 {
+public:
+	enum eFrameStartTriggerMode {
+		efstmFreerun, efstmSyncIn1, efstmSyncIn2, efstmSyncIn3, efstmSyncIn4,
+		efstmFixedRate, efstmSoftware, efstmUndef
+	};
+
 	enum eBandwidthCtrlMode {
 		bcmStreamBytesPerSecond=0, bcmSCPD, bcmBoth, bcmUndef
 	};
@@ -49,6 +55,15 @@ class f_avt_cam: public f_base
 	};
 
 protected:
+	static const char * strFrameStartTriggerMode[efstmUndef];
+	static eFrameStartTriggerMode getFrameStartTriggerMode(const char * str){
+		for(int i = 0; i < efstmUndef; i++){
+			if(strcmp(strFrameStartTriggerMode[i], str) == 0)
+				return (eFrameStartTriggerMode) i;
+		}
+		return efstmUndef;
+	}
+
 	static const char * strPvFmt[ePvFmtBayer12Packed+1];
 	static tPvImageFormat getPvImageFmt(const char * str){
 		for(int i = 0; i < ePvFmtBayer12Packed + 1; i++){
@@ -106,8 +121,10 @@ protected:
 	}
 
 	static bool m_bready_api;
+	long long m_ttrig_int;
+	long long m_ttrig_prev;
 
-	static const char * m_strParams[32];
+	static const char * m_strParams[33];
 	struct s_cam_params{
 		bool m_bactive;
 		const char ** strParams;
@@ -127,6 +144,7 @@ protected:
 		///////////////////// parameters
 
 		// static parameters. these parameters should not be modified during running state
+		eFrameStartTriggerMode m_FrameStartTriggerMode;
 		unsigned int m_Height;
 		unsigned int m_RegionX;
 		unsigned int m_RegionY;

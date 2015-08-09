@@ -38,6 +38,11 @@ using namespace cv;
 
 bool f_avt_cam::m_bready_api = false;
 
+const char * f_avt_cam::strFrameStartTriggerMode[efstmUndef] = {
+	"Freerun", "SyncIn1", "SyncIn2", "SyncIn3", "SyncIn4",
+	"FixedRate", "Software"
+};
+
 // enum is defined in PvApi.h
 const char * f_avt_cam::strPvFmt[ePvFmtBayer12Packed+1] = {
 	"Mono8", "Mono16", "Bayer8", "Bayer16", "Rgb24", "Rgb48",
@@ -65,9 +70,8 @@ const char * f_avt_cam::strWhitebalMode[ewmAutoOnce+1] = {
 	"Manual", "Auto", "AutoOnce"
 };
 
-
-const char * f_avt_cam::m_strParams[32] = {
-	"host",	"nbuf", "update", "BandwidthCtrlMode", "StreamBytesPerSecond",
+const char * f_avt_cam::m_strParams[33] = {
+	"host",	"nbuf", "update", "FrameStartTriggerMode", "BandwidthCtrlMode", "StreamBytesPerSecond",
 	"ExposureMode", "ExposureAutoAdjustTol", "ExposureAutoAlg", "ExposureAutomax", "ExposureAutomin",
 	"ExposureAutoOutliers", "ExposureAutoRate", "ExposureAutoTarget", "ExposureValue", "GainMode",
 	"GainAutoAdjustTol", "GainAutomax", "GainAutomin", "GainAutoOutliers", "GainAutoRate",
@@ -86,6 +90,7 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
 	m_access(ePvAccessMaster), m_frame(NULL), 
 	m_PixelFormat(__ePvFmt_force_32),
 	m_update(false),
+	m_FrameStartTriggerMode(efstmUndef),
 	m_BandwidthCtrlMode(bcmUndef),
 	m_StreamBytesPerSecond(0/*115000000*/), m_ExposureMode(emUndef), m_ExposureAutoAdjustTol(UINT_MAX /*5*/),
 	m_ExposureAutoAlg(eaaUndef/*eaaMean*/), m_ExposureAutoMax(UINT_MAX/*500000*/), m_ExposureAutoMin(UINT_MAX/*1000*/),
@@ -122,8 +127,9 @@ f_avt_cam::s_cam_params::~s_cam_params()
 	}
 }
 
-f_avt_cam::f_avt_cam(const char * name): f_base(name)
+f_avt_cam::f_avt_cam(const char * name): f_base(name), m_ttrig_int(30*MSEC), m_ttrig_prev(0)
 {
+	register_fpar("Ttrig", &m_ttrig_int, "Trigger interval. Only for FrameStartTriggerMode=Software.");
 }
 
 f_avt_cam::~f_avt_cam()
@@ -135,43 +141,44 @@ void f_avt_cam::register_params(s_cam_params & cam)
 	register_fpar(cam.strParams[0], cam.m_host, 1024, "Network address of the camera to be opened.");
 	register_fpar(cam.strParams[1], &cam.m_num_buf, "Number of image buffers.");
 	register_fpar(cam.strParams[2], &cam.m_update, "Update flag.");
-	register_fpar(cam.strParams[3], (int*)&cam.m_BandwidthCtrlMode, bcmUndef, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
-	register_fpar(cam.strParams[4], &cam.m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
+	register_fpar(cam.strParams[3], (int*)&cam.m_FrameStartTriggerMode, efstmUndef, strFrameStartTriggerMode, "Frame Start Trigger mode (default Freerun)");
+	register_fpar(cam.strParams[4], (int*)&cam.m_BandwidthCtrlMode, bcmUndef, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
+	register_fpar(cam.strParams[5], &cam.m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
 
 	// about exposure
-	register_fpar(cam.strParams[5], (int*) &cam.m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode (default Auto)");
-	register_fpar(cam.strParams[6], &cam.m_ExposureAutoAdjustTol, "ExposureAutoAdjusttol (default 5)");
-	register_fpar(cam.strParams[7], (int*)&cam.m_ExposureAutoAlg, (int)eaaFitRange, strExposureAutoAlg, "ExposureAutoAlg (default Mean)");
-	register_fpar(cam.strParams[8], &cam.m_ExposureAutoMax, "ExposureAutoMax (default 500000us)");
-	register_fpar(cam.strParams[9], &cam.m_ExposureAutoMin, "ExposureAutoMin (default 1000us)");
-	register_fpar(cam.strParams[10], &cam.m_ExposureAutoOutliers, "ExposureAutoOutliers (default 0)");
-	register_fpar(cam.strParams[11], &cam.m_ExposureAutoRate, "ExposureAutoRate (default 100)");
-	register_fpar(cam.strParams[12], &cam.m_ExposureAutoTarget, "ExposureAutoTarget (default 50)");
-	register_fpar(cam.strParams[13], &cam.m_ExposureValue, "ExposureValue (default 100us)");
+	register_fpar(cam.strParams[6], (int*) &cam.m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode (default Auto)");
+	register_fpar(cam.strParams[7], &cam.m_ExposureAutoAdjustTol, "ExposureAutoAdjusttol (default 5)");
+	register_fpar(cam.strParams[8], (int*)&cam.m_ExposureAutoAlg, (int)eaaFitRange, strExposureAutoAlg, "ExposureAutoAlg (default Mean)");
+	register_fpar(cam.strParams[9], &cam.m_ExposureAutoMax, "ExposureAutoMax (default 500000us)");
+	register_fpar(cam.strParams[10], &cam.m_ExposureAutoMin, "ExposureAutoMin (default 1000us)");
+	register_fpar(cam.strParams[11], &cam.m_ExposureAutoOutliers, "ExposureAutoOutliers (default 0)");
+	register_fpar(cam.strParams[12], &cam.m_ExposureAutoRate, "ExposureAutoRate (default 100)");
+	register_fpar(cam.strParams[13], &cam.m_ExposureAutoTarget, "ExposureAutoTarget (default 50)");
+	register_fpar(cam.strParams[14], &cam.m_ExposureValue, "ExposureValue (default 100us)");
 
 	// about gain
-	register_fpar(cam.strParams[14], (int*)&cam.m_GainMode, (int)(egmExternal) + 1, strGainMode, "GainMode (default Auto)");
-	register_fpar(cam.strParams[15], &cam.m_GainAutoAdjustTol, "GainAutoAdjusttol (default 5)");
-	register_fpar(cam.strParams[16], &cam.m_GainAutoMax, "GainAutoMax (default 30db)");
-	register_fpar(cam.strParams[17], &cam.m_GainAutoMin, "GainAutoMin (default 5db)");
-	register_fpar(cam.strParams[18], &cam.m_GainAutoOutliers, "GainAutoOutliers (default 0)");
-	register_fpar(cam.strParams[19], &cam.m_GainAutoRate, "GainAutoRate (default 100)");
-	register_fpar(cam.strParams[20], &cam.m_GainAutoTarget, "GainAutoTarget (default 50)");
-	register_fpar(cam.strParams[21], &cam.m_GainValue, "GainValue (default 10db)");
+	register_fpar(cam.strParams[15], (int*)&cam.m_GainMode, (int)(egmExternal) + 1, strGainMode, "GainMode (default Auto)");
+	register_fpar(cam.strParams[16], &cam.m_GainAutoAdjustTol, "GainAutoAdjusttol (default 5)");
+	register_fpar(cam.strParams[17], &cam.m_GainAutoMax, "GainAutoMax (default 30db)");
+	register_fpar(cam.strParams[18], &cam.m_GainAutoMin, "GainAutoMin (default 5db)");
+	register_fpar(cam.strParams[19], &cam.m_GainAutoOutliers, "GainAutoOutliers (default 0)");
+	register_fpar(cam.strParams[20], &cam.m_GainAutoRate, "GainAutoRate (default 100)");
+	register_fpar(cam.strParams[21], &cam.m_GainAutoTarget, "GainAutoTarget (default 50)");
+	register_fpar(cam.strParams[22], &cam.m_GainValue, "GainValue (default 10db)");
 
 	// about white balance
-	register_fpar(cam.strParams[22], (int*)&cam.m_WhitebalMode, (int)ewmAutoOnce+1, strWhitebalMode, "WhitebalMode (default Auto)");
-	register_fpar(cam.strParams[23], &cam.m_WhitebalAutoAdjustTol, "WhitebaAutoAdjustTol (percent, default 5)");
-	register_fpar(cam.strParams[24], &cam.m_WhitebalAutoRate, "WhitebalAutoRate (percent, default 100)");
-	register_fpar(cam.strParams[25], &cam.m_WhitebalValueRed, "WhitebalValueRed (percent, default 0)");
-	register_fpar(cam.strParams[26], &cam.m_WhitebalValueBlue, "WhitebalValueBlue (percent, default 0)");
+	register_fpar(cam.strParams[23], (int*)&cam.m_WhitebalMode, (int)ewmAutoOnce+1, strWhitebalMode, "WhitebalMode (default Auto)");
+	register_fpar(cam.strParams[24], &cam.m_WhitebalAutoAdjustTol, "WhitebaAutoAdjustTol (percent, default 5)");
+	register_fpar(cam.strParams[25], &cam.m_WhitebalAutoRate, "WhitebalAutoRate (percent, default 100)");
+	register_fpar(cam.strParams[26], &cam.m_WhitebalValueRed, "WhitebalValueRed (percent, default 0)");
+	register_fpar(cam.strParams[27], &cam.m_WhitebalValueBlue, "WhitebalValueBlue (percent, default 0)");
 
 	// Image format
-	register_fpar(cam.strParams[27], &cam.m_Height, "Height of the ROI (1 to Maximum Height)");
-	register_fpar(cam.strParams[28], &cam.m_Width, "Width of the ROI(1 to Maximum Width)");
-	register_fpar(cam.strParams[29], &cam.m_RegionX, "Top left x position of the ROI (0 to Maximum Camera Width - 1)");
-	register_fpar(cam.strParams[30], &cam.m_RegionY, "Top left y position of the ROI (0 to Maximum Camera Height -1)");
-	register_fpar(cam.strParams[31], (int*)&cam.m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
+	register_fpar(cam.strParams[28], &cam.m_Height, "Height of the ROI (1 to Maximum Height)");
+	register_fpar(cam.strParams[29], &cam.m_Width, "Width of the ROI(1 to Maximum Width)");
+	register_fpar(cam.strParams[30], &cam.m_RegionX, "Top left x position of the ROI (0 to Maximum Camera Width - 1)");
+	register_fpar(cam.strParams[31], &cam.m_RegionY, "Top left y position of the ROI (0 to Maximum Camera Height -1)");
+	register_fpar(cam.strParams[32], (int*)&cam.m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
 
 }
 
@@ -447,10 +454,21 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 		PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
 	}
 
-	err = PvAttrEnumSet(m_hcam, "FrameStartTriggerMode", "Freerun");
-	if(err != ePvErrSuccess){
-		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_START);
-		goto free_buf;
+	if(m_FrameStartTriggerMode == efstmUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "FrameStartTriggerMode", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get FrameStartTriggerMode" << endl;
+			goto free_buf;
+		}
+		m_FrameStartTriggerMode = getFrameStartTriggerMode(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "FrameStartTriggerMode",
+			strFrameStartTriggerMode[m_FrameStartTriggerMode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set FrameStartTriggerMode" << endl;
+			goto free_buf;
+		}
 	}
 
 	err = PvAttrEnumSet(m_hcam, "AcquisitionMode", "Continuous");

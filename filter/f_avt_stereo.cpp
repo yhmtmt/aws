@@ -39,6 +39,7 @@ using namespace cv;
 
 f_avt_stereo::f_avt_stereo(const char * name): f_avt_cam(name), poutd(NULL), m_cam1(1), m_cam2(2)
 {
+	register_fpar(m_strParams[3], (int*)&m_FrameStartTriggerMode, efstmUndef, strFrameStartTriggerMode, "Frame Start Trigger mode (default Freerun)");
 	register_params(m_cam1);
 	register_params(m_cam2);
 }
@@ -56,6 +57,9 @@ bool f_avt_stereo::init_run()
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CH);
 		return false;
 	}
+
+	m_cam1.m_FrameStartTriggerMode = m_FrameStartTriggerMode;
+
 	if(!m_cam1.init(this, m_chin[0]))
 		return false;
 
@@ -63,6 +67,9 @@ bool f_avt_stereo::init_run()
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CH);
 		return false;
 	}
+
+	m_cam2.m_FrameStartTriggerMode = m_FrameStartTriggerMode;
+
 	if(!m_cam2.init(this, m_chin[1]))
 		return false;
 
@@ -89,6 +96,12 @@ bool f_avt_stereo::proc()
 		m_cam2.m_update = false;
 	}
 
+	if(m_cam1.m_FrameStartTriggerMode == efstmSoftware && 
+		m_ttrig_prev + m_ttrig_int > m_cur_time){
+		PvCommandRun(m_cam1.m_hcam, "FrameTriggerSoftware");
+		PvCommandRun(m_cam2.m_hcam, "FrameTriggerSoftware");
+		m_ttrig_prev = m_cur_time;
+	}
 	return true;
 }
 

@@ -69,6 +69,12 @@ bool f_avt_mono::proc()
 		m_cam.m_update = false;
 	}
 
+	if(m_cam.m_FrameStartTriggerMode == efstmSoftware && 
+		m_ttrig_prev + m_ttrig_int > m_cur_time){
+		PvCommandRun(m_cam.m_hcam, "FrameTriggerSoftware");
+		m_ttrig_prev = m_cur_time;
+	}
+
 	return true;
 }
 

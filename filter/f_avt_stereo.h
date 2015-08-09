@@ -25,6 +25,7 @@ protected:
 	s_cam_params m_cam1, m_cam2;
 
 	ch_image * poutd; // output of depth image
+	eFrameStartTriggerMode m_FrameStartTriggerMode;
 
 	virtual bool init_run();
 	virtual void destroy_run();
