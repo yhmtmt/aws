@@ -30,6 +30,75 @@ using namespace cv;
 
 #include "util.h"
 
+///////////////////////////////////////////////////////////////////////////////////////////////// AWSCamPar
+int AWSCamPar::version = 0;
+
+bool AWSCamPar::read(const char * fname)
+{
+	FileStorage fs(fname, FileStorage::READ);
+	if(!fs.isOpened()){
+		cerr << "Failed to open " << fname << endl;
+		return false;
+	}
+
+	FileNode fn;
+
+	fn = fs["AWSCamPar"];
+	if(fn.empty()){
+		cerr << "File " << fname << " does not have AWSCamPar" << endl;
+		return false;
+	}
+	int file_version;
+	fn >> file_version;
+
+	if(file_version != version){
+		cerr << "File " << fname << " is version " << file_version 
+			<< ". Current version is " << version << "." << endl;
+		return false;
+	}
+
+	fn = fs["FishEye"];
+	if(fn.empty()){
+		cerr << "File " << fname << " does not have FishEye flag." << endl;
+	}
+	fn >> m_bFishEye;
+
+	fn = fs["Params"];
+	if(fn.empty()){
+		cerr << "File " << fname << "does not have Params." << endl;
+		return false;
+	}
+
+	if(m_bFishEye){
+		Mat tmp(1, epfk4 + 1, CV_64FC1, par);
+		fn >> tmp;
+	}else{
+		Mat tmp(1, epk6 + 1, CV_64FC1, par);
+		fn >> tmp;
+	}
+
+	return true;
+}
+
+bool AWSCamPar::write(const char * fname)
+{
+	FileStorage fs(fname, FileStorage::WRITE);
+	if(!fs.isOpened()){
+		cerr << "Failed to open " << fname << endl;
+		return false;
+	}
+
+	// Version information 
+	fs << "AWSCamPar" << version;
+	fs << "FishEye" << m_bFishEye;
+	if(m_bFishEye)
+		fs << "Params" << Mat(1, epfk4 + 1, CV_64FC1, par);
+	else
+		fs << "Params" << Mat(1, epk6 + 1, CV_64FC1, par);
+
+	return true;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////// AWSLevMarq
 void AWSLevMarq::clearEx()

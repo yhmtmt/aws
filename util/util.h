@@ -19,6 +19,43 @@
 #include "aws_thread.h"
 #include "aws_stdlib.h"
 
+///////////////////////////////////////////////////////////////////////////////////////////////// AWSCamPar
+// AWS's camera parameter class. Defines file format and its read/write methods.
+class AWSCamPar
+{
+protected:
+	static int version;
+	enum Param {
+		epfx, epfy, epcx, epcy, epk1, epk2, epp1, epp2, epk3, epk4, epk5, epk6
+	};
+
+	enum FishEyeParam{
+		epffx, epffy, epfcx, epfcy, efpk1, epfk2, epfk3, epfk4
+	};
+
+	double par[12];
+
+	bool m_bFishEye;
+public:
+	AWSCamPar()
+	{
+		for(int ipar = 0; ipar < 12; ipar++)
+			par[ipar] = 0.;
+	};
+
+	double * getCvPrj(){
+		return par;
+	}
+
+	double * getCvDist(){
+		return &par[epk1];
+	}
+		
+	bool read(const char * fname);
+	bool write(const char * fname);
+};
+
+
 ///////////////////////////////////////////////////////////////////////////////////////////////// AWSLevMarq
 // AWSLevMarq is the extension of CvLevMarq.
 // Because we need to evaluate Hessian inverse of the last iteration, the 
