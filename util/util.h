@@ -18,6 +18,7 @@
 #include "aws_sock.h"
 #include "aws_thread.h"
 #include "aws_stdlib.h"
+#include "aws_vobj.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////// AWSCamPar
 // AWS's camera parameter class. Defines file format and its read/write methods.

@@ -281,4 +281,20 @@ bool f_glfw_imview::init_run()
 	return true;
 }
 
+//////////////////////////////////////////////////////////////////////////////// f_glfw_claib members
+
+bool f_glfw_calib::init_run()
+{
+	if(m_chin.size() == 0)
+		return false;
+
+	m_pin = dynamic_cast<ch_image*>(m_chin[0]);
+	if(m_pin == NULL)
+		return false;
+
+	if(!f_glfw_window::init_run())
+		return false;
+
+	return true;
+}
 #endif

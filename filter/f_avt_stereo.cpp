@@ -37,7 +37,7 @@ using namespace cv;
 #include "f_base.h"
 #include "f_avt_stereo.h"
 
-f_avt_stereo::f_avt_stereo(const char * name): f_avt_cam(name), poutd(NULL), m_cam1(1), m_cam2(2)
+f_avt_stereo::f_avt_stereo(const char * name): f_avt_cam(name), m_cam1(1), m_cam2(2)
 {
 	register_fpar(m_strParams[3], (int*)&m_FrameStartTriggerMode, efstmUndef, strFrameStartTriggerMode, "Frame Start Trigger mode (default Freerun)");
 	register_params(m_cam1);

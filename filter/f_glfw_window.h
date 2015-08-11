@@ -46,6 +46,7 @@ public:
 };
 
 
+// simply shows input image 
 class f_glfw_imview: public f_glfw_window
 {
 protected:
@@ -59,6 +60,30 @@ public:
 	{
 	}
 	virtual ~f_glfw_imview()
+	{
+	}
+
+	virtual bool proc();
+};
+
+// single camera calibration
+// * Chessboards are detected automatically and collected as a list.
+// * A newly detected chessboard is scored by their quality.
+// * A newly detected chessboard is replaced with that of lower score.
+// * Chessboard's quality factors are, corner clarity, sizes of the grid, angle to the caemra, and density in the view.
+class f_glfw_calib: public f_glfw_window
+{
+protected:
+	ch_image * m_pin;
+	long long m_timg;
+	
+	virtual bool init_run();
+public:
+	f_glfw_calib(const char * name):f_glfw_window(name)
+	{
+	}
+
+	~f_glfw_calib()
 	{
 	}
 

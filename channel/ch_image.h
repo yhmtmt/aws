@@ -28,6 +28,7 @@ public:
 	virtual void set_img(Mat & img, long long t) = 0;
 };
 
+// ch_image_cln output clone of the image for get_img
 class ch_image_cln: public ch_image
 {
 protected:
@@ -65,6 +66,7 @@ public:
 		unlock();
 	}
 
+	// swap front and back buffers.
 	virtual void tran()
 	{
 		if(!m_bnew)
@@ -78,6 +80,7 @@ public:
 	}
 };
 
+// ch_image_ref returns reference of the image for get_img. Don't change the data if you use this as inputs for multiple filters.
 class ch_image_ref: public ch_image
 {
 protected:
@@ -115,6 +118,7 @@ public:
 		return m_img[m_front].data == buf || m_img[m_back].data == buf;
 	}
 
+	// swap front and back buffers.
 	virtual void tran()
 	{
 		if(!m_bnew)
