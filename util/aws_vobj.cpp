@@ -35,6 +35,14 @@ void s_model::proj(vector<Point2f> & pt2ds,  Mat & cam_int, Mat & cam_dist, Mat 
 bool s_model::load(const char * afname)
 {
 	strcpy(fname, afname);
+	if(!load())
+		return false;
+
+	return true;
+}
+
+bool s_model::load()
+{
 	FileStorage fs;
 	fs.open(fname, FileStorage::READ);
 	if(!fs.isOpened()){

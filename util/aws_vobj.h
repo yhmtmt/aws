@@ -90,6 +90,7 @@ struct s_model
 		Mat & rvec_obj, Mat & tvec_obj);
 
 	bool load(const char * afname);
+	bool load();
 
 	s_obj * detect(Mat & img, s_obj * pobj = NULL);
 };

@@ -295,6 +295,53 @@ bool f_glfw_calib::init_run()
 	if(!f_glfw_window::init_run())
 		return false;
 
+	if(!m_model_chsbd.load()){
+		cerr << "Failed to setup chessboard model with the model file " << m_model_chsbd.fname << endl;
+		return false;
+	}
+
+	m_objs.resize(m_num_chsbds, NULL);
+	m_score.resize(m_num_chsbds);
+
 	return true;
 }
+
+bool f_glfw_calib::proc()
+{
+	if(glfwWindowShouldClose(m_pwin))
+		return false;
+
+	long long timg;
+	Mat img = m_pin->get_img(timg);
+	if(img.empty())
+		return true;
+	if(m_timg == timg)
+		return true;
+
+	// if the detecting thread is not active, convert the image into a grayscale one, and invoke detection thread.
+	if(!m_bthact){
+		cvtColor(img, m_img_det, CV_RGB2GRAY);
+		pthread_create(&m_thdet, NULL, thdet, (void*) this);	
+	}
+
+	m_timg = timg;
+
+	glRasterPos2i(-1, -1);
+	cnvCVBGR8toGLRGB8(img);
+	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
+
+	glfwSwapBuffers(m_pwin);
+	glfwPollEvents();
+
+	return true;
+}
+
+void * f_glfw_calib::thdet(void * ptr)
+{
+	f_glfw_calib * pclb = (f_glfw_calib*) ptr;
+	s_obj * pobj = pclb->m_model_chsbd.detect(pclb->m_img_det);
+	// calculating score of the chessboard.
+	// replacing the chessboard if possible.
+}
+
 #endif

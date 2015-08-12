@@ -76,11 +76,39 @@ class f_glfw_calib: public f_glfw_window
 protected:
 	ch_image * m_pin;
 	long long m_timg;
+
+	AWSCamPar m_par;
+
+	// Grayscale image passed to the detector.
+	Mat m_img_det;
+
+	s_model m_model_chsbd;
+
+	pthread_t m_thdet;
+	pthread_mutex_t m_mtx;
+	static void * thdet(void * ptr);
+	bool m_bthact;
 	
+	Mat m_dist_chsbd;
+
+	int m_num_chsbds; // number of chessboards stocked as the list.
+	vector<s_obj*> m_objs; // chessboard list.
+	struct s_chsbd_score{
+		// corner score, size score, angle score, reprojection score, and the accumulated score.
+		double crn, sz, angl, rep, tot;
+		s_chsbd_score():crn(1.0), sz(1.0), angl(1.0), rep(1.0), tot(1.0)
+		{
+		}
+	};
+	vector<s_chsbd_score> m_score;
+
 	virtual bool init_run();
 public:
-	f_glfw_calib(const char * name):f_glfw_window(name)
+	f_glfw_calib(const char * name):f_glfw_window(name), m_num_chsbds(30), m_bthact(false)
 	{
+		register_fpar("fchsbd", m_model_chsbd.fname, 1024, "File path for the chessboard model.");
+		register_fpar("nchsbd", &m_num_chsbds, "Number of chessboards stocked.");
+		pthread_mutex_init(&m_mtx, NULL);
 	}
 
 	~f_glfw_calib()
