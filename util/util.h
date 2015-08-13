@@ -44,12 +44,28 @@ public:
 			par[ipar] = 0.;
 	};
 
+	void setFishEye(bool flag){
+		m_bFishEye = flag;
+	};
+
+	bool isFishEye(){
+		return m_bFishEye;
+	}
+
 	double * getCvPrj(){
 		return par;
 	}
 
+	Mat getCvPrjMat(){
+		return Mat(3, 3, CV_64FC1, par);
+	}
+
 	double * getCvDist(){
 		return &par[epk1];
+	}
+
+	Mat getCvDistMat(){
+		return Mat(1, 8, CV_64FC1, par);
 	}
 		
 	bool read(const char * fname);

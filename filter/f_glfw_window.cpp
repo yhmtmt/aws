@@ -303,6 +303,10 @@ bool f_glfw_calib::init_run()
 	m_objs.resize(m_num_chsbds, NULL);
 	m_score.resize(m_num_chsbds);
 
+	m_dist_chsbd = Mat::zeros(m_hist_grid.height, m_hist_grid.width, CV_32SC1);
+
+	m_par.setFishEye(m_bFishEye);
+
 	return true;
 }
 
@@ -339,9 +343,19 @@ bool f_glfw_calib::proc()
 void * f_glfw_calib::thdet(void * ptr)
 {
 	f_glfw_calib * pclb = (f_glfw_calib*) ptr;
-	s_obj * pobj = pclb->m_model_chsbd.detect(pclb->m_img_det);
+	return pclb->_thdet();
+}
+
+void * f_glfw_calib::_thdet()
+{
 	// calculating score of the chessboard.
+	s_chsbd_score sc;
+	sc.rep = 0.;
+	
 	// replacing the chessboard if possible.
+
+	// 
+	return NULL;
 }
 
 #endif

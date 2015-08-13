@@ -75,23 +75,31 @@ class f_glfw_calib: public f_glfw_window
 {
 protected:
 	ch_image * m_pin;
-	long long m_timg;
+	long long m_timg; // time of the image captured.
 
-	AWSCamPar m_par;
+	AWSCamPar m_par; // Camera intrinsic parameters
+	bool m_bFishEye; // Fish eye model flag.
+	bool m_bcalib_done; // calibration done flag.
+	double m_Erep; // reprojection error.
 
-	// Grayscale image passed to the detector.
+	// Grayscale image passed to the detector. 
 	Mat m_img_det;
 
 	s_model m_model_chsbd;
 
+	// detection thread objects.
 	pthread_t m_thdet;
 	pthread_mutex_t m_mtx;
 	static void * thdet(void * ptr);
+	void * _thdet();
 	bool m_bthact;
 	
+	// Chessboard distribution holder.
 	Mat m_dist_chsbd;
+	Size m_hist_grid;
 
 	int m_num_chsbds; // number of chessboards stocked as the list.
+
 	vector<s_obj*> m_objs; // chessboard list.
 	struct s_chsbd_score{
 		// corner score, size score, angle score, reprojection score, and the accumulated score.
@@ -102,12 +110,27 @@ protected:
 	};
 	vector<s_chsbd_score> m_score;
 
+	double m_wcrn, m_wsz, m_wangl, m_wrep;
+	void calc_tot_score(s_chsbd_score & score)
+	{
+		score.tot = m_wcrn * score.crn + m_wsz * score.sz 
+			+ m_wangl * score.angl + m_wrep * score.rep;
+	}
+
 	virtual bool init_run();
 public:
-	f_glfw_calib(const char * name):f_glfw_window(name), m_num_chsbds(30), m_bthact(false)
+	f_glfw_calib(const char * name):f_glfw_window(name), m_bFishEye(false), m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10)
 	{
+		register_fpar("fisheye", &m_bFishEye, "Yes, use fisheye model.");
 		register_fpar("fchsbd", m_model_chsbd.fname, 1024, "File path for the chessboard model.");
 		register_fpar("nchsbd", &m_num_chsbds, "Number of chessboards stocked.");
+		register_fpar("Wgrid", &m_hist_grid.width, "Number of horizontal grid of the chessboard histogram.");
+		register_fpar("Hgrid", &m_hist_grid.height, "Number of vertical grid of the chessboard histogram.");
+		register_fpar("wcrn", &m_wcrn, "Weight of the corner score.");
+		register_fpar("wsz", &m_wsz, "Weight of the size score.");
+		register_fpar("wangle", &m_wangl, "Weight of the angle score.");
+		register_fpar("wrep", &m_wrep, "Weight of the reprojection score.");
+
 		pthread_mutex_init(&m_mtx, NULL);
 	}
 
