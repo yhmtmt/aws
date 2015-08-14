@@ -334,6 +334,10 @@ bool f_glfw_calib::proc()
 	cnvCVBGR8toGLRGB8(img);
 	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
 
+	// overlay chessboard if needed
+	// overlay point density if needed
+	// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
+
 	glfwSwapBuffers(m_pwin);
 	glfwPollEvents();
 
@@ -348,14 +352,188 @@ void * f_glfw_calib::thdet(void * ptr)
 
 void * f_glfw_calib::_thdet()
 {
+	if(m_hist_grid.width != m_dist_chsbd.cols || 
+		m_hist_grid.height != m_dist_chsbd.rows)
+		refresh_chsbd_dist();
+
+	s_obj * pobj = m_model_chsbd.detect(m_img_det);
+	if(!pobj) 
+		return NULL;
+
 	// calculating score of the chessboard.
 	s_chsbd_score sc;
-	sc.rep = 0.;
-	
-	// replacing the chessboard if possible.
+	sc.rep = 1.0;
+	sc.crn = calc_corner_contrast_score(m_img_det, pobj->pt2d);
+	calc_size_and_angle_score(pobj->pt2d, sc.sz, sc.angl);
 
-	// 
+	calc_tot_score(sc);
+
+	// replacing the chessboard if possible.
+	bool is_changed = false;
+	for(int i = 0; i < m_num_chsbds; i++){
+		if(m_objs[i] == NULL){
+			m_objs[i] = pobj;
+			m_score[i] = sc;
+			add_chsbd_dist(pobj->pt2d);
+			is_changed = true;
+			break;
+		}
+
+		if(m_score[i].tot < sc.tot){
+			s_obj * ptmp = pobj;
+			pobj = m_objs[i];
+			m_objs[i] = ptmp;
+			sub_chsbd_dist(pobj->pt2d);
+			add_chsbd_dist(ptmp->pt2d);
+			delete pobj;
+			is_changed = true;
+			break;
+		}
+	}
+	
+	if(is_changed)
+		recalc_chsbd_dist_score();
+
 	return NULL;
+}
+
+// The size score is the area of the largest cell.
+// The angle score is the ratio of the area of largest cell and that of the smallest cell.
+void f_glfw_calib::calc_size_and_angle_score(vector<Point2f> & pts, double & ssz, double & sangl)
+{
+	Size sz = Size(m_model_chsbd.par_chsbd.w, m_model_chsbd.par_chsbd.h);
+	double amax = 0, amin = DBL_MAX;
+	double a;
+	Point2f v1, v2;
+
+	int i0, i1, i2;
+
+	// left-top corner
+	i0 = 0;
+	i1 = 1;
+	i2 = sz.width;
+	v1 = pts[i1] - pts[i0];
+	v2 = pts[i2] - pts[i0];
+
+	// Eventhoug the projected grid is not the parallelogram, we now approximate it as a parallelogram.
+	a = abs(v1.x * v2.y - v1.y * v2.x); 
+	amax = max(a, amax);
+	amin = min(a, amin);
+
+	// left-bottom corner
+	i0 = sz.width * (sz.height - 1);
+	i1 = i0 + 1;
+	i2 = i0 - sz.width;
+	v1 = pts[i1] - pts[i0];
+	v2 = pts[i2] - pts[i0];
+	a = abs(v1.x * v2.y - v1.y * v2.x);
+	amax = max(a, amax);
+	amin = min(a, amin);
+
+	// right-top corner
+	i0 = sz.width - 1;
+	i1 = i0 - 1;
+	i2 = i0 + sz.width;
+	v1 = pts[i1] - pts[i0];
+	v2 = pts[i2] - pts[i0];
+	a = abs(v1.x * v2.y - v1.y * v2.x);
+	amax = max(a, amax);
+	amin = min(a, amin);
+
+	// right-bottom corner
+	i0 = sz.width * sz.height - 1;
+	i1 = i0 - 1;
+	i2 = i0 - sz.width;
+	v1 = pts[i1] - pts[i0];
+	v2 = pts[i2] - pts[i0];
+	a = abs(v1.x * v2.y - v1.y * v2.x);
+	amax = max(a, amax);
+	amin = min(a, amin);
+	ssz = amax;
+	sangl = amax / amin;
+}
+
+// calculating average of contrasts of pixels around chessboard's points.
+// the contrast of a point is calculated (Imax-Imin) / (Imax+Imin) for pixels around the point
+double f_glfw_calib::calc_corner_contrast_score(Mat & img, vector<Point2f> & pts)
+{
+	uchar * pix = img.data;
+	uchar vmax = 0, vmin = 255;
+	double csum = 0.;
+	//Note that the contrast of the point is calculated in 5x5 image patch centered at the point. 
+	
+	int org = - 2 * img.cols - 2;
+	for(int i = 0; i < pts.size(); i++){
+		Point2f & pt = pts[i];
+		
+		pix = img.data + (int) (img.cols * pt.y + pt.x + 0.5) + org;
+		for(int y = 0; y < 5; y++){
+			for(int x = 0; x < 5; x++, pix++){
+				vmax = max(vmax, *pix);
+				vmin = min(vmin, *pix);
+			}
+			pix += org - 5;
+		}
+		csum += (double)(vmax - vmin) / (double)((int)vmax + (int)vmin);
+	}
+
+	return csum / (double) pts.size();
+}
+
+void f_glfw_calib::add_chsbd_dist(vector<Point2f> & pts)
+{
+	double wstep = m_img_det.cols / m_hist_grid.width;
+	double hstep = m_img_det.rows / m_hist_grid.height;
+	for(int i = 0; i < pts.size(); i++){
+		int x, y;
+		x = (int) (pts[i].x / wstep);
+		y = (int) (pts[i].y / hstep);
+		m_dist_chsbd.at<int>(x, y) += 1;
+	}
+}
+
+void f_glfw_calib::sub_chsbd_dist(vector<Point2f> & pts)
+{
+	double wstep = m_img_det.cols / m_hist_grid.width;
+	double hstep = m_img_det.rows / m_hist_grid.height;
+	for(int i = 0; i < pts.size(); i++){
+		int x, y;
+		x = (int) (pts[i].x / wstep);
+		y = (int) (pts[i].y / hstep);
+		m_dist_chsbd.at<int>(x, y) -= 1;
+	}
+}
+
+void f_glfw_calib::refresh_chsbd_dist()
+{
+	m_dist_chsbd = Mat::zeros(m_hist_grid.height, m_hist_grid.width, CV_32SC1);
+	for(int iobj = 0; iobj < m_objs.size(); iobj++){
+		s_obj * pobj = m_objs[iobj];
+		add_chsbd_dist(pobj->pt2d);
+	}
+}
+
+double f_glfw_calib::calc_chsbd_dist_score(vector<Point2f> & pts)
+{
+	double wstep = m_img_det.cols / m_hist_grid.width;
+	double hstep = m_img_det.rows / m_hist_grid.height;
+	int sum = 0;
+	for(int i = 0; i < pts.size(); i++){
+		int x, y;
+		x = (int) (pts[i].x / wstep);
+		y = (int) (pts[i].y / hstep);
+		sum += m_dist_chsbd.at<int>(x, y);
+	}
+	return 1.0 / ((double) sum + 0.001);
+}
+
+void f_glfw_calib::recalc_chsbd_dist_score()
+{
+	m_dist_chsbd = Mat::zeros(m_hist_grid.height, m_hist_grid.width, CV_32SC1);
+	for(int iobj = 0; iobj < m_objs.size(); iobj++){
+		s_obj * pobj = m_objs[iobj];
+		calc_chsbd_dist_score(pobj->pt2d);
+	}
 }
 
 #endif

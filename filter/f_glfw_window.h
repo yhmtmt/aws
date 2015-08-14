@@ -110,26 +110,35 @@ protected:
 	};
 	vector<s_chsbd_score> m_score;
 
-	double m_wcrn, m_wsz, m_wangl, m_wrep;
 	void calc_tot_score(s_chsbd_score & score)
 	{
-		score.tot = m_wcrn * score.crn + m_wsz * score.sz 
-			+ m_wangl * score.angl + m_wrep * score.rep;
+		score.tot = score.crn * score.sz * score.angl * score.rep;
 	}
+
+	// Scoring helper functions
+	// The average contrast is took as the score
+	double calc_corner_contrast_score(Mat & img, vector<Point2f> & pts);
+
+	// The largest grid size is took as the score
+	void calc_size_and_angle_score(vector<Point2f> & pts, double & ssz, double & sangl);
+
+	// Point histogram handler
+	void add_chsbd_dist(vector<Point2f> & pts);
+	void sub_chsbd_dist(vector<Point2f> & pts);
+	void refresh_chsbd_dist();
+	double calc_chsbd_dist_score(vector<Point2f> & pts);
+	void recalc_chsbd_dist_score();
 
 	virtual bool init_run();
 public:
-	f_glfw_calib(const char * name):f_glfw_window(name), m_bFishEye(false), m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10)
+	f_glfw_calib(const char * name):f_glfw_window(name), m_bFishEye(false), 
+		m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10)
 	{
 		register_fpar("fisheye", &m_bFishEye, "Yes, use fisheye model.");
 		register_fpar("fchsbd", m_model_chsbd.fname, 1024, "File path for the chessboard model.");
 		register_fpar("nchsbd", &m_num_chsbds, "Number of chessboards stocked.");
 		register_fpar("Wgrid", &m_hist_grid.width, "Number of horizontal grid of the chessboard histogram.");
 		register_fpar("Hgrid", &m_hist_grid.height, "Number of vertical grid of the chessboard histogram.");
-		register_fpar("wcrn", &m_wcrn, "Weight of the corner score.");
-		register_fpar("wsz", &m_wsz, "Weight of the size score.");
-		register_fpar("wangle", &m_wangl, "Weight of the angle score.");
-		register_fpar("wrep", &m_wrep, "Weight of the reprojection score.");
 
 		pthread_mutex_init(&m_mtx, NULL);
 	}
