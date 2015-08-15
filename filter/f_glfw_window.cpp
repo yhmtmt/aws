@@ -541,8 +541,38 @@ void f_glfw_calib::recalc_chsbd_dist_score()
 	}
 }
 
+int f_glfw_calib::gen_calib_flag()
+{
+	int flag = 0;
+	if(m_bFishEye){
+		flag |= (m_bcalib_recompute_extrinsic ? fisheye::CALIB_RECOMPUTE_EXTRINSIC : 0);
+		flag |= (m_bcalib_check_cond ? fisheye::CALIB_CHECK_COND : 0);
+		flag |= (m_bcalib_fix_skew ? fisheye::CALIB_FIX_SKEW : 0);
+		flag |= (m_bcalib_fix_intrinsic ? fisheye::CALIB_FIX_INTRINSIC : 0);
+		flag |= (m_bcalib_fix_k1 ? fisheye::CALIB_FIX_K1 : 0);
+		flag |= (m_bcalib_fix_k2 ? fisheye::CALIB_FIX_K2 : 0);
+		flag |= (m_bcalib_fix_k3 ? fisheye::CALIB_FIX_K3 : 0);
+		flag |= (m_bcalib_fix_k4 ? fisheye::CALIB_FIX_K4 : 0);
+	}else{
+		flag |= (m_bcalib_use_intrinsic_guess ? CV_CALIB_USE_INTRINSIC_GUESS : 0);
+		flag |= (m_bcalib_fix_principal_point ? CV_CALIB_FIX_PRINCIPAL_POINT : 0);
+		flag |= (m_bcalib_fix_aspect_ratio ? CV_CALIB_FIX_ASPECT_RATIO : 0);
+		flag |= (m_bcalib_zero_tangent_dist ? CV_CALIB_ZERO_TANGENT_DIST : 0);
+		flag |= (m_bcalib_fix_k1 ? CV_CALIB_FIX_K1 : 0);
+		flag |= (m_bcalib_fix_k2 ? CV_CALIB_FIX_K2 : 0);
+		flag |= (m_bcalib_fix_k3 ? CV_CALIB_FIX_K3 : 0);
+		flag |= (m_bcalib_fix_k4 ? CV_CALIB_FIX_K4 : 0);
+		flag |= (m_bcalib_fix_k5 ? CV_CALIB_FIX_K5 : 0);
+		flag |= (m_bcalib_fix_k6 ? CV_CALIB_FIX_K6 : 0);
+		flag |= (m_bcalib_rational_model ? CV_CALIB_RATIONAL_MODEL : 0);
+	}
+	return flag;
+}
+
 void f_glfw_calib::calibrate()
 {
+	m_par.setFishEye(m_bFishEye);
+
 	Size sz_chsbd(m_model_chsbd.par_chsbd.w, m_model_chsbd.par_chsbd.h);
 	int num_pts = sz_chsbd.width * sz_chsbd.height;
 
@@ -551,7 +581,7 @@ void f_glfw_calib::calibrate()
 	vector<Mat> rvecs;
 	vector<Mat> tvecs;
 
-	int flags = 0;
+	int flags = gen_calib_flag();
 
 	pt2ds.resize(m_objs.size());
 	pt3ds.resize(m_objs.size());
@@ -560,8 +590,14 @@ void f_glfw_calib::calibrate()
 		pt3ds[iobj] = Mat(m_model_chsbd.pts, false);
 	}
 	
-	m_Erep = calibrateCamera(pt3ds, pt2ds, sz_chsbd,
-		m_par.getCvPrjMat(), m_par.getCvDistMat(), rvecs, tvecs, flags);
+	if(m_bFishEye){
+		m_Erep = fisheye::calibrate(pt3ds, pt2ds, sz_chsbd, m_par.getCvPrjMat(), m_par.getCvDistFishEyeMat(),
+			rvecs, tvecs, flags);
+	}else{
+		m_Erep = calibrateCamera(pt3ds, pt2ds, sz_chsbd,
+			m_par.getCvPrjMat(), m_par.getCvDistMat(), rvecs, tvecs, flags);
+	}
+
 	m_bcalib_done = true;
 
 	// calculating reprojection error 
@@ -572,10 +608,14 @@ void f_glfw_calib::calibrate()
 		vector<Point2f> & pt2dprj = m_objs[iobj]->pt2dprj;
 		vector<Point2f> & pt2d = m_objs[iobj]->pt2d;
 
-		prjPts(m_model_chsbd.pts, pt2dprj,
-			m_par.getCvPrjMat(), m_par.getCvDistMat(),
-			rvecs[iobj], tvecs[iobj]);
-
+		if(m_bFishEye){
+			fisheye::projectPoints(m_model_chsbd.pts, pt2dprj, rvecs[iobj], tvecs[iobj], 
+				m_par.getCvPrjMat(), m_par.getCvDistFishEyeMat());
+		}else{
+			prjPts(m_model_chsbd.pts, pt2dprj,
+				m_par.getCvPrjMat(), m_par.getCvDistMat(),
+				rvecs[iobj], tvecs[iobj]);
+		}
 		double sum_rep = 0.;
 		for(int ipt = 0; ipt < pt2d.size(); ipt++){
 			Point2f & ptprj = pt2dprj[ipt];

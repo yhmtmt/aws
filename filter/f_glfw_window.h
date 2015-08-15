@@ -78,7 +78,27 @@ protected:
 	long long m_timg; // time of the image captured.
 
 	AWSCamPar m_par; // Camera intrinsic parameters
+
+	// calibration flag. These flags are interpreted into OpenCV's flag of calibrateCamera.
+	// For normal camera model (used in cv::calibrateCamera)
+	bool m_bcalib_fix_campar;
+	bool m_bcalib_fix_focus;
+	bool m_bcalib_use_intrinsic_guess;
+	bool m_bcalib_fix_principal_point;
+	bool m_bcalib_fix_aspect_ratio;
+	bool m_bcalib_zero_tangent_dist;
+	bool m_bcalib_fix_k1, m_bcalib_fix_k2, 
+		m_bcalib_fix_k3, m_bcalib_fix_k4, 
+		m_bcalib_fix_k5, m_bcalib_fix_k6; // k1-k4 are shared with fisheye.
+	bool m_bcalib_rational_model;
+
+	// For fisheye camera model (used in cv::fisheye::calibrateCamera)
 	bool m_bFishEye; // Fish eye model flag.
+	bool m_bcalib_recompute_extrinsic;
+	bool m_bcalib_check_cond;
+	bool m_bcalib_fix_skew;
+	bool m_bcalib_fix_intrinsic;
+
 	bool m_bcalib_done; // calibration done flag.
 	double m_Erep; // reprojection error. (OpenCV's return value)
 	double m_rep_avg; // average reprojection error. (root mean square)
@@ -131,18 +151,62 @@ protected:
 	double calc_chsbd_dist_score(vector<Point2f> & pts);
 	void recalc_chsbd_dist_score();
 
+	int gen_calib_flag();
 	void calibrate();
 
 	virtual bool init_run();
 public:
-	f_glfw_calib(const char * name):f_glfw_window(name), m_bFishEye(false), 
+	f_glfw_calib(const char * name):f_glfw_window(name), 	
+		m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false),
+		m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false), m_bcalib_zero_tangent_dist(true),
+		m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
+		m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false), 
+		m_bFishEye(false), m_bcalib_recompute_extrinsic(false), m_bcalib_check_cond(false),
+		m_bcalib_fix_skew(false), m_bcalib_fix_intrinsic(false),
 		m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10), m_rep_avg(1.0)
 	{
-		register_fpar("fisheye", &m_bFishEye, "Yes, use fisheye model.");
 		register_fpar("fchsbd", m_model_chsbd.fname, 1024, "File path for the chessboard model.");
 		register_fpar("nchsbd", &m_num_chsbds, "Number of chessboards stocked.");
 		register_fpar("Wgrid", &m_hist_grid.width, "Number of horizontal grid of the chessboard histogram.");
 		register_fpar("Hgrid", &m_hist_grid.height, "Number of vertical grid of the chessboard histogram.");
+
+		// normal camera model
+		register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Use intrinsic guess.");
+		register_fpar("fix_campar", &m_bcalib_fix_campar, "Fix camera parameters");
+		register_fpar("fix_focus", &m_bcalib_fix_focus, "Fix camera's focal length");
+		register_fpar("fix_principal_point", &m_bcalib_fix_principal_point, "Fix camera center as specified (cx, cy)");
+		register_fpar("fix_aspect_ratio", &m_bcalib_fix_aspect_ratio, "Fix aspect ratio as specified fx/fy. Only fy is optimized.");
+		register_fpar("zero_tangent_dist", &m_bcalib_zero_tangent_dist, "Zeroify tangential distortion (px, py)");
+		register_fpar("fix_k1", &m_bcalib_fix_k1, "Fix k1 as specified.");
+		register_fpar("fix_k2", &m_bcalib_fix_k2, "Fix k2 as specified.");
+		register_fpar("fix_k3", &m_bcalib_fix_k3, "Fix k3 as specified.");
+		register_fpar("fix_k4", &m_bcalib_fix_k4, "Fix k4 as specified.");
+		register_fpar("fix_k5", &m_bcalib_fix_k5, "Fix k5 as specified.");
+		register_fpar("fix_k6", &m_bcalib_fix_k6, "Fix k6 as specified.");
+		register_fpar("rational_model", &m_bcalib_rational_model, "Enable rational model (k4, k5, k6)");
+		register_fpar("fx", (m_par.getCvPrj() + 0), "Focal length in x");
+		register_fpar("fy", (m_par.getCvPrj() + 1), "Focal length in y");
+		register_fpar("cx", (m_par.getCvPrj() + 2), "Principal point in x");
+		register_fpar("cy", (m_par.getCvPrj() + 3), "Principal point in y");
+		register_fpar("k1", (m_par.getCvDist() + 0), "k1");
+		register_fpar("k2", (m_par.getCvDist() + 1), "k2");
+		register_fpar("p1", (m_par.getCvDist() + 2), "p1");
+		register_fpar("p2", (m_par.getCvDist() + 3), "p2");
+		register_fpar("k3", (m_par.getCvDist() + 4), "k3");
+		register_fpar("k4", (m_par.getCvDist() + 5), "k4");
+		register_fpar("k5", (m_par.getCvDist() + 6), "k5");
+		register_fpar("k6", (m_par.getCvDist() + 7), "k6");
+
+		// fisheye camera model
+		register_fpar("fisheye", &m_bFishEye, "Yes, use fisheye model.");
+		register_fpar("recomp_ext", &m_bcalib_recompute_extrinsic, "Recompute extrinsic parameter.");
+		register_fpar("chk_cond", &m_bcalib_check_cond, "Check condition.");
+		register_fpar("fix_skew", &m_bcalib_fix_skew, "Fix skew.");
+		register_fpar("fix_int", &m_bcalib_fix_intrinsic, "Fix intrinsic parameters.");
+		register_fpar("fek1", (m_par.getCvDistFishEye() + 0), "k1 for fisheye");
+		register_fpar("fek2", (m_par.getCvDistFishEye() + 1), "k2 for fisheye");
+		register_fpar("fek3", (m_par.getCvDistFishEye() + 2), "k3 for fisheye");
+		register_fpar("fek4", (m_par.getCvDistFishEye() + 3), "k4 for fisheye");
 
 		pthread_mutex_init(&m_mtx, NULL);
 	}

@@ -36,6 +36,9 @@ protected:
 
 	double par[12];
 
+	Mat P; // projection matrix
+	Mat D; // distortion coefficient
+
 	bool m_bFishEye;
 public:
 	AWSCamPar()
@@ -57,17 +60,31 @@ public:
 	}
 
 	Mat getCvPrjMat(){
-		return Mat(3, 3, CV_64FC1, par);
+		P = Mat::zeros(3, 3, CV_64FC1);
+		double * p = P.ptr<double>();
+		p[0] = par[0];
+		p[2] = par[2];
+		p[4] = par[1];
+		p[5] = par[3];
+		return P;
 	}
 
 	double * getCvDist(){
 		return &par[epk1];
 	}
 
-	Mat getCvDistMat(){
-		return Mat(1, 8, CV_64FC1, par);
+	double * getCvDistFishEye(){
+		return &par[efpk1];
 	}
-		
+
+	Mat getCvDistMat(){
+		return Mat(1, 8, CV_64FC1, &par[epk1]);
+	}
+	
+	Mat getCvDistFishEyeMat(){
+		return Mat(1, 4, CV_64FC1, &par[efpk1]);
+	}
+
 	bool read(const char * fname);
 	bool write(const char * fname);
 };
