@@ -514,6 +514,7 @@ bool s_obj::load(FileNode & fnobj, vector<s_model*> & mdls)
 	for(int i = 0; i < num_points && itr != fn.end(); i++, itr++){
 		if((*itr).empty())
 			return false;
+		Point2f pt;
 		(*itr) >> pt2d[i];
 	}
 

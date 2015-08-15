@@ -80,7 +80,8 @@ protected:
 	AWSCamPar m_par; // Camera intrinsic parameters
 	bool m_bFishEye; // Fish eye model flag.
 	bool m_bcalib_done; // calibration done flag.
-	double m_Erep; // reprojection error.
+	double m_Erep; // reprojection error. (OpenCV's return value)
+	double m_rep_avg; // average reprojection error. (root mean square)
 
 	// Grayscale image passed to the detector. 
 	Mat m_img_det;
@@ -99,6 +100,7 @@ protected:
 	Size m_hist_grid;
 
 	int m_num_chsbds; // number of chessboards stocked as the list.
+	int m_num_chsbds_det; // number of chessboards found.
 
 	vector<s_obj*> m_objs; // chessboard list.
 	struct s_chsbd_score{
@@ -112,7 +114,7 @@ protected:
 
 	void calc_tot_score(s_chsbd_score & score)
 	{
-		score.tot = score.crn * score.sz * score.angl * score.rep;
+		score.tot = score.crn * score.sz * score.angl / score.rep;
 	}
 
 	// Scoring helper functions
@@ -129,10 +131,12 @@ protected:
 	double calc_chsbd_dist_score(vector<Point2f> & pts);
 	void recalc_chsbd_dist_score();
 
+	void calibrate();
+
 	virtual bool init_run();
 public:
 	f_glfw_calib(const char * name):f_glfw_window(name), m_bFishEye(false), 
-		m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10)
+		m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10), m_rep_avg(1.0)
 	{
 		register_fpar("fisheye", &m_bFishEye, "Yes, use fisheye model.");
 		register_fpar("fchsbd", m_model_chsbd.fname, 1024, "File path for the chessboard model.");

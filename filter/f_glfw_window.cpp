@@ -302,6 +302,7 @@ bool f_glfw_calib::init_run()
 
 	m_objs.resize(m_num_chsbds, NULL);
 	m_score.resize(m_num_chsbds);
+	m_num_chsbds_det = 0;
 
 	m_dist_chsbd = Mat::zeros(m_hist_grid.height, m_hist_grid.width, CV_32SC1);
 
@@ -376,6 +377,7 @@ void * f_glfw_calib::_thdet()
 			m_score[i] = sc;
 			add_chsbd_dist(pobj->pt2d);
 			is_changed = true;
+			m_num_chsbds++;
 			break;
 		}
 
@@ -393,6 +395,9 @@ void * f_glfw_calib::_thdet()
 	
 	if(is_changed)
 		recalc_chsbd_dist_score();
+	
+	if(m_num_chsbds == m_num_chsbds_det)
+		calibrate();
 
 	return NULL;
 }
@@ -534,6 +539,56 @@ void f_glfw_calib::recalc_chsbd_dist_score()
 		s_obj * pobj = m_objs[iobj];
 		calc_chsbd_dist_score(pobj->pt2d);
 	}
+}
+
+void f_glfw_calib::calibrate()
+{
+	Size sz_chsbd(m_model_chsbd.par_chsbd.w, m_model_chsbd.par_chsbd.h);
+	int num_pts = sz_chsbd.width * sz_chsbd.height;
+
+	vector<Mat> pt2ds;
+	vector<Mat> pt3ds;
+	vector<Mat> rvecs;
+	vector<Mat> tvecs;
+
+	int flags = 0;
+
+	pt2ds.resize(m_objs.size());
+	pt3ds.resize(m_objs.size());
+	for(int iobj = 0; iobj < m_objs.size(); iobj++){
+		pt2ds[iobj] = Mat(m_objs[iobj]->pt2d, false);
+		pt3ds[iobj] = Mat(m_model_chsbd.pts, false);
+	}
+	
+	m_Erep = calibrateCamera(pt3ds, pt2ds, sz_chsbd,
+		m_par.getCvPrjMat(), m_par.getCvDistMat(), rvecs, tvecs, flags);
+	m_bcalib_done = true;
+
+	// calculating reprojection error 
+	double rep_tot = 0.;
+	for(int iobj = 0; iobj < m_objs.size(); iobj++){
+		m_objs[iobj]->rvec = rvecs[iobj];
+		m_objs[iobj]->tvec = tvecs[iobj];
+		vector<Point2f> & pt2dprj = m_objs[iobj]->pt2dprj;
+		vector<Point2f> & pt2d = m_objs[iobj]->pt2d;
+
+		prjPts(m_model_chsbd.pts, pt2dprj,
+			m_par.getCvPrjMat(), m_par.getCvDistMat(),
+			rvecs[iobj], tvecs[iobj]);
+
+		double sum_rep = 0.;
+		for(int ipt = 0; ipt < pt2d.size(); ipt++){
+			Point2f & ptprj = pt2dprj[ipt];
+			Point2f & pt = pt2d[ipt];
+			Point2f ptdiff = pt - ptprj;
+			double rep = ptdiff.x * ptdiff.x + ptdiff.y * ptdiff.y;
+			sum_rep += rep;
+		}
+		rep_tot += sum_rep;
+		m_score[iobj].rep = sqrt(sum_rep / (double) num_pts);
+	}
+
+	m_rep_avg = rep_tot / (double)(num_pts * m_num_chsbds);
 }
 
 #endif
