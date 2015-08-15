@@ -58,6 +58,11 @@ bool f_glfw_window::init_run()
 
 	glfwMakeContextCurrent(m_pwin);
 
+	glfwSetKeyCallback(m_pwin, key_callback);
+	glfwSetCursorPosCallback(m_pwin, cursor_position_callback);
+	glfwSetMouseButtonCallback(m_pwin, mouse_button_callback);
+	glfwSetScrollCallback(m_pwin, scroll_callback);
+
 	return true;
 }
 

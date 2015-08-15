@@ -27,6 +27,45 @@ protected:
 	virtual bool init_run();
 	virtual void destroy_run();
 
+	virtual void _key_callback(int key, int scancode, int action, int mods)
+	{
+	}
+
+	static void key_callback(GLFWwindow * pwindow, int key, int scancode, int action, int mods)
+	{
+		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		ptr->_key_callback(key, scancode, action, mods);
+	}
+
+	virtual void _cursor_position_callback(double xpos, double ypos)
+	{
+	}
+
+	static void cursor_position_callback(GLFWwindow* pwindow, double xpos, double ypos)
+	{
+		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		ptr->_cursor_position_callback(xpos, ypos);
+	}
+
+	void _mouse_button_callback(int button, int action, int mods)
+	{
+	}
+
+	static void mouse_button_callback(GLFWwindow* pwindow, int button, int action, int mods)
+	{
+		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		ptr->_mouse_button_callback(button, action, mods);
+	}
+
+	void _scroll_callback(double xoffset, double yoffset)
+	{
+	}
+
+	static void scroll_callback(GLFWwindow* pwindow, double xoffset, double yoffset)
+	{
+		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		ptr->_scroll_callback(xoffset, yoffset);
+	}
 public:
 	f_glfw_window(const char * name);
 	virtual ~f_glfw_window();
@@ -106,6 +145,7 @@ protected:
 	// Grayscale image passed to the detector. 
 	Mat m_img_det;
 
+	// chessboard model
 	s_model m_model_chsbd;
 
 	// detection thread objects.
@@ -123,6 +163,8 @@ protected:
 	int m_num_chsbds_det; // number of chessboards found.
 
 	vector<s_obj*> m_objs; // chessboard list.
+
+	// data structure holding chessboard's score
 	struct s_chsbd_score{
 		// corner score, size score, angle score, reprojection score, and the accumulated score.
 		double crn, sz, angl, rep, tot;
@@ -134,7 +176,7 @@ protected:
 
 	void calc_tot_score(s_chsbd_score & score)
 	{
-		score.tot = score.crn * score.sz * score.angl / score.rep;
+		score.tot = score.crn * score.sz * score.angl / (score.rep + 1e-5);
 	}
 
 	// Scoring helper functions
