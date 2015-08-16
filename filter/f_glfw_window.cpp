@@ -33,6 +33,38 @@ using namespace cv;
 
 #include "f_glfw_window.h"
 
+//////////////////////////////////////////////////////////////////////////////////////////// helper functions
+void drawPoints(vector<Point2f> & pts, float r, float g, float b, float alpha, float l)
+{
+	// drawing Points
+	glPointSize(l);
+	glBegin(GL_POINTS);
+	{
+		glColor4f(r, g, b, alpha);
+		for(int ipt = 0; ipt < pts.size(); ipt++){
+			glVertex2f(pts[ipt].x, pts[ipt].y);
+		}
+	}
+	glEnd();
+}
+
+void drawChessboard(vector<Point2f> & pts, float r, float g, float b, float alpha, float l, float w)
+{
+	drawPoints(pts, r, g, b, alpha, l);
+	glLineWidth(w);
+	glBegin(GL_LINES);
+	{
+		Point2f &pt = pts[0];
+		glVertex2f(pt.x, pt.y);
+		for(int ipt = 1; ipt < pts.size(); ipt++){
+			pt = pts[ipt];
+			glVertex2f(pt.x, pt.y);
+		}
+	}
+	glEnd();
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window
 f_glfw_window::f_glfw_window(const char * name):f_base(name), m_pwin(NULL), m_sz_win(640, 480)
 {
 	register_fpar("width", &m_sz_win.width, "Width of the window.");

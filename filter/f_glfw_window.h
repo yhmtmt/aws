@@ -19,6 +19,13 @@
 #include "f_base.h"
 #include "../channel/ch_image.h"
 
+void drawPoints(vector<Point2f> & pts, float r, float g, float b, float alpha, 
+				float l /*point size*/);
+void drawChessboard(vector<Point2f> & pts, float r, float g, float b, float alpha, 
+					float l /* point size */, float w /* line width */);
+
+
+
 class f_glfw_window: public f_base
 {
 protected:
