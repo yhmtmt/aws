@@ -64,6 +64,35 @@ void drawChessboard(vector<Point2f> & pts, float r, float g, float b, float alph
 	glEnd();
 }
 
+void drawDensity(Mat hist, int hist_max, Size grid, float wimg, float himg, 
+				 float r, float g, float b, float alpha, float w /* line width of the grid */)
+{
+	float fac = (float)(1.0 / (float) hist_max);
+	float wgrid = (float)(wimg / (float) grid.width);
+	float hgrid = (float)(himg / (float) grid.height);
+
+	glLineWidth(w);
+	glBegin(GL_QUADS);
+	{
+		for(int y = 0; y < grid.height; y++){
+			for(int x = 0; x < grid.width; x++){
+				glColor4f(r * fac, g * fac, b * fac, alpha);
+				float u, v;
+				u = x * wgrid;
+				v = y * hgrid;
+				glVertex2f(u, v);
+				u = (x + 1) * wgrid;
+				glVertex2f(u, v);
+				v = (y + 1) * hgrid;
+				glVertex2f(u, v);
+				u = x * wgrid;
+				glVertex2f(u, v);
+			}
+		}
+	}
+	glEnd();
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window
 f_glfw_window::f_glfw_window(const char * name):f_base(name), m_pwin(NULL), m_sz_win(640, 480)
 {
@@ -319,6 +348,70 @@ bool f_glfw_imview::init_run()
 }
 
 //////////////////////////////////////////////////////////////////////////////// f_glfw_claib members
+f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name), 	
+	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false),
+	m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false), m_bcalib_zero_tangent_dist(true),
+	m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
+	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false), 
+	m_bFishEye(false), m_bcalib_recompute_extrinsic(false), m_bcalib_check_cond(false),
+	m_bcalib_fix_skew(false), m_bcalib_fix_intrinsic(false),
+	m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10), m_rep_avg(1.0),
+	m_vm(VM_CAM), 
+	m_bshow_chsbd_all(true), m_bshow_chsbd_sel(true), m_sel_chsbd(-1), m_bshow_chsbd_density(true),
+	m_bsave(false), m_bload(false)
+{
+	m_fcampar[0] = '\0';
+
+	register_fpar("fchsbd", m_model_chsbd.fname, 1024, "File path for the chessboard model.");
+	register_fpar("nchsbd", &m_num_chsbds, "Number of chessboards stocked.");
+	register_fpar("fcampar", m_fcampar, "File path of the camera parameter.");
+	register_fpar("Wgrid", &m_hist_grid.width, "Number of horizontal grid of the chessboard histogram.");
+	register_fpar("Hgrid", &m_hist_grid.height, "Number of vertical grid of the chessboard histogram.");
+
+	// normal camera model
+	register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Use intrinsic guess.");
+	register_fpar("fix_campar", &m_bcalib_fix_campar, "Fix camera parameters");
+	register_fpar("fix_focus", &m_bcalib_fix_focus, "Fix camera's focal length");
+	register_fpar("fix_principal_point", &m_bcalib_fix_principal_point, "Fix camera center as specified (cx, cy)");
+	register_fpar("fix_aspect_ratio", &m_bcalib_fix_aspect_ratio, "Fix aspect ratio as specified fx/fy. Only fy is optimized.");
+	register_fpar("zero_tangent_dist", &m_bcalib_zero_tangent_dist, "Zeroify tangential distortion (px, py)");
+	register_fpar("fix_k1", &m_bcalib_fix_k1, "Fix k1 as specified.");
+	register_fpar("fix_k2", &m_bcalib_fix_k2, "Fix k2 as specified.");
+	register_fpar("fix_k3", &m_bcalib_fix_k3, "Fix k3 as specified.");
+	register_fpar("fix_k4", &m_bcalib_fix_k4, "Fix k4 as specified.");
+	register_fpar("fix_k5", &m_bcalib_fix_k5, "Fix k5 as specified.");
+	register_fpar("fix_k6", &m_bcalib_fix_k6, "Fix k6 as specified.");
+	register_fpar("rational_model", &m_bcalib_rational_model, "Enable rational model (k4, k5, k6)");
+	register_fpar("fx", (m_par.getCvPrj() + 0), "Focal length in x");
+	register_fpar("fy", (m_par.getCvPrj() + 1), "Focal length in y");
+	register_fpar("cx", (m_par.getCvPrj() + 2), "Principal point in x");
+	register_fpar("cy", (m_par.getCvPrj() + 3), "Principal point in y");
+	register_fpar("k1", (m_par.getCvDist() + 0), "k1");
+	register_fpar("k2", (m_par.getCvDist() + 1), "k2");
+	register_fpar("p1", (m_par.getCvDist() + 2), "p1");
+	register_fpar("p2", (m_par.getCvDist() + 3), "p2");
+	register_fpar("k3", (m_par.getCvDist() + 4), "k3");
+	register_fpar("k4", (m_par.getCvDist() + 5), "k4");
+	register_fpar("k5", (m_par.getCvDist() + 6), "k5");
+	register_fpar("k6", (m_par.getCvDist() + 7), "k6");
+
+	// fisheye camera model
+	register_fpar("fisheye", &m_bFishEye, "Yes, use fisheye model.");
+	register_fpar("recomp_ext", &m_bcalib_recompute_extrinsic, "Recompute extrinsic parameter.");
+	register_fpar("chk_cond", &m_bcalib_check_cond, "Check condition.");
+	register_fpar("fix_skew", &m_bcalib_fix_skew, "Fix skew.");
+	register_fpar("fix_int", &m_bcalib_fix_intrinsic, "Fix intrinsic parameters.");
+	register_fpar("fek1", (m_par.getCvDistFishEye() + 0), "k1 for fisheye");
+	register_fpar("fek2", (m_par.getCvDistFishEye() + 1), "k2 for fisheye");
+	register_fpar("fek3", (m_par.getCvDistFishEye() + 2), "k3 for fisheye");
+	register_fpar("fek4", (m_par.getCvDistFishEye() + 3), "k4 for fisheye");
+
+	pthread_mutex_init(&m_mtx, NULL);
+}
+
+f_glfw_calib::~f_glfw_calib()
+{
+}
 
 bool f_glfw_calib::init_run()
 {
@@ -363,19 +456,54 @@ bool f_glfw_calib::proc()
 	// if the detecting thread is not active, convert the image into a grayscale one, and invoke detection thread.
 	if(!m_bthact){
 		cvtColor(img, m_img_det, CV_RGB2GRAY);
-		pthread_create(&m_thdet, NULL, thdet, (void*) this);	
+		pthread_create(&m_thdet, NULL, thdet, (void*) this);
+	}
+
+	if(!m_bsave){
+		if(m_fcampar[0] == '\0' || !m_par.write(m_fcampar)){
+			cerr << "Failed to save camera parameters into " << m_fcampar << endl;
+		}
+		m_bsave = false;
+	}
+
+	if(!m_bload){
+		if(m_fcampar[0] == '\0' || !m_par.read(m_fcampar)){
+			cerr << "Failed to load camera parameters from " << m_fcampar << endl;
+		}
+		m_bload = false;
 	}
 
 	m_timg = timg;
 
-	glRasterPos2i(-1, -1);
-	cnvCVBGR8toGLRGB8(img);
-	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
+	if(m_vm == VM_CAM){
+		glRasterPos2i(-1, -1);
+		cnvCVBGR8toGLRGB8(img);
+		glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
 
-	// overlay chessboard if needed
-	// overlay point density if needed
-	// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
+		// overlay chessboard if needed
+		if(m_bshow_chsbd_all){
+			for(int iobj = 0; iobj < m_objs.size(); iobj++){
+				drawChessboard(m_objs[iobj]->pt2d, 1.0, 0.0, 0.0, 0.5, 3, 1);
+			}
+		}
 
+		if(m_bshow_chsbd_sel){
+			if(m_sel_chsbd < 0 | m_sel_chsbd >= m_objs.size()){
+				m_sel_chsbd = m_objs.size() - 1;
+			}else{
+				drawChessboard(m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
+			}
+		}
+
+		// overlay point density if needed
+		if(m_bshow_chsbd_density){
+			drawDensity(m_dist_chsbd, m_num_chsbds, m_hist_grid, img.cols, img.rows, 1.0, 0., 0., 128, 0);
+		}
+
+		// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
+
+	}else{
+	}
 	glfwSwapBuffers(m_pwin);
 	glfwPollEvents();
 
@@ -666,6 +794,53 @@ void f_glfw_calib::calibrate()
 	}
 
 	m_rep_avg = rep_tot / (double)(num_pts * m_num_chsbds);
+}
+
+
+void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
+{
+	switch(key){
+	case GLFW_KEY_A:
+
+	case GLFW_KEY_B:
+	case GLFW_KEY_C:
+	case GLFW_KEY_D:
+	case GLFW_KEY_E:
+	case GLFW_KEY_F:
+	case GLFW_KEY_G:
+	case GLFW_KEY_H:
+	case GLFW_KEY_I:
+	case GLFW_KEY_J:
+	case GLFW_KEY_K:
+	case GLFW_KEY_L:
+	case GLFW_KEY_M:
+	case GLFW_KEY_N:
+	case GLFW_KEY_O:
+	case GLFW_KEY_P:
+	case GLFW_KEY_Q:
+	case GLFW_KEY_R:
+	case GLFW_KEY_S:
+	case GLFW_KEY_T:
+	case GLFW_KEY_U:
+	case GLFW_KEY_V:
+	case GLFW_KEY_W:
+	case GLFW_KEY_X:
+	case GLFW_KEY_Y:
+	case GLFW_KEY_Z:
+	case GLFW_KEY_RIGHT:
+	case GLFW_KEY_LEFT:
+	case GLFW_KEY_UP:
+	case GLFW_KEY_DOWN:
+	case GLFW_KEY_SPACE:
+	case GLFW_KEY_BACKSPACE:
+	case GLFW_KEY_ENTER:
+	case GLFW_KEY_DELETE:
+	case GLFW_KEY_TAB:
+	case GLFW_KEY_HOME:
+	case GLFW_KEY_END:
+	case GLFW_KEY_UNKNOWN:
+		return;
+	}
 }
 
 #endif
