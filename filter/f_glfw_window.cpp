@@ -34,42 +34,55 @@ using namespace cv;
 #include "f_glfw_window.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////// helper functions
-void drawPoints(vector<Point2f> & pts, float r, float g, float b, float alpha, float l)
+void drawCvPoints(const Size & vp, vector<Point2f> & pts,
+				  const float r, const float g, const float b, const float alpha, 
+				  const float l /*point size*/)
 {
+	Point2f pt;
+	double fac_x = 2.0 / (double) vp.width, fac_y = 2.0 / (double) vp.height;
+
 	// drawing Points
 	glPointSize(l);
 	glBegin(GL_POINTS);
 	{
 		glColor4f(r, g, b, alpha);
 		for(int ipt = 0; ipt < pts.size(); ipt++){
-			glVertex2f(pts[ipt].x, pts[ipt].y);
-		}
-	}
-	glEnd();
-}
-
-void drawChessboard(vector<Point2f> & pts, float r, float g, float b, float alpha, float l, float w)
-{
-	drawPoints(pts, r, g, b, alpha, l);
-	glLineWidth(w);
-	glBegin(GL_LINES);
-	{
-		Point2f &pt = pts[0];
-		glVertex2f(pt.x, pt.y);
-		for(int ipt = 1; ipt < pts.size(); ipt++){
-			pt = pts[ipt];
+			cnvCvPoint2GlPoint(fac_x, fac_y, pts[ipt], pt);
 			glVertex2f(pt.x, pt.y);
 		}
 	}
 	glEnd();
 }
 
-void drawDensity(Mat hist, int hist_max, Size grid, float wimg, float himg, 
-				 float r, float g, float b, float alpha, float w /* line width of the grid */)
+void drawCvChessboard(const Size & vp, vector<Point2f> & pts, 
+					  const float r, const float g, const float b, const float alpha, 
+					 const float l /* point size */, const float w /* line width */)
+{
+	drawCvPoints(vp, pts, r, g, b, alpha, l);
+	glLineWidth(w);
+
+	double fac_x = 2.0 / (double) vp.width, fac_y = 2.0 / (double) vp.height;
+
+	glBegin(GL_LINES);
+	{
+		Point2f pt;
+		cnvCvPoint2GlPoint(fac_x, fac_y, pts[0], pt);
+		glVertex2f(pt.x, pt.y);
+		for(int ipt = 1; ipt < pts.size(); ipt++){
+			cnvCvPoint2GlPoint(fac_x, fac_y, pts[ipt], pt);
+			glVertex2f(pt.x, pt.y);
+		}
+	}
+	glEnd();
+}
+
+void drawCvDensity(Mat hist, const int hist_max, const Size grid,  
+				 const float r, const float g, const float b, const float alpha, 
+				 const float w /* line width of the grid */)
 {
 	float fac = (float)(1.0 / (float) hist_max);
-	float wgrid = (float)(wimg / (float) grid.width);
-	float hgrid = (float)(himg / (float) grid.height);
+	float wgrid = (float)((float)2. / (float) grid.width);
+	float hgrid = (float)((float)2. / (float) grid.height);
 
 	glLineWidth(w);
 	glBegin(GL_QUADS);
@@ -78,14 +91,14 @@ void drawDensity(Mat hist, int hist_max, Size grid, float wimg, float himg,
 			for(int x = 0; x < grid.width; x++){
 				glColor4f(r * fac, g * fac, b * fac, alpha);
 				float u, v;
-				u = x * wgrid;
-				v = y * hgrid;
+				u = (float)(x * wgrid - 1.);
+				v = -(float)(y * hgrid - 1.);
 				glVertex2f(u, v);
-				u = (x + 1) * wgrid;
+				u = (float)((x + 1) * wgrid - 1.);
 				glVertex2f(u, v);
-				v = (y + 1) * hgrid;
+				v = -(float)((y + 1) * hgrid - 1.);
 				glVertex2f(u, v);
-				u = x * wgrid;
+				u = (float)(x * wgrid - 1.);
 				glVertex2f(u, v);
 			}
 		}
@@ -115,7 +128,6 @@ bool f_glfw_window::init_run()
 		glfwTerminate();
 		return false;
 	}
-	glfwSetErrorCallback(err_cb);
 
 	glfwMakeContextCurrent(m_pwin);
 
@@ -123,6 +135,9 @@ bool f_glfw_window::init_run()
 	glfwSetCursorPosCallback(m_pwin, cursor_position_callback);
 	glfwSetMouseButtonCallback(m_pwin, mouse_button_callback);
 	glfwSetScrollCallback(m_pwin, scroll_callback);
+	glfwSetErrorCallback(err_cb);
+
+	glfwSetWindowTitle(m_pwin, m_name);
 
 	return true;
 }
@@ -452,7 +467,17 @@ bool f_glfw_calib::proc()
 		return true;
 	if(m_timg == timg)
 		return true;
-
+	
+	{
+		// debugging code. I doubt that the window size specified in glfwCreateWindow is not 
+		// the same as the size of the frame buffer.
+		int w, h;
+		glfwGetFramebufferSize(m_pwin, &w, &h);
+		if(m_sz_win.width != w || m_sz_win.height){
+			cerr << "Frame buffer size is different from given as the filter's parameter." << endl;
+		}
+	}
+	
 	// if the detecting thread is not active, convert the image into a grayscale one, and invoke detection thread.
 	if(!m_bthact){
 		cvtColor(img, m_img_det, CV_RGB2GRAY);
@@ -480,10 +505,17 @@ bool f_glfw_calib::proc()
 		cnvCVBGR8toGLRGB8(img);
 		glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
 
+		// For 2D rendering mode, the origin is set at left-bottom as (0, 0), clipping rectangle has the 
+		// width and height the same as the frame buffer size.
+		glMatrixMode(GL_PROJECTION);
+		glLoadIdentity();
+		glViewport(0, 0, m_sz_win.width, m_sz_win.height);
+		glOrtho(-1., -1., -1., 1., -1., 1.);		
+
 		// overlay chessboard if needed
 		if(m_bshow_chsbd_all){
 			for(int iobj = 0; iobj < m_objs.size(); iobj++){
-				drawChessboard(m_objs[iobj]->pt2d, 1.0, 0.0, 0.0, 0.5, 3, 1);
+				drawCvChessboard(m_sz_win, m_objs[iobj]->pt2d, 1.0, 0.0, 0.0, 0.5, 3, 1);
 			}
 		}
 
@@ -491,13 +523,13 @@ bool f_glfw_calib::proc()
 			if(m_sel_chsbd < 0 | m_sel_chsbd >= m_objs.size()){
 				m_sel_chsbd = m_objs.size() - 1;
 			}else{
-				drawChessboard(m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
+				drawCvChessboard(m_sz_win, m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
 			}
 		}
 
 		// overlay point density if needed
 		if(m_bshow_chsbd_density){
-			drawDensity(m_dist_chsbd, m_num_chsbds, m_hist_grid, img.cols, img.rows, 1.0, 0., 0., 128, 0);
+			drawCvDensity(m_dist_chsbd, m_num_chsbds, m_hist_grid, img.cols, img.rows, 1.0, 0., 0., 128, 0);
 		}
 
 		// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)

@@ -19,12 +19,30 @@
 #include "f_base.h"
 #include "../channel/ch_image.h"
 
-void drawPoints(vector<Point2f> & pts, float r, float g, float b, float alpha, 
-				float l /*point size*/);
-void drawChessboard(vector<Point2f> & pts, float r, float g, float b, float alpha, 
-					float l /* point size */, float w /* line width */);
-void drawDensity(Mat hist, int hist_max, Size grid, float wimg, float himg, 
-				 float r, float g, float b, float alpha, float w /* line width of the grid */);
+// In my OpenGL use, the 2D renderer uses -1 to 1 normalized coordinate, 
+// The function convert OpenCV's pixel coordinate into normalized OpenGL coordinate.
+void cnvCvPoint2GlPoint(const Size & vp, const Point2f & ptcv, Point2f & ptgl)
+{
+	double fac_x = 2.0 / (double) vp.width, fac_y = 2.0 / (double) vp.height;
+	ptgl.x = (double)(ptcv.x * fac_x - 1.0);
+	ptgl.y = -(double)(ptcv.y * fac_y - 1.0);
+}
+
+void cnvCvPoint2GlPoint(const double fac_x, const double fac_y, const Point2f & ptcv, Point2f & ptgl)
+{
+	ptgl.x = (double)(ptcv.x * fac_x - 1.0);
+	ptgl.y = -(double)(ptcv.y * fac_y - 1.0);
+}
+
+void drawCvPoints(const Size & vp, vector<Point2f> & pts,
+				  const float r, const float g, const float b, const float alpha, 
+				  const float l /*point size*/);
+void drawCvChessboard(const Size & vp, vector<Point2f> & pts, 
+					  const float r, const float g, const float b, const float alpha, 
+					  const float l /* point size */, const float w /* line width */);
+void drawCvDensity(Mat hist, const int hist_max, const Size grid,  
+				   const float r, const float g, const float b, const float alpha, 
+				   const float w /* line width of the grid */);
 
 
 class f_glfw_window: public f_base
@@ -73,6 +91,12 @@ protected:
 	{
 		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
 		ptr->_scroll_callback(xoffset, yoffset);
+	}
+
+	static void framebuffer_size_callback(GLFWwindow * pwindow, int width, int height)
+	{
+		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		ptr->m_sz_win = Size(width, height);
 	}
 public:
 	f_glfw_window(const char * name);
