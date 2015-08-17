@@ -76,7 +76,7 @@ void drawCvChessboard(const Size & vp, vector<Point2f> & pts,
 	glEnd();
 }
 
-void drawCvDensity(Mat hist, const int hist_max, const Size grid,  
+void drawCvPointDensity(Mat hist, const int hist_max, const Size grid,  
 				 const float r, const float g, const float b, const float alpha, 
 				 const float w /* line width of the grid */)
 {
@@ -373,7 +373,7 @@ f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name),
 	m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10), m_rep_avg(1.0),
 	m_vm(VM_CAM), 
 	m_bshow_chsbd_all(true), m_bshow_chsbd_sel(true), m_sel_chsbd(-1), m_bshow_chsbd_density(true),
-	m_bsave(false), m_bload(false)
+	m_bsave(false), m_bload(false), m_bdel(false), m_bdet(true), m_bcalib(true)
 {
 	m_fcampar[0] = '\0';
 
@@ -485,17 +485,31 @@ bool f_glfw_calib::proc()
 	}
 
 	if(!m_bsave){
+		pthread_mutex_lock(&m_mtx);
 		if(m_fcampar[0] == '\0' || !m_par.write(m_fcampar)){
 			cerr << "Failed to save camera parameters into " << m_fcampar << endl;
 		}
+		pthread_mutex_unlock(&m_mtx);
 		m_bsave = false;
 	}
 
 	if(!m_bload){
+		pthread_mutex_lock(&m_mtx);
 		if(m_fcampar[0] == '\0' || !m_par.read(m_fcampar)){
 			cerr << "Failed to load camera parameters from " << m_fcampar << endl;
 		}
+		pthread_mutex_unlock(&m_mtx);
 		m_bload = false;
+	}
+
+	if(m_bdel){
+		if(m_sel_chsbd >= 0 && m_sel_chsbd < m_objs.size()){
+			pthread_mutex_lock(&m_mtx);
+			delete [] m_objs[m_sel_chsbd];
+			m_score[m_sel_chsbd] = s_chsbd_score();
+			m_num_chsbds_det--;
+			pthread_mutex_unlock(&m_mtx);
+		}
 	}
 
 	m_timg = timg;
@@ -529,7 +543,7 @@ bool f_glfw_calib::proc()
 
 		// overlay point density if needed
 		if(m_bshow_chsbd_density){
-			drawCvDensity(m_dist_chsbd, m_num_chsbds, m_hist_grid, img.cols, img.rows, 1.0, 0., 0., 128, 0);
+			drawCvPointDensity(m_dist_chsbd, m_num_chsbds, m_hist_grid, 1.0, 0., 0., 128, 0);
 		}
 
 		// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
@@ -554,46 +568,52 @@ void * f_glfw_calib::_thdet()
 		m_hist_grid.height != m_dist_chsbd.rows)
 		refresh_chsbd_dist();
 
-	s_obj * pobj = m_model_chsbd.detect(m_img_det);
-	if(!pobj) 
-		return NULL;
+	if(m_bdet){
+		s_obj * pobj = m_model_chsbd.detect(m_img_det);
+		if(!pobj) 
+			return NULL;
 
-	// calculating score of the chessboard.
-	s_chsbd_score sc;
-	sc.rep = 1.0;
-	sc.crn = calc_corner_contrast_score(m_img_det, pobj->pt2d);
-	calc_size_and_angle_score(pobj->pt2d, sc.sz, sc.angl);
+		// calculating score of the chessboard.
+		s_chsbd_score sc;
+		sc.rep = 1.0;
+		sc.crn = calc_corner_contrast_score(m_img_det, pobj->pt2d);
+		calc_size_and_angle_score(pobj->pt2d, sc.sz, sc.angl);
 
-	calc_tot_score(sc);
+		calc_tot_score(sc);
 
-	// replacing the chessboard if possible.
-	bool is_changed = false;
-	for(int i = 0; i < m_num_chsbds; i++){
-		if(m_objs[i] == NULL){
-			m_objs[i] = pobj;
-			m_score[i] = sc;
-			add_chsbd_dist(pobj->pt2d);
-			is_changed = true;
-			m_num_chsbds++;
-			break;
+		// replacing the chessboard if possible.
+		bool is_changed = false;
+		for(int i = 0; i < m_num_chsbds; i++){
+			if(m_objs[i] == NULL){
+				pthread_mutex_lock(&m_mtx);
+				m_objs[i] = pobj;
+				m_score[i] = sc;
+				add_chsbd_dist(pobj->pt2d);
+				is_changed = true;
+				m_num_chsbds++;
+				pthread_mutex_unlock(&m_mtx);
+				break;
+			}
+
+			if(m_num_chsbds_det == m_num_chsbds && m_score[i].tot < sc.tot){
+				pthread_mutex_lock(&m_mtx);
+				s_obj * ptmp = pobj;
+				pobj = m_objs[i];
+				m_objs[i] = ptmp;
+				sub_chsbd_dist(pobj->pt2d);
+				add_chsbd_dist(ptmp->pt2d);
+				pthread_mutex_unlock(&m_mtx);
+				delete pobj;
+				is_changed = true;
+				break;
+			}
 		}
 
-		if(m_score[i].tot < sc.tot){
-			s_obj * ptmp = pobj;
-			pobj = m_objs[i];
-			m_objs[i] = ptmp;
-			sub_chsbd_dist(pobj->pt2d);
-			add_chsbd_dist(ptmp->pt2d);
-			delete pobj;
-			is_changed = true;
-			break;
-		}
+		if(is_changed)
+			recalc_chsbd_dist_score();
 	}
-	
-	if(is_changed)
-		recalc_chsbd_dist_score();
-	
-	if(m_num_chsbds == m_num_chsbds_det)
+
+	if(m_bcalib && m_num_chsbds == m_num_chsbds_det)
 		calibrate();
 
 	return NULL;
@@ -780,38 +800,60 @@ void f_glfw_calib::calibrate()
 
 	int flags = gen_calib_flag();
 
-	pt2ds.resize(m_objs.size());
-	pt3ds.resize(m_objs.size());
+	pt2ds.resize(m_num_chsbds_det);
+	pt3ds.resize(m_num_chsbds_det);
 	for(int iobj = 0; iobj < m_objs.size(); iobj++){
+		if(m_objs[iobj] == NULL)
+			continue;
 		pt2ds[iobj] = Mat(m_objs[iobj]->pt2d, false);
 		pt3ds[iobj] = Mat(m_model_chsbd.pts, false);
 	}
 	
+	Mat P, D;
 	if(m_bFishEye){
-		m_Erep = fisheye::calibrate(pt3ds, pt2ds, sz_chsbd, m_par.getCvPrjMat(), m_par.getCvDistFishEyeMat(),
+		m_Erep = fisheye::calibrate(pt3ds, pt2ds, sz_chsbd, P, D,
 			rvecs, tvecs, flags);
 	}else{
 		m_Erep = calibrateCamera(pt3ds, pt2ds, sz_chsbd,
-			m_par.getCvPrjMat(), m_par.getCvDistMat(), rvecs, tvecs, flags);
+			P, D, rvecs, tvecs, flags);
 	}
+
+	// copying obtained camera parameter to m_par
+	pthread_mutex_lock(&m_mtx);
+	{
+		double * pP = P.ptr<double>(), * pD = D.ptr<double>();
+		double * pPdst = m_par.getCvPrj(), * pDdst = m_par.getCvDist();
+		pPdst[0] = pP[0];
+		pPdst[1] = pP[4];
+		pPdst[2] = pP[2];
+		pPdst[3] = pP[5];
+		for(int i = 0; i < D.cols; i++){
+			pDdst[i] = pD[i];
+		}
+	}
+	pthread_mutex_unlock(&m_mtx);
 
 	m_bcalib_done = true;
 
 	// calculating reprojection error 
 	double rep_tot = 0.;
-	for(int iobj = 0; iobj < m_objs.size(); iobj++){
-		m_objs[iobj]->rvec = rvecs[iobj];
-		m_objs[iobj]->tvec = tvecs[iobj];
+	
+	for(int iobj = 0, icount = 0; iobj < m_objs.size(); iobj++){
+		if(m_objs[iobj] == NULL)
+			continue;
+
+		m_objs[iobj]->rvec = rvecs[icount];
+		m_objs[iobj]->tvec = tvecs[icount];
 		vector<Point2f> & pt2dprj = m_objs[iobj]->pt2dprj;
 		vector<Point2f> & pt2d = m_objs[iobj]->pt2d;
 
 		if(m_bFishEye){
-			fisheye::projectPoints(m_model_chsbd.pts, pt2dprj, rvecs[iobj], tvecs[iobj], 
+			fisheye::projectPoints(m_model_chsbd.pts, pt2dprj, rvecs[icount], tvecs[icount], 
 				m_par.getCvPrjMat(), m_par.getCvDistFishEyeMat());
 		}else{
 			prjPts(m_model_chsbd.pts, pt2dprj,
 				m_par.getCvPrjMat(), m_par.getCvDistMat(),
-				rvecs[iobj], tvecs[iobj]);
+				rvecs[icount], tvecs[icount]);
 		}
 		double sum_rep = 0.;
 		for(int ipt = 0; ipt < pt2d.size(); ipt++){
@@ -833,10 +875,13 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 {
 	switch(key){
 	case GLFW_KEY_A:
-
 	case GLFW_KEY_B:
 	case GLFW_KEY_C:
+		m_bcalib = !m_bcalib;
+		break;
 	case GLFW_KEY_D:
+		m_bdet = !m_bdet;
+		break;
 	case GLFW_KEY_E:
 	case GLFW_KEY_F:
 	case GLFW_KEY_G:
@@ -845,33 +890,74 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 	case GLFW_KEY_J:
 	case GLFW_KEY_K:
 	case GLFW_KEY_L:
+		if(mods & GLFW_MOD_CONTROL){
+			m_bload = true;
+		}
+		break;
 	case GLFW_KEY_M:
 	case GLFW_KEY_N:
 	case GLFW_KEY_O:
 	case GLFW_KEY_P:
 	case GLFW_KEY_Q:
 	case GLFW_KEY_R:
+		break;
 	case GLFW_KEY_S:
+		if(mods & GLFW_MOD_CONTROL){
+			m_bsave = true;
+		}
+		break;
 	case GLFW_KEY_T:
 	case GLFW_KEY_U:
 	case GLFW_KEY_V:
+		if(m_vm == VM_CAM){
+			m_vm = VM_CG;
+		}else{
+			m_vm = VM_CAM;
+		}
+		break;
 	case GLFW_KEY_W:
 	case GLFW_KEY_X:
 	case GLFW_KEY_Y:
 	case GLFW_KEY_Z:
 	case GLFW_KEY_RIGHT:
+		m_sel_chsbd = (m_sel_chsbd + 1) % (int) m_objs.size());
+		break;
 	case GLFW_KEY_LEFT:
+		m_sel_chsbd = m_sel_chsbd - 1;
+		if(m_sel_chsbd < 0)
+			m_sel_chsbd += (int) m_objs.size();
+		break;
 	case GLFW_KEY_UP:
 	case GLFW_KEY_DOWN:
 	case GLFW_KEY_SPACE:
 	case GLFW_KEY_BACKSPACE:
 	case GLFW_KEY_ENTER:
 	case GLFW_KEY_DELETE:
+		m_bdel = true;
+		break;
 	case GLFW_KEY_TAB:
 	case GLFW_KEY_HOME:
 	case GLFW_KEY_END:
+	case GLFW_KEY_F1:
+		m_bshow_chsbd_all = !m_bshow_chsbd_all;
+		break;
+	case GLFW_KEY_F2:
+		m_bshow_chsbd_sel = !m_bshow_chsbd_sel;
+		break;
+	case GLFW_KEY_F3:
+		m_bshow_chsbd_density = !m_bshow_chsbd_density;
+		break;
+	case GLFW_KEY_F4:
+	case GLFW_KEY_F5:
+	case GLFW_KEY_F6:
+	case GLFW_KEY_F7:
+	case GLFW_KEY_F8:
+	case GLFW_KEY_F9:
+	case GLFW_KEY_F10:
+	case GLFW_KEY_F11:
+	case GLFW_KEY_F12:
 	case GLFW_KEY_UNKNOWN:
-		return;
+		break;
 	}
 }
 

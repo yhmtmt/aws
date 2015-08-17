@@ -40,7 +40,7 @@ void drawCvPoints(const Size & vp, vector<Point2f> & pts,
 void drawCvChessboard(const Size & vp, vector<Point2f> & pts, 
 					  const float r, const float g, const float b, const float alpha, 
 					  const float l /* point size */, const float w /* line width */);
-void drawCvDensity(Mat hist, const int hist_max, const Size grid,  
+void drawCvPointDensity(Mat hist, const int hist_max, const Size grid,  
 				   const float r, const float g, const float b, const float alpha, 
 				   const float w /* line width of the grid */);
 
@@ -239,6 +239,9 @@ protected:
 	int m_sel_chsbd;
 	bool m_bshow_chsbd_density;
 	bool m_bsave, m_bload;
+	bool m_bdel;
+	bool m_bdet;
+	bool m_bcalib;
 
 	virtual void _key_callback(int key, int scancode, int action, int mods);
 
