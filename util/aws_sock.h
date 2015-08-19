@@ -18,7 +18,7 @@
 
 #ifdef _WIN32
 #include <Windows.h>
-//#include <winsock2.h>
+#include <winsock.h>
 #define MSG_MORE MSG_PARTIAL
 #define socklen_t int
 #else /* for unix */

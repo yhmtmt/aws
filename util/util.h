@@ -85,6 +85,25 @@ public:
 		return Mat(1, 4, CV_64FC1, &par[efpk1]);
 	}
 
+	void setCvPrj(const Mat & P)
+	{
+		const double * pP = P.ptr<double>();
+		double * pPdst = getCvPrj();
+		pPdst[0] = pP[0];
+		pPdst[1] = pP[4];
+		pPdst[2] = pP[2];
+		pPdst[3] = pP[5];
+	}
+
+	void setCvDist(const Mat & D)
+	{
+		const double * pD = D.ptr<double>();
+		double * pDdst = getCvDist();
+		for(int i = 0; i < D.cols; i++){
+			pDdst[i] = pD[i];
+		}
+	}
+
 	bool read(const char * fname);
 	bool write(const char * fname);
 };

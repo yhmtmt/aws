@@ -26,7 +26,7 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "aws_thread.h"
+//#include "aws_thread.h"
 
 #include "util.h"
 

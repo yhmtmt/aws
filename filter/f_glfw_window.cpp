@@ -24,6 +24,7 @@ using namespace std;
 using namespace cv;
 
 #include <GLFW/glfw3.h>
+#include <GL/glut.h>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -534,8 +535,8 @@ bool f_glfw_calib::proc()
 		}
 
 		if(m_bshow_chsbd_sel){
-			if(m_sel_chsbd < 0 | m_sel_chsbd >= m_objs.size()){
-				m_sel_chsbd = m_objs.size() - 1;
+			if(m_sel_chsbd < 0 || m_sel_chsbd >= m_objs.size()){
+				m_sel_chsbd = (int) m_objs.size() - 1;
 			}else{
 				drawCvChessboard(m_sz_win, m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
 			}
@@ -820,17 +821,8 @@ void f_glfw_calib::calibrate()
 
 	// copying obtained camera parameter to m_par
 	pthread_mutex_lock(&m_mtx);
-	{
-		double * pP = P.ptr<double>(), * pD = D.ptr<double>();
-		double * pPdst = m_par.getCvPrj(), * pDdst = m_par.getCvDist();
-		pPdst[0] = pP[0];
-		pPdst[1] = pP[4];
-		pPdst[2] = pP[2];
-		pPdst[3] = pP[5];
-		for(int i = 0; i < D.cols; i++){
-			pDdst[i] = pD[i];
-		}
-	}
+	m_par.setCvPrj(P);
+	m_par.setCvDist(D);
 	pthread_mutex_unlock(&m_mtx);
 
 	m_bcalib_done = true;
@@ -920,7 +912,7 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 	case GLFW_KEY_Y:
 	case GLFW_KEY_Z:
 	case GLFW_KEY_RIGHT:
-		m_sel_chsbd = (m_sel_chsbd + 1) % (int) m_objs.size());
+		m_sel_chsbd = (m_sel_chsbd + 1) % (int) m_objs.size();
 		break;
 	case GLFW_KEY_LEFT:
 		m_sel_chsbd = m_sel_chsbd - 1;

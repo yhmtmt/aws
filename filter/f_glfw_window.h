@@ -24,14 +24,14 @@
 void cnvCvPoint2GlPoint(const Size & vp, const Point2f & ptcv, Point2f & ptgl)
 {
 	double fac_x = 2.0 / (double) vp.width, fac_y = 2.0 / (double) vp.height;
-	ptgl.x = (double)(ptcv.x * fac_x - 1.0);
-	ptgl.y = -(double)(ptcv.y * fac_y - 1.0);
+	ptgl.x = (float)(ptcv.x * fac_x - 1.0);
+	ptgl.y = -(float)(ptcv.y * fac_y - 1.0);
 }
 
 void cnvCvPoint2GlPoint(const double fac_x, const double fac_y, const Point2f & ptcv, Point2f & ptgl)
 {
-	ptgl.x = (double)(ptcv.x * fac_x - 1.0);
-	ptgl.y = -(double)(ptcv.y * fac_y - 1.0);
+	ptgl.x = (float)(ptcv.x * fac_x - 1.0);
+	ptgl.y = -(float)(ptcv.y * fac_y - 1.0);
 }
 
 void drawCvPoints(const Size & vp, vector<Point2f> & pts,
@@ -261,9 +261,7 @@ protected:
 public:
 	f_glfw_calib(const char * name);
 
-	virtual ~f_glfw_calib()
-	{
-	}
+	virtual ~f_glfw_calib();
 
 	virtual bool proc();
 };
