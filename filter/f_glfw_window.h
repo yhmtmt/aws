@@ -21,17 +21,29 @@
 
 // In my OpenGL use, the 2D renderer uses -1 to 1 normalized coordinate, 
 // The function convert OpenCV's pixel coordinate into normalized OpenGL coordinate.
-void cnvCvPoint2GlPoint(const Size & vp, const Point2f & ptcv, Point2f & ptgl)
+inline void cnvCvPoint2GlPoint(const Size & vp, const Point2f & ptcv, Point2f & ptgl)
 {
 	double fac_x = 2.0 / (double) vp.width, fac_y = 2.0 / (double) vp.height;
 	ptgl.x = (float)(ptcv.x * fac_x - 1.0);
 	ptgl.y = -(float)(ptcv.y * fac_y - 1.0);
 }
 
-void cnvCvPoint2GlPoint(const double fac_x, const double fac_y, const Point2f & ptcv, Point2f & ptgl)
+inline void cnvCvPoint2GlPoint(const double fac_x, const double fac_y, const Point2f & ptcv, Point2f & ptgl)
 {
 	ptgl.x = (float)(ptcv.x * fac_x - 1.0);
 	ptgl.y = -(float)(ptcv.y * fac_y - 1.0);
+}
+
+inline void drawGlText(float x, float y, char * str, 
+					   float r, float g, float b , float alpha,
+					   void* font = GLUT_BITMAP_TIMES_ROMAN_24)
+{
+	glRasterPos2f(x, y);
+	glColor4f(r, g, b, alpha);
+	int l = strlen(str);
+	for(int i = 0; i < l; i++){
+		glutBitmapCharacter(font, str[i]);
+	}
 }
 
 void drawCvPoints(const Size & vp, vector<Point2f> & pts,

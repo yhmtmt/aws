@@ -178,15 +178,11 @@ void reshape(int width, int height)
 	static GLfloat lightAmbient[3] = { 0.25f, 0.25f, 0.25f };
 	static GLfloat lightSpecular[3] = { 1.0f, 1.0f, 1.0f };
 
-
-
 	glEnable(GL_LIGHTING);
 	glEnable(GL_LIGHT0);
 
 	glShadeModel(GL_SMOOTH);
 	glViewport(0, 0, width, height);
-
-
 
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
@@ -508,6 +504,9 @@ bool f_glfw_calib::proc()
 			pthread_mutex_lock(&m_mtx);
 			delete [] m_objs[m_sel_chsbd];
 			m_score[m_sel_chsbd] = s_chsbd_score();
+			for(;m_sel_chsbd >= 0; m_sel_chsbd--)
+				if(m_objs[m_sel_chsbd])
+					break;
 			m_num_chsbds_det--;
 			pthread_mutex_unlock(&m_mtx);
 		}
@@ -548,7 +547,43 @@ bool f_glfw_calib::proc()
 		}
 
 		// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
+		float hfont = (float)(24. / (float) img.rows);
+		float wfont = (float)(24. / (float) img.cols);
+		float x = wfont;
+		float y = hfont;
+		char buf[256];
 
+		// calculating chessboard's stats
+		double smax = 0., smin = DBL_MAX, savg = 0.;
+		for(int i = 0; i < m_num_chsbds; i++){
+			if(!m_objs[i])
+				continue;
+
+			double s = m_score[i].tot;
+			smax = max(smax, s);
+			smin = min(smin, s);
+			savg += s;
+		}
+
+		savg /= (double) m_num_chsbds_det;
+
+		snprintf(buf, 255, "Nchsbd= %d/%d, Smax=%f Smin=%f Savg=%f Erep=%f ",
+			m_num_chsbds_det, m_num_chsbds_det, smax, smin, savg, m_rep_avg);
+		drawGlText(x, y, buf, 0, 1, 0, 1);
+		y+= hfont;
+		
+		// indicating infromation about selected chessboard.
+		if(m_bshow_chsbd_sel && m_sel_chsbd >= 0 && m_sel_chsbd < m_num_chsbds && m_objs[m_sel_chsbd]){
+			snprintf(buf, 255, "Chessboard %d", m_sel_chsbd);
+			drawGlText(x, y, buf, 0, 1, 0, 1);
+			y+= hfont;
+
+			snprintf(buf, 255, "Score: %f (Crn: %f Sz %f Angl %f Erep %f)", 
+				m_score[m_sel_chsbd].tot, m_score[m_sel_chsbd].crn, m_score[m_sel_chsbd].sz, 
+				m_score[m_sel_chsbd].angl, m_score[m_sel_chsbd].rep);
+			drawGlText(x, y, buf, 0, 1, 0, 1);
+			y+= hfont;
+		}
 	}else{
 	}
 	glfwSwapBuffers(m_pwin);
