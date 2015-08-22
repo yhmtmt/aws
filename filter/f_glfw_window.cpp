@@ -450,6 +450,21 @@ bool f_glfw_calib::init_run()
 
 	m_par.setFishEye(m_bFishEye);
 
+	// initialize camera model's color as transparent gray
+	for(int i = 0; i < 16; i++){
+		m_cam[i].r = m_cam[i].g = m_cam[i].b = 0.5;
+		m_cam[i].a = 0.25;
+		m_cam[i].nx = m_cam[i].ny = m_cam[i].nz = 0.;
+		m_cam[i].x = m_cam[i].y = m_cam[i].z = 0.;
+	}
+
+	for(int i = 0; i < 15; i++){
+		m_cam_idx[i] = i;
+	}
+	m_cam_idx[15] = 14;
+	m_cam_idx[16] = 15;
+	m_cam_idx[17] = 12;
+
 	return true;
 }
 
@@ -585,6 +600,12 @@ bool f_glfw_calib::proc()
 			y+= hfont;
 		}
 	}else{
+		// setting model-view matrix chessboards and camera
+		// object transformation
+		// multiply cg-cam motion 
+
+		// setting projection matrix (Basically setting it the same as the camera parameter.)
+
 	}
 	glfwSwapBuffers(m_pwin);
 	glfwPollEvents();
@@ -649,8 +670,11 @@ void * f_glfw_calib::_thdet()
 			recalc_chsbd_dist_score();
 	}
 
-	if(m_bcalib && m_num_chsbds == m_num_chsbds_det)
+	if(m_bcalib && m_num_chsbds == m_num_chsbds_det){
 		calibrate();
+		// after calibration camera object
+		resetCameraModel();
+	}
 
 	return NULL;
 }

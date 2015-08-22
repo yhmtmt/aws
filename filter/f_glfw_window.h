@@ -269,6 +269,55 @@ protected:
 	{
 	}
 
+	// OpenGL's vertex and index buffer. Here we use these buffers only for rendering camera object.
+	// Chessboards are all rendered as the point cloud.
+	GLuint m_vb_cam; // vertex buffer for camera
+	GLuint m_ib_cam; // index buffer for camera
+	struct AWS_VERTEX{ // we need to specify GL_C4F_N3F_V3F for interpretation.
+		float r, g, b, a; // color
+		float nx, ny, nz; // normal vector
+		float x, y, z;    // vertex
+	};
+	
+	AWS_VERTEX m_cam[16]; // camera object
+	GLuint m_cam_idx[18];
+	void resetCameraModel()
+	{
+		double * pP = m_par.getCvPrj();
+		double fx = pP[0], fy = pP[1], cx = pP[2], cy = pP[3];
+		double w = m_img_det.cols, h = m_img_det.rows;
+		double sx = 0.1, sy = sx * h / w;
+		double left = sx * cx / w, right = sx * (1.0 - left);
+		double top = sy * cy / h, bottom = sy * (1.0 - top);
+		double z =  left * fx / cx;
+		// setting cam's focal point.
+		for(int i = 0; i < 12; i += 3){
+			m_cam[i].x = m_cam[i].y = m_cam[i].z = 0.;
+		}
+
+		// top surface
+		m_cam[2].x = -left, m_cam[2].y = top, m_cam[2].z = z;
+		m_cam[1].x = right, m_cam[1].y = top, m_cam[1].z = z;
+
+		// bottom 
+		m_cam[4].x = -left, m_cam[4].y = -bottom, m_cam[4].z = z;
+		m_cam[5].x = right, m_cam[5].y = -bottom, m_cam[5].z = z;
+
+		// left
+		m_cam[8].x = -left, m_cam[8].y = -bottom, m_cam[8].z = z;
+		m_cam[7].x = -left, m_cam[7].y = top, m_cam[7].z = z;
+
+		// right
+		m_cam[10].x = right, m_cam[10].y = -bottom, m_cam[10].z = z;
+		m_cam[11].x = right, m_cam[11].y = top, m_cam[11].z = z;
+
+		// sensor surface
+		m_cam[12].x = -left, m_cam[12].y = -bottom, m_cam[12].z = z;
+		m_cam[13].x = -left, m_cam[13].y = top, m_cam[13].z = z;
+		m_cam[14].x = right, m_cam[14].y = top, m_cam[14].z = z;
+		m_cam[15].x = right, m_cam[15].y = -bottom, m_cam[15].z = z;
+	}
+
 	virtual bool init_run();
 public:
 	f_glfw_calib(const char * name);
