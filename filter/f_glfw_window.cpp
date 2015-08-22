@@ -25,6 +25,7 @@ using namespace cv;
 
 #include <GLFW/glfw3.h>
 #include <GL/glut.h>
+#include <GL/glew.h>
 
 #ifdef _WIN32
 #include <Windows.h>
@@ -121,6 +122,9 @@ f_glfw_window::~f_glfw_window()
 bool f_glfw_window::init_run()
 {
 	if(!glfwInit())
+		return false;
+
+	if(glewInit() != GLEW_OK)
 		return false;
 
 	m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, "Hello World", NULL, NULL);
@@ -919,6 +923,51 @@ void f_glfw_calib::calibrate()
 	}
 
 	m_rep_avg = rep_tot / (double)(num_pts * m_num_chsbds);
+}
+
+void f_glfw_calib::resetCameraModel(){
+	double * pP = m_par.getCvPrj();
+	double fx = pP[0], fy = pP[1], cx = pP[2], cy = pP[3];
+	double w = m_img_det.cols, h = m_img_det.rows;
+	double sx = 0.1, sy = sx * h / w;
+	double left = sx * cx / w, right = sx * (1.0 - left);
+	double top = sy * cy / h, bottom = sy * (1.0 - top);
+	double z =  left * fx / cx;
+
+	// setting cam's focal point.
+	for(int i = 0; i < 12; i += 3){
+		m_cam[i].x = m_cam[i].y = m_cam[i].z = 0.;
+	}
+
+	// top surface
+	m_cam[2].x = -left, m_cam[2].y = top, m_cam[2].z = z;
+	m_cam[1].x = right, m_cam[1].y = top, m_cam[1].z = z;
+
+	// bottom 
+	m_cam[4].x = -left, m_cam[4].y = -bottom, m_cam[4].z = z;
+	m_cam[5].x = right, m_cam[5].y = -bottom, m_cam[5].z = z;
+
+	// left
+	m_cam[8].x = -left, m_cam[8].y = -bottom, m_cam[8].z = z;
+	m_cam[7].x = -left, m_cam[7].y = top, m_cam[7].z = z;
+
+	// right
+	m_cam[10].x = right, m_cam[10].y = -bottom, m_cam[10].z = z;
+	m_cam[11].x = right, m_cam[11].y = top, m_cam[11].z = z;
+
+	// sensor surface
+	m_cam[12].x = -left, m_cam[12].y = -bottom, m_cam[12].z = z;
+	m_cam[13].x = -left, m_cam[13].y = top, m_cam[13].z = z;
+	m_cam[14].x = right, m_cam[14].y = top, m_cam[14].z = z;
+	m_cam[15].x = right, m_cam[15].y = -bottom, m_cam[15].z = z;
+
+	glGenBuffers(1, &m_vb_cam);
+	glBindBuffer(GL_ARRAY_BUFFER, m_vb_cam);
+	glBufferData(GL_ARRAY_BUFFER, 16 * sizeof(AWS_VERTEX), m_cam, GL_STATIC_DRAW);
+
+	glGenBuffers(1, &m_ib_cam);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ib_cam);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 18 * sizeof(GLuint), m_cam_idx, GL_STATIC_DRAW);
 }
 
 
