@@ -56,6 +56,22 @@ void drawCvPointDensity(Mat hist, const int hist_max, const Size grid,
 				   const float r, const float g, const float b, const float alpha, 
 				   const float w /* line width of the grid */);
 
+inline void crossProduct(const float x1, const float y1, const float z1, 
+				  const float x2, const float y2, const float z2, 
+				  float & nx, float & ny, float & nz)
+{
+	nx = (float)(y1 * z2 - y2 * z1);
+	ny = (float)(z1 * x2 - z2 * x1);
+	nz = (float)(x1 * y2 - x2 * y1);
+}
+
+inline void normalize(float & nx, float & ny, float & nz)
+{
+	double inorm = 1.0 / sqrt(nx * nx + ny * ny + nz * nz);
+	nx *= inorm;
+	ny *= inorm;
+	nz *= inorm;
+}
 
 class f_glfw_window: public f_base
 {

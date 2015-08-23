@@ -63,6 +63,7 @@
 #pragma comment(lib, "OpenGL32.lib")
 #pragma comment(lib, "glfw3dll.lib")
 #pragma comment(lib, "glu32.lib")
+#pragma comment(lib, "glew32.lib")
 #ifdef _DEBUG
 #pragma comment(lib, "freeglutd.lib")
 #else

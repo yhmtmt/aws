@@ -374,7 +374,8 @@ f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name),
 	m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10), m_rep_avg(1.0),
 	m_vm(VM_CAM), 
 	m_bshow_chsbd_all(true), m_bshow_chsbd_sel(true), m_sel_chsbd(-1), m_bshow_chsbd_density(true),
-	m_bsave(false), m_bload(false), m_bdel(false), m_bdet(true), m_bcalib(true)
+	m_bsave(false), m_bload(false), m_bdel(false), m_bdet(true), m_bcalib(true),
+	m_vb_cam(GL_INVALID_VALUE), m_ib_cam(GL_INVALID_VALUE)
 {
 	m_fcampar[0] = '\0';
 
@@ -926,6 +927,15 @@ void f_glfw_calib::calibrate()
 }
 
 void f_glfw_calib::resetCameraModel(){
+
+	if(m_ib_cam != GL_INVALID_VALUE || m_vb_cam != GL_INVALID_VALUE){
+		// if the buffers have already been made, delete them.
+		glDeleteBuffers(1, &m_ib_cam);
+		glDeleteBuffers(1, &m_vb_cam);
+		m_ib_cam = GL_INVALID_VALUE;
+		m_vb_cam = GL_INVALID_VALUE;
+	}
+
 	double * pP = m_par.getCvPrj();
 	double fx = pP[0], fy = pP[1], cx = pP[2], cy = pP[3];
 	double w = m_img_det.cols, h = m_img_det.rows;
@@ -933,33 +943,75 @@ void f_glfw_calib::resetCameraModel(){
 	double left = sx * cx / w, right = sx * (1.0 - left);
 	double top = sy * cy / h, bottom = sy * (1.0 - top);
 	double z =  left * fx / cx;
-
+	float nx, ny, nz;
 	// setting cam's focal point.
 	for(int i = 0; i < 12; i += 3){
 		m_cam[i].x = m_cam[i].y = m_cam[i].z = 0.;
 	}
 
-	// top surface
+	// top surface vertices and normals
 	m_cam[2].x = -left, m_cam[2].y = top, m_cam[2].z = z;
 	m_cam[1].x = right, m_cam[1].y = top, m_cam[1].z = z;
+	crossProduct(m_cam[1].x, m_cam[1].y, m_cam[1].z,
+		m_cam[2].x, m_cam[2].y, m_cam[2].z,
+		nx, ny, nz);
+	for(int i = 0; i < 3; i++){
+		m_cam[i].nx = nx;
+		m_cam[i].ny = ny;
+		m_cam[i].nz = nz;
+	}
 
 	// bottom 
 	m_cam[4].x = -left, m_cam[4].y = -bottom, m_cam[4].z = z;
 	m_cam[5].x = right, m_cam[5].y = -bottom, m_cam[5].z = z;
+	crossProduct(m_cam[4].x, m_cam[4].y, m_cam[4].z,
+		m_cam[5].x, m_cam[5].y, m_cam[5].z,
+		nx, ny, nz);
+	normalize(nx, ny, nz);
+	for(int i = 3; i < 6; i++){
+		m_cam[i].nx = nx;
+		m_cam[i].ny = ny;
+		m_cam[i].nz = nz;
+	}
 
 	// left
 	m_cam[8].x = -left, m_cam[8].y = -bottom, m_cam[8].z = z;
 	m_cam[7].x = -left, m_cam[7].y = top, m_cam[7].z = z;
+	crossProduct(m_cam[7].x, m_cam[7].y, m_cam[7].z,
+		m_cam[8].x, m_cam[8].y, m_cam[8].z,
+		nx, ny, nz);
+	normalize(nx, ny, nz);
+	for(int i = 6; i < 9; i++){
+		m_cam[i].nx = nx;
+		m_cam[i].ny = ny;
+		m_cam[i].nz = nz;
+	}
 
 	// right
 	m_cam[10].x = right, m_cam[10].y = -bottom, m_cam[10].z = z;
 	m_cam[11].x = right, m_cam[11].y = top, m_cam[11].z = z;
+	crossProduct(m_cam[10].x, m_cam[10].y, m_cam[10].z,
+		m_cam[11].x, m_cam[11].y, m_cam[11].z,
+		nx, ny, nz);
+	normalize(nx, ny, nz);
+	for(int i = 9; i < 12; i++){
+		m_cam[i].nx = nx;
+		m_cam[i].ny = ny;
+		m_cam[i].nz = nz;
+	}
 
 	// sensor surface
 	m_cam[12].x = -left, m_cam[12].y = -bottom, m_cam[12].z = z;
 	m_cam[13].x = -left, m_cam[13].y = top, m_cam[13].z = z;
 	m_cam[14].x = right, m_cam[14].y = top, m_cam[14].z = z;
 	m_cam[15].x = right, m_cam[15].y = -bottom, m_cam[15].z = z;
+	nx = ny = 0.;
+	nz = 1.0;
+	for(int i = 12; i < 16; i++){
+		m_cam[i].nx = nx;
+		m_cam[i].ny = ny;
+		m_cam[i].nz = nz;
+	}
 
 	glGenBuffers(1, &m_vb_cam);
 	glBindBuffer(GL_ARRAY_BUFFER, m_vb_cam);
@@ -968,6 +1020,9 @@ void f_glfw_calib::resetCameraModel(){
 	glGenBuffers(1, &m_ib_cam);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ib_cam);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 18 * sizeof(GLuint), m_cam_idx, GL_STATIC_DRAW);
+
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
 
 
