@@ -987,9 +987,12 @@ void f_glfw_calib::resetCameraModel(){
 	double fx = pP[0], fy = pP[1], cx = pP[2], cy = pP[3];
 	double w = m_img_det.cols, h = m_img_det.rows;
 	double sx = 0.1, sy = sx * h / w;
-	double left = sx * cx / w, right = sx * (1.0 - left);
-	double top = sy * cy / h, bottom = sy * (1.0 - top);
-	double z =  left * fx / cx;
+	double left = cx / w, right = (1.0 - left);
+	double top = cy / h, bottom = (1.0 - top);
+	left *= sx, right *= sx;
+	top *= sy, bottom *= sy;
+	double z =  sx * fx / w;
+
 	float nx, ny, nz;
 	// setting cam's focal point.
 	for(int i = 0; i < 12; i += 3){
