@@ -541,9 +541,9 @@ bool f_glfw_calib::proc()
 
 		// For 2D rendering mode, the origin is set at left-bottom as (0, 0), clipping rectangle has the 
 		// width and height the same as the frame buffer size.
+		glViewport(0, 0, m_sz_win.width, m_sz_win.height);
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		glViewport(0, 0, m_sz_win.width, m_sz_win.height);
 		glOrtho(-1., -1., -1., 1., -1., 1.);		
 
 		// overlay chessboard if needed
@@ -605,12 +605,57 @@ bool f_glfw_calib::proc()
 			y+= hfont;
 		}
 	}else{
-		// setting model-view matrix chessboards and camera
-		// object transformation
-		// multiply cg-cam motion 
+		if(m_bcalib){
+			// setting projection matrix (Basically setting it the same as the camera parameter.)
+			glViewport(0, 0, m_sz_win.width, m_sz_win.height);
+			glMatrixMode(GL_PROJECTION);
+			glLoadIdentity();
+			double * pP = m_par.getCvPrj();
 
-		// setting projection matrix (Basically setting it the same as the camera parameter.)
+			double fx = pP[0], fy = pP[1], cx = pP[2], cy = pP[3];
+			double w = m_img_det.cols, h = m_img_det.rows;
+			double left = cx / w, right = (1.0 - left);
+			double top = cy / h, bottom = (1.0 - top);
 
+			// the scene depth is set as 0.1 to 100 meter
+			glFrustum(-cx, w - cx, -h + cy, cy, 0.1, 100.);
+
+			GLfloat mcam[16], mobj[16];
+			setEyeGl4x4(mcam);
+
+			for(int i = 0; i < m_num_chsbds; i++){
+				// setting model-view matrix chessboards and camera
+				glMatrixMode(GL_MODELVIEW);
+				glLoadIdentity();
+				glLoadMatrixf(mcam);
+				Mat R = Mat(3, 3, CV_64FC1);
+				// object transformation
+				exp_so3(m_objs[i]->rvec.ptr<double>(), R.ptr<double>());
+				reformRtAsGl4x4(R, m_objs[i]->tvec, mobj);
+				// multiply cg-cam motion 
+				glMultMatrixf(mobj);
+
+				glPointSize(3);
+				glBegin(GL_POINTS);
+				for(int ipt = 0; ipt < m_model_chsbd.pts.size(); ipt++){
+					Point3f & pt = m_model_chsbd.pts[ipt];
+					glColor4f(1.0, 0, 0, 1.0);
+					glVertex3f(pt.x, pt.y, pt.z);
+				}
+				glEnd();
+			}
+
+			glEnableClientState(GL_VERTEX_ARRAY);
+			glBindBuffer(GL_ARRAY_BUFFER, m_vb_cam);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ib_cam);
+			glInterleavedArrays(GL_C4F_N3F_V3F, 0, NULL);
+			glDrawElements(GL_TRIANGLES, sizeof(m_cam_idx), GL_UNSIGNED_INT, NULL);
+
+			glBindBuffer(GL_ARRAY_BUFFER, 0);
+			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+		}else{// camera parameters have not been fixed yet. we cant render the objects.
+		}
 	}
 	glfwSwapBuffers(m_pwin);
 	glfwPollEvents();
@@ -678,7 +723,9 @@ void * f_glfw_calib::_thdet()
 	if(m_bcalib && m_num_chsbds == m_num_chsbds_det){
 		calibrate();
 		// after calibration camera object
+		pthread_mutex_lock(&m_mtx);
 		resetCameraModel();
+		pthread_mutex_unlock(&m_mtx);
 	}
 
 	return NULL;

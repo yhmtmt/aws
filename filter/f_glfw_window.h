@@ -73,6 +73,34 @@ inline void normalize(float & nx, float & ny, float & nz)
 	nz *= inorm;
 }
 
+inline void setEyeGl4x4(GLfloat * m)
+{
+	memset((void*)m, 0, sizeof(GLfloat) * 16);
+	m[0] = m[5] = m[10] = m[15] = 1.0;
+}
+
+inline void reformRtAsGl4x4(Mat & R, Mat & t, GLfloat * m)
+{
+	// note that m is the OpenGL memory layout (say column major order)
+	double * pR = R.ptr<double>();
+	double * pt = t.ptr<double>();
+	int i, j;
+
+	for(i = 0; i < 3; i++){
+		for(j = 0; j < 3; j++){
+			m[j * 4 + i] = pR[i * 3 + j];
+		}
+		m[j * 4 + i] = 0;
+	}
+
+	for(int i = 0; i < 3; i++){
+		m[12 + i] = pt[i];
+	}
+
+	m[15] = 1.0;
+}
+
+
 class f_glfw_window: public f_base
 {
 protected:
