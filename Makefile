@@ -48,7 +48,7 @@ FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 CHANNEL = ch_base
 
 # listing utility module
-UTIL =  c_clock c_imgalign c_nmeadec c_ship coord util aws_serial aws_sock
+UTIL =  c_clock c_imgalign c_nmeadec c_ship coord util aws_serial aws_sock aws_vobj
 
 # listing include path 
 INC_CV_DIR = /usr/include
@@ -89,7 +89,7 @@ INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
 LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
 ifeq ($(GLFW_WINDOW), y)
 	INC += -I$(INC_GLFW_DIR)
-	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -dn -lglfw3 -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr 
+	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr 
 	DEFS += -DGLFW_WINDOW
 	FILTER += f_glfw_window
 endif
@@ -108,7 +108,7 @@ LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 ifeq ($(AVT_CAM),y)
 	INC += -I$(INC_PVAPI_DIR) 
 	LIB += -L$(LIB_PVAPI_DIR) -lPvAPI
-	FILTER += f_avt_cam
+	FILTER += f_avt_cam f_avt_mono f_avt_stereo
 	DEFS += -DAVT_CAM
 endif
 
