@@ -34,17 +34,9 @@ inline void cnvCvPoint2GlPoint(const double fac_x, const double fac_y, const Poi
 	ptgl.y = -(float)(ptcv.y * fac_y - 1.0);
 }
 
-inline void drawGlText(float x, float y, char * str, 
+void drawGlText(float x, float y, char * str, 
 					   float r, float g, float b , float alpha,
-					   void* font = GLUT_BITMAP_TIMES_ROMAN_24)
-{
-	glRasterPos2f(x, y);
-	glColor4f(r, g, b, alpha);
-	int l = strlen(str);
-	for(int i = 0; i < l; i++){
-		glutBitmapCharacter(font, str[i]);
-	}
-}
+					   void* font);
 
 void drawCvPoints(const Size & vp, vector<Point2f> & pts,
 				  const float r, const float g, const float b, const float alpha, 
@@ -67,7 +59,7 @@ inline void crossProduct(const float x1, const float y1, const float z1,
 
 inline void normalize(float & nx, float & ny, float & nz)
 {
-	double inorm = 1.0 / sqrt(nx * nx + ny * ny + nz * nz);
+	float inorm = (float) (1.0 / sqrt(nx * nx + ny * ny + nz * nz));
 	nx *= inorm;
 	ny *= inorm;
 	nz *= inorm;
@@ -88,13 +80,13 @@ inline void reformRtAsGl4x4(Mat & R, Mat & t, GLfloat * m)
 
 	for(i = 0; i < 3; i++){
 		for(j = 0; j < 3; j++){
-			m[j * 4 + i] = pR[i * 3 + j];
+			m[j * 4 + i] = (float) pR[i * 3 + j];
 		}
 		m[j * 4 + i] = 0;
 	}
 
 	for(int i = 0; i < 3; i++){
-		m[12 + i] = pt[i];
+		m[12 + i] = (float) pt[i];
 	}
 
 	m[15] = 1.0;
@@ -328,7 +320,7 @@ protected:
 
 	void resetCameraModel();
 
-	GLfloat m_thx, m_thy; // 3d camera rotation around x and y.
+	GLfloat m_thx, m_thy; // 3d camera rotation around x and y. (degree)
 	GLfloat m_trx, m_trz; // 3d camera translation toward x and z
 
 	virtual bool init_run();

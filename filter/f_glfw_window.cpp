@@ -23,15 +23,16 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include <GLFW/glfw3.h>
-#include <GL/glut.h>
 #include <GL/glew.h>
 
+#include <GLFW/glfw3.h>
 #ifdef _WIN32
 #include <Windows.h>
 #endif
 
+#include <GL/glut.h>
 #include <GL/glu.h>
+
 
 #include "f_glfw_window.h"
 
@@ -106,6 +107,18 @@ void drawCvPointDensity(Mat hist, const int hist_max, const Size grid,
 		}
 	}
 	glEnd();
+}
+
+void drawGlText(float x, float y, char * str, 
+					   float r, float g, float b , float alpha,
+					   void* font)
+{
+	glRasterPos2f(x, y);
+	glColor4f(r, g, b, alpha);
+	int l = (int) strlen(str);
+	for(int i = 0; i < l; i++){
+		glutBitmapCharacter(font, str[i]);
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window
@@ -589,19 +602,19 @@ bool f_glfw_calib::proc()
 
 		snprintf(buf, 255, "Nchsbd= %d/%d, Smax=%f Smin=%f Savg=%f Erep=%f ",
 			m_num_chsbds_det, m_num_chsbds_det, smax, smin, savg, m_rep_avg);
-		drawGlText(x, y, buf, 0, 1, 0, 1);
+		drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 		y+= hfont;
 		
 		// indicating infromation about selected chessboard.
 		if(m_bshow_chsbd_sel && m_sel_chsbd >= 0 && m_sel_chsbd < m_num_chsbds && m_objs[m_sel_chsbd]){
 			snprintf(buf, 255, "Chessboard %d", m_sel_chsbd);
-			drawGlText(x, y, buf, 0, 1, 0, 1);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 			y+= hfont;
 
 			snprintf(buf, 255, "Score: %f (Crn: %f Sz %f Angl %f Erep %f)", 
 				m_score[m_sel_chsbd].tot, m_score[m_sel_chsbd].crn, m_score[m_sel_chsbd].sz, 
 				m_score[m_sel_chsbd].angl, m_score[m_sel_chsbd].rep);
-			drawGlText(x, y, buf, 0, 1, 0, 1);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 			y+= hfont;
 		}
 	}else{
@@ -995,12 +1008,12 @@ void f_glfw_calib::resetCameraModel(){
 	double * pP = m_par.getCvPrj();
 	double fx = pP[0], fy = pP[1], cx = pP[2], cy = pP[3];
 	double w = m_img_det.cols, h = m_img_det.rows;
-	double sx = 0.1, sy = sx * h / w;
-	double left = cx / w, right = (1.0 - left);
-	double top = cy / h, bottom = (1.0 - top);
+	float sx = 0.1f, sy = (float)(sx * h / w);
+	float left = (float)(cx / w), right = (float)(1.0 - left);
+	float top =(float)(cy / h), bottom = (float)(1.0 - top);
 	left *= sx, right *= sx;
 	top *= sy, bottom *= sy;
-	double z =  sx * fx / w;
+	float z =  (float)(sx * fx / w);
 
 	float nx, ny, nz;
 	// setting cam's focal point.
@@ -1114,6 +1127,12 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 	case GLFW_KEY_P:
 	case GLFW_KEY_Q:
 	case GLFW_KEY_R:
+		if(m_vm == VM_CAM){
+			break;
+		}else{
+			m_thx = m_thy = 0.;
+			m_trx = m_trz = 0.;
+		}
 		break;
 	case GLFW_KEY_S:
 		if(mods & GLFW_MOD_CONTROL){
@@ -1134,15 +1153,59 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 	case GLFW_KEY_Y:
 	case GLFW_KEY_Z:
 	case GLFW_KEY_RIGHT:
-		m_sel_chsbd = (m_sel_chsbd + 1) % (int) m_objs.size();
+		if(m_vm == VM_CAM)
+			m_sel_chsbd = (m_sel_chsbd + 1) % (int) m_objs.size();
+		else{
+			if(mods & GLFW_MOD_CONTROL){
+				m_thy += 5.0;
+				if(m_thy >= 360.0)
+					m_thy -= 360.;
+			}else if(mods & GLFW_MOD_SHIFT){
+				m_trx += 1.0;
+			}
+		}
 		break;
 	case GLFW_KEY_LEFT:
-		m_sel_chsbd = m_sel_chsbd - 1;
-		if(m_sel_chsbd < 0)
-			m_sel_chsbd += (int) m_objs.size();
+		if(m_vm == VM_CAM){
+			m_sel_chsbd = m_sel_chsbd - 1;
+			if(m_sel_chsbd < 0)
+				m_sel_chsbd += (int) m_objs.size();
+		}else{
+			if(mods & GLFW_MOD_CONTROL){
+				m_thy -= 5.0;
+				if(m_thy < 0.)
+					m_thy += 360.;
+			}else if(mods & GLFW_MOD_SHIFT){
+				m_trx -= 1.0;
+			}
+		}
 		break;
 	case GLFW_KEY_UP:
+		if(m_vm == VM_CAM){
+			break;
+		}else{
+			if(mods & GLFW_MOD_CONTROL){
+				m_thx += 5.0;
+				if(m_thx >= 360.0)
+					m_thx -= 360.;
+			}else if(mods & GLFW_MOD_SHIFT){
+				m_trz += 1.;
+			}
+		}
+		break;
 	case GLFW_KEY_DOWN:
+		if(m_vm == VM_CAM){
+			break;
+		}else{
+			if(mods & GLFW_MOD_CONTROL){
+				m_thx -= 5.0;
+				if(m_thx < 0.)
+					m_thx += 360.;
+			}else if(mods & GLFW_MOD_SHIFT){
+				m_trz = -1.;
+			}
+		}
+		break;
 	case GLFW_KEY_SPACE:
 	case GLFW_KEY_BACKSPACE:
 	case GLFW_KEY_ENTER:
