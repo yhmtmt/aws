@@ -328,6 +328,9 @@ protected:
 
 	void resetCameraModel();
 
+	GLfloat m_thx, m_thy; // 3d camera rotation around x and y.
+	GLfloat m_trx, m_trz; // 3d camera translation toward x and z
+
 	virtual bool init_run();
 public:
 	f_glfw_calib(const char * name);

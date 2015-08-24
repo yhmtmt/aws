@@ -605,6 +605,9 @@ bool f_glfw_calib::proc()
 			y+= hfont;
 		}
 	}else{
+		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 		if(m_bcalib){
 			// setting projection matrix (Basically setting it the same as the camera parameter.)
 			glViewport(0, 0, m_sz_win.width, m_sz_win.height);
@@ -620,14 +623,19 @@ bool f_glfw_calib::proc()
 			// the scene depth is set as 0.1 to 100 meter
 			glFrustum(-cx, w - cx, -h + cy, cy, 0.1, 100.);
 
-			GLfloat mcam[16], mobj[16];
-			setEyeGl4x4(mcam);
+			GLfloat mobj[16];
 
-			for(int i = 0; i < m_num_chsbds; i++){
-				// setting model-view matrix chessboards and camera
-				glMatrixMode(GL_MODELVIEW);
-				glLoadIdentity();
-				glLoadMatrixf(mcam);
+			// setting model-view matrix chessboards and camera
+			glMatrixMode(GL_MODELVIEW);
+			glLoadIdentity();
+			glTranslatef(m_trx, 0., m_trz);
+			glRotatef(m_thx, 1.0, 0., 0.);
+			glRotatef(m_thy, 0., 1., 0.);
+			for(int i = 0; i < m_num_chsbds; i++){				
+				if(!m_objs[i])
+					continue;
+
+				glPushMatrix();
 				Mat R = Mat(3, 3, CV_64FC1);
 				// object transformation
 				exp_so3(m_objs[i]->rvec.ptr<double>(), R.ptr<double>());
@@ -643,6 +651,7 @@ bool f_glfw_calib::proc()
 					glVertex3f(pt.x, pt.y, pt.z);
 				}
 				glEnd();
+				glPopMatrix();
 			}
 
 			glEnableClientState(GL_VERTEX_ARRAY);
