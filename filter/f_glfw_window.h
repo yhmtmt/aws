@@ -96,8 +96,17 @@ inline void reformRtAsGl4x4(Mat & R, Mat & t, GLfloat * m)
 class f_glfw_window: public f_base
 {
 protected:
-	GLFWwindow * m_pwin;
+	struct s_anchor{
+		GLFWwindow * m_pwin;
+		f_glfw_window * m_ptr;
+	} m_anchor;
+
+	GLFWwindow * pwin(){
+			return m_anchor.m_pwin;
+	}
+
 	Size m_sz_win;
+
 	virtual bool init_run();
 	virtual void destroy_run();
 
@@ -107,7 +116,7 @@ protected:
 
 	static void key_callback(GLFWwindow * pwindow, int key, int scancode, int action, int mods)
 	{
-		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
 		ptr->_key_callback(key, scancode, action, mods);
 	}
 
@@ -117,7 +126,7 @@ protected:
 
 	static void cursor_position_callback(GLFWwindow* pwindow, double xpos, double ypos)
 	{
-		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
 		ptr->_cursor_position_callback(xpos, ypos);
 	}
 
@@ -127,7 +136,7 @@ protected:
 
 	static void mouse_button_callback(GLFWwindow* pwindow, int button, int action, int mods)
 	{
-		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
 		ptr->_mouse_button_callback(button, action, mods);
 	}
 
@@ -137,13 +146,13 @@ protected:
 
 	static void scroll_callback(GLFWwindow* pwindow, double xoffset, double yoffset)
 	{
-		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
 		ptr->_scroll_callback(xoffset, yoffset);
 	}
 
 	static void framebuffer_size_callback(GLFWwindow * pwindow, int width, int height)
 	{
-		f_glfw_window * ptr = (f_glfw_window*) ((char*)pwindow - offsetof(f_glfw_window, m_pwin));
+		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
 		ptr->m_sz_win = Size(width, height);
 	}
 public:

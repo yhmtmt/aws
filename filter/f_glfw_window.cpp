@@ -122,8 +122,10 @@ void drawGlText(float x, float y, char * str,
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window
-f_glfw_window::f_glfw_window(const char * name):f_base(name), m_pwin(NULL), m_sz_win(640, 480)
+f_glfw_window::f_glfw_window(const char * name):f_base(name), m_sz_win(640, 480)
 {
+	m_anchor.m_pwin = NULL;
+	m_anchor.m_ptr = this;
 	register_fpar("width", &m_sz_win.width, "Width of the window.");
 	register_fpar("height", &m_sz_win.height, "Height of the window.");
 }
@@ -140,22 +142,22 @@ bool f_glfw_window::init_run()
 	if(glewInit() != GLEW_OK)
 		return false;
 
-	m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, "Hello World", NULL, NULL);
-	if (!m_pwin)
+	m_anchor.m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, "Hello World", NULL, NULL);
+	if (!pwin())
 	{
 		glfwTerminate();
 		return false;
 	}
 
-	glfwMakeContextCurrent(m_pwin);
+	glfwMakeContextCurrent(pwin());
 
-	glfwSetKeyCallback(m_pwin, key_callback);
-	glfwSetCursorPosCallback(m_pwin, cursor_position_callback);
-	glfwSetMouseButtonCallback(m_pwin, mouse_button_callback);
-	glfwSetScrollCallback(m_pwin, scroll_callback);
+	glfwSetKeyCallback(pwin(), key_callback);
+	glfwSetCursorPosCallback(pwin(), cursor_position_callback);
+	glfwSetMouseButtonCallback(pwin(), mouse_button_callback);
+	glfwSetScrollCallback(pwin(), scroll_callback);
 	glfwSetErrorCallback(err_cb);
 
-	glfwSetWindowTitle(m_pwin, m_name);
+	glfwSetWindowTitle(pwin(), m_name);
 
 	return true;
 }
@@ -164,21 +166,21 @@ void f_glfw_window::destroy_run()
 {
   
   glfwTerminate();
-  m_pwin = NULL;
+  m_anchor.m_pwin = NULL;
 }
 
 bool f_glfw_window::proc()
 {
-	if(glfwWindowShouldClose(m_pwin))
+	if(glfwWindowShouldClose(pwin()))
 		return false;
 
-	//glfwMakeContextCurrent(m_pwin);
+	//glfwMakeContextCurrent(pwin());
 
 	// rendering codes >>>>>
 
 	// <<<<< rendering codes
 
-	glfwSwapBuffers(m_pwin);
+	glfwSwapBuffers(pwin());
 
 	glfwPollEvents();
 
@@ -330,7 +332,7 @@ void display(void)
 
 bool f_glfw_imview::proc()
 {
-	if(glfwWindowShouldClose(m_pwin))
+	if(glfwWindowShouldClose(pwin()))
 		return false;
 
 	long long timg;
@@ -354,7 +356,7 @@ bool f_glfw_imview::proc()
 	//sleep(10);
 	display();
 	*/
-	glfwSwapBuffers(m_pwin);
+	glfwSwapBuffers(pwin());
 	glfwPollEvents();
 
 	return true;
@@ -488,7 +490,7 @@ bool f_glfw_calib::init_run()
 
 bool f_glfw_calib::proc()
 {
-	if(glfwWindowShouldClose(m_pwin))
+	if(glfwWindowShouldClose(pwin()))
 		return false;
 
 	long long timg;
@@ -502,7 +504,7 @@ bool f_glfw_calib::proc()
 		// debugging code. I doubt that the window size specified in glfwCreateWindow is not 
 		// the same as the size of the frame buffer.
 		int w, h;
-		glfwGetFramebufferSize(m_pwin, &w, &h);
+		glfwGetFramebufferSize(pwin(), &w, &h);
 		if(m_sz_win.width != w || m_sz_win.height){
 			cerr << "Frame buffer size is different from given as the filter's parameter." << endl;
 		}
@@ -679,7 +681,7 @@ bool f_glfw_calib::proc()
 		}else{// camera parameters have not been fixed yet. we cant render the objects.
 		}
 	}
-	glfwSwapBuffers(m_pwin);
+	glfwSwapBuffers(pwin());
 	glfwPollEvents();
 
 	return true;
