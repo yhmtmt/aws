@@ -228,11 +228,6 @@ void * f_base::fthread(void * ptr)
 		filter->unlock_cmd();
 	}
 
-	cout << filter->get_name() << " stopped." << endl;
-	cout << "Processing rate was " << filter->m_proc_rate;
-	cout << "(" << filter->m_count_proc << "/" << filter->m_count_clock << ")" << endl;
-	cout << "Number of max cycles was " << filter->m_max_cycle << endl;
-
 	filter->m_bstopped = true;
 	return NULL;
 }

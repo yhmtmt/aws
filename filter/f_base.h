@@ -363,15 +363,18 @@ public:
 	virtual bool stop()
 	{	
 		m_bactive= false;
-		if(m_bstopped || is_main_thread()){
-			cout << get_name() << " stopped." << endl;
-			cout << "Processing rate was " << m_proc_rate;
-			cout << "(" << m_count_proc << "/" << m_count_clock << ")" << endl;
-			cout << "Number of max cycles was " << m_max_cycle << endl;
-			destroy_run();
-			return true;
+		if(m_bstopped){
+		  destroy_run();
+		  return true;
 		}
 		return false;
+	}
+	
+	void runstat(){
+	  cout << get_name() << " stopped." << endl;
+	  cout << "Processing rate was " << m_proc_rate;
+	  cout << "(" << m_count_proc << "/" << m_count_clock << ")" << endl;
+	  cout << "Number of max cycles was " << m_max_cycle << endl;
 	}
 
 	// check the filter activity condition
