@@ -53,7 +53,7 @@ bool f_avt_stereo::init_run()
 {
 	int m_size_buf = 0;
 
-	if(m_chin.size() < 1){
+	if(m_chout.size() < 1){
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CH);
 		return false;
 	}
@@ -63,7 +63,7 @@ bool f_avt_stereo::init_run()
 	if(!m_cam1.init(this, m_chin[0]))
 		return false;
 
-	if(m_chin.size() < 2){
+	if(m_chout.size() < 2){
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CH);
 		return false;
 	}

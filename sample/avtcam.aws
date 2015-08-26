@@ -2,8 +2,8 @@
 
 channel imgr bayer
 channel imgr clr
-filter avtcam cam -i -o bayer
-fset cam host 172.18.1.128
+filter avtmono cam -i -o bayer
+fset cam host 172.18.2.20
 fset cam PixelFormat Bayer8
 filter debayer deb -i bayer -o clr
 fset deb bayer GR8
@@ -11,9 +11,15 @@ fset deb bayer GR8
 #filter dswin win -i clr -o 
 #fset win wmd yes
 #fset win Hwin 1376 Vwin 1100
-filter imwrite iw -i clr -o 
-fset iw type jpg
-fset iw qjpg 20
+
+# for transfering via tcp network
+#filter imwrite iw -i clr -o 
+#fset iw type jpg
+#fset iw qjpg 20
+
+# for OpenGL version
+filter glimv win -i img -o 
+fset win width 640 height 480
 go
 
 

@@ -48,11 +48,11 @@ f_avt_mono::~f_avt_mono()
 
 bool f_avt_mono::init_run()
 {
-	if(m_chin.size() < 1){
+	if(m_chout.size() < 1){
 		f_base::send_err(this, __FILE__, __LINE__, FERR_AVT_CAM_CH);
 		return false;
 	}
-	return m_cam.init(this, m_chin[0]);
+	return m_cam.init(this, m_chout[0]);
 }
 
 void f_avt_mono::destroy_run()
