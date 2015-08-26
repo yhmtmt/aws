@@ -118,13 +118,13 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
 
 f_avt_cam::s_cam_params::~s_cam_params()
 {
-	if(m_strParams == strParams)
-	{
-		for(int i = 0; i < sizeof(m_strParams); i++){
-			delete[] strParams[i];
-		}
-		delete[] strParams;
-	}
+  if(m_strParams != strParams)
+    {
+      for(int i = 0; i < sizeof(m_strParams); i++){
+	delete[] strParams[i];
+      }
+      delete[] strParams;
+    }
 }
 
 f_avt_cam::f_avt_cam(const char * name): f_base(name), m_ttrig_int(30*MSEC), m_ttrig_prev(0)
@@ -179,7 +179,6 @@ void f_avt_cam::register_params(s_cam_params & cam)
 	register_fpar(cam.strParams[30], &cam.m_RegionX, "Top left x position of the ROI (0 to Maximum Camera Width - 1)");
 	register_fpar(cam.strParams[31], &cam.m_RegionY, "Top left y position of the ROI (0 to Maximum Camera Height -1)");
 	register_fpar(cam.strParams[32], (int*)&cam.m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
-
 }
 
 const char * f_avt_cam::get_err_msg(int code)
@@ -503,6 +502,8 @@ cam_close:
 
 void f_avt_cam::s_cam_params::destroy(f_avt_cam * pcam)
 {
+  if(m_frame == NULL) // camera conntection has already been destroied.
+    return;
 
 	tPvErr err;
 	err = PvCommandRun(m_hcam, "AcquisitionStop");
