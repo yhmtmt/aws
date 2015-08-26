@@ -136,17 +136,17 @@ f_glfw_window::~f_glfw_window()
 
 bool f_glfw_window::init_run()
 {
-	if(!glfwInit())
-		return false;
+  if(!glfwInit()){
+    cerr << "Failed to initialize GLFW." << endl;
+    return false;
+  }
 
-	if(glewInit() != GLEW_OK)
-		return false;
-
-	m_anchor.m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, "Hello World", NULL, NULL);
+  m_anchor.m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, "Hello World", NULL, NULL);
 	if (!pwin())
 	{
-		glfwTerminate();
-		return false;
+	  cerr << "Failed to create GLFW window." << endl;
+	  glfwTerminate();
+	  return false;
 	}
 
 	glfwMakeContextCurrent(pwin());
@@ -158,6 +158,13 @@ bool f_glfw_window::init_run()
 	glfwSetErrorCallback(err_cb);
 
 	glfwSetWindowTitle(pwin(), m_name);
+
+  GLenum err;
+  if((err = glewInit()) != GLEW_OK){
+    cerr << "Failed to initialize GLEW." << endl;
+    cerr << "\tMessage: " << glewGetString(err) << endl;
+    return false;
+  }
 
 	return true;
 }
@@ -365,12 +372,15 @@ bool f_glfw_imview::proc()
 
 bool f_glfw_imview::init_run()
 {
-	if(m_chin.size() == 0)
-		return false;
-
+  if(m_chin.size() == 0){
+    cerr << m_name << " requires at least an input channel." << endl;
+    return false;
+  }		
 	m_pin = dynamic_cast<ch_image*>(m_chin[0]);
-	if(m_pin == NULL)
-		return false;
+	if(m_pin == NULL){
+	  cerr << m_name << "'s first input channel should be image channel." << endl;
+	  return false;
+	}
 
 	if(!f_glfw_window::init_run())
 		return false;
