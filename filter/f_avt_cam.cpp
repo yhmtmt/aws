@@ -485,6 +485,7 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 	return true;
 
 free_buf:
+	cerr << "Freeing buffer." << endl;
 	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
 		delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
 	}
@@ -492,12 +493,12 @@ free_buf:
 	m_frame = NULL;
 
 cam_close:
+	cerr << "Closing camera." << endl;
 	err = PvCameraClose(m_hcam);
 	if(err != ePvErrSuccess){
 		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_CLOSE);
 	}
 	return false;
-
 }
 
 void f_avt_cam::s_cam_params::destroy(f_avt_cam * pcam)

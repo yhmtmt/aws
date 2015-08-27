@@ -92,17 +92,25 @@ inline void reformRtAsGl4x4(Mat & R, Mat & t, GLfloat * m)
 	m[15] = 1.0;
 }
 
+struct cmpglfwin{
+  bool operator () (const GLFWwindow * a, const GLFWwindow * b){
+    return reinterpret_cast<unsigned int>(a) 
+      < reinterpret_cast<unsigned int>(b);
+  }
+};
+
+class f_glfw_window;
+
+typedef map<GLFWwindow *, f_glfw_window *, cmpglfwin> MapGLFWin;
 
 class f_glfw_window: public f_base
 {
 protected:
-	struct s_anchor{
-		GLFWwindow * m_pwin;
-		f_glfw_window * m_ptr;
-	} m_anchor;
+  static MapGLFWin m_map_glfwin;
+  GLFWwindow * m_pwin;
 
 	GLFWwindow * pwin(){
-			return m_anchor.m_pwin;
+			return m_pwin;
 	}
 
 	Size m_sz_win;
@@ -116,8 +124,9 @@ protected:
 
 	static void key_callback(GLFWwindow * pwindow, int key, int scancode, int action, int mods)
 	{
-		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
-		ptr->_key_callback(key, scancode, action, mods);
+	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+	  f_glfw_window * ptr = itr->second;
+	  ptr->_key_callback(key, scancode, action, mods);
 	}
 
 	virtual void _cursor_position_callback(double xpos, double ypos)
@@ -126,8 +135,9 @@ protected:
 
 	static void cursor_position_callback(GLFWwindow* pwindow, double xpos, double ypos)
 	{
-		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
-		ptr->_cursor_position_callback(xpos, ypos);
+	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+	  f_glfw_window * ptr = itr->second;
+	  ptr->_cursor_position_callback(xpos, ypos);
 	}
 
 	void _mouse_button_callback(int button, int action, int mods)
@@ -136,8 +146,9 @@ protected:
 
 	static void mouse_button_callback(GLFWwindow* pwindow, int button, int action, int mods)
 	{
-		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
-		ptr->_mouse_button_callback(button, action, mods);
+	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+	  f_glfw_window * ptr = itr->second;
+	  ptr->_mouse_button_callback(button, action, mods);
 	}
 
 	void _scroll_callback(double xoffset, double yoffset)
@@ -146,14 +157,16 @@ protected:
 
 	static void scroll_callback(GLFWwindow* pwindow, double xoffset, double yoffset)
 	{
-		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
-		ptr->_scroll_callback(xoffset, yoffset);
+	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+	  f_glfw_window * ptr = itr->second;
+	  ptr->_scroll_callback(xoffset, yoffset);
 	}
 
 	static void framebuffer_size_callback(GLFWwindow * pwindow, int width, int height)
 	{
-		f_glfw_window * ptr = ((s_anchor*)((char*)pwindow - offsetof(s_anchor, m_pwin)))->m_ptr;
-		ptr->m_sz_win = Size(width, height);
+	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+	  f_glfw_window * ptr = itr->second;
+	  ptr->m_sz_win = Size(width, height);
 	}
 public:
 	f_glfw_window(const char * name);

@@ -17,7 +17,7 @@
 #ifdef GLFW_WINDOW
 
 #include <iostream>
-
+#include <map>
 using namespace std;
 
 #include <opencv2/opencv.hpp>
@@ -122,10 +122,11 @@ void drawGlText(float x, float y, char * str,
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window
+MapGLFWin f_glfw_window::m_map_glfwin;
+
 f_glfw_window::f_glfw_window(const char * name):f_base(name), m_sz_win(640, 480)
 {
-	m_anchor.m_pwin = NULL;
-	m_anchor.m_ptr = this;
+	m_pwin = NULL;
 	register_fpar("width", &m_sz_win.width, "Width of the window.");
 	register_fpar("height", &m_sz_win.height, "Height of the window.");
 }
@@ -141,7 +142,10 @@ bool f_glfw_window::init_run()
     return false;
   }
 
-  m_anchor.m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, "Hello World", NULL, NULL);
+  m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, m_name, NULL, NULL);
+  
+  m_map_glfwin.insert(pair<GLFWwindow*, f_glfw_window*>(m_pwin, this));
+
 	if (!pwin())
 	{
 	  cerr << "Failed to create GLFW window." << endl;
@@ -170,10 +174,11 @@ bool f_glfw_window::init_run()
 }
 
 void f_glfw_window::destroy_run()
-{
-  
+{ 
   glfwTerminate();
-  m_anchor.m_pwin = NULL;
+  MapGLFWin::iterator itr = m_map_glfwin.find(m_pwin);
+  m_map_glfwin.erase(itr);
+  m_pwin = NULL;
 }
 
 bool f_glfw_window::proc()
@@ -351,18 +356,17 @@ bool f_glfw_imview::proc()
 
 	m_timg = timg;
 
-	glRasterPos2i(-1, -1);
+	if(m_sz_win.width != img.cols || m_sz_win.height != img.rows){
+	  Mat tmp;
+	  resize(img, tmp, m_sz_win);
+	  img = tmp;
+	}
 	cnvCVBGR8toGLRGB8(img);
+       
+	glRasterPos2i(-1, -1);
+       
 	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
-
-	/*
-	int width, height;
-	glfwGetFramebufferSize(m_pwin, &width, &height);
-	reshape(width, height);
-	//idle();
-	//sleep(10);
-	display();
-	*/
+       
 	glfwSwapBuffers(pwin());
 	glfwPollEvents();
 
