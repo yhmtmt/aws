@@ -332,6 +332,7 @@ bool c_aws::handle_stop()
 			stopped = stopped && (*fitr)->stop();
 		f_base::clock(-1);
 	}
+
 	for(vector<f_base*>::iterator fitr = m_filters.begin();
 	    fitr != m_filters.end(); fitr++)
 	  (*fitr)->runstat();
@@ -1085,6 +1086,7 @@ bool c_aws::main(){
 		}
 	}
 
+	cout << "Stopping filters." << endl;
 	handle_stop();
 
 	for(int i = 0; i < m_rcmds.size() ;i++){

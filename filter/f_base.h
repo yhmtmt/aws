@@ -363,7 +363,7 @@ public:
 	virtual bool stop()
 	{	
 		m_bactive= false;
-		if(m_bstopped){
+		if(m_bstopped || is_main_thread()){
 		  destroy_run();
 		  return true;
 		}

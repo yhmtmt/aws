@@ -7,6 +7,7 @@ fset cam host 172.18.2.20
 fset cam PixelFormat Bayer8
 filter debayer deb -i bayer -o clr
 fset deb bayer GR8
+
 # for windows dswin shows the images
 #filter dswin win -i clr -o 
 #fset win wmd yes
@@ -18,8 +19,9 @@ fset deb bayer GR8
 #fset iw qjpg 20
 
 # for OpenGL version
-filter glimv win -i img -o 
+filter glimv win -i clr -o 
 fset win width 640 height 480
+cyc 0.1
 go
 
 
