@@ -268,16 +268,16 @@ void c_clock::wait()
 	clock_gettime(CLOCK_REALTIME, &ts);
 
 	// calculating total time from the epoch in 100ns.
-	ttotal = (long long) ((ts.tv_sec - m_ts_start.tv_sec) * SEC) + 
-	  (long long)((ts.tv_nsec - m_ts_start.tv_nsec) / 100);
- 
+	ttotal = (long long) ((long long)(ts.tv_sec - m_ts_start.tv_sec) * (long long) SEC ) + (long long)((ts.tv_nsec - m_ts_start.tv_nsec) / 100);
+	//cout << "Got (" << ts.tv_sec << "," << ts.tv_nsec <<
+	//  ") Start (" << m_ts_start.tv_sec << "," << m_ts_start.tv_nsec << ")" << endl;
 	// then current time is the addition of the offset.
 	tcur = m_offset + (long long) m_rate * ttotal;
 
 	// the next time should be a period ahead to previous time.
 	tnext = m_tcur + (long long) m_rate * m_period;
 
-	//	cout << "ttotal " << ttotal << " tcur " << tcur << " tnext " << tnext << endl;
+	//cout << "ttotal " << ttotal << " tcur " << tcur << " tnext " << tnext << endl;
 	if(tcur >= tnext){
 	  // if current time is larger than the next time, 
 	  // current time is set at that calculated from ts 
@@ -290,7 +290,7 @@ void c_clock::wait()
 	  long long tdiff = tnext - tcur;
 	  ts.tv_sec = tdiff / SEC;
 	  ts.tv_nsec = (tdiff - ts.tv_sec * SEC) * 100;
-	  //	  cout << "tdiff " << tdiff << endl;
+	  // cout << "tdiff " << tdiff << endl;
 	  while(nanosleep(&ts, &trem)){
 	    ts = trem;
 	  }
