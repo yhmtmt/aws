@@ -361,12 +361,17 @@ bool f_glfw_imview::proc()
 	  resize(img, tmp, m_sz_win);
 	  img = tmp;
 	}
-	cnvCVBGR8toGLRGB8(img);
-       
+
 	glRasterPos2i(-1, -1);
-       
-	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
-       
+	
+	if(img.type() == CV_8U){
+	  glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
+	}
+	else{
+	  cnvCVBGR8toGLRGB8(img);
+	  glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
+	}
+
 	glfwSwapBuffers(pwin());
 	glfwPollEvents();
 
