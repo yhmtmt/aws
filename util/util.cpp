@@ -2800,3 +2800,23 @@ void cnvCVBGR8toGLRGB8(Mat & img)
 		}
 	}
 }
+
+void cnvCVGRAY8toGLGRAY8(Mat & img)
+{
+  Mat gl_img;
+  gl_img.create(img.size(), CV_8UC3);
+  uchar * cv_ptr, * gl_ptr;
+
+  gl_ptr = gl_img.data;
+
+  for(int i = 0; i < img.rows; ++i){
+    cv_ptr = img.ptr<uchar>(i);
+    for(int j = 0; j < img.cols; ++j){
+      for(int c = 0; c < gl_img.channels(); ++c){
+	gl_ptr[i * gl_img.step + j * gl_img.elemSize() + c] = cv_ptr[j];
+      }      
+    }
+  }
+  
+  img = gl_img;
+}

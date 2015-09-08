@@ -103,7 +103,7 @@ bool s_model::load()
 	pts_deformed.resize(numPoints);
 	for(int ip = 0; ip < numPoints; ip++){
 		snprintf(buf, 63, "Point%05d", ip);
-		FileNode fpt = fn[buf];
+		FileNode fpt = fn[(const char*)buf];
 		if(fpt.empty()){
 			cerr << "Cannot find node " << buf << "." << endl;
 			return false;
@@ -123,7 +123,7 @@ bool s_model::load()
 	edges.resize(numEdges);
 	for(int ie =0; ie < numEdges; ie++){
 		snprintf(buf, 63, "Edge%05d", ie);
-		FileNode fe = fn[buf];
+		FileNode fe = fn[(const char*)buf];
 		if(fe.empty()){
 			cerr << "Cannot find node " << buf << "." << endl;
 			return false;
@@ -136,7 +136,7 @@ bool s_model::load()
 	parts.resize(numParts);
 	for(int ipart = 0; ipart < numParts; ipart++){
 		snprintf(buf, 63, "Part%05d", ipart);
-		FileNode fpart = fn[buf];
+		FileNode fpart = fn[(const char*)buf];
 		if(fpart.empty()){
 			cerr << "Cannot find part " << buf << "." << endl;
 			return false;
@@ -901,7 +901,7 @@ bool s_frame::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
 	FileNode fnobj;
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		snprintf(buf, 1024, "Obj%03d", iobj);
-		fnobj = fn[buf];
+		fnobj = fn[(const char*)buf];
 		s_obj * pobj = new s_obj;
 		objs[iobj] = pobj;
 		if(!pobj->load(fnobj, mdls)){

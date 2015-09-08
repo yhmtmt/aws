@@ -1196,4 +1196,5 @@ void cnv64FC1to8UC1(const Mat & in, Mat & out);
 // OpenCV uses a coordinate positive in right and bottom direction, and OpenGL does that in positive in right and top direction.
 // So the function swaps the color R and B saimultaneously the lines top and bottom.
 void cnvCVBGR8toGLRGB8(Mat & img);
+void cnvCVGRAY8toGLGRAY8(Mat & img);
 #endif
