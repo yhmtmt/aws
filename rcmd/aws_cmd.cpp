@@ -65,7 +65,7 @@ int aws_cmd(int argc, char ** argv, const char * cmd){
 
   memset(buf, 0, CMD_LEN);
   recv(sock, buf, CMD_LEN, 0);
-  if(buf[0]){
+  if(buf[0]){ // returned message should include non-zero value at the first byte if succeeded. 
     if(buf[1])
       cout << buf+1 << endl;
   }else{
