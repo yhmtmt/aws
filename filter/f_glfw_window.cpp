@@ -223,15 +223,16 @@ bool f_glfw_imview::proc()
 	  img = tmp;
 	}
 
-	glRasterPos2i(-1, -1);       
-
-	if(img.type() == CV_8UC3){
+	glRasterPos2i(-1, -1);
+	
+	if(img.type() == CV_8U){
+	  glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
+	}
+	else{
 	  cnvCVBGR8toGLRGB8(img);
 	  glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
 	}
-	else{
-	  glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
-	}
+
 	glfwSwapBuffers(pwin());
 	glfwPollEvents();
 
