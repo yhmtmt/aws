@@ -460,12 +460,10 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 			cerr << "Failed to get FrameStartTriggerMode" << endl;
 			goto free_buf;
 		}
-		cout << "FrameStartTriggerMode has not been changed : " << buf << endl;
 		m_FrameStartTriggerMode = getFrameStartTriggerMode(buf);
 	}else{
 		err = PvAttrEnumSet(m_hcam, "FrameStartTriggerMode",
 			strFrameStartTriggerMode[m_FrameStartTriggerMode]);
-		cout << "FrameStartTriggerMode is set as " << strFrameStartTriggerMode[m_FrameStartTriggerMode] << endl;
 		if(err != ePvErrSuccess){
 			cerr << "Failed to set FrameStartTriggerMode" << endl;
 			goto free_buf;

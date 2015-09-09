@@ -97,8 +97,8 @@ bool f_avt_stereo::proc()
 
 	if(m_cam1.m_FrameStartTriggerMode == efstmSoftware && 
 		m_ttrig_prev + m_ttrig_int < m_cur_time){
-		PvCommandRun(m_cam1.m_hcam, "FrameTriggerSoftware");
-		PvCommandRun(m_cam2.m_hcam, "FrameTriggerSoftware");
+		PvCommandRun(m_cam1.m_hcam, "FrameStartTriggerSoftware");
+		PvCommandRun(m_cam2.m_hcam, "FrameStartTriggerSoftware");
 		m_ttrig_prev = m_cur_time;
 	}
 	return true;
