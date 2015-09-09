@@ -752,6 +752,7 @@ bool c_aws::handle_run(s_cmd & cmd)
 	// check filter's status. 
 	for(vector<f_base*>::iterator fitr = m_filters.begin();
 		fitr != m_filters.end(); fitr++){
+	  cout << "Starting filter " << (*fitr)->get_name() << "." << endl;
 		if(!(*fitr)->run(m_start_time, m_end_time)){
 			snprintf(cmd.get_ret_str(),  RET_LEN, 
 				"Error in starting filter %s.", (*fitr)->get_name());
