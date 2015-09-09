@@ -329,7 +329,7 @@ bool f_nmea::init_run()
 	}
 	if(m_blog){
 		time_t t = time(NULL);
-		sprintf(m_fname_log, "%s_%lld.nmea", m_name, t);
+		sprintf(m_fname_log, "%s_%lld.nmea", m_name, (long long int)t);
 		m_flog.open(m_fname_log);
 		if(!m_flog.is_open()){
 			destroy_run();
