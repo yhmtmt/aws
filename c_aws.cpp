@@ -756,6 +756,7 @@ bool c_aws::handle_run(s_cmd & cmd)
 		if(!(*fitr)->run(m_start_time, m_end_time)){
 			snprintf(cmd.get_ret_str(),  RET_LEN, 
 				"Error in starting filter %s.", (*fitr)->get_name());
+			f_base::m_clk.stop();
 			return false;
 		}
 	}
