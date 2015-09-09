@@ -60,7 +60,7 @@ bool f_avt_stereo::init_run()
 
 	m_cam1.m_FrameStartTriggerMode = m_FrameStartTriggerMode;
 
-	if(!m_cam1.init(this, m_chin[0]))
+	if(!m_cam1.init(this, m_chout[0]))
 		return false;
 
 	if(m_chout.size() < 2){
@@ -70,9 +70,8 @@ bool f_avt_stereo::init_run()
 
 	m_cam2.m_FrameStartTriggerMode = m_FrameStartTriggerMode;
 
-	if(!m_cam2.init(this, m_chin[1]))
+	if(!m_cam2.init(this, m_chout[1]))
 		return false;
-
 	return true;
 }
 

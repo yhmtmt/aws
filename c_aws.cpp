@@ -236,7 +236,6 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 	memset(m_cmd.ret, 0, RET_LEN);
 
 	// split token
-	//cout << "Splitting Token ... ";
 	int itok = 0;
 	int total_len = 0;
 	const char * ptr0 = cmd_str;
@@ -284,13 +283,7 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 			break;
 		ptr0++;
 	}
-	/*
-	cout << " done." << endl;
-	for(int i = 0; i < itok; i++){
-	  cout << m_cmd.args[i] << " ";
-	}
-	cout << endl;
-	*/
+             
 	if (itok == 0){ // no token.
 		ret_stat = true;
 		pthread_mutex_unlock(&m_mtx);
@@ -299,9 +292,7 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 	cmd.num_args = itok;
 
 	// decoding command type
-	//cout << "Decoding command string ... ";
 	cmd.type = cmd_str_to_id(m_cmd.args[0]);
-	//cout << " done" << endl;
 	if(cmd.type == CMD_UNKNOWN){
 		cerr << "Unknown command." << endl;
 		pthread_mutex_unlock(&m_mtx);
@@ -309,12 +300,10 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 	}
 
 	// waiting for the command processed
-	//cout << "Waiting for command return ... ";
 	m_cmd.stat = CS_SET;
 	while(m_cmd.stat != CS_RET && m_cmd.stat != CS_ERR){
 		pthread_cond_wait(&m_cnd_ret, &m_mtx);
 	}
-	//cout << ".";
 
 	memcpy(ret_str, m_cmd.ret, RET_LEN);
 
@@ -827,7 +816,7 @@ void c_aws::proc_command()
 	{
 		pthread_mutex_lock(&m_mtx);
 		//pthread_lock lock(m_mtx);
-
+		
 		s_cmd & cmd = m_cmd;
 		bool result = false;
 		switch(cmd.type){
@@ -974,7 +963,7 @@ bool c_aws::add_filter(s_cmd & cmd){
 	int itok = 1;
 
 	if(get_filter(tok[itok+1]) != NULL){
-		cerr << "Cannot register filters with same name " << tok[itok + 1] << "." << endl;
+		cerr << "Cannot register filters with the same name " << tok[itok + 1] << "." << endl;
 		return false;
 	}
 	f_base * pfilter = f_base::create(tok[itok], tok[itok+1]);
@@ -1023,7 +1012,6 @@ bool c_aws::add_filter(s_cmd & cmd){
 		pthread_mutex_unlock(&m_mtx);
 		return false;
 	}
-	cout << "filter " << pfilter->get_name() << " added." << endl;
 
 	m_filters.push_back(pfilter);
 	return true;

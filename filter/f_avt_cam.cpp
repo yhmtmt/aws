@@ -106,8 +106,9 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
 	if(icam == -1){
 		strParams = m_strParams;
 	}else{
-		strParams = new const char*[sizeof(m_strParams)];
-		for(int i = 0; i < sizeof(m_strParams); i++){
+	  int num_params = sizeof(m_strParams) / sizeof(char*);
+		strParams = new const char*[num_params];
+		for(int i = 0; i < num_params; i++){
 			int len = (int) strlen(m_strParams[i]) + 2;
 			char * ptr =  new char[len]; // number and termination character.
 			snprintf(ptr, len, "%s%d", m_strParams[i], icam);
@@ -120,7 +121,7 @@ f_avt_cam::s_cam_params::~s_cam_params()
 {
   if(m_strParams != strParams)
     {
-      for(int i = 0; i < sizeof(m_strParams); i++){
+      for(int i = 0; i < sizeof(m_strParams) / sizeof(char*); i++){
 	delete[] strParams[i];
       }
       delete[] strParams;
@@ -378,7 +379,7 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 	int m_size_buf = 0;
 
 	pout = dynamic_cast<ch_image_ref*>(pch);
-
+ 
 	if(!pout){
 		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_CH);
 		return false;
@@ -395,12 +396,11 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 	// opening camera by IP address
 	unsigned long IpAddr = inet_addr(m_host);
 	err = PvCameraOpenByAddr(IpAddr, m_access, &m_hcam);
-
 	if(err != ePvErrSuccess){
 		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_OPEN);
 		return false;
 	}
-
+	
 	if(!config_param()){
 		goto cam_close;
 	}
