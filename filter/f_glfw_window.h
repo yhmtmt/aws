@@ -207,6 +207,25 @@ public:
 	virtual bool proc();
 };
 
+class f_glfw_stereo_view: public f_glfw_window
+{
+protected:
+  ch_image * m_pin1, *m_pin2;
+	long long m_timg;
+
+	virtual bool init_run();
+
+public:
+ f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL), m_timg(-1)
+	{
+	}
+	virtual ~f_glfw_stereo_view()
+	{
+	}
+
+	virtual bool proc();
+};
+
 // single camera calibration
 // * Chessboards are detected automatically and collected as a list.
 // * A newly detected chessboard is scored by their quality.

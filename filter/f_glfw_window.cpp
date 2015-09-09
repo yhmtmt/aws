@@ -258,6 +258,88 @@ bool f_glfw_imview::init_run()
 	return true;
 }
 
+////////////////////////////////////////////////////////////////////////////////f_glfw_stereo_view members
+
+bool f_glfw_stereo_view::proc()
+{
+  glfwMakeContextCurrent(pwin());
+
+  if(glfwWindowShouldClose(pwin()))
+    return false;
+  
+  long long timg1, timg2;
+  Mat img1 = m_pin1->get_img(timg1);
+  Mat img2 = m_pin2->get_img(timg2);
+  if(img1.type() != img2.type()){
+    cerr << "Two image channels in " << m_name << " have different image type." << endl;
+     return false;
+  }
+
+  if(img1.empty() || img2.empty())
+    return true;
+  
+  if(m_timg == timg1)
+    return true;
+
+  if(timg1 != timg2)
+    return true;
+
+  m_timg = timg1;
+  
+  Mat wimg1, wimg2;
+  resize(img1, wimg1, Size(m_sz_win.width >> 1, m_sz_win.height >> 1));
+  resize(img2, wimg2, Size(m_sz_win.width >> 1, m_sz_win.height >> 1));
+  
+  glRasterPos2i(-1, 0);
+  
+  if(wimg1.type() == CV_8U){
+    glDrawPixels(wimg1.cols, wimg1.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg1.data);
+  }
+  else{
+    cnvCVBGR8toGLRGB8(wimg1);
+    glDrawPixels(wimg1.cols, wimg1.rows, GL_RGB, GL_UNSIGNED_BYTE, wimg1.data);
+  }
+
+  glRasterPos2i(0, 0);
+  if(wimg2.type() == CV_8U){
+    glDrawPixels(wimg2.cols, wimg2.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg2.data);
+  }
+  else{
+    cnvCVBGR8toGLRGB8(wimg2);
+    glDrawPixels(wimg2.cols, wimg2.rows, GL_RGB, GL_UNSIGNED_BYTE, wimg2.data);
+  }
+  
+  glfwSwapBuffers(pwin());
+  glfwPollEvents();
+  
+  return true;
+}
+
+bool f_glfw_stereo_view::init_run()
+{
+  if(m_chin.size() != 2){
+    cerr << m_name << " requires at least two input channels." << endl;
+    return false;
+  }		
+
+  m_pin1 = dynamic_cast<ch_image*>(m_chin[0]);
+  if(m_pin1 == NULL){
+    cerr << m_name << "'s first input channel should be image channel." << endl;
+    return false;
+  }
+
+  m_pin2 = dynamic_cast<ch_image*>(m_chin[1]);
+  if(m_pin2 == NULL){
+    cerr << m_name << "'s second input channel should be image channel." << endl;
+    return false;   
+  }
+
+  if(!f_glfw_window::init_run())
+    return false;
+  
+  return true;
+}
+
 //////////////////////////////////////////////////////////////////////////////// f_glfw_claib members
 f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name), 	
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false),

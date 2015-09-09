@@ -228,6 +228,7 @@ void f_base::register_factory()
 
 #ifdef GLFW_WINDOW
 	register_factory<f_glfw_window>("glwin");
+	register_factory<f_glfw_stereo_view>("glstvw");
 	register_factory<f_glfw_imview>("glimv");
 #endif
 	// video sources
