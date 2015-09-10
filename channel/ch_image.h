@@ -25,7 +25,9 @@ public:
 	virtual ~ch_image(){}
 
 	virtual Mat get_img(long long & t) = 0;
+	virtual Mat get_img(long long & t, long long & ifrm) = 0;
 	virtual void set_img(Mat & img, long long t) = 0;
+	virtual void set_img(Mat & img, long long t, long long ifrm) = 0;
 };
 
 // ch_image_cln output clone of the image for get_img
@@ -35,11 +37,13 @@ protected:
 	int m_back, m_front;
 	bool m_bnew;
 	Mat m_img[2];
-	long long m_time[2];
+	long long m_time[2]; // frame time (aws time)
+	long long m_ifrm[2]; // frame index (if available.)
 public:
 	ch_image_cln(const char * name):ch_image(name), m_front(0), m_back(1), m_bnew(false)
 	{
 		m_time[0] = m_time[1] = 0;
+		m_ifrm[0] = m_ifrm[1] = -1;
 	}
 
 	virtual ~ch_image_cln()
@@ -58,11 +62,33 @@ public:
 		return img;
 	}
 
+	virtual Mat get_img(long long & t, long long & ifrm){
+		Mat img;
+		if(m_img[m_front].empty())
+			return img;
+
+		lock();
+		img = m_img[m_front].clone();
+		t = m_time[m_front];
+		ifrm = m_ifrm[m_front];
+		unlock();
+		return img;
+	}
+
 	virtual void set_img(Mat & img, long long t){
 		lock();
 		m_bnew = true;
 		m_img[m_back] = img;
 		m_time[m_back] = t;
+		unlock();
+	}
+
+	virtual void set_img(Mat & img, long long t, long long ifrm){
+		lock();
+		m_bnew = true;
+		m_img[m_back] = img;
+		m_time[m_back] = t;
+		m_ifrm[m_back] = ifrm;
 		unlock();
 	}
 
@@ -88,11 +114,13 @@ protected:
 	bool m_bnew;
 	Mat m_img[2];
 	long long m_time[2];
+	long long m_ifrm[2]; // frame index (if available.)
 public:
 	ch_image_ref(const char * name): ch_image(name), 
 		m_front(0), m_back(1), m_bnew(false)
 	{
 		m_time[0] = m_time[1] = 0;
+		m_ifrm[0] = m_ifrm[1] = -1;
 	}
 
 	virtual ~ch_image_ref(){
@@ -106,6 +134,15 @@ public:
 		return img;
 	}
 
+	virtual Mat get_img(long long & t, long long & ifrm){
+		lock();
+		Mat img = m_img[m_front];
+		t = m_time[m_front];
+		ifrm = m_ifrm[m_front];
+		unlock();
+		return img;
+	}
+
 	virtual void set_img(Mat & img, long long t){
 		lock();
 		m_bnew = true;
@@ -114,6 +151,15 @@ public:
 		unlock();
 	}
 
+	virtual void set_img(Mat & img, long long t, long long ifrm){
+		lock();
+		m_bnew = true;
+		m_img[m_back] = img;
+		m_time[m_back] = t;
+		m_ifrm[m_back] = ifrm;
+		unlock();
+	}
+	
 	bool is_buf_in_use(const unsigned char * buf){
 		return m_img[m_front].data == buf || m_img[m_back].data == buf;
 	}

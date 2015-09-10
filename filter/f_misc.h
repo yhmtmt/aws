@@ -139,31 +139,7 @@ public:
 	{};
 	~f_gry(){};
 
-	virtual bool proc(){
-		ch_image * pin = dynamic_cast<ch_image*>(m_chin[0]);
-		if(pin == NULL)
-			return false;
-
-		ch_image * pout = dynamic_cast<ch_image*>(m_chout[0]);
-		if(pout == NULL)
-			return false;
-
-		ch_image * pclrout = dynamic_cast<ch_image*>(m_chout[1]);
-		if(pclrout == NULL)
-			return false;
-
-		long long timg;
-		Mat img = pin->get_img(timg);
-		if(img.empty())
-			return true;
-
-		Mat out;
-		cvtColor(img, out, CV_BGR2GRAY);
-
-		pout->set_img(out, timg);
-		pclrout->set_img(img, timg);
-		return true;
-	}
+	virtual bool proc();
 };
 
 class f_imreg: public f_misc

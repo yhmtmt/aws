@@ -836,31 +836,32 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 
 	unsigned int ibuf;
 	if(pfrm->Status == ePvErrSuccess){
+	  //cout << "Cam[" << m_host << "] Frame[" << pfrm->FrameCount <<"] Arrived " << endl;
 		Mat img;
 		switch(pfrm->Format){
 		case ePvFmtMono8:
 			img = Mat(pfrm->Height, pfrm->Width, CV_8UC1, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time);
+			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtMono16:
 			img = Mat(pfrm->Height, pfrm->Width, CV_16UC1, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time);
+			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtBayer8:
 			img = Mat(pfrm->Height, pfrm->Width, CV_8UC1, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time);
+			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtBayer16:
 			img = Mat(pfrm->Height, pfrm->Width, CV_16UC1, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time);
+			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtRgb24:
 			img = Mat(pfrm->Height, pfrm->Width, CV_8UC3, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time);
+			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtRgb48:
 			img = Mat(pfrm->Height, pfrm->Width, CV_16UC3, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time);
+			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtYuv411:
 		case ePvFmtYuv422:

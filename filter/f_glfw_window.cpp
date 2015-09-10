@@ -267,22 +267,27 @@ bool f_glfw_stereo_view::proc()
   if(glfwWindowShouldClose(pwin()))
     return false;
   
-  long long timg1, timg2;
-  Mat img1 = m_pin1->get_img(timg1);
-  Mat img2 = m_pin2->get_img(timg2);
+  long long timg1, timg2, ifrm1, ifrm2;
+  Mat img1 = m_pin1->get_img(timg1, ifrm1);
+  Mat img2 = m_pin2->get_img(timg2, ifrm2);
   if(img1.type() != img2.type()){
     cerr << "Two image channels in " << m_name << " have different image type." << endl;
      return false;
   }
 
-  if(img1.empty() || img2.empty())
+  if(img1.empty() || img2.empty()){
+    cerr << "One of the image channels are empty." << endl;
     return true;
-  
+  }
+
   if(m_timg == timg1)
     return true;
-
-  if(timg1 != timg2)
+ 
+  if(ifrm1 != ifrm2){
+    cerr << "Frame index of the two images are not the same." << endl;
+    cerr << "ifrm1: " << ifrm1 << "ifrm2: " << ifrm2 << endl;
     return true;
+  }
 
   m_timg = timg1;
   
