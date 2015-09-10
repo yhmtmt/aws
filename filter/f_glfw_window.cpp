@@ -284,8 +284,6 @@ bool f_glfw_stereo_view::proc()
     return true;
  
   if(ifrm1 != ifrm2){
-    cerr << "Frame index of the two images are not the same." << endl;
-    cerr << "ifrm1: " << ifrm1 << "ifrm2: " << ifrm2 << endl;
     return true;
   }
 

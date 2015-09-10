@@ -86,11 +86,13 @@ bool f_avt_stereo::proc()
 {
 	// if any, reconfigure camera
 	if(m_cam1.m_update){
+	  cout << "The first camera parameters updated." << endl;
 		m_cam1.config_param_dynamic();
 		m_cam1.m_update = false;
 	}
 
 	if(m_cam2.m_update){
+	  cout << "The second camera parameters updated." << endl;
 		m_cam2.config_param_dynamic();
 		m_cam2.m_update = false;
 	}

@@ -124,7 +124,8 @@ protected:
 	long long m_ttrig_int;
 	long long m_ttrig_prev;
 
-	static const char * m_strParams[33];
+	#define NUM_PV_PARAMS 36
+	static const char * m_strParams[NUM_PV_PARAMS];
 	struct s_cam_params{
 		bool m_bactive;
 		const char ** strParams;
@@ -155,6 +156,9 @@ protected:
 		unsigned int m_BinningY;
 		int m_DecimationHorizontal;
 		int m_DecimationVertical;
+	  bool m_ReverseSoftware;
+	  bool m_ReverseX;
+	  bool m_ReverseY;
 
 		bool init(f_avt_cam * pcam, ch_base * pch);
 		void stop(){

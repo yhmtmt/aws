@@ -70,14 +70,14 @@ const char * f_avt_cam::strWhitebalMode[ewmAutoOnce+1] = {
 	"Manual", "Auto", "AutoOnce"
 };
 
-const char * f_avt_cam::m_strParams[33] = {
+const char * f_avt_cam::m_strParams[NUM_PV_PARAMS] = {
 	"host",	"nbuf", "update", "FrameStartTriggerMode", "BandwidthCtrlMode", "StreamBytesPerSecond",
 	"ExposureMode", "ExposureAutoAdjustTol", "ExposureAutoAlg", "ExposureAutomax", "ExposureAutomin",
 	"ExposureAutoOutliers", "ExposureAutoRate", "ExposureAutoTarget", "ExposureValue", "GainMode",
 	"GainAutoAdjustTol", "GainAutomax", "GainAutomin", "GainAutoOutliers", "GainAutoRate",
 	"GainAutoTarget", "GainValue", "WhitebalMode", "WhitebalAutoAdjustTol", "WhitebalAutoRate",
 	"WhitebalValueRed", "WhitebalValueBlue", "Height", "Width", "RegionX",
-	"RegionY", "PixelFormat"
+	"RegionY", "PixelFormat", "ReverseX", "ReverseY", "ReverseSoftware"
 };
 
 void _STDCALL f_avt_cam::s_cam_params::proc_frame(tPvFrame * pfrm)
@@ -101,7 +101,7 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
 	m_WhitebalMode(ewmAuto), m_WhitebalAutoAdjustTol(5), m_WhitebalAutoRate(100),
 	m_WhitebalValueRed(0), m_WhitebalValueBlue(0),
 	m_Height(UINT_MAX), m_RegionX(UINT_MAX), m_RegionY(UINT_MAX), m_Width(UINT_MAX),
-	m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0)
+  m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0), m_ReverseSoftware(false), m_ReverseX(false), m_ReverseY(false)
 {
 	if(icam == -1){
 		strParams = m_strParams;
@@ -180,6 +180,9 @@ void f_avt_cam::register_params(s_cam_params & cam)
 	register_fpar(cam.strParams[30], &cam.m_RegionX, "Top left x position of the ROI (0 to Maximum Camera Width - 1)");
 	register_fpar(cam.strParams[31], &cam.m_RegionY, "Top left y position of the ROI (0 to Maximum Camera Height -1)");
 	register_fpar(cam.strParams[32], (int*)&cam.m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
+	register_fpar(cam.strParams[33], &cam.m_ReverseX, "Reverse horizontally. (default: no)");
+	register_fpar(cam.strParams[34], &cam.m_ReverseY, "Reverse vertically. (default: no)");	
+	register_fpar(cam.strParams[35], &cam.m_ReverseSoftware, "Reverse by software according to ReverseX and ReverseY flags.");
 }
 
 const char * f_avt_cam::get_err_msg(int code)
@@ -334,6 +337,7 @@ bool f_avt_cam::s_cam_params::config_param()
 			return false;
 		}
 	}
+
 	/*
 	if(m_DecimationHorizontal == 0){
 		long long val;
@@ -549,6 +553,33 @@ void f_avt_cam::s_cam_params::destroy(f_avt_cam * pcam)
 bool f_avt_cam::s_cam_params::config_param_dynamic()
 {
 	tPvErr err;
+	if(!m_ReverseSoftware){
+	  tPvBoolean val;
+	  if(m_ReverseX)
+	    val = 1;
+	  else
+	    val = 0;
+
+	  err = PvAttrBooleanSet(m_hcam, "ReverseX", (tPvBoolean)val);
+	  if(err != ePvErrSuccess){
+	    cerr << "Failed to set ReverseX as " << (int) val << endl;
+	    if(val)
+	      m_ReverseSoftware = true;
+	  }
+
+	  if(m_ReverseY)
+	    val = 1;
+	  else
+	    val = 0;
+
+	  err = PvAttrBooleanSet(m_hcam, "ReverseY", (tPvBoolean)val);
+	  if(err != ePvErrSuccess){
+	    cerr << "Failed to set ReverseY as " << (int) val << endl;
+	    if(val)
+	      m_ReverseSoftware = true;
+	  }
+	}
+
 	if(m_BandwidthCtrlMode == bcmUndef){
 		char buf[64];
 		err = PvAttrEnumGet(m_hcam, "BandwidthCtrlMode", buf, 64, NULL);
@@ -836,32 +867,26 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 
 	unsigned int ibuf;
 	if(pfrm->Status == ePvErrSuccess){
-	  //cout << "Cam[" << m_host << "] Frame[" << pfrm->FrameCount <<"] Arrived " << endl;
+	  // cout << "Cam[" << m_host << "] Frame[" << pfrm->FrameCount <<"] Arrived " << endl;
 		Mat img;
 		switch(pfrm->Format){
 		case ePvFmtMono8:
 			img = Mat(pfrm->Height, pfrm->Width, CV_8UC1, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtMono16:
 			img = Mat(pfrm->Height, pfrm->Width, CV_16UC1, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtBayer8:
 			img = Mat(pfrm->Height, pfrm->Width, CV_8UC1, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtBayer16:
 			img = Mat(pfrm->Height, pfrm->Width, CV_16UC1, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtRgb24:
 			img = Mat(pfrm->Height, pfrm->Width, CV_8UC3, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtRgb48:
 			img = Mat(pfrm->Height, pfrm->Width, CV_16UC3, pfrm->ImageBuffer);
-			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 			break;
 		case ePvFmtYuv411:
 		case ePvFmtYuv422:
@@ -873,6 +898,18 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 		case ePvFmtBayer12Packed:
 		default:
 			break;
+		}
+		if(!img.empty()){
+		  if(m_ReverseSoftware && (m_ReverseX || m_ReverseY)){
+		    Mat tmp;
+		    int flag;
+		    flag = (m_ReverseY ? 
+			    (m_ReverseX ? -1 : 0) : 1);
+		    flip(img, tmp, flag);
+		    pout->set_img(tmp, m_cur_time, pfrm->FrameCount);
+		  }else{
+		    pout->set_img(img, m_cur_time, pfrm->FrameCount);
+		  }
 		}
 	}
 
