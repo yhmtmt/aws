@@ -902,6 +902,7 @@ inline void trnPt(const Point3f & Msrc, Point3f & Mdst, const double * pR, const
 void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const vector<int> & valid, 
 	const Mat & R, const Mat & t);
 
+void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const Mat & R, const Mat & t);
 
 /////////////////////////////////////////////////////////////////////////////// Transformation related Jacobian
 // Calcurate dT(r',t')T(r,t)/d(r', t') at (r', t') = 0. T(r, t) is the transformation matrix of [R|t],

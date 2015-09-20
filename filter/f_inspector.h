@@ -213,6 +213,7 @@ private:
 	vector<s_frame*> m_kfrms;		// Key frames (ring buffer)
 	bool save_kfrms();
 	bool load_kfrms();
+	bool m_bsave_objpts;			// flag enables transformed object points. 
 
 	s_frame * m_pfrm;				// temporal frame object
 	s_frame * m_pfrm_int;			// frame object of interest

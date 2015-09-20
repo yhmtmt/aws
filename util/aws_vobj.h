@@ -214,7 +214,7 @@ struct s_frame{
 
 	void proj_objs(bool bjacobian = true, bool fix_aspect_ratio = true);
 	void calc_rpy(int base_obj = 0, bool xyz = true);
-
+	void calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj = 0, bool xyz = true);
 	void sample_tmpl(Mat & img, Size & sz)
 	{
 		for(int i = 0; i < objs.size(); i++){

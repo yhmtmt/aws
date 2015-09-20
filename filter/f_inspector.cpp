@@ -281,7 +281,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	m_op(OBJ), m_bkfrm(false), m_sop(SOP_NULL), m_mm(MM_NORMAL), m_axis(AX_X), m_adj_pow(0), m_adj_step(1.0),
 	m_main_offset(0, 0), m_main_scale(1.0), m_theta_z_mdl(0.0), m_dist_mdl(0.0), m_cam_erep(-1.0),
 	m_eest(EES_CONV), m_num_max_itrs(30), m_num_max_frms_used(100), m_err_range(3),
-	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_pfrm(NULL), m_pfrm_int(NULL),
+	m_ev(EV_CAM), m_int_kfrms(SEC), m_num_kfrms(100), m_cur_kfrm(-1), m_sel_kfrm(-1), m_bsave_objpts(true), m_pfrm(NULL), m_pfrm_int(NULL),
 	m_rat_z(1.0), m_bdecomp_xyz(true)
 {
 	m_name_obj[0] = '\0';
@@ -316,6 +316,7 @@ f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_ti
 	// Key frame related parameter
 	register_fpar("ldkf", &m_bald_kfrms, "Flag auto loading key frames");
 	register_fpar("svkf", &m_basv_kfrms, "Flag auto saving key frames");
+	register_fpar("svobjpts", &m_bsave_objpts, "Flag saving transformed object points.");
 	register_fpar("kfrms", &m_num_kfrms, "Number of key frames cached in the memory.");
 	register_fpar("cyckf", &m_int_cyc_kfrm, "Key frame interval in cycle counts.");
 	register_fpar("intkf", &m_int_kfrms, "Key frame interval in 10e-7 second, subjects to cyckf");
@@ -2571,65 +2572,6 @@ void f_inspector::estimate_fulltime()
 	}	
 }
 
-void s_frame::proj_objs(bool bjacobian, bool fix_aspect_ratio)
-{
-	ssd = 0.0;
-	for(int iobj = 0; iobj < objs.size(); iobj++){
-		s_obj & obj = *objs[iobj];
-		if(update && obj.update)
-			continue;
-		obj.proj(camint, camdist, bjacobian, fix_aspect_ratio);
-	
-		ssd += obj.ssd;
-	}
-}
-
-// calc_rpy calculates roll pitch yaw serge sway heave of the objects relative to the base_obj.
-void s_frame::calc_rpy(int base_obj, bool xyz)
-{
-	if(update)
-		return;
-
-	if(base_obj >= 0 && base_obj < objs.size()){
-		Mat Rorg, R, T;
-		Mat & Torg = objs[base_obj]->tvec;
-		Rodrigues(objs[base_obj]->rvec, Rorg);
-		Rorg = Rorg.t();
-		for(int iobj = 0; iobj < objs.size(); iobj++){
-			s_obj & obj = *objs[iobj];
-
-			if(iobj == base_obj){
-				obj.roll = obj.pitch = obj.yaw = 0.;
-				obj.pos.x = obj.pos.y = obj.pos.z = 0.;
-				continue;
-			}
-
-			double * p0;
-			Rodrigues(obj.rvec, R);
-			obj.tvec.copyTo(T);
-
-			// translation Relative to the base_obj in the camera coordinate frame
-			T -= Torg;
-
-			// projection to the object's coordinate frame
-			T = Rorg * T;
-
-			p0 = T.ptr<double>();
-			obj.pos.x = (float)(p0[0]);
-			obj.pos.y = (float)(p0[1]);
-			obj.pos.z = (float)(p0[2]);
-
-			// Calculate relative rotation to the base_obj as R
- 			R = Rorg * R;
-			p0 = R.ptr<double>();
-			if(xyz)
-				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
-			else
-				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
-		}
-	}
-}
-
 void f_inspector::acc_Hcamint(Mat & Hcamint, vector<s_obj*> & objs){
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		s_obj & obj = *objs[iobj];
@@ -3624,7 +3566,16 @@ bool f_inspector::save_kfrms()
 
 	file << "Time(sec),";
 	for(int iobj = 0; iobj < num_objs; iobj++){
+		file << "obj[" << iobj << "],";
 		file << "roll,pitch,yaw,x,y,z,";
+		if(m_bsave_objpts){
+			vector<s_obj*> & objs = m_kfrms[ikf0]->objs;
+			for(int ipt = 0; ipt < objs[iobj]->pmdl->pts_deformed.size(); ipt++){
+				file << "pt[" << ipt << "].x,";
+				file << "pt[" << ipt << "].y,";
+				file << "pt[" << ipt << "].z,";
+			}
+		}
 	}
 	file << endl;
 
@@ -3632,17 +3583,30 @@ bool f_inspector::save_kfrms()
 		if(!m_kfrms[ikf])
 			continue;
 		m_kfrms[ikf]->update = false;
-		m_kfrms[ikf]->calc_rpy(m_cur_obj, m_bdecomp_xyz);
+		vector<vector<Point3f> > pts;
+		if(m_bsave_objpts){
+			m_kfrms[ikf]->calc_rpy_and_pts(pts, m_cur_obj, m_bdecomp_xyz);
+		}else{
+			m_kfrms[ikf]->calc_rpy(m_cur_obj, m_bdecomp_xyz);
+		}
 
 		file << (double)(m_kfrms[ikf]->tfrm - tmin) / (double)SEC << ",";
 		vector<s_obj*> & objs = m_kfrms[ikf]->objs;
 		for(int iobj = 0; iobj < objs.size(); iobj++){
+			file << ",";
 			file << objs[iobj]->roll * 180 / PI << ",";
 			file << objs[iobj]->pitch * 180 / PI<< ",";
 			file << objs[iobj]->yaw * 180 / PI << ",";
 			file << objs[iobj]->pos.x << ",";
 			file << objs[iobj]->pos.y << ",";
 			file << objs[iobj]->pos.z << ",";
+			if(m_bsave_objpts){
+				for(int ipt = 0; ipt < pts[iobj].size(); ipt++){
+					file << pts[iobj][ipt].x << ",";
+					file << pts[iobj][ipt].y << ",";
+					file << pts[iobj][ipt].z << ",";
+				}
+			}
 		}
 		file << endl;
 	}

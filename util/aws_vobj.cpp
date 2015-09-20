@@ -932,3 +932,115 @@ bool s_frame::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
 	return true;
 }
 
+
+void s_frame::proj_objs(bool bjacobian, bool fix_aspect_ratio)
+{
+	ssd = 0.0;
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		s_obj & obj = *objs[iobj];
+		if(update && obj.update)
+			continue;
+		obj.proj(camint, camdist, bjacobian, fix_aspect_ratio);
+	
+		ssd += obj.ssd;
+	}
+}
+
+// calc_rpy calculates roll pitch yaw serge sway heave of the objects relative to the base_obj.
+void s_frame::calc_rpy(int base_obj, bool xyz)
+{
+	if(update)
+		return;
+
+	if(base_obj >= 0 && base_obj < objs.size()){
+		Mat Rorg, R, T;
+		Mat & Torg = objs[base_obj]->tvec;
+		Rodrigues(objs[base_obj]->rvec, Rorg);
+		Rorg = Rorg.t();
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = *objs[iobj];
+
+			if(iobj == base_obj){
+				obj.roll = obj.pitch = obj.yaw = 0.;
+				obj.pos.x = obj.pos.y = obj.pos.z = 0.;
+				continue;
+			}
+
+			double * p0;
+			Rodrigues(obj.rvec, R);
+			obj.tvec.copyTo(T);
+
+			// translation Relative to the base_obj in the camera coordinate frame
+			T -= Torg;
+
+			// projection to the object's coordinate frame
+			T = Rorg * T;
+
+			p0 = T.ptr<double>();
+			obj.pos.x = (float)(p0[0]);
+			obj.pos.y = (float)(p0[1]);
+			obj.pos.z = (float)(p0[2]);
+
+			// Calculate relative rotation to the base_obj as R
+ 			R = Rorg * R;
+			p0 = R.ptr<double>();
+			if(xyz)
+				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
+			else
+				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
+		}
+	}
+}
+
+void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, bool xyz)
+{
+	if(update)
+		return;
+
+	if(base_obj >= 0 && base_obj < objs.size()){
+		Mat Rorg, R, T;
+		Mat & Torg = objs[base_obj]->tvec;
+		Rodrigues(objs[base_obj]->rvec, Rorg);
+		Rorg = Rorg.t();
+
+		pts.resize(objs.size());
+
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = *objs[iobj];
+			pts[iobj].resize(obj.pmdl->pts.size());
+
+			if(iobj == base_obj){
+				obj.roll = obj.pitch = obj.yaw = 0.;
+				obj.pos.x = obj.pos.y = obj.pos.z = 0.;
+				continue;
+			}
+
+			double * p0;
+			Rodrigues(obj.rvec, R);
+			obj.tvec.copyTo(T);
+
+			// translation Relative to the base_obj in the camera coordinate frame
+			T -= Torg;
+
+			// projection to the object's coordinate frame
+			T = Rorg * T;
+
+			p0 = T.ptr<double>();
+			obj.pos.x = (float)(p0[0]);
+			obj.pos.y = (float)(p0[1]);
+			obj.pos.z = (float)(p0[2]);
+
+			// Calculate relative rotation to the base_obj as R
+ 			R = Rorg * R;
+			p0 = R.ptr<double>();
+
+			trnPts(obj.pmdl->pts_deformed, pts[iobj], R, T);
+			
+			if(xyz)
+				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
+			else
+				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
+		}
+	}
+}
+

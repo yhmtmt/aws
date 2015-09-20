@@ -1721,6 +1721,21 @@ void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst, const vector<i
 	}
 }
 
+void trnPts(const vector<Point3f> & Msrc, vector<Point3f> & Mdst,
+	const Mat & R, const Mat & t)
+{
+	const double * pR = R.ptr<double>(), * pt = t.ptr<double>();
+	if(Msrc.size() != Mdst.size())
+		Mdst.resize(Msrc.size());
+
+	for(int i = 0; i < Msrc.size(); i++){
+		double X = Msrc[i].x, Y = Msrc[i].y, Z = Msrc[i].z;
+		Mdst[i].x = (float)(pR[0]*X + pR[1]*Y + pR[2]*Z + pt[0]);
+		Mdst[i].y = (float)(pR[3]*X + pR[4]*Y + pR[5]*Z + pt[1]);
+		Mdst[i].z = (float)(pR[6]*X + pR[7]*Y + pR[8]*Z + pt[2]);
+	}
+}
+
 void prjPts(const vector<Point3f> & Mcam, vector<Point2f> & m, const vector<int> & valid, const Mat & camint)
 {
 	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),
