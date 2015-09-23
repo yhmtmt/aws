@@ -847,7 +847,7 @@ bool s_frame::save(const char * aname)
 	fs << "Objs" << "{";
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		snprintf(buf, 1024, "Obj%03d", iobj);
-		fs << buf << "{";
+		fs << buf << "{:";
 		objs[iobj]->save(fs);
 		fs << "}";
 	}
@@ -868,7 +868,13 @@ bool s_frame::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
 
 	char buf[1024];
 	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
-	FileStorage fs(buf, FileStorage::READ);
+	FileStorage fs;
+	try{
+		fs.open(buf, FileStorage::READ);
+	}catch(...){
+		return false;
+	}
+
 	if(!fs.isOpened())
 		return false;
 
