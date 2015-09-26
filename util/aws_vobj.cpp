@@ -847,7 +847,7 @@ bool s_frame::save(const char * aname)
 	fs << "Objs" << "{";
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		snprintf(buf, 1024, "Obj%03d", iobj);
-		fs << buf << "{:";
+		fs << buf << "{";
 		objs[iobj]->save(fs);
 		fs << "}";
 	}

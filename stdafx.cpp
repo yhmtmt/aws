@@ -10,14 +10,14 @@
 #ifdef _DEBUG
 
 // OpenCV 2.4.10
-#pragma comment(lib, "opencv_core2410d.lib")
-#pragma comment(lib, "opencv_contrib2410d.lib")
-#pragma comment(lib, "opencv_features2d2410d.lib")
-#pragma comment(lib, "opencv_legacy2410d.lib")
-#pragma comment(lib, "opencv_objdetect2410d.lib")
-#pragma comment(lib, "opencv_highgui2410d.lib")
-#pragma comment(lib, "opencv_imgproc2410d.lib")
-#pragma comment(lib, "opencv_calib3d2410d.lib")
+#pragma comment(lib, "opencv_core2411d.lib")
+#pragma comment(lib, "opencv_contrib2411d.lib")
+#pragma comment(lib, "opencv_features2d2411d.lib")
+#pragma comment(lib, "opencv_legacy2411d.lib")
+#pragma comment(lib, "opencv_objdetect2411d.lib")
+#pragma comment(lib, "opencv_highgui2411d.lib")
+#pragma comment(lib, "opencv_imgproc2411d.lib")
+#pragma comment(lib, "opencv_calib3d2411d.lib")
 #ifdef SANYO_HD5400
 #pragma comment(lib, "libjpegd.lib")
 #pragma comment(lib, "libcurld_imp.lib")
@@ -32,14 +32,14 @@
 #pragma comment(lib, "d2d1.lib")
 #else
 // OpenCV 2.4.10
-#pragma comment(lib, "opencv_core2410.lib")
-#pragma comment(lib, "opencv_contrib2410.lib")
-#pragma comment(lib, "opencv_features2d2410.lib")
-#pragma comment(lib, "opencv_legacy2410.lib")
-#pragma comment(lib, "opencv_objdetect2410.lib")
-#pragma comment(lib, "opencv_highgui2410.lib")
-#pragma comment(lib, "opencv_imgproc2410.lib")
-#pragma comment(lib, "opencv_calib3d2410.lib")
+#pragma comment(lib, "opencv_core2411.lib")
+#pragma comment(lib, "opencv_contrib2411.lib")
+#pragma comment(lib, "opencv_features2d2411.lib")
+#pragma comment(lib, "opencv_legacy2411.lib")
+#pragma comment(lib, "opencv_objdetect2411.lib")
+#pragma comment(lib, "opencv_highgui2411.lib")
+#pragma comment(lib, "opencv_imgproc2411.lib")
+#pragma comment(lib, "opencv_calib3d2411.lib")
 
 #ifdef SANYO_HD5400
 #pragma comment(lib, "libcurl_imp.lib")
