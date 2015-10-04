@@ -8,6 +8,10 @@ struct s_edge{
 	s_edge():s(0), e(0){};
 };
 
+struct s_surface{
+	vector<int> pts;
+};
+
 // s_part describe the part's structure. translation, rotation axis and the origin relative to the body
 // part's nesting is not supported yet. it could be the future issue.
 struct s_part{
@@ -29,17 +33,23 @@ class ModelTrack;
 struct s_obj;
 struct s_model
 {
-	char fname[1024];
-	int ref;
-	string name;
+	char fname[1024]; // path to the model file.
+	int ref; // reference counts (Number of object reffering the model)
+	string name; // model name
+
 	vector<Point3f> pts; // model points
-	vector<Point3f> pts_deformed; // temporal data strucuture. immediately before projection, the data structure should have deformed model points.
 	vector<s_edge> edges; // model edges
-	vector<s_part> parts;
+	vector<s_surface> surfaces; // model surface
+	vector<s_part> parts; // model parts  
+
+	// temporal data strucuture. Calculated immediately before projection, the data structure should have deformed model points.
+	vector<Point3f> pts_deformed; 
+
 	enum e_model_type{
 		EMT_NORMAL, EMT_CHSBD, EMT_UNKNOWN
 	} type;
 
+	// only used for chessboard model
 	struct s_chsbd{
 		int w, h; // chessboard width and height
 		float p; // chessboard pitch in meter
@@ -95,7 +105,38 @@ struct s_model
 	s_obj * detect(Mat & img, s_obj * pobj = NULL);
 };
 
+///////////////////////////////////////////////////////////////// aws object handling loop
+// mapping, localization
+// object detection, object classification, object 3d-reconstruction, object tracking, object motion prediction 
+//
+//
+
+
 ///////////////////////////////////////////////////////////////// s_obj
+// Object attributes
+// Identifier (name)
+// model property (s_model)
+//  -3d Vertices with color
+//  -Surface index
+//  -Texture
+//
+// dynamic property (time dependent)
+// -deformation
+// -flag visible points
+// -flag visible surface
+// -Attitude (R and t)
+// -Projected vertices
+// -Detected vertices
+// -Relative attitude
+//   - (x, y, z)
+//   - (roll, pitch, yaw)
+// -Absolute coordinate
+//   -ECEF (x, y, z)
+//   -BIH (lon, lat, alt)
+// -Velocity
+//   -ECEF (vx,vy,vz)
+
+
 // s_obj represents the object in the scene.
 // User can specify its feature points, find the correspondance between the model
 // and the points. 
@@ -103,7 +144,7 @@ struct s_obj
 {
 	s_model * pmdl;
 	long long t;
-	char * name;
+	char * name; // Object name ( is basically named as <model name>_<number>) 
 	Rect bb2d;
 	vector<Point2f> pt2d;
 	vector<Point2f> pt2dprj;
@@ -112,16 +153,18 @@ struct s_obj
 	vector<Mat> ptx_tmpl; // point's template images.
 
 	bool is_attitude_fixed;
+
+	// Object attitude.
 	Mat R;
 	Mat tvec, rvec;
 
+	// roll pitch yaw and position relative to the current coordinate
 	double roll, pitch, yaw;
 	Point3f pos;
 
-	// note: The part's deformation code is now under construction. I need to modify followings:
-	// s_obj::load, save, init, proj
 	vector<double> dpart; // part's deformation value.
 
+	// Update flag. (True if intermidiate parameters have already been calculated)
 	bool update;
 
 	Mat jacobian;
@@ -160,7 +203,6 @@ struct s_obj
 	void proj(Mat & camint, Mat & camdist, bool bjacobian = true, bool fix_aspect_ratio = true);
 
 	void render(Mat & img);
-
 
 	bool init(s_model * apmdl, long long at, const Mat & camint, const Mat & camdist,
 		const double width, const double height);

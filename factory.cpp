@@ -142,6 +142,9 @@ void ch_base::register_factory()
 #include "filter/f_event.h"
 #include "filter/f_fep01.h"
 
+
+#include "filter/f_time.h"
+
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
 // need to initialize global and static data structure please insert your 
@@ -262,4 +265,6 @@ void f_base::register_factory()
 	register_factory<f_udp>("udp");
 	register_factory<f_dummy_data>("dd");
 	register_factory<f_rec_data>("rd");
+
+	register_factory<f_time>("tsync");
 }

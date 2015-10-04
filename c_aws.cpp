@@ -190,6 +190,8 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 #endif
 
 	c_ship::init();
+
+	srand((unsigned int) time(NULL));
 }
 
 c_aws::~c_aws()

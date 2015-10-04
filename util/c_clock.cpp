@@ -248,7 +248,23 @@ bool c_clock::step(long long tabs)
 void c_clock::set_time(tmex & tm)
 {
 	long long new_time = mkgmtimeex(tm) * MSEC; // converting to 100ns precision
+#ifdef _WIN32
 	m_delta = new_time - m_tcur;
+#else 
+	m_delta = new_time - m_tcur - m_offset;
+#endif
+}
+
+void c_clock::set_time(long long & t){
+#ifdef _WIN32
+	m_delta = t - m_tcur;
+#else
+	m_delta = t - m_tcur - m_offset;
+#endif
+}
+
+void c_clock::set_time_delta(long long & delta){
+	m_delta = delta;
 }
 
 long long c_clock::get_time()
