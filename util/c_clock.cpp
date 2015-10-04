@@ -153,7 +153,7 @@ bool decTmStr(char * tmStr, tmex & tm)
 	return true;
 }
 
-c_clock::c_clock(void):m_rate(1)
+c_clock::c_clock(void):m_rate(1), m_delta(0), m_delta_adjust(1 * MSEC)
 #ifdef _WIN32
 	,m_token(NULL), m_offset(0), m_bonline(false), m_state(STOP)
 #else
@@ -197,11 +197,12 @@ bool c_clock::start(unsigned period, unsigned delay,
 		m_pclk->GetTime(&ts);
 		ts += (REFERENCE_TIME) delay;
 		m_pclk->AdvisePeriodic(ts, (REFERENCE_TIME) period, m_sem, &m_token); 
-		
+		m_tcur = offset;
 #else 		
 		clock_gettime(CLOCK_REALTIME, &m_ts_start);
+		m_tcur = 0;
 #endif
-		m_tcur = offset;
+		
 	}else if(m_state == RUN){
 		stop();
 		start(period, delay, offset, online, rate);
@@ -240,28 +241,41 @@ bool c_clock::step(long long tabs)
 	return true;
 }
 
-
+// set_time method adjust aws time to the value specified.
+// The method only calculates difference as delta, and the value is gradually reduced in multiple call of wait()
+// Note that, aws clock never reset system time. The implementation for Linux system uses system clock to reduce drift, 
+// that's why the change in system time affects on the aws time. 
 void c_clock::set_time(tmex & tm)
 {
-
-	long long new_time = mkgmtimeex(tm) * MSEC;
-	m_tcur = new_time;
+	long long new_time = mkgmtimeex(tm) * MSEC; // converting to 100ns precision
+	m_delta = new_time - m_tcur;
 }
 
 long long c_clock::get_time()
 {
 	if(m_state == PAUSE)
 		return m_tcur;
-
+#ifdef _WIN32
 	return m_tcur;
+#else
+	return m_tcur + m_offset;
+#endif
 }
 
 void c_clock::wait()
 {
+	long long delta_adjust = 0;
+	if(abs(m_delta) < m_delta_adjust)
+		delta_adjust = m_delta;
+	else
+		delta_adjust = (m_delta < 0 ? -m_delta_adjust : m_delta_adjust);
+
+	m_delta -= delta_adjust;
+
 #ifdef _WIN32
 	WaitForSingleObject(m_sem, INFINITE);
 	if(m_state == RUN)
-		m_tcur +=  (long long) m_rate * m_period;
+		m_tcur +=  (long long) m_rate * m_period + delta_adjust;
 #else
 	timespec ts, trem;
 	long long ttotal, tcur, tnext;	
@@ -272,17 +286,21 @@ void c_clock::wait()
 	//cout << "Got (" << ts.tv_sec << "," << ts.tv_nsec <<
 	//  ") Start (" << m_ts_start.tv_sec << "," << m_ts_start.tv_nsec << ")" << endl;
 	// then current time is the addition of the offset.
-	tcur = m_offset + (long long) m_rate * ttotal;
+	tcur = (long long) m_rate * ttotal;
 
 	// the next time should be a period ahead to previous time.
-	tnext = m_tcur + (long long) m_rate * m_period;
+	tnext = m_tcur +(long long) m_rate * m_period;
 
 	//cout << "ttotal " << ttotal << " tcur " << tcur << " tnext " << tnext << endl;
+
 	if(tcur >= tnext){
 	  // if current time is larger than the next time, 
 	  // current time is set at that calculated from ts 
 	  // obtained right above
-	  m_tcur = tcur;
+	 if(m_state == PAUSE) 
+		m_offset += m_tcur - tcur;
+	 m_tcur = tcur;
+	 m_offset += delta_adjust;
 	}else{
 	  // if tnext is larger than the tcur, the difference 
 	  // is consumed here with the nanosleep. Then the current
@@ -294,7 +312,11 @@ void c_clock::wait()
 	  while(nanosleep(&ts, &trem)){
 	    ts = trem;
 	  }
+	  
+	  if(m_state == PAUSE)
+		m_offset += m_tcur - tnext;
 	  m_tcur = tnext;
+	  m_offset += delta_adjust;
 	}
 #endif
 }

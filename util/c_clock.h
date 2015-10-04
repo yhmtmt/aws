@@ -55,6 +55,8 @@ private:
 	unsigned m_period;
 	long long m_offset;
 	long long m_tcur;
+	long long m_delta;
+	int m_delta_adjust;
 	bool m_bonline;
 	enum e_state{
 		STOP, RUN, PAUSE

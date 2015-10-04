@@ -9,7 +9,7 @@
 
 #ifdef _DEBUG
 
-// OpenCV 2.4.10
+// OpenCV 2.4.11
 #pragma comment(lib, "opencv_core2411d.lib")
 #pragma comment(lib, "opencv_contrib2411d.lib")
 #pragma comment(lib, "opencv_features2d2411d.lib")
@@ -31,7 +31,7 @@
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "d2d1.lib")
 #else
-// OpenCV 2.4.10
+// OpenCV 2.4.11
 #pragma comment(lib, "opencv_core2411.lib")
 #pragma comment(lib, "opencv_contrib2411.lib")
 #pragma comment(lib, "opencv_features2d2411.lib")
