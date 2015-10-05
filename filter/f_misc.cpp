@@ -36,9 +36,9 @@ using namespace cv;
 
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
+#include "../util/aws_vlib.h"
 #include "../util/c_clock.h"
 
-#include "../util/util.h"
 #include "f_base.h"
 #include "f_misc.h"
 

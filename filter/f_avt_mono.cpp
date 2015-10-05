@@ -33,7 +33,6 @@ using namespace cv;
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
 #include "../util/c_clock.h"
-#include "../util/util.h"
 #include "f_avt_mono.h"
 
 f_avt_mono::f_avt_mono(const char * name): f_avt_cam(name), m_cam(-1)

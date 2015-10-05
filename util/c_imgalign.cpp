@@ -27,8 +27,8 @@ using namespace std;
 using namespace cv;
 
 #include "../util/aws_thread.h"
+#include "../util/aws_vlib.h"
 
-#include "util.h"
 #include "c_imgalign.h"
 
 

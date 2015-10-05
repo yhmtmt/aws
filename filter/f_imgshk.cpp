@@ -28,9 +28,9 @@ using namespace cv;
 
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
+#include "../util/aws_stdlib.h"
 #include "../util/c_clock.h"
 
-#include "../util/util.h"
 #include "../util/c_imgalign.h"
 
 #include "../channel/ch_base.h"

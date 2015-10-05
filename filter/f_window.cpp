@@ -30,7 +30,7 @@ using namespace cv;
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
 
-#include "../util/coord.h"
+#include "../util/aws_coord.h"
 #include "../util/c_ship.h"
 #include "../util/c_clock.h"
 //#include "../util/c_nmeadec.h"

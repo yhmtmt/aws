@@ -36,8 +36,8 @@ using namespace std;
 
 #include <opencv2/opencv.hpp>
 using namespace cv;
-#include "util/util.h"
 #include "util/c_clock.h"
+#include "util/aws_thread.h"
 #include "util/aws_coord.h"
 #include "util/c_ship.h"
 #include "util/c_imgalign.h"

@@ -10,7 +10,9 @@ using namespace std;
 using namespace cv;
 
 #include "c_imgalign.h"
-#include "util.h"
+#include "aws_stdlib.h"
+#include "aws_vobj.h"
+#include "aws_vlib.h"
 
 /////////////////////////////////////////////////////////////////// struct s_model
 

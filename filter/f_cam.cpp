@@ -32,8 +32,6 @@ using namespace cv;
 #include "../util/aws_thread.h"
 #include "../util/c_clock.h"
 
-//#include "../util/util.h"
-
 #include "../channel/ch_base.h"
 #include "../channel/ch_image.h"
 #include "../channel/ch_campar.h"
