@@ -29,7 +29,7 @@ using namespace cv;
 
 #include "../util/aws_thread.h"
 
-#include "../util/coord.h"
+#include "../util/aws_coord.h"
 #include "../util/c_ship.h"
 
 //////////////////////////////////////////////////////////////// c_d3d_2dobj member

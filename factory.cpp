@@ -38,7 +38,7 @@ using namespace std;
 using namespace cv;
 #include "util/util.h"
 #include "util/c_clock.h"
-#include "util/coord.h"
+#include "util/aws_coord.h"
 #include "util/c_ship.h"
 #include "util/c_imgalign.h"
 

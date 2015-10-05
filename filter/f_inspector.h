@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with f_inspector.h.  If not, see <http://www.gnu.org/licenses/>. 
 #include "../util/c_imgalign.h"
+#include "../util/aws_vlib.h"
+#include "../util/aws_vobj.h"
 #include "f_ds_window.h"
 
 bool is_equal(Mat & a, Mat & b);

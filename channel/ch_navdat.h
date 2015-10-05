@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with ch_navdat.h.  If not, see <http://www.gnu.org/licenses/>. 
 
-#include "../util/coord.h"
+#include "../util/aws_coord.h"
 
 struct s_ship_ctrl{
 	double	CPP_com		;	//- CPP—ƒŠp Žw—ß’l

@@ -32,7 +32,7 @@ using namespace cv;
 #include "../util/aws_thread.h"
 
 //#include "../util/aws_cminpack.h"
-#include "../util/coord.h"
+#include "../util/aws_coord.h"
 #include "../util/c_ship.h"
 #include "../util/c_clock.h"
 
@@ -3548,7 +3548,6 @@ bool f_inspector::save_kfrms()
 		}
 	}
 
-
 	for(int i = 0, ikf = ikf0 ; i < m_kfrms.size(); i++, ikf = (ikf + 1) % m_kfrms.size()){
 		if(!m_kfrms[ikf])
 			continue;
@@ -3557,6 +3556,7 @@ bool f_inspector::save_kfrms()
 		file << m_kfrms[ikf]->tfrm << endl;
 		num_objs = max(num_objs, (int) m_kfrms[ikf]->objs.size());
 	}
+	
 	file.close();
 
 	snprintf(fname, 1024, "%s.csv", m_name);
@@ -3570,6 +3570,7 @@ bool f_inspector::save_kfrms()
 		file << "roll,pitch,yaw,x,y,z,";
 		if(m_bsave_objpts){
 			vector<s_obj*> & objs = m_kfrms[ikf0]->objs;
+			
 			for(int ipt = 0; ipt < objs[iobj]->pmdl->pts_deformed.size(); ipt++){
 				file << "pt[" << ipt << "].x,";
 				file << "pt[" << ipt << "].y,";

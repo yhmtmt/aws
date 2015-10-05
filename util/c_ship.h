@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with c_ship.h.  If not, see <http://www.gnu.org/licenses/>. 
 
-#include "coord.h"
+#include "aws_coord.h"
 
 #ifdef _WIN32
 #include "c_d3d_2dobj.h"

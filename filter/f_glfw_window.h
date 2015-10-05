@@ -16,6 +16,8 @@
 // You should have received a copy of the GNU General Public License
 // along with f_glfw_window.  If not, see <http://www.gnu.org/licenses/>. 
 
+#include "../util/aws_vlib.h"
+#include "../util/aws_vobj.h"
 #include "f_base.h"
 #include "../channel/ch_image.h"
 

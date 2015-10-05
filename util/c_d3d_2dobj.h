@@ -17,7 +17,7 @@
 // along with c_d3d_2dobj.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 
-#include "../util/coord.h"
+#include "../util/aws_coord.h"
 #if WINVER != 0x603 && WINVER != 0x602
 // if not windows 8, the direct 3d is not included in the windows sdk.
 //#include <d2d1.h>

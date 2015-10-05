@@ -48,7 +48,7 @@ FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 CHANNEL = ch_base
 
 # listing utility module
-UTIL =  c_clock c_imgalign c_nmeadec c_ship coord util aws_serial aws_sock aws_vobj
+UTIL =  c_clock c_imgalign c_nmeadec c_ship aws_coord util aws_serial aws_sock aws_vobj aws_vlib
 
 # listing include path 
 INC_CV_DIR = /usr/include
