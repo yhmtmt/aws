@@ -43,7 +43,7 @@ RCMD_DIR = $(CUR_DIR)/rcmd
 # module listing 
 # listing filter module
 FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
-	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01
+	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01 f_time
 # listing channel module
 CHANNEL = ch_base
 
