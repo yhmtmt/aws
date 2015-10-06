@@ -32,6 +32,7 @@ using namespace cv;
 
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
+#include "../util/aws_vlib.h"
 #include "../util/c_clock.h"
 #include "f_avt_cam.h"
 
@@ -76,7 +77,7 @@ const char * f_avt_cam::m_strParams[NUM_PV_PARAMS] = {
 	"GainAutoAdjustTol", "GainAutomax", "GainAutomin", "GainAutoOutliers", "GainAutoRate",
 	"GainAutoTarget", "GainValue", "WhitebalMode", "WhitebalAutoAdjustTol", "WhitebalAutoRate",
 	"WhitebalValueRed", "WhitebalValueBlue", "Height", "Width", "RegionX",
-	"RegionY", "PixelFormat", "ReverseX", "ReverseY", "ReverseSoftware"
+	"RegionY", "PixelFormat", "ReverseX", "ReverseY", "ReverseSoftware", "fcp", "ud", "udw", "udh"
 };
 
 void _STDCALL f_avt_cam::s_cam_params::proc_frame(tPvFrame * pfrm)
@@ -182,6 +183,14 @@ void f_avt_cam::register_params(s_cam_params & cam)
 	register_fpar(cam.strParams[33], &cam.m_ReverseX, "Reverse horizontally. (default: no)");
 	register_fpar(cam.strParams[34], &cam.m_ReverseY, "Reverse vertically. (default: no)");	
 	register_fpar(cam.strParams[35], &cam.m_ReverseSoftware, "Reverse by software according to ReverseX and ReverseY flags.");
+
+	// Related to camera parameter
+	cam.fcp[0] = '\0';
+
+	register_fpar(cam.strParams[36], cam.fcp, 1024, "File path to the camera parameter. (AWS camera parameter format)");
+	register_fpar(cam.strParams[37], &cam.bundist, "Enabling undistort.");
+	register_fpar(cam.strParams[38], &cam.szud.width, "Width of the undistorted image.");
+	register_fpar(cam.strParams[39], &cam.szud.height, "Height of the undistorted image.");
 }
 
 const char * f_avt_cam::get_err_msg(int code)
@@ -379,6 +388,27 @@ bool f_avt_cam::s_cam_params::config_param()
 bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 {
 	m_bactive = true;
+
+	if(fcp[0] != '\0'){
+		//loading camera parameter
+		if(!cp.read(fcp)){
+			cerr << "Failed to read camera parameter " << fcp << endl;
+			fcp[0] = '\0';
+			bundist = false;
+		}
+
+		if(bundist){
+			initUndistortRectifyMap(cp.getCvPrjMat(), cp.getCvDistMat(),
+				Mat::eye(3,3, CV_64FC1), Pud, szud, CV_16SC2, udmap1, udmap2);
+		}else{
+			Pud = Mat();
+			udmap1 = Mat();
+			udmap2 = Mat();
+			szud = Size(640, 480);
+		}
+	}
+
+
 	int m_size_buf = 0;
 
 	pout = dynamic_cast<ch_image_ref*>(pch);
@@ -899,16 +929,19 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 			break;
 		}
 		if(!img.empty()){
-		  if(m_ReverseSoftware && (m_ReverseX || m_ReverseY)){
-		    Mat tmp;
-		    int flag;
-		    flag = (m_ReverseY ? 
-			    (m_ReverseX ? -1 : 0) : 1);
-		    flip(img, tmp, flag);
-		    pout->set_img(tmp, m_cur_time, pfrm->FrameCount);
-		  }else{
-		    pout->set_img(img, m_cur_time, pfrm->FrameCount);
-		  }
+			Mat tmp;
+			if(m_ReverseSoftware && (m_ReverseX || m_ReverseY)){
+				int flag;
+				flag = (m_ReverseY ? 
+					(m_ReverseX ? -1 : 0) : 1);
+				flip(img, tmp, flag);
+				img = tmp;				
+			}
+			if(bundist){
+				remap(img, tmp, udmap1, udmap2, INTER_LINEAR);
+				img = tmp;
+			}
+			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 		}
 	}
 

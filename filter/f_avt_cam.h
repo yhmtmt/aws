@@ -124,7 +124,7 @@ protected:
 	long long m_ttrig_int;
 	long long m_ttrig_prev;
 
-	#define NUM_PV_PARAMS 36
+	#define NUM_PV_PARAMS 40
 	static const char * m_strParams[NUM_PV_PARAMS];
 	struct s_cam_params{
 		bool m_bactive;
@@ -200,6 +200,14 @@ protected:
 		~s_cam_params();
 		void set_new_frm(tPvFrame * pfrm);
 		static void _STDCALL proc_frame(tPvFrame * pfrm);
+
+		// Camera parameter and the related parameters and methods
+		AWSCamPar cp;   // Camera parameter
+		char fcp[1024]; // Path to the parameter file.
+		bool bundist;   // Flag enabling undistort
+		Mat Pud;		// camera parameter without distortion
+		Mat udmap1, udmap2; // undistort map1, undistort map2
+		Size szud;		// Size of undistorted image 
 	};
 
 	void register_params(s_cam_params & cam);
