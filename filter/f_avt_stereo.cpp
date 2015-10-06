@@ -36,12 +36,13 @@ using namespace cv;
 #include "f_base.h"
 #include "f_avt_stereo.h"
 
-f_avt_stereo::f_avt_stereo(const char * name): f_avt_cam(name), m_cam1(1), m_cam2(2), rectify(false)
+f_avt_stereo::f_avt_stereo(const char * name): f_avt_cam(name), m_cam1(1), m_cam2(2), szorg(-1,-1), szrct(-1,-1), rectify(false)
 {
 	register_fpar(m_strParams[3], (int*)&m_FrameStartTriggerMode, efstmUndef, strFrameStartTriggerMode, "Frame Start Trigger mode (default Freerun)");
 	register_params(m_cam1);
 	register_params(m_cam2);
 	register_fpar("rc", &rectify, "Enable rectification.");
+	frt[0] = '\0';
 	register_fpar("frt", frt, 1024, "Path to the file Rotation and translation matrix represents 2nd camera attitude relative to the 1st one.");
 }
 
@@ -59,6 +60,15 @@ bool f_avt_stereo::init_run()
 		return false;
 	}
 
+	if(rectify){
+		if(!at.read(frt))
+			rectify = false;
+		else{
+			m_cam1.bundist = false;
+			m_cam2.bundist = false;
+		}
+	}
+
 	m_cam1.m_FrameStartTriggerMode = m_FrameStartTriggerMode;
 
 	if(!m_cam1.init(this, m_chout[0]))
@@ -73,6 +83,70 @@ bool f_avt_stereo::init_run()
 
 	if(!m_cam2.init(this, m_chout[1]))
 		return false;
+
+	if(rectify){
+		if(!m_cam1.cp.read(m_cam1.fcp)){
+			rectify = false;
+		}
+
+		if(!m_cam2.cp.read(m_cam2.fcp)){
+			rectify = false;
+		}
+	}
+
+	if(m_cam1.cp.isFishEye() != m_cam2.cp.isFishEye()){ // both camera should have the same camera model.
+		rectify = false;
+	}
+
+	if(rectify){
+		Mat P1, P2;
+		if(m_cam1.cp.isFishEye() && m_cam2.cp.isFishEye()){
+			if(szrct.width != -1){
+				fisheye::stereoRectify(
+					m_cam1.cp.getCvPrjMat(), m_cam1.cp.getCvDistFishEyeMat(),
+					m_cam2.cp.getCvPrjMat(), m_cam2.cp.getCvDistFishEyeMat(), 
+					szorg, at.getRmtx(), at.getT(), m_cam1.R, m_cam2.R, P1, P2, 
+					Q, CV_CALIB_ZERO_DISPARITY, szrct); 
+				fisheye::initUndistortRectifyMap(P1, m_cam1.cp.getCvDistFishEyeMat(),
+					m_cam1.R, m_cam1.Pud, szorg, CV_16SC2, m_cam1.udmap1, m_cam1.udmap2);
+				fisheye::initUndistortRectifyMap(P2, m_cam2.cp.getCvDistFishEyeMat(),
+					m_cam2.R, m_cam2.Pud, szorg, CV_16SC2, m_cam2.udmap1, m_cam2.udmap2);
+			}else{
+				fisheye::stereoRectify(
+					m_cam1.cp.getCvPrjMat(), m_cam1.cp.getCvDistFishEyeMat(),
+					m_cam2.cp.getCvPrjMat(), m_cam2.cp.getCvDistFishEyeMat(), 
+					szorg, at.getRmtx(), at.getT(), m_cam1.R, m_cam2.R, P1, P2, 
+					Q, CV_CALIB_ZERO_DISPARITY); 
+				fisheye::initUndistortRectifyMap(P1, m_cam1.cp.getCvDistFishEyeMat(),
+					m_cam1.R, m_cam1.Pud, szrct, CV_16SC2, m_cam1.udmap1, m_cam1.udmap2);
+				fisheye::initUndistortRectifyMap(P2, m_cam2.cp.getCvDistFishEyeMat(),
+					m_cam2.R, m_cam2.Pud, szrct, CV_16SC2, m_cam2.udmap1, m_cam2.udmap2);
+			}
+		}else{
+			if(szrct.width != -1){
+				stereoRectify(
+					m_cam1.cp.getCvPrjMat(), m_cam1.cp.getCvDistFishEyeMat(),
+					m_cam2.cp.getCvPrjMat(), m_cam2.cp.getCvDistFishEyeMat(), 
+					szorg, at.getRmtx(), at.getT(), m_cam1.R, m_cam2.R, P1, P2, 
+					Q); 
+				initUndistortRectifyMap(P1, m_cam1.cp.getCvDistMat(),
+					m_cam1.R, m_cam1.Pud, szorg, CV_16SC2, m_cam1.udmap1, m_cam1.udmap2);
+				initUndistortRectifyMap(P2, m_cam2.cp.getCvDistMat(),
+					m_cam2.R, m_cam2.Pud, szorg, CV_16SC2, m_cam2.udmap1, m_cam2.udmap2);
+			}else{
+				stereoRectify(
+					m_cam1.cp.getCvPrjMat(), m_cam1.cp.getCvDistFishEyeMat(),
+					m_cam2.cp.getCvPrjMat(), m_cam2.cp.getCvDistFishEyeMat(), 
+					szorg, at.getRmtx(), at.getT(), m_cam1.R, m_cam2.R, P1, P2, 
+					Q, CV_CALIB_ZERO_DISPARITY, -1.0, szrct); 
+				initUndistortRectifyMap(P1, m_cam1.cp.getCvDistMat(),
+					m_cam1.R, m_cam1.Pud, szrct, CV_16SC2, m_cam1.udmap1, m_cam1.udmap2);
+				initUndistortRectifyMap(P2, m_cam2.cp.getCvDistMat(),
+					m_cam2.R, m_cam2.Pud, szrct, CV_16SC2, m_cam2.udmap1, m_cam2.udmap2);
+			}
+		}		
+	}
+
 	return true;
 }
 

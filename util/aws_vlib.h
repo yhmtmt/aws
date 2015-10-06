@@ -1202,6 +1202,7 @@ public:
 // Conversion between any two types are given in the method. But the conversion to quarternion has still overhead due to calculating the norm twice.
 // it could be eliminated easily but I didnt yet.
 struct AWSAttitude{
+	static int version;
 	enum attype { 
 		RMTX = 0, QTAN, RVEC
 	} type;
@@ -1220,6 +1221,17 @@ struct AWSAttitude{
 		pM[1] = pM[2] = pM[3] = pM[5] = pM[6] = pM[7] = 0.0;
 		t[0] = t[1] = t[2] = 0.0;
 	};
+
+	void setT(const Mat & M){
+		const double * ptr = M.ptr<double>();
+		t[0] = ptr[0];
+		t[1] = ptr[1];
+		t[2] = ptr[2];
+		
+	}
+	const Mat getT(){
+		return Mat(3, 1, CV_64FC1, t);
+	}
 
 	void setQtan(const Mat & Q)
 	{

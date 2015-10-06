@@ -209,6 +209,7 @@ protected:
 		char fcp[1024]; // Path to the parameter file.
 		bool bundist;   // Flag enabling undistort
 		Mat Pud;		// camera parameter without distortion
+		Mat R;			// Rotation matrix for remap.
 		Mat udmap1, udmap2; // undistort map1, undistort map2
 		Size szud;		// Size of undistorted image 
 	};

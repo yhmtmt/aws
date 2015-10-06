@@ -14,6 +14,8 @@
 
 // You should have received a copy of the GNU General Public License
 // along with c_clock.h.  If not, see <http://www.gnu.org/licenses/>. 
+#ifndef _C_CLOCK_H_
+#define _C_CLOCK_H_
 
 #pragma once
 #ifdef _WIN32
@@ -102,3 +104,4 @@ public:
 	void wait();
 };
 
+#endif

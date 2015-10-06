@@ -97,13 +97,115 @@ bool AWSCamPar::write(const char * fname)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////// AWSAttitude
+int AWSAttitude::version = 0;
 bool AWSAttitude::read(const char * name)
 {
+	try{
+		FileStorage fs(name, FileStorage::READ);
+		if(!fs.isOpened()){
+			cerr << "Failed to open file " << name << endl;
+			FileNode fn;
+
+			fn = fs["AWSAttitude"];
+			if(fn.empty()){
+				cerr << "AWSAttitude is not found." << endl;
+				return false;
+			}
+			int version_tmp;
+			fn >> version_tmp;
+			if(version != version_tmp){
+				cerr << "AWSAttitude's version is not matched. Current version is " << version << "." << endl;
+				return false;
+			}
+
+
+			fn = fs["type"];
+			if(fn.empty()){
+				cerr << "type is not found." << endl;
+				return false;
+			}
+			int itype;
+			fn >> itype;
+			type = (attype) itype;
+
+			fn = fs["Rotation"];
+			if(fn.empty()){
+				cerr << "Rotation is not found." << endl;
+				return false;
+			}
+			Mat M;
+			fn >> M;
+			switch(type){
+			case RMTX:
+				if(M.rows == M.cols && M.rows == 3){
+					setRmtx(M);
+				}else{
+					cerr << "Rotation should be 3x3 matrix." << endl;
+					return false;
+				}
+				break;
+			case RVEC:
+				if(M.rows == 3 && M.cols == 1){
+					setRvec(M);
+				}else{
+					cerr << "Rotation should be 3x1 vector." << endl;
+					return false;
+				}
+				break;
+			case QTAN:
+				if(M.rows = 4 && M.cols == 1){
+					setQtan(M);
+				}else{
+					cerr << "Rotation should be 4x1 vector." << endl;
+					return false;
+				}
+			}
+		
+			fn = fs["Translation"];
+			if(fn.empty()){
+				cerr << "Translation is not found." << endl;
+				return false;
+			}
+
+			fn >> M;
+			if(M.rows == 3 && M.cols == 1)
+				setT(M);	
+			else{
+				cerr << "Translation should be 3x1 vector." << endl;
+				return false;
+			}
+		}
+	}catch(...){
+		cerr << "Failed to read " << name << endl;
+		return false;
+	}
 	return true;
 }
 
 bool AWSAttitude::write(const char * name)
 {
+	try{
+		FileStorage fs(name, FileStorage::WRITE);
+		fs << "AWSAttitude" << version;
+		fs << "type" << (int) type;
+		fs << "Rotation";
+	
+		switch(type){
+		case RMTX:
+			fs << getRmtx();
+			break;
+		case RVEC:
+			fs << getRvec();
+			break;
+		case QTAN:
+			fs << getQtan();
+			break;
+		}
+		fs << "Translation" << getT();
+	}catch(...){
+		cerr << "Failed to write " << name << endl;
+		return false;
+	}
 	return true;
 }
 

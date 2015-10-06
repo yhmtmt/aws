@@ -394,13 +394,14 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 		}
 
 		if(bundist){
+			R = Mat::eye(3, 3, CV_64FC1);
 			if(cp.isFishEye()){
 				fisheye::initUndistortRectifyMap(cp.getCvPrjMat(), 
 					cp.getCvDistFishEyeMat(), 
-					Mat::eye(3, 3, CV_64FC1), Pud, szud, CV_16SC2, udmap1, udmap2);
+					R, Pud, szud, CV_16SC2, udmap1, udmap2);
 			}else{
 				initUndistortRectifyMap(cp.getCvPrjMat(), cp.getCvDistMat(),
-					Mat::eye(3,3, CV_64FC1), Pud, szud, CV_16SC2, udmap1, udmap2);
+					R, Pud, szud, CV_16SC2, udmap1, udmap2);
 			}
 		}else{
 			Pud = Mat();

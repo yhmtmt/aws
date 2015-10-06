@@ -24,7 +24,10 @@ class f_avt_stereo: public f_avt_cam
 protected:
 	s_cam_params m_cam1, m_cam2;
 	bool rectify;
+	Size szorg, szrct;
+	Mat Q;
 	char frt[1024];
+	AWSAttitude at;
 	eFrameStartTriggerMode m_FrameStartTriggerMode;
 
 	virtual bool init_run();
