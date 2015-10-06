@@ -18,6 +18,9 @@
 
 #include "f_base.h"
 #include "PvApi.h"
+#include "../util/aws_vlib.h"
+#include "../util/c_clock.h"
+
 #include "../channel/ch_image.h"
 
 #ifdef _WIN32

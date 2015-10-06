@@ -30,10 +30,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-#include "../util/aws_vlib.h"
-#include "../util/c_clock.h"
 #include "f_avt_cam.h"
 
 bool f_avt_cam::m_bready_api = false;
@@ -398,8 +394,14 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 		}
 
 		if(bundist){
-			initUndistortRectifyMap(cp.getCvPrjMat(), cp.getCvDistMat(),
-				Mat::eye(3,3, CV_64FC1), Pud, szud, CV_16SC2, udmap1, udmap2);
+			if(cp.isFishEye()){
+				fisheye::initUndistortRectifyMap(cp.getCvPrjMat(), 
+					cp.getCvDistFishEyeMat(), 
+					Mat::eye(3, 3, CV_64FC1), Pud, szud, CV_16SC2, udmap1, udmap2);
+			}else{
+				initUndistortRectifyMap(cp.getCvPrjMat(), cp.getCvDistMat(),
+					Mat::eye(3,3, CV_64FC1), Pud, szud, CV_16SC2, udmap1, udmap2);
+			}
 		}else{
 			Pud = Mat();
 			udmap1 = Mat();
