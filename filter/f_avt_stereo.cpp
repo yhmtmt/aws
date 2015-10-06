@@ -144,6 +144,8 @@ bool f_avt_stereo::init_run()
 				initUndistortRectifyMap(P2, m_cam2.cp.getCvDistMat(),
 					m_cam2.R, m_cam2.Pud, szrct, CV_16SC2, m_cam2.udmap1, m_cam2.udmap2);
 			}
+			m_cam1.bundist = true;
+			m_cam2.bundist = true;
 		}		
 	}
 
