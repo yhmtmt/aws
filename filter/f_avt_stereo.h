@@ -23,7 +23,8 @@ class f_avt_stereo: public f_avt_cam
 {
 protected:
 	s_cam_params m_cam1, m_cam2;
-
+	bool rectify;
+	char frt[1024];
 	eFrameStartTriggerMode m_FrameStartTriggerMode;
 
 	virtual bool init_run();

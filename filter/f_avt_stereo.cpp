@@ -36,11 +36,13 @@ using namespace cv;
 #include "f_base.h"
 #include "f_avt_stereo.h"
 
-f_avt_stereo::f_avt_stereo(const char * name): f_avt_cam(name), m_cam1(1), m_cam2(2)
+f_avt_stereo::f_avt_stereo(const char * name): f_avt_cam(name), m_cam1(1), m_cam2(2), rectify(false)
 {
 	register_fpar(m_strParams[3], (int*)&m_FrameStartTriggerMode, efstmUndef, strFrameStartTriggerMode, "Frame Start Trigger mode (default Freerun)");
 	register_params(m_cam1);
 	register_params(m_cam2);
+	register_fpar("rc", &rectify, "Enable rectification.");
+	register_fpar("frt", frt, 1024, "Path to the file Rotation and translation matrix represents 2nd camera attitude relative to the 1st one.");
 }
 
 f_avt_stereo::~f_avt_stereo()
