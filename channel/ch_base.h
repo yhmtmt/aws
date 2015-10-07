@@ -85,6 +85,18 @@ public:
 	}
 
 	virtual void tran() = 0;
+
+	// for channel logging
+	virtual bool write(ofstream & fout, long long t)
+	{
+		return true;
+	}
+
+	// for channel replay
+	virtual bool read(ifstream & fin, long long t)
+	{
+		return true;
+	}
 };
 
 #endif

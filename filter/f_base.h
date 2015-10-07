@@ -120,6 +120,36 @@ protected:
 	vector<ch_base *> m_chin;
 	vector<ch_base *> m_chout;
 
+	// only output log is recorded
+	static vector<string> m_logdrv;
+	static vector<long long> m_capdrv;
+	bool m_bochlog;
+	bool m_brepochlog;
+	ofstream m_ochlogout;
+	ifstream m_ochlogin;
+
+	void logoch(){
+		if(m_bochlog){
+			// check free disk
+			//  if not free, create and open log file in the next candidate drive
+			//         if successfully done, link is recorded older file and 
+			if(m_ochlogout.is_open()){
+				for(int i = 0; i < m_chout.size(); i++)
+					m_chout[i]->write(m_ochlogout, m_cur_time);
+			}
+		}
+	}
+
+	void replayoch(){
+		// seek log file related to the time
+		if(m_brepochlog){
+			if(m_ochlogin.is_open()){
+				for(int i = 0; i < m_chout.size(); i++)
+					m_chout[i]->read(m_ochlogin, m_cur_time);
+			}
+		}
+	}
+
 public:
 	void set_ichan(ch_base * pchan){
 		m_chin.push_back(pchan);
@@ -532,6 +562,7 @@ protected:
 		const char * fname; // file name
 		int line; // line number in fname
 		int code; // error code in the filter
+
 
 		s_ferr(){
 		}
