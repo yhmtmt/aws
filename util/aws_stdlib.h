@@ -36,4 +36,8 @@ inline double nrand(double u, double s)
 	return s * sqrt(-2.0 * log(u0))*cos(2*PI*u1) + u;
 }
 
+
+// Returns rate of the drive used
+ float getDrvUse(const char * path);
+
 #endif
