@@ -120,32 +120,152 @@ protected:
 	vector<ch_base *> m_chin;
 	vector<ch_base *> m_chout;
 
-	// only output log is recorded
-	static vector<string> m_logdrv;
-	static vector<long long> m_capdrv;
-	bool m_bochlog;
-	bool m_brepochlog;
-	ofstream m_ochlogout;
-	ifstream m_ochlogin;
+	// channel log. only output log is recorded
+	char m_fochlogpath[1024];	// file path to a file of a list of logging drives
+	int m_curochlogdrv;			// index of the current och log drive.
+	vector<string> m_ochlogdrv;	// path to the logging drive
+	vector<float> m_thdrvuse;	// threashold of drive use. 
+	int m_tdrvchk;				// time interval for drive use check.
+	long long m_tnextdrvchk;	// next drive check time
+	float m_spddrvuse;			// speed of drive use.
+	float m_drvuseprev;			// previous drive use.
+	bool m_bochlog;				// enabling log
+	bool m_bochrep;				// replaying log
+	ofstream m_ochlogout;		// output file (under logging)
+	ifstream m_ochlogin;		// input file (under replaying)
 
+	// load log path
+	bool load_ochlogpath()
+	{
+		if(!m_bochlog)
+			return false;
+		if(m_fochlogpath[0] == '\0')
+			return false;
+
+		try{
+			ifstream fochlogpath(m_fochlogpath);
+			if(fochlogpath.is_open()){
+				// in the file,  the list of @<path> <threashold><crlf> is appeared.
+				char buf[1024];
+				while(!fochlogpath.eof()){
+					fochlogpath.getline(buf, 1024);
+					if(buf[0] != '@')
+						break;
+					// extract file path 
+					char * ph = buf + 1, * pt = ph;
+					while(*pt != ' ' || *(pt-1) == '\\'){
+						pt++;
+						break;
+					}
+					*pt = '\0';
+					m_ochlogdrv.push_back(string(ph));
+
+					// extract threashold 
+					ph = pt+1;
+					float th = (float) atof(ph);
+					if(th <= 0. || th >= 1.){
+						m_ochlogdrv.clear();
+						m_thdrvuse.clear();
+						cerr << "Irregal file format " << m_fochlogpath << endl;
+						cerr << "File should include a list of \"<path> <threashold>\" pairs." << endl; 
+						m_bochlog = false;
+						return false;
+					}
+
+					m_thdrvuse.push_back(th);
+				}
+			}else{
+				cerr << "Failed to open file includes ochlog paths " << m_fochlogpath << endl;
+				m_bochlog = false;
+				return false;
+			}
+		}catch(...){
+			cerr << "Failed to load ochlog paths from " << m_fochlogpath << endl;
+			m_bochlog = false;
+			return false;
+		}
+		return true;
+	}
+
+	// opening och log file.
+	bool open_ochlogfile()
+	{
+		float drvuse;
+		// find and check the new drive.
+		do{
+			m_curochlogdrv++;
+			if(m_curochlogdrv >= m_ochlogdrv.size()){
+				cerr << "Filter " << m_name << " ran out the output channel logging drives." << endl;
+				m_bochlog = false;
+				return false;
+			}
+			drvuse = getDrvUse(m_ochlogdrv[m_curochlogdrv].c_str());
+		}while(drvuse < m_thdrvuse[m_curochlogdrv]);
+
+		m_drvuseprev = drvuse;
+		ofstream fochjournal;
+		char buf[1024];
+		snprintf(buf, 1023, "%s.jochlog", m_name);
+		m_ochlogout.close();
+		fochjournal.open(buf, ios_base::app);
+		if(!fochjournal.is_open()){
+			cerr << "Failed to open journal file " << buf << endl;
+			m_bochlog = false;
+			return false;
+		}
+
+		m_ochlogout.open(buf, ios_base::binary);
+		if(!m_ochlogout.is_open()){
+			cerr << "Failed to open new log file " << buf << endl;
+			m_bochlog = false;
+			fochjournal.close();
+			return false;
+		}
+
+		snprintf(buf, 1023, "%s_%lld.ochlog", m_name, m_cur_time);
+		fochjournal << buf << endl;
+		fochjournal.close();
+
+		return true;
+	}
+
+	// logging method (called in filter thread)
 	void logoch(){
 		if(m_bochlog){
 			// check free disk
-			//  if not free, create and open log file in the next candidate drive
-			//         if successfully done, link is recorded older file and 
+			if(m_tnextdrvchk > m_cur_time){
+				float drvuse = getDrvUse(m_ochlogdrv[m_curochlogdrv].c_str());
+				//  if not free, create and open log file in the next candidate drive
+				if(drvuse > m_thdrvuse[m_curochlogdrv]){
+					if(!open_ochlogfile()){
+						return;
+					}
+				}else{
+					// updating speed of drive use
+					m_spddrvuse = (float) (0.9 *  m_spddrvuse + 0.1 * (drvuse - m_drvuseprev));
+				}
+				
+				m_tnextdrvchk += (long long) m_tdrvchk;
+			}
+			
 			if(m_ochlogout.is_open()){
 				for(int i = 0; i < m_chout.size(); i++)
-					m_chout[i]->write(m_ochlogout, m_cur_time);
+					m_chout[i]->write(this, m_ochlogout, m_cur_time);
+			}else{
+				if(!open_ochlogfile()){
+					return;
+				}
 			}
 		}
 	}
 
-	void replayoch(){
+	// replay method (called in filter thread)
+	void repoch(){
 		// seek log file related to the time
-		if(m_brepochlog){
+		if(m_bochrep){
 			if(m_ochlogin.is_open()){
 				for(int i = 0; i < m_chout.size(); i++)
-					m_chout[i]->read(m_ochlogin, m_cur_time);
+					m_chout[i]->read(this, m_ochlogin, m_cur_time);
 			}
 		}
 	}
@@ -375,6 +495,19 @@ public:
 		}
 
 		m_prev_time = start_time;
+
+		m_tnextdrvchk = start_time;
+		m_spddrvuse = 0.;
+		m_drvuseprev = 0.;
+		if(m_bochlog && m_fochlogpath[0] != '\0'){
+			if(!load_ochlogpath()){
+				cerr << "Ouput channel log won't be." << endl;
+			}
+
+			if(!open_ochlogfile()){
+				cerr << "Ouput channel log won't be." << endl;
+			}
+		}
 
 		if(!seek(start_time)){
 			return false;

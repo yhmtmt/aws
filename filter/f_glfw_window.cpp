@@ -17,6 +17,7 @@
 #ifdef GLFW_WINDOW
 
 #include <iostream>
+#include <fstream>
 #include <map>
 using namespace std;
 

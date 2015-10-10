@@ -174,7 +174,7 @@ pthread_mutex_t f_base::m_err_mtx;
 
 void f_base::fthread()
 {
-	if(m_cycle < m_intvl){
+	if((unsigned int) m_cycle < m_intvl){
 		m_cycle++;
 		return;
 	}
@@ -282,7 +282,9 @@ void f_base::clock(long long cur_time){
 }
 
 f_base::f_base(const char * name):m_offset_time(0), m_bactive(false), 
-	m_intvl(1), m_bstopped(true), m_cmd(false)
+	m_intvl(1), m_bstopped(true), m_cmd(false), 
+	m_bochlog(false), m_bochrep(false), m_tdrvchk(10 * SEC), m_spddrvuse(0), m_curochlogdrv(-1)
+
 {
 	pthread_mutex_init(&m_mutex_cmd, NULL);
 	pthread_cond_init(&m_cnd_cmd, NULL);
@@ -295,6 +297,13 @@ f_base::f_base(const char * name):m_offset_time(0), m_bactive(false),
 	register_fpar("ClockCount", &m_count_clock, "Number of clock cycles passed." );
 	register_fpar("ProcRate", &m_proc_rate, "Processing rate.(Read only)");
 	register_fpar("MaxCycle", &m_max_cycle, "Maximum cycles per processing.(Read Only)");
+
+	// och logging
+	m_fochlogpath[0] = '\0';
+	register_fpar("fochlogpath", m_fochlogpath, 1024, "File path to a file of a list of storage paths."); 
+	register_fpar("ochlog", &m_bochlog, "Output channel log.");
+	register_fpar("ochrep", &m_bochrep, "Output channel replay.");
+	register_fpar("tdrvchk", & m_tdrvchk, "Time interval checking drive use specified in fochlogpath.");
 }
 
 f_base::~f_base()
