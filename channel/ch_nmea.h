@@ -5,6 +5,8 @@ protected:
 	int m_head;
 	int m_tail;
 	char ** m_buf;
+	unsigned int m_new_nmeas;
+
 	bool alloc(int size){
 		m_buf = new char * [size];
 		if(!m_buf)
@@ -20,6 +22,8 @@ protected:
 		for(int i = 0; i < size; i++, p+=83){
 			m_buf[i] = p;
 		}
+
+		m_new_nmeas = 0;
 		return true;
 	}
 
@@ -34,7 +38,7 @@ protected:
 
 public:
 	ch_nmea(const char * name): ch_base(name), m_max_buf(128), 
-		m_head(0), m_tail(0)
+		m_head(0), m_tail(0), m_new_nmeas(0)
 	{
 		alloc(m_max_buf);
 	}
@@ -77,13 +81,56 @@ public:
 		}
 		*p = *buf;
 		m_tail = next_tail;
+		m_new_nmeas++;
 		unlock();
 		return true;
 	}
 
 	virtual void tran()
 	{
+		m_new_nmeas = 0;
 	}
+
+	// for channel logging
+	virtual bool write(f_base * pf, ofstream & fout, long long t)
+	{
+		lock();
+		unsigned long long ul = (unsigned long long) (m_new_nmeas * 83);
+
+		fout.write((const char *) &ul, sizeof(unsigned long long));
+		int head = m_tail - m_new_nmeas;
+		if(head < 0) 
+			head += m_max_buf;
+
+		for(int i = 0; i < (int) m_new_nmeas; i++){
+			fout.write((const char *)m_buf[head], sizeof(char) * 83);
+			head = (head + 1) % m_max_buf;
+		}
+	
+		unlock();
+		return true;
+	}
+
+	// for channel replay
+	virtual bool read(f_base * pf, ifstream & fin, long long t)
+	{
+		lock();
+		unsigned long long ul;
+		fin.read((char *) &ul, sizeof(unsigned long long));
+		for(int i = 0; i < (int) ul; i++){
+			int next_tail = (m_tail + 1) % m_max_buf;
+			if(m_head == next_tail){
+				unlock();
+				return false;
+			}
+			fin.read((char*) m_buf[m_tail], sizeof(char) * 83);
+			m_tail = next_tail;
+			m_new_nmeas++;
+		}
+		unlock();
+		return true;
+	}
+
 };
 
 class ch_ship: public ch_base

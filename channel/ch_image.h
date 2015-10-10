@@ -104,6 +104,38 @@ public:
 		m_bnew = false;
 		unlock();
 	}
+
+	// for channel logging
+	virtual bool write(f_base * pf, ofstream & fout, long long t)
+	{
+		lock();
+		vector<uchar> buf;
+		imencode(".png", m_img[m_back], buf);
+		Mat bufm(buf);
+		uchar * ptr = bufm.ptr<uchar>();
+		unsigned long long ul = (unsigned long long) (bufm.cols * bufm.rows);
+		fout.write((const char*) &m_ifrm[m_back], sizeof(long long));
+		fout.write((const char*) &ul, sizeof(unsigned long long));
+		fout.write((const char*) ptr, (streamsize) ul);
+		unlock();
+		return true;
+	}
+
+	// for channel replay
+	virtual bool read(f_base * pf, ifstream & fin, long long t)
+	{
+		lock();
+		unsigned long long ul;
+		m_time[m_back] = t;
+		fin.read((char*) &m_ifrm[m_back], sizeof(long long));
+		fin.read((char*) &ul, sizeof(unsigned long long));
+		Mat bufm(1, (int) ul, CV_8UC1);
+		fin.read((char*) bufm.data, (streamsize) ul);
+
+		imdecode(bufm, CV_LOAD_IMAGE_ANYDEPTH, &m_img[m_back]);
+		unlock();
+		return true;
+	}
 };
 
 // ch_image_ref returns reference of the image for get_img. Don't change the data if you use this as inputs for multiple filters.
@@ -176,6 +208,39 @@ public:
 		m_bnew = false;
 		unlock();
 	}
+
+	// for channel logging
+	virtual bool write(f_base * pf, ofstream & fout, long long t)
+	{
+		lock();
+		vector<uchar> buf;
+		imencode(".png", m_img[m_back], buf);
+		Mat bufm(buf);
+		uchar * ptr = bufm.ptr<uchar>();
+		unsigned long long ul = (unsigned long long) (bufm.cols * bufm.rows);
+		fout.write((const char*) &m_ifrm[m_back], sizeof(long long));
+		fout.write((const char*) &ul, sizeof(unsigned long long));
+		fout.write((const char*) ptr, (streamsize) ul);
+		unlock();
+		return true;
+	}
+
+	// for channel replay
+	virtual bool read(f_base * pf, ifstream & fin, long long t)
+	{
+		lock();
+		unsigned long long ul;
+		m_time[m_back] = t;
+		fin.read((char*) &m_ifrm[m_back], sizeof(long long));
+		fin.read((char*) &ul, sizeof(unsigned long long));
+		Mat bufm(1, (int) ul, CV_8UC1);
+		fin.read((char*) bufm.data, (streamsize) ul);
+
+		imdecode(bufm, CV_LOAD_IMAGE_ANYDEPTH, &m_img[m_back]);
+		unlock();
+		return true;
+	}
+
 };
 
 #endif

@@ -249,6 +249,7 @@ protected:
 			}
 			
 			if(m_ochlogout.is_open()){
+				m_ochlogout.write((const char*)m_cur_time, sizeof(long long));
 				for(int i = 0; i < m_chout.size(); i++)
 					m_chout[i]->write(this, m_ochlogout, m_cur_time);
 			}else{
