@@ -126,7 +126,10 @@ protected:
 	vector<string> m_ochlogdrv;	// path to the logging drive
 	vector<float> m_thdrvuse;	// threashold of drive use. 
 	int m_tdrvchk;				// time interval for drive use check.
-	long long m_tnextdrvchk;	// next drive check time
+	union{
+		long long m_tcurochlog; // time epoch of the current ochlog
+		long long m_tnextdrvchk; // next drive check time
+	};
 	float m_spddrvuse;			// speed of drive use.
 	float m_drvuseprev;			// previous drive use.
 	bool m_bochlog;				// enabling log
@@ -214,6 +217,8 @@ protected:
 			return false;
 		}
 
+		snprintf(buf, 1023, "%s/%s_%lld.ochlog", 
+			m_ochlogdrv[m_curochlogdrv].c_str(), m_name, m_cur_time);
 		m_ochlogout.open(buf, ios_base::binary);
 		if(!m_ochlogout.is_open()){
 			cerr << "Failed to open new log file " << buf << endl;
@@ -222,8 +227,7 @@ protected:
 			return false;
 		}
 
-		snprintf(buf, 1023, "%s_%lld.ochlog", m_name, m_cur_time);
-		fochjournal << buf << endl;
+		fochjournal << m_cur_time << endl << buf << endl;
 		fochjournal.close();
 
 		return true;
@@ -261,13 +265,47 @@ protected:
 	}
 
 	// replay method (called in filter thread)
-	void repoch(){
+	bool repoch(){
 		// seek log file related to the time
 		if(m_bochrep){
-			if(m_ochlogin.is_open()){
-				for(int i = 0; i < m_chout.size(); i++)
-					m_chout[i]->read(this, m_ochlogin, m_cur_time);
-			}
+			long long ltime;
+			do{
+				// seeking log file.
+				if(m_ochlogin.eof()){
+					m_ochlogin.close();
+				}
+
+				if(m_ochlogin.is_open()){
+					m_ochlogin.read((char*) &ltime, sizeof(long long));
+					for(int i = 0; i < m_chout.size(); i++)
+						m_chout[i]->read(this, m_ochlogin, m_cur_time);
+				}else{
+					ifstream fochjournal;
+					char buf[1024];
+					snprintf(buf, 1023, "%s.jochlog", m_name);
+					fochjournal.open(buf);
+					if(!fochjournal.is_open()){
+						cerr << "Failed to open journal file " << buf << endl;
+						return false;
+					}
+
+					while(1){
+						if(fochjournal.eof()){
+							cerr << "Ochlog in " << m_name << " is end." << endl;
+							return false;
+						}
+
+						fochjournal.getline(buf, 1024);
+						ltime = atoll(buf);
+						if(ltime != m_tcurochlog && ltime <= m_cur_time)
+							break;
+					}
+
+					fochjournal.getline(buf, 1024);
+					m_ochlogin.open(buf);
+					m_tcurochlog = ltime;
+				}
+			}while(m_cur_time > ltime);
 		}
 	}
 
@@ -491,13 +529,25 @@ public:
 	// invoke main thread.
 	virtual bool run(long long start_time, long long end_time)
 	{
-		if(!init_run()){
-			return false;
+		if(!m_bochrep){ // if output channel replay mode is specified, the init/destroy scheme dont work.
+			if(!init_run()){
+				return false;
+			}
 		}
 
 		m_prev_time = start_time;
 
-		m_tnextdrvchk = start_time;
+		if(m_bochlog && m_bochrep){
+			cerr << "Output channel logging and replay cannot be executed simultaneously." << endl;
+			return false;
+		}
+
+		if(m_bochlog)
+			m_tnextdrvchk = start_time;
+
+		if(m_bochrep)
+			m_tcurochlog = -1;
+
 		m_spddrvuse = 0.;
 		m_drvuseprev = 0.;
 		if(m_bochlog && m_fochlogpath[0] != '\0'){
@@ -529,9 +579,14 @@ public:
 	virtual bool stop()
 	{	
 		m_bactive= false;
-		if(m_bstopped || is_main_thread()){
-		  destroy_run();
-		  return true;
+		if(!m_bochrep){
+			if(m_bstopped || is_main_thread()){
+				destroy_run();
+				return true;
+			}
+		}else{
+			m_ochlogin.close();
+			return true;
 		}
 		return false;
 	}

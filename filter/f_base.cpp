@@ -172,6 +172,8 @@ int f_base::m_err_head = 0;
 int f_base::m_err_tail = 0;
 pthread_mutex_t f_base::m_err_mtx;
 
+// this is the filter thread function, but actually called from main thread.
+// this function is used if the filter should be executed in the mainthread such as the case using OpenGL
 void f_base::fthread()
 {
 	if((unsigned int) m_cycle < m_intvl){
@@ -197,6 +199,7 @@ void f_base::fthread()
 	}
 }
 
+// Filter thread function
 void * f_base::fthread(void * ptr)
 {
 	f_base * filter = (f_base *) ptr;
@@ -212,8 +215,15 @@ void * f_base::fthread(void * ptr)
 		filter->tran_chout();
 		filter->calc_time_diff();
 
-		if (!filter->proc()){
+		if(filter->m_bochrep){
+			if(!filter->repoch())
+				filter->m_bactive = false;
+		}else if (!filter->proc()){
 			filter->m_bactive = false;
+		}
+
+		if(filter->m_bochlog){
+			filter->logoch();
 		}
 
 		if(filter->m_clk.is_run()){
