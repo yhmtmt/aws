@@ -120,8 +120,19 @@ protected:
 	vector<ch_base *> m_chin;
 	vector<ch_base *> m_chout;
 
-	// channel log. only output log is recorded
+
+	//////////////// channel log. only output log is recorded///////////////
+	// Notice: You can record output channel state for each cycle by asserting m_bochlog and 
+	// specifying file name for m_fochlogpath. The file specified as m_fochlogpath should have 
+	// a list of  <drive path> <threashold>. The logging method generates log files to the drives 
+	// until the usage goes over the threashold.
+	// The log file can also be replayed by asserting m_bochrep. Both m_bochrep and m_bochlog cannot be 
+	// asserted simultaneously. In the replay mode, init_run(), destroy_run(), proc() is all ignored,
+	// and the filter only sets the values from log file to their output channel. This could be 
+	// helpful to analyze the phenomenon occured at execution time.
+
 	char m_fochlogpath[1024];	// file path to a file of a list of logging drives
+	char m_fjochlog[1024];		// journal file of the ochlogs.
 	int m_curochlogdrv;			// index of the current och log drive.
 	vector<string> m_ochlogdrv;	// path to the logging drive
 	vector<float> m_thdrvuse;	// threashold of drive use. 
@@ -138,176 +149,16 @@ protected:
 	ifstream m_ochlogin;		// input file (under replaying)
 
 	// load log path
-	bool load_ochlogpath()
-	{
-		if(!m_bochlog)
-			return false;
-		if(m_fochlogpath[0] == '\0')
-			return false;
-
-		try{
-			ifstream fochlogpath(m_fochlogpath);
-			if(fochlogpath.is_open()){
-				// in the file,  the list of @<path> <threashold><crlf> is appeared.
-				char buf[1024];
-				while(!fochlogpath.eof()){
-					fochlogpath.getline(buf, 1024);
-					if(buf[0] != '@')
-						break;
-					// extract file path 
-					char * ph = buf + 1, * pt = ph;
-					while(*pt != ' ' || *(pt-1) == '\\'){
-						pt++;
-						break;
-					}
-					*pt = '\0';
-					m_ochlogdrv.push_back(string(ph));
-
-					// extract threashold 
-					ph = pt+1;
-					float th = (float) atof(ph);
-					if(th <= 0. || th >= 1.){
-						m_ochlogdrv.clear();
-						m_thdrvuse.clear();
-						cerr << "Irregal file format " << m_fochlogpath << endl;
-						cerr << "File should include a list of \"<path> <threashold>\" pairs." << endl; 
-						m_bochlog = false;
-						return false;
-					}
-
-					m_thdrvuse.push_back(th);
-				}
-			}else{
-				cerr << "Failed to open file includes ochlog paths " << m_fochlogpath << endl;
-				m_bochlog = false;
-				return false;
-			}
-		}catch(...){
-			cerr << "Failed to load ochlog paths from " << m_fochlogpath << endl;
-			m_bochlog = false;
-			return false;
-		}
-		return true;
-	}
+	bool load_ochlogpath();
 
 	// opening och log file.
-	bool open_ochlogfile()
-	{
-		float drvuse;
-		// find and check the new drive.
-		do{
-			m_curochlogdrv++;
-			if(m_curochlogdrv >= m_ochlogdrv.size()){
-				cerr << "Filter " << m_name << " ran out the output channel logging drives." << endl;
-				m_bochlog = false;
-				return false;
-			}
-			drvuse = getDrvUse(m_ochlogdrv[m_curochlogdrv].c_str());
-		}while(drvuse < m_thdrvuse[m_curochlogdrv]);
-
-		m_drvuseprev = drvuse;
-		ofstream fochjournal;
-		char buf[1024];
-		snprintf(buf, 1023, "%s.jochlog", m_name);
-		m_ochlogout.close();
-		fochjournal.open(buf, ios_base::app);
-		if(!fochjournal.is_open()){
-			cerr << "Failed to open journal file " << buf << endl;
-			m_bochlog = false;
-			return false;
-		}
-
-		snprintf(buf, 1023, "%s/%s_%lld.ochlog", 
-			m_ochlogdrv[m_curochlogdrv].c_str(), m_name, m_cur_time);
-		m_ochlogout.open(buf, ios_base::binary);
-		if(!m_ochlogout.is_open()){
-			cerr << "Failed to open new log file " << buf << endl;
-			m_bochlog = false;
-			fochjournal.close();
-			return false;
-		}
-
-		fochjournal << m_cur_time << endl << buf << endl;
-		fochjournal.close();
-
-		return true;
-	}
+	bool open_ochlogfile();
 
 	// logging method (called in filter thread)
-	void logoch(){
-		if(m_bochlog){
-			// check free disk
-			if(m_tnextdrvchk > m_cur_time){
-				float drvuse = getDrvUse(m_ochlogdrv[m_curochlogdrv].c_str());
-				//  if not free, create and open log file in the next candidate drive
-				if(drvuse > m_thdrvuse[m_curochlogdrv]){
-					if(!open_ochlogfile()){
-						return;
-					}
-				}else{
-					// updating speed of drive use
-					m_spddrvuse = (float) (0.9 *  m_spddrvuse + 0.1 * (drvuse - m_drvuseprev));
-				}
-				
-				m_tnextdrvchk += (long long) m_tdrvchk;
-			}
-			
-			if(m_ochlogout.is_open()){
-				m_ochlogout.write((const char*)m_cur_time, sizeof(long long));
-				for(int i = 0; i < m_chout.size(); i++)
-					m_chout[i]->write(this, m_ochlogout, m_cur_time);
-			}else{
-				if(!open_ochlogfile()){
-					return;
-				}
-			}
-		}
-	}
+	void logoch();
 
 	// replay method (called in filter thread)
-	bool repoch(){
-		// seek log file related to the time
-		if(m_bochrep){
-			long long ltime;
-			do{
-				// seeking log file.
-				if(m_ochlogin.eof()){
-					m_ochlogin.close();
-				}
-
-				if(m_ochlogin.is_open()){
-					m_ochlogin.read((char*) &ltime, sizeof(long long));
-					for(int i = 0; i < m_chout.size(); i++)
-						m_chout[i]->read(this, m_ochlogin, m_cur_time);
-				}else{
-					ifstream fochjournal;
-					char buf[1024];
-					snprintf(buf, 1023, "%s.jochlog", m_name);
-					fochjournal.open(buf);
-					if(!fochjournal.is_open()){
-						cerr << "Failed to open journal file " << buf << endl;
-						return false;
-					}
-
-					while(1){
-						if(fochjournal.eof()){
-							cerr << "Ochlog in " << m_name << " is end." << endl;
-							return false;
-						}
-
-						fochjournal.getline(buf, 1024);
-						ltime = atoll(buf);
-						if(ltime != m_tcurochlog && ltime <= m_cur_time)
-							break;
-					}
-
-					fochjournal.getline(buf, 1024);
-					m_ochlogin.open(buf);
-					m_tcurochlog = ltime;
-				}
-			}while(m_cur_time > ltime);
-		}
-	}
+	bool repoch();
 
 public:
 	void set_ichan(ch_base * pchan){
