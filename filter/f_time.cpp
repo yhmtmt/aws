@@ -67,159 +67,234 @@ void f_time::destroy_run()
 bool f_time::proc()
 {
 	switch(mode){
-	case TRN:
-		if(m_host_dst[0] == '\0'){
-			mode = RCV;
-		}else{
-			// transmmit packet to the master server
-			memset((void*) &m_trpkt, 0, sizeof(s_tpkt));
-			m_trpkt.id = ((unsigned int) rand() << 16) | (unsigned int) rand();
-			m_trpkt.tc1 = m_cur_time;
-			socklen_t sz = sizeof(m_sock_addr_snd);
-			sendto(m_sock, (const char*) &m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_snd, sz);
-			mode = WAI;
-		}
+	case TRN: // -> RCV or WAI
+		if(!sttrn())
+			return false;
 		break;
-	case WAI:
-		{
-			s_tpkt rcvpkt;
-			socklen_t sz = sizeof(m_sock_addr_rep);
-			long long del = m_adjust_intvl * SEC;
-			int count = 0;
-			while(1){
-				timeval to;
-				to.tv_sec = 0;
-				to.tv_usec = 0;
-				fd_set fdrd, fder;
-				FD_ZERO(&fdrd);
-				FD_ZERO(&fder);
-				FD_SET(m_sock, &fdrd);
-				FD_SET(m_sock, &fder);
-				int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
-				if(n > 0){
-					if(FD_ISSET(m_sock, &fdrd)){
-						recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &sz);
-						if(rcvpkt.id != m_trpkt.id){
-							rcvpkt.del = del;
-							sendto(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, sz);
-							count++;
-							continue;
-						}else{
-							if(rcvpkt.del != 0){
-								m_tnext_adj = m_cur_time + rcvpkt.del;
-								mode = RCV;
-							}else{
-								m_trpkt.ts1 = rcvpkt.ts1;
-								m_trpkt.ts2 = rcvpkt.ts2;
-								m_trpkt.tc2 = m_cur_time;
-							}
-							break;
-						}
-					}else if(FD_ISSET(m_sock, &fder)){
-						cerr << "Socket error." << endl;
-						return false;
-					}else{
-						cerr << "Unknown error." << endl;
-						return false;
-					}
-					del += m_adjust_intvl * SEC;
-				}
-				break;
-			}
-
-			if(count > 0){
-				// if the count value is larger than 0, the packet transmission is disturbed by other packet. 
-				// Again, we try transmission.
-				mode = TRN;
-			}else{
-				// if count == 0, the packet is correctly returned. now the filter try to correct time offset.
-				mode = FIX;
-			}
-		}
+	case WAI: // -> RCV or TRN or FIX
+		if(!stwai())
+			return false;
 		break;
-	case RCV:
-		{
-			timeval to;
-			to.tv_sec = 0;
-			to.tv_usec = 0;
-			fd_set fdrd, fder;
-			FD_ZERO(&fdrd);
-			FD_ZERO(&fder);
-			FD_SET(m_sock, &fdrd);
-			FD_SET(m_sock, &fder);
-			int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
-			if(n > 0){
-				if(FD_ISSET(m_sock, &fdrd)){
-					recvfrom(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &m_sz_rep);
-					m_trpkt.ts1 = m_cur_time;
-					mode = REP;
-				}else if(FD_ISSET(m_sock, &fder)){
-					cerr << "Socket error." << endl;
-					return false;
-				}else{
-					cerr << "Unknown error." << endl;
-					return false;
-				}
-			}else{
-				if(m_tnext_adj < m_cur_time){
-					if(m_host_dst[0] == '\0')
-						mode = RCV;
-					else
-						mode = TRN;
-				}			
-			}
-
-			if(mode == REP){
-				// consume remained packet from clients
-				s_tpkt rcvpkt;
-				sockaddr_in addr_del;
-				socklen_t len_del;
-				long long del = m_adjust_intvl * SEC;
-				while(1){
-					
-					timeval to;
-					to.tv_sec = 0;
-					to.tv_usec = 0;
-					fd_set fdrd, fder;
-					FD_ZERO(&fdrd);
-					FD_ZERO(&fder);
-					FD_SET(m_sock, &fdrd);
-					FD_SET(m_sock, &fder);
-					int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
-					if(n > 0){
-						if(FD_ISSET(m_sock, &fdrd)){
-							recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, &len_del);
-							rcvpkt.del = del;
-							sendto(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, len_del);
-						}else if(FD_ISSET(m_sock, &fder)){
-							cerr << "Socket error." << endl;
-							return false;
-						}else{
-							cerr << "Unknown error." << endl;
-							return false;
-						}
-					}else{
-						break;
-					}
-					del += m_adjust_intvl * SEC;
-				}
-			}
-		}
+	case RCV: // -> RCV or TRN
+		if(!strcv())
+			return false;
 		break;
-	case REP:
-		m_trpkt.ts2 = m_cur_time;
-		sendto(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, m_sz_rep);
-		mode = RCV;
+	case REP: // -> RCV or REP
+		if(!strep())
+			return false;
 		break;
-	case FIX:
-		{
-			long long delta = m_trpkt.calc_delta();
-			m_clk.set_time_delta(delta);
-			m_tnext_adj = (long long) m_adjust_intvl * SEC;
-			mode = RCV;
-		}
+	case FIX: // -> RCV
+		if(!stfix())
+			return false;
 		break;
 	}
 
+	return true;
+}
+
+// State TRN transmits time synchronization request packet. If the filter is not configured as client
+// , means that destination host address is not specified, the request packet never transmitted, and 
+// the state never move to WAI.
+// State Transition
+// TRN -> WAI occurs if destination address is defined, after sending initial time synchronization request 
+// TRN -> RCV occurs if destination address is not defined. In the case, the state never be back to TRN.
+bool f_time::sttrn()
+{
+	if(m_host_dst[0] == '\0'){
+		mode = RCV;
+	}else{
+		// transmmit packet to the master server
+		memset((void*) &m_trpkt, 0, sizeof(s_tpkt));
+		m_trpkt.id = ((unsigned int) rand() << 16) | (unsigned int) rand();
+		m_trpkt.tc1 = m_cur_time;
+		socklen_t sz = sizeof(m_sock_addr_snd);
+		sendto(m_sock, (const char*) &m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_snd, sz);
+		mode = WAI;
+	}
+	return true;
+}
+
+// State WAI waits a time synchronization packet as a reply to the packet previously sent in TRN state.
+// If recieving the reply packet is distarbed by other time synchronization request, the time synchronization
+// process is aborted, and again the state move to TRN. Simultaneously, for the time synchronization request,
+// "del" command is sent to the client. "del" command include time the client should wait for sending 
+// synchronization request again. If "del" command is recieved in this state, the state is forced to be RCV,
+// until the wait time goes by. The successful reception of the reply packet change the state as FIX.
+// 
+// STATE Transition
+// WAI->TRN occurs if other time synchronization request is recieved faster.
+// WAI->RCV occurs if time synchronization request is denied.
+// WAI->FIX occurs if the reply packet is recieved first.
+bool f_time::stwai()
+
+{
+	s_tpkt rcvpkt;
+	socklen_t sz = sizeof(m_sock_addr_rep);
+	long long del = m_adjust_intvl * SEC;
+	int count = 0;
+
+	// In the loop all the packets recieved at this moment are consumed.
+	while(1){
+		timeval to;
+		to.tv_sec = 0;
+		to.tv_usec = 0;
+		fd_set fdrd, fder;
+		FD_ZERO(&fdrd);
+		FD_ZERO(&fder);
+		FD_SET(m_sock, &fdrd);
+		FD_SET(m_sock, &fder);
+		int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
+		if(n > 0){
+			if(FD_ISSET(m_sock, &fdrd)){
+				recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &sz);
+				if(rcvpkt.id == m_trpkt.id){
+					if(rcvpkt.del != 0){
+						m_tnext_adj = m_cur_time + rcvpkt.del;
+						mode = RCV;
+					}else{
+						m_trpkt.ts1 = rcvpkt.ts1;
+						m_trpkt.ts2 = rcvpkt.ts2;
+						m_trpkt.tc2 = m_cur_time;
+					}
+				}else{
+					rcvpkt.del = del;
+					sendto(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, sz);
+					del += m_adjust_intvl * SEC;
+					count++;
+				}
+			}else if(FD_ISSET(m_sock, &fder)){
+				cerr << "Socket error." << endl;
+				return false;
+			}else{
+				cerr << "Unknown error." << endl;
+				return false;
+			}
+		}else{
+			break;
+		}
+	}
+
+	if(mode != RCV){
+		if(count > 0){
+			// if the count value is larger than 0, the packet transmission is disturbed by other packet. 
+			// Again, we try transmission.
+			mode = TRN;
+		}else{
+			// if count == 0, the packet is correctly returned. now the filter try to correct time offset.
+			mode = FIX;
+		}
+	}
+	
+	return true;
+}
+
+// State RCV recieves a time synchronization request. Only the first client can get the reply. Otherwise, 
+// last call of clearpkts() send "del" command.
+// 
+// State Transition
+// RCV -> REP occurs if a time syncrhonization packet is recieved.
+// RCV -> TRN occurs when (1) no time synchronization request arrived, and (2) the wait time passed, and 
+//      (3) the filte can be a client (the request's destination is specified).
+// RCV -> RCV, otherwise, this occurs.
+bool f_time::strcv()		
+{
+	timeval to;
+	to.tv_sec = 0;
+	to.tv_usec = 0;
+	fd_set fdrd, fder;
+	FD_ZERO(&fdrd);
+	FD_ZERO(&fder);
+	FD_SET(m_sock, &fdrd);
+	FD_SET(m_sock, &fder);
+	int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
+	if(n > 0){
+		if(FD_ISSET(m_sock, &fdrd)){
+			recvfrom(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &m_sz_rep);
+			m_trpkt.ts1 = m_cur_time;
+			mode = REP;
+		}else if(FD_ISSET(m_sock, &fder)){
+			cerr << "Socket error." << endl;
+			return false;
+		}else{
+			cerr << "Unknown error." << endl;
+			return false;
+		}
+	}else{
+		if(m_tnext_adj < m_cur_time){
+			if(m_host_dst[0] == '\0')
+				mode = RCV;
+			else
+				mode = TRN;
+		}			
+	}
+
+	return clearpkts();
+}
+
+// State rep send a reply packet corresponding to the packet recieved in the RCV state.
+// The packets arrived at this state are all cleared by the call of clearpkts(). Of course, "del" command 
+// is sent.
+//
+// State Transition
+// REP -> RCV always occurs.
+bool f_time::strep()
+{
+	m_trpkt.ts2 = m_cur_time;
+	sendto(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, m_sz_rep);
+	mode = RCV;
+	return clearpkts();
+}
+
+// State fix correct the time according to the time synchronization packet recieved at WAI state.
+// Then the state moves to RCV.
+// 
+// State Transition
+// FIX -> RCV always occurs.
+bool f_time::stfix()
+{
+	long long delta = m_trpkt.calc_delta();
+	m_clk.set_time_delta(delta);
+	m_tnext_adj = (long long) m_adjust_intvl * SEC;
+	mode = RCV;
+	return clearpkts();
+}
+
+
+// Consume remained packet from clients. for every client del command is sent with different wait time.
+bool f_time::clearpkts()
+{
+	
+	s_tpkt rcvpkt;
+	sockaddr_in addr_del;
+	socklen_t len_del;
+	long long del = m_adjust_intvl * SEC;
+	while(1){
+
+		timeval to;
+		to.tv_sec = 0;
+		to.tv_usec = 0;
+		fd_set fdrd, fder;
+		FD_ZERO(&fdrd);
+		FD_ZERO(&fder);
+		FD_SET(m_sock, &fdrd);
+		FD_SET(m_sock, &fder);
+		int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
+		if(n > 0){
+			if(FD_ISSET(m_sock, &fdrd)){
+				recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, &len_del);
+				rcvpkt.del = del;
+				sendto(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, len_del);
+			}else if(FD_ISSET(m_sock, &fder)){
+				cerr << "Socket error." << endl;
+				return false;
+			}else{
+				cerr << "Unknown error." << endl;
+				return false;
+			}
+		}else{
+			break;
+		}
+		del += m_adjust_intvl * SEC;
+	}
 	return true;
 }

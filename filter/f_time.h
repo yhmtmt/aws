@@ -64,6 +64,13 @@ protected:
 	sockaddr_in m_sock_addr_snd, m_sock_addr_rep, m_sock_addr_rcv;
 	int m_adjust_intvl;
 	long long m_tnext_adj;
+
+	bool sttrn();
+	bool strcv();
+	bool stwai();
+	bool strep();
+	bool stfix();
+	bool clearpkts();
 public:
 	f_time(const char * name);
 
