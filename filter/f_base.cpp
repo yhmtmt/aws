@@ -429,7 +429,6 @@ bool f_base::load_ochlogpath()
 				char * ph = buf + 1, * pt = ph;
 				while(*pt != ' ' || *(pt-1) == '\\'){
 					pt++;
-					break;
 				}
 				*pt = '\0';
 				m_ochlogdrv.push_back(string(ph));
@@ -471,6 +470,7 @@ bool f_base::open_ochlogfile()
 	float drvuse;
 
 	// find and check the use of the new drive.
+	m_curochlogdrv = -1;
 	do{
 		m_curochlogdrv++;
 		if(m_curochlogdrv >= m_ochlogdrv.size()){
@@ -479,7 +479,7 @@ bool f_base::open_ochlogfile()
 			return false;
 		}
 		drvuse = getDrvUse(m_ochlogdrv[m_curochlogdrv].c_str());
-	}while(drvuse < m_thdrvuse[m_curochlogdrv]);
+	}while(drvuse >= m_thdrvuse[m_curochlogdrv]);
 
 	m_drvuseprev = drvuse;
 
@@ -546,7 +546,7 @@ void f_base::logoch()
 		}
 
 		if(m_ochlogout.is_open()){
-			m_ochlogout.write((const char*)m_cur_time, sizeof(long long));
+			m_ochlogout.write((const char*)&m_cur_time, sizeof(long long));
 			for(int i = 0; i < m_chout.size(); i++)
 				m_chout[i]->write(this, m_ochlogout, m_cur_time);
 		}else{

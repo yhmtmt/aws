@@ -95,7 +95,7 @@ public:
 	virtual bool write(f_base * pf, ofstream & fout, long long t)
 	{
 		lock();
-		unsigned long long ul = (unsigned long long) (m_new_nmeas * 83);
+		unsigned long long ul = (unsigned long long) (m_new_nmeas);
 
 		fout.write((const char *) &ul, sizeof(unsigned long long));
 		int head = m_tail - m_new_nmeas;

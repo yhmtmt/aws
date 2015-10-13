@@ -17,13 +17,15 @@
 
 #include "stdafx.h"
 
-
+#include <errno.h>
 #include <iostream>
 #include <fstream>
 using namespace std;
 
 #include <opencv2/opencv.hpp>
 using namespace cv;
+
+#include "../util/aws_stdlib.h"
 
 #include "f_time.h"
 
@@ -39,6 +41,10 @@ f_time::f_time(const char * name): f_base(name), mode(RCV), m_adjust_intvl(10), 
 
 bool f_time::init_run()
 {
+	m_sock = socket(AF_INET, SOCK_DGRAM, 0);	
+	if(set_sock_nb(m_sock) != 0)
+		return false;
+
 	m_sock_addr_snd.sin_family =AF_INET;
 	m_sock_addr_snd.sin_port = htons(m_port_dst);
 	set_sockaddr_addr(m_sock_addr_snd, m_host_dst);
@@ -51,7 +57,7 @@ bool f_time::init_run()
 	m_sock_addr_rcv.sin_port = htons(m_port);
 	set_sockaddr_addr(m_sock_addr_rcv);
 	if(::bind(m_sock, (sockaddr*)&m_sock_addr_rcv, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
-		cerr << "Socket error" << endl;
+		cerr << "Socket error " << strerror(errno) << endl;
 		return false;
 	}
 
