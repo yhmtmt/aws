@@ -578,7 +578,7 @@ bool f_base::repoch()
 					m_ochlogin.read((char*) &m_cur_time_rec, sizeof(long long));
 				}
 
-				if(m_cur_time_rec < -1){
+				if(m_cur_time_rec < 0){
 					m_ochlogin.close();
 					break;
 				}
@@ -611,7 +611,7 @@ bool f_base::repoch()
 
 					fochjournal.getline(buf, 1024);
 					ltime = atoll(buf);
-					if(ltime != m_tcurochlog && ltime <= m_cur_time)
+					if(ltime > m_tcurochlog)
 						break;
 				}
 
