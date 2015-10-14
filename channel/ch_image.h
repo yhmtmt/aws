@@ -213,6 +213,12 @@ public:
 	virtual bool write(f_base * pf, ofstream & fout, long long t)
 	{
 		lock();
+		fout.write((const char*) &m_bnew, sizeof(bool));
+		if(!m_bnew){
+			unlock();
+			return true;
+		}
+
 		vector<uchar> buf;
 		imencode(".png", m_img[m_back], buf);
 		Mat bufm(buf);
@@ -229,6 +235,12 @@ public:
 	virtual bool read(f_base * pf, ifstream & fin, long long t)
 	{
 		lock();
+		fin.read((char*) &m_bnew, sizeof(bool));
+		if(!m_bnew){
+			unlock();
+			return true;
+		}
+
 		unsigned long long ul;
 		m_time[m_back] = t;
 		fin.read((char*) &m_ifrm[m_back], sizeof(long long));
@@ -237,6 +249,7 @@ public:
 		fin.read((char*) bufm.data, (streamsize) ul);
 
 		imdecode(bufm, CV_LOAD_IMAGE_ANYDEPTH, &m_img[m_back]);
+
 		unlock();
 		return true;
 	}
