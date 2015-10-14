@@ -5,6 +5,7 @@
 #include <sys/types.h>
 #endif
 #include <errno.h>
+#include <string.h>
 #include <cstdio>
 #include <iostream>
 #include <fstream>
@@ -42,9 +43,8 @@ float getDrvUse(const char * path)
 #else
 	struct statvfs buf;
 	int rc =	statvfs(path, &buf);
-
 	if(rc < 0){
-		cerr << "Error statvfs() " << strerror(errno) << " " << buf << endl;
+	  cerr << "Error statvfs() " <<  strerror(errno)  << endl;
 		return 1.;
 	}
 	return (float)(1.0 - (double)buf.f_bfree / (double)buf.f_blocks);
