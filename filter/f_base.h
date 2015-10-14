@@ -404,11 +404,11 @@ public:
 		m_drvuseprev = 0.;
 		if(m_bochlog && m_fochlogpath[0] != '\0'){
 			if(!load_ochlogpath()){
-				cerr << "Ouput channel log won't be." << endl;
+				cerr << "Output channel log won't be." << endl;
 			}
 
 			if(!open_ochlogfile()){
-				cerr << "Ouput channel log won't be." << endl;
+				cerr << "Output channel log won't be." << endl;
 			}
 		}
 
