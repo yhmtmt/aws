@@ -4,6 +4,7 @@
 #include <sys/statvfs.h>
 #include <sys/types.h>
 #endif
+#include <errno.h>
 #include <cstdio>
 #include <iostream>
 #include <fstream>
@@ -37,15 +38,15 @@ float getDrvUse(const char * path)
 	if(n == 0){
 		cerr << "Error GetDiskFreeSpaceEx() " << path << endl;
 	}
-	return (float)((double) FBA  / (double) TNB);
+	return (float)(1.0 - (double) FBA  / (double) TNB);
 #else
 	struct statvfs buf;
 	int rc =	statvfs(path, &buf);
 
 	if(rc < 0){
-		cerr << "Error statvfs() " << strerror(errorno) << " " << buf << endl;
+		cerr << "Error statvfs() " << strerror(errno) << " " << buf << endl;
 		return 1.;
 	}
-	return (float)((double)buf.f_blocks / (double)buf.f_bavail);
+	return (float)(1.0 - (double)buf.f_bfree / (double)buf.f_blocks);
 #endif
 }

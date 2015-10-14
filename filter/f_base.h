@@ -141,6 +141,7 @@ protected:
 		long long m_tcurochlog; // time epoch of the current ochlog
 		long long m_tnextdrvchk; // next drive check time
 	};
+	long long m_cur_time_rec;	//
 	float m_spddrvuse;			// speed of drive use.
 	float m_drvuseprev;			// previous drive use.
 	bool m_bochlog;				// enabling log
@@ -397,7 +398,7 @@ public:
 			m_tnextdrvchk = start_time;
 
 		if(m_bochrep)
-			m_tcurochlog = -1;
+			m_cur_time_rec = m_tcurochlog = -1;
 
 		m_spddrvuse = 0.;
 		m_drvuseprev = 0.;

@@ -72,8 +72,8 @@ public:
 		lock();
 		int next_tail = (m_tail + 1) % m_max_buf;
 		if(m_head == next_tail){
-			unlock();
-			return false;
+			m_head++;
+			m_head %= m_max_buf;
 		}
 		char * p = m_buf[m_tail];
 		for( ;*buf != '\0'; buf++, p++){
@@ -88,7 +88,6 @@ public:
 
 	virtual void tran()
 	{
-		m_new_nmeas = 0;
 	}
 
 	// for channel logging
@@ -96,7 +95,6 @@ public:
 	{
 		lock();
 		unsigned long long ul = (unsigned long long) (m_new_nmeas);
-
 		fout.write((const char *) &ul, sizeof(unsigned long long));
 		int head = m_tail - m_new_nmeas;
 		if(head < 0) 
@@ -104,9 +102,10 @@ public:
 
 		for(int i = 0; i < (int) m_new_nmeas; i++){
 			fout.write((const char *)m_buf[head], sizeof(char) * 83);
+			cout << m_buf[head] << endl;
 			head = (head + 1) % m_max_buf;
 		}
-	
+		m_new_nmeas = 0;
 		unlock();
 		return true;
 	}
@@ -119,14 +118,15 @@ public:
 		fin.read((char *) &ul, sizeof(unsigned long long));
 		for(int i = 0; i < (int) ul; i++){
 			int next_tail = (m_tail + 1) % m_max_buf;
-			if(m_head == next_tail){
-				unlock();
-				return false;
-			}
 			fin.read((char*) m_buf[m_tail], sizeof(char) * 83);
-			m_tail = next_tail;
-			m_new_nmeas++;
+			if(m_head == next_tail){
+				m_head++;
+				m_head %= m_max_buf;
+			}else{
+				m_tail = next_tail;
+			}
 		}
+		
 		unlock();
 		return true;
 	}

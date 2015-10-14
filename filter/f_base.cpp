@@ -546,6 +546,7 @@ void f_base::logoch()
 		}
 
 		if(m_ochlogout.is_open()){
+			cout << "Logging " << m_cur_time << endl;
 			m_ochlogout.write((const char*)&m_cur_time, sizeof(long long));
 			for(int i = 0; i < m_chout.size(); i++)
 				m_chout[i]->write(this, m_ochlogout, m_cur_time);
@@ -573,15 +574,26 @@ bool f_base::repoch()
 			}
 
 			if(m_ochlogin.is_open()){
-				streamoff pos = m_ochlogin.tellg();
-				m_ochlogin.read((char*) &ltime, sizeof(long long));
-				if(ltime <= m_cur_time)
+				if(m_cur_time_rec == -1){
+					m_ochlogin.read((char*) &m_cur_time_rec, sizeof(long long));
+				}
+
+				if(m_cur_time_rec < -1){
+					m_ochlogin.close();
+					break;
+				}
+
+				ltime = m_cur_time_rec;
+
+				if(ltime <= m_cur_time){
+					cout << m_name << " Time " << ltime << " " << m_cur_time << " " << m_time_str << endl;
 					for(int i = 0; i < m_chout.size(); i++)
 						m_chout[i]->read(this, m_ochlogin, m_cur_time);
-				else
-					m_ochlogin.seekg(pos);
+					m_cur_time_rec = -1;
+				}
 			}else{
 				ifstream fochjournal;
+				
 				if(m_fjochlog[0] == '\0')
 					snprintf(m_fjochlog, 1023, "%s.jochlog", m_name);
 				fochjournal.open(m_fjochlog);
@@ -604,7 +616,7 @@ bool f_base::repoch()
 				}
 
 				fochjournal.getline(buf, 1024);
-				m_ochlogin.open(buf);
+				m_ochlogin.open(buf, ios_base::binary);
 				m_tcurochlog = ltime;
 			}
 		}while(m_cur_time > ltime);
