@@ -547,7 +547,6 @@ void f_base::logoch()
 		}
 
 		if(m_ochlogout.is_open()){
-			cout << "Logging " << m_cur_time << endl;
 			m_ochlogout.write((const char*)&m_cur_time, sizeof(long long));
 			for(int i = 0; i < m_chout.size(); i++)
 				m_chout[i]->write(this, m_ochlogout, m_cur_time);
@@ -587,7 +586,6 @@ bool f_base::repoch()
 				ltime = m_cur_time_rec;
 
 				if(ltime <= m_cur_time){
-					cout << m_name << " Time " << ltime << " " << m_cur_time << " " << m_time_str << endl;
 					for(int i = 0; i < m_chout.size(); i++)
 						m_chout[i]->read(this, m_ochlogin, m_cur_time);
 					m_cur_time_rec = -1;

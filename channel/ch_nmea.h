@@ -102,7 +102,6 @@ public:
 
 		for(int i = 0; i < (int) m_new_nmeas; i++){
 			fout.write((const char *)m_buf[head], sizeof(char) * 83);
-			cout << m_buf[head] << endl;
 			head = (head + 1) % m_max_buf;
 		}
 		m_new_nmeas = 0;
