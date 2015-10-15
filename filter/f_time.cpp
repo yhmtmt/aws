@@ -244,6 +244,7 @@ bool f_time::strcv()
 	int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
 	if(n > 0){
 		if(FD_ISSET(m_sock, &fdrd)){
+			m_sz_rep = sizeof(m_sock_addr_rep);
 			recvfrom(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &m_sz_rep);
 			m_trpkt.ts1 = m_cur_time;
 #ifdef DEBUG_F_TIME
@@ -268,6 +269,9 @@ bool f_time::strcv()
 
 #ifdef DEBUG_F_TIME
 	switch(mode){
+	case REP:
+		cout << "Move to REP mode." << endl;
+		break;
 	case RCV:
 	  cout << "Move to RCV mode." << endl;
 	  break;
@@ -338,7 +342,17 @@ bool f_time::clearpkts()
 		int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
 		if(n > 0){
 			if(FD_ISSET(m_sock, &fdrd)){
-				recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, &len_del);
+				len_del = sizeof(addr_del);
+				n = recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, &len_del);
+				if(n == SOCKET_ERROR){
+#ifdef _WIN32
+				cerr << "Failed to recieve packet recvfrom() " << strerror(errno) << endl;	
+				n = WSAGetLastError();
+#else
+								cerr << "Failed to recieve packet recvfrom() " << strerror(errno) << endl;
+#endif
+					return false;
+				}
 #ifdef DEBUG_F_TIME
 				cout << "Sending del packet id " << rcvpkt.id << " Twait: " << del << endl;
 #endif
