@@ -1,0 +1,28 @@
+#!/bin/sh
+
+channel imgr img1
+channel imgr img2
+
+filter avtstereo cam -i -o img1 img2
+fset cam host1 172.18.2.10
+fset cam host2 172.18.3.10
+fset cam PixelFormat1 Mono8
+fset cam ReverseY1 yes
+fset cam PixelFormat2 Mono8
+fset cam ReverseY2 yes
+fset cam FrameStartTriggerMode Software
+fset cam Ttrig 2000000
+#fset cam ochlog y
+fset cam ochrep y
+fset cam fochlogpath "/home/ubuntu/images/fpath.txt"
+fset cam fjochlog "/home/ubuntu/images/journal.txt" 
+filter glstvw win -i img1 img2 -o 
+fset win width 640 height 480
+
+#filter glimv win1 -i img1 -o
+#fset win1 width 640 height 480
+#filter glimv win2 -i img2 -o
+#fset win2 width 640 height 480
+cyc 0.1 
+online no
+go 946689890
