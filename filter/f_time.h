@@ -45,14 +45,14 @@ protected:
 		unsigned int id;
 		long long tc1, ts1, ts2, tc2, del;
 		// we assume client time has offset to, therefore 
-		//    ts1 - tc1 = d + R(Ts) - to
-		//    tc2 - ts2 = d + R(Tc) + to
+		//    ts1 - tc1 = d + R(Ts) + to
+		//    tc2 - ts2 = d + R(Tc) - to
 		// where d is the communication delay, R(Ts) and R(Tc) are the cycle time dependent delay components of server and client. 
 		// Ts and Tc is the cycle times of the server and client. R(T) can be the value between 0 and T. Then, 
-		// [(ts1 - tc1) - (tc2 - ts2)]/2 = -to 
+		// [(ts1 - tc1) - (tc2 - ts2)]/2 = to 
 		// We add -to to current time.
 		long long calc_delta(){
-			return ((ts1 - tc1) + (tc2 - ts2)) >> 1;  
+			return ((ts1 - tc1) - (tc2 - ts2)) / 2;  
 		};
 	} m_trpkt;
 
