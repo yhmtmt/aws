@@ -54,8 +54,8 @@ public:
 			cout << "Filter is puasing." << endl;
 		}
 
-		cout << " f64par:" << m_f64par << " s64par:" << m_s64par <<
-			" u64par:" << m_u64par << endl;
+		cout << " f64par:" << m_f64par << " s64par:" 
+			<< m_s64par << " u64par:" << m_u64par << endl;
 		return true;
 	}
 };
