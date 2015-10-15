@@ -29,7 +29,7 @@ private:
 	unsigned long long m_u64par;
 public:
 	// 3) constructor should have a c-string as object name. then the object name should be passed to the f_base constructor.
-	f_sample(const char * fname): f_base(fname)
+ f_sample(const char * fname): f_base(fname), m_f64par(0.), m_s64par(0, m_u64par(0)
 	{
 		// 3-1)register variables to be accessed from consoles by calling register_fpar
 		register_fpar("f64par", &m_f64par, "Double precision floating point number.");
@@ -54,7 +54,8 @@ public:
 			cout << "Filter is puasing." << endl;
 		}
 
-		cout << "f64par:" << m_f64par << " s64par:" << m_s64par <<
+		cout << m_time_str;
+		cout << " f64par:" << m_f64par << " s64par:" << m_s64par <<
 			" u64par:" << m_u64par << endl;
 		return true;
 	}

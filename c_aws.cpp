@@ -329,8 +329,9 @@ bool c_aws::handle_stop()
 	while(!stopped){
 		stopped = true;
 		for(vector<f_base*>::iterator fitr = m_filters.begin(); 
-			fitr != m_filters.end(); fitr++)
-			stopped = stopped && (*fitr)->stop();
+		    fitr != m_filters.end(); fitr++){
+		  stopped = stopped && (*fitr)->stop(); 
+		}
 		f_base::clock(-1);
 	}
 
