@@ -317,6 +317,7 @@ void c_clock::wait()
 		m_offset += m_tcur - tcur;
 	 m_tcur = tcur;
 	 m_offset += delta_adjust;
+	 //	 cout << "Toffset " << m_offset << " (+" << delta_adjust << "/" << m_delta << ")" << endl;
 	}else{
 	  // if tnext is larger than the tcur, the difference 
 	  // is consumed here with the nanosleep. Then the current
@@ -333,6 +334,7 @@ void c_clock::wait()
 		m_offset += m_tcur - tnext;
 	  m_tcur = tnext;
 	  m_offset += delta_adjust;
+	  //cout << "Toffset " << m_offset << " (+" << delta_adjust << "/" << m_delta << ")" << endl;
 	}
 #endif
 }
