@@ -3,10 +3,19 @@
 # f_sample simply prints its three parameters internally registered to stdout.
 # you can test how fset/fget work.
 
+CLIENT=yes
+if [ $# -eq 1 ]; then
+    CLIENT=$1
+fi
+
 filter sample smpl -i -o
 filter tsync tsync -i -o
-fset tsync host_svr 172.18.1.222
-fset tsync port_svr 20200
+if [ $CLIENT = "yes" ]; then
+    fset tsync host_svr 172.18.1.222
+    fset tsync port_svr 20200
+else
+    fset tsync port 20200
+fi
 online no
 cyc 1
 go
