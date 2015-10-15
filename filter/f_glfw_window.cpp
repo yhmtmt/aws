@@ -176,6 +176,8 @@ bool f_glfw_window::init_run()
 
 void f_glfw_window::destroy_run()
 { 
+  if(!m_pwin)
+    return;
   glfwTerminate();
   MapGLFWin::iterator itr = m_map_glfwin.find(m_pwin);
   m_map_glfwin.erase(itr);

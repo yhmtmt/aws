@@ -434,6 +434,7 @@ public:
 		if(!m_bochrep){
 			if(m_bstopped || is_main_thread()){
 				destroy_run();
+				m_bstopped = true;
 				return true;
 			}
 		}else{
