@@ -20,7 +20,7 @@
 #include "../util/aws_serial.h"
 #include "f_base.h"
 
-
+#define DEBUG_F_TIME
 // Filter for time synchronization.
 // This uses simple time exchanging scheme using UDP. 
 // The filter works both for server and client. 
