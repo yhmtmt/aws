@@ -8,7 +8,7 @@ using namespace std;
 
 #include <opencv2/opencv.hpp>
 using namespace cv;
-
+#include "../util/aws_thread.h"
 #include "ch_image.h"
 
 bool ch_image_ref::read(f_base * pf, ifstream & fin, long long t)
