@@ -108,7 +108,7 @@ bool f_time::sttrn()
 {
 	if(m_host_dst[0] == '\0'){
 #ifdef DEBUG_F_TIME
-	  cout << " Destination host is not specified. Move to RCV mode." << endl;
+		cout << " Destination host is not specified. Move to RCV mode." << endl;
 #endif
 		mode = RCV;
 	}else{
@@ -118,7 +118,7 @@ bool f_time::sttrn()
 		m_trpkt.tc1 = m_cur_time;
 #ifdef DEBUG_F_TIME
 		cout << "Sending tsync request with id:" << m_trpkt.id
-		     << " Tc1:" << m_trpkt.tc1 << endl;
+			<< " Tc1:" << m_trpkt.tc1 << endl;
 #endif
 		socklen_t sz = sizeof(m_sock_addr_snd);
 		sendto(m_sock, (const char*) &m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_snd, sz);
@@ -141,97 +141,97 @@ bool f_time::sttrn()
 bool f_time::stwai()
 
 {
-  s_tpkt rcvpkt;
-  socklen_t sz = sizeof(m_sock_addr_rep);
-  long long del = m_adjust_intvl * SEC;
-  int count = 0;
-  
-  // In the loop all the packets recieved at this moment are consumed.
-  while(1){
-    timeval to;
-    to.tv_sec = 0;
-    to.tv_usec = 0;
-    fd_set fdrd, fder;
-    FD_ZERO(&fdrd);
-    FD_ZERO(&fder);
-    FD_SET(m_sock, &fdrd);
-    FD_SET(m_sock, &fder);
-    int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
-    if(n > 0){
-      if(FD_ISSET(m_sock, &fdrd)){
-	sz = sizeof(m_sock_addr_rep);
-	recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &sz);
-	if(rcvpkt.id == m_trpkt.id){
-	  if(rcvpkt.del != 0){
+	s_tpkt rcvpkt;
+	socklen_t sz = sizeof(m_sock_addr_rep);
+	long long del = m_adjust_intvl * SEC;
+	int count = 0;
+
+	// In the loop all the packets recieved at this moment are consumed.
+	while(1){
+		timeval to;
+		to.tv_sec = 0;
+		to.tv_usec = 0;
+		fd_set fdrd, fder;
+		FD_ZERO(&fdrd);
+		FD_ZERO(&fder);
+		FD_SET(m_sock, &fdrd);
+		FD_SET(m_sock, &fder);
+		int n = select((int)(m_sock) + 1, &fdrd, NULL, &fder, &to);
+		if(n > 0){
+			if(FD_ISSET(m_sock, &fdrd)){
+				sz = sizeof(m_sock_addr_rep);
+				recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &sz);
+				if(rcvpkt.id == m_trpkt.id){
+					if(rcvpkt.del != 0){
 #ifdef DEBUG_F_TIME
-	    cout << "Request denied. id: " << rcvpkt.id << " Twait: " << rcvpkt.del << endl;
+						cout << "Request denied. id: " << rcvpkt.id << " Twait: " << rcvpkt.del << endl;
 #endif
-	    m_tnext_adj = m_cur_time + rcvpkt.del;
-	    mode = RCV;
+						m_tnext_adj = m_cur_time + rcvpkt.del;
+						mode = RCV;
 #ifdef DEBUG_F_TIME
-	    cout << "Next request is set as Tnext: " <<  m_tnext_adj << endl;
-	    cout << "Move to RCV mode" << endl;
+						cout << "Next request is set as Tnext: " <<  m_tnext_adj << endl;
+						cout << "Move to RCV mode" << endl;
 #endif
-	    break;
-	  }else{
+						break;
+					}else{
 #ifdef DEBUG_F_TIME
-	    cout << "Recieved tsync packet from server id: " << rcvpkt.id 
-		 << " tc1: " << rcvpkt.tc1 << " ts1: " << rcvpkt.ts1
-		 << " ts2: " << rcvpkt.ts2 << " tc2: " << m_cur_time << endl;
+						cout << "Recieved tsync packet from server id: " << rcvpkt.id 
+							<< " tc1: " << rcvpkt.tc1 << " ts1: " << rcvpkt.ts1
+							<< " ts2: " << rcvpkt.ts2 << " tc2: " << m_cur_time << endl;
 #endif
-	    m_trpkt.ts1 = rcvpkt.ts1;
-	    m_trpkt.ts2 = rcvpkt.ts2;
-	    m_trpkt.tc2 = m_cur_time;
-	    if(count == 0){
-	      mode = FIX;
-	    }else{
-	      mode = TRN;
-	    }
-	    break;
-	  }
-	}else{
-	  rcvpkt.del = del;
+						m_trpkt.ts1 = rcvpkt.ts1;
+						m_trpkt.ts2 = rcvpkt.ts2;
+						m_trpkt.tc2 = m_cur_time;
+						if(count == 0){
+							mode = FIX;
+						}else{
+							mode = TRN;
+						}
+						break;
+					}
+				}else{
+					rcvpkt.del = del;
 #ifdef DEBUG_F_TIME
-	  cout << "Different tsync packet recieved sent id: " << m_trpkt.id << " rcvd id: " << rcvpkt.id << endl;
-	  cout << "Denying request with wait time " << del << endl;
+					cout << "Different tsync packet recieved sent id: " << m_trpkt.id << " rcvd id: " << rcvpkt.id << endl;
+					cout << "Denying request with wait time " << del << endl;
 #endif
-	  sendto(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, sz);
-	  del += m_adjust_intvl * SEC;
-	  count++;
+					sendto(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, sz);
+					del += m_adjust_intvl * SEC;
+					count++;
+				}
+			}else if(FD_ISSET(m_sock, &fder)){
+				cerr << "Socket error." << endl;
+				return false;
+			}else{
+				cerr << "Unknown error." << endl;
+				return false;
+			}
+		}else{
+			if(count == 0)
+				mode = WAI;
+			else
+				mode = TRN;
+			break;
+		}
 	}
-      }else if(FD_ISSET(m_sock, &fder)){
-	cerr << "Socket error." << endl;
-	return false;
-      }else{
-	cerr << "Unknown error." << endl;
-	return false;
-      }
-    }else{
-      if(count == 0)
-	mode = WAI;
-      else
-	mode = TRN;
-      break;
-    }
-  }
 
 #ifdef DEBUG_F_TIME
-  switch(mode){
-  case RCV:
-    cout << "Move to RCV mode." << endl;
-    break;
-  case WAI:
-    cout << "Move to WAI mode." << endl;
-    break;
-  case FIX:
-    cout << "Move to FIX mode." << endl;
-  case TRN:
-    cout << "Move to TRN mode." << endl;
-    break;
-  }
+	switch(mode){
+	case RCV:
+		cout << "Move to RCV mode." << endl;
+		break;
+	case WAI:
+		cout << "Move to WAI mode." << endl;
+		break;
+	case FIX:
+		cout << "Move to FIX mode." << endl;
+	case TRN:
+		cout << "Move to TRN mode." << endl;
+		break;
+	}
 #endif
-    
-  return clearpkts();
+
+	return clearpkts();
 }
 
 // State RCV recieves a time synchronization request. Only the first client can get the reply. Otherwise, 
@@ -271,7 +271,7 @@ bool f_time::strcv()
 		}
 	}else{
 #ifdef DEBUG_F_TIME
-	  cout << "RCV mode in Curtime:" << m_cur_time << " NextTRN time: " << m_tnext_adj << " Svr: " << m_host_dst << endl; 
+		cout << "RCV mode in Curtime:" << m_cur_time << " NextTRN time: " << m_tnext_adj << " Svr: " << m_host_dst << endl; 
 #endif
 		if(m_tnext_adj < m_cur_time){
 			if(m_host_dst[0] == '\0')
@@ -287,11 +287,11 @@ bool f_time::strcv()
 		cout << "Move to REP mode." << endl;
 		break;
 	case RCV:
-	  cout << "Move to RCV mode." << endl;
-	  break;
+		cout << "Move to RCV mode." << endl;
+		break;
 	case TRN:
-	  cout << "Move to TRN mode." << endl;
-	  break;
+		cout << "Move to TRN mode." << endl;
+		break;
 	}
 #endif
 	return clearpkts();
@@ -306,8 +306,8 @@ bool f_time::strcv()
 bool f_time::strep()
 {
 #ifdef DEBUG_F_TIME
-  cout << "Replying tsync request id: " << m_trpkt.id << " tc1: " << 
-    m_trpkt.tc1 << " ts1: " << m_trpkt.ts1 << " ts2: " << m_trpkt.ts2 << endl;
+	cout << "Replying tsync request id: " << m_trpkt.id << " tc1: " << 
+		m_trpkt.tc1 << " ts1: " << m_trpkt.ts1 << " ts2: " << m_trpkt.ts2 << endl;
 #endif
 	m_trpkt.ts2 = m_cur_time;
 	sendto(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, m_sz_rep);
@@ -343,7 +343,7 @@ bool f_time::stfix()
 // Consume remained packet from clients. for every client del command is sent with different wait time.
 bool f_time::clearpkts()
 {
-	
+
 	s_tpkt rcvpkt;
 	sockaddr_in addr_del;
 	socklen_t len_del;
@@ -365,10 +365,10 @@ bool f_time::clearpkts()
 				n = recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, &len_del);
 				if(n == SOCKET_ERROR){
 #ifdef _WIN32
-				cerr << "Failed to recieve packet recvfrom() " << strerror(errno) << endl;	
-				n = WSAGetLastError();
+					cerr << "Failed to recieve packet recvfrom() " << strerror(errno) << endl;	
+					n = WSAGetLastError();
 #else
-								cerr << "Failed to recieve packet recvfrom() " << strerror(errno) << endl;
+					cerr << "Failed to recieve packet recvfrom() " << strerror(errno) << endl;
 #endif
 					return false;
 				}
