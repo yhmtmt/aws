@@ -1,12 +1,28 @@
 #!/bin/sh
 
+if [ $# -ne 2 ]; then
+    echo "Usage: glfw <src> <src spec>"
+    echo "<src>: c or f"
+    echo "   c is camera and <src spec> should be the number."
+    echo "   f is video file and <src spec> should be file path."
+fi
+
 channel imgc clr
-filter vfile video -i -o clr
+
 filter glimv win -i clr -o
-fset win width 1440 height 1080
-fset video file $1
-fset video abs_time "[Sun Jan 11 15:00:00.000 2015]"
+fset win width 640 height 480
 cyc 0.0344827
-online no
-go "[Sun Jan 11 15:00:00.000 2015]"
+
+if [ $1 = "f" ]; then
+    filter vfile video -i -o clr
+    fset video file $2
+    fset video abs_time "[Sun Jan 11 15:00:00.000 2015]"
+    online no
+    go "[Sun Jan 11 15:00:00.000 2015]"
+else
+    filter vdev video -i -o clr
+    fset video device $2
+    go
+fi
+
 
