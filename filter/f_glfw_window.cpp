@@ -171,7 +171,10 @@ bool f_glfw_window::init_run()
     return false;
   }
 
-	return true;
+  int argc = 0;
+  glutInit(&argc, NULL);
+
+	return true;	
 }
 
 void f_glfw_window::destroy_run()
@@ -190,7 +193,7 @@ bool f_glfw_window::proc()
 		return false;
 
 	//glfwMakeContextCurrent(pwin());
-
+	
 	// rendering codes >>>>>
 
 	// <<<<< rendering codes
@@ -235,6 +238,14 @@ bool f_glfw_imview::proc()
 	  cnvCVBGR8toGLRGB8(img);
 	  glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
 	}
+
+	float hfont = (float)(24. / (float) m_sz_win.height);
+	float wfont = (float)(24. / (float) m_sz_win.height);
+	float x = wfont - 1;
+	float y = 1 - 2 * hfont;
+
+	// show time
+	drawGlText(x, y, m_time_str, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 
 	glfwSwapBuffers(pwin());
 	glfwPollEvents();
