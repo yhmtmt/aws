@@ -3560,6 +3560,9 @@ bool f_inspector::save_kfrms()
 
 	vector<s_obj*> objptr;
 	for(int i = 0, ikf = ikf0 ; i < m_kfrms.size(); i++, ikf = (ikf + 1) % m_kfrms.size()){
+		if(!m_kfrms[ikf])
+			continue;
+
 		for(int iobj1 = 0; iobj1 < m_kfrms[ikf]->objs.size(); iobj1++){
 			s_obj * pobj = m_kfrms[ikf]->objs[iobj1];
 			bool found = false;
