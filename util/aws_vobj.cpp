@@ -1016,10 +1016,12 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, boo
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			s_obj & obj = *objs[iobj];
 			pts[iobj].resize(obj.pmdl->pts.size());
+			obj.calc_part_deformation();
 
 			if(iobj == base_obj){
 				obj.roll = obj.pitch = obj.yaw = 0.;
 				obj.pos.x = obj.pos.y = obj.pos.z = 0.;
+				pts[iobj] = obj.pmdl->pts_deformed;
 				continue;
 			}
 
@@ -1042,6 +1044,7 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, boo
  			R = Rorg * R;
 			p0 = R.ptr<double>();
 
+			
 			trnPts(obj.pmdl->pts_deformed, pts[iobj], R, T);
 			
 			if(xyz)
