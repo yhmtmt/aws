@@ -910,7 +910,7 @@ void f_inspector::renderInfo()
 				m_time_str, (float) m_adj_step);
 		}
 	}else{
-		if(m_sel_kfrm != -1 && m_kfrms[m_sel_kfrm]->kfrm)
+		if(m_pfrm->kfrm)
 			snprintf(information, 1023, "AWS Time %s (Image Time %lld, Key Frame) Adjust Step x%f", 
 				m_time_str, m_timg, (float) m_adj_step);
 		else
@@ -3728,6 +3728,7 @@ bool f_inspector::load_kfrms()
 		if(m_kfrms[ikf] == NULL)
 			break;
 		m_kfrms[ikf]->load(m_name, m_kfrms[ikf]->tfrm, m_models);
+		m_kfrms[ikf]->kfrm = true;
 	}
 
 	if(m_pfrm->tfrm == m_kfrms[m_cur_kfrm]->tfrm && m_pfrm != m_kfrms[m_cur_kfrm]){

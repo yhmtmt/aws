@@ -312,7 +312,7 @@ struct s_frame{
 	{
 		if(pfobj == NULL)
 			return;
-
+		
 		pfobj->release();
 		pfobj->ptr = pool;
 		pool = pfobj;
