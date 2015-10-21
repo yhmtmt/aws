@@ -3554,10 +3554,28 @@ bool f_inspector::save_kfrms()
 		m_kfrms[ikf]->save(m_name);
 
 		file << m_kfrms[ikf]->tfrm << endl;
-		num_objs = max(num_objs, (int) m_kfrms[ikf]->objs.size());
 	}
 	
 	file.close();
+
+	vector<s_obj*> objptr;
+	for(int i = 0, ikf = ikf0 ; i < m_kfrms.size(); i++, ikf = (ikf + 1) % m_kfrms.size()){
+		for(int iobj1 = 0; iobj1 < m_kfrms[ikf]->objs.size(); iobj1++){
+			s_obj * pobj = m_kfrms[ikf]->objs[iobj1];
+			bool found = false;
+			for(int iobj2 = 0; iobj2 < objptr.size(); iobj2++){
+				if(strcmp(objptr[iobj2]->name, pobj->name) == 0){
+					found = true;
+					break;
+				}
+			}
+
+			if(!found){
+				objptr.push_back(pobj);
+				num_objs++;
+			}
+		}
+	}
 
 	snprintf(fname, 1024, "%s.csv", m_name);
 	file.open(fname);
@@ -3566,12 +3584,11 @@ bool f_inspector::save_kfrms()
 
 	file << "Time(sec),";
 	for(int iobj = 0; iobj < num_objs; iobj++){
-		file << "obj[" << iobj << "],";
+		file << objptr[iobj]->name << ",";
 		file << "roll,pitch,yaw,x,y,z,";
 		if(m_bsave_objpts){
-			vector<s_obj*> & objs = m_kfrms[ikf0]->objs;
 			
-			for(int ipt = 0; ipt < objs[iobj]->pmdl->pts_deformed.size(); ipt++){
+			for(int ipt = 0; ipt < objptr[iobj]->pmdl->pts_deformed.size(); ipt++){
 				file << "pt[" << ipt << "].x,";
 				file << "pt[" << ipt << "].y,";
 				file << "pt[" << ipt << "].z,";
@@ -3593,20 +3610,33 @@ bool f_inspector::save_kfrms()
 
 		file << (double)(m_kfrms[ikf]->tfrm - tmin) / (double)SEC << ",";
 		vector<s_obj*> & objs = m_kfrms[ikf]->objs;
-		for(int iobj = 0; iobj < objs.size(); iobj++){
-			file << ",";
-			file << objs[iobj]->roll * 180 / PI << ",";
-			file << objs[iobj]->pitch * 180 / PI<< ",";
-			file << objs[iobj]->yaw * 180 / PI << ",";
-			file << objs[iobj]->pos.x << ",";
-			file << objs[iobj]->pos.y << ",";
-			file << objs[iobj]->pos.z << ",";
-			if(m_bsave_objpts){
-				for(int ipt = 0; ipt < pts[iobj].size(); ipt++){
-					file << pts[iobj][ipt].x << ",";
-					file << pts[iobj][ipt].y << ",";
-					file << pts[iobj][ipt].z << ",";
+		for(int iobj1 = 0; iobj1 < objptr.size(); iobj1++){
+			int iobj = -1;
+			for(int iobj2 = 0; iobj2 < objs.size(); iobj2++){
+				if(strcmp(objs[iobj2]->name, objptr[iobj1]->name) == 0){
+					iobj = iobj2;
+					break;
 				}
+			}
+			if(iobj != -1){
+				file << ",";
+				file << objs[iobj]->roll * 180 / PI << ",";
+				file << objs[iobj]->pitch * 180 / PI<< ",";
+				file << objs[iobj]->yaw * 180 / PI << ",";
+				file << objs[iobj]->pos.x << ",";
+				file << objs[iobj]->pos.y << ",";
+				file << objs[iobj]->pos.z << ",";
+				if(m_bsave_objpts){
+					for(int ipt = 0; ipt < pts[iobj].size(); ipt++){
+						file << pts[iobj][ipt].x << ",";
+						file << pts[iobj][ipt].y << ",";
+						file << pts[iobj][ipt].z << ",";
+					}
+				}
+			}else{
+				file << ",,,,,,,";
+				if(m_bsave_objpts)
+					file << ",,,";
 			}
 		}
 		file << endl;
