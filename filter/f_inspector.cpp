@@ -3922,6 +3922,7 @@ void f_inspector::handle_sop_seek_kf(bool fwd)
 			m_bstep_issued = false;
 			if(m_pfrm->kfrm){
 				m_sop = SOP_NULL;
+				return;
 			}
 		}else{
 			return;
