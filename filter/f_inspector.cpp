@@ -249,7 +249,7 @@ const char * f_inspector::m_str_op[VIEW3D+1]
 	= {"model", "obj", "part", "point", "camera", "camtbl", "estimate", "frame", "v3d"};
 
 const char * f_inspector::m_str_sop[SOP_AWSCMD+1]
-	= {"null", "save", "load", "guess", "det", "ins", "del", "kf", "icp", "awscmd"};
+	= {"null", "save", "load", "guess", "det", "ins", "del", "kf", "skff", "skfb", "icp", "awscmd"};
 
 const char * f_inspector::m_axis_str[AX_Z + 1] = {
 	"x", "y", "z"
@@ -267,7 +267,7 @@ const char * f_inspector::m_str_view[EV_FREE + 1] = {
 	"cam", "objx", "objy", "objz", "free"
 };
 
-f_inspector::f_inspector(const char * name):f_ds_window(name), m_pin(NULL), m_timg(-1),
+f_inspector::f_inspector(const char * name):f_ds_window(name), m_bnew_frm(false),  m_pin(NULL), m_timg(-1),
 	m_sh(1.0), m_sv(1.0), m_btrack_obj(true), m_btrack_obj_3d(false), m_sz_vtx_smpl(128, 128), 
 	m_brender_grid(false),
 	m_miss_tracks(0), m_wt(EWT_TRN), m_lvpyr(2), m_sig_gb(3.0),m_bauto_load_fobj(false),
@@ -480,6 +480,7 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 
 bool f_inspector::proc()
 {
+	m_bnew_frm = false;
 	pthread_lock lock(&m_d3d_mtx);
 
 	////////////////// updating pvt information ///////////////////////
@@ -492,6 +493,8 @@ bool f_inspector::proc()
 	if(m_timg != timg){ // new frame arrived
 		if(!new_frame(img, timg))
 			return false;
+
+		m_bnew_frm = true;
 
 		if(!m_pfrm)
 			return true;
@@ -557,6 +560,12 @@ bool f_inspector::proc()
 		break;
 	case SOP_SET_KF:
 		handle_sop_set_kf();
+		break;
+	case SOP_SEEK_KF_BK:
+		handle_sop_seek_kf(false);
+		break;
+	case SOP_SEEK_KF_FWD:
+		handle_sop_seek_kf();
 		break;
 	case SOP_AWSCMD:
 		handle_sop_awscmd();
@@ -901,8 +910,12 @@ void f_inspector::renderInfo()
 				m_time_str, (float) m_adj_step);
 		}
 	}else{
-		snprintf(information, 1023, "AWS Time %s (Image Time %lld) Adjust Step x%f", 
-			m_time_str, m_timg, (float) m_adj_step);
+		if(m_sel_kfrm != -1 && m_kfrms[m_sel_kfrm]->kfrm)
+			snprintf(information, 1023, "AWS Time %s (Image Time %lld, Key Frame) Adjust Step x%f", 
+				m_time_str, m_timg, (float) m_adj_step);
+		else
+			snprintf(information, 1023, "AWS Time %s (Image Time %lld) Adjust Step x%f", 
+				m_time_str, m_timg, (float) m_adj_step);
 	}
 	m_d3d_txt.render(m_pd3dev, information, 0.f, (float) y, 1.0, 0, EDTC_LT);
 	y += 20;
@@ -3361,8 +3374,8 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			m_sel_kfrm += 1;
 			m_sel_kfrm %= m_kfrms.size();
 		}else{
-			snprintf(m_cmd_buf, CMD_LEN, "step c %d", m_int_cyc_kfrm);
-			m_sop = SOP_AWSCMD;
+			m_sop = SOP_SEEK_KF_FWD;
+			m_bstep_issued = false;
 		}
 		break;
 	case '<':
@@ -3371,8 +3384,8 @@ void f_inspector::handle_char(WPARAM wParam, LPARAM lParam)
 			if(m_sel_kfrm < 0)
 				m_sel_kfrm += (int) m_kfrms.size();
 		}else{
-			snprintf(m_cmd_buf, CMD_LEN, "step c -%d", m_int_cyc_kfrm);
-			m_sop = SOP_AWSCMD;
+			m_sop = SOP_SEEK_KF_BK;
+			m_bstep_issued = false;
 		}
 		break;
 	case '1':
@@ -3901,6 +3914,38 @@ void f_inspector::handle_sop_awscmd()
 	m_sop = SOP_NULL;
 	return;
 }
+
+void f_inspector::handle_sop_seek_kf(bool fwd)
+{
+	if(m_bstep_issued){
+		if(m_bnew_frm){
+			m_bstep_issued = false;
+			if(m_pfrm->kfrm){
+				m_sop = SOP_NULL;
+			}
+		}else{
+			return;
+		}
+	}
+
+
+	if(fwd){
+		snprintf(m_cmd_buf, CMD_LEN, "step c %d", 1);
+	}else{
+		snprintf(m_cmd_buf, CMD_LEN, "step c -%d", 1);
+	}
+
+	bool ret;
+
+	if(!m_paws->push_command(m_cmd_buf, m_cmd_ret, ret))
+		cerr << "Unknown command issued." << endl;
+	if(!ret){
+		cerr << "Command " << m_cmd_buf << " Failed." << endl;
+	}else{
+		m_bstep_issued = true;
+	}
+}
+
 
 void f_inspector::handle_sop_set_kf()
 {

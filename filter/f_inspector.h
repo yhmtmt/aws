@@ -84,6 +84,7 @@ private:
 	//
 	ch_image * m_pin;
 
+	bool m_bnew_frm;
 	bool new_frame(Mat & img, long long & timg);
 
 	// 
@@ -134,6 +135,7 @@ private:
 	enum e_operation {
 		MODEL, OBJ, PARTS, POINT, CAMERA, CAMTBL, ESTIMATE, FRAME, VIEW3D
 	} m_op;
+
 	bool m_bkfrm;
 
 	static const char * m_str_op[VIEW3D+1]; 
@@ -141,7 +143,7 @@ private:
 	// sub operation
 	enum e_sub_operation{
 		SOP_NULL, SOP_SAVE, SOP_LOAD, SOP_GUESS, SOP_DET, SOP_INST_OBJ, SOP_DELETE, 
-		 SOP_SET_KF, SOP_INS_CPTBL, SOP_AWSCMD
+		 SOP_SET_KF, SOP_SEEK_KF_FWD, SOP_SEEK_KF_BK, SOP_INS_CPTBL, SOP_AWSCMD
 	} m_sop;
 
 	static const char * m_str_sop[SOP_AWSCMD + 1];
@@ -151,6 +153,9 @@ private:
 	void handle_sop_load();
 	void handle_sop_guess();
 	void handle_sop_inst_obj();
+
+	bool m_bstep_issued;
+	void handle_sop_seek_kf(bool fwd = true);
 	void handle_sop_ins_cptbl();
 	void handle_sop_det();
 
