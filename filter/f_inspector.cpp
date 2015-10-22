@@ -1622,7 +1622,8 @@ void f_inspector::renderScene()
 			else
 				render_prjpts(*objs[iobj]->pmdl, pts, m_pd3dev, NULL, m_pline, iobj, 1, -1);
 			render_axis(objs[iobj]->pmdl, m_cam_int, m_cam_dist, 
-				objs[iobj]->rvec, objs[iobj]->tvec, m_pd3dev, m_pline, -1);
+//				objs[iobj]->rvec, objs[iobj]->tvec, m_pd3dev, m_pline, -1);
+				rvec, tvec, m_pd3dev, m_pline, -1);
 		}
 	}
 	m_model_view.ResetRenderTarget(m_pd3dev);
