@@ -108,12 +108,12 @@ bool f_camcalib::cmd_proc(s_cmd & cmd)
 			return false;
 		return true;
 	}else if(strcmp(args[itok], "save") == 0){
-		if(num_args != 4){
-			cerr << "save <file name>" << endl;
+		if(num_args != 5){
+			cerr << "save <points file name> <camera parameters yml file name>" << endl;
 			return false;
 		}
 
-		if(!write_pts(args[itok+1]))
+		if(!write_pts(args[itok+1]) || !write_campars(args[itok+2]))
 			return false;
 
 		return true;
@@ -141,13 +141,14 @@ bool f_camcalib::cmd_proc(s_cmd & cmd)
 
 bool f_camcalib::proc()
 {
-	ch_image * pin = dynamic_cast<ch_image*>(m_pin);
-	if(pin == NULL)
+	// ch_image * pin = m_pin;
+	// if(pin == NULL)
+	// 	return false;
+	// ch_image * pout = m_pout;
+	if(m_pin == NULL)
 		return false;
-
-	ch_image * pout = dynamic_cast<ch_image*>(m_pout);
 	long long timg;
-	Mat img = pin->get_img(timg);
+	Mat img = m_pin->get_img(timg);
 
 	if(img.empty())
 		return true;
@@ -158,27 +159,28 @@ bool f_camcalib::proc()
 		return true;
 	}
 
+	static int num_det = 0;
+	num_det++;
+	cout << num_det << "th " 
+	     << "Chessboard was detected" << endl;
+
 	cornerSubPix(img, corners, Size(11, 11), Size(-1, -1),
 		TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
 
 	m_2dchsbd.push_back(corners);
 
-	if(!pout)
-		return true;
-
 	for(int i = 0; i < m_2dchsbd.size(); i++){
 		drawChessboardCorners(img, m_sz_chsbd, m_2dchsbd[i], true);
 	}
 
-	pout->set_img(img, timg);
+	m_pout->set_img(img, timg);
 	return true;
 }
 
 bool f_camcalib::calibrate()
 {
-	ch_image * pin = dynamic_cast<ch_image*>(m_pin);
 	long long timg;
-	Mat img = pin->get_img(timg);
+	Mat img = m_pin->get_img(timg);
 	if(m_2dchsbd.empty()){
 		cout << "No chessboard found." << endl;
 		return false;
@@ -200,11 +202,11 @@ bool f_camcalib::calibrate()
 	for(int i = 0; i < m_2dchsbd.size(); i++)
 		chsbd3d.push_back(m_3dchsbd);
 
-	double err = calibrateCamera(chsbd3d, m_2dchsbd, 
+	m_err = calibrateCamera(chsbd3d, m_2dchsbd, 
 		Size(img.cols, img.rows),
 		m_Mcam, m_discoeff, rvecs, tvecs);
 
-	cout << "reprojection error = " << err << endl;
+	cout << "reprojection error = " << m_err << endl;
 
 	cout << "Camera Matrix" << endl;
 	cout << m_Mcam << endl;
@@ -214,8 +216,33 @@ bool f_camcalib::calibrate()
 	return true;
 }
 
+bool f_camcalib::write_campars(const char * fname)
+{
+	char buf[1024];
+	snprintf(buf, 1024, "%s", fname);
+	FileStorage fs(buf, FileStorage::WRITE);
+	if(!fs.isOpened())
+		return false;
+
+	//save camera parameters
+	fs << "CamInt" << m_Mcam;
+	fs << "CamDist" << m_discoeff;
+	fs << "RepErr" << m_err;
+	fs.release();
+}
+
 bool f_camcalib::init_run()
 {
+	m_pin = dynamic_cast<ch_image*>(m_chin[0]);
+	if(m_chin.size() == 0){
+		cerr << m_name << "requires an input channel." << endl;
+		return false;
+	}
+	if(m_pin == NULL){
+		cerr << m_name << "'s first input channel should be image channel." << endl;
+		return false;
+	}
+	m_pout = dynamic_cast<ch_image*>(m_chout[0]);
 	return true;
 }
 

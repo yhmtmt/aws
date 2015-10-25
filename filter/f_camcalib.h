@@ -24,6 +24,7 @@ protected:
 	vector<Point3f> m_3dchsbd;
 	vector<vector<Point2f > > m_2dchsbd;
 	Mat m_Mcam, m_discoeff;
+	double m_err;
 
 	bool write_pts(const char * fname);
 public:
@@ -49,4 +50,5 @@ public:
 	virtual bool cmd_proc(s_cmd & cmd);
 	virtual bool proc();
 	bool calibrate();
+	bool write_campars(const char * fname);
 };
