@@ -162,6 +162,8 @@ struct s_obj
 	double roll, pitch, yaw;
 	Point3f pos;
 
+	double err_r, err_t;
+
 	vector<double> dpart; // part's deformation value.
 
 	// Update flag. (True if intermidiate parameters have already been calculated)

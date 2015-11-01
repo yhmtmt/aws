@@ -2067,8 +2067,9 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 		ssd += pfrm->ssd;
 
 		if(!proceed){
-			return ;
+			break ;
 		}
+
 		if(errNorm){
 			*errNorm = sqrt(ssd);
 #ifdef VERB_LM
@@ -2130,6 +2131,26 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 #endif
 		}
 		itr++;
+	}
+
+	double * pcov = m_solver.Cov->data.db;
+
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		double erx = *pcov;
+		pcov += nparams + 1;
+		double ery = *pcov;
+		pcov += nparams + 1;
+		double erz = *pcov;
+		pcov += nparams + 1;
+		double etx = *pcov;
+		pcov += nparams + 1;
+		double ety = *pcov;
+		pcov += nparams + 1;
+		double etz = *pcov;
+		objs[iobj]->err_r = sqrt(erx + ery + erz) * 180./PI;
+		objs[iobj]->err_t = sqrt(etx + ety + etz);
+		cout << objs[iobj]->name << " Erot: " << objs[iobj]->err_r 
+			<< " Etrn: " << objs[iobj]->err_t << endl;
 	}
 }
 
@@ -3736,6 +3757,9 @@ bool f_inspector::load_kfrms()
 		s_frame::free(m_pfrm);
 		m_pfrm = m_kfrms[m_cur_kfrm];
 	}
+
+	if(m_kfrms[0] != NULL)
+		m_sel_kfrm = 0;
 
 	return true;
 }
