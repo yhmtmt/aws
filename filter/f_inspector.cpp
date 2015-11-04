@@ -2135,6 +2135,7 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 
 	double * pcov = m_solver.Cov->data.db;
 
+	// calculating covariance of the optimization error (hessian inverse of the last iteration)
 	for(int iobj = 0; iobj < objs.size(); iobj++){
 		double erx = *pcov;
 		pcov += nparams + 1;
@@ -2151,6 +2152,79 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 		objs[iobj]->err_t = sqrt(etx + ety + etz);
 		cout << objs[iobj]->name << " Erot: " << objs[iobj]->err_r 
 			<< " Etrn: " << objs[iobj]->err_t << endl;
+	}
+
+	// estimatin error in focal length and object depth using edge length analysis.
+	// for all pairs of visible points, the differences between projected length and actual length are
+	// calculated as delta_L. Then the delta_L is devided by dL/df or dL/dTz, and determines delta_f and delta_Tz for each pair.
+	// Then the average, variance, min, max is reported.
+
+	// dL/df is calculated with following formulae
+	// [dLx/dfx dLx/dfx] = [1/(Z2+Tz)[X2+Tx] - 1/(Z1+Tz)[X1+Tx]                  0                   ]
+	// [dLy/dfy dLy/dfy]   [              0                       1/(Z2+Tz)[Y2+Ty] - 1/(Z1+Tz)[Y1+Ty]]
+
+	// dLx/dTz = [fx 0 ] [1/(Z1+Tz)^2[X1+Tx] - 1/(Z2+Tz)^2[X2+Tx]]
+	// dLy/dTz   [0  fy] [1/(Z1+Tz)^2[Y1+Ty] - 1/(Z2+Tz)^2[Y2+Ty]]
+
+	// we calculate four values
+	// delta_Lx / (dLx/dfx) = delta fx
+	// delta_Ly / (dLy/dfy) = delta_fy
+	// delta_Lx / (dLx/dTz) = delta_Tzx
+	// delta_Ly / (dLy/dTz) = delta_Tzy
+
+	// counting total counts of pairs of visible points 
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		s_obj & obj = *objs[iobj];
+		vector<Point2f> & pt2d = obj.pt2d;
+		vector<Point2f> & pt2dprj = obj.pt2dprj;
+		vector<Point3f> & pt3d = obj.pmdl->pts_deformed;
+		vector<Point3f> pt3dtrn;
+		vector<int> & visible = obj.visible;
+
+		int num_pts = pt2d.size();
+		pt3dtrn.resize(num_pts);
+		Mat R(3, 3, CV_64FC1);
+		exp_so3(obj.rvec.ptr<double>(), R.ptr<double>());
+		trnPts(pt3d, pt3dtrn, visible, R, obj.tvec);
+
+		int num_visibles = 0;
+		for(int ipt = 0; ipt < visible.size(); ipt++)
+			if(visible[ipt] != 0)
+				num_visibles++;
+
+		int num_pairs = num_visibles * (num_visibles - 1);
+		int ipair = 0;
+		vector<double> delta_fx, delta_fy, delta_Tzx, delta_Tzy;
+		vector<Point2i> idx_pair;
+		delta_fx.resize(num_pairs);
+		delta_fy.resize(num_pairs);
+		delta_Tzx.resize(num_pairs);
+		delta_Tzy.resize(num_pairs);
+		idx_pair.resize(num_pairs);
+
+		for(int ipt0 = 0; ipt0 < num_pts; ipt0++){
+			for(int ipt1 = 0; ipt1 < num_pts; ipt1++){
+				if(ipt1 == ipt0)
+					continue;
+
+				idx_pair[ipair].x = ipt0;
+				idx_pair[ipair].y = ipt1;
+				double iZ0 = 1.0 / pt3dtrn[ipt0].z, iZ1 = 1.0 / pt3dtrn[ipt1].z;
+				double iZ0sq = iZ0 * iZ0, iZ1sq = iZ1 * iZ1;
+				double delta_Lx = pt2d[ipt1].x - pt2d[ipt0].x;
+				double delta_Ly = pt2d[ipt1].y - pt2d[ipt1].y;
+				double dLxdfx = iZ1 * pt3dtrn[ipt1].x -  iZ0 * pt3dtrn[ipt0].x;
+				double dLydfy = iZ1 * pt3dtrn[ipt1].y -  iZ0 * pt3dtrn[ipt0].y;
+				double dLxdTz = (iZ0sq * pt3dtrn[ipt0].x - iZ1sq * pt3dtrn[ipt1].x) * pfrm->camint.at<double>(0, 0);	
+				double dLydTz = (iZ0sq * pt3dtrn[ipt0].y - iZ1sq * pt3dtrn[ipt1].y) * pfrm->camint.at<double>(1, 1);
+				delta_fx[ipair] = delta_Lx / dLxdfx;
+				delta_fy[ipair] = delta_Ly / dLydfy;
+				delta_Tzx[ipair] = delta_Lx / dLxdTz;
+				delta_Tzy[ipair] = delta_Ly / dLydTz;
+
+				ipair++;
+			}
+		}
 	}
 }
 
