@@ -2225,6 +2225,48 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 				ipair++;
 			}
 		}
+
+		double delta_fx_min, delta_fx_max, delta_fy_min, delta_fy_max, delta_Tz_max, delta_Tz_min;
+		double delta_fx_avg, delta_fy_avg, delta_Tz_avg;
+		double delta_fx_var, delta_fy_var, delta_Tz_var;
+		delta_fx_min = delta_fy_min = delta_Tz_min = DBL_MAX;
+		delta_fx_max = delta_fy_max = delta_Tz_max = DBL_MIN;
+		delta_fx_avg = delta_fy_avg = delta_Tz_avg = 0.;
+		delta_fx_var = delta_fy_var = delta_Tz_var = 0.;
+		for(ipair = 0; ipair < num_pairs; ipair++){
+			delta_fx_min = min(delta_fx_min, delta_fx[ipair]);
+			delta_fx_max = max(delta_fx_max, delta_fx[ipair]);
+			delta_fy_min = min(delta_fy_min, delta_fy[ipair]);
+			delta_fy_max = max(delta_fy_max, delta_fy[ipair]);
+			delta_fx_avg += delta_fx[ipair];
+			delta_fy_avg += delta_fy[ipair];
+			delta_Tz_avg += delta_Tzx[ipair] + delta_Tzy[ipair];
+			delta_fx_var += delta_fx[ipair] * delta_fx[ipair];
+			delta_fy_var += delta_fy[ipair] * delta_fy[ipair];
+			delta_Tz_var += delta_Tzy[ipair] * delta_Tzy[ipair] + delta_Tzx[ipair] * delta_Tzx[ipair];
+		}
+		double div = 1.0/ (double) num_pairs;
+		double sq_delta_fx_avg = delta_fx_avg * delta_fx_avg;
+		double sq_delta_fy_avg = delta_fy_avg * delta_fy_avg;
+		double sq_delta_Tz_avg = delta_Tz_avg * delta_Tz_avg;
+
+		delta_fx_avg *= div;
+		delta_fy_avg *= div;
+		delta_Tz_avg *= div * 0.5;
+		delta_fx_var *= div;
+		delta_fy_var *= div;
+		delta_Tz_var *= div * 0.5;
+		delta_fx_var -= sq_delta_fx_avg;
+		delta_fy_var -= sq_delta_fy_avg;
+		delta_Tz_var -= sq_delta_Tz_avg;
+
+		cout << "Objetct " << obj.name << "'s error profile." << endl;
+		cout << "\t fx-> avg " << delta_fx_avg << " stdev " << sqrt(delta_fx_var) 
+			<< " min " << delta_fx_min << " max " << delta_fx_max << endl;
+		cout << "\t fy-> avg " << delta_fy_avg << " stdev " << sqrt(delta_fy_var) 
+			<< " min " << delta_fy_min << " max " << delta_fy_max << endl;
+		cout << "\t Tz-> avg " << delta_Tz_avg << " stdev " << sqrt(delta_Tz_var) 
+			<< " min " << delta_Tz_min << " max " << delta_Tz_max << endl;
 	}
 }
 
