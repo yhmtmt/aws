@@ -2187,14 +2187,37 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 		exp_so3(obj.rvec.ptr<double>(), R.ptr<double>());
 		trnPts(pt3d, pt3dtrn, visible, R, obj.tvec);
 
+		double reperr_x_max, reperr_x_min;
+		double reperr_y_max, reperr_y_min;
+		double reperr_radius;
+		reperr_x_max = reperr_y_max = -DBL_MAX;
+		reperr_x_min = reperr_y_min = DBL_MAX;
+		for(int ipt = 0; ipt < num_pts; ipt++){			
+			if(!visible[ipt])
+				continue;
+			/*
+			cout << "pt3dtrn[" << ipt << "]=(" << pt3dtrn[ipt].x << "," << pt3dtrn[ipt].y << "," << pt3dtrn[ipt].z << ")" << endl;
+			*/
+			reperr_x_max = max(reperr_x_max, pt2d[ipt].x - pt2dprj[ipt].x);
+			reperr_x_min = min(reperr_x_min, pt2d[ipt].x - pt2dprj[ipt].x);
+			reperr_y_max = max(reperr_y_max, pt2d[ipt].y - pt2dprj[ipt].y);
+			reperr_y_min = min(reperr_y_min, pt2d[ipt].y - pt2dprj[ipt].y);
+		}
+		
+		reperr_radius = max(abs(reperr_x_max), abs(reperr_x_min));
+		reperr_radius = max(reperr_radius, max(abs(reperr_y_max), abs(reperr_y_min)));
+
 		int num_visibles = 0;
 		for(int ipt = 0; ipt < visible.size(); ipt++)
 			if(visible[ipt] != 0)
 				num_visibles++;
 
-		int num_pairs = num_visibles * (num_visibles - 1);
+		int num_pairs = num_visibles * (num_visibles - 1) / 2;
 		int ipair = 0;
 		vector<double> delta_fx, delta_fy, delta_Tzx, delta_Tzy;
+		double delta_f_rmax, delta_Tz_rmax, delta_Tx_rmax, delta_Ty_rmax;
+		delta_f_rmax = delta_Tz_rmax = DBL_MAX;
+		delta_Tx_rmax = delta_Ty_rmax = -DBL_MAX;
 		vector<Point2i> idx_pair;
 		delta_fx.resize(num_pairs);
 		delta_fy.resize(num_pairs);
@@ -2202,17 +2225,31 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 		delta_Tzy.resize(num_pairs);
 		idx_pair.resize(num_pairs);
 
+		double Lprjx_max = -DBL_MAX, Lprjy_max = -DBL_MAX;
+		int iprjx_max, iprjy_max;
 		for(int ipt0 = 0; ipt0 < num_pts; ipt0++){
-			for(int ipt1 = 0; ipt1 < num_pts; ipt1++){
-				if(ipt1 == ipt0)
+			if(!visible[ipt0])
+				continue;
+			double iZ0 = 1.0 / pt3dtrn[ipt0].z;
+			double dxdTx, dydTy;
+			dxdTx = iZ0 * pfrm->camint.at<double>(0, 0);
+			dydTy = iZ0 * pfrm->camint.at<double>(1, 1);
+			delta_Tx_rmax = max(delta_Tx_rmax, abs(reperr_radius / dxdTx));
+			delta_Ty_rmax = max(delta_Ty_rmax, abs(reperr_radius / dydTy));
+
+			for(int ipt1 = ipt0 + 1; ipt1 < num_pts; ipt1++){
+				if(!visible[ipt0] || !visible[ipt1])
 					continue;
 
 				idx_pair[ipair].x = ipt0;
 				idx_pair[ipair].y = ipt1;
-				double iZ0 = 1.0 / pt3dtrn[ipt0].z, iZ1 = 1.0 / pt3dtrn[ipt1].z;
+
+				double iZ1 = 1.0 / pt3dtrn[ipt1].z;
 				double iZ0sq = iZ0 * iZ0, iZ1sq = iZ1 * iZ1;
-				double delta_Lx = pt2d[ipt1].x - pt2d[ipt0].x;
-				double delta_Ly = pt2d[ipt1].y - pt2d[ipt1].y;
+				double Lxprj = (pt2dprj[ipt1].x - pt2dprj[ipt0].x), Lyprj = (pt2dprj[ipt1].y - pt2dprj[ipt0].y);
+
+				double delta_Lx = pt2d[ipt1].x - pt2d[ipt0].x - Lxprj;
+				double delta_Ly = pt2d[ipt1].y - pt2d[ipt0].y - Lyprj;
 				double dLxdfx = iZ1 * pt3dtrn[ipt1].x -  iZ0 * pt3dtrn[ipt0].x;
 				double dLydfy = iZ1 * pt3dtrn[ipt1].y -  iZ0 * pt3dtrn[ipt0].y;
 				double dLxdTz = (iZ0sq * pt3dtrn[ipt0].x - iZ1sq * pt3dtrn[ipt1].x) * pfrm->camint.at<double>(0, 0);	
@@ -2222,6 +2259,18 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 				delta_Tzx[ipair] = delta_Lx / dLxdTz;
 				delta_Tzy[ipair] = delta_Ly / dLydTz;
 
+				delta_f_rmax = min(delta_f_rmax, min(abs(2 * reperr_radius / dLxdfx), abs(2 * reperr_radius / dLydfy)));
+				delta_Tz_rmax = min(delta_Tz_rmax,
+					min(abs(2 * reperr_radius / dLxdTz), abs(2 * reperr_radius / dLydTz)));
+
+				if(Lprjx_max < abs(Lxprj)){
+					Lprjx_max = abs(Lxprj);
+					iprjx_max = ipair;
+				}
+				if(Lprjy_max < abs(Lyprj)){
+					Lprjy_max = abs(Lyprj);
+					iprjy_max = ipair;
+				}
 				ipair++;
 			}
 		}
@@ -2230,29 +2279,35 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 		double delta_fx_avg, delta_fy_avg, delta_Tz_avg;
 		double delta_fx_var, delta_fy_var, delta_Tz_var;
 		delta_fx_min = delta_fy_min = delta_Tz_min = DBL_MAX;
-		delta_fx_max = delta_fy_max = delta_Tz_max = DBL_MIN;
+		delta_fx_max = delta_fy_max = delta_Tz_max = -DBL_MAX;
 		delta_fx_avg = delta_fy_avg = delta_Tz_avg = 0.;
 		delta_fx_var = delta_fy_var = delta_Tz_var = 0.;
 		for(ipair = 0; ipair < num_pairs; ipair++){
-			delta_fx_min = min(delta_fx_min, delta_fx[ipair]);
-			delta_fx_max = max(delta_fx_max, delta_fx[ipair]);
-			delta_fy_min = min(delta_fy_min, delta_fy[ipair]);
-			delta_fy_max = max(delta_fy_max, delta_fy[ipair]);
+			delta_fx_min = min(delta_fx_min, abs(delta_fx[ipair]));
+			delta_fx_max = max(delta_fx_max, abs(delta_fx[ipair]));
+			delta_fy_min = min(delta_fy_min, abs(delta_fy[ipair]));
+			delta_fy_max = max(delta_fy_max, abs(delta_fy[ipair]));
+			delta_Tz_min = min(delta_Tz_min, abs(delta_Tzx[ipair]));
+			delta_Tz_max = max(delta_Tz_max, abs(delta_Tzx[ipair]));
+			delta_Tz_min = min(delta_Tz_min, abs(delta_Tzy[ipair]));
+			delta_Tz_max = max(delta_Tz_max, abs(delta_Tzy[ipair]));
+			
 			delta_fx_avg += delta_fx[ipair];
 			delta_fy_avg += delta_fy[ipair];
 			delta_Tz_avg += delta_Tzx[ipair] + delta_Tzy[ipair];
 			delta_fx_var += delta_fx[ipair] * delta_fx[ipair];
 			delta_fy_var += delta_fy[ipair] * delta_fy[ipair];
 			delta_Tz_var += delta_Tzy[ipair] * delta_Tzy[ipair] + delta_Tzx[ipair] * delta_Tzx[ipair];
+
 		}
 		double div = 1.0/ (double) num_pairs;
-		double sq_delta_fx_avg = delta_fx_avg * delta_fx_avg;
-		double sq_delta_fy_avg = delta_fy_avg * delta_fy_avg;
-		double sq_delta_Tz_avg = delta_Tz_avg * delta_Tz_avg;
 
 		delta_fx_avg *= div;
 		delta_fy_avg *= div;
 		delta_Tz_avg *= div * 0.5;
+		double sq_delta_fx_avg = delta_fx_avg * delta_fx_avg;
+		double sq_delta_fy_avg = delta_fy_avg * delta_fy_avg;
+		double sq_delta_Tz_avg = delta_Tz_avg * delta_Tz_avg;
 		delta_fx_var *= div;
 		delta_fy_var *= div;
 		delta_Tz_var *= div * 0.5;
@@ -2261,12 +2316,19 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 		delta_Tz_var -= sq_delta_Tz_avg;
 
 		cout << "Objetct " << obj.name << "'s error profile." << endl;
+		cout << "\t Max pix error: (" << reperr_x_max << "," << reperr_y_max << ")" << 
+			" Min pix error: (" << reperr_x_min << "," << reperr_y_min << ")" << endl;
 		cout << "\t fx-> avg " << delta_fx_avg << " stdev " << sqrt(delta_fx_var) 
-			<< " min " << delta_fx_min << " max " << delta_fx_max << endl;
+			<< " min " << delta_fx_min << " max " << delta_fx_max 
+			<< " maxlenerr " << delta_fx[iprjx_max] << "(" << Lprjx_max << ")" << endl;
 		cout << "\t fy-> avg " << delta_fy_avg << " stdev " << sqrt(delta_fy_var) 
-			<< " min " << delta_fy_min << " max " << delta_fy_max << endl;
+			<< " min " << delta_fy_min << " max " << delta_fy_max 
+			<< " maxlenerr " << delta_fy[iprjy_max] << "(" << Lprjy_max << ")" << endl;
 		cout << "\t Tz-> avg " << delta_Tz_avg << " stdev " << sqrt(delta_Tz_var) 
-			<< " min " << delta_Tz_min << " max " << delta_Tz_max << endl;
+			<< " min " << delta_Tz_min << " max " << delta_Tz_max 
+			<< " maxlenerr x " << delta_Tzx[iprjx_max] << " maxlenerr y " << delta_Tzy[iprjy_max] << endl;
+		cout << "\t radius reperr " << reperr_radius << " radius ferr " << delta_f_rmax 
+			<< " radius Terr (" << delta_Tx_rmax << "," << delta_Ty_rmax << "," << delta_Tz_rmax << ")" << endl;
 	}
 }
 
