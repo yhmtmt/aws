@@ -180,7 +180,8 @@ struct s_obj
 
 	s_obj(): pmdl(NULL), name(NULL), is_attitude_fixed(false), 
 		roll(0.0), pitch(0.0), yaw(0.0), pos(0., 0., 0.),
-		update(false), bb2d(0, 0, 0, 0)
+		update(false), bb2d(0, 0, 0, 0), delta_f_rmax(DBL_MAX), delta_Tz_rmax(DBL_MAX),
+		delta_Tx_rmax(-DBL_MAX), delta_Ty_rmax(-DBL_MAX)
 	{
 		tvec = Mat::zeros(3, 1, CV_64FC1);
 		rvec = Mat::zeros(3, 1, CV_64FC1);
@@ -226,6 +227,9 @@ struct s_obj
 	void free_tmpl(){
 		ptx_tmpl.clear();
 	}
+
+	double delta_f_rmax, delta_Tz_rmax, delta_Tx_rmax, delta_Ty_rmax;
+	void analyze_error(double fx, double fy);
 };
 
 ///////////////////////////////////////////////////////////////// s_frame
