@@ -1368,8 +1368,8 @@ void f_inspector::renderSceneInfo(char * buf, int len, int & y)
 		if(m_cur_obj >= 0 && m_cur_obj < objs.size()){
 			for(int iobj = 0; iobj < objs.size(); iobj++){
 				s_obj & obj = *objs[iobj];
-				snprintf(buf, len, "Ferr +/-%5.2f, %s Roll: %5.2f, Pitch: %5.2f, Yaw: %5.2f X: %5.2f(+/-%5.2f) Y: %5.2f(+/-%5.2f) Z: %5.2f(+/-%5.2f)", 
-					obj.name, (float)obj.delta_f_rmax, 
+				snprintf(buf, len, "%s Ferr +/-%5.2f, Roll: %5.2f, Pitch: %5.2f, Yaw: %5.2f X: %5.2f(+/-%5.2f) Y: %5.2f(+/-%5.2f) Z: %5.2f(+/-%5.2f)", 
+					 obj.name, (float)obj.delta_f_rmax,
 					(float)obj.roll * 180./CV_PI, (float)obj.pitch * 180./CV_PI, (float)obj.yaw * 180./CV_PI,
 					(float)obj.pos.x, (float)obj.delta_Tx_rmax, 
 					(float)obj.pos.y, (float)obj.delta_Ty_rmax,
