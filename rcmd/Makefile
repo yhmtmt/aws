@@ -6,8 +6,7 @@ INST_DIR = ../bin
 
 
 ifeq ($(ZYNQ), y)
-	include	$(PETALINUX)/software/petalinux-dist/tools/user-commons.mk
-	CC	= $(CXX)
+	CC	= arm-xilinx-linux-gnueabi-g++
 endif
 
 OBJ = aws_cmd.o ../command.o filter.o channel.o fcmd.o fset.o fget.o cyc.o online.o pause.o go.o quit.o stop.o step.o trat.o clear.o finf.o chinf.o fpar.o frm.o chrm.o awscd.o awstime.o
@@ -38,4 +37,3 @@ install:
 	done
 	cp $(TGTv3) $(INST_DIR)/$(TGTv3)
 
-	
