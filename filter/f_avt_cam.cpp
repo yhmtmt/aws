@@ -207,8 +207,8 @@ void f_avt_cam::register_params(s_cam_params & cam)
 
 	// Related to camera parameter
 	cam.fcp[0] = '\0';
-	register_fpar(cam.strParams[36], &cam.m_Strobe1Duration, "Duration of Strobe 1 (msec)");
-	register_fpar(cam.strParams[37], &cam.m_Strobe1Delay, "Delay of Strobe 1 (msec)");
+	register_fpar(cam.strParams[36], &cam.m_Strobe1Duration, "Duration of Strobe 1 (usec)");
+	register_fpar(cam.strParams[37], &cam.m_Strobe1Delay, "Delay of Strobe 1 (usec)");
 	register_fpar(cam.strParams[38], (int*) &cam.m_Strobe1ControlledDuration, (int) escdUndef, strStrobeControlledDuration,  "Enabling control of strobe 1. On or Off.");
 	register_fpar(cam.strParams[39], (int*) &cam.m_Strobe1Mode, (int) esmUndef, strStrobeMode, "Strobe Mode,");
 	register_fpar(cam.strParams[40], (int*) &cam.m_SyncOut1Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut1.");
