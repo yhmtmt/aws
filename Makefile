@@ -12,7 +12,7 @@ INST_DIR = ./bin
 #optimization option
 OFLAGS = -O3
 
-# Platform specification (y: Petalinux build environment is enabled)
+# Platform specification (y: zynq environment is enabled)
 ZYNQ	= n
 
 # cpu architecture (currently arm, x64, x86, WIN64)
@@ -40,6 +40,13 @@ CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
 RCMD_DIR = $(CUR_DIR)/rcmd
 
+INC_CV_DIR = $(CUR_DIR)/opencv/include
+LIB_CV_DIR = $(CUR_DIR)/opencv/lib
+INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
+LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
+INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
+LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
+
 # module listing 
 # listing filter module
 FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
@@ -49,17 +56,6 @@ CHANNEL = ch_base ch_image
 
 # listing utility module
 UTIL =  c_clock c_imgalign c_nmeadec c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib
-
-# listing include path 
-INC_CV_DIR = /usr/include
-INC = -I/usr/local/include  -I$(INC_CV_DIR) 
-
-LIB_CV_DIR = /usr/lib
-#LIB = -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_core -lopencv_contrib -lopencv_features2d -lopencv_imgproc -lopencv_imgproc -lopencv_calib3d -lopencv_ml  -lopencv_flann -lopencv_video -lopencv_legacy -lopencv_nonfree -lopencv_objdetect -lopencv_highgui -lopencv_photo -lopencv_gpu
-
-LIB = -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_core -lopencv_contrib -lopencv_features2d -lopencv_imgproc -lopencv_imgproc -lopencv_calib3d -lopencv_ml  -lopencv_flann -lopencv_video -lopencv_legacy -lopencv_objdetect -lopencv_highgui -lopencv_photo -lopencv_gpu
-
-#LIB += -L$(CUR_DIR)/cminpack/$(OS)/$(CPU) -lcminpack
 
 # for x86 CPU architecture
 ifeq ($(CPU), x86)
@@ -71,13 +67,14 @@ ifeq ($(DEBUG), y)
 	DFLAGS = -g 	
 endif
 
-# for ZYNQ/Petalinux system
+# for ZYNQ system
 ifeq ($(ZYNQ), y)
-	include	$(PETALINUX)/software/petalinux-dist/tools/user-commons.mk
-	CC	= $(CXX)
+	CC	= arm-xilinx-linux-gnueabi-g++
 	CPU 	= arm
 	SANYO_HD5400 = n
 	FWINDOW = n
+	GLFW_WINDOW = n
+	#OFLAGS += -mfloat-abi=hard
 endif
 
 ifeq ($(FWINDOW), y)
@@ -85,8 +82,6 @@ ifeq ($(FWINDOW), y)
 	FILTER += f_window
 endif
 
-INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
-LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
 ifeq ($(GLFW_WINDOW), y)
 	INC += -I$(INC_GLFW_DIR)
 	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr 
@@ -102,9 +97,6 @@ ifeq ($(SANYO_HD5400),y)
 	DEFS += -DSANYO_HD5400
 endif
 
-INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
-LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
-
 ifeq ($(AVT_CAM),y)
 	INC += -I$(INC_PVAPI_DIR) 
 	LIB += -L$(LIB_PVAPI_DIR) -lPvAPI
@@ -115,6 +107,9 @@ endif
 ifeq ($(UVC_CAM),y)
 	DEFS += -DUVC_CAM
 endif
+
+INC += -I$(INC_CV_DIR) 
+LIB += -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_core -lopencv_nonfree -lopencv_contrib -lopencv_features2d -lopencv_imgproc -lopencv_imgproc -lopencv_calib3d -lopencv_ml  -lopencv_flann -lopencv_video -lopencv_legacy -lopencv_objdetect -lopencv_highgui -lopencv_photo -lopencv_gpu
 
 FOBJS = $(addsuffix .o,$(FILTER))
 COBJS = $(addsuffix .o,$(CHANNEL))
