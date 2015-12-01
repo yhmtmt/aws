@@ -941,7 +941,7 @@ bool f_avt_cam::s_cam_params::config_param_dynamic()
 		}
 	}
 
-	if(m_Strobe1ControlledDuration == esmUndef){
+	if(m_Strobe1ControlledDuration == escdUndef){
 		char buf[64];
 		err = PvAttrEnumGet(m_hcam, "Strobe1ControlledDuration", buf, 64, NULL);
 		if(err != ePvErrSuccess){
