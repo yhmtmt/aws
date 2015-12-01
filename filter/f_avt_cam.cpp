@@ -120,9 +120,9 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
 	m_WhitebalValueRed(0), m_WhitebalValueBlue(0),
 	m_Height(UINT_MAX), m_RegionX(UINT_MAX), m_RegionY(UINT_MAX), m_Width(UINT_MAX),
   m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0), m_ReverseSoftware(false), m_ReverseX(false), m_ReverseY(false),
-  m_Strobe1Mode(esmFrameTrigger), m_Strobe1ControlledDuration(escdOn), m_Strobe1Duration(200), m_Strobe1Delay(0),
-  m_SyncOut1Mode(esomStrobe1), m_SyncOut2Mode(esomStrobe1), m_SyncOut3Mode(esomStrobe1), m_SyncOut4Mode(esomStrobe1),
-  m_SyncOut1Invert(esoiOff), m_SyncOut2Invert(esoiOff), m_SyncOut3Invert(esoiOff), m_SyncOut4Invert(esoiOff)
+  m_Strobe1Mode(esmUndef), m_Strobe1ControlledDuration(escdUndef), m_Strobe1Duration(UINT_MAX), m_Strobe1Delay(UINT_MAX),
+  m_SyncOut1Mode(esomUndef), m_SyncOut2Mode(esomUndef), m_SyncOut3Mode(esomUndef), m_SyncOut4Mode(esomUndef),
+  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef)
 {
 	if(icam == -1){
 		strParams = m_strParams;
@@ -921,6 +921,194 @@ bool f_avt_cam::s_cam_params::config_param_dynamic()
 		err = PvAttrUint32Set(m_hcam, "GainValue", m_GainValue);
 		if(err != ePvErrSuccess){
 			cerr << "Failed to set GainValue" << endl;
+			return false;
+		}
+	}
+
+	if(m_Strobe1Mode == esmUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "Strobe1Mode", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get Strobe1Mode" << endl;
+			return false;
+		}
+		m_Strobe1Mode = getStrobeMode(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "Strobe1Mode", strStrobeMode[m_Strobe1Mode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set Strobe1Mode" << endl;
+			return false;
+		}
+	}
+
+	if(m_Strobe1ControlledDuration == esmUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "Strobe1ControlledDuration", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get Strobe1ControlledDuration" << endl;
+			return false;
+		}
+		m_Strobe1ControlledDuration = getStrobeControlledDuration(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "Strobe1ControlledDuration", strStrobeControlledDuration[m_Strobe1ControlledDuration]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set Strobe1ControlledDuration" << endl;
+			return false;
+		}
+	}
+
+	if(m_Strobe1Duration == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "Strobe1Duration", (tPvUint32*)&m_GainValue);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get Strobe1Duration" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "Strobe1Duration", m_GainValue);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set Strobe1Duration" << endl;
+			return false;
+		}
+	}
+
+	if(m_Strobe1Delay == UINT_MAX){
+		err = PvAttrUint32Get(m_hcam, "Strobe1Delay", (tPvUint32*)&m_GainValue);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get Strobe1Delay" << endl;
+			return false;
+		}
+	}else{
+		err = PvAttrUint32Set(m_hcam, "Strobe1Delay", m_GainValue);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set Strobe1Delay" << endl;
+			return false;
+		}
+	}
+
+	if(m_SyncOut1Mode == esomUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "SyncOut1Mode", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get SyncOut1Mode" << endl;
+			return false;
+		}
+		m_SyncOut1Mode = getSyncOutMode(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "SyncOut1Mode", strSyncOutMode[m_SyncOut1Mode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set SyncOut1Mode" << endl;
+			return false;
+		}
+	}
+
+	if(m_SyncOut2Mode == esomUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "SyncOut2Mode", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get SyncOut2Mode" << endl;
+			return false;
+		}
+		m_SyncOut2Mode = getSyncOutMode(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "SyncOut2Mode", strSyncOutMode[m_SyncOut1Mode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set SyncOut2Mode" << endl;
+			return false;
+		}
+	}
+
+	if(m_SyncOut3Mode == esomUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "SyncOut3Mode", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get SyncOut3Mode" << endl;
+			return false;
+		}
+		m_SyncOut3Mode = getSyncOutMode(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "SyncOut3Mode", strSyncOutMode[m_SyncOut1Mode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set SyncOut3Mode" << endl;
+			return false;
+		}
+	}
+
+	if(m_SyncOut4Mode == esomUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "SyncOut4Mode", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get SyncOut4Mode" << endl;
+			return false;
+		}
+		m_SyncOut4Mode = getSyncOutMode(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "SyncOut4Mode", strSyncOutMode[m_SyncOut1Mode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set SyncOut4Mode" << endl;
+			return false;
+		}
+	}
+
+	if(m_SyncOut1Invert == esoiUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "SyncOut1Invert", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get SyncOut1Invert" << endl;
+			return false;
+		}
+		m_SyncOut1Invert = getSyncOutInvert(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "SyncOut1Invert", strSyncOutInvert[m_SyncOut1Mode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set SyncOut1Invert" << endl;
+			return false;
+		}
+	}
+
+	if(m_SyncOut2Invert == esoiUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "SyncOut2Invert", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get SyncOut2Invert" << endl;
+			return false;
+		}
+		m_SyncOut2Invert = getSyncOutInvert(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "SyncOut2Invert", strSyncOutInvert[m_SyncOut2Mode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set SyncOut2Invert" << endl;
+			return false;
+		}
+	}
+
+	if(m_SyncOut3Invert == esoiUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "SyncOut3Invert", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get SyncOut3Invert" << endl;
+			return false;
+		}
+		m_SyncOut3Invert = getSyncOutInvert(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "SyncOut3Invert", strSyncOutInvert[m_SyncOut3Mode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set SyncOut3Invert" << endl;
+			return false;
+		}
+	}
+
+	if(m_SyncOut4Invert == esoiUndef){
+		char buf[64];
+		err = PvAttrEnumGet(m_hcam, "SyncOut4Invert", buf, 64, NULL);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to get SyncOut4Invert" << endl;
+			return false;
+		}
+		m_SyncOut4Invert = getSyncOutInvert(buf);
+	}else{
+		err = PvAttrEnumSet(m_hcam, "SyncOut4Invert", strSyncOutInvert[m_SyncOut4Mode]);
+		if(err != ePvErrSuccess){
+			cerr << "Failed to set SyncOut4Invert" << endl;
 			return false;
 		}
 	}
