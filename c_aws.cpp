@@ -467,7 +467,7 @@ bool c_aws::handle_finf(s_cmd & cmd)
 			pfilter = m_filters[ifilter];
 		}
 	}else{ // if there is no argument, the number of filters is returned
-		sprintf(cmd.get_ret_str(), "%d", m_filters.size());
+	  sprintf(cmd.get_ret_str(), "%d", (int) m_filters.size());
 		result = true;
 		return result;
 	}
@@ -525,7 +525,7 @@ bool c_aws::handle_chinf(s_cmd & cmd)
 			pch = m_channels[ich];
 		}
 	}else{
-		sprintf(cmd.get_ret_str(), "%d", m_channels.size());
+	  sprintf(cmd.get_ret_str(), "%d", (int) m_channels.size());
 		result = true;
 		return result;
 	}
