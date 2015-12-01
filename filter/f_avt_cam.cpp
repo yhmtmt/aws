@@ -958,13 +958,13 @@ bool f_avt_cam::s_cam_params::config_param_dynamic()
 	}
 
 	if(m_Strobe1Duration == UINT_MAX){
-		err = PvAttrUint32Get(m_hcam, "Strobe1Duration", (tPvUint32*)&m_GainValue);
+		err = PvAttrUint32Get(m_hcam, "Strobe1Duration", (tPvUint32*)&m_Strobe1Duration);
 		if(err != ePvErrSuccess){
 			cerr << "Failed to get Strobe1Duration" << endl;
 			return false;
 		}
 	}else{
-		err = PvAttrUint32Set(m_hcam, "Strobe1Duration", m_GainValue);
+		err = PvAttrUint32Set(m_hcam, "Strobe1Duration", m_Strobe1Duration);
 		if(err != ePvErrSuccess){
 			cerr << "Failed to set Strobe1Duration" << endl;
 			return false;
