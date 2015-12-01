@@ -57,6 +57,24 @@ public:
 		ewmManual, ewmAuto, ewmAutoOnce, ewmUndef
 	};
 
+	enum eStrobeMode{
+		esmAcquisitionTriggerReady, esmFrameTriggerReady, esmFrameTrigger, esmExposing, esmFrameReadabout,
+		esmImaging, esmAcquiring, esmSynqIn1, esmSynqIn2, esmUndef
+	};
+
+	enum eStrobeControlledDuration{
+		escdOn, escdOff, escdUndef
+	};
+
+	enum eSyncOutMode{
+		esomGPO, esomAcquisitionTriggerReady, esomFrameTriggerReady, esomFrameTrigger, esomExposingFrameReadout,
+		esomAcquiring, esomSyncIn1, esomSyncIn2, esomStrobe1, esomUndef
+	};
+
+	enum eSyncOutInvert{
+		esoiOn, esoiOff, esoiUndef
+	};
+
 protected:
 	static const char * strFrameStartTriggerMode[efstmUndef];
 	static eFrameStartTriggerMode getFrameStartTriggerMode(const char * str){
@@ -123,11 +141,47 @@ protected:
 		return ewmUndef;
 	}
 
+	static const char * strStrobeControlledDuration[escdUndef];
+	static eStrobeControlledDuration getStrobeControlledDuration(const char * str){
+		for(int i = 0; i < escdUndef; i++){
+			if(strcmp(strStrobeControlledDuration[i], str) == 0){
+				return (eStrobeControlledDuration) i;
+			}
+		}
+	}
+
+	static const char * strStrobeMode[esmUndef];
+	static eStrobeMode getStrobeMode(const char * str){
+		for(int i = 0; i < esmUndef; i++){
+			if(strcmp(strStrobeMode[i], str) == 0){
+				return (eStrobeMode) i;
+			}
+		}
+	}
+
+	static const char * strSyncOutMode[esomUndef];
+	static eSyncOutMode getSyncOutMode(const char * str){
+		for(int i = 0; i < esomUndef; i++){
+			if(strcmp(strSyncOutMode[i], str) == 0){
+				return (eSyncOutMode) i;
+			}
+		}
+	}
+
+	static const char * strSyncOutInvert[esoiUndef];
+	static eSyncOutInvert getSyncOutInvert(const char * str){
+		for(int i = 0; i < esoiUndef; i++){
+			if(strcmp(strSyncOutInvert[i], str) == 0){
+				return (eSyncOutInvert) i;
+			}
+		}
+	}
+
 	static bool m_bready_api;
 	long long m_ttrig_int;
 	long long m_ttrig_prev;
 
-	#define NUM_PV_PARAMS 40
+	#define NUM_PV_PARAMS 52
 	static const char * m_strParams[NUM_PV_PARAMS];
 	struct s_cam_params{
 		bool m_bactive;
@@ -149,6 +203,7 @@ protected:
 
 		// static parameters. these parameters should not be modified during running state
 		eFrameStartTriggerMode m_FrameStartTriggerMode;
+		
 		unsigned int m_Height;
 		unsigned int m_RegionX;
 		unsigned int m_RegionY;
@@ -159,9 +214,9 @@ protected:
 		unsigned int m_BinningY;
 		int m_DecimationHorizontal;
 		int m_DecimationVertical;
-	  bool m_ReverseSoftware;
-	  bool m_ReverseX;
-	  bool m_ReverseY;
+		bool m_ReverseSoftware;
+		bool m_ReverseX;
+		bool m_ReverseY;
 
 		bool init(f_avt_cam * pcam, ch_base * pch);
 		void stop(){
@@ -197,6 +252,13 @@ protected:
 		unsigned int m_WhitebalAutoRate;
 		unsigned int m_WhitebalValueRed;
 		unsigned int m_WhitebalValueBlue;
+
+		eStrobeMode m_Strobe1Mode;
+		eStrobeControlledDuration m_Strobe1ControlledDuration;
+		unsigned int m_Strobe1Duration;
+		unsigned int m_Strobe1Delay;
+		eSyncOutMode m_SyncOut1Mode, m_SyncOut2Mode, m_SyncOut3Mode, m_SyncOut4Mode;
+		eSyncOutInvert m_SyncOut1Invert, m_SyncOut2Invert, m_SyncOut3Invert, m_SyncOut4Invert;
 
 		bool config_param_dynamic();
 		s_cam_params(int icam = -1);

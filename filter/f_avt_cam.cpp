@@ -68,12 +68,34 @@ const char * f_avt_cam::strWhitebalMode[ewmAutoOnce+1] = {
 
 const char * f_avt_cam::m_strParams[NUM_PV_PARAMS] = {
 	"host",	"nbuf", "update", "FrameStartTriggerMode", "BandwidthCtrlMode", "StreamBytesPerSecond",
-	"ExposureMode", "ExposureAutoAdjustTol", "ExposureAutoAlg", "ExposureAutomax", "ExposureAutomin",
+	"ExposureMode", "ExposureAutoAdjustTol", "ExposureAutoAlg", "ExposureAutoMax", "ExposureAutoMin",
 	"ExposureAutoOutliers", "ExposureAutoRate", "ExposureAutoTarget", "ExposureValue", "GainMode",
-	"GainAutoAdjustTol", "GainAutomax", "GainAutomin", "GainAutoOutliers", "GainAutoRate",
+	"GainAutoAdjustTol", "GainAutoMax", "GainAutoMin", "GainAutoOutliers", "GainAutoRate",
 	"GainAutoTarget", "GainValue", "WhitebalMode", "WhitebalAutoAdjustTol", "WhitebalAutoRate",
 	"WhitebalValueRed", "WhitebalValueBlue", "Height", "Width", "RegionX",
-	"RegionY", "PixelFormat", "ReverseX", "ReverseY", "ReverseSoftware", "fcp", "ud", "udw", "udh"
+	"RegionY", "PixelFormat", "ReverseX", "ReverseY", "ReverseSoftware",
+	"Strobe1Duration", "Strobe1Delay", "Strobe1ControlledDuration", "Strobe1Mode",
+	"SyncOut1Mode", "SyncOut2Mode", "SyncOut3Mode", "SyncOut4Mode", 
+	"SyncOut1Invert", "SyncOut2Invert", "SyncOut3Invert", "SyncOut4Invert", 
+	"fcp", "ud", "udw", "udh"
+};
+
+const char * f_avt_cam::strStrobeMode[esmUndef] = {
+		"AcquisitionTriggerReady", "FrameTriggerReady", "FrameTrigger", "Exposing", "FrameReadabout",
+		"Imaging", "Acquiring", "SynqIn1", "SynqIn2"
+};
+
+const char * f_avt_cam::strStrobeControlledDuration[escdUndef] = {
+	"On", "Off"
+};
+
+const char * f_avt_cam::strSyncOutMode[esomUndef] = {
+		"GPO", "AcquisitionTriggerReady", "FrameTriggerReady", "FrameTrigger", "ExposingFrameReadout",
+		"Acquiring", "SyncIn1", "SyncIn2", "Strobe1"
+};
+
+const char * f_avt_cam::strSyncOutInvert[esoiUndef] = {
+	"On", "Off"
 };
 
 void _STDCALL f_avt_cam::s_cam_params::proc_frame(tPvFrame * pfrm)
@@ -97,7 +119,10 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
 	m_WhitebalMode(ewmAuto), m_WhitebalAutoAdjustTol(5), m_WhitebalAutoRate(100),
 	m_WhitebalValueRed(0), m_WhitebalValueBlue(0),
 	m_Height(UINT_MAX), m_RegionX(UINT_MAX), m_RegionY(UINT_MAX), m_Width(UINT_MAX),
-  m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0), m_ReverseSoftware(false), m_ReverseX(false), m_ReverseY(false)
+  m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0), m_ReverseSoftware(false), m_ReverseX(false), m_ReverseY(false),
+  m_Strobe1Mode(esmFrameTrigger), m_Strobe1ControlledDuration(escdOn), m_Strobe1Duration(200), m_Strobe1Delay(0),
+  m_SyncOut1Mode(esomStrobe1), m_SyncOut2Mode(esomStrobe1), m_SyncOut3Mode(esomStrobe1), m_SyncOut4Mode(esomStrobe1),
+  m_SyncOut1Invert(esoiOff), m_SyncOut2Invert(esoiOff), m_SyncOut3Invert(esoiOff), m_SyncOut4Invert(esoiOff)
 {
 	if(icam == -1){
 		strParams = m_strParams;
@@ -182,11 +207,24 @@ void f_avt_cam::register_params(s_cam_params & cam)
 
 	// Related to camera parameter
 	cam.fcp[0] = '\0';
+	register_fpar(cam.strParams[36], &cam.m_Strobe1Duration, "Duration of Strobe 1 (msec)");
+	register_fpar(cam.strParams[37], &cam.m_Strobe1Delay, "Delay of Strobe 1 (msec)");
+	register_fpar(cam.strParams[38], (int*) &cam.m_Strobe1ControlledDuration, (int) escdUndef, strStrobeControlledDuration,  "Enabling control of strobe 1. On or Off.");
+	register_fpar(cam.strParams[39], (int*) &cam.m_Strobe1Mode, (int) esmUndef, strStrobeMode, "Strobe Mode,");
+	register_fpar(cam.strParams[40], (int*) &cam.m_SyncOut1Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut1.");
+	register_fpar(cam.strParams[41], (int*) &cam.m_SyncOut2Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut2.");
+	register_fpar(cam.strParams[42], (int*) &cam.m_SyncOut3Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut3.");
+	register_fpar(cam.strParams[43], (int*) &cam.m_SyncOut4Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut4.");
+	
+	register_fpar(cam.strParams[44], (int*) &cam.m_SyncOut1Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut1");
+	register_fpar(cam.strParams[45], (int*) &cam.m_SyncOut2Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut2");
+	register_fpar(cam.strParams[46], (int*) &cam.m_SyncOut3Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut3");
+	register_fpar(cam.strParams[47], (int*) &cam.m_SyncOut4Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut4");
 
-	register_fpar(cam.strParams[36], cam.fcp, 1024, "File path to the camera parameter. (AWS camera parameter format)");
-	register_fpar(cam.strParams[37], &cam.bundist, "Enabling undistort.");
-	register_fpar(cam.strParams[38], &cam.szud.width, "Width of the undistorted image.");
-	register_fpar(cam.strParams[39], &cam.szud.height, "Height of the undistorted image.");
+	register_fpar(cam.strParams[48], cam.fcp, 1024, "File path to the camera parameter. (AWS camera parameter format)");
+	register_fpar(cam.strParams[49], &cam.bundist, "Enabling undistort.");
+	register_fpar(cam.strParams[50], &cam.szud.width, "Width of the undistorted image.");
+	register_fpar(cam.strParams[51], &cam.szud.height, "Height of the undistorted image.");
 }
 
 const char * f_avt_cam::get_err_msg(int code)
