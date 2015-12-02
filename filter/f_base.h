@@ -557,12 +557,12 @@ public:
 	
 	void get_info(s_cmd & cmd, int ifilter){
 		// currentlly returning filter name, id, number of parameters, number of input channels and output channels.
-		snprintf(cmd.get_ret_str(), RET_LEN, "%s %d %d %d %d", m_name, ifilter, m_pars.size(), m_chin.size(), m_chout.size());
+	  snprintf(cmd.get_ret_str(), RET_LEN, "%s %d %d %d %d", m_name, ifilter, (int) m_pars.size(), (int) m_chin.size(), (int) m_chout.size());
 	}
 
 	bool get_par_info(s_cmd & cmd){
 		if(cmd.num_args == 2){ // if parameter index is not specified, the number of parameters is returned.
-			snprintf(cmd.get_ret_str(), RET_LEN, "%d", m_pars.size());
+		  snprintf(cmd.get_ret_str(), RET_LEN, "%d", (int) m_pars.size());
 			return false;
 		}
 		
