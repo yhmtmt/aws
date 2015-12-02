@@ -42,7 +42,7 @@ const char * f_avt_cam::strFrameStartTriggerMode[efstmUndef] = {
 // enum is defined in PvApi.h
 const char * f_avt_cam::strPvFmt[ePvFmtBayer12Packed+1] = {
 	"Mono8", "Mono16", "Bayer8", "Bayer16", "Rgb24", "Rgb48",
-	"Yuv411", "Yuv422", "Yuv444", "Bgr24", "Rgba32", "Bgra32"
+	"Yuv411", "Yuv422", "Yuv444", "Bgr24", "Rgba32", "Bgra32",
 	"Mono12Packed",  "Bayer12Packed"
 };
 
@@ -496,7 +496,12 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 	memset(m_frame, 0, sizeof(tPvFrame) * m_num_buf);
 	m_frm_done.resize(m_num_buf);
 
+#if  defined(_M_AMD64) || defined(_x64)
+	unsigned long long ibuf;
+#else
 	unsigned int ibuf;
+#endif
+
 	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
 		m_frm_done[ibuf] = false;
 		m_frame[ibuf].Context[0] = (void*) this;
@@ -1123,7 +1128,13 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 		return;
 	}
 
+
+#if  defined(_M_AMD64) || defined(x64)
+	unsigned long long ibuf;
+#else
 	unsigned int ibuf;
+#endif
+
 	if(pfrm->Status == ePvErrSuccess){
 	  // cout << "Cam[" << m_host << "] Frame[" << pfrm->FrameCount <<"] Arrived " << endl;
 		Mat img;
@@ -1174,11 +1185,20 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 		}
 	}
 
+#if  defined(_M_AMD64) || defined(_x64)
+	ibuf = *((unsigned long long *) (&pfrm->Context[1]));
+#else
 	ibuf = *((unsigned int*) (&pfrm->Context[1]));
+#endif
+
 	m_cur_frm = pfrm->FrameCount;
 	m_frm_done[ibuf] = true;
 
-	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
+#if  defined(_M_AMD64) || defined(_x64)
+	for(ibuf = 0; ibuf < (unsigned long long) m_num_buf; ibuf++){
+#else
+	for(ibuf = 0; ibuf < (unsigned int) m_num_buf; ibuf++){
+#endif
 		if(m_frm_done[ibuf]){
 			if(!pout->is_buf_in_use((const unsigned char*) m_frame[ibuf].ImageBuffer))
 				PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);

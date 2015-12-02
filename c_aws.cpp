@@ -525,7 +525,7 @@ bool c_aws::handle_chinf(s_cmd & cmd)
 			pch = m_channels[ich];
 		}
 	}else{
-	  sprintf(cmd.get_ret_str(), "%d", (int) m_channels.size());
+	  sprintf(cmd.get_ret_str(), "%d", (int)m_channels.size());
 		result = true;
 		return result;
 	}
@@ -1119,12 +1119,7 @@ c_rcmd::c_rcmd(c_aws * paws, unsigned short port):m_paws(paws){
 	m_svr_addr.sin_port = htons(port);
 	m_svr_addr.sin_addr.s_addr = INADDR_ANY;
 
-	int ret;
-#ifndef _WIN32
-	int val = 1;
-	ret = setsockopt(m_svr_sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
-#endif
-	ret = ::bind(m_svr_sock, (sockaddr*)&m_svr_addr, sizeof(m_svr_addr));
+	int ret = ::bind(m_svr_sock, (sockaddr*)&m_svr_addr, sizeof(m_svr_addr));
 	if(ret != 0){
 		cerr << "bind failed with SOCKET_ERROR." << endl;
 		closesocket(m_svr_sock);
