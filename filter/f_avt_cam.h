@@ -148,6 +148,7 @@ protected:
 				return (eStrobeControlledDuration) i;
 			}
 		}
+		return escdUndef;
 	}
 
 	static const char * strStrobeMode[esmUndef];
@@ -157,6 +158,7 @@ protected:
 				return (eStrobeMode) i;
 			}
 		}
+		return esmUndef;
 	}
 
 	static const char * strSyncOutMode[esomUndef];
@@ -166,6 +168,7 @@ protected:
 				return (eSyncOutMode) i;
 			}
 		}
+		return esomUndef;
 	}
 
 	static const char * strSyncOutInvert[esoiUndef];
@@ -175,13 +178,14 @@ protected:
 				return (eSyncOutInvert) i;
 			}
 		}
+		return esoiUndef;
 	}
 
 	static bool m_bready_api;
 	long long m_ttrig_int;
 	long long m_ttrig_prev;
 
-	#define NUM_PV_PARAMS 52
+	#define NUM_PV_PARAMS 53
 	static const char * m_strParams[NUM_PV_PARAMS];
 	struct s_cam_params{
 		bool m_bactive;
@@ -200,6 +204,7 @@ protected:
 		int m_cur_frm;
 
 		///////////////////// parameters
+		unsigned int m_PacketSize;
 
 		// static parameters. these parameters should not be modified during running state
 		eFrameStartTriggerMode m_FrameStartTriggerMode;

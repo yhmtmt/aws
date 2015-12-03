@@ -138,7 +138,7 @@ void f_base::s_fpar::get_info(s_cmd & cmd){
 		ptr = cmd.get_ret_str();
 		slen = (int) strlen(ptr);
 		for(int i = 0; i < len; i++){
-		  int _slen = strlen(str_enum[i]);
+		  int _slen = (int) strlen(str_enum[i]);
 		  if(slen + _slen  + 1 >= CMD_LEN)
 		    break;
 		  snprintf(ptr + slen, CMD_LEN - slen, "%s,", str_enum[i]);
