@@ -38,7 +38,7 @@ using namespace cv;
 
 f_avt_stereo::f_avt_stereo(const char * name): f_avt_cam(name), m_cam1(1), m_cam2(2), szorg(-1,-1), szrct(-1,-1), rectify(false)
 {
-	register_fpar(m_strParams[3], (int*)&m_FrameStartTriggerMode, efstmUndef, strFrameStartTriggerMode, "Frame Start Trigger mode (default Freerun)");
+	register_fpar(m_strParams[4], (int*)&m_FrameStartTriggerMode, efstmUndef, strFrameStartTriggerMode, "Frame Start Trigger mode (default Freerun)");
 	register_params(m_cam1);
 	register_params(m_cam2);
 	register_fpar("rc", &rectify, "Enable rectification.");

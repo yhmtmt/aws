@@ -121,7 +121,7 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
   m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0), m_ReverseSoftware(false), m_ReverseX(false), m_ReverseY(false),
   m_Strobe1Mode(esmUndef), m_Strobe1ControlledDuration(escdUndef), m_Strobe1Duration(UINT_MAX), m_Strobe1Delay(UINT_MAX),
   m_SyncOut1Mode(esomUndef), m_SyncOut2Mode(esomUndef), m_SyncOut3Mode(esomUndef), m_SyncOut4Mode(esomUndef),
-  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef)
+  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef), bundist(false)
 {
 	if(icam == -1){
 		strParams = m_strParams;
