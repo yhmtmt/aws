@@ -1,0 +1,21 @@
+#!/bin/sh
+
+if [$# -ne 3]; then
+   echo "serial.aws <dev> <br> <cyc>"
+fi
+
+channel crbuf din
+channel crbuf dout
+
+filter dd dd -i -o din
+filter rd rd -i dout -o
+
+filter ser ser -i din -o dout
+
+fset ser dev $1
+fset ser br $2
+fset dd type aseq
+
+cyc $3
+go
+
