@@ -133,15 +133,20 @@ void f_base::s_fpar::get_info(s_cmd & cmd){
 		int slen = (int) strlen(cmd.get_ret_str());
 		char * ptr = cmd.get_ret_str() + slen;
 		*ptr = ' ';
-		snprintf(ptr, CMD_LEN - slen, " in {");
+		slen++;
+		snprintf(ptr, CMD_LEN - slen, " value in {");
 		ptr = cmd.get_ret_str();
 		slen = (int) strlen(ptr);
-		for(int i = 0; i < len && slen < len; i++){
-			snprintf(ptr + slen, CMD_LEN - slen, "%s,", str_enum[i]);
-			slen += (int) strlen(str_enum[i]) + 1;
+		for(int i = 0; i < len; i++){
+		  int _slen = (int) strlen(str_enum[i]);
+		  if(slen + _slen  + 1 >= CMD_LEN)
+		    break;
+		  snprintf(ptr + slen, CMD_LEN - slen, "%s,", str_enum[i]);
+		  slen += _slen + 1;
 		}
 		slen = (int) strlen(cmd.get_ret_str());
 		ptr[slen-1] = '}';
+		cout << endl;
 	}
 }
 

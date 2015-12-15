@@ -42,7 +42,7 @@ const char * f_avt_cam::strFrameStartTriggerMode[efstmUndef] = {
 // enum is defined in PvApi.h
 const char * f_avt_cam::strPvFmt[ePvFmtBayer12Packed+1] = {
 	"Mono8", "Mono16", "Bayer8", "Bayer16", "Rgb24", "Rgb48",
-	"Yuv411", "Yuv422", "Yuv444", "Bgr24", "Rgba32", "Bgra32"
+	"Yuv411", "Yuv422", "Yuv444", "Bgr24", "Rgba32", "Bgra32",
 	"Mono12Packed",  "Bayer12Packed"
 };
 
@@ -67,7 +67,7 @@ const char * f_avt_cam::strWhitebalMode[ewmAutoOnce+1] = {
 };
 
 const char * f_avt_cam::m_strParams[NUM_PV_PARAMS] = {
-	"host",	"nbuf", "update", "FrameStartTriggerMode", "BandwidthCtrlMode", "StreamBytesPerSecond",
+	"host",	"nbuf", "PacketSize", "update", "FrameStartTriggerMode", "BandwidthCtrlMode", "StreamBytesPerSecond",
 	"ExposureMode", "ExposureAutoAdjustTol", "ExposureAutoAlg", "ExposureAutoMax", "ExposureAutoMin",
 	"ExposureAutoOutliers", "ExposureAutoRate", "ExposureAutoTarget", "ExposureValue", "GainMode",
 	"GainAutoAdjustTol", "GainAutoMax", "GainAutoMin", "GainAutoOutliers", "GainAutoRate",
@@ -105,9 +105,8 @@ void _STDCALL f_avt_cam::s_cam_params::proc_frame(tPvFrame * pfrm)
 }
 
 f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5), 
-	m_access(ePvAccessMaster), m_frame(NULL), 
-	m_PixelFormat(__ePvFmt_force_32),
-	m_update(false),
+	m_access(ePvAccessMaster), m_frame(NULL), m_PacketSize(8228),
+	m_PixelFormat(__ePvFmt_force_32), m_update(false),
 	m_FrameStartTriggerMode(efstmUndef),
 	m_BandwidthCtrlMode(bcmUndef),
 	m_StreamBytesPerSecond(0/*115000000*/), m_ExposureMode(emUndef), m_ExposureAutoAdjustTol(UINT_MAX /*5*/),
@@ -122,7 +121,7 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
   m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0), m_ReverseSoftware(false), m_ReverseX(false), m_ReverseY(false),
   m_Strobe1Mode(esmUndef), m_Strobe1ControlledDuration(escdUndef), m_Strobe1Duration(UINT_MAX), m_Strobe1Delay(UINT_MAX),
   m_SyncOut1Mode(esomUndef), m_SyncOut2Mode(esomUndef), m_SyncOut3Mode(esomUndef), m_SyncOut4Mode(esomUndef),
-  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef)
+  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef), bundist(false)
 {
 	if(icam == -1){
 		strParams = m_strParams;
@@ -162,69 +161,70 @@ void f_avt_cam::register_params(s_cam_params & cam)
 {
 	register_fpar(cam.strParams[0], cam.m_host, 1024, "Network address of the camera to be opened.");
 	register_fpar(cam.strParams[1], &cam.m_num_buf, "Number of image buffers.");
-	register_fpar(cam.strParams[2], &cam.m_update, "Update flag.");
-	register_fpar(cam.strParams[3], (int*)&cam.m_FrameStartTriggerMode, efstmUndef, strFrameStartTriggerMode, "Frame Start Trigger mode (default Freerun)");
-	register_fpar(cam.strParams[4], (int*)&cam.m_BandwidthCtrlMode, bcmUndef, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
-	register_fpar(cam.strParams[5], &cam.m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
+	register_fpar(cam.strParams[2], &cam.m_PacketSize, "Size of ethernet packet (default 8228)");
+	register_fpar(cam.strParams[3], &cam.m_update, "Update flag.");
+	register_fpar(cam.strParams[4], (int*)&cam.m_FrameStartTriggerMode, efstmUndef, strFrameStartTriggerMode, "Frame Start Trigger mode (default Freerun)");
+	register_fpar(cam.strParams[5], (int*)&cam.m_BandwidthCtrlMode, bcmUndef, strBandwidthCtrlMode, "Bandwidth control mode (default StreamBytesPerSecond)");
+	register_fpar(cam.strParams[6], &cam.m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
 
 	// about exposure
-	register_fpar(cam.strParams[6], (int*) &cam.m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode (default Auto)");
-	register_fpar(cam.strParams[7], &cam.m_ExposureAutoAdjustTol, "ExposureAutoAdjusttol (default 5)");
-	register_fpar(cam.strParams[8], (int*)&cam.m_ExposureAutoAlg, (int)eaaFitRange, strExposureAutoAlg, "ExposureAutoAlg (default Mean)");
-	register_fpar(cam.strParams[9], &cam.m_ExposureAutoMax, "ExposureAutoMax (default 500000us)");
-	register_fpar(cam.strParams[10], &cam.m_ExposureAutoMin, "ExposureAutoMin (default 1000us)");
-	register_fpar(cam.strParams[11], &cam.m_ExposureAutoOutliers, "ExposureAutoOutliers (default 0)");
-	register_fpar(cam.strParams[12], &cam.m_ExposureAutoRate, "ExposureAutoRate (default 100)");
-	register_fpar(cam.strParams[13], &cam.m_ExposureAutoTarget, "ExposureAutoTarget (default 50)");
-	register_fpar(cam.strParams[14], &cam.m_ExposureValue, "ExposureValue (default 100us)");
+	register_fpar(cam.strParams[7], (int*) &cam.m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode (default Auto)");
+	register_fpar(cam.strParams[8], &cam.m_ExposureAutoAdjustTol, "ExposureAutoAdjusttol (default 5)");
+	register_fpar(cam.strParams[9], (int*)&cam.m_ExposureAutoAlg, (int)eaaFitRange, strExposureAutoAlg, "ExposureAutoAlg (default Mean)");
+	register_fpar(cam.strParams[10], &cam.m_ExposureAutoMax, "ExposureAutoMax (default 500000us)");
+	register_fpar(cam.strParams[11], &cam.m_ExposureAutoMin, "ExposureAutoMin (default 1000us)");
+	register_fpar(cam.strParams[12], &cam.m_ExposureAutoOutliers, "ExposureAutoOutliers (default 0)");
+	register_fpar(cam.strParams[13], &cam.m_ExposureAutoRate, "ExposureAutoRate (default 100)");
+	register_fpar(cam.strParams[14], &cam.m_ExposureAutoTarget, "ExposureAutoTarget (default 50)");
+	register_fpar(cam.strParams[15], &cam.m_ExposureValue, "ExposureValue (default 100us)");
 
 	// about gain
-	register_fpar(cam.strParams[15], (int*)&cam.m_GainMode, (int)(egmExternal) + 1, strGainMode, "GainMode (default Auto)");
-	register_fpar(cam.strParams[16], &cam.m_GainAutoAdjustTol, "GainAutoAdjusttol (default 5)");
-	register_fpar(cam.strParams[17], &cam.m_GainAutoMax, "GainAutoMax (default 30db)");
-	register_fpar(cam.strParams[18], &cam.m_GainAutoMin, "GainAutoMin (default 5db)");
-	register_fpar(cam.strParams[19], &cam.m_GainAutoOutliers, "GainAutoOutliers (default 0)");
-	register_fpar(cam.strParams[20], &cam.m_GainAutoRate, "GainAutoRate (default 100)");
-	register_fpar(cam.strParams[21], &cam.m_GainAutoTarget, "GainAutoTarget (default 50)");
-	register_fpar(cam.strParams[22], &cam.m_GainValue, "GainValue (default 10db)");
+	register_fpar(cam.strParams[16], (int*)&cam.m_GainMode, (int)(egmExternal) + 1, strGainMode, "GainMode (default Auto)");
+	register_fpar(cam.strParams[17], &cam.m_GainAutoAdjustTol, "GainAutoAdjusttol (default 5)");
+	register_fpar(cam.strParams[18], &cam.m_GainAutoMax, "GainAutoMax (default 30db)");
+	register_fpar(cam.strParams[19], &cam.m_GainAutoMin, "GainAutoMin (default 5db)");
+	register_fpar(cam.strParams[20], &cam.m_GainAutoOutliers, "GainAutoOutliers (default 0)");
+	register_fpar(cam.strParams[21], &cam.m_GainAutoRate, "GainAutoRate (default 100)");
+	register_fpar(cam.strParams[22], &cam.m_GainAutoTarget, "GainAutoTarget (default 50)");
+	register_fpar(cam.strParams[23], &cam.m_GainValue, "GainValue (default 10db)");
 
 	// about white balance
-	register_fpar(cam.strParams[23], (int*)&cam.m_WhitebalMode, (int)ewmAutoOnce+1, strWhitebalMode, "WhitebalMode (default Auto)");
-	register_fpar(cam.strParams[24], &cam.m_WhitebalAutoAdjustTol, "WhitebaAutoAdjustTol (percent, default 5)");
-	register_fpar(cam.strParams[25], &cam.m_WhitebalAutoRate, "WhitebalAutoRate (percent, default 100)");
-	register_fpar(cam.strParams[26], &cam.m_WhitebalValueRed, "WhitebalValueRed (percent, default 0)");
-	register_fpar(cam.strParams[27], &cam.m_WhitebalValueBlue, "WhitebalValueBlue (percent, default 0)");
+	register_fpar(cam.strParams[24], (int*)&cam.m_WhitebalMode, (int)ewmAutoOnce+1, strWhitebalMode, "WhitebalMode (default Auto)");
+	register_fpar(cam.strParams[25], &cam.m_WhitebalAutoAdjustTol, "WhitebaAutoAdjustTol (percent, default 5)");
+	register_fpar(cam.strParams[26], &cam.m_WhitebalAutoRate, "WhitebalAutoRate (percent, default 100)");
+	register_fpar(cam.strParams[27], &cam.m_WhitebalValueRed, "WhitebalValueRed (percent, default 0)");
+	register_fpar(cam.strParams[28], &cam.m_WhitebalValueBlue, "WhitebalValueBlue (percent, default 0)");
 
 	// Image format
-	register_fpar(cam.strParams[28], &cam.m_Height, "Height of the ROI (1 to Maximum Height)");
-	register_fpar(cam.strParams[29], &cam.m_Width, "Width of the ROI(1 to Maximum Width)");
-	register_fpar(cam.strParams[30], &cam.m_RegionX, "Top left x position of the ROI (0 to Maximum Camera Width - 1)");
-	register_fpar(cam.strParams[31], &cam.m_RegionY, "Top left y position of the ROI (0 to Maximum Camera Height -1)");
-	register_fpar(cam.strParams[32], (int*)&cam.m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
-	register_fpar(cam.strParams[33], &cam.m_ReverseX, "Reverse horizontally. (default: no)");
-	register_fpar(cam.strParams[34], &cam.m_ReverseY, "Reverse vertically. (default: no)");	
-	register_fpar(cam.strParams[35], &cam.m_ReverseSoftware, "Reverse by software according to ReverseX and ReverseY flags.");
+	register_fpar(cam.strParams[29], &cam.m_Height, "Height of the ROI (1 to Maximum Height)");
+	register_fpar(cam.strParams[30], &cam.m_Width, "Width of the ROI(1 to Maximum Width)");
+	register_fpar(cam.strParams[31], &cam.m_RegionX, "Top left x position of the ROI (0 to Maximum Camera Width - 1)");
+	register_fpar(cam.strParams[32], &cam.m_RegionY, "Top left y position of the ROI (0 to Maximum Camera Height -1)");
+	register_fpar(cam.strParams[33], (int*)&cam.m_PixelFormat, (int)(ePvFmtBayer12Packed+1), strPvFmt, "Image format.");
+	register_fpar(cam.strParams[34], &cam.m_ReverseX, "Reverse horizontally. (default: no)");
+	register_fpar(cam.strParams[35], &cam.m_ReverseY, "Reverse vertically. (default: no)");	
+	register_fpar(cam.strParams[36], &cam.m_ReverseSoftware, "Reverse by software according to ReverseX and ReverseY flags.");
 
 	// Related to camera parameter
 	cam.fcp[0] = '\0';
-	register_fpar(cam.strParams[36], &cam.m_Strobe1Duration, "Duration of Strobe 1 (usec)");
-	register_fpar(cam.strParams[37], &cam.m_Strobe1Delay, "Delay of Strobe 1 (usec)");
-	register_fpar(cam.strParams[38], (int*) &cam.m_Strobe1ControlledDuration, (int) escdUndef, strStrobeControlledDuration,  "Enabling control of strobe 1. On or Off.");
-	register_fpar(cam.strParams[39], (int*) &cam.m_Strobe1Mode, (int) esmUndef, strStrobeMode, "Strobe Mode,");
-	register_fpar(cam.strParams[40], (int*) &cam.m_SyncOut1Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut1.");
-	register_fpar(cam.strParams[41], (int*) &cam.m_SyncOut2Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut2.");
-	register_fpar(cam.strParams[42], (int*) &cam.m_SyncOut3Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut3.");
-	register_fpar(cam.strParams[43], (int*) &cam.m_SyncOut4Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut4.");
+	register_fpar(cam.strParams[37], &cam.m_Strobe1Duration, "Duration of Strobe 1 (usec)");
+	register_fpar(cam.strParams[38], &cam.m_Strobe1Delay, "Delay of Strobe 1 (usec)");
+	register_fpar(cam.strParams[39], (int*) &cam.m_Strobe1ControlledDuration, (int) escdUndef, strStrobeControlledDuration,  "Enabling control of strobe 1. On or Off.");
+	register_fpar(cam.strParams[40], (int*) &cam.m_Strobe1Mode, (int) esmUndef, strStrobeMode, "Strobe Mode,");
+	register_fpar(cam.strParams[41], (int*) &cam.m_SyncOut1Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut1.");
+	register_fpar(cam.strParams[42], (int*) &cam.m_SyncOut2Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut2.");
+	register_fpar(cam.strParams[43], (int*) &cam.m_SyncOut3Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut3.");
+	register_fpar(cam.strParams[44], (int*) &cam.m_SyncOut4Mode, (int) esomUndef, strSyncOutMode, "Sync Out Mode for SyncOut4.");
 	
-	register_fpar(cam.strParams[44], (int*) &cam.m_SyncOut1Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut1");
-	register_fpar(cam.strParams[45], (int*) &cam.m_SyncOut2Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut2");
-	register_fpar(cam.strParams[46], (int*) &cam.m_SyncOut3Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut3");
-	register_fpar(cam.strParams[47], (int*) &cam.m_SyncOut4Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut4");
+	register_fpar(cam.strParams[45], (int*) &cam.m_SyncOut1Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut1");
+	register_fpar(cam.strParams[46], (int*) &cam.m_SyncOut2Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut2");
+	register_fpar(cam.strParams[47], (int*) &cam.m_SyncOut3Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut3");
+	register_fpar(cam.strParams[48], (int*) &cam.m_SyncOut4Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut4");
 
-	register_fpar(cam.strParams[48], cam.fcp, 1024, "File path to the camera parameter. (AWS camera parameter format)");
-	register_fpar(cam.strParams[49], &cam.bundist, "Enabling undistort.");
-	register_fpar(cam.strParams[50], &cam.szud.width, "Width of the undistorted image.");
-	register_fpar(cam.strParams[51], &cam.szud.height, "Height of the undistorted image.");
+	register_fpar(cam.strParams[49], cam.fcp, 1024, "File path to the camera parameter. (AWS camera parameter format)");
+	register_fpar(cam.strParams[50], &cam.bundist, "Enabling undistort.");
+	register_fpar(cam.strParams[51], &cam.szud.width, "Width of the undistorted image.");
+	register_fpar(cam.strParams[52], &cam.szud.height, "Height of the undistorted image.");
 }
 
 const char * f_avt_cam::get_err_msg(int code)
@@ -496,7 +496,12 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 	memset(m_frame, 0, sizeof(tPvFrame) * m_num_buf);
 	m_frm_done.resize(m_num_buf);
 
+#if  defined(_M_AMD64) || defined(_x64)
+	unsigned long long ibuf;
+#else
 	unsigned int ibuf;
+#endif
+
 	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
 		m_frm_done[ibuf] = false;
 		m_frame[ibuf].Context[0] = (void*) this;
@@ -509,8 +514,7 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 		}
 	}
 
-	err = PvCaptureAdjustPacketSize(m_hcam, 8228);
-
+	err = PvCaptureAdjustPacketSize(m_hcam, m_PacketSize);
 	if(err != ePvErrSuccess){
 		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_CFETH);
 		goto free_buf;
@@ -519,6 +523,17 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 	err = PvCaptureStart(m_hcam);
 	if(err != ePvErrSuccess){
 		f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_START);
+		switch(err){
+		case ePvErrUnplugged:
+			cout << "Camera is unplugged." << endl;
+			break;
+		case ePvErrResources:
+			cout << "System resources are not available." << endl;
+			break;
+		case ePvErrBandwidth:
+			cout << "Bandwidth is not sufficient to start capture stream." << endl;
+			break;
+		}
 		goto free_buf;
 	}
 
@@ -1123,7 +1138,12 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 		return;
 	}
 
-	unsigned int ibuf;
+#if  defined(_M_AMD64) || defined(x64)
+	unsigned long long ibuf = *((unsigned long long *) (&pfrm->Context[1]));
+#else
+	unsigned int ibuf = *((unsigned int*) (&pfrm->Context[1]));
+#endif
+
 	if(pfrm->Status == ePvErrSuccess){
 	  // cout << "Cam[" << m_host << "] Frame[" << pfrm->FrameCount <<"] Arrived " << endl;
 		Mat img;
@@ -1172,16 +1192,45 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 			}
 			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 		}
+	}else{
+		switch(pfrm->Status){
+		case ePvErrCancelled:
+			m_frm_done[ibuf] = true;
+			cout << "Frame request is cancelled." << endl;
+			return;
+			break;
+		case ePvErrDataMissing:
+			m_frm_done[ibuf] = true;
+			cout << "Missing data." << endl;
+			return;
+			break;
+		}
 	}
 
-	ibuf = *((unsigned int*) (&pfrm->Context[1]));
 	m_cur_frm = pfrm->FrameCount;
 	m_frm_done[ibuf] = true;
 
-	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
+	tPvErr PvErr;
+#if  defined(_M_AMD64) || defined(_x64)
+	for(ibuf = 0; ibuf < (unsigned long long) m_num_buf; ibuf++){
+#else
+	for(ibuf = 0; ibuf < (unsigned int) m_num_buf; ibuf++){
+#endif
 		if(m_frm_done[ibuf]){
-			if(!pout->is_buf_in_use((const unsigned char*) m_frame[ibuf].ImageBuffer))
-				PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
+			if(!pout->is_buf_in_use((const unsigned char*) m_frame[ibuf].ImageBuffer)){
+				PvErr = PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
+				switch(PvErr){
+				case ePvErrUnplugged:
+					cout << "Camera is unplugged." << endl;
+					return;
+				case ePvErrBadSequence:
+					cout << "Capture stream is not activated." << endl;
+					return;
+				case ePvErrQueueFull:
+					cout << "The frame queue is full." << endl;
+					return;
+				};
+			}
 		}
 	}
 }

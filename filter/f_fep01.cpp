@@ -876,7 +876,7 @@ bool f_fep01::parse_rbuf()
 		}catch(const c_parse_message_exception & e){
 			cerr << "Error in parsing read buffer. Status: " << m_rec_str[e.type] << " line = " << e.line << "." << endl;
 			cerr << "Message Buffer Usage: " << m_rcv_msg_head << " to " << m_rcv_msg_tail << endl;
-			cerr << "Message Length Recieved: " << (int) m_rcv_msg << endl;
+			cerr << "Message Length Recieved: " << (int) m_rcv_len << endl;
 			cerr << "Read Buffer: ";
 			cerr.write(m_pbuf, m_pbuf_tail);
 			cerr << "Message Buffer:";
