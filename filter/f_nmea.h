@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with f_nmea.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#ifndef _F_NMEA_H_
+#define _F_NMEA_H_
+
 #define SIZE_NMEA_BUF 166 // for two NMEA
 #include "../util/aws_serial.h"
 #include "f_base.h"
@@ -172,3 +175,5 @@ public:
 	virtual bool proc();
 	virtual void destroy_run();
 };
+
+#endif
