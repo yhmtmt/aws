@@ -720,7 +720,7 @@ void s_obj::analyze_error(double fx, double fy)
 	vector<Point3f> & pt3d = pmdl->pts_deformed;
 	vector<Point3f> pt3dtrn;
 
-	int num_pts = pt2d.size();
+	int num_pts = (int) pt2d.size();
 	pt3dtrn.resize(num_pts);
 
 	Mat R(3, 3, CV_64FC1);
@@ -1224,12 +1224,13 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, boo
 			p0 = R.ptr<double>();
 		
 			trnPts(obj.pmdl->pts_deformed, pts[iobj], R, T);			
-			Point3f Merr(obj.delta_Tx_rmax, obj.delta_Ty_rmax, obj.delta_Tz_rmax);
+			Point3f Merr((float)obj.delta_Tx_rmax, (float)obj.delta_Ty_rmax, (float)obj.delta_Tz_rmax);
 			Point3f Merrtrn;
-			trnPt(Merr, Merrtrn, R.ptr<double>(), T.ptr<double>());
-			obj.delta_Tx_rmax = Merrtrn.x;
-			obj.delta_Ty_rmax = Merrtrn.y;
-			obj.delta_Tz_rmax = Merrtrn.z;
+			Mat T0 = Mat::zeros(1, 3, CV_64FC1);
+			trnPt(Merr, Merrtrn, Rorg.ptr<double>(), T0.ptr<double>());
+			obj.delta_Tx_rmax =abs(Merrtrn.x);
+			obj.delta_Ty_rmax = abs(Merrtrn.y);
+			obj.delta_Tz_rmax = abs(Merrtrn.z);
 			if(xyz)
 				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
 			else
