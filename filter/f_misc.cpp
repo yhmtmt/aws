@@ -126,7 +126,7 @@ bool f_imwrite::proc()
 		imwrite(buf, img, param);
 		break;
 	}
-
+	cout << "Writing " << buf << endl;
 	return true;
 }
 
