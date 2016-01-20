@@ -33,28 +33,28 @@ protected:
   unsigned char m_meng_aws;
   unsigned char m_seng_aws;
 
-  unsigned char m_meng_rmt; // main engine control value from remote control
-  unsigned char m_seng_rmt; // sub engine control value from remote control
-  unsigned char m_rud_rmt;  // rudder control value from remote control
+  unsigned char m_meng_rmc; // main engine control value from remote control
+  unsigned char m_seng_rmc; // sub engine control value from remote control
+  unsigned char m_rud_rmc;  // rudder control value from remote control
 
   unsigned char m_rud_sta;  // rudder status value.
 
-  // remote controler's values corresponding positions 
-  unsigned char m_meng_max_rmt; 
-  unsigned char m_meng_nuf_rmt;
-  unsigned char m_meng_nut_rmt;
-  unsigned char m_meng_nub_rmt;
-  unsigned char m_meng_min_rmt;
+  // remote controller's values corresponding positions 
+  unsigned char m_meng_max_rmc; 
+  unsigned char m_meng_nuf_rmc;
+  unsigned char m_meng_nut_rmc;
+  unsigned char m_meng_nub_rmc;
+  unsigned char m_meng_min_rmc;
 
-  unsigned char m_seng_max_rmt;
-  unsigned char m_seng_nuf_rmt;
-  unsigned char m_seng_nut_rmt;
-  unsigned char m_seng_nub_rmt;
-  unsigned char m_seng_min_rmt;
+  unsigned char m_seng_max_rmc;
+  unsigned char m_seng_nuf_rmc;
+  unsigned char m_seng_nut_rmc;
+  unsigned char m_seng_nub_rmc;
+  unsigned char m_seng_min_rmc;
 
-  unsigned char m_rud_max_rmt;
-  unsigned char m_rud_nut_rmt;
-  unsigned char m_rud_min_rmt;
+  unsigned char m_rud_max_rmc;
+  unsigned char m_rud_nut_rmc;
+  unsigned char m_rud_min_rmc;
 
   unsigned char m_rud_sta_max;
   unsigned char m_rud_sta_nut;

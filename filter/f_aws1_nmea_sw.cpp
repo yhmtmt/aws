@@ -3,18 +3,19 @@
 // Copyright(c) 2016 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
-// f_aws_1_nmea_sw.cpp is free software: you can redistribute it and/or modify
+// f_aws1_nmea_sw.cpp is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// f_nmea.cpp is distributed in the hope that it will be useful,
+// f_aws1_nmea_sw.cpp is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with f_aws_1_nmea_sw.cpp.  If not, see <http://www.gnu.org/licenses/>. 
+// along with f_aws1_nmea_sw.cpp.  If not, see <http://www.gnu.org/licenses/>. 
+
 #include <cstdio>
 
 #include <iostream>
