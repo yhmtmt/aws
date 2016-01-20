@@ -29,11 +29,16 @@ protected:
                             //    true: control values from aws are sat. 
                             //    false: control values from remote controller are sat.
 
+  unsigned char m_rud_aws;
+  unsigned char m_meng_aws;
+  unsigned char m_seng_aws;
+
   unsigned char m_meng_rmt; // main engine control value from remote control
   unsigned char m_seng_rmt; // sub engine control value from remote control
   unsigned char m_rud_rmt;  // rudder control value from remote control
 
   unsigned char m_rud_sta;  // rudder status value.
+
   // remote controler's values corresponding positions 
   unsigned char m_meng_max_rmt; 
   unsigned char m_meng_nuf_rmt;
@@ -50,10 +55,15 @@ protected:
   unsigned char m_rud_max_rmt;
   unsigned char m_rud_nut_rmt;
   unsigned char m_rud_min_rmt;
+
+  unsigned char m_rud_sta_max;
+  unsigned char m_rud_sta_nut;
+  unsigned char m_rud_sta_min;
   
   unsigned char m_meng;     // main engine control value
   unsigned char m_seng;     // sub engine control value
   unsigned char m_rud;      // rudder control value
+  unsigned char m_rud_sta_out; // rudder status output
 
   // digital potentiometer's values corressponding positions
   unsigned char m_meng_max;
@@ -72,6 +82,52 @@ protected:
   unsigned char m_rud_nut;
   unsigned char m_rud_min;
 
+  unsigned char m_rud_sta_out_max;
+  unsigned char m_rud_sta_out_nut;
+  unsigned char m_rud_sta_out_min;
+
+  unsigned char map_oval(unsigned char val, 
+			 unsigned char vmax, unsigned char vnut, unsigned char vmin, 
+			 unsigned char omax, unsigned char onut, unsigned char omin)
+  {
+    if(val > vmax)
+      return omax;
+    if(val < vmin)
+      return omin;
+    if(val > vnut)
+      return (unsigned char) ( (double) ((unsigned int) (omax - onut) * (unsigned int) (val - vnut)) / (double) (vmax - vnut)) + onut;
+    else
+      return (unsigned char) ((double)((unsigned int) (onut - omin) * (unsigned int) (vnut - val)) / (double) (vnut - vmin)) + omin;
+    return 0x7f;
+  }
+
+  unsigned char map_oval(unsigned char val, 
+			 unsigned char vmax, unsigned char vfnut, 
+			 unsigned char vnut, unsigned char vbnut, 
+			 unsigned char vmin,
+			 unsigned char omax, unsigned char ofnut, 
+			 unsigned char onut, unsigned char obnut, 
+			 unsigned char omin
+			 )
+  {
+    if(val > vmax)
+      return omax;
+    if(val < vmin)
+      return omin;
+    if(val > vfnut)
+      return (unsigned char) ((double)((unsigned int) (omax -ofnut) * (unsigned int) (val - vfnut)) / (double) (vmax - vfnut)) + ofnut;
+    else if(val > vnut)
+      return (unsigned char) ((double)((unsigned int) (ofnut - onut) * (unsigned int) (val - vnut)) / (double) (vfnut - vnut)) + onut;
+    else if(val > vbnut)
+      return (unsigned char) ((double)((unsigned int) (onut - obnut) * (unsigned int) * (unsigned int) (val - vbnut)) / (double) (vnut - vbnut)) + obnut;
+    else
+      return (unsigned char) ((double)((unsigned int) (obnut - omin) * (unsigned int) (obnut - val) / (double) (obnut - vmin)) + omin;
+    return 0x7f;
+  }
+
+  unsigned char calc_val(
+  void get_gpio();
+  void set_gpio();
 public:
 	f_aws1_ctrl(const char * name);
 
@@ -80,7 +136,6 @@ public:
 	virtual bool init_run();
 
 	virtual void destroy_run();
-
 
 	virtual bool proc();
 };

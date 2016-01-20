@@ -61,19 +61,59 @@ bool f_aws1_ctrl::init_run()
     return false;
   }
 
-  unsigned int val;
-  ioctl(fd, ZGPIO_IOGET, &val);
-  m_rud_rmt = ((unsigned char*) &val)[0];
-  m_meng_rmt = ((unsigned char*) &val)[1];
-  m_seng_rmt = ((unsigned char*) &val)[2];
-  m_rud_stat= ((unsigned char*) &val)[3];
-
+ 
   return true;
 }
 
 void f_aws1_ctrl::destroy_run()
 {
   close(m_fd);
+}
+
+void f_aws1_ctrl::get_gpio()
+{
+  unsigned int val;
+  ioctl(fd, ZGPIO_IOGET, &val);
+  m_rud_rmt = ((unsigned char*) &val)[0];
+  m_meng_rmt = ((unsigned char*) &val)[1];
+  m_seng_rmt = ((unsigned char*) &val)[2];
+  m_rud_sta= ((unsigned char*) &val)[3];
+}
+
+void f_aws1_ctrl::set_gpio()
+{
+  unsigned int val;
+
+  if(m_aws_ctrl){
+    m_rud = map_oval(m_rud_aws, 
+		     0xff, 0x7f, 0x00, 
+		     m_rud_max, m_rud_nut, m_rud_min);
+    m_meng = map_oval(m_meng_aws, 
+		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
+		      m_meng_max, m_meng_nuf, m_meng_nut, m_meng_nub, m_meng_min);  
+    m_seng = map_oval(m_seng_aws, 
+		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
+		      m_seng_max, m_seng_nuf, m_seng_nut, m_seng_nub, m_seng_min);
+  }else{
+    m_rud = map_oval(m_rud_rmt, 
+		     m_rud_max_rmt, m_rud_nut_rmt, m_rud_min_rmt,
+		     m_rud_max, m_rud_nut, m_rud_min);
+    m_meng = map_oval(m_meng_rmt, 
+		      m_meng_max_rmt, m_meng_nuf_rmt, m_meng_nut_rmt, m_meng_nub_rmt, m_meng_min_rmt,
+		      m_meng_max, m_meng_nuf, m_meng_nut, m_meng_nub, m_meng_min);  
+    m_seng = map_oval(m_seng_rmt, 
+		      m_seng_max_rmt, m_seng_nuf_rmt, m_seng_nut_rmt, m_seng_nub_rmt, m_meng_min_rmt,
+		      m_seng_max, m_seng_nuf, m_seng_nut, m_seng_nub, m_seng_min);    
+  }
+  
+  ((unsigned char *) &val)[0] = m_rud;
+  ((unsigned char *) &val)[1] = m_meng;
+  ((unsigned char *) &val)[2] = m_seng;
+  
+  m_rud_sta_out = map_oval(m_rud_sta, 
+			   m_rud_sta_max, m_rud_sta_nut, m_rud_sta_min,
+			   m_rud_sta_out_max, m_rud_sta_out_nut, m_rud_sta_out_min);
+  ((unsigned char *) &val)[3] = m_rud_sta_out;
 }
 
 bool f_aws1_ctrl::proc()
