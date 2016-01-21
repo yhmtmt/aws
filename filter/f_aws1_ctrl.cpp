@@ -98,7 +98,11 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   register_fpar("rud_sta_out_max", &m_rud_sta_out_max, "Maximum output value of AWS1's rudder angle to rudder pump.");
   register_fpar("rud_sta_out_nut", &m_rud_sta_out_nut, "Nutral output value of AWS1's rudder angle to rudder pump.");
   register_fpar("rud_sta_out_min", &m_rud_sta_out_min, "Minimum output value of AWS1's rudder angle to rudder pump.");
-  
+
+  register_fpar("meng", &m_meng, "Output value for main engine.");
+  register_fpar("seng", &m_meng, "Output value for sub engine.");
+  register_fpar("rud", &m_rud, "Output value for rudder.");
+  register_fpar("rud_sta_out", &m_rud_sta_out, "Output value for rudder status.");
 }
 
 f_aws1_ctrl::~f_aws1_ctrl()
