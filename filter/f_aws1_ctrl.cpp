@@ -13,9 +13,14 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_aws1_ctrl.cpp.  If not, see <http://www.gnu.org/licenses/>. 
-#include <iostream>
 #include <cstdio>
 #include <cstring>
+#include <cmath>
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <map>
 
 using namespace std;
 #include <sys/types.h>
@@ -31,7 +36,7 @@ using namespace std;
 #include "f_aws1_ctrl.h"
 
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
-  f_base(name), m_fd(NULL), m_aws_ctrl(false), 
+  f_base(name), m_fd(-1), m_aws_ctrl(false), 
   m_meng_max_rmc(0x81), m_meng_nuf_rmc(0x80),  m_meng_nut_rmc(0x7f),  
   m_meng_nub_rmc(0x7e), m_meng_min_rmc(0x7d),  
   m_seng_max_rmc(0x81),  m_seng_nuf_rmc(0x80), m_seng_nut_rmc(0x7f),
@@ -93,7 +98,11 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   register_fpar("rud_sta_out_max", &m_rud_sta_out_max, "Maximum output value of AWS1's rudder angle to rudder pump.");
   register_fpar("rud_sta_out_nut", &m_rud_sta_out_nut, "Nutral output value of AWS1's rudder angle to rudder pump.");
   register_fpar("rud_sta_out_min", &m_rud_sta_out_min, "Minimum output value of AWS1's rudder angle to rudder pump.");
-  
+
+  register_fpar("meng", &m_meng, "Output value for main engine.");
+  register_fpar("seng", &m_meng, "Output value for sub engine.");
+  register_fpar("rud", &m_rud, "Output value for rudder.");
+  register_fpar("rud_sta_out", &m_rud_sta_out, "Output value for rudder status.");
 }
 
 f_aws1_ctrl::~f_aws1_ctrl()
@@ -102,11 +111,10 @@ f_aws1_ctrl::~f_aws1_ctrl()
 
 bool f_aws1_ctrl::init_run()
 {
-  fd = open(m_dev, O_RDWR);
-  if(fd == -1){
+  m_fd = open(m_dev, O_RDWR);
+  if(m_fd == -1){
     cerr << "Error in f_aws1_ctrl::init_run, opening device " << m_dev << "." << endl; 
-    cerr << "    Message: " << strerr(errno) << endl;
-    fd = NULL;
+    cerr << "    Message: " << strerror(errno) << endl;
     return false;
   }
 
@@ -116,13 +124,14 @@ bool f_aws1_ctrl::init_run()
 
 void f_aws1_ctrl::destroy_run()
 {
-  close(m_fd);
+  if(m_fd != -1)
+    close(m_fd);
 }
 
 void f_aws1_ctrl::get_gpio()
 {
   unsigned int val;
-  ioctl(fd, ZGPIO_IOGET, &val);
+  ioctl(m_fd, ZGPIO_IOCGET, &val);
   m_rud_rmc = ((unsigned char*) &val)[0];
   m_meng_rmc = ((unsigned char*) &val)[1];
   m_seng_rmc = ((unsigned char*) &val)[2];
@@ -163,6 +172,8 @@ void f_aws1_ctrl::set_gpio()
 			   m_rud_sta_max, m_rud_sta_nut, m_rud_sta_min,
 			   m_rud_sta_out_max, m_rud_sta_out_nut, m_rud_sta_out_min);
   ((unsigned char *) &val)[3] = m_rud_sta_out;
+
+  ioctl(m_fd, ZGPIO_IOCSET2, &val);
 }
 
 bool f_aws1_ctrl::proc()

@@ -119,13 +119,12 @@ protected:
     else if(val > vnut)
       return (unsigned char) ((double)((unsigned int) (ofnut - onut) * (unsigned int) (val - vnut)) / (double) (vfnut - vnut)) + onut;
     else if(val > vbnut)
-      return (unsigned char) ((double)((unsigned int) (onut - obnut) * (unsigned int) * (unsigned int) (val - vbnut)) / (double) (vnut - vbnut)) + obnut;
+      return (unsigned char) ((double)((unsigned int) (onut - obnut) * (unsigned int) (val - vbnut)) / (double) (vnut - vbnut)) + obnut;
     else
-      return (unsigned char) ((double)((unsigned int) (obnut - omin) * (unsigned int) (obnut - val) / (double) (obnut - vmin)) + omin;
+      return (unsigned char) ((double)((unsigned int) (obnut - omin) * (unsigned int) (obnut - val)) / (double) (obnut - vmin)) + omin;
     return 0x7f;
   }
 
-  unsigned char calc_val(
   void get_gpio();
   void set_gpio();
 public:
