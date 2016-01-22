@@ -1573,15 +1573,15 @@ void f_inspector::renderScene()
 				ptr1 = Rcam.ptr<double>();
 		
 				// x-axis to z-axis
-				ptr1[0] = ptr0[0];
+				ptr1[0] = -ptr0[0];
 				ptr1[3] = ptr0[1];
-				ptr1[6] = ptr0[2];
-				ptr1[1] = ptr0[3];
+				ptr1[6] = -ptr0[2];
+				ptr1[1] = -ptr0[3];
 				ptr1[4] = ptr0[4];
-				ptr1[7] = ptr0[5];
-				ptr1[2] = ptr0[6];
+				ptr1[7] = -ptr0[5];
+				ptr1[2] = -ptr0[6];
 				ptr1[5] = ptr0[7];
-				ptr1[8] = ptr0[8];
+				ptr1[8] = -ptr0[8];
 
 				ptr0 = objs[m_cur_obj]->tvec.ptr<double>();
 				d = ptr0[2]; // Z value is the scene depth for the camera 
