@@ -55,12 +55,12 @@ f_aws1_nmea_sw::~f_aws1_nmea_sw()
 bool f_aws1_nmea_sw::init_run()
 {
 	if(m_chin.size() != 4){
-		cerr << "Error in f_aws_1_nmea_sw::init_run. Expected number of input channels is 4." << endl;
+		cerr << "Error in f_aws1_nmea_sw::init_run. Expected number of input channels is 4." << endl;
 		return false;
 	}
 
 	if(m_chout.size() != 4){
-		cerr << "Error in f_aws_1_nmea_sw::init_run. Expected number of output channels is 4." << endl;
+		cerr << "Error in f_aws1_nmea_sw::init_run. Expected number of output channels is 4." << endl;
 		return false;
 	}
 
@@ -69,7 +69,7 @@ bool f_aws1_nmea_sw::init_run()
 	m_gff_nmea_i = dynamic_cast<ch_nmea*>(m_chin[2]);
 	m_ais_nmea_i = dynamic_cast<ch_nmea*>(m_chin[3]);
 	if(m_aws_nmea_i == NULL || m_ap_nmea_i == NULL || m_gff_nmea_i == NULL || m_ais_nmea_i == NULL){
-		cerr << "Error in f_aws_1_nmea_sw::init_run. The input channel should be ch_nmea." << endl;
+		cerr << "Error in f_aws1_nmea_sw::init_run. The input channel should be ch_nmea." << endl;
 		return false;
 	}
 
@@ -78,10 +78,9 @@ bool f_aws1_nmea_sw::init_run()
 	m_gff_nmea_o = dynamic_cast<ch_nmea*>(m_chout[2]);
 	m_ais_nmea_o = dynamic_cast<ch_nmea*>(m_chout[3]);
 	if(m_aws_nmea_o == NULL || m_ap_nmea_o == NULL || m_gff_nmea_o == NULL || m_ais_nmea_o == NULL){
-		cerr << "Error in f_aws_1_nmea_sw::init_run. The input channel should be ch_nmea." << endl;
+		cerr << "Error in f_aws1_nmea_sw::init_run. The input channel should be ch_nmea." << endl;
 		return false;
 	}		
-
 
 	return true;
 }
@@ -111,7 +110,6 @@ bool f_aws1_nmea_sw::proc()
 			m_aws_out = true;
 		}
 	}
-
 
 	while(m_gff_nmea_i->pop(m_nmea)){
 		m_aws_nmea_o->push(m_nmea);
