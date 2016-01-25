@@ -229,6 +229,7 @@ struct s_obj
 	}
 
 	double delta_f_rmax, delta_Tz_rmax, delta_Tx_rmax, delta_Ty_rmax;
+	double delta_Tz_rmax_trn, delta_Tx_rmax_trn, delta_Ty_rmax_trn;
 	void analyze_error(double fx, double fy);
 };
 

@@ -1185,6 +1185,7 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, boo
 		return;
 
 	if(base_obj >= 0 && base_obj < objs.size()){
+		// coordinate system is now based on base_obj.
 		Mat Rorg, R, T;
 		Mat & Torg = objs[base_obj]->tvec;
 		Rodrigues(objs[base_obj]->rvec, Rorg);
@@ -1228,13 +1229,36 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, boo
 			Point3f Merrtrn;
 			Mat T0 = Mat::zeros(1, 3, CV_64FC1);
 			trnPt(Merr, Merrtrn, Rorg.ptr<double>(), T0.ptr<double>());
-			obj.delta_Tx_rmax =abs(Merrtrn.x);
-			obj.delta_Ty_rmax = abs(Merrtrn.y);
-			obj.delta_Tz_rmax = abs(Merrtrn.z);
+			obj.delta_Tx_rmax_trn =abs(Merrtrn.x);
+			obj.delta_Ty_rmax_trn = abs(Merrtrn.y);
+			obj.delta_Tz_rmax_trn = abs(Merrtrn.z);
 			if(xyz)
 				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
 			else
 				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
+		}
+	}else{
+		Mat R, T;
+		pts.resize(objs.size());
+
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = *objs[iobj];
+			pts[iobj].resize(obj.pmdl->pts.size());
+			obj.calc_part_deformation();
+
+			obj.delta_Tx_rmax_trn = obj.delta_Tx_rmax;
+			obj.delta_Ty_rmax_trn = obj.delta_Ty_rmax;
+			obj.delta_Tz_rmax_trn = obj.delta_Tz_rmax;
+			
+			Rodrigues(obj.rvec, R);
+			double * p0 = R.ptr<double>();
+			obj.tvec.copyTo(T);
+			trnPts(obj.pmdl->pts_deformed, pts[iobj], R, T);
+			if(xyz)
+				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
+			else
+				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
+
 		}
 	}
 }

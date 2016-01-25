@@ -201,7 +201,9 @@ void f_base::register_factory()
 	register_factory<f_sample>("sample");
 	register_factory<f_nmea>("nmea");
 	register_factory<f_aws1_nmea_sw>("aws1_nmea_sw");
+#ifndef _WIN32
 	register_factory<f_aws1_ctrl>("aws1_ctrl");
+#endif
 	register_factory<f_nmea_proc>("nmea_proc");
 
 	// image processing

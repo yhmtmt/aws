@@ -3644,7 +3644,36 @@ bool f_inspector::save_kfrms()
 		}
 	}
 
-	snprintf(fname, 1024, "%s.csv", m_name);
+	if(!save_analytics(file, fname, ikf0, tmin, objptr, num_objs, -1, true))
+		return false;
+	if(!save_analytics(file, fname, ikf0, tmin, objptr, num_objs, -1, false))
+		return false;
+	if(!save_analytics(file, fname, ikf0, tmin, objptr, num_objs, m_cur_obj, true))
+		return false;
+	if(!save_analytics(file, fname, ikf0, tmin, objptr, num_objs, m_cur_obj, false))
+		return false;
+
+	return true;
+}
+
+bool f_inspector::save_analytics(ofstream & file, char * fname, int ikf0, long long tmin,
+								 vector<s_obj*> & objptr,
+								 int num_objs, int base_obj, bool bxyz)
+{
+	if(bxyz){
+		if(base_obj < 0 || base_obj >= num_objs){
+			snprintf(fname, 1024, "%s_cam_xyz.csv", m_name);
+		}else{
+			snprintf(fname, 1024, "%s_%s_xyz.csv", m_name, objptr[base_obj]->name);
+		}
+	}else{
+		if(base_obj < 0 || base_obj >= num_objs){
+			snprintf(fname, 1024, "%s_cam_zyx.csv", m_name);
+		}else{
+			snprintf(fname, 1024, "%s_%s_zyx.csv", m_name, objptr[base_obj]->name);
+		}
+	}
+
 	file.open(fname);
 	if(!file.is_open())
 		return false;
@@ -3654,7 +3683,6 @@ bool f_inspector::save_kfrms()
 		file << objptr[iobj]->name << ",";
 		file << "roll,pitch,yaw,x,y,z,ferr,xerr,yerr,zerr,";
 		if(m_bsave_objpts){
-			
 			for(int ipt = 0; ipt < objptr[iobj]->pmdl->pts_deformed.size(); ipt++){
 				file << "pt[" << ipt << "].x,";
 				file << "pt[" << ipt << "].y,";
@@ -3670,9 +3698,9 @@ bool f_inspector::save_kfrms()
 		m_kfrms[ikf]->update = false;
 		vector<vector<Point3f> > pts;
 		if(m_bsave_objpts){
-			m_kfrms[ikf]->calc_rpy_and_pts(pts, m_cur_obj, m_bdecomp_xyz);
+			m_kfrms[ikf]->calc_rpy_and_pts(pts, base_obj, bxyz);
 		}else{
-			m_kfrms[ikf]->calc_rpy(m_cur_obj, m_bdecomp_xyz);
+			m_kfrms[ikf]->calc_rpy(base_obj, bxyz);
 		}
 
 		file << (double)(m_kfrms[ikf]->tfrm - tmin) / (double)SEC << ",";
@@ -3694,9 +3722,9 @@ bool f_inspector::save_kfrms()
 				file << objs[iobj]->pos.y << ",";
 				file << objs[iobj]->pos.z << ",";
 				file << objs[iobj]->delta_f_rmax << ",";
-				file << objs[iobj]->delta_Tx_rmax << ",";
-				file << objs[iobj]->delta_Ty_rmax << ",";
-				file << objs[iobj]->delta_Tz_rmax << ",";
+				file << objs[iobj]->delta_Tx_rmax_trn << ",";
+				file << objs[iobj]->delta_Ty_rmax_trn << ",";
+				file << objs[iobj]->delta_Tz_rmax_trn << ",";
 				if(m_bsave_objpts){
 					for(int ipt = 0; ipt < pts[iobj].size(); ipt++){
 						file << pts[iobj][ipt].x << ",";
@@ -3712,6 +3740,7 @@ bool f_inspector::save_kfrms()
 		}
 		file << endl;
 	}
+	file.close();
 	return true;
 }
 

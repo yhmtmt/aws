@@ -219,6 +219,8 @@ private:
 
 	vector<s_frame*> m_kfrms;		// Key frames (ring buffer)
 	bool save_kfrms();
+	bool save_analytics(ofstream & file, char * fname, int ikf0, long long tmin, 
+		vector<s_obj*> & objptr, int num_objs, int base_obj, bool bxyz);
 	bool load_kfrms();
 	bool m_bsave_objpts;			// flag enables transformed object points. 
 
