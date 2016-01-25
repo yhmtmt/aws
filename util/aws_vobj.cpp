@@ -1249,10 +1249,16 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, boo
 			obj.delta_Tx_rmax_trn = obj.delta_Tx_rmax;
 			obj.delta_Ty_rmax_trn = obj.delta_Ty_rmax;
 			obj.delta_Tz_rmax_trn = obj.delta_Tz_rmax;
+
+			obj.tvec.copyTo(T);
+			double * p0 = T.ptr<double>();
+			obj.pos.x = (float)(p0[0]);
+			obj.pos.y = (float)(p0[1]);
+			obj.pos.z = (float)(p0[2]);
 			
 			Rodrigues(obj.rvec, R);
-			double * p0 = R.ptr<double>();
-			obj.tvec.copyTo(T);
+			p0 = R.ptr<double>();
+			
 			trnPts(obj.pmdl->pts_deformed, pts[iobj], R, T);
 			if(xyz)
 				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
