@@ -1179,7 +1179,7 @@ void s_frame::calc_rpy(int base_obj, bool xyz)
 	}
 }
 
-void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, bool xyz)
+void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat & Tcam, int base_obj, bool xyz)
 {
 	if(update)
 		return;
@@ -1237,6 +1237,10 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, boo
 			else
 				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
 		}
+
+		Tcam = Rorg * (-Torg);
+		Rorg.copyTo(Rcam);
+
 	}else{
 		Mat R, T;
 		pts.resize(objs.size());
@@ -1266,6 +1270,9 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, int base_obj, boo
 				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
 
 		}
+
+		Tcam = Mat::zeros(1, 3, CV_64FC1);
+		Rcam = Mat::eye(3, 3, CV_64FC1);
 	}
 }
 

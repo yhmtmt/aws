@@ -3678,7 +3678,7 @@ bool f_inspector::save_analytics(ofstream & file, char * fname, int ikf0, long l
 	if(!file.is_open())
 		return false;
 
-	file << "Time(sec),";
+	file << "Time(sec),cam,roll,pitch,yaw,x,y,z,";
 	for(int iobj = 0; iobj < num_objs; iobj++){
 		file << objptr[iobj]->name << ",";
 		file << "roll,pitch,yaw,x,y,z,ferr,xerr,yerr,zerr,";
@@ -3692,18 +3692,33 @@ bool f_inspector::save_analytics(ofstream & file, char * fname, int ikf0, long l
 	}
 	file << endl;
 
+	Mat Rcam, Tcam;
 	for(int i = 0, ikf = ikf0 ; i < m_kfrms.size(); i++, ikf = (ikf + 1) % m_kfrms.size()){
 		if(!m_kfrms[ikf])
 			continue;
 		m_kfrms[ikf]->update = false;
 		vector<vector<Point3f> > pts;
 		if(m_bsave_objpts){
-			m_kfrms[ikf]->calc_rpy_and_pts(pts, base_obj, bxyz);
+			m_kfrms[ikf]->calc_rpy_and_pts(pts, Rcam, Tcam, base_obj, bxyz);
 		}else{
 			m_kfrms[ikf]->calc_rpy(base_obj, bxyz);
 		}
 
-		file << (double)(m_kfrms[ikf]->tfrm - tmin) / (double)SEC << ",";
+		file << (double)(m_kfrms[ikf]->tfrm - tmin) / (double)SEC << ",,";
+		{
+			double r,p,y;
+			if(bxyz){
+				angleRxyz(Rcam.ptr<double>(), r, p, y);
+			}else{
+				angleRzyx(Rcam.ptr<double>(), r, p, y);
+			}
+
+			file << r * 180. / CV_PI << "," << p * 180. / CV_PI << "," << y * 180. / CV_PI << ",";
+			file << Tcam.ptr<double>()[0] << "," 
+				<< Tcam.ptr<double>()[1] << ","
+				<< Tcam.ptr<double>()[2] << ",";
+		}
+
 		vector<s_obj*> & objs = m_kfrms[ikf]->objs;
 		for(int iobj1 = 0; iobj1 < objptr.size(); iobj1++){
 			int iobj = -1;
