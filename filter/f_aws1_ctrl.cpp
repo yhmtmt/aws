@@ -143,34 +143,34 @@ void f_aws1_ctrl::set_gpio()
   unsigned int val;
 
   if(m_aws_ctrl){
-    m_rud = map_oval(m_rud_aws, 
+    m_rud = (unsigned char)  map_oval((int) m_rud_aws, 
 		     0xff, 0x7f, 0x00, 
-		     m_rud_max, m_rud_nut, m_rud_min);
-    m_meng = map_oval(m_meng_aws, 
+		     (int) m_rud_max, (int) m_rud_nut, (int) m_rud_min);
+    m_meng = (unsigned char)  map_oval((int) m_meng_aws, 
 		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
-		      m_meng_max, m_meng_nuf, m_meng_nut, m_meng_nub, m_meng_min);  
-    m_seng = map_oval(m_seng_aws, 
+		      (int) m_meng_max, (int) m_meng_nuf, (int) m_meng_nut, (int) m_meng_nub, (int) m_meng_min);  
+    m_seng = (unsigned char)  map_oval((int) m_seng_aws, 
 		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
-		      m_seng_max, m_seng_nuf, m_seng_nut, m_seng_nub, m_seng_min);
+		      (int) m_seng_max, (int) m_seng_nuf, (int) m_seng_nut, (int) m_seng_nub, m_seng_min);
   }else{
-    m_rud = map_oval(m_rud_rmc, 
-		     m_rud_max_rmc, m_rud_nut_rmc, m_rud_min_rmc,
-		     m_rud_max, m_rud_nut, m_rud_min);
-    m_meng = map_oval(m_meng_rmc, 
-		      m_meng_max_rmc, m_meng_nuf_rmc, m_meng_nut_rmc, m_meng_nub_rmc, m_meng_min_rmc,
-		      m_meng_max, m_meng_nuf, m_meng_nut, m_meng_nub, m_meng_min);  
-    m_seng = map_oval(m_seng_rmc, 
-		      m_seng_max_rmc, m_seng_nuf_rmc, m_seng_nut_rmc, m_seng_nub_rmc, m_meng_min_rmc,
-		      m_seng_max, m_seng_nuf, m_seng_nut, m_seng_nub, m_seng_min);    
+    m_rud = (unsigned char) map_oval((int) m_rud_rmc, 
+		     (int) m_rud_max_rmc, (int) m_rud_nut_rmc, (int) m_rud_min_rmc,
+		     (int) m_rud_max, (int) m_rud_nut, (int) m_rud_min);
+    m_meng = (unsigned char)  map_oval((int) m_meng_rmc, 
+		      (int) m_meng_max_rmc, (int) m_meng_nuf_rmc, (int) m_meng_nut_rmc, (int) m_meng_nub_rmc, (int) m_meng_min_rmc,
+		      (int) m_meng_max, (int) m_meng_nuf, (int) m_meng_nut, (int) m_meng_nub, (int) m_meng_min);  
+    m_seng = (unsigned char)  map_oval((int) m_seng_rmc, 
+		      (int) m_seng_max_rmc, (int) m_seng_nuf_rmc, (int) m_seng_nut_rmc, (int) m_seng_nub_rmc, (int) m_meng_min_rmc,
+		      (int) m_seng_max, (int) m_seng_nuf, (int) m_seng_nut, (int) m_seng_nub, (int) m_seng_min);    
   }
   
   ((unsigned char *) &val)[0] = m_rud;
   ((unsigned char *) &val)[1] = m_meng;
   ((unsigned char *) &val)[2] = m_seng;
   
-  m_rud_sta_out = map_oval(m_rud_sta, 
-			   m_rud_sta_max, m_rud_sta_nut, m_rud_sta_min,
-			   m_rud_sta_out_max, m_rud_sta_out_nut, m_rud_sta_out_min);
+  m_rud_sta_out = (unsigned char) map_oval((int) m_rud_sta, 
+			   (int) m_rud_sta_max, (int) m_rud_sta_nut, (int) m_rud_sta_min,
+			   (int) m_rud_sta_out_max, (int) m_rud_sta_out_nut, (int) m_rud_sta_out_min);
   ((unsigned char *) &val)[3] = m_rud_sta_out;
 
   ioctl(m_fd, ZGPIO_IOCSET2, &val);

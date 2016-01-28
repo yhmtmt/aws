@@ -86,43 +86,57 @@ protected:
   unsigned char m_rud_sta_out_nut;
   unsigned char m_rud_sta_out_min;
 
-  unsigned char map_oval(unsigned char val, 
-			 unsigned char vmax, unsigned char vnut, unsigned char vmin, 
-			 unsigned char omax, unsigned char onut, unsigned char omin)
+  int map_oval(int val, 
+	      int vmax, int vnut, int vmin, 
+	      int omax, int onut, int omin)
   {
-    if(val > vmax)
+    int dvmax = val - vmax;
+    int dvnut = val - vnut;
+    int dvmin = val - vmin;
+    int dvmax_vnut = vmax - vnut;
+    int dvnut_vmin = vnut - vmin;
+
+    if(abs(dvmax) < abs(dvmax_vnut) && abs(dvfnut) < abs(dvmax_vnut))
+      return (int) ((double)((omax - onut) * (dvnut)) / (double) (dvmax_vnut)) + onut;
+    else if(abs(dvnut) < abs(dvnut_vmin) && abs(dvmin) < abs(dvnut_vmin))
+      return (int) ((double)((ofnut - onut) * (dvnut)) / (double) (dvfnut_vnut)) + onut;
+    else if(abs(dvmax) < abs(dvmin))
       return omax;
-    if(val < vmin)
-      return omin;
-    if(val > vnut)
-      return (unsigned char) ( (double) ((unsigned int) (omax - onut) * (unsigned int) (val - vnut)) / (double) (vmax - vnut)) + onut;
     else
-      return (unsigned char) ((double)((unsigned int) (onut - omin) * (unsigned int) (vnut - val)) / (double) (vnut - vmin)) + omin;
-    return 0x7f;
+      return omin;
   }
 
-  unsigned char map_oval(unsigned char val, 
-			 unsigned char vmax, unsigned char vfnut, 
-			 unsigned char vnut, unsigned char vbnut, 
-			 unsigned char vmin,
-			 unsigned char omax, unsigned char ofnut, 
-			 unsigned char onut, unsigned char obnut, 
-			 unsigned char omin
-			 )
+  int map_oval(int val, 
+	       int vmax, int vfnut, 
+	       int vnut, int vbnut, 
+	       int vmin,
+	       int omax, int ofnut, 
+	       int onut, int obnut, 
+	       int omin
+	       )
   {
-    if(val > vmax)
+    int dvmax = val - vmax;
+    int dvfnut = val - vfnut;
+    int dvnut = val - vnut;
+    int dvbnut = val - vbnut;
+    int dvmin = val - vmin;
+    int dvmax_vfnut = vmax - vfnut;
+    int dvfnut_vnut = vfnut - vnut;
+    int dvnut_vbnut = vnut - vbnut;
+    int dvbnut_vmin = vbnut - vmin;
+
+    if(abs(dvmax) < abs(dvmax_vfnut) && abs(dvfnut) < abs(dvmax_vfnut))
+      return (int) ((double)((omax - ofnut) * (dvfnut)) / (double) (dvmax_vfnut)) + ofnut;
+    else if(abs(dvnut) < abs(dvfnut_vnut) && abs(dvfnut) < abs(dvfnut_vnut))
+      return (int) ((double)((ofnut - onut) * (dvnut)) / (double) (dvfnut_vnut)) + onut;
+    else if(abs(dvnut) < abs(dvnut_dvbnut) && abs(dvbnut) < abs(dvnut_vbnut))
+      return (int) ((double)((onut - obnut) * (dvbnut)) / (double) (dvnut_vbnut)) + obnut;
+    else if(abs(dvbnut) < abs(dvbnut_vmin) && abs(dvmin) < abs(dvbnut_vmin))
+      return (int) ((double)((obnut - omin) * dvbmin) / (double) (dvbnut_vmin)) + omin;
+    else if(abs(dvmax) < abs(dvmin))
       return omax;
-    if(val < vmin)
-      return omin;
-    if(val > vfnut)
-      return (unsigned char) ((double)((unsigned int) (omax -ofnut) * (unsigned int) (val - vfnut)) / (double) (vmax - vfnut)) + ofnut;
-    else if(val > vnut)
-      return (unsigned char) ((double)((unsigned int) (ofnut - onut) * (unsigned int) (val - vnut)) / (double) (vfnut - vnut)) + onut;
-    else if(val > vbnut)
-      return (unsigned char) ((double)((unsigned int) (onut - obnut) * (unsigned int) (val - vbnut)) / (double) (vnut - vbnut)) + obnut;
     else
-      return (unsigned char) ((double)((unsigned int) (obnut - omin) * (unsigned int) (obnut - val)) / (double) (obnut - vmin)) + omin;
-    return 0x7f;
+      return omin;
   }
 
   void get_gpio();
