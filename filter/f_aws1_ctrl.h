@@ -60,12 +60,13 @@ protected:
   unsigned char m_rud_sta_nut;
   unsigned char m_rud_sta_min;
   
+  // final control values
   unsigned char m_meng;     // main engine control value
   unsigned char m_seng;     // sub engine control value
   unsigned char m_rud;      // rudder control value
   unsigned char m_rud_sta_out; // rudder status output
 
-  // digital potentiometer's values corressponding positions
+  // Threashold values of digital potentiometer's
   unsigned char m_meng_max;
   unsigned char m_meng_nuf;
   unsigned char m_meng_nut;
@@ -86,9 +87,11 @@ protected:
   unsigned char m_rud_sta_out_nut;
   unsigned char m_rud_sta_out_min;
 
+  // map a value with 3 threasholds (for rudder contrl and states)
   int map_oval(int val, 
 	      int vmax, int vnut, int vmin, 
-	      int omax, int onut, int omin)
+	      int omax, int onut, int omin
+	       )
   {
     int dvmax = val - vmax;
     int dvnut = val - vnut;
@@ -106,13 +109,10 @@ protected:
       return omin;
   }
 
+  // map a value with 5 threasholds (for engines)
   int map_oval(int val, 
-	       int vmax, int vfnut, 
-	       int vnut, int vbnut, 
-	       int vmin,
-	       int omax, int ofnut, 
-	       int onut, int obnut, 
-	       int omin
+	       int vmax, int vfnut, int vnut, int vbnut, int vmin,
+	       int omax, int ofnut, int onut, int obnut, int omin
 	       )
   {
     int dvmax = val - vmax;

@@ -51,13 +51,17 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   m_rud_max(0x80),  m_rud_nut(0x7f),  m_rud_min(0x7e),
   m_rud_sta_out_max(0xff), m_rud_sta_out_nut(0x7f), m_rud_sta_out_min(0x00)
 {
-  strcpy(m_dev, "/dev/zgpio0");
+  strcpy(m_dev, "/dev/zgpio1");
   register_fpar("device", m_dev, 1023, "AWS1's control gpio device path");
   register_fpar("ctrl", &m_aws_ctrl, "Yes if aws controls AWS1 (default no)");
 
-  register_fpar("rud", &m_rud_aws, "Control value of AWS1's rudder.");
-  register_fpar("meng", &m_meng_aws, "Control value of AWS1's main engine.");
-  register_fpar("seng", &m_seng_aws, "Control value of AWS1's sub engine.");
+  register_fpar("awsrud", &m_rud_aws, "Control value of AWS1's rudder.");
+  register_fpar("awsmeng", &m_meng_aws, "Control value of AWS1's main engine.");
+  register_fpar("awsseng", &m_seng_aws, "Control value of AWS1's sub engine.");
+  register_fpar("rmcrud", &m_rud_rmc, "Control value of AWS1's rudder controller.");
+  register_fpar("rmcmeng", &m_meng_rmc, "Control value of AWS1's main engine controller.");
+  register_fpar("rmcseng", &m_seng_rmc, "Control value of AWS1's sub engine controller.");
+  register_fpar("rud_sta", &m_rud_sta, "Rudder Status of AWS1's.");
 
   register_fpar("meng_max_rmc", &m_meng_max_rmc, "Maximum control control value of AWS1's main engine controller.");
   register_fpar("meng_nuf_rmc", &m_meng_nuf_rmc, "Nutral to Forward control value of AWS1's main engine controller.");
@@ -138,39 +142,58 @@ void f_aws1_ctrl::get_gpio()
   m_rud_sta= ((unsigned char*) &val)[3];
 }
 
+// In this method, aws's control values are assumed to be 0-255.
+// Then the values are mapped to actual control values.
+// 
+// Rudder
+// 0-127: port (min to nutral)
+// 127-255: starboard (nutral to max)
+//
+// Engine 
+// 0-102: Astern (min to nutral backword)
+// 102-127: Deadslow Astern (nutral backword to nutral)
+// 127-132: Deadslow Ahead (nutral to nutral forward)
+// 132-255: Ahead (nutral forward to max)
+
 void f_aws1_ctrl::set_gpio()
 {
   unsigned int val;
 
   if(m_aws_ctrl){
-    m_rud = (unsigned char)  map_oval((int) m_rud_aws, 
+    m_rud = map_oval(m_rud_aws, 
 		     0xff, 0x7f, 0x00, 
-		     (int) m_rud_max, (int) m_rud_nut, (int) m_rud_min);
-    m_meng = (unsigned char)  map_oval((int) m_meng_aws, 
+		     m_rud_max, m_rud_nut, m_rud_min);
+    m_meng = map_oval(m_meng_aws, 
 		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
-		      (int) m_meng_max, (int) m_meng_nuf, (int) m_meng_nut, (int) m_meng_nub, (int) m_meng_min);  
-    m_seng = (unsigned char)  map_oval((int) m_seng_aws, 
+		      m_meng_max, m_meng_nuf, m_meng_nut, 
+		      m_meng_nub, m_meng_min);  
+    m_seng = map_oval(m_seng_aws, 
 		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
-		      (int) m_seng_max, (int) m_seng_nuf, (int) m_seng_nut, (int) m_seng_nub, m_seng_min);
+		      m_seng_max, m_seng_nuf, m_seng_nut, 
+		      m_seng_nub, m_seng_min);
   }else{
-    m_rud = (unsigned char) map_oval((int) m_rud_rmc, 
-		     (int) m_rud_max_rmc, (int) m_rud_nut_rmc, (int) m_rud_min_rmc,
-		     (int) m_rud_max, (int) m_rud_nut, (int) m_rud_min);
-    m_meng = (unsigned char)  map_oval((int) m_meng_rmc, 
-		      (int) m_meng_max_rmc, (int) m_meng_nuf_rmc, (int) m_meng_nut_rmc, (int) m_meng_nub_rmc, (int) m_meng_min_rmc,
-		      (int) m_meng_max, (int) m_meng_nuf, (int) m_meng_nut, (int) m_meng_nub, (int) m_meng_min);  
-    m_seng = (unsigned char)  map_oval((int) m_seng_rmc, 
-		      (int) m_seng_max_rmc, (int) m_seng_nuf_rmc, (int) m_seng_nut_rmc, (int) m_seng_nub_rmc, (int) m_meng_min_rmc,
-		      (int) m_seng_max, (int) m_seng_nuf, (int) m_seng_nut, (int) m_seng_nub, (int) m_seng_min);    
+    m_rud = map_oval(m_rud_rmc, 
+		     m_rud_max_rmc, m_rud_nut_rmc, m_rud_min_rmc,
+		     m_rud_max, m_rud_nut, m_rud_min);
+    m_meng = map_oval(m_meng_rmc, 
+		      m_meng_max_rmc, m_meng_nuf_rmc, m_meng_nut_rmc, 
+		      m_meng_nub_rmc, m_meng_min_rmc,
+		      m_meng_max, m_meng_nuf, m_meng_nut, m_meng_nub, 
+		      m_meng_min);  
+    m_seng = map_oval(m_seng_rmc, 
+		      m_seng_max_rmc, m_seng_nuf_rmc, m_seng_nut_rmc, 
+		      m_seng_nub_rmc, m_meng_min_rmc,
+		      m_seng_max, m_seng_nuf, m_seng_nut, m_seng_nub, 
+		      m_seng_min);
   }
   
   ((unsigned char *) &val)[0] = m_rud;
   ((unsigned char *) &val)[1] = m_meng;
   ((unsigned char *) &val)[2] = m_seng;
   
-  m_rud_sta_out = (unsigned char) map_oval((int) m_rud_sta, 
-			   (int) m_rud_sta_max, (int) m_rud_sta_nut, (int) m_rud_sta_min,
-			   (int) m_rud_sta_out_max, (int) m_rud_sta_out_nut, (int) m_rud_sta_out_min);
+  m_rud_sta_out = map_oval(m_rud_sta, 
+			   m_rud_sta_max, m_rud_sta_nut, m_rud_sta_min,
+			   m_rud_sta_out_max, m_rud_sta_out_nut, m_rud_sta_out_min);
   ((unsigned char *) &val)[3] = m_rud_sta_out;
 
   ioctl(m_fd, ZGPIO_IOCSET2, &val);
