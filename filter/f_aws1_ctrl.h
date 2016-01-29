@@ -96,9 +96,9 @@ protected:
     int dvmax_vnut = vmax - vnut;
     int dvnut_vmin = vnut - vmin;
 
-    if(abs(dvmax) < abs(dvmax_vnut) && abs(dvfnut) < abs(dvmax_vnut))
+    if(abs(dvmax) <= abs(dvmax_vnut) && abs(dvfnut) < abs(dvmax_vnut))
       return (int) ((double)((omax - onut) * (dvnut)) / (double) (dvmax_vnut)) + onut;
-    else if(abs(dvnut) < abs(dvnut_vmin) && abs(dvmin) < abs(dvnut_vmin))
+    else if(abs(dvnut) <= abs(dvnut_vmin) && abs(dvmin) < abs(dvnut_vmin))
       return (int) ((double)((ofnut - onut) * (dvnut)) / (double) (dvfnut_vnut)) + onut;
     else if(abs(dvmax) < abs(dvmin))
       return omax;
@@ -125,13 +125,13 @@ protected:
     int dvnut_vbnut = vnut - vbnut;
     int dvbnut_vmin = vbnut - vmin;
 
-    if(abs(dvmax) < abs(dvmax_vfnut) && abs(dvfnut) < abs(dvmax_vfnut))
+    if(abs(dvmax) <= abs(dvmax_vfnut) && abs(dvfnut) < abs(dvmax_vfnut))
       return (int) ((double)((omax - ofnut) * (dvfnut)) / (double) (dvmax_vfnut)) + ofnut;
-    else if(abs(dvnut) < abs(dvfnut_vnut) && abs(dvfnut) < abs(dvfnut_vnut))
+    else if(abs(dvnut) <= abs(dvfnut_vnut) && abs(dvfnut) < abs(dvfnut_vnut))
       return (int) ((double)((ofnut - onut) * (dvnut)) / (double) (dvfnut_vnut)) + onut;
-    else if(abs(dvnut) < abs(dvnut_dvbnut) && abs(dvbnut) < abs(dvnut_vbnut))
+    else if(abs(dvnut) <= abs(dvnut_dvbnut) && abs(dvbnut) < abs(dvnut_vbnut))
       return (int) ((double)((onut - obnut) * (dvbnut)) / (double) (dvnut_vbnut)) + obnut;
-    else if(abs(dvbnut) < abs(dvbnut_vmin) && abs(dvmin) < abs(dvbnut_vmin))
+    else if(abs(dvbnut) <= abs(dvbnut_vmin) && abs(dvmin) < abs(dvbnut_vmin))
       return (int) ((double)((obnut - omin) * dvbmin) / (double) (dvbnut_vmin)) + omin;
     else if(abs(dvmax) < abs(dvmin))
       return omax;
