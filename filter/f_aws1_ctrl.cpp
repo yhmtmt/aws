@@ -182,7 +182,7 @@ void f_aws1_ctrl::set_gpio()
 		      m_meng_min);  
     m_seng = map_oval(m_seng_rmc, 
 		      m_seng_max_rmc, m_seng_nuf_rmc, m_seng_nut_rmc, 
-		      m_seng_nub_rmc, m_meng_min_rmc,
+		      m_seng_nub_rmc, m_seng_min_rmc,
 		      m_seng_max, m_seng_nuf, m_seng_nut, m_seng_nub, 
 		      m_seng_min);
   }
