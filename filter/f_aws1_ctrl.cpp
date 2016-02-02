@@ -140,6 +140,19 @@ void f_aws1_ctrl::get_gpio()
   m_meng_rmc = ((unsigned char*) &val)[1];
   m_seng_rmc = ((unsigned char*) &val)[2];
   m_rud_sta= ((unsigned char*) &val)[3];
+  if(!m_aws_ctrl){
+    m_rud_aws = map_oval(m_rud_rmc, 
+			 m_rud_max_rmc, m_rud_nut_rmc, m_rud_min_rmc,
+			 0xff, 0x7f, 0x00);
+    m_meng_aws = map_oval(m_meng_rmc,
+			  m_meng_max_rmc, m_meng_nuf_rmc, m_meng_nut_rmc, 
+			  m_meng_nub_rmc, m_meng_min_rmc,
+			  0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
+    m_seng_aws = map_oval(m_seng_rmc,
+			  m_seng_max_rmc, m_seng_nuf_rmc, m_seng_nut_rmc, 
+			  m_seng_nub_rmc, m_seng_min_rmc,
+			  0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
+  }
 }
 
 // In this method, aws's control values are assumed to be 0-255.
