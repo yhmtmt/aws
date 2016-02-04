@@ -36,7 +36,7 @@ using namespace std;
 #include "f_aws1_ctrl.h"
 
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
-  f_base(name), m_fd(-1), m_aws_ctrl(false), m_t_rmc_avg(10),
+  f_base(name), m_fd(-1), m_verb(false),  m_aws_ctrl(false), m_t_rmc_avg(10),
   m_meng_max_rmc(0x81), m_meng_nuf_rmc(0x80),  m_meng_nut_rmc(0x7f),  
   m_meng_nub_rmc(0x7e), m_meng_min_rmc(0x7d),  
   m_seng_max_rmc(0x81),  m_seng_nuf_rmc(0x80), m_seng_nut_rmc(0x7f),
@@ -53,6 +53,7 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
 {
   strcpy(m_dev, "/dev/zgpio1");
   register_fpar("device", m_dev, 1023, "AWS1's control gpio device path");
+  register_fpar("verb", &m_verb, "For debug.");
   register_fpar("ctrl", &m_aws_ctrl, "Yes if aws controls AWS1 (default no)");
   register_fpar("tavg", &m_t_rmc_avg, "Averaging time window. (default 10)");
   register_fpar("awsrud", &m_rud_aws, "Control value of AWS1's rudder.");
@@ -223,5 +224,9 @@ bool f_aws1_ctrl::proc()
 
   set_gpio();
 
+  
+  if(m_verb){
+    
+  }
   return true;
 }

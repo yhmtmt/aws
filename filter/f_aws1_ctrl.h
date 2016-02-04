@@ -25,6 +25,7 @@ protected:
   char m_dev[1024];         // device path, e.g. "/dev/zgpio0"
   int m_fd;                 // file descriptor for zgpio
 
+  bool m_verb;
   bool m_aws_ctrl;          // remote control flag. 
                             //    true: control values from aws are sat. 
                             //    false: control values from remote controller are sat.
