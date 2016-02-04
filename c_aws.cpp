@@ -1121,10 +1121,10 @@ c_rcmd::c_rcmd(c_aws * paws, unsigned short port):m_paws(paws){
 
 	int ret;
 
- #ifndef _WIN32
+#ifndef _WIN32
  	int val = 1;
  	ret = setsockopt(m_svr_sock, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
--#endif
+#endif
  	ret = ::bind(m_svr_sock, (sockaddr*)&m_svr_addr, sizeof(m_svr_addr));
  
 	if(ret != 0){
