@@ -231,6 +231,9 @@ void f_nmea::extract_nmea_from_buffer()
 					m_flog.open(m_fname_log);
 				}
 			}
+			if(m_verb){
+			  cout << m_name << " > " << m_nmea << endl;
+			}
 
 			// remained data moves to the buffer head
 			int itail = 0;
@@ -277,7 +280,9 @@ int f_nmea::send_nmea()
 		if(m_blog){
 			m_flog << get_time_str() << m_buf_send << endl;
 		}
-
+		if(m_verb){
+		  cout << m_name << " > " << m_buf_send << endl;
+		}
 		switch(m_nmea_src){
 		case FILE:
 			cout << m_buf_send << endl;

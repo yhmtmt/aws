@@ -28,6 +28,7 @@ protected:
 	ch_nmea * m_chin;
 
 	bool m_blog;
+	bool m_verb;
 	char m_fname_log[1024];
 	ofstream m_flog;
 	char m_buf[SIZE_NMEA_BUF];
@@ -102,7 +103,7 @@ protected:
 	}
 
 public:
-	f_nmea(const char * name): f_base(name), m_chin(NULL), m_chout(NULL), m_blog(false),
+ f_nmea(const char * name): f_base(name), m_chin(NULL), m_chout(NULL), m_verb(false), m_blog(false),
 		m_hcom(NULL_SERIAL), m_nmea_src(NONE){
 		m_fname[0] = '\0';
 
@@ -116,6 +117,7 @@ public:
 		register_fpar("com", &m_port, "Number of NMEA source COM port.");
 		register_fpar("bps", &m_cbr, "Baud rate of NMEA source COM port.");
 		register_fpar("port", &m_port, "Port number of NMEA source UDP.");
+		register_fpar("verb", &m_verb, "For debug.");
 		register_fpar("log", &m_blog, "Log enable (y or n)");
 		register_fpar("filter", m_filter, 6, "Sentence filter. 5 characters are to be specified. * can be used as wild card.");
 	}

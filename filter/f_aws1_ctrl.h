@@ -28,6 +28,13 @@ protected:
   bool m_aws_ctrl;          // remote control flag. 
                             //    true: control values from aws are sat. 
                             //    false: control values from remote controller are sat.
+  int m_t_rmc_avg;
+  int m_t_rmc_cnt;
+  int m_rud_rmc_sum;
+  int m_meng_rmc_sum;
+  int m_seng_rmc_sum;
+  int m_rud_sta_sum;
+
 
   unsigned char m_rud_aws;
   unsigned char m_meng_aws;

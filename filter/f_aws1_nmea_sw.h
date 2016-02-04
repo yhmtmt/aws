@@ -33,6 +33,7 @@ protected:
 	ch_nmea * m_ais_nmea_o;
 	
 	bool m_aws_ctrl;
+	bool m_verb;
 	int m_aws_oint, m_ap_oint, m_gff_oint, m_ais_oint;
 	int m_aws_ocnt, m_ap_ocnt, m_gff_ocnt, m_ais_ocnt;
 
