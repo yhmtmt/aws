@@ -226,7 +226,12 @@ bool f_aws1_ctrl::proc()
 
   
   if(m_verb){
-    
+    cout << "Control Values." << endl;
+    cout << "    rmc rud " << m_rud_rmc << " meng " << m_meng_rmc << " seng " << m_seng_rmc << endl;
+    cout << "    aws rud " << m_rud_aws << " meng " << m_meng_aws << " seng " << m_seng_aws << endl;
+    cout << "    out rud " << m_rud << " meng " << m_meng << " seng " << m_seng << endl;
+    cout << "    rud stat in " << m_rud_sta << " out " << m_rud_sta_out << endl;
+
   }
   return true;
 }

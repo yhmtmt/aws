@@ -160,8 +160,8 @@ util:
 
 .PHONY: clean
 clean:
-	rm *.o $(FDIR)/*.o $(CDIR)/*.o $(UDIR)/*.o
-	rm aws
+	rm -f *.o $(FDIR)/*.o $(CDIR)/*.o $(UDIR)/*.o
+	rm -f aws
 	cd $(RCMD_DIR); make clean
 
 .PHONY: clean

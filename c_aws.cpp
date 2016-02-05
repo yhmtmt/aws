@@ -154,8 +154,8 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 	m_cycle_time(166667), m_time(0), m_time_zone_minute(540), m_time_rate(1)
 {
 	set_name_app("aws");
-	set_version(0, 10);
-	set_year_copy(2014);
+	set_version(0, 20);
+	set_year_copy(2016);
 	set_name_coder("Yohei Matsumoto");
 	set_contact("matumoto (at) kaiyodai.ac.jp");
 
