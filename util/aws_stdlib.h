@@ -36,6 +36,11 @@ inline double nrand(double u, double s)
 	return s * sqrt(-2.0 * log(u0))*cos(2*PI*u1) + u;
 }
 
+inline double gauss(double u, double s, double x){
+  double x_u = x - u;
+  double ss= s * s;
+  return exp(-x_u * x_u / ss ) / (s * 2.50662827463);
+}
 
 // Returns rate of the drive used
  float getDrvUse(const char * path);

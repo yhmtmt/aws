@@ -17,6 +17,8 @@
 #ifndef _F_AWS1_CTRL_H_
 #define _F_AWS1_CTRL_H_
 
+#include "../util/aws_stdlib.h"
+
 #include "f_base.h"
 
 class f_aws1_ctrl: public f_base
@@ -29,13 +31,24 @@ protected:
   bool m_aws_ctrl;          // remote control flag. 
                             //    true: control values from aws are sat. 
                             //    false: control values from remote controller are sat.
-  int m_t_rmc_avg;
-  int m_t_rmc_cnt;
-  int m_rud_rmc_sum;
-  int m_meng_rmc_sum;
-  int m_seng_rmc_sum;
-  int m_rud_sta_sum;
+  /// LPF related parameters
+  bool m_adclpf;           // Enabling ADC's low pass filter.
+  int m_sz_adclpf;         // Window size of the low pass filter.
+  int m_cur_adcsmpl;       // Current position in the adc sample buffer
+  float m_sigma_adclpf;    // Standard deviation of the gaussian kernel.
 
+  enum e_adclpf_type{
+    ADCLPF_AVG, ADCLPF_GAUSS, ADCLPF_NONE
+  } m_type_adclpf;
+  static const char * m_str_adclpf_type[ADCLPF_NONE];
+  
+  vector<float> m_kern_adclpf;
+  vector<int> m_rud_smpl;
+  vector<int> m_meng_smpl;
+  vector<int> m_seng_smpl;
+  vector<int> m_rud_sta_smpl;
+
+  void lpf();
 
   unsigned char m_rud_aws;
   unsigned char m_meng_aws;

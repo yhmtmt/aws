@@ -35,8 +35,13 @@ using namespace std;
 #include  "../driver/zgpio.h"
 #include "f_aws1_ctrl.h"
 
+const char * f_aws1_ctrl:: m_str_adclpf_type[ADCLPF_NONE] = {
+  "avg", "gauss"
+};
+
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
-  f_base(name), m_fd(-1), m_verb(false),  m_aws_ctrl(false), m_t_rmc_avg(10),
+  f_base(name), m_fd(-1), m_verb(false),  m_aws_ctrl(false),
+  m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0),
   m_meng_max_rmc(0x81), m_meng_nuf_rmc(0x80),  m_meng_nut_rmc(0x7f),  
   m_meng_nub_rmc(0x7e), m_meng_min_rmc(0x7d),  
   m_seng_max_rmc(0x81),  m_seng_nuf_rmc(0x80), m_seng_nut_rmc(0x7f),
@@ -55,51 +60,68 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   register_fpar("device", m_dev, 1023, "AWS1's control gpio device path");
   register_fpar("verb", &m_verb, "For debug.");
   register_fpar("ctrl", &m_aws_ctrl, "Yes if aws controls AWS1 (default no)");
-  register_fpar("tavg", &m_t_rmc_avg, "Averaging time window. (default 10)");
+
+  // LPF related parameters
+  register_fpar("adclpf", &m_adclpf, "LPF is applied for the ADC inputs.");
+  register_fpar("sz_adclpf", &m_sz_adclpf, "Window size of the ADC-LPF.");
+  register_fpar("type_adclpf", (int*) &m_type_adclpf, ADCLPF_NONE, m_str_adclpf_type, "Type of ADCLPF.");
+  register_fpar("sigma_adclpf", &m_sigma_adclpf, "Standard deviation of the gaussian kernel of the ADC-LPF (This can only be used in the case of the filter type is gauss)");
+
+  // aws's control parameters
   register_fpar("awsrud", &m_rud_aws, "Control value of AWS1's rudder.");
   register_fpar("awsmeng", &m_meng_aws, "Control value of AWS1's main engine.");
   register_fpar("awsseng", &m_seng_aws, "Control value of AWS1's sub engine.");
+
+  // remote controller's control parameters (Read Only)
   register_fpar("rmcrud", &m_rud_rmc, "Control value of AWS1's rudder controller.");
   register_fpar("rmcmeng", &m_meng_rmc, "Control value of AWS1's main engine controller.");
   register_fpar("rmcseng", &m_seng_rmc, "Control value of AWS1's sub engine controller.");
   register_fpar("rud_sta", &m_rud_sta, "Rudder Status of AWS1's.");
 
+  // Remote controllers control points of the main engine. 
   register_fpar("meng_max_rmc", &m_meng_max_rmc, "Maximum control control value of AWS1's main engine controller.");
   register_fpar("meng_nuf_rmc", &m_meng_nuf_rmc, "Nutral to Forward control value of AWS1's main engine controller.");
   register_fpar("meng_nut_rmc", &m_meng_nut_rmc, "Nutral control value of AWS1's main engine controller.");
   register_fpar("meng_nub_rmc", &m_meng_nub_rmc, "Nutral to Backward control value of AWS1's main engine controller.");
   register_fpar("meng_min_rmc", &m_meng_min_rmc, "Minimum control value of AWS1's main engine controller.");
 
+  // Each control points of the main engine output.
   register_fpar("meng_max", &m_meng_max, "Maximum control value for AWS1's main engine.");
   register_fpar("meng_nuf", &m_meng_nuf, "Nutral to Forward control value for AWS1's main engine.");
   register_fpar("meng_nut", &m_meng_nut, "Nutral control value for AWS1's main engine.");
   register_fpar("meng_nub", &m_meng_nub, "Nutral to Backward control value for AWS1's main engine.");
   register_fpar("meng_min", &m_meng_min, "Minimum control value for AWS1's main engine.");
 
+  // Remote controllers control points of the sub engine.
   register_fpar("seng_max_rmc", &m_seng_max_rmc, "Maximum control value of AWS1's sub engine controller.");
   register_fpar("seng_nuf_rmc", &m_seng_nuf_rmc, "Nutral to Forward control value of AWS1's sub engine controller.");
   register_fpar("seng_nut_rmc", &m_seng_nut_rmc, "Nutral control value of AWS1's sub engine controller.");
   register_fpar("seng_nub_rmc", &m_seng_nub_rmc, "Nutral to Backward control value of AWS1's sub engine controller.");
   register_fpar("seng_min_rmc", &m_seng_min_rmc, "Minimum control value of AWS1's sub engine controller.");
 
+  // Each control points of the sub engine output
   register_fpar("seng_max", &m_seng_max, "Maximum control value for AWS1's sub engine.");
   register_fpar("seng_nuf", &m_seng_nuf, "Nutral to Forward control value for AWS1's sub engine.");
   register_fpar("seng_nut", &m_seng_nut, "Nutral control value for AWS1's sub engine.");
   register_fpar("seng_nub", &m_seng_nub, "Nutral to Backward control value for AWS1's sub engine.");
   register_fpar("seng_min", &m_seng_min, "Minimum control value for AWS1's sub engine.");
 
+  // Remote controller's control points of the rudder.
   register_fpar("rud_max_rmc", &m_rud_max_rmc, "Maximum control value of AWS1's rudder controller.");
   register_fpar("rud_nut_rmc", &m_rud_nut_rmc, "Nutral control value of AWS1's rudder controller.");
   register_fpar("rud_min_rmc", &m_rud_min_rmc, "Minimum control value of AWS1's rudder controller.");
 
+  // Each controll points of the rudder output.
   register_fpar("rud_max", &m_rud_max, "Maximum control value for AWS1's rudder.");
   register_fpar("rud_nut", &m_rud_nut, "Nutral control value for AWS1's rudder.");
   register_fpar("rud_min", &m_rud_min, "Minimum control value for AWS1's rudder.");
 
+  // Rudder indicator's controll points.
   register_fpar("rud_sta_max", &m_rud_sta_max, "Maximum value of AWS1's rudder angle indicator.");
   register_fpar("rud_sta_nut", &m_rud_sta_nut, "Nutral value of AWS1's rudder angle indicator.");
   register_fpar("rud_sta_min", &m_rud_sta_min, "Minimum value of AWS1's rudder angle indicator.");
 
+  // Control points as the rudder indicator output.
   register_fpar("rud_sta_out_max", &m_rud_sta_out_max, "Maximum output value of AWS1's rudder angle to rudder pump.");
   register_fpar("rud_sta_out_nut", &m_rud_sta_out_nut, "Nutral output value of AWS1's rudder angle to rudder pump.");
   register_fpar("rud_sta_out_min", &m_rud_sta_out_min, "Minimum output value of AWS1's rudder angle to rudder pump.");
@@ -123,9 +145,6 @@ bool f_aws1_ctrl::init_run()
     return false;
   }
 
-  m_rud_rmc_sum = m_meng_rmc_sum = m_seng_rmc_sum = m_rud_sta_sum = 0;
-  m_t_rmc_cnt = 0;
- 
   return true;
 }
 
@@ -222,6 +241,9 @@ bool f_aws1_ctrl::proc()
   
   get_gpio();
 
+  if(m_adclpf)
+    lpf();
+
   set_gpio();
 
   
@@ -234,4 +256,68 @@ bool f_aws1_ctrl::proc()
 
   }
   return true;
+}
+
+void f_aws1_ctrl::lpf()
+{
+  if(m_sz_adclpf != m_kern_adclpf.size()){ // initialize filter
+    // allocating memory
+    m_kern_adclpf.resize(m_sz_adclpf);
+    m_rud_smpl.resize(m_sz_adclpf, (int) m_rud_rmc);
+    m_meng_smpl.resize(m_sz_adclpf, (int) m_meng_rmc);
+    m_seng_smpl.resize(m_sz_adclpf, (int) m_seng_rmc);
+
+    // building filter kernel.
+    switch(m_type_adclpf){
+    case ADCLPF_GAUSS:
+      {
+	double c = (double)(m_sz_adclpf - 1) / 2.0;
+	double sum = 0.;
+	for(int i = 0; i < m_sz_adclpf; i++){
+	  m_kern_adclpf[i] = (float) gauss(c, m_sigma_adclpf, (double) i);
+	  sum += m_kern_adclpf[i];
+	}
+
+	// normalize the filter.
+	sum = 1.0 / sum;
+	for(int i = 0; i < m_sz_adclpf; i++){
+	  m_kern_adclpf[i] *= sum;
+	}
+      }
+      break;
+    case ADCLPF_AVG:
+      {
+	double val = 1.0 / (double) m_sz_adclpf;
+	for(int i = 0; i < m_sz_adclpf; i++){
+	  m_kern_adclpf[i] = (float) val;
+	}
+      }
+      break;
+    default:
+      break;
+    }
+
+    m_cur_adcsmpl = 0;
+  }else{
+    m_rud_smpl[m_cur_adcsmpl] = m_rud_rmc;
+    m_meng_smpl[m_cur_adcsmpl] = m_meng_rmc;
+    m_seng_smpl[m_cur_adcsmpl] = m_seng_rmc;
+    m_rud_sta_smpl[m_cur_adcsmpl] = m_rud_sta;
+  }
+
+  // kernel convolution
+  double rud = 0., meng = 0., seng = 0., rud_sta = 0.;
+  for(int i = 0, j = m_cur_adcsmpl; i < m_sz_adclpf; i++, j = (j + 1) % m_sz_adclpf ){
+    rud += m_rud_smpl[j] * m_kern_adclpf[i];
+    meng += m_meng_smpl[j] * m_kern_adclpf[i];
+    seng += m_seng_smpl[j] * m_kern_adclpf[i];
+    rud_sta += m_rud_sta_smpl[j] * m_kern_adclpf[i];
+  }
+
+  m_rud_rmc = rud;
+  m_meng_rmc = meng;
+  m_seng_rmc = seng;
+  m_rud_sta = rud_sta;
+
+  m_cur_adcsmpl = (m_cur_adcsmpl ? m_cur_adcsmpl--: m_sz_adclpf);
 }
