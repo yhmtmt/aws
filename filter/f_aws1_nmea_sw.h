@@ -19,6 +19,10 @@
 #define _F_AWS1_NMEA_SW_H_
 #include "f_nmea.h"
 
+bool is_nmea_type(const char * strt, const char * nmea){
+  return nmea[3] == strt[0] && nmea[4] == strt[1] && nmea[5] == strt[2];
+}
+
 class f_aws1_nmea_sw: public f_base
 {
 protected:
@@ -37,7 +41,14 @@ protected:
 	int m_aws_oint, m_ap_oint, m_gff_oint, m_ais_oint;
 	int m_aws_ocnt, m_ap_ocnt, m_gff_ocnt, m_ais_ocnt;
 
+	bool m_aws_out, m_ap_out, m_gff_out, m_ais_out;
+
 	char m_nmea[83];
+
+	void aws_to_out();
+	void ap_to_out();
+	void gff_to_out();
+	void ais_to_out();
 public:
 	f_aws1_nmea_sw(const char * name);
 

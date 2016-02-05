@@ -90,150 +90,160 @@ bool f_aws1_nmea_sw::init_run()
 
 void f_aws1_nmea_sw::destroy_run()
 {
-	m_aws_nmea_i = m_ap_nmea_i = m_gff_nmea_i = m_ais_nmea_i = NULL;
-	m_aws_nmea_o = m_ap_nmea_o = m_gff_nmea_o = m_ais_nmea_o = NULL;
+  m_aws_nmea_i = m_ap_nmea_i = m_gff_nmea_i = m_ais_nmea_i = NULL;
+  m_aws_nmea_o = m_ap_nmea_o = m_gff_nmea_o = m_ais_nmea_o = NULL;
+}
+
+void f_aws1_nmea_sw::aws_to_out()
+{
+  while(m_aws_nmea_i->pop(m_nmea)){
+    if(m_verb){
+      cout << "AWS > " << m_nmea << endl;
+    }
+    if(m_aws_ctrl && 
+       (is_nmea_type("APB", m_nmea) || 
+	is_nmea_type("AAM", m_nmea) ||
+	is_nmea_type("BOD", m_nmea) || 
+	is_nmea_type("BWC", m_nmea) || 
+	is_nmea_type("VTG", m_nmea) ||
+	is_nmea_type("XTE", m_nmea) ||
+	is_nmea_type("RMB", m_nmea) || 
+	is_nmea_type("APA", m_nmea)))
+      {
+	 if(m_aws_ocnt == 0){
+	   if(m_verb){
+	     cout << "AP < " << m_nmea << endl;
+	   }
+	   m_ap_nmea_o->push(m_nmea);			
+	   m_ap_out = true;
+	 }	
+      }
+  }
+}
+
+void f_aws1_nmea_sw::ap_to_out()
+{
+  while(m_ap_nmea_i->pop(m_nmea)){
+    if(m_verb)
+      cout << "AP > " << m_nmea << endl;
+    if(m_aws_ocnt == 0){
+      if(m_verb)
+	cout << "AWS < " << m_nmea << endl;
+      m_aws_nmea_o->push(m_nmea);
+      m_aws_out = true;
+    }
+  }
+}
+
+void f_aws1_nmea_sw::gff_to_out()
+{
+  while(m_gff_nmea_i->pop(m_nmea)){
+    if(m_verb)
+      cout << "GFF > " << m_nmea << endl;
+    
+    m_aws_nmea_o->push(m_nmea);
+    
+    if(is_nmea_type("RMC", m_nmea) 
+       || is_nmea_type("GGA", m_nmea)
+       || is_nmea_type("GLL", m_nmea)){
+      
+      if(m_ais_ocnt == 0){
+	if(m_verb)
+	  cout << "AIS < " << m_nmea << endl;
+	
+	m_ais_nmea_o->push(m_nmea);
+	m_ais_out = true;
+      }
+    }
+    
+    
+    if(is_nmea_type("VTG", m_nmea)){
+      if(m_ais_ocnt == 0){
+	if(m_verb)
+	  cout << "AIS < " << m_nmea << endl;
+	
+	m_ais_nmea_o->push(m_nmea);
+	m_ais_out = true;
+      }
+      
+      if(m_ap_ocnt == 0){
+	if(m_verb)
+	  cout << "AP < " << m_nmea << endl;
+	m_ap_nmea_o->push(m_nmea);
+	m_ap_out = true;
+      }	    
+    }
+    
+    if(!m_aws_ctrl && 
+       (is_nmea_type("APB", m_nmea) || 
+	is_nmea_type("AAM", m_nmea) ||
+	is_nmea_type("BOD", m_nmea) || 
+	is_nmea_type("VTG", m_nmea) ||
+	is_nmea_type("XTE", m_nmea))){
+      if(m_ap_ocnt == 0){
+	if(m_verb)
+	  cout << "AP < " << m_nmea << endl;
+	
+	m_ap_nmea_o->push(m_nmea);
+	m_ap_out = true;
+      }
+    }
+  }
+}
+
+void f_aws1_nmea_sw::ais_to_out()
+{
+  while(m_ais_nmea_i->pop(m_nmea)){
+    if(m_verb)
+      cout << "AIS > " << m_nmea << endl;
+    
+    m_aws_nmea_o->push(m_nmea);
+    
+    if(is_nmea_type("VDM", m_nmea)){
+      if(m_gff_ocnt == 0){
+	if(m_verb)
+	  cout << "GFF < " << m_nmea << endl;
+	
+	m_gff_nmea_o->push(m_nmea);
+	m_gff_out = true;
+      }
+    }		
+  }
 }
 
 bool f_aws1_nmea_sw::proc()
 {
-	bool m_aws_out, m_ap_out, m_gff_out, m_ais_out;
-	m_aws_out = m_ap_out = m_gff_out = m_ais_out = false;
-
-	while(m_aws_nmea_i->pop(m_nmea)){
-	  if(m_verb)
-	    cout << "AWS > " << m_nmea << endl;
-	  if(m_aws_ctrl && m_nmea[3] == 'A' && m_nmea[4] == 'P' && m_nmea[5] == 'B')
-	    if(m_aws_ocnt == 0){
-	      if(m_verb)
-		cout << "AP < " << m_nmea << endl;
-	      m_ap_nmea_o->push(m_nmea);			
-	      m_ap_out = true;
-	    }	
-	}
-	
-	while(m_ap_nmea_i->pop(m_nmea)){
-	  if(m_verb)
-	    cout << "AP > " << m_nmea << endl;
-	  if(m_aws_ocnt == 0){
-	    if(m_verb)
-	      cout << "AWS < " << m_nmea << endl;
-	    m_aws_nmea_o->push(m_nmea);
-	    m_aws_out = true;
-	  }
-	}
-
-	while(m_gff_nmea_i->pop(m_nmea)){
-	  if(m_verb)
-	    cout << "GFF > " << m_nmea << endl;
-	  
-	  m_aws_nmea_o->push(m_nmea);
-	  if(m_nmea[3] == 'R' && m_nmea[4] == 'M' && m_nmea[5] == 'C'){
-	    if(m_gff_ocnt == 0){
-	      if(m_verb)
-		cout << "GFF < " << m_nmea << endl;
-	      
-	      m_gff_nmea_o->push(m_nmea);
-	      m_gff_out = true;
-	    }
-	    if(m_ais_ocnt == 0){
-	      if(m_verb)
-		cout << "AIS < " << m_nmea << endl;
-	      
-	      m_ais_nmea_o->push(m_nmea);
-	      m_ais_out = true;
-	    }
-	  }
-
-	  if(m_nmea[3] == 'G' && m_nmea[4] == 'G' && m_nmea[5] == 'A'){
-	    if(m_gff_ocnt == 0){
-	      if(m_verb)
-		cout << "GFF < " << m_nmea << endl;
-	      
-	      m_gff_nmea_o->push(m_nmea);
-	      m_gff_out = true;
-	    }
-	    if(m_ais_ocnt == 0){
-	      if(m_verb)
-		cout << "AIS < " << m_nmea << endl;
-	      
-	      m_ais_nmea_o->push(m_nmea);
-	      m_ais_out = true;
-	    }
-	  }
-
-	  if(m_nmea[3] == 'V' && m_nmea[4] == 'T' && m_nmea[5] == 'G'){
-	    if(m_gff_ocnt == 0){
-	      if(m_verb)
-		cout << "GFF < " << m_nmea << endl;
-	      
-	      m_gff_nmea_o->push(m_nmea);
-	      m_gff_out = true;
-	    }
-	    if(m_ais_ocnt == 0){
-	      if(m_verb)
-		cout << "AIS < " << m_nmea << endl;
-	      
-	      m_ais_nmea_o->push(m_nmea);
-	      m_ais_out = true;
-	    }
-	    if(m_ap_ocnt == 0){
-	      if(m_verb)
-		cout << "AP < " << m_nmea << endl;
-	      m_ap_nmea_o->push(m_nmea);
-	      m_ap_out = true;
-	    }
-	    
-	  }
-
-	  if(!m_aws_ctrl && m_nmea[3] == 'A' && m_nmea[4] == 'P' && m_nmea[5] == 'B'){
-	    if(m_ap_ocnt == 0){
-	      if(m_verb)
-		cout << "AP < " << m_nmea << endl;
-	      
-	      m_ap_nmea_o->push(m_nmea);
-	      m_ap_out = true;
-	    }
-	  }
-	}
-	
-	while(m_ais_nmea_i->pop(m_nmea)){
-	  if(m_verb)
-	    cout << "AIS > " << m_nmea << endl;
-	  m_aws_nmea_o->push(m_nmea);
-	  if(m_nmea[3] == 'V' && m_nmea[4] == 'D' && m_nmea[5] == 'M'){
-	    if(m_gff_ocnt == 0){
-	      if(m_verb)
-		cout << "GFF < " << m_nmea << endl;
-			  
-	      m_gff_nmea_o->push(m_nmea);
-	      m_gff_out = true;
-	    }
-	  }		
-	}
-
-	if(m_aws_ocnt > 0)
-	  m_aws_ocnt--;
-	
-	if(m_aws_out == true)
-	  m_aws_ocnt = m_aws_oint;
-
-	if(m_ap_ocnt > 0)
-	  m_ap_ocnt--;
-	
-	if(m_ap_out == true)
-	  m_ap_ocnt = m_ap_oint;
-
-	if(m_gff_ocnt > 0)
-	  m_gff_ocnt--;
-	
-	if(m_gff_out == true)
-	  m_gff_ocnt = m_gff_oint;
-
-	if(m_ais_ocnt > 0)
-	  m_ais_ocnt--;
-
-	if(m_ais_out == true)
-	  m_ais_ocnt = m_ais_oint;
-	
-	return true;
+  m_aws_out = m_ap_out = m_gff_out = m_ais_out = false;
+  
+  aws_to_out();
+  ap_to_out();
+  gff_to_out();
+  ais_to_out();
+  
+  if(m_aws_ocnt > 0)
+    m_aws_ocnt--;
+  
+  if(m_aws_out == true)
+    m_aws_ocnt = m_aws_oint;
+  
+  if(m_ap_ocnt > 0)
+    m_ap_ocnt--;
+  
+  if(m_ap_out == true)
+    m_ap_ocnt = m_ap_oint;
+  
+  if(m_gff_ocnt > 0)
+    m_gff_ocnt--;
+  
+  if(m_gff_out == true)
+    m_gff_ocnt = m_gff_oint;
+  
+  if(m_ais_ocnt > 0)
+    m_ais_ocnt--;
+  
+  if(m_ais_out == true)
+    m_ais_ocnt = m_ais_oint;
+  
+  return true;
 }
+ 
