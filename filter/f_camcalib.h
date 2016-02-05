@@ -14,6 +14,19 @@
 // You should have received a copy of the GNU General Public License
 // along with f_camcalib.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#ifndef _F_CAMCALIB_H_
+#define _F_CAMCALIB_H_
+
+
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
+
+#include "../channel/ch_base.h"
+#include "../channel/ch_image.h"
+
+#include "f_base.h"
+
 class f_camcalib: public f_base
 {
 protected:
@@ -52,3 +65,5 @@ public:
 	bool calibrate();
 	bool write_campars(const char * fname);
 };
+
+#endif

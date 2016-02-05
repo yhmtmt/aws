@@ -28,9 +28,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-
 #include "f_ds_window.h"
 
 

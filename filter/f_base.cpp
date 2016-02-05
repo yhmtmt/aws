@@ -26,10 +26,8 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/c_clock.h"
 #include "f_base.h"
 #include "../c_aws.h"
-#include "../util/aws_stdlib.h"
 
 /////////////////////////////////////////////////////////////// filter factory
 FMap f_base::m_fmap;

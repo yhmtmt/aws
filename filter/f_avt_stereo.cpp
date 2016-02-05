@@ -29,11 +29,6 @@ using namespace std;
 
 #include <opencv2/opencv.hpp>
 using namespace cv;
-
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-#include "../util/c_clock.h"
-#include "f_base.h"
 #include "f_avt_stereo.h"
 
 f_avt_stereo::f_avt_stereo(const char * name): f_avt_cam(name), m_cam1(1), m_cam2(2), szorg(-1,-1), szrct(-1,-1), rectify(false)

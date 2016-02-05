@@ -21,9 +21,12 @@
 /////////////// direct X based window //////////////////////////
 #define SYS_BUF_SIZE 512
 
-#include "f_base.h"
-#include "../channel/ch_image.h"
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
 #include "../util/c_d3d_2dobj.h"
+#include "../channel/ch_image.h"
+
+#include "f_base.h"
 
 class f_ds_window:public f_base
 {

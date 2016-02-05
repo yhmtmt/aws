@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with c_nmeadec.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#ifndef _C_NMEADEC_H_
+#define _C_NMEADEC_H_
+
 enum e_gp_dir{
 	EGP_N, EGP_S, EGP_E, EGP_W
 };
@@ -593,3 +596,5 @@ public:
 
 char armor(char c);
 unsigned char calc_nmea_chksum(const char * str);
+
+#endif

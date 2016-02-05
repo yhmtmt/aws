@@ -29,13 +29,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_thread.h"
-#include "../util/c_clock.h"
-
-#include "../channel/ch_base.h"
-#include "../channel/ch_image.h"
-#include "../channel/ch_campar.h"
-
 #include "f_ds_vdev.h"
 
 /////////////////////////////////////////////////////f_ds_vdev members

@@ -28,18 +28,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-
-//#include "../util/aws_cminpack.h"
-#include "../util/aws_coord.h"
-#include "../util/c_ship.h"
-#include "../util/c_clock.h"
-
-//#include "../util/c_nmeadec.h"
-#include "../channel/ch_base.h"
-#include "../channel/ch_image.h"
-
 #include "f_inspector.h"
 
 const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  

@@ -34,12 +34,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-#include "../util/aws_vlib.h"
-#include "../util/c_clock.h"
-
-#include "f_base.h"
 #include "f_misc.h"
 
 ////////////////////////////////////////////////////////// f_debayer members

@@ -1,5 +1,31 @@
+// Copyright(c) 2016 Yohei Matsumoto, Tokyo University of Marine
+// Science and Technology, All right reserved. 
+
+// f_ship_detector.h is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+
+// f_ship_detector.h is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+
+// You should have received a copy of the GNU General Public License
+// along with f_ship_detector.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 #define DEBUG_SD
+
+#ifndef _F_SHIP_DETECTOR_H
+#define _F_SHIP_DETECTOR_H
+
+#include "../util/aws_sock.h"
+#include "../util/c_clock.h"
+
+#include "../channel/ch_image.h"
+#include "../channel/ch_vector.h"
+
+#include "f_base.h"
 
 class f_ship_detector: public f_base
 {
@@ -95,3 +121,5 @@ public:
 
 	virtual bool proc();
 };
+
+#endif

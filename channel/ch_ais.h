@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with ch_ais.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#ifndef _CH_AIS_H_
+#define _CH_AIS_H_
+
 #include "../util/c_nmeadec.h"
 
 class ch_ais: public ch_base
@@ -331,3 +334,5 @@ public:
 	{
 	}
 };
+
+#endif

@@ -14,6 +14,8 @@
 
 // You should have received a copy of the GNU General Public License
 // along with c_ship.h.  If not, see <http://www.gnu.org/licenses/>. 
+#ifndef _C_SHIP_H_
+#define _C_SHIP_H_
 
 #include "aws_coord.h"
 
@@ -500,3 +502,5 @@ public:
 		M.copyTo(m_M);
 	}
 };
+
+#endif

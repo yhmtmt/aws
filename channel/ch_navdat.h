@@ -14,6 +14,9 @@
 // You should have received a copy of the GNU General Public License
 // along with ch_navdat.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#ifndef _CH_NAVDAT_H_
+#define _CH_NAVDAT_H_
+
 #include "../util/aws_coord.h"
 
 struct s_ship_ctrl{
@@ -134,3 +137,5 @@ public:
 	{
 	}
 };
+
+#endif

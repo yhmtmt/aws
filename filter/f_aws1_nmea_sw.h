@@ -17,6 +17,14 @@
 
 #ifndef _F_AWS1_NMEA_SW_H_
 #define _F_AWS1_NMEA_SW_H_
+
+#include "../util/aws_stdlib.h"
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+#include "../util/c_nmeadec.h"
+
+#include "../channel/ch_nmea.h"
+
 #include "f_nmea.h"
 
 inline bool is_nmea_type(const char * strt, const char * nmea){

@@ -16,6 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with f_event.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
+#include "../util/c_ship.h"
+#include "../channel/ch_base.h"
+#include "../channel/ch_ais.h"
+#include "../channel/ch_vector.h"
+#include "../channel/ch_nmea.h"
+
 #include "f_base.h"
 enum e_evt_type
 {

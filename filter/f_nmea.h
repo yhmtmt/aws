@@ -19,6 +19,15 @@
 
 #define SIZE_NMEA_BUF 166 // for two NMEA
 #include "../util/aws_serial.h"
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
+#include "../util/c_ship.h"
+#include "../channel/ch_base.h"
+#include "../channel/ch_ais.h"
+#include "../channel/ch_vector.h"
+#include "../channel/ch_nmea.h"
+
 #include "f_base.h"
 
 class f_nmea: public f_base

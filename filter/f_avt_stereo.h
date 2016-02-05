@@ -1,5 +1,3 @@
-#ifndef _F_AVT_STEREO_H_
-#define _F_AVT_STEREO_H_
 // Copyright(c) 2015 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -16,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with f_avt_stereo.  If not, see <http://www.gnu.org/licenses/>. 
 
+#ifndef _F_AVT_STEREO_H_
+#define _F_AVT_STEREO_H_
+
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
 
 #include "f_avt_cam.h"
 

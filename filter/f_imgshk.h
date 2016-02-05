@@ -14,6 +14,20 @@
 // You should have received a copy of the GNU General Public License
 // along with f_imgshk.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#ifndef _F_IMGSHK_H_
+#define _F_IMGSHK_H_
+
+#include "../util/aws_sock.h"
+#include "../util/aws_stdlib.h"
+#include "../util/c_clock.h"
+
+#include "../util/c_imgalign.h"
+
+#include "../channel/ch_image.h"
+#include "../channel/ch_campar.h"
+
+#include "f_cam.h"
+
 class f_imgshk: public f_cam
 {
 protected:
@@ -53,3 +67,5 @@ public:
 	virtual bool grab(Mat & img);
 	virtual bool cmd_proc(s_cmd & cmd);
 };
+
+#endif

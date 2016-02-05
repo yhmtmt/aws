@@ -1,5 +1,3 @@
-#ifndef _F_CAM_H_
-#define _F_CAM_H_
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
@@ -15,6 +13,13 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_cam.h.  If not, see <http://www.gnu.org/licenses/>. 
+#ifndef _F_CAM_H_
+#define _F_CAM_H_
+
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
+
 #include "../channel/ch_image.h"
 #include "../channel/ch_campar.h"
 

@@ -144,7 +144,6 @@ void ch_base::register_factory()
 #include "filter/f_event.h"
 #include "filter/f_fep01.h"
 
-
 #include "filter/f_time.h"
 
 

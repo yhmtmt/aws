@@ -16,8 +16,10 @@
 
 #ifndef _F_TIME_H_
 #define _F_TIME_H_
+#include "../util/aws_stdlib.h"
 #include "../util/aws_sock.h"
 #include "../util/aws_serial.h"
+
 #include "f_base.h"
 
 //#define DEBUG_F_TIME

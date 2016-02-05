@@ -34,15 +34,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-#include "../util/c_clock.h"
-
-#include "../channel/ch_base.h"
-#include "../channel/ch_image.h"
-#include "../channel/ch_vector.h"
-
-#include "f_base.h"
 #include "f_ship_detector.h"
 
 bool f_ship_detector::cmd_proc(s_cmd & cmd)

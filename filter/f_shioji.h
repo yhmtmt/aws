@@ -13,6 +13,17 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_shioji.cpp.  If not, see <http://www.gnu.org/licenses/>. 
+#ifndef _F_SHIOJI_H_
+#define _F_SHIOJI_H_
+
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
+
+#include "../channel/ch_base.h"
+#include "../channel/ch_navdat.h"
+
+#include "f_base.h"
 
 class f_shioji_ctrl: public f_base
 {
@@ -218,3 +229,5 @@ public:
 	// close all files and sockets including control and redirection sockets
 	void close();
 };
+
+#endif

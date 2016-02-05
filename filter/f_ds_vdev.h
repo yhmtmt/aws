@@ -16,6 +16,12 @@
 // You should have received a copy of the GNU General Public License
 // along with f_ds_video.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
+
+#include "../channel/ch_image.h"
+#include "../channel/ch_campar.h"
+
 #include "f_ds_video.h"
 
 class f_ds_vdev: public f_ds_video

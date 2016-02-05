@@ -25,8 +25,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_stdlib.h"
-
 #include "f_time.h"
 
 

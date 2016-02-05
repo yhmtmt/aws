@@ -18,6 +18,17 @@
 #include "../util/c_imgalign.h"
 #include "../util/aws_vlib.h"
 #include "../util/aws_vobj.h"
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+//#include "../util/aws_cminpack.h"
+#include "../util/aws_coord.h"
+
+#include "../util/c_ship.h"
+#include "../util/c_clock.h"
+
+//#include "../util/c_nmeadec.h"
+#include "../channel/ch_image.h"
+
 #include "f_ds_window.h"
 
 bool is_equal(Mat & a, Mat & b);

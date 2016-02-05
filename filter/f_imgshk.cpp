@@ -26,20 +26,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-#include "../util/aws_stdlib.h"
-#include "../util/c_clock.h"
-
-#include "../util/c_imgalign.h"
-
-#include "../channel/ch_base.h"
-#include "../channel/ch_image.h"
-#include "../channel/ch_campar.h"
-
-#include "f_base.h"
-#include "f_cam.h"
-
 #include "f_imgshk.h"
 
 bool f_imgshk::grab(Mat & img)

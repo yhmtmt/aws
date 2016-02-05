@@ -18,6 +18,7 @@
 
 #include "../command.h"
 #include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
 
 class f_base;
 class ch_base;

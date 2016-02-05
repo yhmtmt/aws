@@ -15,7 +15,14 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_misc.h.  If not, see <http://www.gnu.org/licenses/>. 
+
+#include "../util/aws_sock.h"
+#include "../util/aws_vlib.h"
+#include "../util/c_clock.h"
+
 #include "../channel/ch_image.h"
+
+#include "f_base.h"
 
 class f_misc: public f_base
 {

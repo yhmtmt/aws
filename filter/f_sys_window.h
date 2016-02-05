@@ -16,6 +16,21 @@
 // You should have received a copy of the GNU General Public License
 // along with f_sys_window.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+
+#include "../util/aws_coord.h"
+#include "../util/c_ship.h"
+#include "../util/c_clock.h"
+//#include "../util/c_nmeadec.h"
+#include "../channel/ch_image.h"
+#include "../channel/ch_ais.h"
+#include "../channel/ch_vector.h"
+#include "../channel/ch_scalar.h"
+#include "../channel/ch_campar.h"
+#include "../channel/ch_navdat.h"
+#include "../channel/ch_nmea.h"
+
 #include "f_ds_window.h"
 
 class f_sys_window: public f_ds_window

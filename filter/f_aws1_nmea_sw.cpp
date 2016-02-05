@@ -28,14 +28,10 @@
 
 using namespace std;
 
-#include "../util/aws_stdlib.h"
+#include <opencv2/opencv.hpp>
 
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-#include "../util/c_nmeadec.h"
+using namespace cv;
 
-#include "../channel/ch_base.h"
-#include "../channel/ch_nmea.h"
 #include "f_aws1_nmea_sw.h"
 
 f_aws1_nmea_sw::f_aws1_nmea_sw(const char * name): f_base(name), m_aws_nmea_i(NULL), m_ap_nmea_i(NULL), m_gff_nmea_i(NULL),

@@ -18,8 +18,9 @@
 
 #include "../util/aws_vlib.h"
 #include "../util/aws_vobj.h"
-#include "f_base.h"
 #include "../channel/ch_image.h"
+
+#include "f_base.h"
 
 // In my OpenGL use, the 2D renderer uses -1 to 1 normalized coordinate, 
 // The function convert OpenCV's pixel coordinate into normalized OpenGL coordinate.

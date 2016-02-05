@@ -14,12 +14,18 @@
 // You should have received a copy of the GNU General Public License
 // along with f_com.h.  If not, see <http://www.gnu.org/licenses/>. 
 
-#ifndef F_COM_H
-#define F_COM_H
+#ifndef _F_COM_H_
+#define _F_COM_H_
 
-#include "../channel/ch_vector.h"
+#include "../util/aws_thread.h"
 #include "../util/aws_sock.h"
 #include "../util/aws_serial.h"
+#include "../util/c_clock.h"
+
+#include "../channel/ch_image.h"
+#include "../channel/ch_vector.h"
+
+#include "f_base.h"
 
 // data recorder interfacing ring buffer ch_ring<char>
 class f_rec_data: public f_base{

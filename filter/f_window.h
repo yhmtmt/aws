@@ -17,6 +17,24 @@
 
 ////////////////////////////////Alert////////////////////////////////////
 // these highgui windows won't work because of the recent parallelization.
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+
+#include "../util/aws_coord.h"
+#include "../util/c_ship.h"
+#include "../util/c_clock.h"
+//#include "../util/c_nmeadec.h"
+#include "../channel/ch_base.h"
+#include "../channel/ch_image.h"
+#include "../channel/ch_ais.h"
+#include "../channel/ch_vector.h"
+#include "../channel/ch_scalar.h"
+#include "../channel/ch_campar.h"
+#include "../channel/ch_navdat.h"
+#include "../channel/ch_nmea.h"
+
+#include "f_base.h"
+
 class f_window: public f_base
 {
 protected:

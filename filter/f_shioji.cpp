@@ -24,19 +24,9 @@
 #include <vector>
 using namespace std;
 
-#include "../util/aws_sock.h"
-
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_thread.h"
-
-#include "../util/c_clock.h"
-
-#include "../channel/ch_base.h"
-#include "../channel/ch_navdat.h"
-
-#include "f_base.h"
 #include "f_shioji.h"
 
 f_shioji::f_shioji(const char * name):f_base(name), m_bfile(false), m_bredir(false), m_sth_int(50000000), m_ctrl_int(10000000)

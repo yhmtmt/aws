@@ -19,6 +19,13 @@
 // Alert: This module is written only for Windows. 
 #ifdef _WIN32
 
+#include "../util/c_clock.h"
+
+#include "../channel/ch_image.h"
+#include "../channel/ch_campar.h"
+
+#include "f_cam.h"
+
 #include <wchar.h>
 
 #define BUFSIZE_F_IMGS 256

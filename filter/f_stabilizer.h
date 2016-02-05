@@ -17,6 +17,18 @@
 // along with f_stabilizer.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 #define STAB_STR_SIZE 512
+
+
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+#include "../util/aws_vlib.h"
+#include "../util/c_clock.h"
+#include "../util/c_imgalign.h"
+#include "../util/c_ship.h"
+
+#include "../channel/ch_image.h"
+#include "../channel/ch_vector.h"
+
 #include "f_base.h"
 
 class f_stabilizer: public f_base
