@@ -19,7 +19,7 @@
 #define _F_AWS1_NMEA_SW_H_
 #include "f_nmea.h"
 
-bool is_nmea_type(const char * strt, const char * nmea){
+inline bool is_nmea_type(const char * strt, const char * nmea){
   return nmea[3] == strt[0] && nmea[4] == strt[1] && nmea[5] == strt[2];
 }
 
