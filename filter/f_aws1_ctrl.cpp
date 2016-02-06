@@ -57,7 +57,10 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   m_rud_sta_out_max(0xff), m_rud_sta_out_nut(0x7f), m_rud_sta_out_min(0x00)
 {
   strcpy(m_dev, "/dev/zgpio1");
+  m_flog_name[0] = 0;
+
   register_fpar("device", m_dev, 1023, "AWS1's control gpio device path");
+  register_fpar("flog", m_flog_name, 1023, "Control log file.");
   register_fpar("verb", &m_verb, "For debug.");
   register_fpar("ctrl", &m_aws_ctrl, "Yes if aws controls AWS1 (default no)");
 
@@ -145,6 +148,13 @@ bool f_aws1_ctrl::init_run()
     return false;
   }
 
+  if(m_flog_name[0] != 0){
+    m_flog.open(m_flog_name);
+    if(!m_flog.is_open()){
+      cerr << m_name <<  " failed to open log file." << endl;
+      return false;
+    }
+  }
   return true;
 }
 
@@ -249,11 +259,18 @@ bool f_aws1_ctrl::proc()
   
   if(m_verb){
     cout << "Control Values." << endl;
-    cout << "    rmc rud " << m_rud_rmc << " meng " << m_meng_rmc << " seng " << m_seng_rmc << endl;
-    cout << "    aws rud " << m_rud_aws << " meng " << m_meng_aws << " seng " << m_seng_aws << endl;
-    cout << "    out rud " << m_rud << " meng " << m_meng << " seng " << m_seng << endl;
-    cout << "    rud stat in " << m_rud_sta << " out " << m_rud_sta_out << endl;
+    cout << "    rmc rud " << (int) m_rud_rmc << " meng " << (int) m_meng_rmc << " seng " << (int) m_seng_rmc << endl;
+    cout << "    aws rud " << (int) m_rud_aws << " meng " << (int) m_meng_aws << " seng " << (int) m_seng_aws << endl;
+    cout << "    out rud " << (int) m_rud << " meng " << (int) m_meng << " seng " << (int) m_seng << endl;
+    cout << "    rud stat in " << (int) m_rud_sta << " out " << (int) m_rud_sta_out << endl;
 
+  }
+  if(m_flog.is_open()){
+    m_flog << m_cur_time << " ";
+    m_flog << (int) m_rud_rmc << " " << (int) m_meng_rmc << " " << (int) m_seng_rmc << " ";
+    m_flog << (int) m_rud_aws << " " << (int) m_meng_aws << " " << (int) m_seng_aws << " ";
+    m_flog << (int) m_rud << " " << (int) m_meng << " " << (int) m_seng << " ";
+    m_flog << (int) m_rud_sta << " " << (int) m_rud_sta_out << endl;
   }
   return true;
 }
@@ -261,11 +278,13 @@ bool f_aws1_ctrl::proc()
 void f_aws1_ctrl::lpf()
 {
   if(m_sz_adclpf != m_kern_adclpf.size()){ // initialize filter
+    if(m_verb)
     // allocating memory
     m_kern_adclpf.resize(m_sz_adclpf);
     m_rud_smpl.resize(m_sz_adclpf, (int) m_rud_rmc);
     m_meng_smpl.resize(m_sz_adclpf, (int) m_meng_rmc);
     m_seng_smpl.resize(m_sz_adclpf, (int) m_seng_rmc);
+    //m_rud_sta_smpl.resize(m_sz_adclpf, (int) m_rud_sta);
 
     // building filter kernel.
     switch(m_type_adclpf){
@@ -298,26 +317,30 @@ void f_aws1_ctrl::lpf()
     }
 
     m_cur_adcsmpl = 0;
-  }else{
-    m_rud_smpl[m_cur_adcsmpl] = m_rud_rmc;
-    m_meng_smpl[m_cur_adcsmpl] = m_meng_rmc;
-    m_seng_smpl[m_cur_adcsmpl] = m_seng_rmc;
-    m_rud_sta_smpl[m_cur_adcsmpl] = m_rud_sta;
+    if(m_verb)
+      cout << " done." << endl;
   }
+
+  m_rud_smpl[m_cur_adcsmpl] = m_rud_rmc;
+  m_meng_smpl[m_cur_adcsmpl] = m_meng_rmc;
+  m_seng_smpl[m_cur_adcsmpl] = m_seng_rmc;
+  //m_rud_sta_smpl[m_cur_adcsmpl] = m_rud_sta;
+  
 
   // kernel convolution
   double rud = 0., meng = 0., seng = 0., rud_sta = 0.;
+  
   for(int i = 0, j = m_cur_adcsmpl; i < m_sz_adclpf; i++, j = (j + 1) % m_sz_adclpf ){
     rud += m_rud_smpl[j] * m_kern_adclpf[i];
     meng += m_meng_smpl[j] * m_kern_adclpf[i];
     seng += m_seng_smpl[j] * m_kern_adclpf[i];
-    rud_sta += m_rud_sta_smpl[j] * m_kern_adclpf[i];
+    //rud_sta += m_rud_sta_smpl[j] * m_kern_adclpf[i];
   }
-
+  
   m_rud_rmc = rud;
   m_meng_rmc = meng;
   m_seng_rmc = seng;
-  m_rud_sta = rud_sta;
+  // m_rud_sta = rud_sta;
 
-  m_cur_adcsmpl = (m_cur_adcsmpl ? m_cur_adcsmpl--: m_sz_adclpf);
+  m_cur_adcsmpl = (m_cur_adcsmpl > 0 ? m_cur_adcsmpl - 1 : m_sz_adclpf - 1);
 }
