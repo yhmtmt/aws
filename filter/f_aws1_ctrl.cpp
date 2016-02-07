@@ -39,8 +39,14 @@ const char * f_aws1_ctrl:: m_str_adclpf_type[ADCLPF_NONE] = {
   "avg", "gauss"
 };
 
+const char * str_aws1_ctrl_src[ACS_NONE] = {
+  "fset", "udp", "chan"
+};
+
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
   f_base(name), m_fd(-1), m_verb(false),  m_aws_ctrl(false),
+  m_aws1_ctrl_src(ACS_FSET), m_acs_sock(-1), m_acs_port(20100), 
+  m_pacs_in(NULL), m_pacs_out(NULL),
   m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0),
   m_meng_max_rmc(0x81), m_meng_nuf_rmc(0x80),  m_meng_nut_rmc(0x7f),  
   m_meng_nub_rmc(0x7e), m_meng_min_rmc(0x7d),  
@@ -64,6 +70,8 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   register_fpar("verb", &m_verb, "For debug.");
   register_fpar("ctrl", &m_aws_ctrl, "Yes if aws controls AWS1 (default no)");
 
+  register_fpar("acs", (int*) &m_aws1_ctrl_src, ACS_NONE, str_aws1_ctrl_src,  "AWS control source.");
+  register_fpar("acsport", &m_acs_port, "Port number for AWS1 UDP control.");
   // LPF related parameters
   register_fpar("adclpf", &m_adclpf, "LPF is applied for the ADC inputs.");
   register_fpar("sz_adclpf", &m_sz_adclpf, "Window size of the ADC-LPF.");
@@ -155,6 +163,23 @@ bool f_aws1_ctrl::init_run()
       return false;
     }
   }
+
+  if(m_chin.size() > 0){
+    m_pacs_in = dynamic_cast<ch_ring<char>*>(m_chin[0]);
+    if(m_pacs_in == NULL){
+      cerr << "The first input channel should be ch_ring<char>." << endl;
+      return false;
+    }
+  }
+
+  if(m_chout.size() > 0){
+    m_pacs_out = dynamic_cast<ch_ring<char>*>(m_chout[0]);
+    if(m_pacs_out == NULL){
+      cerr << "The first output channel should be ch_ring<char>." << endl;
+      return false;
+    }
+  }
+
   return true;
 }
 
@@ -248,7 +273,21 @@ void f_aws1_ctrl::set_gpio()
 
 bool f_aws1_ctrl::proc()
 {
-  
+  if(m_aws_ctrl){
+    switch(m_aws1_ctrl_src){
+    case ACS_UDP:
+      proc_acs_udp();
+      break;
+    case ACS_CHAN:
+      proc_acs_chan();
+      break;
+    case ACS_FSET:
+    default:
+      // nothing to do
+      break;
+    }
+  }
+
   get_gpio();
 
   if(m_adclpf)
@@ -343,4 +382,106 @@ void f_aws1_ctrl::lpf()
   // m_rud_sta = rud_sta;
 
   m_cur_adcsmpl = (m_cur_adcsmpl > 0 ? m_cur_adcsmpl - 1 : m_sz_adclpf - 1);
+}
+
+void f_aws1_ctrl::proc_acs_udp()
+{
+  if(m_acs_sock == -1){
+    m_acs_sock_addr.sin_family = AF_INET;
+    m_acs_sock_addr.sin_port = htons(m_acs_port);
+    set_sockaddr_addr(m_acs_sock_addr);
+    if(::bind(m_acs_sock, (sockaddr*) &m_acs_sock_addr, sizeof(m_acs_sock_addr)) == SOCKET_ERROR){
+      cerr << "Socket error during binding UDP socket in " << m_name;
+      cerr << ". AWS Control Source is automatically set to ACS_FSET." << endl;
+      m_aws1_ctrl_src = ACS_FSET;
+      m_acs_sock = -1;
+    }
+  }else{
+    sockaddr_in addr;
+    socklen_t sz_addr = sizeof(addr);
+    int res;
+    fd_set fr, fw, fe;
+    timeval tv;
+    s_aws1_ctrl_pkt acspkt;
+    
+    // recieving packet
+    FD_ZERO(&fr);
+    FD_ZERO(&fe);
+    tv.tv_sec = 0;
+    tv.tv_usec = 10000;
+    
+    res = select((int) m_acs_sock + 1, &fr, NULL, &fe, &tv);
+    if(res > 0){
+      if(FD_ISSET(m_acs_sock, &fr)){
+	int len = recvfrom(m_acs_sock, (char*) &acspkt, sizeof(acspkt), 0, (sockaddr*)&addr, &sz_addr);
+	if(len == SOCKET_ERROR){
+	  cerr << "Socket error during recieving packet in " << m_name;
+	  cerr << " . Now closing socket." << endl;
+	  closesocket(m_acs_sock);
+	  m_acs_sock = -1;
+	  m_aws1_ctrl_src = ACS_FSET;
+	}
+	if(len == sizeof(acspkt)){
+	  m_rud_aws = acspkt.rud;
+	  m_meng_aws = acspkt.meng;
+	  m_seng_aws = acspkt.seng; 
+	}
+      }else if(FD_ISSET(m_acs_sock, &fe)){
+	cerr << "Socket error during recieving packet in " << m_name;
+	cerr << " . Now closing socket." << endl;
+	closesocket(m_acs_sock);
+	m_acs_sock = -1;
+	m_aws1_ctrl_src = ACS_FSET;
+      }
+    }else if(res == -1){
+      int en = errno;
+      cerr << "Error no " << en << " " << strerror(en) << endl;
+    }else{
+      cerr << "Unkonwo error in " << m_name << "." << endl;
+    }
+    
+    // sending packet
+    acspkt.tcur = m_cur_time;
+    acspkt.rud = m_rud;
+    acspkt.meng = m_meng;
+    acspkt.seng = m_seng;
+    acspkt.rud_rmc = m_rud_rmc;
+    acspkt.meng_rmc = m_meng_rmc;
+    acspkt.seng_rmc = m_seng_rmc;
+    acspkt.rud_sta = m_rud_sta;
+    acspkt.rud_sta_out = m_rud_sta_out;
+    int len = sendto(m_acs_sock, (char*) &acspkt, sizeof(acspkt), 0, (sockaddr*)&addr, sz_addr);
+  }
+}
+
+void f_aws1_ctrl::proc_acs_chan()
+{
+  s_aws1_ctrl_pkt pkt;
+  int len;
+  if(m_pacs_in == NULL){
+    cerr << m_name  << " does not have control input channel." << endl;
+  }else{
+    len = m_pacs_in->read((char*) &pkt, sizeof(pkt));
+    if(len == sizeof(pkt)){
+      m_rud_aws = pkt.rud;
+      m_meng_aws = pkt.meng;
+      m_seng_aws = pkt.seng;
+    }
+  }
+
+  pkt.tcur = m_cur_time;
+  pkt.rud = m_rud;
+  pkt.meng = m_meng;
+  pkt.seng = m_seng;
+  pkt.rud_rmc = m_rud_rmc;
+  pkt.meng_rmc = m_meng_rmc;
+  pkt.seng_rmc = m_seng_rmc;
+  pkt.rud_sta = m_rud_sta;
+  pkt.rud_sta_out = m_rud_sta_out;
+
+  if(m_pacs_out == NULL){
+    cerr << m_name << " does not have control output channel." << endl;
+  }else{
+    len = m_pacs_out->write((char*) &pkt, sizeof(pkt));
+  }
 }

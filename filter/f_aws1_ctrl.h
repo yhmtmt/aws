@@ -17,9 +17,32 @@
 #ifndef _F_AWS1_CTRL_H_
 #define _F_AWS1_CTRL_H_
 
+#include "../channel/ch_vector.h"
 #include "../util/aws_stdlib.h"
 
 #include "f_base.h"
+
+
+// Both for transmission and reception the same packet structure is used.
+struct s_aws1_ctrl_pkt{
+  long long tcur;
+  unsigned char rud;
+  unsigned char meng;
+  unsigned char seng;
+  
+  unsigned char rud_rmc;
+  unsigned char meng_rmc;
+  unsigned char seng_rmc;
+
+  unsigned char rud_sta;
+  unsigned char rud_sta_out;
+};
+
+enum e_aws1_ctrl_src{
+  ACS_FSET, ACS_UDP, ACS_CHAN, ACS_NONE
+};
+
+extern  const char * str_aws1_ctrl_src[ACS_NONE];
 
 class f_aws1_ctrl: public f_base
 {
@@ -52,15 +75,28 @@ protected:
 
   void lpf();
 
-  unsigned char m_rud_aws;
-  unsigned char m_meng_aws;
-  unsigned char m_seng_aws;
-
   unsigned char m_meng_rmc; // main engine control value from remote control
   unsigned char m_seng_rmc; // sub engine control value from remote control
   unsigned char m_rud_rmc;  // rudder control value from remote control
 
   unsigned char m_rud_sta;  // rudder status value.
+
+  // aws control values
+  unsigned char m_rud_aws;
+  unsigned char m_meng_aws;
+  unsigned char m_seng_aws;
+
+  e_aws1_ctrl_src m_aws1_ctrl_src;
+
+  // Control server (for ACS_UDP)
+  unsigned short m_acs_port;
+  SOCKET m_acs_sock;
+  sockaddr_in m_acs_sock_addr;
+  void proc_acs_udp();
+
+  // Control channel (for ACS_CHAN)
+  ch_ring<char> * m_pacs_in, * m_pacs_out;
+  void proc_acs_chan();
 
   // remote controller's values corresponding positions 
   unsigned char m_meng_max_rmc; 
