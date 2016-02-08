@@ -23,26 +23,39 @@
 #include "f_base.h"
 
 
+enum e_aws1_ctrl_src{
+  ACS_FSET, ACS_UDP, ACS_CHAN, ACS_NONE
+};
+
+extern  const char * str_aws1_ctrl_src[ACS_NONE];
+
 // Both for transmission and reception the same packet structure is used.
 struct s_aws1_ctrl_pkt{
   long long tcur;
+
+  // control input
+  bool ctrl;
+  e_aws1_ctrl_src ctrl_src;
+  unsigned char rud_aws;
+  unsigned char meng_aws;
+  unsigned char seng_aws;
+
+  // control output
   unsigned char rud;
   unsigned char meng;
   unsigned char seng;
-  
+
   unsigned char rud_rmc;
   unsigned char meng_rmc;
   unsigned char seng_rmc;
 
   unsigned char rud_sta;
   unsigned char rud_sta_out;
+
+  // success flag
+  bool suc;
 };
 
-enum e_aws1_ctrl_src{
-  ACS_FSET, ACS_UDP, ACS_CHAN, ACS_NONE
-};
-
-extern  const char * str_aws1_ctrl_src[ACS_NONE];
 
 class f_aws1_ctrl: public f_base
 {
@@ -56,6 +69,9 @@ protected:
   bool m_aws_ctrl;          // remote control flag. 
                             //    true: control values from aws are sat. 
                             //    false: control values from remote controller are sat.
+  bool m_udp_ctrl;
+  bool m_ch_ctrl;
+
   /// LPF related parameters
   bool m_adclpf;           // Enabling ADC's low pass filter.
   int m_sz_adclpf;         // Window size of the low pass filter.
@@ -87,16 +103,24 @@ protected:
   unsigned char m_seng_aws;
 
   e_aws1_ctrl_src m_aws1_ctrl_src;
+  s_aws1_ctrl_pkt m_acs_pkt;
 
   // Control server (for ACS_UDP)
   unsigned short m_acs_port;
   SOCKET m_acs_sock;
-  sockaddr_in m_acs_sock_addr;
-  void proc_acs_udp();
+  sockaddr_in m_acs_sock_addr, m_acs_ret_addr;
+  socklen_t m_sz_acs_ret_addr;
+
+  void rcv_acs_udp(s_aws1_ctrl_pkt & acspkt);
+  void snd_acs_udp(s_aws1_ctrl_pkt & acspkt);
 
   // Control channel (for ACS_CHAN)
   ch_ring<char> * m_pacs_in, * m_pacs_out;
-  void proc_acs_chan();
+  void rcv_acs_chan(s_aws1_ctrl_pkt & acspkt);
+  void snd_acs_chan(s_aws1_ctrl_pkt & acspkt);
+
+  void set_acspkt(s_aws1_ctrl_pkt & acspkt);
+  void set_ctrl(s_aws1_ctrl_pkt & acspkt);
 
   // remote controller's values corresponding positions 
   unsigned char m_meng_max_rmc; 

@@ -45,6 +45,7 @@ const char * str_aws1_ctrl_src[ACS_NONE] = {
 
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
   f_base(name), m_fd(-1), m_verb(false),  m_aws_ctrl(false),
+  m_udp_ctrl(false), m_ch_ctrl(false),
   m_aws1_ctrl_src(ACS_FSET), m_acs_sock(-1), m_acs_port(20100), 
   m_pacs_in(NULL), m_pacs_out(NULL),
   m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0),
@@ -71,6 +72,8 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   register_fpar("ctrl", &m_aws_ctrl, "Yes if aws controls AWS1 (default no)");
 
   register_fpar("acs", (int*) &m_aws1_ctrl_src, ACS_NONE, str_aws1_ctrl_src,  "AWS control source.");
+  register_fpar("udp", &m_udp_ctrl, "Yes if udp control is used.");
+  register_fpar("ch", &m_ch_ctrl, "Yes if ch control is used.");
   register_fpar("acsport", &m_acs_port, "Port number for AWS1 UDP control.");
   // LPF related parameters
   register_fpar("adclpf", &m_adclpf, "LPF is applied for the ADC inputs.");
@@ -273,13 +276,21 @@ void f_aws1_ctrl::set_gpio()
 
 bool f_aws1_ctrl::proc()
 {
+
+  s_aws1_ctrl_pkt acspkt_udp, acspkt_chan;
+
+  if(m_udp_ctrl)
+    rcv_acs_udp(acspkt_udp);
+  if(m_ch_ctrl)
+    rcv_acs_chan(acspkt_chan);
+
   if(m_aws_ctrl){
     switch(m_aws1_ctrl_src){
     case ACS_UDP:
-      proc_acs_udp();
+      set_ctrl(acspkt_udp);
       break;
     case ACS_CHAN:
-      proc_acs_chan();
+      set_ctrl(acspkt_chan);
       break;
     case ACS_FSET:
     default:
@@ -310,6 +321,17 @@ bool f_aws1_ctrl::proc()
     m_flog << (int) m_rud_aws << " " << (int) m_meng_aws << " " << (int) m_seng_aws << " ";
     m_flog << (int) m_rud << " " << (int) m_meng << " " << (int) m_seng << " ";
     m_flog << (int) m_rud_sta << " " << (int) m_rud_sta_out << endl;
+  }
+
+  s_aws1_ctrl_pkt acspkt;
+  set_acspkt(acspkt);
+
+  if(m_udp_ctrl){
+    snd_acs_udp(acspkt);
+  }
+
+  if(m_ch_ctrl){
+    snd_acs_chan(acspkt);
   }
   return true;
 }
@@ -384,7 +406,7 @@ void f_aws1_ctrl::lpf()
   m_cur_adcsmpl = (m_cur_adcsmpl > 0 ? m_cur_adcsmpl - 1 : m_sz_adclpf - 1);
 }
 
-void f_aws1_ctrl::proc_acs_udp()
+void f_aws1_ctrl::rcv_acs_udp(s_aws1_ctrl_pkt & acspkt)
 {
   if(m_acs_sock == -1){
     m_acs_sock_addr.sin_family = AF_INET;
@@ -397,34 +419,28 @@ void f_aws1_ctrl::proc_acs_udp()
       m_acs_sock = -1;
     }
   }else{
-    sockaddr_in addr;
-    socklen_t sz_addr = sizeof(addr);
+    m_sz_acs_ret_addr = sizeof(m_acs_ret_addr);
     int res;
-    fd_set fr, fw, fe;
+    fd_set fr, fe;
     timeval tv;
-    s_aws1_ctrl_pkt acspkt;
     
     // recieving packet
     FD_ZERO(&fr);
     FD_ZERO(&fe);
     tv.tv_sec = 0;
     tv.tv_usec = 10000;
-    
+    acspkt.suc = false;
+
     res = select((int) m_acs_sock + 1, &fr, NULL, &fe, &tv);
     if(res > 0){
       if(FD_ISSET(m_acs_sock, &fr)){
-	int len = recvfrom(m_acs_sock, (char*) &acspkt, sizeof(acspkt), 0, (sockaddr*)&addr, &sz_addr);
+	int len = recvfrom(m_acs_sock, (char*) &acspkt, sizeof(acspkt), 0, (sockaddr*)&m_acs_ret_addr, &m_sz_acs_ret_addr);
 	if(len == SOCKET_ERROR){
 	  cerr << "Socket error during recieving packet in " << m_name;
 	  cerr << " . Now closing socket." << endl;
 	  closesocket(m_acs_sock);
 	  m_acs_sock = -1;
 	  m_aws1_ctrl_src = ACS_FSET;
-	}
-	if(len == sizeof(acspkt)){
-	  m_rud_aws = acspkt.rud;
-	  m_meng_aws = acspkt.meng;
-	  m_seng_aws = acspkt.seng; 
 	}
       }else if(FD_ISSET(m_acs_sock, &fe)){
 	cerr << "Socket error during recieving packet in " << m_name;
@@ -439,49 +455,62 @@ void f_aws1_ctrl::proc_acs_udp()
     }else{
       cerr << "Unkonwo error in " << m_name << "." << endl;
     }
-    
-    // sending packet
-    acspkt.tcur = m_cur_time;
-    acspkt.rud = m_rud;
-    acspkt.meng = m_meng;
-    acspkt.seng = m_seng;
-    acspkt.rud_rmc = m_rud_rmc;
-    acspkt.meng_rmc = m_meng_rmc;
-    acspkt.seng_rmc = m_seng_rmc;
-    acspkt.rud_sta = m_rud_sta;
-    acspkt.rud_sta_out = m_rud_sta_out;
-    int len = sendto(m_acs_sock, (char*) &acspkt, sizeof(acspkt), 0, (sockaddr*)&addr, sz_addr);
   }
 }
 
-void f_aws1_ctrl::proc_acs_chan()
+void f_aws1_ctrl::snd_acs_udp(s_aws1_ctrl_pkt & acspkt)
 {
-  s_aws1_ctrl_pkt pkt;
+  int len = sendto(m_acs_sock, (char*) &acspkt, sizeof(acspkt), 0, (sockaddr*)&m_acs_ret_addr, m_sz_acs_ret_addr);
+}
+
+void f_aws1_ctrl::rcv_acs_chan(s_aws1_ctrl_pkt & acspkt)
+{
+  acspkt.suc = false;
   int len;
   if(m_pacs_in == NULL){
     cerr << m_name  << " does not have control input channel." << endl;
   }else{
-    len = m_pacs_in->read((char*) &pkt, sizeof(pkt));
-    if(len == sizeof(pkt)){
-      m_rud_aws = pkt.rud;
-      m_meng_aws = pkt.meng;
-      m_seng_aws = pkt.seng;
-    }
+    len = m_pacs_in->read((char*) &acspkt, sizeof(acspkt));
   }
+}
 
-  pkt.tcur = m_cur_time;
-  pkt.rud = m_rud;
-  pkt.meng = m_meng;
-  pkt.seng = m_seng;
-  pkt.rud_rmc = m_rud_rmc;
-  pkt.meng_rmc = m_meng_rmc;
-  pkt.seng_rmc = m_seng_rmc;
-  pkt.rud_sta = m_rud_sta;
-  pkt.rud_sta_out = m_rud_sta_out;
-
+void f_aws1_ctrl::snd_acs_chan(s_aws1_ctrl_pkt & acspkt)
+{
   if(m_pacs_out == NULL){
     cerr << m_name << " does not have control output channel." << endl;
   }else{
-    len = m_pacs_out->write((char*) &pkt, sizeof(pkt));
+    int len = m_pacs_out->write((char*) &acspkt, sizeof(acspkt));
   }
+}
+
+void f_aws1_ctrl::set_acspkt(s_aws1_ctrl_pkt & acspkt)
+{
+  acspkt.tcur = m_cur_time;
+  acspkt.ctrl = m_aws_ctrl;
+  acspkt.ctrl_src = m_aws1_ctrl_src;
+  
+  acspkt.rud = m_rud;
+  acspkt.meng = m_meng;
+  acspkt.seng = m_seng;
+  acspkt.rud_aws = m_rud_aws;
+  acspkt.meng_aws = m_meng_aws;
+  acspkt.seng_aws = m_seng_aws;
+  acspkt.rud_rmc = m_rud_rmc;
+  acspkt.meng_rmc = m_meng_rmc;
+  acspkt.seng_rmc = m_seng_rmc;
+  acspkt.rud_sta = m_rud_sta;
+  acspkt.rud_sta_out = m_rud_sta_out;  
+}
+
+void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pkt & acspkt)
+{
+  if(!acspkt.suc)
+    return;
+
+  m_aws_ctrl = acspkt.ctrl;
+  m_aws1_ctrl_src = acspkt.ctrl_src;
+
+  m_rud_aws = acspkt.rud_aws;
+  m_meng_aws = acspkt.meng_aws;
+  m_seng_aws = acspkt.seng_aws;
 }
