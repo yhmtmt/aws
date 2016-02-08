@@ -457,7 +457,7 @@ void f_aws1_ctrl::rcv_acs_udp(s_aws1_ctrl_pkt & acspkt)
       int en = errno;
       cerr << "Error no " << en << " " << strerror(en) << endl;
     }else{
-      cerr << "Unkonwo error in " << m_name << "." << endl;
+      cerr << "Unknown error in " << m_name << "." << endl;
     }
   }
 }

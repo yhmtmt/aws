@@ -222,7 +222,6 @@ class f_aws1_ctrl: public f_base
   unsigned char m_rud_sta_out_nut;
   unsigned char m_rud_sta_out_min;
 
-
   void get_gpio();
   void set_gpio();
 public:
