@@ -1,5 +1,4 @@
-// Copyright(c) 2016 Yohei Matsumoto, Tokyo University of Marine
-// Science and Technology, All right reserved. 
+// Copyright(c) 2016 Yohei Matsumoto, All right reserved. 
 
 // f_aws1_ctrl.h is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -57,21 +56,74 @@ struct s_aws1_ctrl_pkt{
 };
 
 
+  // map a value with 3 threasholds (for rudder contrl and states)
+inline  int map_oval(int val, 
+		     int vmax, int vnut, int vmin, 
+		     int omax, int onut, int omin
+		     )
+{
+  int dvmax = val - vmax;
+  int dvnut = val - vnut;
+  int dvmin = val - vmin;
+  int dvmax_vnut = vmax - vnut;
+  int dvnut_vmin = vnut - vmin;
+  
+  if(abs(dvmax) <= abs(dvmax_vnut) && abs(dvnut) < abs(dvmax_vnut))
+    return (int) ((double)((omax - onut) * (dvnut)) / (double) (dvmax_vnut)) + onut;
+  else if(abs(dvnut) <= abs(dvnut_vmin) && abs(dvmin) < abs(dvnut_vmin))
+    return (int) ((double)((onut - omin) * (dvnut)) / (double) (dvnut_vmin)) + onut;
+  else if(abs(dvmax) < abs(dvmin))
+    return omax;
+  else
+    return omin;
+}
+
+// map a value with 5 threasholds (for engines)
+inline  int map_oval(int val, 
+		     int vmax, int vfnut, int vnut, int vbnut, int vmin,
+		     int omax, int ofnut, int onut, int obnut, int omin
+		     )
+{
+  int dvmax = val - vmax;
+  int dvfnut = val - vfnut;
+  int dvnut = val - vnut;
+  int dvbnut = val - vbnut;
+  int dvmin = val - vmin;
+  int dvmax_vfnut = vmax - vfnut;
+  int dvfnut_vnut = vfnut - vnut;
+  int dvnut_vbnut = vnut - vbnut;
+  int dvbnut_vmin = vbnut - vmin;
+  
+  if(abs(dvmax) <= abs(dvmax_vfnut) && abs(dvfnut) < abs(dvmax_vfnut))
+    return (int) ((double)((omax - ofnut) * (dvfnut)) / (double) (dvmax_vfnut)) + ofnut;
+  else if(abs(dvfnut) <= abs(dvfnut_vnut) && abs(dvnut) < abs(dvfnut_vnut))
+    return (int) ((double)((ofnut - onut) * (dvnut)) / (double) (dvfnut_vnut)) + onut;
+  else if(abs(dvnut) <= abs(dvnut_vbnut) && abs(dvbnut) < abs(dvnut_vbnut))
+    return (int) ((double)((onut - obnut) * (dvbnut)) / (double) (dvnut_vbnut)) + obnut;
+  else if(abs(dvbnut) <= abs(dvbnut_vmin) && abs(dvmin) < abs(dvbnut_vmin))
+    return (int) ((double)((obnut - omin) * dvmin) / (double) (dvbnut_vmin)) + omin;
+  else if(abs(dvmax) < abs(dvmin))
+    return omax;
+  else
+    return omin;
+}
+
+
 class f_aws1_ctrl: public f_base
 {
-protected:
+ protected:
   char m_dev[1024];         // device path, e.g. "/dev/zgpio0"
   char m_flog_name[1024];
   ofstream m_flog;
   int m_fd;                 // file descriptor for zgpio
-
+  
   bool m_verb;
   bool m_aws_ctrl;          // remote control flag. 
                             //    true: control values from aws are sat. 
                             //    false: control values from remote controller are sat.
   bool m_udp_ctrl;
   bool m_ch_ctrl;
-
+  
   /// LPF related parameters
   bool m_adclpf;           // Enabling ADC's low pass filter.
   int m_sz_adclpf;         // Window size of the low pass filter.
@@ -170,57 +222,6 @@ protected:
   unsigned char m_rud_sta_out_nut;
   unsigned char m_rud_sta_out_min;
 
-  // map a value with 3 threasholds (for rudder contrl and states)
-  int map_oval(int val, 
-	      int vmax, int vnut, int vmin, 
-	      int omax, int onut, int omin
-	       )
-  {
-    int dvmax = val - vmax;
-    int dvnut = val - vnut;
-    int dvmin = val - vmin;
-    int dvmax_vnut = vmax - vnut;
-    int dvnut_vmin = vnut - vmin;
-
-    if(abs(dvmax) <= abs(dvmax_vnut) && abs(dvnut) < abs(dvmax_vnut))
-      return (int) ((double)((omax - onut) * (dvnut)) / (double) (dvmax_vnut)) + onut;
-    else if(abs(dvnut) <= abs(dvnut_vmin) && abs(dvmin) < abs(dvnut_vmin))
-      return (int) ((double)((onut - omin) * (dvnut)) / (double) (dvnut_vmin)) + onut;
-    else if(abs(dvmax) < abs(dvmin))
-      return omax;
-    else
-      return omin;
-  }
-
-  // map a value with 5 threasholds (for engines)
-  int map_oval(int val, 
-	       int vmax, int vfnut, int vnut, int vbnut, int vmin,
-	       int omax, int ofnut, int onut, int obnut, int omin
-	       )
-  {
-    int dvmax = val - vmax;
-    int dvfnut = val - vfnut;
-    int dvnut = val - vnut;
-    int dvbnut = val - vbnut;
-    int dvmin = val - vmin;
-    int dvmax_vfnut = vmax - vfnut;
-    int dvfnut_vnut = vfnut - vnut;
-    int dvnut_vbnut = vnut - vbnut;
-    int dvbnut_vmin = vbnut - vmin;
-
-    if(abs(dvmax) <= abs(dvmax_vfnut) && abs(dvfnut) < abs(dvmax_vfnut))
-      return (int) ((double)((omax - ofnut) * (dvfnut)) / (double) (dvmax_vfnut)) + ofnut;
-    else if(abs(dvfnut) <= abs(dvfnut_vnut) && abs(dvnut) < abs(dvfnut_vnut))
-      return (int) ((double)((ofnut - onut) * (dvnut)) / (double) (dvfnut_vnut)) + onut;
-    else if(abs(dvnut) <= abs(dvnut_vbnut) && abs(dvbnut) < abs(dvnut_vbnut))
-      return (int) ((double)((onut - obnut) * (dvbnut)) / (double) (dvnut_vbnut)) + obnut;
-    else if(abs(dvbnut) <= abs(dvbnut_vmin) && abs(dvmin) < abs(dvbnut_vmin))
-      return (int) ((double)((obnut - omin) * dvmin) / (double) (dvbnut_vmin)) + omin;
-    else if(abs(dvmax) < abs(dvmin))
-      return omax;
-    else
-      return omin;
-  }
 
   void get_gpio();
   void set_gpio();

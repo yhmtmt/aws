@@ -1,5 +1,4 @@
-// Copyright(c) 2016 Yohei Matsumoto, Tokyo University of Marine
-// Science and Technology, All right reserved. 
+// Copyright(c) 2016 Yohei Matsumoto, All right reserved. 
 
 // f_aws1_ctrl.cpp is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -28,7 +27,6 @@ using namespace std;
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <fcntl.h>
 #include <signal.h>
 #include <errno.h>
 
@@ -408,7 +406,14 @@ void f_aws1_ctrl::lpf()
 
 void f_aws1_ctrl::rcv_acs_udp(s_aws1_ctrl_pkt & acspkt)
 {
+  acspkt.suc = false;
   if(m_acs_sock == -1){
+    m_acs_sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if(m_acs_sock == -1){
+      cerr << "Failed to create socket in " << m_name << "." << endl;
+      m_aws1_ctrl_src = ACS_FSET;
+      return;
+    }
     m_acs_sock_addr.sin_family = AF_INET;
     m_acs_sock_addr.sin_port = htons(m_acs_port);
     set_sockaddr_addr(m_acs_sock_addr);
@@ -429,7 +434,6 @@ void f_aws1_ctrl::rcv_acs_udp(s_aws1_ctrl_pkt & acspkt)
     FD_ZERO(&fe);
     tv.tv_sec = 0;
     tv.tv_usec = 10000;
-    acspkt.suc = false;
 
     res = select((int) m_acs_sock + 1, &fr, NULL, &fe, &tv);
     if(res > 0){
@@ -460,6 +464,9 @@ void f_aws1_ctrl::rcv_acs_udp(s_aws1_ctrl_pkt & acspkt)
 
 void f_aws1_ctrl::snd_acs_udp(s_aws1_ctrl_pkt & acspkt)
 {
+  if(m_acs_sock == -1)
+    return;
+
   int len = sendto(m_acs_sock, (char*) &acspkt, sizeof(acspkt), 0, (sockaddr*)&m_acs_ret_addr, m_sz_acs_ret_addr);
 }
 
