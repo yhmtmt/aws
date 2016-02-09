@@ -147,6 +147,17 @@ void drawGlSquare2Df(float x1, float y1, float x2, float y2,
   glEnd();
 }
 
+void drawGlLine2Df(float x1, float y1, float x2, float y2,
+		   float r, float g, float b, float alpha, float size)
+{
+  glColor4f(r, g, b, alpha);
+  glBegin(GL_LINE);
+  glVertex2f(x1, y1);
+  glVertex2f(x2, y2);
+  glEnd();
+}
+
+
 //////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window
 MapGLFWin f_glfw_window::m_map_glfwin;
 

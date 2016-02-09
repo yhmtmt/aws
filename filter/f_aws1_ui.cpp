@@ -129,41 +129,126 @@ bool f_aws1_ui::proc()
   
   drawGlText(x, y, "M/E", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 
-  float wm, hm, wl;
+  float wm, hm, lw;
 
   // drawing indicator box (only boundary)
   wm = 3 * wfont;
   hm = (float)(255.0 / (double)m_sz_win.height);
-  wl = 1.0 / m_sz_win.width;
+  lw = 1.0 / m_sz_win.width;
 
-  y += 1.5 * hfont;
-  float x1, y1, x2, y2;
-  x1 = x;
-  y1 = y;
-  x2 = (float) (x + wm);
-  y2 = (float) (y - hm);
+  y -= 1.5 * hfont;
   
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
-  
-  // drawing meng_inst_cur indicator 
-  wm = 2 * wfont;
-  y1 = y2 + meng_inst_cur / (double) m_sz_win.height;
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
+  double scale = 1.0 / (double) m_z_win.height;
+  drawGlEngineIndicator(x, y, wm, hm, lw, 
+			(float)(meng_inst * scale),
+			(float)(meng_inst_cur * scale));
+ 
+  x += (float)(5 * wfont);
+  y = (float)(1.0 - 4 * hfont);
 
-  x += 4 * wfont;
   drawGlText(x, y, "S/E", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+  drawGlEngineIndicator(x, y, wm, hm, lw, 
+			(float)(seng_inst * scale),
+			(float)(seng_inst_cur * scale));
+  
 
   x = (float)(0. - 3 * wfont);  
   y = (float) (1.0 - 6 * hfont);
   drawGlText(x, y, "RUDDER", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 
-  
-  
+  drawGlRudderIndicator((float)(x - 255. * 0.5 * scale) , y, 
+			(float)(255. * scale), (float)(3 * hfont),
+			lw, (float)(rud_inst * scale),
+			(float)(rud_inst_cur * scale),
+			(float)(rud_sta * scale));
+
   glfwSwapBuffers(pwin());
   glfwPollEvents();
   
   return false;
 }
+
+void drawGlEngineIndicator(float xorg, float yorg, float w, float h,
+			   float lw, float val_inst, float val_cur)
+{
+  float x1, y1, x2, y2, xtxt;
+  x1 = xorg;
+  y1 = yorg;
+  x2 = (float) (x1 + w);
+  y2 = (float) (y1 - h);
+  xtxt = x2 + 0.1 * w;  
+
+  // indicator box
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
+
+  // current value
+  x2 = (float)(x1 + 0.666 * w);
+  y1 = (float)(y2 + val_cur);
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
+
+  // current instructed value
+  y1 = (float) (y2 + val_inst);
+  drawGlLine2Df(x1, y1, x2, y1, 0, 1, 0, 1, wl);
+
+  // neutral
+  x1 = x2;
+  x2 = (float)(x1 + w);
+  y1 = y2 = (float)(0.5 * h + yorg);
+  drawGlText(xtxt, y1, "N", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+
+  // neutral forward
+  y2 = (float)(y1 + (25. / 255.) * h);
+  drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
+  drawGlText(xtxt, y2, "F", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+
+
+  // neutral backward
+  y2 = (float)(y1 - (25. / 255.) * h);
+  drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
+  drawGlText(xtxt, y2, "B", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+}
+
+void f_aws1_ui::drawGlRudderIndicator(float xorg, float yorg, float w, float h,
+				      float lw, float rud_inst, float rud_cur, float rud_sta)
+{
+  float x1, x2, y1, y2, ytxt;
+
+  x1 = xorg;
+  x2 = (float)(xorg + w);
+  y1 = yorg;
+  y2 = (float)(yorg - h);
+  
+  ytxt = (float) (y2 - 0.1 * h);
+
+  // indicator box
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
+
+  float xc;
+  xc = (float)(xorg + 0.5 * w);
+
+  // rudder instruction value
+  x2 = rud_inst;
+  drawGlLine2Df(x2, y1, x2, y2, 0, 1, 0, 1, wl);
+
+  // current rudder instruction value
+  x1 = xc;
+  x2 = rud_cur;
+  y2 = (float)(yorg - 0.666 * h);
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
+
+  // current rudder angle
+  x2 = rud_sta;
+  y1 = y2;
+  y2 = (float)(yorg - h) ;
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
+
+  // Midship
+  drawGlLine2Df(x1, y1, x1, y2, 0, 1, 0, 1, wl);
+  drawGlText(x1, ytxt, "0", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+  drawGlText(xorg, ytxt, "P", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+  drawGlText((float)(xorg + w), ytxt, "S", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+}
+
 
 void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pkt & acpkt)
 {

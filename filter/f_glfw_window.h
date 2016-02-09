@@ -47,6 +47,8 @@ void drawGlSquare2Df(float x1, float y1, float x2, float y2,
 void drawGlSquare2Df(float x1, float y1, float x2, float y2, 
 		     float r, float g, float b, float alpha);
 
+void drawGlLine2Df(float x1, float y1, float x2, float y2,
+		   float r, float g, float b, float alpha, float size);
 
 void drawCvPoints(const Size & vp, vector<Point2f> & pts,
 				  const float r, const float g, const float b, const float alpha, 

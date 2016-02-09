@@ -42,7 +42,12 @@ class f_aws1_ui: public f_glfw_window
   virtual void destroy_run();
 
   virtual bool proc();
-
 };
+
+void drawGlEngineIndicator(float xorg, float yorg, float w, float h, 
+			   float lw, float val_inst, float val_cur);
+
+void drawGlRudderIndicator(float xorg, float yorg, float w, float h,
+			   float lw, float val_inst, float val_cur);
 
 #endif
