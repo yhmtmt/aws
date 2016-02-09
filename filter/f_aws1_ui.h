@@ -28,68 +28,10 @@ class f_aws1_ui: public f_glfw_window
   SOCKET m_acd_sock;
   sockaddr_in m_acd_addr;
 
-  bool m_aws_ctrl;
-  e_aws1_ctrl_src m_ctrl_src;
-  unsigned char m_rud_aws;
-  unsigned char m_meng_aws;
-  unsigned char m_seng_aws;
+  s_aws1_ctrl_pars m_acp;
 
-  // control output
-  unsigned char m_rud;
-  unsigned char m_meng;
-  unsigned char m_seng;
-
-  unsigned char m_rud_rmc;
-  unsigned char m_meng_rmc;
-  unsigned char m_seng_rmc;
-
-  unsigned char m_rud_sta;
-  unsigned char m_rud_sta_out;
-
-  void snd_ctrl(s_aws1_ctrl_pkt & acspkt);
-  void rcv_state(s_aws1_ctrl_pkt & acspkt);
-
-  // remote controller's values corresponding positions 
-  unsigned char m_meng_max_rmc; 
-  unsigned char m_meng_nuf_rmc;
-  unsigned char m_meng_nut_rmc;
-  unsigned char m_meng_nub_rmc;
-  unsigned char m_meng_min_rmc;
-
-  unsigned char m_seng_max_rmc;
-  unsigned char m_seng_nuf_rmc;
-  unsigned char m_seng_nut_rmc;
-  unsigned char m_seng_nub_rmc;
-  unsigned char m_seng_min_rmc;
-
-  unsigned char m_rud_max_rmc;
-  unsigned char m_rud_nut_rmc;
-  unsigned char m_rud_min_rmc;
-
-  unsigned char m_rud_sta_max;
-  unsigned char m_rud_sta_nut;
-  unsigned char m_rud_sta_min;
-
-  // Threashold values of digital potentiometer's
-  unsigned char m_meng_max;
-  unsigned char m_meng_nuf;
-  unsigned char m_meng_nut;
-  unsigned char m_meng_nub;
-  unsigned char m_meng_min;
-
-  unsigned char m_seng_max;
-  unsigned char m_seng_nuf;
-  unsigned char m_seng_nut;
-  unsigned char m_seng_nub;
-  unsigned char m_seng_min;
-
-  unsigned char m_rud_max;
-  unsigned char m_rud_nut;
-  unsigned char m_rud_min;
-
-  unsigned char m_rud_sta_out_max;
-  unsigned char m_rud_sta_out_nut;
-  unsigned char m_rud_sta_out_min;
+  void snd_ctrl(s_aws1_ctrl_pkt & acpkt);
+  void rcv_state(s_aws1_ctrl_pkt & acpkt);
   
  public:
   f_aws1_ui(const char * name);

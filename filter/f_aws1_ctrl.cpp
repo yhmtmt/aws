@@ -499,7 +499,6 @@ void f_aws1_ctrl::set_acpkt(s_aws1_ctrl_pars & acpkt)
 {
   acpkt = m_acp;
   acpkt.tcur = m_cur_time;
-  acpkt.suc = true;
 }
 
 void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
