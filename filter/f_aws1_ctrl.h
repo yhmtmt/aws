@@ -29,27 +29,74 @@ enum e_aws1_ctrl_src{
 extern  const char * str_aws1_ctrl_src[ACS_NONE];
 
 // Both for transmission and reception the same packet structure is used.
-struct s_aws1_ctrl_pkt{
+struct s_aws1_ctrl_pars{
+  // current time
   long long tcur;
 
-  // control input
+  // control modes
   bool ctrl;
   e_aws1_ctrl_src ctrl_src;
-  unsigned char rud_aws;
-  unsigned char meng_aws;
-  unsigned char seng_aws;
 
   // control output
   unsigned char rud;
   unsigned char meng;
   unsigned char seng;
 
+  // aws control input (from aws)
+  unsigned char rud_aws;
+  unsigned char meng_aws;
+  unsigned char seng_aws;
+
+  // aws remote controller's input (from adc)
   unsigned char rud_rmc;
   unsigned char meng_rmc;
   unsigned char seng_rmc;
 
-  unsigned char rud_sta;
-  unsigned char rud_sta_out;
+  // rudder angle 
+  unsigned char rud_sta;     // from adc
+  unsigned char rud_sta_out; // to digi-pot
+
+  // remote controller's values corresponding positions 
+  unsigned char meng_max_rmc; 
+  unsigned char meng_nuf_rmc;
+  unsigned char meng_nut_rmc;
+  unsigned char meng_nub_rmc;
+  unsigned char meng_min_rmc;
+
+  unsigned char seng_max_rmc;
+  unsigned char seng_nuf_rmc;
+  unsigned char seng_nut_rmc;
+  unsigned char seng_nub_rmc;
+  unsigned char seng_min_rmc;
+
+  unsigned char rud_max_rmc;
+  unsigned char rud_nut_rmc;
+  unsigned char rud_min_rmc;
+
+  unsigned char rud_sta_max;
+  unsigned char rud_sta_nut;
+  unsigned char rud_sta_min;
+
+  // Threashold values of digital potentiometer's
+  unsigned char meng_max;
+  unsigned char meng_nuf;
+  unsigned char meng_nut;
+  unsigned char meng_nub;
+  unsigned char meng_min;
+
+  unsigned char seng_max;
+  unsigned char seng_nuf;
+  unsigned char seng_nut;
+  unsigned char seng_nub;
+  unsigned char seng_min;
+
+  unsigned char rud_max;
+  unsigned char rud_nut;
+  unsigned char rud_min;
+
+  unsigned char rud_sta_out_max;
+  unsigned char rud_sta_out_nut;
+  unsigned char rud_sta_out_min;
 
   // success flag
   bool suc;
@@ -143,10 +190,12 @@ class f_aws1_ctrl: public f_base
 
   void lpf();
 
+  s_aws1_ctrl_pars m_acp;
+
+  // adc input values
   unsigned char m_meng_rmc; // main engine control value from remote control
   unsigned char m_seng_rmc; // sub engine control value from remote control
   unsigned char m_rud_rmc;  // rudder control value from remote control
-
   unsigned char m_rud_sta;  // rudder status value.
 
   // aws control values
@@ -155,24 +204,7 @@ class f_aws1_ctrl: public f_base
   unsigned char m_seng_aws;
 
   e_aws1_ctrl_src m_aws1_ctrl_src;
-  s_aws1_ctrl_pkt m_acs_pkt;
-
-  // Control server (for ACS_UDP)
-  unsigned short m_acs_port;
-  SOCKET m_acs_sock;
-  sockaddr_in m_acs_sock_addr, m_acs_ret_addr;
-  socklen_t m_sz_acs_ret_addr;
-
-  void rcv_acs_udp(s_aws1_ctrl_pkt & acspkt);
-  void snd_acs_udp(s_aws1_ctrl_pkt & acspkt);
-
-  // Control channel (for ACS_CHAN)
-  ch_ring<char> * m_pacs_in, * m_pacs_out;
-  void rcv_acs_chan(s_aws1_ctrl_pkt & acspkt);
-  void snd_acs_chan(s_aws1_ctrl_pkt & acspkt);
-
-  void set_acspkt(s_aws1_ctrl_pkt & acspkt);
-  void set_ctrl(s_aws1_ctrl_pkt & acspkt);
+  s_aws1_ctrl_pars m_acs_pkt;
 
   // remote controller's values corresponding positions 
   unsigned char m_meng_max_rmc; 
@@ -224,6 +256,24 @@ class f_aws1_ctrl: public f_base
 
   void get_gpio();
   void set_gpio();
+
+  // Control server (for ACS_UDP)
+  unsigned short m_acs_port;
+  SOCKET m_acs_sock;
+  sockaddr_in m_acs_sock_addr, m_acs_ret_addr;
+  socklen_t m_sz_acs_ret_addr;
+
+  void rcv_acs_udp(s_aws1_ctrl_pars & acpkt);
+  void snd_acs_udp(s_aws1_ctrl_pars & acpkt);
+
+  // Control channel (for ACS_CHAN)
+  ch_ring<char> * m_pacs_in, * m_pacs_out;
+  void rcv_acs_chan(s_aws1_ctrl_pars & acpkt);
+  void snd_acs_chan(s_aws1_ctrl_pars & acpkt);
+
+  void set_acpkt(s_aws1_ctrl_pars & acpkt);
+  void set_ctrl(s_aws1_ctrl_pars & acpkt);
+
 public:
 	f_aws1_ctrl(const char * name);
 
