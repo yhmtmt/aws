@@ -41,25 +41,30 @@ const char * str_aws1_ctrl_src[ACS_NONE] = {
   "fset", "udp", "chan"
 };
 
+s_aws1_ctrl_pars::s_aws1_ctrl_pars():
+  ctrl(false), ctrl_src(ACS_FSET),
+  meng_max_rmc(0x81), meng_nuf_rmc(0x80),  meng_nut_rmc(0x7f),  
+  meng_nub_rmc(0x7e), meng_min_rmc(0x7d),  
+  seng_max_rmc(0x81),  seng_nuf_rmc(0x80), seng_nut_rmc(0x7f),
+  seng_nub_rmc(0x7e),  seng_min_rmc(0x7d),
+  rud_max_rmc(0x80),  rud_nut_rmc(0x7f),  rud_min_rmc(0x7e),
+  rud_sta_max(0xff), rud_sta_nut(0x7f), rud_sta_min(0x00),
+  meng(0x7f),  seng(0x7f),  rud(0x7f),  
+  meng_max(0x81),meng_nuf(0x80),  meng_nut(0x7f),  
+  meng_nub(0x7e), meng_min(0x7d),  
+  seng_max(0x81),  seng_nuf(0x80), seng_nut(0x7f),
+  seng_nub(0x7e),  seng_min(0x7d),
+  rud_max(0x80),  rud_nut(0x7f),  rud_min(0x7e),
+  rud_sta_out_max(0xff), rud_sta_out_nut(0x7f), rud_sta_out_min(0x00)
+{
+}
+
+
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
-  f_base(name), m_fd(-1), m_verb(false),  m_aws_ctrl(false),
-  m_udp_ctrl(false), m_ch_ctrl(false),
-  m_aws1_ctrl_src(ACS_FSET), m_acs_sock(-1), m_acs_port(20100), 
+  f_base(name), m_fd(-1), m_verb(false),
+  m_udp_ctrl(false), m_ch_ctrl(false), m_acs_sock(-1), m_acs_port(20100), 
   m_pacs_in(NULL), m_pacs_out(NULL),
-  m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0),
-  m_meng_max_rmc(0x81), m_meng_nuf_rmc(0x80),  m_meng_nut_rmc(0x7f),  
-  m_meng_nub_rmc(0x7e), m_meng_min_rmc(0x7d),  
-  m_seng_max_rmc(0x81),  m_seng_nuf_rmc(0x80), m_seng_nut_rmc(0x7f),
-  m_seng_nub_rmc(0x7e),  m_seng_min_rmc(0x7d),
-  m_rud_max_rmc(0x80),  m_rud_nut_rmc(0x7f),  m_rud_min_rmc(0x7e),
-  m_rud_sta_max(0xff), m_rud_sta_nut(0x7f), m_rud_sta_min(0x00),
-  m_meng(0x7f),  m_seng(0x7f),  m_rud(0x7f),  
-  m_meng_max(0x81),m_meng_nuf(0x80),  m_meng_nut(0x7f),  
-  m_meng_nub(0x7e), m_meng_min(0x7d),  
-  m_seng_max(0x81),  m_seng_nuf(0x80), m_seng_nut(0x7f),
-  m_seng_nub(0x7e),  m_seng_min(0x7d),
-  m_rud_max(0x80),  m_rud_nut(0x7f),  m_rud_min(0x7e),
-  m_rud_sta_out_max(0xff), m_rud_sta_out_nut(0x7f), m_rud_sta_out_min(0x00)
+  m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0)
 {
   strcpy(m_dev, "/dev/zgpio1");
   m_flog_name[0] = 0;
@@ -492,28 +497,17 @@ void f_aws1_ctrl::snd_acs_chan(s_aws1_ctrl_pars & acpkt)
 
 void f_aws1_ctrl::set_acpkt(s_aws1_ctrl_pars & acpkt)
 {
+  acpkt = m_acp;
   acpkt.tcur = m_cur_time;
-  acpkt.ctrl = m_acp.ctrl;
-  acpkt.ctrl_src = m_acp.ctrl_src;
-  
-  acpkt.rud = m_acp.rud;
-  acpkt.meng = m_acp.meng;
-  acpkt.seng = m_acp.seng;
-  acpkt.rud_aws = m_acp.rud_aws;
-  acpkt.meng_aws = m_acp.meng_aws;
-  acpkt.seng_aws = m_acp.seng_aws;
-  acpkt.rud_rmc = m_acp.rud_rmc;
-  acpkt.meng_rmc = m_acp.meng_rmc;
-  acpkt.seng_rmc = m_acp.seng_rmc;
-  acpkt.rud_sta = m_acp.rud_sta;
-  acpkt.rud_sta_out = m_acp.rud_sta_out;  
+  acpkt.suc = true;
 }
 
 void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
 {
   if(!acpkt.suc)
     return;
-
+  
+  m_acp.tcur = acpkt.tcur;
   m_acp.ctrl = acpkt.ctrl;
   m_acp.ctrl_src = acpkt.ctrl_src;
 

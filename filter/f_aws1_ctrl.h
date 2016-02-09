@@ -100,6 +100,8 @@ struct s_aws1_ctrl_pars{
 
   // success flag
   bool suc;
+
+  s_aws1_ctrl_pars();
 };
 
 
@@ -165,9 +167,7 @@ class f_aws1_ctrl: public f_base
   int m_fd;                 // file descriptor for zgpio
   
   bool m_verb;
-  bool m_aws_ctrl;          // remote control flag. 
-                            //    true: control values from aws are sat. 
-                            //    false: control values from remote controller are sat.
+
   bool m_udp_ctrl;
   bool m_ch_ctrl;
   
@@ -191,68 +191,6 @@ class f_aws1_ctrl: public f_base
   void lpf();
 
   s_aws1_ctrl_pars m_acp;
-
-  // adc input values
-  unsigned char m_meng_rmc; // main engine control value from remote control
-  unsigned char m_seng_rmc; // sub engine control value from remote control
-  unsigned char m_rud_rmc;  // rudder control value from remote control
-  unsigned char m_rud_sta;  // rudder status value.
-
-  // aws control values
-  unsigned char m_rud_aws;
-  unsigned char m_meng_aws;
-  unsigned char m_seng_aws;
-
-  e_aws1_ctrl_src m_aws1_ctrl_src;
-  s_aws1_ctrl_pars m_acs_pkt;
-
-  // remote controller's values corresponding positions 
-  unsigned char m_meng_max_rmc; 
-  unsigned char m_meng_nuf_rmc;
-  unsigned char m_meng_nut_rmc;
-  unsigned char m_meng_nub_rmc;
-  unsigned char m_meng_min_rmc;
-
-  unsigned char m_seng_max_rmc;
-  unsigned char m_seng_nuf_rmc;
-  unsigned char m_seng_nut_rmc;
-  unsigned char m_seng_nub_rmc;
-  unsigned char m_seng_min_rmc;
-
-  unsigned char m_rud_max_rmc;
-  unsigned char m_rud_nut_rmc;
-  unsigned char m_rud_min_rmc;
-
-  unsigned char m_rud_sta_max;
-  unsigned char m_rud_sta_nut;
-  unsigned char m_rud_sta_min;
-  
-  // final control values
-  unsigned char m_meng;     // main engine control value
-  unsigned char m_seng;     // sub engine control value
-  unsigned char m_rud;      // rudder control value
-  unsigned char m_rud_sta_out; // rudder status output
-
-  // Threashold values of digital potentiometer's
-  unsigned char m_meng_max;
-  unsigned char m_meng_nuf;
-  unsigned char m_meng_nut;
-  unsigned char m_meng_nub;
-  unsigned char m_meng_min;
-
-  unsigned char m_seng_max;
-  unsigned char m_seng_nuf;
-  unsigned char m_seng_nut;
-  unsigned char m_seng_nub;
-  unsigned char m_seng_min;
-
-  unsigned char m_rud_max;
-  unsigned char m_rud_nut;
-  unsigned char m_rud_min;
-
-  unsigned char m_rud_sta_out_max;
-  unsigned char m_rud_sta_out_nut;
-  unsigned char m_rud_sta_out_min;
 
   void get_gpio();
   void set_gpio();
