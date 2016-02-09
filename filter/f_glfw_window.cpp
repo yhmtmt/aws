@@ -113,12 +113,38 @@ void drawGlText(float x, float y, char * str,
 					   float r, float g, float b , float alpha,
 					   void* font)
 {
-	glRasterPos2f(x, y);
-	glColor4f(r, g, b, alpha);
-	int l = (int) strlen(str);
-	for(int i = 0; i < l; i++){
-		glutBitmapCharacter(font, str[i]);
-	}
+  glRasterPos2f(x, y);
+  glColor4f(r, g, b, alpha);
+  int l = (int) strlen(str);
+  for(int i = 0; i < l; i++){
+    glutBitmapCharacter(font, str[i]);
+  }
+}
+
+
+void drawGlSquare2Df(float x1, float y1, float x2, float y2, 
+		     float r, float g, float b, float alpha, float size)
+{
+  glColor4f(r, g, b, alpha);
+  glLineWidth(size);
+  glBegin(GL_LINE_LOOP);
+  glVertex2f(x1, y1);
+  glVertex2f(x2, y1);
+  glVertex2f(x2, y2);
+  glVertex2f(x1, y2);
+  glEnd();
+}
+
+void drawGlSquare2Df(float x1, float y1, float x2, float y2, 
+		     float r, float g, float b, float alpha)
+{
+  glColor4f(r, g, b, alpha);
+  glBegin(GL_QUADS);
+  glVertex2f(x1, y1);
+  glVertex2f(x2, y1);
+  glVertex2f(x2, y2);
+  glVertex2f(x1, y2); 
+  glEnd();
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window

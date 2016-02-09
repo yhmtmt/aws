@@ -82,7 +82,86 @@ bool f_aws1_ui::proc()
   rcv_state(acpkt);
 
   // render graphics
+  glfwMakeContextCurrent(pwin());
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  
+  glRasterPos2i(-1, -1);
+  
+  float hfont = (float)(24. / (float) m_sz_win.height);
+  float wfont = (float)(24. / (float) m_sz_win.width);
+  float x = (float)(wfont - 1);
+  float y = (float)(1 - 2 * hfont);
 
+  // show time
+  drawGlText(x, y, m_time_str, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+
+  float rud_inst, rud_inst_cur;
+  float meng_inst, meng_inst_cur;
+  float seng_inst, seng_inst_cur;
+  float rud_sta;
+
+  rud_inst = (float)m_acp.m_rud_aws;
+  rud_inst_cur = 
+    (float)map_oval(m_acp.m_rud, 
+		    m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
+		    0xff, 0x7f, 0x00);
+  meng_inst = (float)m_acp.m_meng_aws;
+  meng_inst_cur = 
+    (float)map_oval(m_acp.m_meng,
+		    m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, 
+		    m_acp.meng_nub, m_acp.meng_min,
+		    0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
+  
+  seng_inst = (float)m_acp.m_seng_aws;
+  seng_inst_cur = 
+    (float) map_oval(m_acp.m_seng,
+		     m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, 
+		     m_acp.seng_nub, m_acp.seng_min,
+		     0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
+  
+  rud_sta = 
+    (float) map_oval(m_acp.m_rud_sta, 
+		     m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
+		     0xff, 0x7f, 0x00);
+  
+  x = (float)(wfont - 1.0);
+  y = (float)(1.0 - 4 * hfont);  
+  
+  drawGlText(x, y, "M/E", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+
+  float wm, hm, wl;
+
+  // drawing indicator box (only boundary)
+  wm = 3 * wfont;
+  hm = (float)(255.0 / (double)m_sz_win.height);
+  wl = 1.0 / m_sz_win.width;
+
+  y += 1.5 * hfont;
+  float x1, y1, x2, y2;
+  x1 = x;
+  y1 = y;
+  x2 = (float) (x + wm);
+  y2 = (float) (y - hm);
+  
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
+  
+  // drawing meng_inst_cur indicator 
+  wm = 2 * wfont;
+  y1 = y2 + meng_inst_cur / (double) m_sz_win.height;
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
+
+  x += 4 * wfont;
+  drawGlText(x, y, "S/E", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+
+  x = (float)(0. - 3 * wfont);  
+  y = (float) (1.0 - 6 * hfont);
+  drawGlText(x, y, "RUDDER", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+
+  
+  
+  glfwSwapBuffers(pwin());
+  glfwPollEvents();
+  
   return false;
 }
 
