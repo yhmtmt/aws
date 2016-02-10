@@ -26,6 +26,7 @@ Windows version is useful if you need to play the videos or render the 3D graphi
    * curl (only if you need to use SANYO HD5400)
    * OpenCV 2.4.10
    * PvAPI (NOTE: Need to execute installer. Remove vimba from the system)
+   * GLFW, GLEW, freeGLUT
 3. Create New empty project for "console application" (I recommend you to configure the compile target as x64 right after creating the project.)
 4. Add sources to the project obtained with git clone above explained.(Notice: Files under "rcmd/" should not be imported. The remote commands can only be built with cygwin and Linux.)
 5. Configure VC++ "include" and "library" paths. 
@@ -53,24 +54,20 @@ All video codecs supported by ffdshow can be used through filter "vfile". Note t
  Place headers and libs(so) in the following paths. (relative path)
   * INCLUDE: `opencv/include"
   * LIB: `opencv/$(CPU)/lib`  
-* cminpack 
-Place headers and static libs(a) in the following paths.
-  * INCLUDE: `cminpack/include`
-  * LIB: `cminpack/LINUX/$(CPU)`
 * PvAPI  
 Place headers and libs(so) in the following paths.
       * INCLUDE: `PvAPI/include`
       * LIB: `PvAPI/bin/$(CPU)`  
-
+* OpenGL, GLFW, GLEW, freeGLUT
+Install these OpenGL related libraries, and make sure the paths for include headers and libraries are visible from your linker.
 For linux, you can build binary simply typing make.  
 
-    make
+    make "CPU=x64"
 
-For Petalinux@Zynq, first configure environmental variables of Xilinx's tools, then type,  
+You can choose cpu type from x64, x86, and arm. For Zynq with OSL, first configure environmental variables of Xilinx's tools, then type,  
 
     make "ZYNQ=y"
     
-Note that the option only works for petalinux SDK v2013.04.  
 Remote commands are also built simultaneously.  The binaries can be installed by  
     make install
 

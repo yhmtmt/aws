@@ -89,7 +89,8 @@ ifeq ($(GLFW_WINDOW), y)
 ifeq ($(CPU), arm)
 	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr 
 else 
-	LIB += -lGLEW -lglfw3 -lGL -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -ldl -lglut
+	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lglut 
+
 endif 
 	DEFS += -DGLFW_WINDOW 
 	FILTER += f_glfw_window
