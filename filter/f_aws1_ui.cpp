@@ -60,7 +60,7 @@ bool f_aws1_ui::init_run()
 
   m_acd_sock_addr.sin_family = AF_INET;
   m_acd_sock_addr.sin_port = htons(m_acd_port);
-  set_sock_addr(m_acd_sock_addr, m_acd_host);
+  set_sockaddr_addr(m_acd_sock_addr, m_acd_host);
 
   if(::bind(m_acd_sock, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr)) == SOCKET_ERROR){
     cerr << "Failed to bind control socket to (" << m_acd_host << "," << m_acd_port << ")" << endl;
@@ -77,7 +77,7 @@ void f_aws1_ui::destroy_run()
 
 bool f_aws1_ui::proc()
 {
-  s_aws1_ctrl_pkt acpkt;
+  s_aws1_ctrl_pars acpkt;
   snd_ctrl(acpkt);
   rcv_state(acpkt);
 
@@ -100,27 +100,27 @@ bool f_aws1_ui::proc()
   float seng_inst, seng_inst_cur;
   float rud_sta;
 
-  rud_inst = (float)m_acp.m_rud_aws;
+  rud_inst = (float)m_acp.rud_aws;
   rud_inst_cur = 
-    (float)map_oval(m_acp.m_rud, 
+    (float)map_oval(m_acp.rud, 
 		    m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
 		    0xff, 0x7f, 0x00);
-  meng_inst = (float)m_acp.m_meng_aws;
+  meng_inst = (float)m_acp.meng_aws;
   meng_inst_cur = 
-    (float)map_oval(m_acp.m_meng,
+    (float)map_oval(m_acp.meng,
 		    m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, 
 		    m_acp.meng_nub, m_acp.meng_min,
 		    0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
   
-  seng_inst = (float)m_acp.m_seng_aws;
+  seng_inst = (float)m_acp.seng_aws;
   seng_inst_cur = 
-    (float) map_oval(m_acp.m_seng,
+    (float) map_oval(m_acp.seng,
 		     m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, 
 		     m_acp.seng_nub, m_acp.seng_min,
 		     0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
   
   rud_sta = 
-    (float) map_oval(m_acp.m_rud_sta, 
+    (float) map_oval(m_acp.rud_sta, 
 		     m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
 		     0xff, 0x7f, 0x00);
   
@@ -138,7 +138,7 @@ bool f_aws1_ui::proc()
 
   y -= 1.5 * hfont;
   
-  double scale = 1.0 / (double) m_z_win.height;
+  double scale = 1.0 / (double) m_sz_win.height;
   drawGlEngineIndicator(x, y, wm, hm, lw, 
 			(float)(meng_inst * scale),
 			(float)(meng_inst_cur * scale));
@@ -179,7 +179,7 @@ void drawGlEngineIndicator(float xorg, float yorg, float w, float h,
   xtxt = x2 + 0.1 * w;  
 
   // indicator box
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
 
   // current value
   x2 = (float)(x1 + 0.666 * w);
@@ -188,7 +188,7 @@ void drawGlEngineIndicator(float xorg, float yorg, float w, float h,
 
   // current instructed value
   y1 = (float) (y2 + val_inst);
-  drawGlLine2Df(x1, y1, x2, y1, 0, 1, 0, 1, wl);
+  drawGlLine2Df(x1, y1, x2, y1, 0, 1, 0, 1, lw);
 
   // neutral
   x1 = x2;
@@ -198,17 +198,17 @@ void drawGlEngineIndicator(float xorg, float yorg, float w, float h,
 
   // neutral forward
   y2 = (float)(y1 + (25. / 255.) * h);
-  drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
+  drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
   drawGlText(xtxt, y2, "F", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 
 
   // neutral backward
   y2 = (float)(y1 - (25. / 255.) * h);
-  drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
+  drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
   drawGlText(xtxt, y2, "B", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 }
 
-void f_aws1_ui::drawGlRudderIndicator(float xorg, float yorg, float w, float h,
+void drawGlRudderIndicator(float xorg, float yorg, float w, float h,
 				      float lw, float rud_inst, float rud_cur, float rud_sta)
 {
   float x1, x2, y1, y2, ytxt;
@@ -221,14 +221,14 @@ void f_aws1_ui::drawGlRudderIndicator(float xorg, float yorg, float w, float h,
   ytxt = (float) (y2 - 0.1 * h);
 
   // indicator box
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, wl);
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
 
   float xc;
   xc = (float)(xorg + 0.5 * w);
 
   // rudder instruction value
   x2 = rud_inst;
-  drawGlLine2Df(x2, y1, x2, y2, 0, 1, 0, 1, wl);
+  drawGlLine2Df(x2, y1, x2, y2, 0, 1, 0, 1, lw);
 
   // current rudder instruction value
   x1 = xc;
@@ -243,25 +243,25 @@ void f_aws1_ui::drawGlRudderIndicator(float xorg, float yorg, float w, float h,
   drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
 
   // Midship
-  drawGlLine2Df(x1, y1, x1, y2, 0, 1, 0, 1, wl);
+  drawGlLine2Df(x1, y1, x1, y2, 0, 1, 0, 1, lw);
   drawGlText(x1, ytxt, "0", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
   drawGlText(xorg, ytxt, "P", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
   drawGlText((float)(xorg + w), ytxt, "S", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 }
 
 
-void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pkt & acpkt)
+void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
 {
-  acpkt.aws_ctrl = m_aws_ctrl;
-  acpkt.ctrl_src = m_ctrl_src;
-  acpkt.rud_aws = m_rud_aws;
-  acpkt.meng_aws = m_meng_aws;
-  acpkt.seng_aws = m_segn_aws;
+  acpkt.ctrl = m_acp.ctrl;
+  acpkt.ctrl_src = m_acp.ctrl_src;
+  acpkt.rud_aws = m_acp.rud_aws;
+  acpkt.meng_aws = m_acp.meng_aws;
+  acpkt.seng_aws = m_acp.seng_aws;
 
   int len = send(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 0);
 }
 
-void f_aws1_ui::rcv_state(s_aws1_ctrl_pkt & acpkt)
+void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
 {
   acpkt.suc = false;
 

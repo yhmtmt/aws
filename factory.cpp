@@ -137,6 +137,7 @@ void ch_base::register_factory()
 #include "filter/f_nmea.h"
 #include "filter/f_aws1_nmea_sw.h"
 #include "filter/f_aws1_ctrl.h"
+#include "filter/f_aws1_ui.h"
 #include "filter/f_shioji.h"
 #include "filter/f_ship_detector.h"
 #include "filter/f_camcalib.h"
@@ -202,6 +203,7 @@ void f_base::register_factory()
 	register_factory<f_aws1_nmea_sw>("aws1_nmea_sw");
 #ifndef _WIN32
 	register_factory<f_aws1_ctrl>("aws1_ctrl");
+	register_factory<f_aws1_ui>("aws1_ui");
 #endif
 	register_factory<f_nmea_proc>("nmea_proc");
 

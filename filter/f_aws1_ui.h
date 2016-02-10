@@ -26,12 +26,12 @@ class f_aws1_ui: public f_glfw_window
   char m_acd_host[1024];
   unsigned short m_acd_port;
   SOCKET m_acd_sock;
-  sockaddr_in m_acd_addr;
+  sockaddr_in m_acd_sock_addr;
 
   s_aws1_ctrl_pars m_acp;
 
-  void snd_ctrl(s_aws1_ctrl_pkt & acpkt);
-  void rcv_state(s_aws1_ctrl_pkt & acpkt);
+  void snd_ctrl(s_aws1_ctrl_pars & acpkt);
+  void rcv_state(s_aws1_ctrl_pars & acpkt);
   
  public:
   f_aws1_ui(const char * name);
@@ -48,6 +48,6 @@ void drawGlEngineIndicator(float xorg, float yorg, float w, float h,
 			   float lw, float val_inst, float val_cur);
 
 void drawGlRudderIndicator(float xorg, float yorg, float w, float h,
-			   float lw, float val_inst, float val_cur);
+			   float lw, float rud_inst, float rud_cur, float rud_sta);
 
 #endif

@@ -37,7 +37,7 @@ inline void cnvCvPoint2GlPoint(const double fac_x, const double fac_y, const Poi
 	ptgl.y = -(float)(ptcv.y * fac_y - 1.0);
 }
 
-void drawGlText(float x, float y, char * str, 
+void drawGlText(float x, float y, const char * str, 
 		float r, float g, float b , float alpha,
 		void* font);
 

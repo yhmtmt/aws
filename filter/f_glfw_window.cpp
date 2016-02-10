@@ -109,9 +109,9 @@ void drawCvPointDensity(Mat hist, const int hist_max, const Size grid,
 	glEnd();
 }
 
-void drawGlText(float x, float y, char * str, 
-					   float r, float g, float b , float alpha,
-					   void* font)
+void drawGlText(float x, float y, const char * str, 
+		float r, float g, float b , float alpha,
+		void* font)
 {
   glRasterPos2f(x, y);
   glColor4f(r, g, b, alpha);
