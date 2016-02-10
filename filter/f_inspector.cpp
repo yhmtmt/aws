@@ -3669,7 +3669,7 @@ bool f_inspector::save_analytics(ofstream & file, char * fname, int ikf0, long l
 	file << "Time(sec),cam,roll,pitch,yaw,x,y,z,";
 	for(int iobj = 0; iobj < num_objs; iobj++){
 		file << objptr[iobj]->name << ",";
-		file << "roll,pitch,yaw,x,y,z,ferr,xerr,yerr,zerr,";
+		file << "acam.x,acam.y,acam.z,roll,pitch,yaw,x,y,z,ferr,xerr,yerr,zerr,";
 		if(m_bsave_objpts){
 			for(int ipt = 0; ipt < objptr[iobj]->pmdl->pts_deformed.size(); ipt++){
 				file << "pt[" << ipt << "].x,";
@@ -3686,11 +3686,9 @@ bool f_inspector::save_analytics(ofstream & file, char * fname, int ikf0, long l
 			continue;
 		m_kfrms[ikf]->update = false;
 		vector<vector<Point3f> > pts;
-		if(m_bsave_objpts){
-			m_kfrms[ikf]->calc_rpy_and_pts(pts, Rcam, Tcam, base_obj, bxyz);
-		}else{
-			m_kfrms[ikf]->calc_rpy(base_obj, bxyz);
-		}
+		vector<Point3f> acam;
+
+		m_kfrms[ikf]->calc_rpy_and_pts(pts, Rcam, Tcam, acam, base_obj, bxyz);
 
 		file << (double)(m_kfrms[ikf]->tfrm - tmin) / (double)SEC << ",,";
 		{
@@ -3718,6 +3716,9 @@ bool f_inspector::save_analytics(ofstream & file, char * fname, int ikf0, long l
 			}
 			if(iobj != -1){
 				file << ",";
+				file << acam[iobj].x * 180 / PI << ",";
+				file << acam[iobj].y * 180 / PI << ",";
+				file << acam[iobj].z * 180 / PI << ",";
 				file << objs[iobj]->roll * 180 / PI << ",";
 				file << objs[iobj]->pitch * 180 / PI<< ",";
 				file << objs[iobj]->yaw * 180 / PI << ",";

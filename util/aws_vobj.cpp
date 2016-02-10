@@ -1179,7 +1179,13 @@ void s_frame::calc_rpy(int base_obj, bool xyz)
 	}
 }
 
-void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat & Tcam, int base_obj, bool xyz)
+// in the basis of coordinate system of base_obj,
+// pts: transformed object points
+// Rcam: transformed camera coordinate
+// Tcam: transformed camera coordinate
+// acam: The angle of the object's axes to the camera's z axis.
+void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat & Tcam, 
+							   vector<Point3f> & acam, int base_obj, bool xyz)
 {
 	if(update)
 		return;
@@ -1192,6 +1198,7 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat &
 		Rorg = Rorg.t();
 
 		pts.resize(objs.size());
+		acam.resize(objs.size());
 
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			s_obj & obj = *objs[iobj];
@@ -1207,6 +1214,11 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat &
 
 			double * p0;
 			Rodrigues(obj.rvec, R);
+			p0 = R.ptr<double>();
+			acam[iobj].x = (float) acos(p0[6]);
+			acam[iobj].y = (float) acos(p0[7]);
+			acam[iobj].z = (float) acos(p0[8]);
+
 			obj.tvec.copyTo(T);
 
 			// translation Relative to the base_obj in the camera coordinate frame
@@ -1240,10 +1252,10 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat &
 
 		Tcam = Rorg * (-Torg);
 		Rorg.copyTo(Rcam);
-
 	}else{
 		Mat R, T;
 		pts.resize(objs.size());
+		acam.resize(objs.size());
 
 		for(int iobj = 0; iobj < objs.size(); iobj++){
 			s_obj & obj = *objs[iobj];
@@ -1262,7 +1274,10 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat &
 			
 			Rodrigues(obj.rvec, R);
 			p0 = R.ptr<double>();
-			
+			acam[iobj].x = (float) acos(p0[6]);
+			acam[iobj].y = (float) acos(p0[7]);
+			acam[iobj].z = (float) acos(p0[8]);
+
 			trnPts(obj.pmdl->pts_deformed, pts[iobj], R, T);
 			if(xyz)
 				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
