@@ -44,10 +44,14 @@ class f_aws1_ui: public f_glfw_window
   virtual bool proc();
 };
 
-void drawGlEngineIndicator(float xorg, float yorg, float w, float h, 
+void drawGlEngineIndicator(const char * title, 
+			   float xorg, float yorg, float w, float h, 
+			   float wfont, float hfont,
 			   float lw, float val_inst, float val_cur);
 
-void drawGlRudderIndicator(float xorg, float yorg, float w, float h,
+void drawGlRudderIndicator(const char * title, 
+			   float xorg, float yorg, float w, float h,
+			   float wfont, float hfont, 
 			   float lw, float rud_inst, float rud_cur, float rud_sta);
 
 #endif
