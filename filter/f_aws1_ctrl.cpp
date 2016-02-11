@@ -156,7 +156,7 @@ f_aws1_ctrl::~f_aws1_ctrl()
 
 bool f_aws1_ctrl::init_run()
 {
-  if(m_sim){
+  if(!m_sim){
     m_fd = open(m_dev, O_RDWR);
     if(m_fd == -1){
       cerr << "Error in f_aws1_ctrl::init_run, opening device " << m_dev << "." << endl; 
@@ -440,6 +440,7 @@ void f_aws1_ctrl::rcv_acs_udp(s_aws1_ctrl_pars & acpkt)
     }
     m_acs_sock_addr.sin_family = AF_INET;
     m_acs_sock_addr.sin_port = htons(m_acs_port);
+    cout << m_name << " is opening udp port " << m_acs_port << "." << endl;
     set_sockaddr_addr(m_acs_sock_addr);
     if(::bind(m_acs_sock, (sockaddr*) &m_acs_sock_addr, sizeof(m_acs_sock_addr)) == SOCKET_ERROR){
       cerr << "Socket error during binding UDP socket in " << m_name;
@@ -456,6 +457,8 @@ void f_aws1_ctrl::rcv_acs_udp(s_aws1_ctrl_pars & acpkt)
     // recieving packet
     FD_ZERO(&fr);
     FD_ZERO(&fe);
+    FD_SET(m_acs_sock, &fr);
+    FD_SET(m_acs_sock, &fe);
     tv.tv_sec = 0;
     tv.tv_usec = 10000;
 

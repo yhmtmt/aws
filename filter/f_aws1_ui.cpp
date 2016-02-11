@@ -62,10 +62,15 @@ bool f_aws1_ui::init_run()
   m_acd_sock_addr.sin_port = htons(m_acd_port);
   set_sockaddr_addr(m_acd_sock_addr, m_acd_host);
 
+  /*
   if(::bind(m_acd_sock, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr)) == SOCKET_ERROR){
     cerr << "Failed to bind control socket to (" << m_acd_host << "," << m_acd_port << ")" << endl;
     return false;
   }
+  */
+
+  if(!f_glfw_window::init_run())
+    return false;
   
   return true;
 }
@@ -158,7 +163,7 @@ bool f_aws1_ui::proc()
   glfwSwapBuffers(pwin());
   glfwPollEvents();
   
-  return false;
+  return true;
 }
 
 void drawGlEngineIndicator(const char * title,
@@ -271,7 +276,7 @@ void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
   acpkt.meng_aws = m_acp.meng_aws;
   acpkt.seng_aws = m_acp.seng_aws;
 
-  int len = send(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 0);
+  int len = sendto(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 0, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr));
 }
 
 void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
@@ -284,7 +289,9 @@ void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
 
   FD_ZERO(&fr);
   FD_ZERO(&fe);
-
+  FD_SET(m_acd_sock, &fr);
+  FD_SET(m_acd_sock, &fe);
+  
   tv.tv_sec = 0;
   tv.tv_usec = 10000;
   
