@@ -86,10 +86,10 @@ bool f_aws1_ui::proc()
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
   glRasterPos2i(-1, -1);
-  double hscale = 1.0 / (double) m_sz_win.height;
-  double vscale = 1.0 / (double) m_sz_win.width;  
+  double wscale = 1.0 / (double) m_sz_win.height;
+  double hscale = 1.0 / (double) m_sz_win.width;  
+  float wfont = (float)(24. * wscale);
   float hfont = (float)(24. * hscale);
-  float wfont = (float)(24. * vscale);
   float x = (float)(wfont - 1);
   float y = (float)(1 - 2 * hfont);
 
@@ -134,26 +134,26 @@ bool f_aws1_ui::proc()
 
   x = (float)(wfont - 1.0);
   y = (float)(1.0 - 4 * hfont);
-  drawGlEngineIndicator("M/E", x, y, wm, hm, wscale, hscale, lw, 
+  drawGlEngineIndicator("M/E", x, y, wm, hm, wfont, hfont, lw, 
 			(float)(meng_inst * hscale),
 			(float)(meng_inst_cur * hscale));
  
   x += (float)(5 * wfont);
-  drawGlEngineIndicator("S/E", x, y, wm, hm, wscale, hscale, lw, 
+  drawGlEngineIndicator("S/E", x, y, wm, hm, wfont, hfont, lw, 
 			(float)(seng_inst * hscale),
 			(float)(seng_inst_cur * hscale));
   
 
   // Drawing rudder control indicator
-  wm = (float)(255. * hscale);
+  wm = (float)(255. * wscale);
   hm = (float)(3 * hfont);
-  x =  0. - 255. * 0.5 * scale;
+  x =  0. - 255. * 0.5 * wscale;
   drawGlRudderIndicator("RUDDER", 
 			x, y, 
-			wm, vm, lw, 
-			(float)(rud_inst * vscale),
-			(float)(rud_inst_cur * vscale),
-			(float)(rud_sta * vscale));
+			wm, hm,  wfont, hfont, lw, 
+			(float)(rud_inst * hscale),
+			(float)(rud_inst_cur * hscale),
+			(float)(rud_sta * hscale));
 
   glfwSwapBuffers(pwin());
   glfwPollEvents();

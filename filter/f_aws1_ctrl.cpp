@@ -61,7 +61,7 @@ s_aws1_ctrl_pars::s_aws1_ctrl_pars():
 
 
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
-  f_base(name), m_fd(-1), m_verb(false),
+  f_base(name), m_fd(-1), m_sim(false), m_verb(false),
   m_udp_ctrl(false), m_ch_ctrl(false), m_acs_sock(-1), m_acs_port(20100), 
   m_pacs_in(NULL), m_pacs_out(NULL),
   m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0)
@@ -71,6 +71,7 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
 
   register_fpar("device", m_dev, 1023, "AWS1's control gpio device path");
   register_fpar("flog", m_flog_name, 1023, "Control log file.");
+  register_fpar("sim", &m_sim, "Simulation mode.");
   register_fpar("verb", &m_verb, "For debug.");
   register_fpar("ctrl", &m_acp.ctrl, "Yes if aws controls AWS1 (default no)");
 
@@ -155,11 +156,15 @@ f_aws1_ctrl::~f_aws1_ctrl()
 
 bool f_aws1_ctrl::init_run()
 {
-  m_fd = open(m_dev, O_RDWR);
-  if(m_fd == -1){
-    cerr << "Error in f_aws1_ctrl::init_run, opening device " << m_dev << "." << endl; 
-    cerr << "    Message: " << strerror(errno) << endl;
-    return false;
+  if(m_sim){
+    m_fd = open(m_dev, O_RDWR);
+    if(m_fd == -1){
+      cerr << "Error in f_aws1_ctrl::init_run, opening device " << m_dev << "." << endl; 
+      cerr << "    Message: " << strerror(errno) << endl;
+      return false;
+    }
+  }else{
+    m_rud_sta_sim = (float) m_acp.rud_sta;
   }
 
   if(m_flog_name[0] != 0){
@@ -198,12 +203,24 @@ void f_aws1_ctrl::destroy_run()
 void f_aws1_ctrl::get_gpio()
 {
   unsigned int val;
-
-  ioctl(m_fd, ZGPIO_IOCGET, &val);
-  m_acp.rud_rmc = ((unsigned char*) &val)[0];
-  m_acp.meng_rmc = ((unsigned char*) &val)[1];
-  m_acp.seng_rmc = ((unsigned char*) &val)[2];
-  m_acp.rud_sta = ((unsigned char*) &val)[3];
+  if(!m_sim){
+    ioctl(m_fd, ZGPIO_IOCGET, &val);
+    m_acp.rud_rmc = ((unsigned char*) &val)[0];
+    m_acp.meng_rmc = ((unsigned char*) &val)[1];
+    m_acp.seng_rmc = ((unsigned char*) &val)[2];
+    m_acp.rud_sta = ((unsigned char*) &val)[3];
+  }else{
+    unsigned rud_inst = map_oval(m_acp.rud,
+		m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
+		m_acp.rud_sta_min, m_acp.rud_sta_nut, m_acp.rud_sta_max);
+#define RUD_PER_CYCLE 0.45
+    if(rud_inst > m_acp.rud_sta){
+      m_rud_sta_sim += RUD_PER_CYCLE;
+    }else{
+      m_rud_sta_sim -= RUD_PER_CYCLE;
+    }
+    m_acp.rud_sta = (unsigned char) m_rud_sta_sim;
+  }
  
   if(!m_acp.ctrl){
     m_acp.rud_aws = map_oval(m_acp.rud_rmc, 
@@ -274,7 +291,9 @@ void f_aws1_ctrl::set_gpio()
 			   m_acp.rud_sta_out_max, m_acp.rud_sta_out_nut, m_acp.rud_sta_out_min);
   ((unsigned char *) &val)[3] = m_acp.rud_sta_out;
 
-  ioctl(m_fd, ZGPIO_IOCSET2, &val);
+  if(!m_sim){
+    ioctl(m_fd, ZGPIO_IOCSET2, &val);
+  }
 }
 
 bool f_aws1_ctrl::proc()

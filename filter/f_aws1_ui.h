@@ -52,6 +52,7 @@ void drawGlEngineIndicator(const char * title,
 void drawGlRudderIndicator(const char * title, 
 			   float xorg, float yorg, float w, float h,
 			   float wfont, float hfont, 
-			   float lw, float rud_inst, float rud_cur, float rud_sta);
+			   float lw, float rud_inst, float rud_cur, 
+			   float rud_sta);
 
 #endif

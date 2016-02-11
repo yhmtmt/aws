@@ -166,6 +166,10 @@ class f_aws1_ctrl: public f_base
   ofstream m_flog;
   int m_fd;                 // file descriptor for zgpio
   
+  // for simulation
+  bool m_sim;
+  float m_rud_sta_sim;
+
   bool m_verb;
 
   bool m_udp_ctrl;
