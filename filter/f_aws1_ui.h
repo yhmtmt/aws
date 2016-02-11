@@ -23,6 +23,7 @@
 class f_aws1_ui: public f_glfw_window
 {
  private:
+  bool m_verb;
   char m_acd_host[1024];
   unsigned short m_acd_port;
   SOCKET m_acd_sock;

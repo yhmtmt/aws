@@ -322,13 +322,11 @@ bool f_aws1_ctrl::proc()
   }
 
   get_gpio();
-
   if(m_adclpf)
     lpf();
 
   set_gpio();
 
-  
   if(m_verb){
     cout << "Control Values." << endl;
     cout << "    rmc rud " << (int) m_acp.rud_rmc << " meng " << (int) m_acp.meng_rmc << " seng " << (int) m_acp.seng_rmc << endl;
@@ -521,16 +519,19 @@ void f_aws1_ctrl::set_acpkt(s_aws1_ctrl_pars & acpkt)
 {
   acpkt = m_acp;
   acpkt.tcur = m_cur_time;
+  acpkt.suc = true;
 }
 
 void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
 {
-  if(!acpkt.suc)
+  if(!acpkt.suc){
+    cerr << "Failed to recieve packet." << endl;
     return;
+  }
   
   m_acp.tcur = acpkt.tcur;
-  m_acp.ctrl = acpkt.ctrl;
-  m_acp.ctrl_src = acpkt.ctrl_src;
+  //  m_acp.ctrl = acpkt.ctrl;
+  //  m_acp.ctrl_src = acpkt.ctrl_src;
 
   m_acp.rud_aws = acpkt.rud_aws;
   m_acp.meng_aws = acpkt.meng_aws;

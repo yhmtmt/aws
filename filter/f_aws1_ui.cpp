@@ -41,7 +41,10 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), m_acd_sock(-1), m_
 {
   register_fpar("acdhost", m_acd_host, 1023, "Host address controlling AWS1.");
   register_fpar("acdport", &m_acd_port, "Port number opened for controlling AWS1.");
-
+  register_fpar("verb", &m_verb, "Debug mode.");
+  register_fpar("rud", &m_acp.rud_aws, "Rudder.");
+  register_fpar("meng", &m_acp.meng_aws, "Main Engine.");
+  register_fpar("seng", &m_acp.seng_aws, "Sub Engine.");
 }
 
 
@@ -91,15 +94,15 @@ bool f_aws1_ui::proc()
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   
   glRasterPos2i(-1, -1);
-  double wscale = 1.0 / (double) m_sz_win.height;
-  double hscale = 1.0 / (double) m_sz_win.width;  
-  float wfont = (float)(24. * wscale);
-  float hfont = (float)(24. * hscale);
+  double wscale = 1.0 / (double) m_sz_win.width;
+  double hscale = 1.0 / (double) m_sz_win.height;  
+  float wfont = (float)(13. * wscale);
+  float hfont = (float)(13. * hscale);
   float x = (float)(wfont - 1);
-  float y = (float)(1 - 2 * hfont);
+  float y = (float)(1 - 3 * hfont);
 
   // show time
-  drawGlText(x, y, m_time_str, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+  drawGlText(x, y, m_time_str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
   float rud_inst, rud_inst_cur;
   float meng_inst, meng_inst_cur;
@@ -111,6 +114,7 @@ bool f_aws1_ui::proc()
     (float)map_oval(m_acp.rud, 
 		    m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
 		    0xff, 0x7f, 0x00);
+
   meng_inst = (float)m_acp.meng_aws;
   meng_inst_cur = 
     (float)map_oval(m_acp.meng,
@@ -128,17 +132,23 @@ bool f_aws1_ui::proc()
   rud_sta = 
     (float) map_oval(m_acp.rud_sta, 
 		     m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
-		     0xff, 0x7f, 0x00);
+		     0x00, 0x7f, 0xff);
   
+  if(m_verb){
+    cout << "Control value in " << m_name << endl;
+    cout << "    Inst rud " << rud_inst << " meng " << meng_inst << " seng " << seng_inst << endl;
+    cout << "    Ctrl rud " << rud_inst_cur << " meng " << meng_inst_cur << " seng " << seng_inst_cur << endl;
+    cout << "    Rud stat " << rud_sta << endl;
+  }
   float wm, hm, lw;
 
   // Drawing engine control indicator 
   wm = 3 * wfont;
-  hm = (float)(255.0 / (double)m_sz_win.height);
+  hm = (float)(255.0 * hscale);
   lw = 1.0 / m_sz_win.width;
 
   x = (float)(wfont - 1.0);
-  y = (float)(1.0 - 4 * hfont);
+  y = (float)(1.0 - 6 * hfont);
   drawGlEngineIndicator("M/E", x, y, wm, hm, wfont, hfont, lw, 
 			(float)(meng_inst * hscale),
 			(float)(meng_inst_cur * hscale));
@@ -156,9 +166,9 @@ bool f_aws1_ui::proc()
   drawGlRudderIndicator("RUDDER", 
 			x, y, 
 			wm, hm,  wfont, hfont, lw, 
-			(float)(rud_inst * hscale),
-			(float)(rud_inst_cur * hscale),
-			(float)(rud_sta * hscale));
+			(float)(rud_inst * wscale),
+			(float)(rud_inst_cur * wscale),
+			(float)(rud_sta * wscale));
 
   glfwSwapBuffers(pwin());
   glfwPollEvents();
@@ -179,42 +189,43 @@ void drawGlEngineIndicator(const char * title,
   xtxt = x2 + 0.1 * w;  
 
   // draw title
-  drawGlText(xorg, (float)(yorg + 1.5 * hfont), title, 
-	     0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+  drawGlText(xorg, (float)(yorg + 0.5 * hfont), title, 
+	     0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
   // indicator box
   drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
 
   // current value
   x2 = (float)(x1 + 0.666 * w);
-  y1 = (float)(y2 + val_cur);
+  y1 = (float)(yorg + val_cur - h);
+  y2 = (float)(yorg - 0.5 * h);
   drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
 
   // current instructed value
-  y1 = (float) (y2 + val_inst);
+  y1 = (float) (yorg - h + val_inst);
   drawGlLine2Df(x1, y1, x2, y1, 0, 1, 0, 1, lw);
 
   // neutral
-  float dhfont = -0.5 * h;
-  x1 = x2;
-  x2 = (float)(x1 + w);
-  y1 = y2 = (float)(0.5 * h + yorg);
+  float dhfont = -0.5 * hfont;
+  x1 = xorg;
+  x2 = (float)(xorg + w);
+  y1 = y2 = (float) (yorg - 0.5 * h);
   drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
   drawGlText(xtxt, (float)(y1 + dhfont), 
-	     "N", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+	     "N", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
   // neutral forward
   y2 = (float)(y1 + (25. / 255.) * h);
-  drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
-  drawGlText(xtxt, (float)(y2 - dhfont), 
-	     "F", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+  drawGlLine2Df(x1, y2, x2, y2, 0, 1, 0, 1, lw);
+  drawGlText(xtxt, (float)(y2), 
+	     "F", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
 
   // neutral backward
   y2 = (float)(y1 - (25. / 255.) * h);
-  drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
-  drawGlText(xtxt, (float)(y2 - dhfont), 
-	     "B", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+  drawGlLine2Df(x1, y2, x2, y2, 0, 1, 0, 1, lw);
+  drawGlText(xtxt, (float)(y2 - hfont), 
+	     "B", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
 void drawGlRudderIndicator(const char * title,
@@ -223,38 +234,35 @@ void drawGlRudderIndicator(const char * title,
 			   float lw, float rud_inst, float rud_cur, float rud_sta)
 {
   float x1, x2, y1, y2, ytxt;
-
   
   // draw title
   drawGlText((float)(xorg + 0.5 * (w - wfont * (double)strlen(title))), 
 	     (float)(yorg + 0.5 * hfont), title, 
-	     0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+	     0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
   
   x1 = xorg;
   x2 = (float)(xorg + w);
   y1 = yorg;
   y2 = (float)(yorg - h);
   
-  ytxt = (float) (y2 - 0.1 * h);
+  ytxt = (float) (yorg - 1.2 * h - hfont);
 
   // indicator box
   drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
 
-  float xc;
-  xc = (float)(xorg + 0.5 * w);
+  x1 = (float)(xorg + 0.5 * w);
 
   // rudder instruction value
-  x2 = rud_inst;
+  x2 = rud_inst - 0.5 * w;
   drawGlLine2Df(x2, y1, x2, y2, 0, 1, 0, 1, lw);
 
   // current rudder instruction value
-  x1 = xc;
-  x2 = rud_cur;
+  x2 = rud_cur - 0.5 * w;
   y2 = (float)(yorg - 0.666 * h);
   drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
 
   // current rudder angle
-  x2 = rud_sta;
+  x2 = rud_sta - 0.5 * w;
   y1 = y2;
   y2 = (float)(yorg - h) ;
   drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
@@ -262,9 +270,9 @@ void drawGlRudderIndicator(const char * title,
   // Midship
   float dwfont = - 0.5 * wfont;
   drawGlLine2Df(x1, y1, x1, y2, 0, 1, 0, 1, lw);
-  drawGlText(x1 + dwfont, ytxt, "0", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
-  drawGlText(xorg + dwfont, ytxt, "P", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
-  drawGlText((float)(xorg + w + dwfont), ytxt, "S", 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+  drawGlText(x1 + dwfont, ytxt, "0", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+  drawGlText(xorg + dwfont, ytxt, "P", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+  drawGlText((float)(xorg + w + dwfont), ytxt, "S", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
 
@@ -275,6 +283,11 @@ void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
   acpkt.rud_aws = m_acp.rud_aws;
   acpkt.meng_aws = m_acp.meng_aws;
   acpkt.seng_aws = m_acp.seng_aws;
+  acpkt.suc = true;
+
+  cout << (int) acpkt.rud_aws << ",";
+  cout << (int) acpkt.meng_aws << ",";
+  cout << (int) acpkt.seng_aws << endl;
 
   int len = sendto(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 0, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr));
 }
@@ -316,5 +329,56 @@ void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
     cerr << "Unknown error in " << m_name << "." << endl;
   }
   
-  m_acp = acpkt;
+  if(acpkt.suc){
+    m_acp.rud_rmc = acpkt.rud_rmc;
+    m_acp.meng_rmc = acpkt.meng_rmc;
+    m_acp.seng_rmc = acpkt.seng_rmc;
+    m_acp.rud = acpkt.rud;
+    m_acp.meng = acpkt.meng;
+    m_acp.seng = acpkt.seng;
+    m_acp.rud_sta = acpkt.rud_sta;
+    m_acp.rud_sta_out = acpkt.rud_sta_out;
+
+    m_acp.rud_max_rmc = acpkt.rud_max_rmc;
+    m_acp.rud_nut_rmc = acpkt.rud_nut_rmc;
+    m_acp.rud_min_rmc = acpkt.rud_min_rmc;
+
+    m_acp.meng_max_rmc = acpkt.meng_max_rmc;
+    m_acp.meng_nuf_rmc = acpkt.meng_nuf_rmc;
+    m_acp.meng_nut_rmc = acpkt.meng_nut_rmc;
+    m_acp.meng_nub_rmc = acpkt.meng_nub_rmc;
+    m_acp.meng_min_rmc = acpkt.meng_min_rmc;
+
+    m_acp.seng_max_rmc = acpkt.seng_max_rmc;
+    m_acp.seng_nuf_rmc = acpkt.seng_nuf_rmc;
+    m_acp.seng_nut_rmc = acpkt.seng_nut_rmc;
+    m_acp.seng_nub_rmc = acpkt.seng_nub_rmc;
+    m_acp.seng_min_rmc = acpkt.seng_min_rmc;
+
+    m_acp.rud_sta_max = acpkt.rud_sta_max;
+    m_acp.rud_sta_nut = acpkt.rud_sta_nut;
+    m_acp.rud_sta_min = acpkt.rud_sta_min;
+
+    m_acp.meng_max = acpkt.meng_max;
+    m_acp.meng_nuf = acpkt.meng_nuf;
+    m_acp.meng_nut = acpkt.meng_nut;
+    m_acp.meng_nub = acpkt.meng_nub;
+    m_acp.meng_min = acpkt.meng_min;
+
+    m_acp.seng_max = acpkt.seng_max;
+    m_acp.seng_nuf = acpkt.seng_nuf;
+    m_acp.seng_nut = acpkt.seng_nut;
+    m_acp.seng_nub = acpkt.seng_nub;
+    m_acp.seng_min = acpkt.seng_min;
+    m_acp.rud_max = acpkt.rud_max;
+    m_acp.rud_nut = acpkt.rud_nut;
+    m_acp.rud_min = acpkt.rud_min;
+    
+    m_acp.rud_sta_out_max = acpkt.rud_sta_out_max;
+    m_acp.rud_sta_out_nut = acpkt.rud_sta_out_nut;
+    m_acp.rud_sta_out_min = acpkt.rud_sta_out_min;
+    
+  }else{
+    cerr << "Failed to recieve packet." << endl;
+  }
 }
