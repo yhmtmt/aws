@@ -33,7 +33,17 @@ class f_aws1_ui: public f_glfw_window
 
   void snd_ctrl(s_aws1_ctrl_pars & acpkt);
   void rcv_state(s_aws1_ctrl_pars & acpkt);
-  
+
+  double m_mx, m_my;
+  virtual void _cursor_position_callback(double xpos, double ypos){
+    m_mx = xpos;
+    m_my = ypos;
+  }
+  virtual void _mouse_button_callback(int button, int action, int mods)
+  {
+    cout << "click at (" << m_mx << "," << m_my << ")" << endl;
+  }
+
  public:
   f_aws1_ui(const char * name);
   virtual ~f_aws1_ui();

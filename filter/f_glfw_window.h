@@ -121,81 +121,83 @@ protected:
   static MapGLFWin m_map_glfwin;
   GLFWwindow * m_pwin;
 
-	GLFWwindow * pwin(){
-			return m_pwin;
-	}
-
-	Size m_sz_win;
-
-	virtual bool init_run();
-	virtual void destroy_run();
-
-	virtual void _key_callback(int key, int scancode, int action, int mods)
-	{
-	}
-
-	static void key_callback(GLFWwindow * pwindow, int key, int scancode, int action, int mods)
-	{
-	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
-	  f_glfw_window * ptr = itr->second;
-	  ptr->_key_callback(key, scancode, action, mods);
-	}
-
-	virtual void _cursor_position_callback(double xpos, double ypos)
-	{
-	}
-
-	static void cursor_position_callback(GLFWwindow* pwindow, double xpos, double ypos)
-	{
-	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
-	  f_glfw_window * ptr = itr->second;
-	  ptr->_cursor_position_callback(xpos, ypos);
-	}
-
-	void _mouse_button_callback(int button, int action, int mods)
-	{
-	}
-
-	static void mouse_button_callback(GLFWwindow* pwindow, int button, int action, int mods)
-	{
-	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
-	  f_glfw_window * ptr = itr->second;
-	  ptr->_mouse_button_callback(button, action, mods);
-	}
-
-	void _scroll_callback(double xoffset, double yoffset)
-	{
-	}
-
-	static void scroll_callback(GLFWwindow* pwindow, double xoffset, double yoffset)
-	{
-	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
-	  f_glfw_window * ptr = itr->second;
-	  ptr->_scroll_callback(xoffset, yoffset);
-	}
-
-	static void framebuffer_size_callback(GLFWwindow * pwindow, int width, int height)
-	{
-	  MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
-	  f_glfw_window * ptr = itr->second;
-	  ptr->m_sz_win = Size(width, height);
-	}
-public:
-	f_glfw_window(const char * name);
-	virtual ~f_glfw_window();
-	
-	virtual bool is_main_thread()
-	{
-		return true;
-	}
-
-	virtual bool proc();
-
-	// glfw callbacks
-	static void err_cb(int e, const char * dsc)
-	{
-		fputs(dsc, stderr);
-	}
+  GLFWwindow * pwin(){
+    return m_pwin;
+  }
+  
+  Size m_sz_win;
+  
+  virtual bool init_run();
+  virtual void destroy_run();
+  
+  virtual void _key_callback(int key, int scancode, int action, int mods)
+  {
+  }
+  
+  static void key_callback(GLFWwindow * pwindow, int key, int scancode, int action, int mods)
+  {
+    cout << "Keyboard." << endl;
+    MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+    f_glfw_window * ptr = itr->second;
+    ptr->_key_callback(key, scancode, action, mods);
+  }
+  
+  virtual void _cursor_position_callback(double xpos, double ypos)
+  {
+  }
+  
+  static void cursor_position_callback(GLFWwindow* pwindow, double xpos, double ypos)
+  {
+    MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+    f_glfw_window * ptr = itr->second;
+    ptr->_cursor_position_callback(xpos, ypos);
+  }
+  
+  virtual void _mouse_button_callback(int button, int action, int mods)
+  {
+  }
+  
+  static void mouse_button_callback(GLFWwindow* pwindow, int button, int action, int mods)
+  {
+    cout << "Mouse button" << endl;
+    MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+    f_glfw_window * ptr = itr->second;
+    ptr->_mouse_button_callback(button, action, mods);
+  }
+  
+  void _scroll_callback(double xoffset, double yoffset)
+  {
+  }
+  
+  static void scroll_callback(GLFWwindow* pwindow, double xoffset, double yoffset)
+  {
+    MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+    f_glfw_window * ptr = itr->second;
+    ptr->_scroll_callback(xoffset, yoffset);
+  }
+  
+  static void framebuffer_size_callback(GLFWwindow * pwindow, int width, int height)
+  {
+    MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
+    f_glfw_window * ptr = itr->second;
+    ptr->m_sz_win = Size(width, height);
+  }
+ public:
+  f_glfw_window(const char * name);
+  virtual ~f_glfw_window();
+  
+  virtual bool is_main_thread()
+  {
+    return true;
+  }
+  
+  virtual bool proc();
+  
+  // glfw callbacks
+  static void err_cb(int e, const char * dsc)
+  {
+    fputs(dsc, stderr);
+  }
 };
 
 

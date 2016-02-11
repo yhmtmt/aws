@@ -284,11 +284,6 @@ void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
   acpkt.meng_aws = m_acp.meng_aws;
   acpkt.seng_aws = m_acp.seng_aws;
   acpkt.suc = true;
-
-  cout << (int) acpkt.rud_aws << ",";
-  cout << (int) acpkt.meng_aws << ",";
-  cout << (int) acpkt.seng_aws << endl;
-
   int len = sendto(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 0, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr));
 }
 
