@@ -45,6 +45,8 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), m_acd_sock(-1), m_
   register_fpar("rud", &m_acp.rud_aws, "Rudder.");
   register_fpar("meng", &m_acp.meng_aws, "Main Engine.");
   register_fpar("seng", &m_acp.seng_aws, "Sub Engine.");
+  
+  register_fpar("js", &m_js, "Joystick id");
 }
 
 
@@ -74,7 +76,24 @@ bool f_aws1_ui::init_run()
 
   if(!f_glfw_window::init_run())
     return false;
-  
+
+  if(glfwJoystickPresent(m_js) == GL_TRUE){
+    m_js_name = glfwGetJoystickName(m_js);
+    cout << m_js << "th Joystic found as " << m_js_name << endl;
+  }else{
+    m_js = -1;
+  }
+
+  if(m_js == -1){
+    cout << "Listing available joysticks ... " << endl;
+    for(int i = 0; i < GLFW_JOYSTICK_LAST; i++){
+      if(glfwJoystickPresent(i) == GL_TRUE){
+	const char * js_name = glfwGetJoystickName(i);
+	cout << i << " : " << js_name << endl;
+      }
+    }
+  }
+
   return true;
 }
 
@@ -85,6 +104,32 @@ void f_aws1_ui::destroy_run()
 
 bool f_aws1_ui::proc()
 {
+
+  // joystic handling
+  
+  if(m_js != -1){
+    int naxs, nbtn;
+    const float * axs = glfwGetJoystickAxes(m_js, &naxs);
+    const unsigned char * btn = glfwGetJoystickButtons(m_js, &nbtn);
+    if(m_verb){
+      if(axs){
+	cout << "Axes ";
+	for(int iaxs = 0; iaxs < naxs; iaxs++){
+	  cout << iaxs << ":" << axs[iaxs] << " ";
+	}
+	cout << endl;
+      }
+      
+      if(btn){
+	cout << "Btns ";
+	for(int ibtn = 0; ibtn < nbtn; ibtn++){
+	  cout << ibtn << ":" << btn[ibtn] << " ";
+	}
+	cout << endl;
+      }
+    }
+  }
+  
   s_aws1_ctrl_pars acpkt;
   snd_ctrl(acpkt);
   rcv_state(acpkt);
