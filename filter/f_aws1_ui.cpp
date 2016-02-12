@@ -37,7 +37,7 @@ using namespace cv;
 
 #include "f_aws1_ui.h"
 
-f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), m_acd_sock(-1), m_acd_port(20100)
+f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), m_acd_sock(-1), m_acd_port(20100), m_num_ctrl_steps(4), m_ec(EC_MAIN), m_rud_pos(NULL), m_meng_pos(NULL), m_seng_pos(NULL)
 {
   register_fpar("acdhost", m_acd_host, 1023, "Host address controlling AWS1.");
   register_fpar("acdport", &m_acd_port, "Port number opened for controlling AWS1.");
@@ -94,11 +94,63 @@ bool f_aws1_ui::init_run()
     }
   }
 
+  // allocate control positions
+  m_rud_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
+  m_meng_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
+  m_seng_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
+
+  double stepf, stepb;
+  double sumf, sumb;
+  m_rud_pos[m_num_ctrl_steps] = 127;
+  stepf = (double) (255 - 127) / (double) m_num_ctrl_steps;
+  stepb = (double) (127 - 0) / (double) m_num_ctrl_steps;
+  sumf = sumb = 127.;
+  for(int i = 1; i < m_num_ctrl_steps; i++){
+    sumf += stepf;
+    sumf -= stepb;
+    m_rud_pos[m_num_ctrl_steps - i] = (unsigned char) sumb;
+    m_rud_pos[m_num_ctrl_steps + i] = (unsigned char) sumf;
+  }
+  m_rud_pos[m_num_ctrl_steps * 2] = 255;
+  m_rud_pos[0] = 0;
+
+  stepf = (double) (255 - 127 - 25) / (double) (m_num_ctrl_steps - 1);
+  stepb = (double) (127 - 25 - 0) / (double) (m_num_ctrl_steps - 1);
+  sumf = sumb = 127.;
+
+  m_meng_pos[m_num_ctrl_steps] = 127;
+  m_meng_pos[m_num_ctrl_steps+1] = 127 + 25;
+  m_meng_pos[m_num_ctrl_steps-1] = 127 + 25;
+
+  m_seng_pos[m_num_ctrl_steps] = 127;
+  m_seng_pos[m_num_ctrl_steps+1] = 127 + 25;
+  m_seng_pos[m_num_ctrl_steps-1] = 127 + 25;
+
+  sumf = 127 + 25;
+  sumb = 127 - 25;
+  for (int i = 2; i < m_num_ctrl_steps; i++){
+    sumf += stepf;
+    sumb -= stepb;
+    m_meng_pos[m_num_ctrl_steps + i] = m_seng_pos[m_num_ctrl_steps + i] = sumf;
+    m_meng_pos[m_num_ctrl_steps - i] = m_seng_pos[m_num_ctrl_steps - i] = sumb;
+  }
+  
+  m_meng_pos[m_num_ctrl_steps * 2] = m_seng_pos[m_num_ctrl_steps * 2] = 255;
+  m_meng_pos[0] = m_seng_pos[0] = 0;
+
   return true;
 }
 
 void f_aws1_ui::destroy_run()
 {
+  delete[] m_rud_pos;
+  delete[] m_meng_pos;
+  delete[] m_seng_pos;
+
+  m_rud_pos = NULL;
+  m_meng_pos = NULL;
+  m_seng_pos = NULL;
+
   closesocket(m_acd_sock);
 }
 
@@ -106,7 +158,6 @@ bool f_aws1_ui::proc()
 {
 
   // joystic handling
-  
   if(m_js != -1){
     int naxs, nbtn;
     const float * axs = glfwGetJoystickAxes(m_js, &naxs);
@@ -420,5 +471,44 @@ void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
     
   }else{
     cerr << "Failed to recieve packet." << endl;
+  }
+}
+
+
+void f_aws1_ui::_mouse_button_callback(int button, int action, int mods)
+{
+}
+
+void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
+{
+  switch(key){
+  case GLFW_KEY_RIGHT:
+    m_acp.rud_aws = step_up(m_acp.rud_aws, m_rud_pos);
+    break;
+  case GLFW_KEY_LEFT:
+    m_acp.rud_aws = step_down(m_acp.rud_aws, m_rud_pos);
+    break;
+  case GLFW_KEY_UP:
+    if(m_ec == EC_MAIN){
+      m_acp.meng_aws = step_up(m_acp.meng_aws, m_meng_pos);
+    }else{
+      m_acp.seng_aws = step_up(m_acp.seng_aws, m_seng_pos);
+    }
+    break;
+  case GLFW_KEY_DOWN:
+    if(m_ec == EC_MAIN){
+      m_acp.meng_aws = step_down(m_acp.meng_aws, m_meng_pos);
+    }else{
+      m_acp.seng_aws = step_down(m_acp.seng_aws, m_seng_pos);
+    }
+    break;
+  case GLFW_KEY_E:
+    if(m_ec == EC_MAIN){
+      m_ec = EC_SUB;
+    }else{
+      m_ec = EC_MAIN;
+    }
+  default:
+    break;
   }
 }

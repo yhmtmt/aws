@@ -136,7 +136,6 @@ protected:
   
   static void key_callback(GLFWwindow * pwindow, int key, int scancode, int action, int mods)
   {
-    cout << "Keyboard." << endl;
     MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
     f_glfw_window * ptr = itr->second;
     ptr->_key_callback(key, scancode, action, mods);

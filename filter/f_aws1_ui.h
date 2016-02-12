@@ -41,9 +41,59 @@ class f_aws1_ui: public f_glfw_window
     m_mx = xpos;
     m_my = ypos;
   }
-  virtual void _mouse_button_callback(int button, int action, int mods)
-  {
-    cout << "click at (" << m_mx << "," << m_my << ")" << endl;
+  virtual void _mouse_button_callback(int button, int action, int mods);
+  virtual void _key_callback(int key, int scancode, int action, int mods);
+
+  // for keyboard control
+  int m_num_ctrl_steps;
+  enum e_eng_ctrl{
+    EC_MAIN, EC_SUB
+  } m_ec;
+
+  unsigned char * m_rud_pos;
+  unsigned char * m_meng_pos;
+  unsigned char * m_seng_pos;
+
+  int step_down(unsigned char val, unsigned char * vpos){
+    int i = m_num_ctrl_steps;
+    int iup = 2 * m_num_ctrl_steps, idown = 0;
+    do{
+      if(vpos[i] < val){
+	idown = i;
+      }else if(vpos[i] > val){
+	iup = i;
+      }else{
+	return max(i - 1, 0);
+      }
+
+      i = (idown + iup) >> 1;
+      if(i == idown){
+	return idown;
+      }
+    }while(1);
+
+    return m_num_ctrl_steps;
+  }
+
+  int step_up(unsigned char val, unsigned char * vpos){
+    int i = m_num_ctrl_steps;
+    int iup = 2 * m_num_ctrl_steps, idown = 0;
+    do{
+      if(vpos[i] < val){
+	idown = i;
+      }else if(vpos[i] > val){
+	iup = i;
+      }else{
+	return max(i + 1, 2 * m_num_ctrl_steps - 1);
+      }
+
+      i = (idown + iup) >> 1;
+      if(i == idown){
+	return iup;
+      }
+    }while(1);
+
+    return m_num_ctrl_steps;
   }
 
  public:
