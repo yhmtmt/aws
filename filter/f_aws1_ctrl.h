@@ -214,7 +214,7 @@ class f_aws1_ctrl: public f_base
   void snd_acs_chan(s_aws1_ctrl_pars & acpkt);
 
   void set_acpkt(s_aws1_ctrl_pars & acpkt);
-  void set_ctrl(s_aws1_ctrl_pars & acpkt);
+  void set_ctrl(s_aws1_ctrl_pars & acpkt, bool master = false);
 
 public:
 	f_aws1_ctrl(const char * name);

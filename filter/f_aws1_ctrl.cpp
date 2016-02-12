@@ -309,7 +309,7 @@ bool f_aws1_ctrl::proc()
   if(m_acp.ctrl){
     switch(m_acp.ctrl_src){
     case ACS_UDP:
-      set_ctrl(acpkt_udp);
+      set_ctrl(acpkt_udp, true);
       break;
     case ACS_CHAN:
       set_ctrl(acpkt_chan);
@@ -522,7 +522,7 @@ void f_aws1_ctrl::set_acpkt(s_aws1_ctrl_pars & acpkt)
   acpkt.suc = true;
 }
 
-void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
+void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt, bool master)
 {
   if(!acpkt.suc){
     cerr << "Failed to recieve packet." << endl;
@@ -530,8 +530,10 @@ void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
   }
   
   m_acp.tcur = acpkt.tcur;
-  //  m_acp.ctrl = acpkt.ctrl;
-  //  m_acp.ctrl_src = acpkt.ctrl_src;
+  if(master){
+    m_acp.ctrl = acpkt.ctrl;
+    m_acp.ctrl_src = acpkt.ctrl_src;
+  }
 
   m_acp.rud_aws = acpkt.rud_aws;
   m_acp.meng_aws = acpkt.meng_aws;
