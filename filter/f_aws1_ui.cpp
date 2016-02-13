@@ -230,7 +230,7 @@ bool f_aws1_ui::proc()
   rud_sta = 
     (float) map_oval(m_acp.rud_sta, 
 		     m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
-		     0x00, 0x7f, 0xff);
+		     0xff, 0x7f, 0x00);
   
   if(m_verb){
     cout << "Control value in " << m_name << endl;

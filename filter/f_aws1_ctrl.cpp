@@ -212,7 +212,7 @@ void f_aws1_ctrl::get_gpio()
   }else{
     unsigned rud_inst = map_oval(m_acp.rud,
 		m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
-		m_acp.rud_sta_min, m_acp.rud_sta_nut, m_acp.rud_sta_max);
+		m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min);
 #define RUD_PER_CYCLE 0.45
     if(rud_inst > m_acp.rud_sta){
       m_rud_sta_sim += RUD_PER_CYCLE;
