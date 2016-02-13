@@ -42,9 +42,9 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), m_acd_sock(-1), m_
   register_fpar("acdhost", m_acd_host, 1023, "Host address controlling AWS1.");
   register_fpar("acdport", &m_acd_port, "Port number opened for controlling AWS1.");
   register_fpar("verb", &m_verb, "Debug mode.");
-  register_fpar("rud", &m_acp.rud_aws, "Rudder.");
-  register_fpar("meng", &m_acp.meng_aws, "Main Engine.");
-  register_fpar("seng", &m_acp.seng_aws, "Sub Engine.");
+  register_fpar("rud", &m_rud_aws_f, "Rudder.");
+  register_fpar("meng", &m_meng_aws_f, "Main Engine.");
+  register_fpar("seng", &m_seng_aws_f, "Sub Engine.");
   
   register_fpar("js", &m_js, "Joystick id");
 }
@@ -59,6 +59,13 @@ bool f_aws1_ui::init_run()
 {
   m_acp.ctrl = true;
   m_acp.ctrl_src = ACS_UDP;
+  m_acp.rud_aws = 127;
+  m_acp.meng_aws = 127;
+  m_acp.seng_aws = 127;
+  m_rud_aws_f = 127.;
+  m_meng_aws_f = 127.;
+  m_seng_aws_f = 127.;
+
   m_acd_sock = socket(AF_INET, SOCK_DGRAM, 0);
   if(m_acd_sock == -1){
     cerr << "Failed to create control socket in " << m_name << "." << endl;
@@ -68,13 +75,6 @@ bool f_aws1_ui::init_run()
   m_acd_sock_addr.sin_family = AF_INET;
   m_acd_sock_addr.sin_port = htons(m_acd_port);
   set_sockaddr_addr(m_acd_sock_addr, m_acd_host);
-
-  /*
-  if(::bind(m_acd_sock, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr)) == SOCKET_ERROR){
-    cerr << "Failed to bind control socket to (" << m_acd_host << "," << m_acd_port << ")" << endl;
-    return false;
-  }
-  */
 
   if(!f_glfw_window::init_run())
     return false;
@@ -158,7 +158,7 @@ void f_aws1_ui::destroy_run()
 
 bool f_aws1_ui::proc()
 {
-
+  if(m_js != -1){
   // joystic handling (assuming JC-U3613M)
   // U: -32767
   // D: 32767
@@ -166,10 +166,19 @@ bool f_aws1_ui::proc()
   // R: 32767
   // AXES 0: 9LR 1: 9UD 2: 10LR 3: 10UD 4: XLR 5: XUD 
   // BTNS 0: 1 1: 2 2: 3 3: 4 4: 5 5: 6 7: 8 8: 9 9: 10 10: 11 12: 13
-  if(m_js != -1){
+    
+    // axis 0 is assigned to rudder
+    // axis 1 is assigned to engine control
     int naxs, nbtn;
     const float * axs = glfwGetJoystickAxes(m_js, &naxs);
     const unsigned char * btn = glfwGetJoystickButtons(m_js, &nbtn);
+    m_rud_aws_f += axs[0] * (255. / (3267. * 60.));
+    if(m_ec == EC_MAIN){
+      m_meng_aws_f -= axs[1] * (255. / (32767 * 60));
+    }else{
+      m_seng_aws_f -= axs[1] * (255. / (32767 * 60));
+    }
+
     if(m_verb){
       if(axs){
 	cout << "Axes ";
@@ -182,13 +191,17 @@ bool f_aws1_ui::proc()
       if(btn){
 	cout << "Btns ";
 	for(int ibtn = 0; ibtn < nbtn; ibtn++){
-	  cout << ibtn << ":" << btn[ibtn] << " ";
+	  cout << ibtn << ":" << (int) btn[ibtn] << " ";
 	}
 	cout << endl;
       }
     }
   }
-  
+
+  m_acp.rud_aws = (unsigned char) m_rud_aws_f;
+  m_acp.meng_aws = (unsigned char) m_meng_aws_f;
+  m_acp.seng_aws = (unsigned char) m_seng_aws_f;
+
   s_aws1_ctrl_pars acpkt;
   snd_ctrl(acpkt);
   rcv_state(acpkt);
@@ -493,23 +506,23 @@ void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
 
     switch(key){
     case GLFW_KEY_RIGHT:
-      m_acp.rud_aws = step_up(m_acp.rud_aws, m_rud_pos);
+      m_rud_aws_f = step_up(m_acp.rud_aws, m_rud_pos);
       break;
     case GLFW_KEY_LEFT:
-      m_acp.rud_aws = step_down(m_acp.rud_aws, m_rud_pos);
+      m_rud_aws_f = step_down(m_acp.rud_aws, m_rud_pos);
       break;
     case GLFW_KEY_UP:
       if(m_ec == EC_MAIN){
-	m_acp.meng_aws = step_up(m_acp.meng_aws, m_meng_pos);
+	m_meng_aws_f = step_up(m_acp.meng_aws, m_meng_pos);
       }else{
-	m_acp.seng_aws = step_up(m_acp.seng_aws, m_seng_pos);
+	m_seng_aws_f = step_up(m_acp.seng_aws, m_seng_pos);
       }
       break;
     case GLFW_KEY_DOWN:
       if(m_ec == EC_MAIN){
-	m_acp.meng_aws = step_down(m_acp.meng_aws, m_meng_pos);
+	m_meng_aws_f = step_down(m_acp.meng_aws, m_meng_pos);
       }else{
-	m_acp.seng_aws = step_down(m_acp.seng_aws, m_seng_pos);
+	m_seng_aws_f = step_down(m_acp.seng_aws, m_seng_pos);
       }
       break;
     case GLFW_KEY_E:

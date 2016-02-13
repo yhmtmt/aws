@@ -96,6 +96,9 @@ class f_aws1_ui: public f_glfw_window
     return vpos[m_num_ctrl_steps];
   }
 
+  float m_rud_aws_f;
+  float m_meng_aws_f;
+  float m_seng_aws_f;
  public:
   f_aws1_ui(const char * name);
   virtual ~f_aws1_ui();
