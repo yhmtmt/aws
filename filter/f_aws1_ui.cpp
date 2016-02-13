@@ -57,6 +57,8 @@ f_aws1_ui::~f_aws1_ui()
 
 bool f_aws1_ui::init_run()
 {
+  m_acp.ctrl = true;
+  m_acp.ctrl_src = ACS_UDP;
   m_acd_sock = socket(AF_INET, SOCK_DGRAM, 0);
   if(m_acd_sock == -1){
     cerr << "Failed to create control socket in " << m_name << "." << endl;
@@ -107,7 +109,7 @@ bool f_aws1_ui::init_run()
   sumf = sumb = 127.;
   for(int i = 1; i < m_num_ctrl_steps; i++){
     sumf += stepf;
-    sumf -= stepb;
+    sumb -= stepb;
     m_rud_pos[m_num_ctrl_steps - i] = (unsigned char) sumb;
     m_rud_pos[m_num_ctrl_steps + i] = (unsigned char) sumf;
   }
@@ -120,11 +122,11 @@ bool f_aws1_ui::init_run()
 
   m_meng_pos[m_num_ctrl_steps] = 127;
   m_meng_pos[m_num_ctrl_steps+1] = 127 + 25;
-  m_meng_pos[m_num_ctrl_steps-1] = 127 + 25;
+  m_meng_pos[m_num_ctrl_steps-1] = 127 - 25;
 
   m_seng_pos[m_num_ctrl_steps] = 127;
   m_seng_pos[m_num_ctrl_steps+1] = 127 + 25;
-  m_seng_pos[m_num_ctrl_steps-1] = 127 + 25;
+  m_seng_pos[m_num_ctrl_steps-1] = 127 - 25;
 
   sumf = 127 + 25;
   sumb = 127 - 25;
@@ -481,34 +483,37 @@ void f_aws1_ui::_mouse_button_callback(int button, int action, int mods)
 
 void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
 {
-  switch(key){
-  case GLFW_KEY_RIGHT:
-    m_acp.rud_aws = step_up(m_acp.rud_aws, m_rud_pos);
-    break;
-  case GLFW_KEY_LEFT:
-    m_acp.rud_aws = step_down(m_acp.rud_aws, m_rud_pos);
-    break;
-  case GLFW_KEY_UP:
-    if(m_ec == EC_MAIN){
-      m_acp.meng_aws = step_up(m_acp.meng_aws, m_meng_pos);
-    }else{
-      m_acp.seng_aws = step_up(m_acp.seng_aws, m_seng_pos);
+  if(action == GLFW_PRESS){
+
+    switch(key){
+    case GLFW_KEY_RIGHT:
+      m_acp.rud_aws = step_up(m_acp.rud_aws, m_rud_pos);
+      break;
+    case GLFW_KEY_LEFT:
+      m_acp.rud_aws = step_down(m_acp.rud_aws, m_rud_pos);
+      break;
+    case GLFW_KEY_UP:
+      if(m_ec == EC_MAIN){
+	m_acp.meng_aws = step_up(m_acp.meng_aws, m_meng_pos);
+      }else{
+	m_acp.seng_aws = step_up(m_acp.seng_aws, m_seng_pos);
+      }
+      break;
+    case GLFW_KEY_DOWN:
+      if(m_ec == EC_MAIN){
+	m_acp.meng_aws = step_down(m_acp.meng_aws, m_meng_pos);
+      }else{
+	m_acp.seng_aws = step_down(m_acp.seng_aws, m_seng_pos);
+      }
+      break;
+    case GLFW_KEY_E:
+      if(m_ec == EC_MAIN){
+	m_ec = EC_SUB;
+      }else{
+	m_ec = EC_MAIN;
+      }
+    default:
+      break;
     }
-    break;
-  case GLFW_KEY_DOWN:
-    if(m_ec == EC_MAIN){
-      m_acp.meng_aws = step_down(m_acp.meng_aws, m_meng_pos);
-    }else{
-      m_acp.seng_aws = step_down(m_acp.seng_aws, m_seng_pos);
-    }
-    break;
-  case GLFW_KEY_E:
-    if(m_ec == EC_MAIN){
-      m_ec = EC_SUB;
-    }else{
-      m_ec = EC_MAIN;
-    }
-  default:
-    break;
   }
 }

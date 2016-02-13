@@ -54,7 +54,7 @@ class f_aws1_ui: public f_glfw_window
   unsigned char * m_meng_pos;
   unsigned char * m_seng_pos;
 
-  int step_down(unsigned char val, unsigned char * vpos){
+  unsigned char step_down(unsigned char val, unsigned char * vpos){
     int i = m_num_ctrl_steps;
     int iup = 2 * m_num_ctrl_steps, idown = 0;
     do{
@@ -63,19 +63,19 @@ class f_aws1_ui: public f_glfw_window
       }else if(vpos[i] > val){
 	iup = i;
       }else{
-	return max(i - 1, 0);
+	return vpos[max(i - 1, 0)];
       }
 
       i = (idown + iup) >> 1;
       if(i == idown){
-	return idown;
+	return vpos[idown];
       }
     }while(1);
 
-    return m_num_ctrl_steps;
+    return vpos[m_num_ctrl_steps];
   }
 
-  int step_up(unsigned char val, unsigned char * vpos){
+  unsigned char step_up(unsigned char val, unsigned char * vpos){
     int i = m_num_ctrl_steps;
     int iup = 2 * m_num_ctrl_steps, idown = 0;
     do{
@@ -84,16 +84,16 @@ class f_aws1_ui: public f_glfw_window
       }else if(vpos[i] > val){
 	iup = i;
       }else{
-	return max(i + 1, 2 * m_num_ctrl_steps - 1);
+	return vpos[min(i + 1, 2 * m_num_ctrl_steps)];
       }
 
       i = (idown + iup) >> 1;
       if(i == idown){
-	return iup;
+	return vpos[iup];
       }
     }while(1);
 
-    return m_num_ctrl_steps;
+    return vpos[m_num_ctrl_steps];
   }
 
  public:
