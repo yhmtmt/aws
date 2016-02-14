@@ -172,11 +172,18 @@ bool f_aws1_ui::proc()
     int naxs, nbtn;
     const float * axs = glfwGetJoystickAxes(m_js, &naxs);
     const unsigned char * btn = glfwGetJoystickButtons(m_js, &nbtn);
-    m_rud_aws_f += axs[0] * (255. / (3267. * 60.));
+    m_rud_aws_f += axs[0] * (255. / 60.);
+    m_rud_aws_f = min((float)255.0, m_rud_aws_f);
+    m_rud_aws_f = max((float)0.0, m_rud_aws_f);
+
     if(m_ec == EC_MAIN){
-      m_meng_aws_f -= axs[1] * (255. / (32767 * 60));
+      m_meng_aws_f -= axs[1] * (255. / 60);
+      m_meng_aws_f = min((float)255.0, m_meng_aws_f);
+      m_meng_aws_f = max((float)0.0, m_meng_aws_f);
     }else{
-      m_seng_aws_f -= axs[1] * (255. / (32767 * 60));
+      m_seng_aws_f -= axs[1] * (255. / 60);
+      m_seng_aws_f = min((float) 255.0, m_seng_aws_f);
+      m_seng_aws_f = max((float)0.0, m_seng_aws_f);
     }
 
     if(m_verb){
