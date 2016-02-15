@@ -59,12 +59,6 @@ protected:
 	bool m_blk_cmd;
 	void proc_command();
 
-	// getting a pointer of a channel object by its name.
-	ch_base * get_channel(const char * name);
-
-	// getting a pointer of a filter object by its name
-	f_base * get_filter(const char * name);
-
 	void clear();
 
 	// flag for exiting function run()
@@ -106,6 +100,12 @@ protected:
 public:
 	c_aws(int argc, char ** argv);
 	virtual ~c_aws();
+
+	// getting a pointer of a channel object by its name.
+	ch_base * get_channel(const char * name);
+
+	// getting a pointer of a filter object by its name
+	f_base * get_filter(const char * name);
 
 	bool push_command(const char * cmd_str, char * ret_str, bool & ret_stat);
 

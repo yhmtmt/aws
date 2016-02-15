@@ -88,6 +88,13 @@ bool f_base::s_fpar::set(const char * valstr){
 			}
 		}
 		break;
+	case CH:
+		*ppch = m_paws->get_channel(valstr);
+		if(strcmp(typeid(*ppch).name(), type_name) != 0){
+			*ppch = NULL;
+			return false;
+		}
+		break;
 	}
 	return true;
 }

@@ -177,7 +177,7 @@ protected:
 		const char * name; // name of the parameter
 		const char * explanation; // explanation of the parameter
 		enum e_par_type{
-			F64, S64, U64, F32, S32, U32, S16, U16, S8, U8, BIN, CSTR, ENUM, UNKNOWN
+			F64, S64, U64, F32, S32, U32, S16, U16, S8, U8, BIN, CSTR, ENUM, CH, UNKNOWN
 		} type; 	// parameter type
 
 		union{
@@ -192,13 +192,16 @@ protected:
 			char * s8;
 			unsigned char * u8;
 			char * cstr;
+			ch_base ** ppch ;
 			bool * bin;
 		}; // parameter variable (shared field)
 
 		int len; // length of the string (only for CSTR) or 
 				// lengtho of the string list of ENUM
-		const char ** str_enum; // string list for ENUM
-
+		union{
+			const char ** str_enum; // string list for ENUM
+			const char * type_name;
+		};
 		// A value specified in valstr as a string is decoded and
 		// stored into variable of corresponding type.
 		// only type CSTR checks the length of the buffer. 
@@ -315,6 +318,14 @@ protected:
 		par.type = s_fpar::ENUM;
 		par.len = len;
 		par.str_enum = strlst;
+		register_fpar_common(name, expl, par);
+	}
+
+	void register_fpar(const char * name, ch_base ** ppch, const char * type_name, const char * expl = NULL){
+		s_fpar par;
+		par.ppch = ppch;
+		par.type = s_fpar::CH;
+		par.type_name = type_name;
 		register_fpar_common(name, expl, par);
 	}
 
