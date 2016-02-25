@@ -17,6 +17,9 @@
 
 #include <iostream>
 #include <fstream>
+#include <vector>
+#include <map>
+
 using namespace std;
 
 #include "f_ahrs.h"
