@@ -24,12 +24,23 @@ using namespace std;
 
 #include "f_ahrs.h"
 
-f_ahrs::f_ahrs(const char * name): f_base(name)
+const char * f_ahrs::m_str_razor_cmd[ERC_UNDEF] = {
+	"o0", "o1", 
+	"ob", "ot", "oc", "on", 
+	"osct", "osrt", "osbt", 
+	"oscb", "osrb", "osbb",
+	"f", "saw"
+};
+
+f_ahrs::f_ahrs(const char * name): f_base(name), m_cmd(ERC_UNDEF), m_omode(ERC_OT), 
+	m_ocont(true), m_sync(false), m_rbuf_tail(0), m_tbuf_tail(0)
 {
 	m_dname[0] = '\0';
+
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
 	register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
 	register_fpar("br", &m_br, "Baud rate.");
+	register_fpar("cmd", (int*)&m_cmd, (int)ERC_UNDEF, m_str_razor_cmd, "Command for Razor AHRS.");
 }
 
 f_ahrs::~f_ahrs()
@@ -56,5 +67,177 @@ void f_ahrs::destroy_run()
 
 bool f_ahrs::proc()
 {
+	// command handling
+	int cmdlen = set_buf_cmd(m_cmd);
+	switch(m_cmd){
+	case ERC_O0:
+		write_serial(m_hserial, m_wbuf, cmdlen);
+		m_ocont = false;
+		break;
+	case ERC_O1:
+		write_serial(m_hserial, m_wbuf, cmdlen);
+		m_cmd = ERC_S;
+		m_ocont = true;
+		break;
+	case ERC_OB:
+	case ERC_OT:
+	case ERC_OSCT:
+	case ERC_OSRT:
+	case ERC_OSBT:
+	case ERC_OSCB:
+	case ERC_OSRB:
+	case ERC_OSBB:
+		write_serial(m_hserial, m_wbuf, cmdlen);
+		m_cmd = ERC_S;
+		m_omode = m_cmd;
+		break;
+	case ERC_S:
+		write_serial(m_hserial, m_wbuf, cmdlen);
+		m_sync = true;
+		break;
+	case ERC_OC:
+	case ERC_ON:
+	case ERC_F:
+	default:
+		break;
+	}
+
+	if(m_cmd == ERC_S)
+		return true;
+
+	// sensor output handling
+	m_rbuf_tail += read_serial(m_hserial, m_rbuf + m_rbuf_tail, 1024);
+	if(m_sync){
+		// seeking for #SYNCHaw<cr><lf>
+		while(seek_txt_buf()){
+			if(strcmp("#SYNCHaw", m_tbuf) == 0){
+				break;
+			}
+		}
+	}
+
+	switch(m_omode){
+	case ERC_OB: 
+		// total 12byte
+		// <Y 4byte> <P 4byte> <R 4byte> 
+		set_bin_ypr();
+		break;
+	case ERC_OT:
+		// YPR=xxxx,xxxx,xxxx<cr><lf>
+	case ERC_OSCT:
+		// A-C=xxxx,xxxx,xxxx<cr><lf> 
+		// M-C=xxxx,xxxx,xxxx<cr><lf>
+		// G-C=xxxx,xxxx,xxxx<cr><lf>
+		break;
+	case ERC_OSRT:
+		// A-R=xxxx,xxxx,xxxx<cr><lf> 
+		// M-R=xxxx,xxxx,xxxx<cr><lf>
+		// G-R=xxxx,xxxx,xxxx<cr><lf>
+	case ERC_OSBT:
+		// A-R=xxxx,xxxx,xxxx<cr><lf> 
+		// M-R=xxxx,xxxx,xxxx<cr><lf>
+		// G-R=xxxx,xxxx,xxxx<cr><lf>
+		// A-C=xxxx,xxxx,xxxx<cr><lf> 
+		// M-C=xxxx,xxxx,xxxx<cr><lf>
+		// G-C=xxxx,xxxx,xxxx<cr><lf>
+		while(seek_txt_buf()){
+			dec_tok_val();
+		}
+		break;
+	case ERC_OSCB:
+		// total 36byte
+		// <A-C x 4byte> <A-C y 4byte> <A-C z 4byte>
+		// <M-C x 4byte> <M-C y 4byte> <M-C z 4byte>
+		// <G-C x 4byte> <G-C y 4byte> <G-C z 4byte>
+		set_bin_9(&m_cal);
+		break;
+	case ERC_OSRB:
+		// total 36byte
+		// <A-R x 4byte> <A-R y 4byte> <A-R z 4byte>
+		// <M-R x 4byte> <M-R y 4byte> <M-R z 4byte>
+		// <G-R x 4byte> <G-R y 4byte> <G-R z 4byte>
+		set_bin_9(&m_raw);
+		break;
+	case ERC_OSBB:
+		// total 72byte
+		// <A-R x 4byte> <A-R y 4byte> <A-R z 4byte>
+		// <M-R x 4byte> <M-R y 4byte> <M-R z 4byte>
+		// <G-R x 4byte> <G-R y 4byte> <G-R z 4byte>
+		// <A-C x 4byte> <A-C y 4byte> <A-C z 4byte>
+		// <M-C x 4byte> <M-C y 4byte> <M-C z 4byte>
+		// <G-C x 4byte> <G-C y 4byte> <G-C z 4byte>
+		set_bin_9x2(&m_raw, &m_cal);
+		break;
+	}
 	return true;
+}
+
+int f_ahrs::seek_txt_buf()
+{
+	char * ptbuf = m_tbuf + m_tbuf_tail;
+	char * prbuf = m_rbuf + m_rbuf_head;
+
+	int rbuflen = m_rbuf_tail - m_rbuf_head; // length of the string remained in the rbuf
+	int len = 0; // length of the string read from rbuf.
+
+	if(m_tbuf_tail == 0){
+		// seeking for the token head
+		for(;*prbuf != '#' && len < rbuflen; prbuf++, len++);
+
+		if(len == rbuflen){
+			m_rbuf_tail = m_rbuf_head = 0;
+			return 0;
+		}
+
+		*ptbuf = *prbuf; prbuf++; len++;
+
+		if(len == rbuflen){
+			m_rbuf_tail = m_rbuf_head = 0;
+			m_tbuf_tail += 1;
+			return 0;
+		}
+
+		m_tbuf_tail = 1;
+		m_rbuf_head += len;
+		rbuflen -= len;
+		len = 0;
+	}
+
+	int tbuflen = 1024 - m_tbuf_tail;
+	int buflen = min(rbuflen, tbuflen);
+
+	// Seeking for CRLF, and extract the token.
+	while(1){
+		// seeking for CR
+		for(;*prbuf != 0x0d && len < buflen; *ptbuf = *prbuf, ptbuf++, prbuf++, len++);
+
+		if(len == rbuflen){ // read buffer is ran out
+			m_rbuf_tail = m_rbuf_head = 0;
+			m_tbuf_tail += len;
+			return 0;
+		}else if(len == tbuflen){ // token buffer is over
+			m_tbuf_tail = 0;
+		}
+
+		*ptbuf = *prbuf; prbuf++; len++;
+
+		if(len == rbuflen){ // read buffer is ran out
+			m_rbuf_tail = m_rbuf_head = 0;
+			m_tbuf_tail += len;
+			return 0;
+		}else if(len == tbuflen){ // token buffer is over
+			m_tbuf_tail = 0;
+		}
+
+		if(*prbuf == 0x0a){ // LF  is found
+			*ptbuf = *prbuf; prbuf++; len++;
+			*ptbuf = '\0';
+			m_rbuf_head += len;
+			len += m_tbuf_tail;
+			m_tbuf_tail = 0;
+			return len;
+		}
+	}
+
+	return 0;
 }
