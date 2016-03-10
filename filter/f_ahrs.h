@@ -42,6 +42,7 @@ protected:
 	} m_cmd, m_omode;
 	bool m_ocont;
 	bool m_sync;
+	bool m_verb;
 	
 	static const char * m_str_razor_cmd[ERC_UNDEF];
 

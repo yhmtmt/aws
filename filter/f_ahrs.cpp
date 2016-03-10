@@ -33,7 +33,7 @@ const char * f_ahrs::m_str_razor_cmd[ERC_UNDEF] = {
 };
 
 f_ahrs::f_ahrs(const char * name): f_base(name), m_cmd(ERC_UNDEF), m_omode(ERC_OT), 
-	m_ocont(true), m_sync(false), m_rbuf_tail(0), m_tbuf_tail(0)
+	m_ocont(true), m_sync(false), m_rbuf_tail(0), m_tbuf_tail(0), m_verb(false)
 {
 	m_dname[0] = '\0';
 
@@ -41,6 +41,7 @@ f_ahrs::f_ahrs(const char * name): f_base(name), m_cmd(ERC_UNDEF), m_omode(ERC_O
 	register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
 	register_fpar("br", &m_br, "Baud rate.");
 	register_fpar("cmd", (int*)&m_cmd, (int)ERC_UNDEF, m_str_razor_cmd, "Command for Razor AHRS.");
+	register_fpar("verb", &m_verb, "Verbose mode for Debug");
 }
 
 f_ahrs::~f_ahrs()
@@ -169,6 +170,43 @@ bool f_ahrs::proc()
 		set_bin_9x2(&m_raw, &m_cal);
 		break;
 	}
+
+	if(m_verb){
+		bool braw = false;
+		bool bcal = false;
+		switch(m_omode){
+		case ERC_OSRT:
+		case ERC_OSRB:
+		case ERC_OSBB:
+		case ERC_OSBT:
+			braw = true;
+		}
+
+		switch(m_omode){
+		case ERC_OSCB:
+		case ERC_OSCT:
+		case ERC_OSBB:
+		case ERC_OSBT:
+			bcal = true;
+		}
+
+		if(braw){
+			cout << "A-R=" << m_raw.ax << " " << m_raw.ay << " " << m_raw.az << endl;
+			cout << "M-R=" << m_raw.mx << " " << m_raw.my << " " << m_raw.mz << endl;
+			cout << "G-R=" << m_raw.gx << " " << m_raw.gy << " " << m_raw.gz << endl;
+		}
+
+		if(bcal){
+			cout << "A-C=" << m_cal.ax << " " << m_cal.ay << " " << m_cal.az << endl;
+			cout << "M-C=" << m_cal.mx << " " << m_cal.my << " " << m_cal.mz << endl;
+			cout << "G-C=" << m_cal.gx << " " << m_cal.gy << " " << m_cal.gz << endl;
+		}
+
+		if(!braw && !bcal){
+			cout << "YPR=" << m_ypr.y << " " << m_ypr.p << " " << m_ypr.r << endl;
+		}
+	}
+
 	return true;
 }
 
