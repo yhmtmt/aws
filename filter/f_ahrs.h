@@ -18,18 +18,19 @@
 
 #include "../util/aws_serial.h"
 #include "f_base.h"
+#define AHRS_BUF 1024
 
 class f_ahrs: public f_base
 {
 protected:
 	AWS_SERIAL m_hserial;
-	char m_wbuf[1024];
-	char m_rbuf[1024];
+	char m_wbuf[AHRS_BUF];
+	char m_rbuf[AHRS_BUF];
 	int m_rbuf_head;
 	int m_rbuf_tail;
-	char m_tbuf[1024];
+	char m_tbuf[AHRS_BUF];
 	int m_tbuf_tail;
-
+	int m_readlen;
 	char m_dname[1024];
 	unsigned short m_port;
 	unsigned int m_br;
@@ -87,7 +88,8 @@ protected:
 		const char * ptr = m_rbuf + rblen - res - sz + m_rbuf_head;
 		memcpy((void*) &m_ypr, (void*) ptr, (size_t) sz);
 		ptr += sz;
-		memcpy((void*) m_rbuf, (void*) ptr, (size_t) res);
+		for(int i = 0; i < res; i++, ptr++)
+			m_rbuf[i] = *ptr;
 		m_rbuf_head = 0;
 		m_rbuf_tail = res;
 		return sz;
@@ -104,7 +106,8 @@ protected:
 		const char * ptr = m_rbuf + m_rbuf_tail - res - sz;
 		memcpy((void*) p9, (void*) ptr, (size_t) sz);
 		ptr += sz;
-		memcpy((void*) m_rbuf, (void*) ptr, (size_t) res);
+		for(int i = 0; i < res; i++, ptr++)
+			m_rbuf[i] = *ptr;
 		m_rbuf_head = 0;
 		m_rbuf_tail = res;
 		return sz;
@@ -123,7 +126,9 @@ protected:
 		ptr += sizeof(s_ahrs9);
 		memcpy((void*) p92, (void*) ptr, sizeof(s_ahrs9));
 		ptr += sizeof(s_ahrs9);
-		memcpy((void*) m_rbuf, (void*) ptr, (size_t) res);
+		for(int i = 0; i < res; i++, ptr++)
+			m_rbuf[i] = *ptr;
+		m_rbuf_head = 0;
 		m_rbuf_tail = res;
 		return sz;
 	}

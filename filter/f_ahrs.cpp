@@ -34,12 +34,13 @@ const char * f_ahrs::m_str_razor_cmd[ERC_UNDEF] = {
 
 f_ahrs::f_ahrs(const char * name): f_base(name), m_cmd(ERC_OT), m_omode(ERC_OT), 
 	m_ocont(true), m_sync(false), m_rbuf_tail(0), m_rbuf_head(0), m_tbuf_tail(0),
-	m_verb(false)
+	m_verb(false), m_readlen(32)
 {
 	m_dname[0] = '\0';
 
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
 	register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
+	register_fpar("rlen", &m_readlen, "Maximum read length of the serial port");
 	register_fpar("br", &m_br, "Baud rate.");
 	register_fpar("cmd", (int*)&m_cmd, (int)ERC_UNDEF, m_str_razor_cmd, "Command for Razor AHRS.");
 	register_fpar("verb", &m_verb, "Verbose mode for Debug");
@@ -108,12 +109,12 @@ bool f_ahrs::proc()
 	if(m_sync){
 		m_cmd = ERC_UNDEF;
 		// seeking for #SYNCHaw<cr><lf>
-		int len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, 1024 - m_rbuf_tail);
+		int len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, m_readlen - m_rbuf_tail);
 		m_rbuf_tail += len;
-
-		while(m_rbuf_tail){
+		int i, j = 0;
+		while(1){
 			const char * sync_str = "#SYNCHaw\r\n";
-			for(int i = m_rbuf_head, j = 0; i < m_rbuf_tail; i++){
+			for(i = m_rbuf_head; i < m_rbuf_tail; i++){
 				if(m_rbuf[i] == sync_str[j])
 					j++;
 				else 
@@ -125,18 +126,23 @@ bool f_ahrs::proc()
 				}
 			}
 
-			if(m_rbuf_head == m_rbuf_tail){
+			if(i == m_rbuf_tail){
 				m_rbuf_head = m_rbuf_tail = 0;
 			}
 
 			if(!m_sync)
 				break;
 
-			len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, 1024 - m_rbuf_tail);
+			len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, m_readlen - m_rbuf_tail);
 			m_rbuf_tail += len;
 		}
+		
+		for(i = m_rbuf_head, j = 0; i < m_rbuf_tail; i++, j++)
+			m_rbuf[j] = m_rbuf[i];
+		m_rbuf_tail = m_rbuf_tail - m_rbuf_head;
+		m_rbuf_head = 0;
 	}else{	
-		m_rbuf_tail += read_serial(m_hserial, m_rbuf + m_rbuf_tail, 1024 - m_rbuf_tail);
+		m_rbuf_tail += read_serial(m_hserial, m_rbuf + m_rbuf_tail, m_readlen - m_rbuf_tail);
 	}
 
 	if(m_cmd == ERC_S)
@@ -265,7 +271,7 @@ int f_ahrs::seek_txt_buf()
 		len = 0;
 	}
 
-	int tbuflen = 1024 - m_tbuf_tail;
+	int tbuflen = m_readlen - m_tbuf_tail;
 	int buflen = min(rbuflen, tbuflen);
 
 	// Seeking for CRLF, and extract the token.
