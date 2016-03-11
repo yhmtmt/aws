@@ -32,8 +32,9 @@ const char * f_ahrs::m_str_razor_cmd[ERC_UNDEF] = {
 	"f", "saw"
 };
 
-f_ahrs::f_ahrs(const char * name): f_base(name), m_cmd(ERC_UNDEF), m_omode(ERC_OT), 
-	m_ocont(true), m_sync(false), m_rbuf_tail(0), m_tbuf_tail(0), m_verb(false)
+f_ahrs::f_ahrs(const char * name): f_base(name), m_cmd(ERC_OT), m_omode(ERC_OT), 
+	m_ocont(true), m_sync(false), m_rbuf_tail(0), m_rbuf_head(0), m_tbuf_tail(0),
+	m_verb(false)
 {
 	m_dname[0] = '\0';
 
@@ -89,8 +90,8 @@ bool f_ahrs::proc()
 	case ERC_OSRB:
 	case ERC_OSBB:
 		write_serial(m_hserial, m_wbuf, cmdlen);
-		m_cmd = ERC_S;
 		m_omode = m_cmd;
+		m_cmd = ERC_S;
 		break;
 	case ERC_S:
 		write_serial(m_hserial, m_wbuf, cmdlen);
@@ -103,19 +104,43 @@ bool f_ahrs::proc()
 		break;
 	}
 
+	// sensor output handling	
+	if(m_sync){
+		m_cmd = ERC_UNDEF;
+		// seeking for #SYNCHaw<cr><lf>
+		int len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, 1024 - m_rbuf_tail);
+		m_rbuf_tail += len;
+
+		while(m_rbuf_tail){
+			const char * sync_str = "#SYNCHaw\r\n";
+			for(int i = m_rbuf_head, j = 0; i < m_rbuf_tail; i++){
+				if(m_rbuf[i] == sync_str[j])
+					j++;
+				else 
+					j = 0;
+				if(j == 10){
+					m_sync = false;
+					m_rbuf_head = i + 1;
+					break;
+				}
+			}
+
+			if(m_rbuf_head == m_rbuf_tail){
+				m_rbuf_head = m_rbuf_tail = 0;
+			}
+
+			if(!m_sync)
+				break;
+
+			len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, 1024 - m_rbuf_tail);
+			m_rbuf_tail += len;
+		}
+	}else{	
+		m_rbuf_tail += read_serial(m_hserial, m_rbuf + m_rbuf_tail, 1024 - m_rbuf_tail);
+	}
+
 	if(m_cmd == ERC_S)
 		return true;
-
-	// sensor output handling
-	m_rbuf_tail += read_serial(m_hserial, m_rbuf + m_rbuf_tail, 1024);
-	if(m_sync){
-		// seeking for #SYNCHaw<cr><lf>
-		while(seek_txt_buf()){
-			if(strcmp("#SYNCHaw", m_tbuf) == 0){
-				break;
-			}
-		}
-	}
 
 	switch(m_omode){
 	case ERC_OB: 
@@ -129,7 +154,6 @@ bool f_ahrs::proc()
 		// A-C=xxxx,xxxx,xxxx<cr><lf> 
 		// M-C=xxxx,xxxx,xxxx<cr><lf>
 		// G-C=xxxx,xxxx,xxxx<cr><lf>
-		break;
 	case ERC_OSRT:
 		// A-R=xxxx,xxxx,xxxx<cr><lf> 
 		// M-R=xxxx,xxxx,xxxx<cr><lf>
@@ -227,7 +251,7 @@ int f_ahrs::seek_txt_buf()
 			return 0;
 		}
 
-		*ptbuf = *prbuf; prbuf++; len++;
+		*ptbuf = *prbuf; ptbuf++; prbuf++; len++;
 
 		if(len == rbuflen){
 			m_rbuf_tail = m_rbuf_head = 0;
@@ -257,7 +281,7 @@ int f_ahrs::seek_txt_buf()
 			m_tbuf_tail = 0;
 		}
 
-		*ptbuf = *prbuf; prbuf++; len++;
+		*ptbuf = *prbuf; ptbuf++; prbuf++; len++;
 
 		if(len == rbuflen){ // read buffer is ran out
 			m_rbuf_tail = m_rbuf_head = 0;
@@ -268,7 +292,7 @@ int f_ahrs::seek_txt_buf()
 		}
 
 		if(*prbuf == 0x0a){ // LF  is found
-			*ptbuf = *prbuf; prbuf++; len++;
+			*ptbuf = *prbuf; ptbuf++; prbuf++; len++;
 			*ptbuf = '\0';
 			m_rbuf_head += len;
 			len += m_tbuf_tail;

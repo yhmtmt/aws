@@ -88,6 +88,7 @@ protected:
 		memcpy((void*) &m_ypr, (void*) ptr, (size_t) sz);
 		ptr += sz;
 		memcpy((void*) m_rbuf, (void*) ptr, (size_t) res);
+		m_rbuf_head = 0;
 		m_rbuf_tail = res;
 		return sz;
 	}
@@ -100,10 +101,11 @@ protected:
 			return 0;
 
 		int res = rblen % sz;
-		const char * ptr = m_rbuf + rblen - res - sz + m_rbuf_head;
+		const char * ptr = m_rbuf + m_rbuf_tail - res - sz;
 		memcpy((void*) p9, (void*) ptr, (size_t) sz);
 		ptr += sz;
 		memcpy((void*) m_rbuf, (void*) ptr, (size_t) res);
+		m_rbuf_head = 0;
 		m_rbuf_tail = res;
 		return sz;
 	}
@@ -116,7 +118,7 @@ protected:
 			return 0;
 
 		int res = rblen % sz;
-		const char * ptr = m_rbuf + rblen - res - sz + m_rbuf_head;
+		const char * ptr = m_rbuf + m_rbuf_tail - res - sz;
 		memcpy((void*) p91, (void*) ptr, sizeof(s_ahrs9));
 		ptr += sizeof(s_ahrs9);
 		memcpy((void*) p92, (void*) ptr, sizeof(s_ahrs9));
