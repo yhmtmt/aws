@@ -144,7 +144,7 @@ void ch_base::register_factory()
 #include "filter/f_com.h"
 #include "filter/f_event.h"
 #include "filter/f_fep01.h"
-
+#include "filter/f_ahrs.h"
 #include "filter/f_time.h"
 
 
@@ -275,4 +275,6 @@ void f_base::register_factory()
 	register_factory<f_rec_data>("rd");
 
 	register_factory<f_time>("tsync");
+
+	register_factory<f_ahrs>("ahrs");
 }
