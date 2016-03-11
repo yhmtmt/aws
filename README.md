@@ -69,6 +69,7 @@ You can choose cpu type from x64, x86, and arm. For Zynq with OSL, first configu
     make "ZYNQ=y"
     
 Remote commands are also built simultaneously.  The binaries can be installed by  
+
     make install
 
 to the directory "bin". The directory should be prepared by yourself. Otherwise, you can specify the install directory as follow,  
