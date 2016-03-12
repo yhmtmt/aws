@@ -34,7 +34,7 @@ const char * f_ahrs::m_str_razor_cmd[ERC_UNDEF] = {
 
 f_ahrs::f_ahrs(const char * name): f_base(name), m_cmd(ERC_OT), m_omode(ERC_OT), 
 	m_ocont(true), m_sync(false), m_rbuf_tail(0), m_rbuf_head(0), m_tbuf_tail(0),
-	m_verb(false), m_readlen(32)
+	m_verb(false), m_readlen(1024)
 {
 	m_dname[0] = '\0';
 
@@ -112,6 +112,7 @@ bool f_ahrs::proc()
 		int len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, m_readlen - m_rbuf_tail);
 		m_rbuf_tail += len;
 		int i, j = 0;
+		int tocnt = 0;
 		while(1){
 			const char * sync_str = "#SYNCHaw\r\n";
 			for(i = m_rbuf_head; i < m_rbuf_tail; i++){
@@ -135,6 +136,13 @@ bool f_ahrs::proc()
 
 			len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, m_readlen - m_rbuf_tail);
 			m_rbuf_tail += len;
+
+			tocnt++;
+			if(tocnt == 1000000){
+				cout << "Synchronization failed." << endl;
+				m_cmd = ERC_S;
+				break;
+			}
 		}
 		
 		for(i = m_rbuf_head, j = 0; i < m_rbuf_tail; i++, j++)

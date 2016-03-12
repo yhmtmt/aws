@@ -110,11 +110,11 @@ AWS_SERIAL open_serial(unsigned short port, int cbr)
 		return NULL_SERIAL;
 	}
 
-	timeout.ReadIntervalTimeout = 500;
+	timeout.ReadIntervalTimeout = 10;
 	timeout.ReadTotalTimeoutMultiplier = 0;
-	timeout.ReadTotalTimeoutConstant = 500;
+	timeout.ReadTotalTimeoutConstant = 10;
 	timeout.WriteTotalTimeoutMultiplier = 0;
-	timeout.WriteTotalTimeoutConstant = 500;
+	timeout.WriteTotalTimeoutConstant = 10;
 	fSuccess = SetCommTimeouts(h, &timeout);
 	if(!fSuccess){
 		CloseHandle(h);
