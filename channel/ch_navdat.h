@@ -60,10 +60,6 @@ public:
 		m_ctrl = ctrl;
 		unlock();
 	}
-
-	virtual void tran()
-	{
-	}
 };
 
 class ch_navdat: public ch_base
@@ -131,10 +127,6 @@ public:
 		out << "arrpy:"<< m_arroll * (180/PI) << "," << m_arpitch * (180/PI) << "," << m_aryaw * (180/PI) << "(deg/s)" << endl;
 		out << "ahvswsg:" << m_aheave << "," << m_asway << "," << m_asurge << "(m/ss)" << endl;
 		*/
-	}
-
-	virtual void tran()
-	{
 	}
 };
 

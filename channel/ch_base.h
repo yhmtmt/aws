@@ -85,8 +85,6 @@ public:
 		snprintf(rcmd.get_ret_str(), RET_LEN, "%s %d", m_name, ich);
 	}
 
-	virtual void tran() = 0;
-
 	// for channel logging
 	virtual bool write(f_base * pf, ofstream & fout, long long t)
 	{

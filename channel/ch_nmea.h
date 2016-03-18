@@ -107,10 +107,6 @@ public:
 		return true;
 	}
 
-	virtual void tran()
-	{
-	}
-
 	// for channel logging
 	virtual bool write(f_base * pf, ofstream & fout, long long t)
 	{

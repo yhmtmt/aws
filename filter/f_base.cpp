@@ -194,7 +194,6 @@ void f_base::fthread()
 	}
 
 	if(m_bactive){		
-		tran_chout();
 		calc_time_diff();
 
 		if (!proc()){
@@ -231,7 +230,6 @@ void * f_base::fthread(void * ptr)
 			filter->logoch();
 		}
 
-		filter->tran_chout();
 		filter->calc_time_diff();
 
 		if (!filter->m_bochrep){

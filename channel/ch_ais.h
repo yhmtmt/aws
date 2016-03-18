@@ -216,10 +216,6 @@ public:
 		unlock();
 		return pabk;
 	}
-
-	virtual void tran()
-	{
-	}
 };
 
 
@@ -328,10 +324,6 @@ public:
 		m_bt = false;
 		unlock();
 		return m_bt;
-	}
-
-	virtual void tran()
-	{
 	}
 };
 

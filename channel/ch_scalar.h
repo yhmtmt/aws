@@ -51,9 +51,6 @@ public:
 		return true;
 	}
 
-	virtual void tran()
-	{
-	}
 };
 
 class ch_ptzctrl: public ch_base
@@ -117,10 +114,6 @@ public:
 			return false;
 		m_bz = false;
 		return true;
-	}
-
-	virtual void tran()
-	{
 	}
 };
 

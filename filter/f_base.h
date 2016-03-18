@@ -359,16 +359,6 @@ protected:
 	static pthread_mutex_t m_mutex; 
 	static pthread_cond_t m_cond;	
 
-	// swap back buffer of output channels by calling ch_base::tran function.
-	// some channel uses back buffer and the swapping timing is immediately after the proc function end.
-	void tran_chout(){
-		for(vector<ch_base*>::iterator itr = m_chout.begin(); itr != m_chout.end(); itr++){
-			if(*itr == NULL)
-				continue;
-			(*itr)->tran();
-		}
-	}
-
 	virtual bool init_run()
 	{
 		return true;

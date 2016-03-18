@@ -82,10 +82,6 @@ public:
 		unlock();
 		return i;
 	}
-
-	virtual void tran(){
-		return;
-	}
 };
 
 #endif

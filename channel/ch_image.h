@@ -20,9 +20,24 @@
 
 class ch_image: public ch_base
 {
+protected:
+	pthread_mutex_t m_mtx_bk, m_mtx_fr;
 public:
-	ch_image(const char * name):ch_base(name){}
-	virtual ~ch_image(){}
+	ch_image(const char * name):ch_base(name)
+	{
+		pthread_mutex_init(&m_mtx_bk, NULL);
+		pthread_mutex_init(&m_mtx_fr, NULL);
+	}
+	virtual ~ch_image()
+	{
+		pthread_mutex_destroy(&m_mtx_bk);
+		pthread_mutex_destroy(&m_mtx_fr);
+	}
+
+	void lock_fr(){pthread_mutex_lock(&m_mtx_fr);};
+	void unlock_fr(){pthread_mutex_unlock(&m_mtx_fr);};
+	void lock_bk(){pthread_mutex_lock(&m_mtx_bk);};
+	void unlock_bk(){pthread_mutex_unlock(&m_mtx_bk);};
 
 	virtual Mat get_img(long long & t) = 0;
 	virtual Mat get_img(long long & t, long long & ifrm) = 0;
@@ -35,12 +50,12 @@ class ch_image_cln: public ch_image
 {
 protected:
 	int m_back, m_front;
-	bool m_bnew;
+	
 	Mat m_img[2];
 	long long m_time[2]; // frame time (aws time)
 	long long m_ifrm[2]; // frame index (if available.)
 public:
-	ch_image_cln(const char * name):ch_image(name), m_front(0), m_back(1), m_bnew(false)
+	ch_image_cln(const char * name):ch_image(name), m_front(0), m_back(1)
 	{
 		m_time[0] = m_time[1] = 0;
 		m_ifrm[0] = m_ifrm[1] = -1;
@@ -52,90 +67,63 @@ public:
 
 	virtual Mat get_img(long long & t){
 		Mat img;
-		if(m_img[m_front].empty())
+		lock_fr();
+		if(m_img[m_front].empty()){
+			unlock_fr();
 			return img;
+		}
 
-		lock();
 		img = m_img[m_front].clone();
 		t = m_time[m_front];
-		unlock();
+		unlock_fr();
 		return img;
 	}
 
 	virtual Mat get_img(long long & t, long long & ifrm){
 		Mat img;
-		if(m_img[m_front].empty())
+		lock_fr();
+		if(m_img[m_front].empty()){
+			unlock_fr();
 			return img;
+		}
 
-		lock();
 		img = m_img[m_front].clone();
 		t = m_time[m_front];
 		ifrm = m_ifrm[m_front];
-		unlock();
+		unlock_fr();
 		return img;
 	}
 
 	virtual void set_img(Mat & img, long long t){
-		lock();
-		m_bnew = true;
+		lock_bk();
 		m_img[m_back] = img;
 		m_time[m_back] = t;
-		unlock();
-	}
-
-	virtual void set_img(Mat & img, long long t, long long ifrm){
-		lock();
-		m_bnew = true;
-		m_img[m_back] = img;
-		m_time[m_back] = t;
-		m_ifrm[m_back] = ifrm;
-		unlock();
-	}
-
-	// swap front and back buffers.
-	virtual void tran()
-	{
-		if(!m_bnew)
-			return;
-		lock();
+		lock_fr();
 		int tmp = m_front;
 		m_front = m_back;
 		m_back = tmp;
-		m_bnew = false;
-		unlock();
+		unlock_fr();
+		unlock_bk();
+	}
+
+	virtual void set_img(Mat & img, long long t, long long ifrm){
+		lock_bk();
+		m_img[m_back] = img;
+		m_time[m_back] = t;
+		m_ifrm[m_back] = ifrm;
+		lock_fr();
+		int tmp = m_front;
+		m_front = m_back;
+		m_back = tmp;
+		unlock_fr();
+		unlock_bk();
 	}
 
 	// for channel logging
-	virtual bool write(f_base * pf, ofstream & fout, long long t)
-	{
-		lock();
-		vector<uchar> buf;
-		imencode(".png", m_img[m_back], buf);
-		Mat bufm(buf);
-		uchar * ptr = bufm.ptr<uchar>();
-		unsigned long long ul = (unsigned long long) (bufm.cols * bufm.rows);
-		fout.write((const char*) &m_ifrm[m_back], sizeof(long long));
-		fout.write((const char*) &ul, sizeof(unsigned long long));
-		fout.write((const char*) ptr, (streamsize) ul);
-		unlock();
-		return true;
-	}
+	virtual bool write(f_base * pf, ofstream & fout, long long t);
 
 	// for channel replay
-	virtual bool read(f_base * pf, ifstream & fin, long long t)
-	{
-		lock();
-		unsigned long long ul;
-		m_time[m_back] = t;
-		fin.read((char*) &m_ifrm[m_back], sizeof(long long));
-		fin.read((char*) &ul, sizeof(unsigned long long));
-		Mat bufm(1, (int) ul, CV_8UC1);
-		fin.read((char*) bufm.data, (streamsize) ul);
-
-		imdecode(bufm, CV_LOAD_IMAGE_ANYDEPTH, &m_img[m_back]);
-		unlock();
-		return true;
-	}
+	virtual bool read(f_base * pf, ifstream & fin, long long t);
 };
 
 // ch_image_ref returns reference of the image for get_img. Don't change the data if you use this as inputs for multiple filters.
@@ -143,13 +131,12 @@ class ch_image_ref: public ch_image
 {
 protected:
 	int m_back, m_front;
-	bool m_bnew;
 	Mat m_img[2];
 	long long m_time[2];
 	long long m_ifrm[2]; // frame index (if available.)
 public:
 	ch_image_ref(const char * name): ch_image(name), 
-		m_front(0), m_back(1), m_bnew(false)
+		m_front(0), m_back(1)
 	{
 		m_time[0] = m_time[1] = 0;
 		m_ifrm[0] = m_ifrm[1] = -1;
@@ -159,56 +146,49 @@ public:
 	}
 
 	virtual Mat get_img(long long & t){
-		lock();
+		lock_fr();
 		Mat img = m_img[m_front];
 		t = m_time[m_front];
-		unlock();
+		unlock_fr();
 		return img;
 	}
 
 	virtual Mat get_img(long long & t, long long & ifrm){
-		lock();
+		lock_fr();
 		Mat img = m_img[m_front];
 		t = m_time[m_front];
 		ifrm = m_ifrm[m_front];
-		unlock();
+		unlock_fr();
 		return img;
 	}
 
 	virtual void set_img(Mat & img, long long t){
-		lock();
-		m_bnew = true;
+		lock_bk();
 		m_img[m_back] = img;
 		m_time[m_back] = t;
-		unlock();
+		lock_fr();
+		int tmp = m_front;
+		m_front = m_back;
+		m_back = tmp;
+		unlock_fr();
+		unlock_bk();
 	}
 
 	virtual void set_img(Mat & img, long long t, long long ifrm){
-		lock();
-		m_bnew = true;
+		lock_bk();
 		m_img[m_back] = img;
 		m_time[m_back] = t;
 		m_ifrm[m_back] = ifrm;
-		unlock();
+		lock_fr();
+		int tmp = m_front;
+		m_front = m_back;
+		m_back = tmp;
+		unlock_fr();
+		unlock_bk();
 	}
 	
 	bool is_buf_in_use(const unsigned char * buf){
 		return m_img[m_front].data == buf || m_img[m_back].data == buf;
-	}
-
-	// swap front and back buffers.
-	virtual void tran()
-	{
-		if(!m_bnew)
-			return;
-		lock();
-		//		cout << "Entering tran" << endl;
-		int tmp = m_front;
-		m_front = m_back;
-		m_back = tmp;
-		m_bnew = false;
-		//		cout << "Exiting tran" << endl;
-		unlock();
 	}
 
 	// for channel logging
