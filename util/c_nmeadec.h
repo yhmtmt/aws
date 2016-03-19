@@ -25,14 +25,25 @@ enum e_gp_fix_stat{
 	EGPF_LOST, EGPF_GPSF, EGPF_DGPSF
 };
 
+// NMEA data type
 enum e_nd_type{
+	/* GPS related NMEA message */
 	ENDT_GGA, ENDT_RMC, ENDT_ZDA,
+	/* ARPA related NMEA message */
 	ENDT_TTM,
-	ENDT_VDM, ENDT_VDM1, ENDT_VDM4, ENDT_VDM5, ENDT_VDM6,
-	ENDT_VDM8, ENDT_VDM18, ENDT_VDM19, ENDT_VDM24,
-	ENDT_ABK
+	/* AIS related NMEA message */
+	ENDT_VDM, ENDT_VDO, ENDT_ABK, 
+	/* Undefined NMEA message */
+	ENDT_UNDEF,
+
+	/* sub type for decoded VDM message */
+	ENDT_VDM1, ENDT_VDM4, ENDT_VDM5, ENDT_VDM6,
+	ENDT_VDM8, ENDT_VDM18, ENDT_VDM19, ENDT_VDM24
 };
 
+extern const char * str_nd_type[ENDT_UNDEF];
+
+e_nd_type get_nd_type(const char * str);
 
 //s_binary_message helps generating AIS binary messages.
 struct s_binary_message{
@@ -151,8 +162,6 @@ struct s_binary_message{
 };
 
 const char * get_ship_type_name(unsigned char uc);
-
-int enc_cbr(int cbr);
 
 /////////////////////////// c_nmea_dat and its inheritant
 class c_nmea_dat
@@ -396,8 +405,8 @@ public:
 			((dat[6] & 0x30) >> 4);
 	};
 
-	static c_vdm * dec_vdm(const char * str);
-
+	static c_nmea_dat * dec_vdm(const char * str);
+	static c_nmea_dat * dec_vdo(const char * str);
 	virtual e_nd_type get_type()
 	{return ENDT_VDM;};
 };

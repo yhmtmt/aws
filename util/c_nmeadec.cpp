@@ -29,6 +29,29 @@ using namespace std;
 
 #include "c_nmeadec.h"
 
+const char * str_nd_type[ENDT_UNDEF] = {
+	"GGA", "RMC", "ZDA", 
+	"TTM", 
+	"VDM", "VDO", "ABK"
+};
+
+c_nmea_dat * (*nmea_dec[ENDT_UNDEF])(const char * str) = 
+{
+	c_gga::dec_gga, c_rmc::dec_rmc, c_zda::dec_zda,
+	c_ttm::dec_ttm, 
+	c_vdm::dec_vdm, c_vdm::dec_vdo, c_abk::dec_abk
+};
+
+e_nd_type get_nd_type(const char * str)
+{
+	for(int i = 0; i < ENDT_UNDEF; i++){
+		const char * st = str_nd_type[i];
+		if(st[0] == str[3] && str[1] == str[4] && str[2] == str[5])
+			return (e_nd_type) i;
+	}
+	return ENDT_UNDEF;
+}
+
 unsigned int htoi(const char * str);
 unsigned char decchar(unsigned char c6);
 unsigned char encchar(unsigned char c8);
@@ -786,24 +809,11 @@ c_nmea_dat * c_nmea_dat::dec_nmea_dat(const char * str)
 		return NULL;
 	}
 
-	c_nmea_dat * pnd = NULL;
-	if(parstrcmp(&str[3], "GGA")){
-		pnd = c_gga::dec_gga(str);
-	}else if(parstrcmp(&str[3], "RMC")){
-		pnd = c_rmc::dec_rmc(str);
-	}else if(parstrcmp(&str[3], "ZDA")){
-		pnd = c_zda::dec_zda(str);
-	}else if(parstrcmp(&str[3], "VDM")){
-		pnd = c_vdm::dec_vdm(str);
-	}else if(parstrcmp(&str[3], "VDO")){
-		c_vdm * pvmd = c_vdm::dec_vdm(str);
-		if(pvmd)
-			pvmd->m_vdo = true;
-		pnd = pvmd;
-	}else if(parstrcmp(&str[3], "TTM")){
-		pnd = c_ttm::dec_ttm(str);
-	}else if(parstrcmp(&str[3], "ABK"))
-		pnd = c_abk::dec_abk(str);
+	e_nd_type nt = get_nd_type(str);
+	if(nt == ENDT_UNDEF)
+		return NULL;
+
+	c_nmea_dat * pnd = nmea_dec[nt](str);
 
 	if(pnd){
 		pnd->m_toker[0] = str[1];
@@ -1161,7 +1171,7 @@ void s_vdm_pl::dearmor(const char * str)
 	}
 }
 
-c_vdm * c_vdm::dec_vdm(const char * str)
+c_nmea_dat * c_vdm::dec_vdm(const char * str)
 {
 	c_vdm * pnd;
 	s_vdm_pl * ppl = NULL;
@@ -1234,6 +1244,14 @@ c_vdm * c_vdm::dec_vdm(const char * str)
 	s_vdm_pl::free(ppl);
 
 	return pnd;
+}
+
+c_nmea_dat * c_vdm::dec_vdo(const char * str)
+{
+	c_vdm * pvdm = dynamic_cast<c_vdm*>(dec_vdm(str));
+	if(pvdm != NULL)
+		pvdm->m_vdo = true;
+	return pvdm;
 }
 
 c_vdm * s_vdm_pl::dec_payload()
