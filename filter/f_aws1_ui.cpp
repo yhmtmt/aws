@@ -167,24 +167,25 @@ bool f_aws1_ui::proc()
   // AXES 0: 9LR 1: 9UD 2: 10LR 3: 10UD 4: XLR 5: XUD 
   // BTNS 0: 1 1: 2 2: 3 3: 4 4: 5 5: 6 7: 8 8: 9 9: 10 10: 11 12: 13
     
-    // axis 0 is assigned to rudder
-    // axis 1 is assigned to engine control
+    // axis 0, 2  is assigned to rudder
+    // axis 1 is assigned to main engine control
+    // axis 3 is assigned to sub engine control
     int naxs, nbtn;
     const float * axs = glfwGetJoystickAxes(m_js, &naxs);
     const unsigned char * btn = glfwGetJoystickButtons(m_js, &nbtn);
-    m_rud_aws_f += axs[0] * (255. / 60.);
+    m_rud_aws_f += axs[0] * (255. / 180.);
+    m_rud_aws_f += axs[2] * (255. / 180.);
     m_rud_aws_f = min((float)255.0, m_rud_aws_f);
     m_rud_aws_f = max((float)0.0, m_rud_aws_f);
 
-    if(m_ec == EC_MAIN){
-      m_meng_aws_f -= axs[1] * (255. / 60);
-      m_meng_aws_f = min((float)255.0, m_meng_aws_f);
-      m_meng_aws_f = max((float)0.0, m_meng_aws_f);
-    }else{
-      m_seng_aws_f -= axs[1] * (255. / 60);
-      m_seng_aws_f = min((float) 255.0, m_seng_aws_f);
-      m_seng_aws_f = max((float)0.0, m_seng_aws_f);
-    }
+    m_meng_aws_f -= axs[1] * (255. / 180);
+    m_meng_aws_f = min((float)255.0, m_meng_aws_f);
+    m_meng_aws_f = max((float)0.0, m_meng_aws_f);
+
+    m_seng_aws_f -= axs[3] * (255. / 180);
+    m_seng_aws_f = min((float) 255.0, m_seng_aws_f);
+    m_seng_aws_f = max((float)0.0, m_seng_aws_f);
+    
 
     if(m_verb){
       if(axs){
