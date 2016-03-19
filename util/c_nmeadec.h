@@ -28,7 +28,7 @@ enum e_gp_fix_stat{
 // NMEA data type
 enum e_nd_type{
 	/* GPS related NMEA message */
-	ENDT_GGA, ENDT_RMC, ENDT_ZDA,
+	ENDT_GGA, ENDT_GSA, ENDT_GSV, ENDT_RMC, ENDT_VTG, ENDT_ZDA,
 	/* ARPA related NMEA message */
 	ENDT_TTM,
 	/* AIS related NMEA message */
@@ -170,7 +170,10 @@ public:
 	char m_toker[2];
 	bool m_cs;
 	static c_nmea_dat * dec_nmea_dat(const char * str);
-	virtual ostream & show(ostream & out) = 0;
+	virtual ostream & show(ostream & out)
+	{
+		return out;
+	};
 	virtual e_nd_type get_type() = 0;
 };
 
@@ -213,6 +216,51 @@ public:
 	{return ENDT_GGA;};
 };
 
+class c_gsa: public c_nmea_dat
+{
+public:
+	unsigned char s3d2d; // Selection of the measurement mode {1: Auto, 2: Manual}
+	unsigned char mm; // Measurement mode {1: No Measurement, 2: 2D, 3: 3D}
+	unsigned short sused[12]; // Satellited used for the calculation (upto 12 sats)
+	float pdop, hdop, vdop;
+
+	c_gsa():s3d2d(0), mm(0), pdop(0.), hdop(0.), vdop(0.)
+	{
+		for(int i = 0; i< 12; i++)
+			sused[i] = 0;
+	}
+
+	static c_nmea_dat * dec_gsa(const char * str);
+	virtual ostream & show(ostream & out){
+		return out;
+	};
+	virtual e_nd_type get_type(){
+		return ENDT_GSA;
+	};
+};
+
+class c_gsv: public c_nmea_dat
+{
+public:
+	unsigned char ns /* number of sentence */, si /* sentence index */;
+	unsigned short nsats_usable; // number of usable satellite.
+	unsigned short sat[4], el[4], az[4], sn[4];
+	c_gsv():ns(0), si(0), nsats_usable(0)
+	{
+		for(int i = 0; i < 4; i++){
+			sat[i] = el[i] = sn[i] = 0;
+		}
+	}
+
+	static c_nmea_dat * dec_gsv(const char * str);
+	virtual ostream & show(ostream & out){
+		return out;
+	};
+	virtual e_nd_type get_type(){
+		return ENDT_GSV;
+	};
+};
+
 // class for $rmc
 class c_rmc: public c_nmea_dat
 {
@@ -250,6 +298,23 @@ public:
 	{return ENDT_RMC;};
 };
 
+class c_vtg: public c_nmea_dat
+{
+public:
+	float crs_t, crs_m, v_n, v_k;
+	c_vtg():crs_t(0.), crs_m(0.), v_n(0.), v_k(0.)
+	{
+	}
+
+	static c_nmea_dat * dec_vtg(const char * str);
+	virtual ostream & show(ostream & out){
+		return out;
+	};
+	virtual e_nd_type get_type(){
+		return ENDT_VTG;
+	};
+};
+
 class c_zda: public c_nmea_dat
 {
 public:
@@ -273,8 +338,9 @@ public:
 	}
 	virtual e_nd_type get_type()
 	{return ENDT_ZDA;};
-
 };
+
+
 /////////////////////// c_ttm (from ARPA)
 class c_ttm: public c_nmea_dat
 {

@@ -30,14 +30,14 @@ using namespace std;
 #include "c_nmeadec.h"
 
 const char * str_nd_type[ENDT_UNDEF] = {
-	"GGA", "RMC", "ZDA", 
+	"GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", 
 	"TTM", 
 	"VDM", "VDO", "ABK"
 };
 
 c_nmea_dat * (*nmea_dec[ENDT_UNDEF])(const char * str) = 
 {
-	c_gga::dec_gga, c_rmc::dec_rmc, c_zda::dec_zda,
+	c_gga::dec_gga, c_gsa::dec_gsa, c_gsv::dec_gsv, c_rmc::dec_rmc, c_vtg::dec_vtg, c_zda::dec_zda,
 	c_ttm::dec_ttm, 
 	c_vdm::dec_vdm, c_vdm::dec_vdo, c_abk::dec_abk
 };
@@ -920,6 +920,143 @@ c_nmea_dat * c_gga::dec_gga(const char * str)
 	return pnd;
 }
 
+/////////////////////////////////////////// gsa decoder
+c_nmea_dat * c_gsa::dec_gsa(const char * str)
+{
+	c_gsa * pnd = new c_gsa;
+	int i = 0;
+	int ipar = 0;
+	int len;
+	char buf[32];
+
+	while(ipar < 18){
+		len = parstrcpy(buf, &str[i], ',');
+		i += len + 1;
+		if(len == 0){ 
+			ipar++;
+			continue;
+		}
+
+		switch(ipar){
+		case 0: // $GPRMC
+			break;
+		case 1: // Selected measurement mode
+			if(buf[0] == 'A')
+				pnd->s3d2d = 1;
+			else if(buf[0] == 'M')
+				pnd->s3d2d = 2;
+			else
+				pnd->s3d2d = 0;
+			break;
+		case 2: // Measurement mode
+			if(buf[0] <'0' || buf[0] > '3')
+				pnd->mm = 0;
+			else
+				pnd->mm = buf[0] - '0';			
+			break;
+		case 3: // sat1
+		case 4: // sat2
+		case 5: // sat3
+		case 6: // sat4
+		case 7: // sat5
+		case 8: // sat6
+		case 9: // sat7
+		case 10: // sat8
+		case 11: // sat9
+		case 12: // sat10
+		case 13: // sat11
+		case 14: // sat12
+			if(buf[0] == '\0'){
+				pnd->sused[ipar - 3] = (unsigned short) atoi(buf);
+			}
+			break;
+		case 15: // PDOP
+			pnd->pdop = (float) atof(buf);
+			break;
+		case 16: // HDOP
+			pnd->hdop = (float) atof(buf);
+			break;
+		case 17: // VDOP
+			pnd->vdop = (float) atof(buf);
+			break;
+		}
+		ipar++;
+	}
+
+	return pnd;
+}
+
+/////////////////////////////////////////// gsv decoder
+c_nmea_dat * c_gsv::dec_gsv(const char * str)
+{
+	c_gsv * pnd = new c_gsv;
+int i = 0;
+	int ipar = 0, npar = 4;
+	int isat = 0;
+	int len;
+	char buf[32];
+
+	while(ipar < npar){
+		len = parstrcpy(buf, &str[i], ',');
+		i += len + 1;
+		if(len == 0){ 
+			ipar++;
+			continue;
+		}
+
+		switch(ipar){
+		case 0: // $GPRMC
+			break;
+		case 1: // Number of sentences
+			if(buf[0] < '0' || buf[0] > '4')
+				pnd->ns = 0;
+			else
+				pnd->ns = buf[0] - '0';
+			break;
+		case 2: // Sentence index
+			if(buf[0] < '0' || buf[0] > '4')
+				pnd->si = 0;
+			else
+				pnd->si = buf[0] - '0';
+			break;
+		case 3: // Number of usable satellites 
+			pnd->nsats_usable = atoi(buf);
+			npar = pnd->nsats_usable - (pnd->si - 1) * 4;
+			npar = min(4, npar);
+			npar = npar * 4 + 4;
+			isat = 0;
+			break;
+		case 4: // sat1
+		case 8: // sat2
+		case 12: // sat3
+		case 16: // sat4
+			pnd->sat[isat] = (unsigned short) atoi(buf);
+			break;
+		case 5: // elevation of sat1
+		case 9: // elevation of sat2
+		case 13: // elevation of sat3
+		case 17: // elevation of sat4
+			pnd->el[isat] = (unsigned short) atoi(buf);
+			break;
+		case 6: // azimuth of sat1
+		case 10: // azimuth of sat2
+		case 14: // azimuth of sat3
+		case 18: // azimuth of sat4
+			pnd->az[isat] = (unsigned short) atoi(buf);
+			break;
+		case 7: // sn
+		case 11: // sn
+		case 15: // sn
+		case 19: // sn
+			pnd->sn[isat] = (unsigned short) atoi(buf);
+			isat++;
+			break;
+		}
+		ipar++;
+	}
+
+	return pnd;
+}
 
 /////////////////////////////////////////// rmc decoder
 c_nmea_dat * c_rmc::dec_rmc(const char * str)
@@ -1008,6 +1145,63 @@ c_nmea_dat * c_rmc::dec_rmc(const char * str)
 	}
 
 	return pnd;
+}
+
+c_nmea_dat * c_vtg::dec_vtg(const char * str)
+{
+	c_vtg * pnd = new c_vtg;
+	int i = 0;
+	int ipar = 0;
+	int len;
+	char buf[32];
+
+	while(ipar < 9){
+		len = parstrcpy(buf, &str[i], ',');
+		i += len + 1;
+		if(len == 0){ 
+			ipar++;
+			continue;
+		}
+
+		switch(ipar){
+		case 0: // $**VTG
+			break;
+		case 1: // course (True)
+			pnd->crs_t = (float)atof(buf);
+			break;
+		case 2: // 'T'
+			if(buf[0] != 'T')
+				goto vtgerror;
+			break;
+		case 3: // course (Magnetic)
+			pnd->crs_m = (float)atof(buf);
+			break;
+		case 4: // 'M'
+			if(buf[0] != 'M')
+				goto vtgerror;
+			break;				
+		case 5: // velocity (kts)
+			pnd->v_n = (float)atof(buf);
+			break;
+		case 6: // 'N'
+			if(buf[0] != 'N')
+				goto vtgerror;
+			break;
+		case 7: // velocity (km/h)
+			pnd->v_k = (float)atof(buf);
+			break;
+		case 8: // 'K'
+			if(buf[0] != 'K')
+				goto vtgerror;
+			break;
+		}
+		ipar++;
+	}
+
+	return pnd;
+vtgerror:
+	delete pnd;
+	return NULL;
 }
 
 ////////////////////////////////////////////////zda decoder
