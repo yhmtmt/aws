@@ -38,18 +38,20 @@ protected:
 	ch_nmea * m_ap_nmea_i;
 	ch_nmea * m_gff_nmea_i;
 	ch_nmea * m_ais_nmea_i;
+	ch_nmea * m_gps_nmea_i;
 
 	ch_nmea * m_aws_nmea_o;
 	ch_nmea * m_ap_nmea_o;
 	ch_nmea * m_gff_nmea_o;
 	ch_nmea * m_ais_nmea_o;
-	
+	ch_nmea * m_gps_nmea_o;
+
 	bool m_aws_ctrl;
 	bool m_verb;
-	int m_aws_oint, m_ap_oint, m_gff_oint, m_ais_oint;
-	int m_aws_ocnt, m_ap_ocnt, m_gff_ocnt, m_ais_ocnt;
+	int m_aws_oint, m_ap_oint, m_gff_oint, m_ais_oint, m_gps_oint;
+	int m_aws_ocnt, m_ap_ocnt, m_gff_ocnt, m_ais_ocnt, m_gps_ocnt;
 
-	bool m_aws_out, m_ap_out, m_gff_out, m_ais_out;
+	bool m_aws_out, m_ap_out, m_gff_out, m_ais_out, m_gps_out;
 
 	char m_nmea[83];
 
@@ -57,6 +59,7 @@ protected:
 	void ap_to_out();
 	void gff_to_out();
 	void ais_to_out();
+	void gps_to_out();
 public:
 	f_aws1_nmea_sw(const char * name);
 
