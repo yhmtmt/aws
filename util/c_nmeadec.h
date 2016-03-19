@@ -302,6 +302,8 @@ class c_vtg: public c_nmea_dat
 {
 public:
 	float crs_t, crs_m, v_n, v_k;
+	e_gp_fix_stat fm;
+
 	c_vtg():crs_t(0.), crs_m(0.), v_n(0.), v_k(0.)
 	{
 	}

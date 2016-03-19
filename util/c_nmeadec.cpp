@@ -1194,6 +1194,15 @@ c_nmea_dat * c_vtg::dec_vtg(const char * str)
 			if(buf[0] != 'K')
 				goto vtgerror;
 			break;
+		case 9: // Fix status
+			if(buf[0] == 'N')
+				pnd->fm = EGPF_LOST;
+			else if(buf[0] == 'A')
+				pnd->fm = EGPF_GPSF;
+			else if(buf[0] == 'D')
+				pnd->fm = EGPF_DGPSF;
+			else
+				goto vtgerror;
 		}
 		ipar++;
 	}
