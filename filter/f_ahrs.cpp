@@ -15,6 +15,8 @@
 
 #include "stdafx.h"
 
+#include <cmath>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <vector>
