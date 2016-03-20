@@ -32,6 +32,7 @@ using namespace std;
 const char * str_nd_type[ENDT_UNDEF] = {
 	"GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", 
 	"TTM", 
+	"DBT", "MTW",
 	"VDM", "VDO", "ABK"
 };
 
@@ -39,6 +40,7 @@ c_nmea_dat * (*nmea_dec[ENDT_UNDEF])(const char * str) =
 {
 	c_gga::dec_gga, c_gsa::dec_gsa, c_gsv::dec_gsv, c_rmc::dec_rmc, c_vtg::dec_vtg, c_zda::dec_zda,
 	c_ttm::dec_ttm, 
+	c_dbt::dec_dbt, c_mtw::dec_mtw,
 	c_vdm::dec_vdm, c_vdm::dec_vdo, c_abk::dec_abk
 };
 
@@ -1341,6 +1343,84 @@ c_nmea_dat * c_ttm::dec_ttm(const char * str)
 	}
 
 	return pnd;
+}
+
+//////////////////////////////////////////////// dbt decoder
+c_nmea_dat * c_dbt::dec_dbt(const char * str)
+{
+	c_dbt * pnd = new c_dbt;
+	int i = 0;
+	int ipar = 0;
+	int len;
+	char buf[32];
+	while(ipar < 7){
+		len = parstrcpy(buf, &str[i], ',');
+		i += len + 1;
+
+		switch(ipar){
+		case 0: // $**DBT
+			break;
+		case 1:
+			pnd->dfe = (float) atof(buf);
+			break;
+		case 2:
+			if(buf[0] != 'f')
+				goto dbterr;
+			break;
+		case 3:
+			pnd->dfa = (float) atof(buf);
+			break;
+		case 4:
+			if(buf[0] != 'M')
+				goto dbterr;
+			break;
+		case 5:
+			pnd->dfa = (float) atof(buf);
+			break;
+		case 6:
+			if(buf[0] != 'F')
+				goto dbterr;
+			break;
+		}
+		ipar++;
+	}
+
+	return pnd;
+dbterr:
+	delete pnd;
+	return NULL;
+}
+
+//////////////////////////////////////////////// mtw decoder
+c_nmea_dat * c_mtw::dec_mtw(const char * str)
+{
+	c_mtw * pnd = new c_mtw;
+	int i = 0;
+	int ipar = 0;
+	int len;
+	char buf[32];
+	while(ipar < 7){
+		len = parstrcpy(buf, &str[i], ',');
+		i += len + 1;
+
+		switch(ipar){
+		case 0: // $**MTW
+			break;
+		case 1:
+			pnd->t = (float) atof(buf);
+			break;
+		case 2:
+			if(buf[0] != 'C')
+				goto mtwerr;
+			break;
+		}
+		ipar++;
+	}
+
+	return pnd;
+mtwerr:
+	delete pnd;
+	return NULL;
 }
 
 //////////////////////////////////////////////// vdm decoder

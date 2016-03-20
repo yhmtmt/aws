@@ -31,6 +31,8 @@ enum e_nd_type{
 	ENDT_GGA, ENDT_GSA, ENDT_GSV, ENDT_RMC, ENDT_VTG, ENDT_ZDA,
 	/* ARPA related NMEA message */
 	ENDT_TTM,
+	/* Fish Finder's NMEA message */
+	ENDT_DBT, ENDT_MTW,
 	/* AIS related NMEA message */
 	ENDT_VDM, ENDT_VDO, ENDT_ABK, 
 	/* Undefined NMEA message */
@@ -387,6 +389,40 @@ public:
 	{return ENDT_TTM;};
 };
 
+
+//////////////////////// c_bdt (from fish finder)
+class c_dbt: public c_nmea_dat
+{
+public:
+	float dfe /* depth in feet */, dm /* depth in meter */, dfa /*depth in fathomas*/;
+
+	c_dbt():dfe(0), dm(0), dfa(0)
+	{
+	}
+
+	static c_nmea_dat * dec_dbt(const char * str);
+	virtual e_nd_type get_type()
+	{
+		return ENDT_DBT;
+	}
+};
+
+//////////////////////// c_mtw (from fish finder)
+class c_mtw: public c_nmea_dat
+{
+public:
+	float t;
+	c_mtw():t(0.0)
+	{
+	}
+
+	static c_nmea_dat * dec_mtw(const char * str);
+
+	virtual e_nd_type get_type()
+	{
+		return ENDT_MTW;
+	}
+};
 
 //////////////////////// c_vdm (from AIS)
 class c_vdm;
