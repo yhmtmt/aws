@@ -21,7 +21,7 @@
 #include <list>
 #include <map>
 #include <cmath>
-#include <typeinfo>
+
 using namespace std;
 
 #include <opencv2/opencv.hpp>

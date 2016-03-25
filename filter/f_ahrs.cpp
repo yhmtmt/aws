@@ -34,11 +34,14 @@ const char * f_ahrs::m_str_razor_cmd[ERC_UNDEF] = {
 	"f", "saw"
 };
 
-f_ahrs::f_ahrs(const char * name): f_base(name), m_cmd(ERC_OT), m_omode(ERC_OT), 
+f_ahrs::f_ahrs(const char * name): f_base(name), m_state(NULL),
+				   m_cmd(ERC_OT), m_omode(ERC_OT), 
 	m_ocont(true), m_sync(false), m_rbuf_tail(0), m_rbuf_head(0), m_tbuf_tail(0),
 	m_verb(false), m_readlen(1024)
 {
 	m_dname[0] = '\0';
+
+	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
 
 	register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
 	register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
@@ -245,6 +248,10 @@ bool f_ahrs::proc()
 		if(!braw && !bcal){
 			cout << "YPR=" << m_ypr.y << " " << m_ypr.p << " " << m_ypr.r << endl;
 		}
+	}
+
+	if(m_state){
+	  m_state->set_attitude(m_ypr.r, m_ypr.p, m_ypr.y);
 	}
 
 	return true;

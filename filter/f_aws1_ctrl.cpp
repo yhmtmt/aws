@@ -62,13 +62,15 @@ s_aws1_ctrl_pars::s_aws1_ctrl_pars():
 
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
   f_base(name), m_fd(-1), m_sim(false), m_verb(false),
-  m_udp_ctrl(false), m_ch_ctrl(false), m_acs_sock(-1), m_acs_port(20100), 
-  m_pacs_in(NULL), m_pacs_out(NULL),
+  m_udp_ctrl(false), m_ch_ctrl(false), m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL), 
+  m_acs_sock(-1), m_acs_port(20100), 
   m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0)
 {
   strcpy(m_dev, "/dev/zgpio1");
   m_flog_name[0] = 0;
 
+  register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs.");
+  register_fpar("ch_ctrl_out", (ch_base**)&m_ch_ctrl_out, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1 control outputs.");
   register_fpar("device", m_dev, 1023, "AWS1's control gpio device path");
   register_fpar("flog", m_flog_name, 1023, "Control log file.");
   register_fpar("sim", &m_sim, "Simulation mode.");
@@ -171,22 +173,6 @@ bool f_aws1_ctrl::init_run()
     m_flog.open(m_flog_name);
     if(!m_flog.is_open()){
       cerr << m_name <<  " failed to open log file." << endl;
-      return false;
-    }
-  }
-
-  if(m_chin.size() > 0){
-    m_pacs_in = dynamic_cast<ch_ring<char>*>(m_chin[0]);
-    if(m_pacs_in == NULL){
-      cerr << "The first input channel should be ch_ring<char>." << endl;
-      return false;
-    }
-  }
-
-  if(m_chout.size() > 0){
-    m_pacs_out = dynamic_cast<ch_ring<char>*>(m_chout[0]);
-    if(m_pacs_out == NULL){
-      cerr << "The first output channel should be ch_ring<char>." << endl;
       return false;
     }
   }
@@ -312,7 +298,7 @@ bool f_aws1_ctrl::proc()
       set_ctrl(acpkt_udp, true);
       break;
     case ACS_CHAN:
-      set_ctrl(acpkt_chan);
+      set_ctrl(acpkt_chan, true);
       break;
     case ACS_FSET:
     default:
@@ -498,20 +484,19 @@ void f_aws1_ctrl::snd_acs_udp(s_aws1_ctrl_pars & acpkt)
 void f_aws1_ctrl::rcv_acs_chan(s_aws1_ctrl_pars & acpkt)
 {
   acpkt.suc = false;
-  int len;
-  if(m_pacs_in == NULL){
+  if(m_ch_ctrl_in == NULL){
     cerr << m_name  << " does not have control input channel." << endl;
   }else{
-    len = m_pacs_in->read((char*) &acpkt, sizeof(acpkt));
+    m_ch_ctrl_out->get_pars(acpkt);
   }
 }
 
 void f_aws1_ctrl::snd_acs_chan(s_aws1_ctrl_pars & acpkt)
 {
-  if(m_pacs_out == NULL){
+  if(m_ch_ctrl_out == NULL){
     cerr << m_name << " does not have control output channel." << endl;
   }else{
-    int len = m_pacs_out->write((char*) &acpkt, sizeof(acpkt));
+    m_ch_ctrl_in->set_pars(acpkt);
   }
 }
 

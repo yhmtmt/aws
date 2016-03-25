@@ -96,6 +96,21 @@ public:
 	{
 		return true;
 	}
+
+	virtual size_t get_dsize()
+	{ 
+	  return 0;
+	};
+
+	virtual size_t write_buf(const char * buf)
+	{
+	  return 0;
+	};
+
+	virtual size_t read_buf(char * buf)
+	{
+	  return 0;
+	}
 };
 
 #endif

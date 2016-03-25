@@ -185,6 +185,56 @@ public:
 	virtual bool proc();
 };
 
+class f_ch_share: public f_base
+{
+ private:
+  char m_host_dst[1024];
+  unsigned short m_port, m_port_dst;
+  int m_len_pkt_snd, m_len_pkt_rcv;
+  SOCKET m_sock;
+  sockaddr_in m_sock_addr_snd, m_sock_addr_rcv;
+  socklen_t m_sz_sock_addr_snd;
+  bool m_svr;
+  bool m_client_fixed;
+  
+  // buffers
+  char * m_rbuf, * m_wbuf;
+  int m_rbuf_head, m_wbuf_head;
+  int m_rbuf_tail, m_wbuf_tail;
+  int m_len_buf;
+  
+  // log file
+  char m_fname_out[1024];
+  ofstream m_fout;
+  char m_fname_in[1024];
+  ofstream m_fin;
+ public:
+ f_ch_share(const char * fname): f_base(fname), 
+    m_port(20100), m_port_dst(20101), 
+    m_len_pkt_snd(1024), m_len_pkt_rcv(1024), m_sock(-1), 
+    m_svr(false),
+    m_rbuf(NULL), m_wbuf(NULL), m_rbuf_head(0), m_wbuf_head(0), 
+    m_rbuf_tail(0), m_wbuf_tail(0), m_len_buf(0)
+    {
+      m_fname_out[0] = '\0';
+      m_fname_in[0] = '\0';
+      register_fpar("port", &m_port, "UDP port.");
+      register_fpar("port_dst", &m_port_dst, "Destination UDP port.");
+      register_fpar("host_dst", m_host_dst, 1024, "Host address.");
+      //register_fpar("lpkt", &m_len_pkt, "Packet length");
+      register_fpar("fout", m_fname_out, 1024, "Output log file.");
+      register_fpar("fin", m_fname_in, 1024, "Input log file.");
+    }
+  
+  virtual ~f_ch_share()
+    {
+    }
+  
+  virtual bool init_run();
+  virtual void destroy_run();
+  virtual bool proc();
+};
+
 // udp communication filter interfacing ch_ring<char> input/output channels
 class f_udp: public f_base
 {

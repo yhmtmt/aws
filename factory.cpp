@@ -53,6 +53,8 @@ using namespace cv;
 #include "channel/ch_nmea.h"
 #include "channel/ch_ais.h"
 #include "channel/ch_navdat.h"
+#include "channel/ch_state.h"
+
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
@@ -94,6 +96,7 @@ void ch_base::register_factory()
 	register_factory<ch_ring<char, 2048> >("crbuf2k");
 	register_factory<ch_ring<char, 4096> >("crbuf4k");
 	register_factory<ch_ring<char, 8192> >("crbuf8k");
+	register_factory<ch_state>("state");
 }
 
 ////////////////////////////////////////////////// setting up filter factory
@@ -132,12 +135,12 @@ void ch_base::register_factory()
 #ifdef GLFW_WINDOW
 #include <GLFW/glfw3.h>
 #include "filter/f_glfw_window.h"
+#include "filter/f_aws1_ui.h"
 #endif
 
 #include "filter/f_nmea.h"
 #include "filter/f_aws1_nmea_sw.h"
 #include "filter/f_aws1_ctrl.h"
-#include "filter/f_aws1_ui.h"
 #include "filter/f_shioji.h"
 #include "filter/f_ship_detector.h"
 #include "filter/f_camcalib.h"
@@ -203,7 +206,6 @@ void f_base::register_factory()
 	register_factory<f_aws1_nmea_sw>("aws1_nmea_sw");
 #ifndef _WIN32
 	register_factory<f_aws1_ctrl>("aws1_ctrl");
-	register_factory<f_aws1_ui>("aws1_ui");
 #endif
 	register_factory<f_nmea_proc>("nmea_proc");
 
@@ -241,6 +243,7 @@ void f_base::register_factory()
 	register_factory<f_glfw_window>("glwin");
 	register_factory<f_glfw_stereo_view>("glstvw");
 	register_factory<f_glfw_imview>("glimv");
+	register_factory<f_aws1_ui>("aws1_ui");
 #endif
 	// video sources
 #ifdef SANYO_HD5400
@@ -271,6 +274,7 @@ void f_base::register_factory()
 	register_factory<f_fep01>("fep01");
 	register_factory<f_serial>("ser");
 	register_factory<f_udp>("udp");
+	register_factory<f_ch_share>("ch_share");
 	register_factory<f_dummy_data>("dd");
 	register_factory<f_rec_data>("rd");
 

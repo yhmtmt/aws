@@ -17,92 +17,15 @@
 #define _F_AWS1_CTRL_H_
 
 #include "../channel/ch_vector.h"
+#include "../channel/ch_aws1_ctrl.h"
+
 #include "../util/aws_stdlib.h"
 
 #include "f_base.h"
 
 
-enum e_aws1_ctrl_src{
-  ACS_FSET, ACS_UDP, ACS_CHAN, ACS_NONE
-};
-
 extern  const char * str_aws1_ctrl_src[ACS_NONE];
 
-// Both for transmission and reception the same packet structure is used.
-struct s_aws1_ctrl_pars{
-  // current time
-  long long tcur;
-
-  // control modes
-  bool ctrl;
-  e_aws1_ctrl_src ctrl_src;
-
-  // control output
-  unsigned char rud;
-  unsigned char meng;
-  unsigned char seng;
-
-  // aws control input (from aws)
-  unsigned char rud_aws;
-  unsigned char meng_aws;
-  unsigned char seng_aws;
-
-  // aws remote controller's input (from adc)
-  unsigned char rud_rmc;
-  unsigned char meng_rmc;
-  unsigned char seng_rmc;
-
-  // rudder angle 
-  unsigned char rud_sta;     // from adc
-  unsigned char rud_sta_out; // to digi-pot
-
-  // remote controller's values corresponding positions 
-  unsigned char meng_max_rmc; 
-  unsigned char meng_nuf_rmc;
-  unsigned char meng_nut_rmc;
-  unsigned char meng_nub_rmc;
-  unsigned char meng_min_rmc;
-
-  unsigned char seng_max_rmc;
-  unsigned char seng_nuf_rmc;
-  unsigned char seng_nut_rmc;
-  unsigned char seng_nub_rmc;
-  unsigned char seng_min_rmc;
-
-  unsigned char rud_max_rmc;
-  unsigned char rud_nut_rmc;
-  unsigned char rud_min_rmc;
-
-  unsigned char rud_sta_max;
-  unsigned char rud_sta_nut;
-  unsigned char rud_sta_min;
-
-  // Threashold values of digital potentiometer's
-  unsigned char meng_max;
-  unsigned char meng_nuf;
-  unsigned char meng_nut;
-  unsigned char meng_nub;
-  unsigned char meng_min;
-
-  unsigned char seng_max;
-  unsigned char seng_nuf;
-  unsigned char seng_nut;
-  unsigned char seng_nub;
-  unsigned char seng_min;
-
-  unsigned char rud_max;
-  unsigned char rud_nut;
-  unsigned char rud_min;
-
-  unsigned char rud_sta_out_max;
-  unsigned char rud_sta_out_nut;
-  unsigned char rud_sta_out_min;
-
-  // success flag
-  bool suc;
-
-  s_aws1_ctrl_pars();
-};
 
 
   // map a value with 3 threasholds (for rudder contrl and states)
@@ -161,6 +84,7 @@ inline  int map_oval(int val,
 class f_aws1_ctrl: public f_base
 {
  protected:
+  ch_aws1_ctrl * m_ch_ctrl_in, * m_ch_ctrl_out;   // channel for control parameters
   char m_dev[1024];         // device path, e.g. "/dev/zgpio0"
   char m_flog_name[1024];
   ofstream m_flog;
@@ -209,7 +133,6 @@ class f_aws1_ctrl: public f_base
   void snd_acs_udp(s_aws1_ctrl_pars & acpkt);
 
   // Control channel (for ACS_CHAN)
-  ch_ring<char> * m_pacs_in, * m_pacs_out;
   void rcv_acs_chan(s_aws1_ctrl_pars & acpkt);
   void snd_acs_chan(s_aws1_ctrl_pars & acpkt);
 
@@ -217,15 +140,15 @@ class f_aws1_ctrl: public f_base
   void set_ctrl(s_aws1_ctrl_pars & acpkt, bool master = false);
 
 public:
-	f_aws1_ctrl(const char * name);
-
-	virtual ~f_aws1_ctrl();
-
-	virtual bool init_run();
-
-	virtual void destroy_run();
-
-	virtual bool proc();
+  f_aws1_ctrl(const char * name);
+  
+  virtual ~f_aws1_ctrl();
+  
+  virtual bool init_run();
+  
+  virtual void destroy_run();
+  
+  virtual bool proc();
 };
 
 #endif

@@ -37,8 +37,14 @@ using namespace cv;
 
 #include "f_aws1_ui.h"
 
-f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), m_acd_sock(-1), m_acd_port(20100), m_num_ctrl_steps(4), m_ec(EC_MAIN), m_rud_pos(NULL), m_meng_pos(NULL), m_seng_pos(NULL)
+f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
+					 m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL),
+					 m_acd_sock(-1), m_acd_port(20100), m_num_ctrl_steps(4), m_ec(EC_MAIN), m_rud_pos(NULL), m_meng_pos(NULL), m_seng_pos(NULL)
 {
+  register_fpar("ch_sate", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
+  register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl_in, typeid(ch_aws1_ctrl).name(), "Control input channel.");
+  register_fpar("ch_ctrl_out", (ch_base**)&m_ch_ctrl_out, typeid(ch_aws1_ctrl).name(), "Control output channel.");
+  register_fpar("udpctrl", &m_udp_ctrl, "If asserted, Direct UDP is used for control channel. Otherwise, ch_ctrl_{in,out} are used.");
   register_fpar("acdhost", m_acd_host, 1023, "Host address controlling AWS1.");
   register_fpar("acdport", &m_acd_port, "Port number opened for controlling AWS1.");
   register_fpar("verb", &m_verb, "Debug mode.");
@@ -66,15 +72,18 @@ bool f_aws1_ui::init_run()
   m_meng_aws_f = 127.;
   m_seng_aws_f = 127.;
 
-  m_acd_sock = socket(AF_INET, SOCK_DGRAM, 0);
-  if(m_acd_sock == -1){
-    cerr << "Failed to create control socket in " << m_name << "." << endl;
-    return false;
+  // initializing udp socket
+  if(m_udp_ctrl){
+    m_acd_sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if(m_acd_sock == -1){
+      cerr << "Failed to create control socket in " << m_name << "." << endl;
+      return false;
+    }
+    
+    m_acd_sock_addr.sin_family = AF_INET;
+    m_acd_sock_addr.sin_port = htons(m_acd_port);
+    set_sockaddr_addr(m_acd_sock_addr, m_acd_host);
   }
-
-  m_acd_sock_addr.sin_family = AF_INET;
-  m_acd_sock_addr.sin_port = htons(m_acd_port);
-  set_sockaddr_addr(m_acd_sock_addr, m_acd_host);
 
   if(!f_glfw_window::init_run())
     return false;
@@ -153,7 +162,10 @@ void f_aws1_ui::destroy_run()
   m_meng_pos = NULL;
   m_seng_pos = NULL;
 
-  closesocket(m_acd_sock);
+  if(m_udp_ctrl){
+    closesocket(m_acd_sock);
+    m_acd_sock = -1;
+  }
 }
 
 bool f_aws1_ui::proc()
@@ -409,46 +421,56 @@ void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
   acpkt.meng_aws = m_acp.meng_aws;
   acpkt.seng_aws = m_acp.seng_aws;
   acpkt.suc = true;
-  int len = sendto(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 0, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr));
+  int len;
+  if(m_udp_ctrl){
+    len = sendto(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 
+		 0, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr));
+  }else if(m_ch_ctrl_out){
+    m_ch_ctrl_out.set_pars(acpkt);
+  }
 }
 
 void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
 {
   acpkt.suc = false;
 
-  int res;
-  fd_set fr, fe;
-  timeval tv;
-
-  FD_ZERO(&fr);
-  FD_ZERO(&fe);
-  FD_SET(m_acd_sock, &fr);
-  FD_SET(m_acd_sock, &fe);
-  
-  tv.tv_sec = 0;
-  tv.tv_usec = 10000;
-  
-  res = select((int) m_acd_sock + 1, &fr, NULL, &fe, &tv);
-  
-  if(res > 0){
-    if(FD_ISSET(m_acd_sock, &fr)){
-      int len = recv(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 0);
-      if(len == SOCKET_ERROR){
+  if(m_udp_ctrl){
+    int res;
+    fd_set fr, fe;
+    timeval tv;
+    
+    FD_ZERO(&fr);
+    FD_ZERO(&fe);
+    FD_SET(m_acd_sock, &fr);
+    FD_SET(m_acd_sock, &fe);
+    
+    tv.tv_sec = 0;
+    tv.tv_usec = 10000;
+    
+    res = select((int) m_acd_sock + 1, &fr, NULL, &fe, &tv);
+    
+    if(res > 0){
+      if(FD_ISSET(m_acd_sock, &fr)){
+	int len = recv(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 0);
+	if(len == SOCKET_ERROR){
+	  cerr << "Socket error during recieving packet in " << m_name << "." << endl;
+	  acpkt.suc = false;
+	}
+      }else if(FD_ISSET(m_acd_sock, &fe)){
 	cerr << "Socket error during recieving packet in " << m_name << "." << endl;
 	acpkt.suc = false;
       }
-    }else if(FD_ISSET(m_acd_sock, &fe)){
-      cerr << "Socket error during recieving packet in " << m_name << "." << endl;
-      acpkt.suc = false;
+      
+    }else if(res == -1){
+      int en = errno;
+      cerr << "Error no " << en << " " << strerror(en) << endl;
+    }else{
+      cerr << "Unknown error in " << m_name << "." << endl;
     }
-    
-  }else if(res == -1){
-    int en = errno;
-    cerr << "Error no " << en << " " << strerror(en) << endl;
-  }else{
-    cerr << "Unknown error in " << m_name << "." << endl;
+  }else if(m_ch_in){
+    m_ch_in->get_pars(acpkt);
   }
-  
+
   if(acpkt.suc){
     m_acp.rud_rmc = acpkt.rud_rmc;
     m_acp.meng_rmc = acpkt.meng_rmc;
@@ -458,23 +480,23 @@ void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
     m_acp.seng = acpkt.seng;
     m_acp.rud_sta = acpkt.rud_sta;
     m_acp.rud_sta_out = acpkt.rud_sta_out;
-
+    
     m_acp.rud_max_rmc = acpkt.rud_max_rmc;
     m_acp.rud_nut_rmc = acpkt.rud_nut_rmc;
     m_acp.rud_min_rmc = acpkt.rud_min_rmc;
-
+    
     m_acp.meng_max_rmc = acpkt.meng_max_rmc;
     m_acp.meng_nuf_rmc = acpkt.meng_nuf_rmc;
     m_acp.meng_nut_rmc = acpkt.meng_nut_rmc;
     m_acp.meng_nub_rmc = acpkt.meng_nub_rmc;
     m_acp.meng_min_rmc = acpkt.meng_min_rmc;
-
+    
     m_acp.seng_max_rmc = acpkt.seng_max_rmc;
     m_acp.seng_nuf_rmc = acpkt.seng_nuf_rmc;
     m_acp.seng_nut_rmc = acpkt.seng_nut_rmc;
     m_acp.seng_nub_rmc = acpkt.seng_nub_rmc;
     m_acp.seng_min_rmc = acpkt.seng_min_rmc;
-
+    
     m_acp.rud_sta_max = acpkt.rud_sta_max;
     m_acp.rud_sta_nut = acpkt.rud_sta_nut;
     m_acp.rud_sta_min = acpkt.rud_sta_min;
@@ -497,9 +519,6 @@ void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
     m_acp.rud_sta_out_max = acpkt.rud_sta_out_max;
     m_acp.rud_sta_out_nut = acpkt.rud_sta_out_nut;
     m_acp.rud_sta_out_min = acpkt.rud_sta_out_min;
-    
-  }else{
-    cerr << "Failed to recieve packet." << endl;
   }
 }
 

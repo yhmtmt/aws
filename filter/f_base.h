@@ -39,6 +39,8 @@
 // you should implement this function if you assume that the filter is used 
 // in the offline mode.
 
+#include <typeinfo>
+
 #include "../util/aws_stdlib.h"
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"

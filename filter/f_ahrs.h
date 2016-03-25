@@ -18,11 +18,16 @@
 
 #include "../util/aws_serial.h"
 #include "f_base.h"
+
+#include "../channel/ch_state.h"
+
 #define AHRS_BUF 1024
 
 class f_ahrs: public f_base
 {
 protected:
+  ch_state * m_state;
+
 	AWS_SERIAL m_hserial;
 	char m_wbuf[AHRS_BUF];
 	char m_rbuf[AHRS_BUF];
@@ -44,7 +49,7 @@ protected:
 	bool m_ocont;
 	bool m_sync;
 	bool m_verb;
-	
+
 	static const char * m_str_razor_cmd[ERC_UNDEF];
 
 	struct s_ahrs_ypr{

@@ -197,6 +197,166 @@ bool f_serial::proc()
 	return true;
 }
 
+
+///////////////////////////////////////////////// f_ch_share
+bool f_ch_share::init_run()
+{
+  m_sock = socket(AF_INET, SOCK_DGRAM, 0);	
+  if(set_sock_nb(m_sock) != 0)
+    return false;
+  
+  if(m_host_dst[0]){
+    m_svr = false;
+    m_client_fixed = true;
+    m_sock_addr_snd.sin_family =AF_INET;
+    m_sock_addr_snd.sin_port = htons(m_port_dst);
+    m_sz_sock_addr_snd = sizeof(m_sock_addr_snd);
+    set_sockaddr_addr(m_sock_addr_snd, m_host_dst);
+  }else{
+    m_svr = true;
+    m_client_fixed = false;
+    m_sock_addr_rcv.sin_family =AF_INET;
+    m_sock_addr_rcv.sin_port = htons(m_port);
+    set_sockaddr_addr(m_sock_addr_rcv);
+    if(::bind(m_sock, (sockaddr*)&m_sock_addr_rcv, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
+      cerr << "Socket error" << endl;
+      return false;
+    }
+  }
+
+  if(m_fname_out[0]){
+    m_fout.open(m_fname_out);	
+    if(!m_fout.is_open())
+      return false;
+  }
+  
+  if(m_fname_in[0]){
+    m_fin.open(m_fname_in);
+    if(!m_fin.is_open())
+      return false;
+  }
+
+  m_len_pkt_rcv = 0;
+  for (int och = 0; och < m_chout.size(); och++){
+    m_len_pkt_rcv += (int) m_chout[och]->get_dsize();
+  }
+  
+  m_len_pkt_snd = 0;
+  for (int ich = 0; ich < m_chin.size(); ich++){
+    m_len_pkt_snd += (int) m_chin[ich]->get_dsize();
+  }
+ 
+  m_rbuf = new char [m_len_pkt_rcv];
+  if(m_rbuf == NULL)
+    return false;
+
+  m_wbuf = new char [m_len_pkt_snd];
+  if(m_wbuf == NULL){
+    delete[] m_rbuf;
+    m_rbuf = NULL;
+    return false;
+  }
+  
+  return true;
+}
+
+void f_ch_share::destroy_run()
+{
+  delete[] m_rbuf;
+  m_rbuf = NULL;
+  delete[] m_wbuf;
+  m_wbuf = NULL;
+
+  if(m_fout.is_open()){
+    m_fout.close();
+  }
+
+  if(m_fin.is_open()){
+    m_fin.close();
+  }
+
+  closesocket(m_sock);
+  m_sock = -1;
+}
+
+bool f_ch_share::proc()
+{
+  int res;
+  fd_set fr, fw, fe;
+  timeval tv;
+
+  // sending phase
+  if(m_svr && m_client_fixed || !m_svr){
+    m_wbuf_head = m_wbuf_tail = 0;
+    for(int ich = 0; ich < m_chin.size(); ich++)
+      m_wbuf_tail += m_chin[ich]->read_buf(m_wbuf + m_wbuf_tail);
+    
+    while(m_wbuf_tail != m_wbuf_head){
+      FD_ZERO(&fe);
+      FD_ZERO(&fw);
+      FD_SET(m_sock, &fe);
+      FD_SET(m_sock, &fw);
+      tv.tv_sec = 0;
+      tv.tv_usec = 10000;
+      
+      res = select((int) m_sock + 1, NULL, &fw, &fe, &tv);
+      
+      if(FD_ISSET(m_sock, &fw)){
+	m_wbuf_head += sendto(m_sock, 
+			      (char*) m_wbuf + m_wbuf_head, 
+			      m_wbuf_tail - m_wbuf_head, 0, 
+			      (sockaddr*) &m_sock_addr_snd, m_sz_sock_addr_snd);  
+      }else if(FD_ISSET(m_sock, & fe)){
+	cerr << "Socket error during sending packet in " << m_name;
+	cerr << ". Now closing socket." << endl;
+	destroy_run();
+	
+	return init_run();
+      }else{
+	// time out;
+	break;
+      }
+    }
+  }
+
+  // recieving phase
+  m_rbuf_head = m_rbuf_tail = 0;
+  while(m_rbuf_tail != m_len_pkt_rcv){
+      FD_ZERO(&fr);
+      FD_ZERO(&fe);
+      FD_SET(m_sock, &fr);
+      FD_SET(m_sock, &fe);
+      tv.tv_sec = 0;
+      tv.tv_usec = 10000; 
+      
+      res = select((int) m_sock + 1, &fr, NULL, &fe, &tv);
+      if(FD_ISSET(m_sock, &fr)){
+	m_rbuf_tail += recvfrom(m_sock, 
+				(char*) m_rbuf + m_rbuf_tail, 
+				m_len_pkt_rcv - m_rbuf_tail, 0,
+				(sockaddr*) & m_sock_addr_snd, 
+				&m_sz_sock_addr_snd);
+      }else if(FD_ISSET(m_sock, &fe)){
+	cerr << "Socket error during recieving packet in " << m_name;
+	cerr << ". Now closing socket." << endl;
+	destroy_run();
+	return init_run();
+      }else{
+	// time out;
+	m_rbuf_tail = 0;
+	break;
+      }
+  }
+
+  if(m_rbuf_tail == m_len_pkt_rcv){
+    for(int och = 0; och < m_chout.size(); och++){
+      m_rbuf_head += m_chout[och]->write_buf(m_rbuf + m_rbuf_head);
+    }
+  }
+
+  return true;
+}
+
 ///////////////////////////////////////////////// f_udp
 
 bool f_udp::init_run()
