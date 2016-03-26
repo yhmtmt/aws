@@ -27,7 +27,7 @@ class f_aws1_ui: public f_glfw_window
 {
  private:
   ch_state * m_state;
-  ch_ctrl * m_ch_ctrl_in, * m_ch_ctrl_out;
+  ch_aws1_ctrl * m_ch_ctrl_in, * m_ch_ctrl_out;
   bool m_udp_ctrl;
   bool m_verb;
   int m_js; 
