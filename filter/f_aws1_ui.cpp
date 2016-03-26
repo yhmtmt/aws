@@ -467,7 +467,7 @@ void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
     }else{
       cerr << "Unknown error in " << m_name << "." << endl;
     }
-  }else if(m_ch_in){
+  }else if(m_ch_ctrl_in){
     m_ch_ctrl_in->get_pars(acpkt);
   }
 
