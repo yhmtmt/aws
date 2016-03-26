@@ -426,7 +426,7 @@ void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
     len = sendto(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 
 		 0, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr));
   }else if(m_ch_ctrl_out){
-    m_ch_ctrl_out.set_pars(acpkt);
+    m_ch_ctrl_out->set_pars(acpkt);
   }
 }
 
@@ -468,7 +468,7 @@ void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
       cerr << "Unknown error in " << m_name << "." << endl;
     }
   }else if(m_ch_in){
-    m_ch_in->get_pars(acpkt);
+    m_ch_ctrl_in->get_pars(acpkt);
   }
 
   if(acpkt.suc){
