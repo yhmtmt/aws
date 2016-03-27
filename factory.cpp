@@ -54,7 +54,7 @@ using namespace cv;
 #include "channel/ch_ais.h"
 #include "channel/ch_navdat.h"
 #include "channel/ch_state.h"
-
+#include "channel/ch_aws1_ctrl.h"
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
