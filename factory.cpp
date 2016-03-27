@@ -87,6 +87,7 @@ void ch_base::register_factory()
 	register_factory<ch_vector<s_binary_message> >("bmsg");
 	register_factory<ch_navdat>("ship");
 	register_factory<ch_ship_ctrl>("ship_ctrl");
+	register_factory<ch_aws1_ctrl>("aws1_ctrl");
 	register_factory<ch_vector<Rect>>("vrect");
 	register_factory<ch_vector<c_track_obj>>("trck");
 	register_factory<ch_ptz>("ptz");
