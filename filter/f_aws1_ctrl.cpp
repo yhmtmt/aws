@@ -294,7 +294,7 @@ bool f_aws1_ctrl::proc()
 
   if(m_acp.ctrl){
     switch(m_acp.ctrl_src){
-    case ACS_DP:
+    case ACS_UDP:
       set_ctrl(acpkt_udp, true);
       break;
     case ACS_CHAN:
