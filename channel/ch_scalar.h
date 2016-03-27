@@ -117,4 +117,27 @@ public:
 	}
 };
 
+class ch_sample: public ch_base
+{
+ protected:
+  int val;
+ public:
+ ch_sample(const char * name):ch_base(name),val(0)
+    {
+    }
+
+  void set(const int _val)
+  {
+    lock();
+    val = _val;
+    unlock();
+  }
+
+  void get(int & _val)
+  {
+    lock();
+    _val = val;
+    unlock();
+  }
+};
 #endif
