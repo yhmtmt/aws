@@ -79,6 +79,7 @@ void ch_base::uninit()
 // the code "register_factory<class>("class string").
 void ch_base::register_factory()
 {
+  register_factory<ch_sample>("sample");
 	register_factory<ch_image_cln>("imgc");
 	register_factory<ch_image_ref>("imgr");
 	register_factory<ch_pvt>("pvt");

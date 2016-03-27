@@ -90,12 +90,22 @@ bool f_base::s_fpar::set(const char * valstr){
 		}
 		break;
 	case CH:
-		*ppch = m_paws->get_channel(valstr);
-		if(strcmp(typeid(*ppch).name(), type_name) != 0){
+	  {
+	    ch_base * pch = m_paws->get_channel(valstr);
+		if(pch == NULL){
+		  cerr << "Channel name " << valstr << " could not be found." << endl;
+		  return false;
+		}
+
+		if(strcmp(typeid(*pch).name(), type_name) != 0){
 			*ppch = NULL;
+			cerr << "Type " << typeid(*pch).name()  << " does not match " << type_name << endl;
+			cerr << "Channel name " << pch->get_name() << endl;
 			return false;
 		}
+		*ppch = pch;
 		break;
+	  }
 	}
 	return true;
 }
