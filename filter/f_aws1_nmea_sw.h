@@ -21,7 +21,7 @@
 #include "../util/aws_stdlib.h"
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
-#include "../util/c_nmeadec.h"
+#include "../util/aws_nmea.h"
 
 #include "../channel/ch_nmea.h"
 
