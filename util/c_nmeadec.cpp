@@ -880,17 +880,7 @@ c_nmea_dat * c_gga::dec_gga(const char * str)
 				pnd->m_lon_dir = EGP_W;
 			break;
 		case 6: // Fix Stats
-			switch(buf[0]){
-			case '0':
-				pnd->m_fix = EGPF_LOST;
-				break;
-			case '1':
-				pnd->m_fix = EGPF_GPSF;
-				break;
-			case '2':
-				pnd->m_fix = EGPF_DGPSF;
-				break;
-			}
+			pnd->m_fix = (e_gp_fix_stat)(buf[0] - '0');
 		case 7: // NUM_SATS
 			pnd->m_num_sats = atoi(buf);
 			break;
@@ -1203,6 +1193,8 @@ c_nmea_dat * c_vtg::dec_vtg(const char * str)
 				pnd->fm = EGPF_GPSF;
 			else if(buf[0] == 'D')
 				pnd->fm = EGPF_DGPSF;
+			else if(buf[0] == 'E')
+				pnd->fm = EGPF_ESTM;
 			else
 				goto vtgerror;
 		}

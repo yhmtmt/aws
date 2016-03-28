@@ -22,7 +22,7 @@ enum e_gp_dir{
 };
 
 enum e_gp_fix_stat{
-	EGPF_LOST, EGPF_GPSF, EGPF_DGPSF
+	EGPF_LOST, EGPF_GPSF, EGPF_DGPSF, EGPF_PPS, EGPF_RTK, EGPF_FRTK, EGPF_ESTM, EGPF_MAN, EGPF_SIM
 };
 
 // NMEA data type
