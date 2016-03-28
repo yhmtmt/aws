@@ -206,7 +206,10 @@ void f_aws1_nmea_sw::ais_to_out()
   while(m_ais_nmea_i->pop(m_nmea)){
     if(m_verb)
       cout << "AIS > " << m_nmea << endl;
-    
+
+    m_nmea[1] = 'A';
+    m_nmea[2] = 'I';
+
     m_aws_nmea_o->push(m_nmea);
     
     if(is_nmea_type("VDM", m_nmea)){
