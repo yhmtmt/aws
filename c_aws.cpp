@@ -979,39 +979,28 @@ bool c_aws::add_filter(s_cmd & cmd){
 	}
 
 	try{
-		itok = 3;
-		if(strcmp(tok[itok], "-i") != 0){
-			snprintf(cmd.get_ret_str(), RET_LEN, 
-				"\"-i\" is expected for the %d th argument in declaring filter %s", 
-				itok, tok[2]);
-			throw cmd.ret;
-		}
-		itok++;
-
-		for(; strcmp(tok[itok], "-o") != 0 && itok < cmd.num_args; itok++){
-			ch_base * pchan = get_channel(tok[itok]);
-			if(pchan == NULL){ // no channel found.
-				snprintf(cmd.get_ret_str(), RET_LEN, 
-					"Channel %s not found for connecting filter %s", 
-					tok[itok], tok[2]);
-				throw cmd.ret;
-			}
-
-			pfilter->set_ichan(pchan);
-		}
-
-		itok++;
-
-		for(; itok < cmd.num_args; itok++){
-			ch_base * pchan = get_channel(tok[itok]);
-			if(pchan == NULL){ // no channel found.
-				snprintf(cmd.get_ret_str(), RET_LEN,
-					"Channel %s not found for connecting filter %s",
-					tok[itok], tok[2]);
-				throw cmd.ret;
-			}
-			pfilter->set_ochan(pchan);
-		}
+	  bool is_input = true;
+	  for(itok = 3; itok < cmd.num_args; itok++){
+	    if(tok[itok][0] == '-'){
+	      if(tok[itok][1] == 'i'){
+		is_input = true;
+	      }else if(tok[itok][1] == 'o'){
+		is_input = false;
+	      }
+	    }else{
+	      ch_base * pchan = get_channel(tok[itok]);
+	      if(pchan == NULL){
+		snprintf(cmd.get_ret_str(), RET_LEN, 
+			 "Channel %s not found for connecting filter %s", 
+			 tok[itok], tok[2]);
+		throw cmd.ret;
+	      }
+	      if(is_input)
+		pfilter->set_ichan(pchan);     
+	      else
+		pfilter->set_ochan(pchan);
+	    }
+	  }
 	}catch(char *){
 		delete pfilter;
 		pthread_mutex_unlock(&m_mtx);
