@@ -224,7 +224,13 @@ bool f_aws1_ui::proc()
 
   s_aws1_ctrl_pars acpkt;
   snd_ctrl(acpkt);
-  rcv_state(acpkt);
+  rcv_ctrl(acpkt);
+  
+
+  float roll, pitch, yaw;
+  float lat, lon, alt;
+  m_state->get_attitude(roll, pitch, yaw);
+  m_state->get_position(lat, lon, alt);
 
   // render graphics
   glfwMakeContextCurrent(pwin());
@@ -276,6 +282,8 @@ bool f_aws1_ui::proc()
     cout << "    Inst rud " << rud_inst << " meng " << meng_inst << " seng " << seng_inst << endl;
     cout << "    Ctrl rud " << rud_inst_cur << " meng " << meng_inst_cur << " seng " << seng_inst_cur << endl;
     cout << "    Rud stat " << rud_sta << endl;
+    cout << " RPY = " << roll << "," << pitch << "," << yaw << endl;
+    cout << " Pos = " << lat << "," << lon << "," << alt << endl;
   }
   float wm, hm, lw;
 
@@ -430,7 +438,7 @@ void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
   }
 }
 
-void f_aws1_ui::rcv_state(s_aws1_ctrl_pars & acpkt)
+void f_aws1_ui::rcv_ctrl(s_aws1_ctrl_pars & acpkt)
 {
   acpkt.suc = false;
 

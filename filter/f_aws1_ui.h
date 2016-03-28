@@ -39,8 +39,10 @@ class f_aws1_ui: public f_glfw_window
 
   s_aws1_ctrl_pars m_acp;
 
+  // send control packet to m_acd_socket or m_ch_ctrl_out
   void snd_ctrl(s_aws1_ctrl_pars & acpkt);
-  void rcv_state(s_aws1_ctrl_pars & acpkt);
+  // Recive control state (rudder angle) from m_acd_socket or m_ch_ctrl_in.
+  void rcv_ctrl(s_aws1_ctrl_pars & acpkt);
 
   double m_mx, m_my;
   virtual void _cursor_position_callback(double xpos, double ypos){
