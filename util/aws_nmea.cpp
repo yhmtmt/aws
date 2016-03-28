@@ -3,18 +3,18 @@
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
-// c_nmeadec.cpp is free software: you can redistribute it and/or modify
+// aws_nmea.cpp is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// c_nmeadec.cpp is distributed in the hope that it will be useful,
+// aws_nmea.cpp is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with c_nmeadec.cpp.  If not, see <http://www.gnu.org/licenses/>. 
+// along with aws_nmea.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 #include <cstdio>
 #include <stdlib.h>
 #include <wchar.h>
@@ -27,7 +27,7 @@
 
 using namespace std;
 
-#include "c_nmeadec.h"
+#include "aws_nmea.h"
 
 const char * str_nd_type[ENDT_UNDEF] = {
 	"GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", 

@@ -17,7 +17,7 @@
 #ifndef _CH_AIS_H_
 #define _CH_AIS_H_
 
-#include "../util/c_nmeadec.h"
+#include "../util/aws_nmea.h"
 
 class ch_ais: public ch_base
 {

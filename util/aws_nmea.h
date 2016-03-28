@@ -1,21 +1,21 @@
 // Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
 // Science and Technology, All right reserved. 
 
-// c_nmeadec.h is free software: you can redistribute it and/or modify
+// aws_nmea.h is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// c_nmeadec.h is distributed in the hope that it will be useful,
+// aws_nmea.h is distributed in the hope that it will be useful,
 // but WITHOUT ANY WARRANTY; without even the implied warranty of
 // MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 // GNU General Public License for more details.
 
 // You should have received a copy of the GNU General Public License
-// along with c_nmeadec.h.  If not, see <http://www.gnu.org/licenses/>. 
+// along with aws_nmea.h.  If not, see <http://www.gnu.org/licenses/>. 
 
-#ifndef _C_NMEADEC_H_
-#define _C_NMEADEC_H_
+#ifndef _AWS_NMEA_H_
+#define _AWS_NMEA_H_
 
 enum e_gp_dir{
 	EGP_N, EGP_S, EGP_E, EGP_W

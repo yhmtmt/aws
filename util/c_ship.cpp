@@ -30,7 +30,7 @@ using namespace cv;
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
 
-#include "c_nmeadec.h"
+#include "aws_nmea.h"
 #include "c_ship.h"
 
 /////////////////////////////////////////////////////////////// c_ship member

@@ -26,7 +26,7 @@
 #include "../util/c_ship.h"
 #include "../util/c_clock.h"
 
-//#include "../util/c_nmeadec.h"
+//#include "../util/aws_nmea.h"
 #include "../channel/ch_image.h"
 
 #include "f_ds_window.h"
