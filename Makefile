@@ -57,7 +57,7 @@ FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 CHANNEL = ch_base ch_image
 
 # listing utility module
-UTIL =  c_clock c_imgalign c_nmeadec c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib
+UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib
 
 # for x86 CPU architecture
 ifeq ($(CPU), x86)
@@ -129,6 +129,10 @@ FSRCS = $(addsuffix .cpp,$(FILTER))
 CSRCS = $(addsuffix .cpp,$(CHANNEL))
 USRCS = $(addsuffix .cpp,$(UTIL))
 SRCS = command.cpp c_aws.cpp aws.cpp factory.cpp
+FDEPS = $(addsuffix .d,$(FILTER))
+CDEPS = $(addsuffix .d,$(CHANNEL))
+UDEPS = $(addsuffix .d,$(UTIL))
+DEPS = command.d c_aws.d aws.d factroy.d
 
 EXE = aws
 FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS)
@@ -145,21 +149,23 @@ rcmd:
 aws: $(OBJS) filter channel util 
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) -o $(EXE) $(LIB)
 
+-include $(DEPS)
+
 .PHONY: filter
 .PHONY: channel
 .PHONY: util
 
 filter: 
-	cd $(FDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(FOBJS)"	
+	cd $(FDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(FOBJS)" DEPS="$(FDEPS)"
 
 channel:
-	cd $(CDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(COBJS)"
+	cd $(CDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(COBJS)" DEPS="$(CDEPS)"
 
 util:
-	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)"	
+	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)" DEPS="$(UDEPS)"
 
 .cpp.o:
-	$(CC) $(FLAGS) -c $< -o $@
+	$(CC) $(FLAGS) -c -MMD -MP $< -o $@
 
 .PHONY: clean
 clean:

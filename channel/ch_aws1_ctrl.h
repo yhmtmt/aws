@@ -16,6 +16,7 @@
 // along with ch_aws1_ctrl.h.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ch_base.h"
+
 enum e_aws1_ctrl_src{
   ACS_FSET, ACS_UDP, ACS_CHAN, ACS_NONE
 };
@@ -93,23 +94,23 @@ struct s_aws1_ctrl_pars{
   // success flag
   bool suc;
 
-	s_aws1_ctrl_pars():
-		ctrl(false), ctrl_src(ACS_FSET),
-		meng_max_rmc(0x81), meng_nuf_rmc(0x80),  meng_nut_rmc(0x7f),  
-		meng_nub_rmc(0x7e), meng_min_rmc(0x7d),  
-		seng_max_rmc(0x81),  seng_nuf_rmc(0x80), seng_nut_rmc(0x7f),
-		seng_nub_rmc(0x7e),  seng_min_rmc(0x7d),
-		rud_max_rmc(0x80),  rud_nut_rmc(0x7f),  rud_min_rmc(0x7e),
-		rud_sta_max(0xff), rud_sta_nut(0x7f), rud_sta_min(0x00),
-		meng(0x7f),  seng(0x7f),  rud(0x7f),  
-		meng_max(0x81),meng_nuf(0x80),  meng_nut(0x7f),  
-		meng_nub(0x7e), meng_min(0x7d),  
-		seng_max(0x81),  seng_nuf(0x80), seng_nut(0x7f),
-		seng_nub(0x7e),  seng_min(0x7d),
-		rud_max(0x80),  rud_nut(0x7f),  rud_min(0x7e),
-		rud_sta_out_max(0xff), rud_sta_out_nut(0x7f), rud_sta_out_min(0x00)
-	{
-	}
+s_aws1_ctrl_pars():
+  ctrl(false), ctrl_src(ACS_FSET),
+    meng_max_rmc(0x81), meng_nuf_rmc(0x80),  meng_nut_rmc(0x7f),  
+    meng_nub_rmc(0x7e), meng_min_rmc(0x7d),  
+    seng_max_rmc(0x81),  seng_nuf_rmc(0x80), seng_nut_rmc(0x7f),
+    seng_nub_rmc(0x7e),  seng_min_rmc(0x7d),
+    rud_max_rmc(0x80),  rud_nut_rmc(0x7f),  rud_min_rmc(0x7e),
+    rud_sta_max(0xff), rud_sta_nut(0x7f), rud_sta_min(0x00),
+    meng(0x7f),  seng(0x7f),  rud(0x7f),  
+    meng_max(0x81),meng_nuf(0x80),  meng_nut(0x7f),  
+    meng_nub(0x7e), meng_min(0x7d),  
+    seng_max(0x81),  seng_nuf(0x80), seng_nut(0x7f),
+    seng_nub(0x7e),  seng_min(0x7d),
+    rud_max(0x80),  rud_nut(0x7f),  rud_min(0x7e),
+    rud_sta_out_max(0xff), rud_sta_out_nut(0x7f), rud_sta_out_min(0x00)
+  {
+  }
 };
 
 class ch_aws1_ctrl: public ch_base

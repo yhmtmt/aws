@@ -1,4 +1,7 @@
+
 all: $(OBJS)
 
+-include $(DEPS)
+
 %.o: %.cpp
-	$(CC) $(FLAGS) -c $< -o $@
+	$(CC) $(FLAGS) -c -MMD -MP $< -o $@
