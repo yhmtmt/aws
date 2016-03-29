@@ -256,7 +256,6 @@ bool f_ch_share::init_run()
     m_rbuf = NULL;
     return false;
   }
-  
   return true;
 }
 
@@ -354,6 +353,13 @@ bool f_ch_share::proc()
     }
   }
 
+  if(m_verb){
+    cout << "Inputs" << endl;
+    for(int ich = 0; ich < m_chin.size(); ich++)
+      m_chin[ich]->print(cout);
+    for(int och = 0; och < m_chout.size(); och++)
+      m_chout[och]->print(cout);
+  }
   return true;
 }
 

@@ -139,5 +139,23 @@ class ch_sample: public ch_base
     _val = val;
     unlock();
   }
+  virtual size_t get_dsize(){
+    return sizeof(val);
+  }
+
+  virtual size_t write_buf(const char * buf){
+    int * ptr = (int*) buf;
+    val = *ptr;
+    return sizeof(val);
+  }
+  
+  virtual size_t read_buf(char * buf){
+    int * ptr = (int*) buf;
+    *ptr= val;
+  }
+
+  virtual void print(ostream & out){
+    out << "channel " << m_name << " " << val << endl;
+  }
 };
 #endif

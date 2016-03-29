@@ -154,6 +154,14 @@ class ch_aws1_ctrl: public ch_base
     unlock();
     return sizeof(s_aws1_ctrl_pars);
   }
+
+  virtual void print(ostream & out)
+  {
+    cout << "channel " << m_name << " rud " << pars.rud  << " " 
+	 << pars.rud_aws << " meng " << pars.meng << " " 
+	 << pars.meng_aws << " seng " << pars.seng << " " << pars.seng_aws << " rud_sta " 
+	 << pars.rud_sta << " rud_sta_out " << pars.rud_sta_out << endl;
+  }
 };
 
 #endif

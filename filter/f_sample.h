@@ -17,6 +17,7 @@
 #ifndef _F_SAMPLE_H_
 #define _F_SAMPLE_H_
 #include "f_base.h"
+
 #include "../channel/ch_scalar.h"
 
 /////////////////////////////////////////////////////////// sample implementation of filter class
@@ -53,7 +54,7 @@ public:
 
 	virtual bool proc(){
 		// 5) implement your filter body. this function is called in the loop of fthread.
-		cout << get_time_str() << endl;
+		cout << m_name << ":" << get_time_str() << endl;
 		if(is_pause()){
 			cout << "Filter is puasing." << endl;
 		}

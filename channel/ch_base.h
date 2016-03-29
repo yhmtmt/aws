@@ -111,6 +111,10 @@ public:
 	{
 	  return 0;
 	}
+	
+	virtual void print(ostream & out)
+	{
+	}
 };
 
 #endif

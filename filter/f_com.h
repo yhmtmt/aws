@@ -196,7 +196,8 @@ class f_ch_share: public f_base
   socklen_t m_sz_sock_addr_snd;
   bool m_svr;
   bool m_client_fixed;
-  
+  bool m_verb;
+
   // buffers
   char * m_rbuf, * m_wbuf;
   int m_rbuf_head, m_wbuf_head;
@@ -209,7 +210,7 @@ class f_ch_share: public f_base
   char m_fname_in[1024];
   ofstream m_fin;
  public:
- f_ch_share(const char * fname): f_base(fname), 
+ f_ch_share(const char * fname): f_base(fname), m_verb(false),
     m_port(20100), m_port_dst(20101), 
     m_len_pkt_snd(1024), m_len_pkt_rcv(1024), m_sock(-1), 
     m_svr(false),
@@ -218,6 +219,7 @@ class f_ch_share: public f_base
     {
       m_fname_out[0] = '\0';
       m_fname_in[0] = '\0';
+      register_fpar("verb", &m_verb, "For debug.");
       register_fpar("port", &m_port, "UDP port.");
       register_fpar("port_dst", &m_port_dst, "Destination UDP port.");
       register_fpar("host_dst", m_host_dst, 1024, "Host address.");

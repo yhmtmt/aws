@@ -96,6 +96,12 @@ class ch_state: public ch_base
     unlock();
     return sizeof(float) * 6;
   }
+  
+  virtual void print(ostream & out)
+  {
+    out << "channel " << m_name << " RPY= " << r << "," << p << "," << y 
+	<< " pos= " << lat << "," << lon << "," << alt << endl;
+  }
 };
 
 #endif
