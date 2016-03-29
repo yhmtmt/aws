@@ -64,7 +64,7 @@ f_aws1_ui::~f_aws1_ui()
 bool f_aws1_ui::init_run()
 {
   m_acp.ctrl = true;
-  m_acp.ctrl_src = ACS_UDP;
+  m_acp.ctrl_src = (m_udp_ctrl ? ACS_UDP: ACS_CHAN);
   m_acp.rud_aws = 127;
   m_acp.meng_aws = 127;
   m_acp.seng_aws = 127;

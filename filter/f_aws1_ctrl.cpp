@@ -496,11 +496,12 @@ void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt, bool master)
   }
   
   m_acp.tcur = acpkt.tcur;
+  /*
   if(master){
     m_acp.ctrl = acpkt.ctrl;
     m_acp.ctrl_src = acpkt.ctrl_src;
   }
-
+  */
   m_acp.rud_aws = acpkt.rud_aws;
   m_acp.meng_aws = acpkt.meng_aws;
   m_acp.seng_aws = acpkt.seng_aws;

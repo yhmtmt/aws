@@ -157,10 +157,10 @@ class ch_aws1_ctrl: public ch_base
 
   virtual void print(ostream & out)
   {
-    cout << "channel " << m_name << " rud " << pars.rud  << " " 
-	 << pars.rud_aws << " meng " << pars.meng << " " 
-	 << pars.meng_aws << " seng " << pars.seng << " " << pars.seng_aws << " rud_sta " 
-	 << pars.rud_sta << " rud_sta_out " << pars.rud_sta_out << endl;
+    cout << "channel " << m_name << " rud " <<  (int) pars.rud  << " " 
+	 <<  (int) pars.rud_aws << " meng " <<  (int) pars.meng << " " 
+	 <<  (int) pars.meng_aws << " seng " <<  (int) pars.seng << " " << (int) pars.seng_aws << " rud_sta " 
+	 <<  (int) pars.rud_sta << " rud_sta_out " <<  (int) pars.rud_sta_out << endl;
   }
 };
 
