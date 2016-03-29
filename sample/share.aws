@@ -1,0 +1,24 @@
+#!/bin/sh
+
+channel sample sample_in1
+channel sample sample_out1
+channel sample sample_in2
+channel sample sample_out2
+
+filter sample smpl1 -i -o
+fset smpl1 ch_sample sample_in1
+
+filter sample smpl2 -i -o
+fset smpl1 ch_sample sample_out1
+
+filter ch_share share1 -i sample_in1 -o 
+fset share1 port_dst 20100
+fset share1 host_dst 127.0.0.1
+fset share1 verb yes
+
+filter ch_share share2 -i -o sample_out1
+fset share2 port 20100
+fset share2 verb yes
+online no
+cyc 1
+go
