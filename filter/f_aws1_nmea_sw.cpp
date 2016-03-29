@@ -58,12 +58,12 @@ f_aws1_nmea_sw::~f_aws1_nmea_sw()
 
 bool f_aws1_nmea_sw::init_run()
 {
-	if(m_chin.size() != 4){
+	if(m_chin.size() != 5){
 		cerr << "Error in f_aws1_nmea_sw::init_run. Expected number of input channels is 4." << endl;
 		return false;
 	}
 
-	if(m_chout.size() != 4){
+	if(m_chout.size() != 5){
 		cerr << "Error in f_aws1_nmea_sw::init_run. Expected number of output channels is 4." << endl;
 		return false;
 	}

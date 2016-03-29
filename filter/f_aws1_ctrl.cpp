@@ -50,7 +50,7 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   strcpy(m_dev, "/dev/zgpio1");
   m_flog_name[0] = 0;
 
-  register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs.");
+  register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl_in, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs.");
   register_fpar("ch_ctrl_out", (ch_base**)&m_ch_ctrl_out, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1 control outputs.");
   register_fpar("device", m_dev, 1023, "AWS1's control gpio device path");
   register_fpar("flog", m_flog_name, 1023, "Control log file.");
@@ -468,7 +468,7 @@ void f_aws1_ctrl::rcv_acs_chan(s_aws1_ctrl_pars & acpkt)
   if(m_ch_ctrl_in == NULL){
     cerr << m_name  << " does not have control input channel." << endl;
   }else{
-    m_ch_ctrl_out->get_pars(acpkt);
+    m_ch_ctrl_in->get_pars(acpkt);
   }
 }
 
@@ -477,7 +477,7 @@ void f_aws1_ctrl::snd_acs_chan(s_aws1_ctrl_pars & acpkt)
   if(m_ch_ctrl_out == NULL){
     cerr << m_name << " does not have control output channel." << endl;
   }else{
-    m_ch_ctrl_in->set_pars(acpkt);
+    m_ch_ctrl_out->set_pars(acpkt);
   }
 }
 
