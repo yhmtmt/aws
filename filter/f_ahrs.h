@@ -28,39 +28,39 @@ class f_ahrs: public f_base
 protected:
   ch_state * m_state;
 
-	AWS_SERIAL m_hserial;
-	char m_wbuf[AHRS_BUF];
-	char m_rbuf[AHRS_BUF];
-	int m_rbuf_head;
-	int m_rbuf_tail;
-	char m_tbuf[AHRS_BUF];
-	int m_tbuf_tail;
-	int m_readlen;
-	char m_dname[1024];
-	unsigned short m_port;
-	unsigned int m_br;
-	enum e_razor_cmd{
-		ERC_O0, ERC_O1, 
-		ERC_OB, ERC_OT, ERC_OC, ERC_ON, 
-		ERC_OSCT, ERC_OSRT, ERC_OSBT, 
-		ERC_OSCB, ERC_OSRB, ERC_OSBB, 
-		ERC_F, ERC_S, ERC_UNDEF
-	} m_cmd, m_omode;
-	bool m_ocont;
-	bool m_sync;
-	bool m_verb;
-
-	static const char * m_str_razor_cmd[ERC_UNDEF];
-
-	struct s_ahrs_ypr{
-		float y, p, r;
-	} m_ypr;
-	struct s_ahrs9{
-		float ax, ay, az;
-		float mx, my, mz;
-		float gx, gy, gz;
-	} m_raw, m_cal;
-
+  AWS_SERIAL m_hserial;
+  char m_wbuf[AHRS_BUF];
+  char m_rbuf[AHRS_BUF];
+  int m_rbuf_head;
+  int m_rbuf_tail;
+  char m_tbuf[AHRS_BUF];
+  int m_tbuf_tail;
+  int m_readlen;
+  char m_dname[1024];
+  unsigned short m_port;
+  unsigned int m_br;
+  enum e_razor_cmd{
+    ERC_O0, ERC_O1, 
+    ERC_OB, ERC_OT, ERC_OC, ERC_ON, 
+    ERC_OSCT, ERC_OSRT, ERC_OSBT, 
+    ERC_OSCB, ERC_OSRB, ERC_OSBB, 
+    ERC_F, ERC_S, ERC_UNDEF
+  } m_cmd, m_omode;
+  bool m_ocont;
+  bool m_sync;
+  bool m_verb;
+  
+  static const char * m_str_razor_cmd[ERC_UNDEF];
+  
+  struct s_ahrs_ypr{
+    float y, p, r;
+  } m_ypr;
+  struct s_ahrs9{
+    float ax, ay, az;
+    float mx, my, mz;
+    float gx, gy, gz;
+  } m_raw, m_cal;
+  
 	int set_buf_cmd(e_razor_cmd cmd)
 	{
 		if(m_cmd == ERC_UNDEF){
