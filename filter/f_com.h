@@ -219,6 +219,7 @@ class f_ch_share: public f_base
     {
       m_fname_out[0] = '\0';
       m_fname_in[0] = '\0';
+	  m_host_dst[0] = '\0';
       register_fpar("verb", &m_verb, "For debug.");
       register_fpar("port", &m_port, "UDP port.");
       register_fpar("port_dst", &m_port_dst, "Destination UDP port.");

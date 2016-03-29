@@ -25,7 +25,7 @@
 class f_sample: public f_base // 1) inherit from f_base
 {
 private:
-  ch_sample * m_ch_sample;
+  ch_sample * m_ch_sample_in, *m_ch_sample_out;
 
 	// 2) define variables used in this filter (you can define channel aliases)
 	double m_f64par;
@@ -33,10 +33,11 @@ private:
 	unsigned long long m_u64par;
 public:
 	// 3) constructor should have a c-string as object name. then the object name should be passed to the f_base constructor.
- f_sample(const char * fname): f_base(fname), m_f64par(0.), m_s64par(0), m_u64par(0)
+ f_sample(const char * fname): f_base(fname), m_ch_sample_in(NULL), m_f64par(0.), m_s64par(0), m_u64par(0)
 	{
 		// 3-1)register variables to be accessed from consoles by calling register_fpar
-	  register_fpar("ch_sample", (ch_base**)&m_ch_sample, typeid(ch_sample).name(), "Channel sample.");
+	  register_fpar("ch_sample_in", (ch_base**)&m_ch_sample_in, typeid(ch_sample).name(), "Channel sample.");
+	  register_fpar("ch_sample_out", (ch_base**)&m_ch_sample_out, typeid(ch_sample).name(), "Channel sample.");
 		register_fpar("f64par", &m_f64par, "Double precision floating point number.");
 		register_fpar("s64par", &m_s64par, "64 bit signed integer.");
 		register_fpar("u64par", &m_u64par, "64 bit unsigned integer.");
@@ -62,9 +63,9 @@ public:
 		cout << " f64par:" << m_f64par << " s64par:" 
 			<< m_s64par << " u64par:" << m_u64par << endl;
 		int val;
-		m_ch_sample->get(val);
+		m_ch_sample_in->get(val);
 		cout << "Channel val=" << val << endl;
-		m_ch_sample->set((int) m_f64par);
+		m_ch_sample_out->set((int) m_f64par);
 		
 		return true;
 	}

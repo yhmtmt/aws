@@ -330,11 +330,20 @@ bool f_ch_share::proc()
       
       res = select((int) m_sock + 1, &fr, NULL, &fe, &tv);
       if(FD_ISSET(m_sock, &fr)){
-	m_rbuf_tail += recvfrom(m_sock, 
+			int res = 0;
+			//res = recv(m_sock, m_rbuf, m_len_pkt_rcv - m_rbuf_tail, 0);
+			m_sz_sock_addr_snd = sizeof(m_sock_addr_snd);
+		res = recvfrom(m_sock, 
 				(char*) m_rbuf + m_rbuf_tail, 
-				m_len_pkt_rcv - m_rbuf_tail, 0,
+				m_len_pkt_rcv - m_rbuf_tail,
+				0,
 				(sockaddr*) & m_sock_addr_snd, 
 				&m_sz_sock_addr_snd);
+				
+		if(res == -1)
+			break;
+		else
+			m_rbuf_tail += res;
       }else if(FD_ISSET(m_sock, &fe)){
 	cerr << "Socket error during recieving packet in " << m_name;
 	cerr << ". Now closing socket." << endl;
@@ -348,6 +357,7 @@ bool f_ch_share::proc()
   }
 
   if(m_rbuf_tail == m_len_pkt_rcv){
+	  m_client_fixed = true;
     for(int och = 0; och < m_chout.size(); och++){
       m_rbuf_head += m_chout[och]->write_buf(m_rbuf + m_rbuf_head);
     }
@@ -357,6 +367,7 @@ bool f_ch_share::proc()
     cout << "Inputs" << endl;
     for(int ich = 0; ich < m_chin.size(); ich++)
       m_chin[ich]->print(cout);
+	cout << "Outputs" << endl;
     for(int och = 0; och < m_chout.size(); och++)
       m_chout[och]->print(cout);
   }

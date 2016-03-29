@@ -152,6 +152,7 @@ class ch_sample: public ch_base
   virtual size_t read_buf(char * buf){
     int * ptr = (int*) buf;
     *ptr= val;
+	return sizeof(val);
   }
 
   virtual void print(ostream & out){
