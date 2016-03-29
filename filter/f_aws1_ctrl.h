@@ -95,10 +95,7 @@ class f_aws1_ctrl: public f_base
   float m_rud_sta_sim;
 
   bool m_verb;
-
-  bool m_udp_ctrl;
-  bool m_ch_ctrl;
-  
+ 
   /// LPF related parameters
   bool m_adclpf;           // Enabling ADC's low pass filter.
   int m_sz_adclpf;         // Window size of the low pass filter.
@@ -137,7 +134,7 @@ class f_aws1_ctrl: public f_base
   void snd_acs_chan(s_aws1_ctrl_pars & acpkt);
 
   void set_acpkt(s_aws1_ctrl_pars & acpkt);
-  void set_ctrl(s_aws1_ctrl_pars & acpkt, bool master = false);
+  void set_ctrl(s_aws1_ctrl_pars & acpkt);
 
 public:
   f_aws1_ctrl(const char * name);

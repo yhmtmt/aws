@@ -43,7 +43,7 @@ const char * str_aws1_ctrl_src[ACS_NONE] = {
 
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
   f_base(name), m_fd(-1), m_sim(false), m_verb(false),
-  m_udp_ctrl(false), m_ch_ctrl(false), m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL), 
+  m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL), 
   m_acs_sock(-1), m_acs_port(20100), 
   m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0)
 {
@@ -59,8 +59,6 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   register_fpar("ctrl", &m_acp.ctrl, "Yes if aws controls AWS1 (default no)");
 
   register_fpar("acs", (int*) &m_acp.ctrl_src, ACS_NONE, str_aws1_ctrl_src,  "AWS control source.");
-  register_fpar("udp", &m_udp_ctrl, "Yes if udp control is used.");
-  register_fpar("ch", &m_ch_ctrl, "Yes if ch control is used.");
   register_fpar("acsport", &m_acs_port, "Port number for AWS1 UDP control.");
   // LPF related parameters
   register_fpar("adclpf", &m_adclpf, "LPF is applied for the ADC inputs.");
@@ -266,20 +264,16 @@ void f_aws1_ctrl::set_gpio()
 bool f_aws1_ctrl::proc()
 {
 
-  s_aws1_ctrl_pars acpkt_udp, acpkt_chan;
-
-  if(m_udp_ctrl)
-    rcv_acs_udp(acpkt_udp);
-  if(m_ch_ctrl)
-    rcv_acs_chan(acpkt_chan);
-
+  s_aws1_ctrl_pars acpkt;
   if(m_acp.ctrl){
     switch(m_acp.ctrl_src){
     case ACS_UDP:
-      set_ctrl(acpkt_udp, true);
+      rcv_acs_udp(acpkt);
+      set_ctrl(acpkt);
       break;
     case ACS_CHAN:
-      set_ctrl(acpkt_chan, true);
+      rcv_acs_chan(acpkt);
+      set_ctrl(acpkt);
       break;
     case ACS_FSET:
     default:
@@ -310,15 +304,20 @@ bool f_aws1_ctrl::proc()
     m_flog << (int) m_acp.rud_sta << " " << (int) m_acp.rud_sta_out << endl;
   }
 
-  s_aws1_ctrl_pars acpkt;
   set_acpkt(acpkt);
-
-  if(m_udp_ctrl){
-    snd_acs_udp(acpkt);
-  }
-
-  if(m_ch_ctrl){
-    snd_acs_chan(acpkt);
+  if(m_acp.ctrl){
+    switch(m_acp.ctrl_src){
+    case ACS_UDP:
+      snd_acs_udp(acpkt);
+      break;
+    case ACS_CHAN:
+      snd_acs_chan(acpkt);
+      break;
+    case ACS_FSET:
+    default:
+      // nothing to do
+      break;
+    }
   }
   return true;
 }
@@ -488,7 +487,7 @@ void f_aws1_ctrl::set_acpkt(s_aws1_ctrl_pars & acpkt)
   acpkt.suc = true;
 }
 
-void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt, bool master)
+void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
 {
   if(!acpkt.suc){
     cerr << "Failed to recieve packet." << endl;
@@ -496,12 +495,6 @@ void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt, bool master)
   }
   
   m_acp.tcur = acpkt.tcur;
-  /*
-  if(master){
-    m_acp.ctrl = acpkt.ctrl;
-    m_acp.ctrl_src = acpkt.ctrl_src;
-  }
-  */
   m_acp.rud_aws = acpkt.rud_aws;
   m_acp.meng_aws = acpkt.meng_aws;
   m_acp.seng_aws = acpkt.seng_aws;
