@@ -104,8 +104,6 @@ void cmd_proc_loop(const char * prompt, c_aws & aws, istream & in)
 	}
 }
 
-
-
 // Command explanation
 // * channel <type> <name>
 // Creating an channel instance of <type> with <name> 

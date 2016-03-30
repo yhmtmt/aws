@@ -137,19 +137,16 @@ DEPS = command.d c_aws.d aws.d factroy.d
 EXE = aws
 FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS)
 
-
 .PHONY: rcmd
 all:
 	make rcmd
+	touch c_aws.cpp
 	make aws
-
 rcmd: 
 	cd $(RCMD_DIR); make CC="$(CC)"; 
 
 aws: $(OBJS) filter channel util 
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) -o $(EXE) $(LIB)
-
--include $(DEPS)
 
 .PHONY: filter
 .PHONY: channel
@@ -164,12 +161,15 @@ channel:
 util:
 	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)" DEPS="$(UDEPS)"
 
+-include *.d
+
 .cpp.o:
 	$(CC) $(FLAGS) -c -MMD -MP $< -o $@
 
 .PHONY: clean
 clean:
 	rm -f *.o $(FDIR)/*.o $(CDIR)/*.o $(UDIR)/*.o
+	rm -f *.d $(FDIR)/*.d $(CDIR)/*.d $(UDIR)/*.d	
 	rm -f aws
 	cd $(RCMD_DIR); make clean
 

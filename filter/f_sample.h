@@ -26,49 +26,55 @@ class f_sample: public f_base // 1) inherit from f_base
 {
 private:
   ch_sample * m_ch_sample_in, *m_ch_sample_out;
+  
+  // 2) define variables used in this filter (you can define channel aliases)
+  double m_f64par;
+  long long m_s64par;
+  unsigned long long m_u64par;
 
-	// 2) define variables used in this filter (you can define channel aliases)
-	double m_f64par;
-	long long m_s64par;
-	unsigned long long m_u64par;
-public:
-	// 3) constructor should have a c-string as object name. then the object name should be passed to the f_base constructor.
+ public:
+  // 3) constructor should have an object name as a c-string. Then the object name should be passed to the f_base constructor.
  f_sample(const char * fname): f_base(fname), m_ch_sample_in(NULL), m_f64par(0.), m_s64par(0), m_u64par(0)
-	{
-		// 3-1)register variables to be accessed from consoles by calling register_fpar
-	  register_fpar("ch_sample_in", (ch_base**)&m_ch_sample_in, typeid(ch_sample).name(), "Channel sample.");
-	  register_fpar("ch_sample_out", (ch_base**)&m_ch_sample_out, typeid(ch_sample).name(), "Channel sample.");
-		register_fpar("f64par", &m_f64par, "Double precision floating point number.");
-		register_fpar("s64par", &m_s64par, "64 bit signed integer.");
-		register_fpar("u64par", &m_u64par, "64 bit unsigned integer.");
-	}
+    {
+      // 3-1) register variables to be accessed from consoles by calling register_fpar. These parameters are set via fset command.
+      // 3-1-1) Channels can be registered as parameters. (Channels are the data object which can be shared with other filter objects.)
+      register_fpar("ch_sample_in", (ch_base**)&m_ch_sample_in, typeid(ch_sample).name(), "Channel sample.");
+      register_fpar("ch_sample_out", (ch_base**)&m_ch_sample_out, typeid(ch_sample).name(), "Channel sample.");
+      
+      // 3-1-2) Typical types are also supported.
+      register_fpar("f64par", &m_f64par, "Double precision floating point number.");
+      register_fpar("s64par", &m_s64par, "64 bit signed integer.");
+      register_fpar("u64par", &m_u64par, "64 bit unsigned integer.");
+    }
+  
+  virtual bool init_run(){
+    // 4) override this function if you need to initialized filter class just before invoking fthread.
+    //		open file or communication channels, set up and check channels and their aliases.
+    return true;
+  }
+  
+  virtual void detroy_run(){
+    // override this function if you need to do something in stopping filter thread
+  }
+  
+  virtual bool proc(){
+    // 5) implement your filter body. this function is called in the loop of fthread.
+    cout << m_name << ":" << get_time_str() << endl;
+    if(is_pause()){
+      cout << "Filter is puasing." << endl;
+    }
+    
+    cout << " f64par:" << m_f64par << " s64par:" 
+	 << m_s64par << " u64par:" << m_u64par << endl;
 
-	virtual bool init_run(){
-		// 4) override this function if you need to initialized filter class just before invoking fthread.
-		//		open file or communication channels, set up and check channels and their aliases.
-		return true;
-	}
-
-	virtual void detroy_run(){
-		// override this function if you need to do something in stopping filter thread
-	}
-
-	virtual bool proc(){
-		// 5) implement your filter body. this function is called in the loop of fthread.
-		cout << m_name << ":" << get_time_str() << endl;
-		if(is_pause()){
-			cout << "Filter is puasing." << endl;
-		}
-
-		cout << " f64par:" << m_f64par << " s64par:" 
-			<< m_s64par << " u64par:" << m_u64par << endl;
-		int val;
-		m_ch_sample_in->get(val);
-		cout << "Channel val=" << val << endl;
-		m_ch_sample_out->set((int) m_f64par);
-		
-		return true;
-	}
+    // Typical channels has setter/getter with mutual exclusion. 
+    int val;
+    m_ch_sample_in->get(val);
+    cout << "Channel val=" << val << endl;
+    m_ch_sample_out->set((int) m_f64par);
+    
+    return true;
+  }
 };
 // 6) you should jump toward f_base.cpp and add the line of creation code to f_base::create the factory function.
 // 7) If you are the linux builder, the filter object should be added to the Makefile.
