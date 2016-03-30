@@ -539,7 +539,21 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 
 	m_cur_frm = 0;
 	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
-		PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
+		tPvErr PvErr = PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
+		switch(PvErr){
+		case ePvErrUnplugged:
+			cout << "Camera is unplugged." << endl;
+			break;
+		case ePvErrBadSequence:
+			cout << "Capture stream is not activated." << endl;
+			break;
+		case ePvErrQueueFull:
+			cout << "The frame queue is full." << endl;
+			break;
+		default:
+			m_frm_done[ibuf] = false;
+			break;
+		};
 	}
 
 	if(m_FrameStartTriggerMode == efstmUndef){
@@ -1197,12 +1211,10 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 		case ePvErrCancelled:
 			m_frm_done[ibuf] = true;
 			cout << "Frame request is cancelled." << endl;
-			return;
 			break;
 		case ePvErrDataMissing:
 			m_frm_done[ibuf] = true;
 			cout << "Missing data." << endl;
-			return;
 			break;
 		}
 	}
@@ -1224,11 +1236,14 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 					cout << "Camera is unplugged." << endl;
 					return;
 				case ePvErrBadSequence:
-					cout << "Capture stream is not activated." << endl;
+				//	cout << "Capture stream is not activated." << endl;
 					return;
 				case ePvErrQueueFull:
 					cout << "The frame queue is full." << endl;
 					return;
+				default:
+					m_frm_done[ibuf] = false;
+					break;
 				};
 			}
 		}
