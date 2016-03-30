@@ -77,7 +77,7 @@ const char * f_avt_cam::m_strParams[NUM_PV_PARAMS] = {
 	"Strobe1Duration", "Strobe1Delay", "Strobe1ControlledDuration", "Strobe1Mode",
 	"SyncOut1Mode", "SyncOut2Mode", "SyncOut3Mode", "SyncOut4Mode", 
 	"SyncOut1Invert", "SyncOut2Invert", "SyncOut3Invert", "SyncOut4Invert", 
-	"fcp", "ud", "udw", "udh"
+	"fcp", "ud", "udw", "udh", "emsg"
 };
 
 const char * f_avt_cam::strStrobeMode[esmUndef] = {
@@ -121,7 +121,7 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
   m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0), m_ReverseSoftware(false), m_ReverseX(false), m_ReverseY(false),
   m_Strobe1Mode(esmUndef), m_Strobe1ControlledDuration(escdUndef), m_Strobe1Duration(UINT_MAX), m_Strobe1Delay(UINT_MAX),
   m_SyncOut1Mode(esomUndef), m_SyncOut2Mode(esomUndef), m_SyncOut3Mode(esomUndef), m_SyncOut4Mode(esomUndef),
-  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef), bundist(false)
+  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef), bundist(false), bemsg(false)
 {
 	if(icam == -1){
 		strParams = m_strParams;
@@ -225,6 +225,7 @@ void f_avt_cam::register_params(s_cam_params & cam)
 	register_fpar(cam.strParams[50], &cam.bundist, "Enabling undistort.");
 	register_fpar(cam.strParams[51], &cam.szud.width, "Width of the undistorted image.");
 	register_fpar(cam.strParams[52], &cam.szud.height, "Height of the undistorted image.");
+	register_fpar(cam.strParams[53], &cam.bemsg, "If asserted, error message is enabled in the callback.");
 }
 
 const char * f_avt_cam::get_err_msg(int code)
@@ -1191,6 +1192,7 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 		default:
 			break;
 		}
+
 		if(!img.empty()){
 			Mat tmp;
 			if(m_ReverseSoftware && (m_ReverseX || m_ReverseY)){
@@ -1206,14 +1208,12 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 			}
 			pout->set_img(img, m_cur_time, pfrm->FrameCount);
 		}
-	}else{
+	}else if(bemsg){
 		switch(pfrm->Status){
 		case ePvErrCancelled:
-			m_frm_done[ibuf] = true;
 			cout << "Frame request is cancelled." << endl;
 			break;
 		case ePvErrDataMissing:
-			m_frm_done[ibuf] = true;
 			cout << "Missing data." << endl;
 			break;
 		}
@@ -1231,20 +1231,23 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 		if(m_frm_done[ibuf]){
 			if(!pout->is_buf_in_use((const unsigned char*) m_frame[ibuf].ImageBuffer)){
 				PvErr = PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
-				switch(PvErr){
-				case ePvErrUnplugged:
-					cout << "Camera is unplugged." << endl;
-					return;
-				case ePvErrBadSequence:
-				//	cout << "Capture stream is not activated." << endl;
-					return;
-				case ePvErrQueueFull:
-					cout << "The frame queue is full." << endl;
-					return;
-				default:
+				if(PvErr == ePvErrSuccess){
 					m_frm_done[ibuf] = false;
-					break;
-				};
+				}else if(bemsg){
+					switch(PvErr){
+					case ePvErrUnplugged:
+							cout << "Camera is unplugged." << endl;
+						return;
+					case ePvErrBadSequence:
+							cout << "Capture stream is not activated." << endl;
+						return;
+					case ePvErrQueueFull:
+							cout << "The frame queue is full." << endl;
+						return;
+					default:
+						break;
+					}
+				}
 			}
 		}
 	}
