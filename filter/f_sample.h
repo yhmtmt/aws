@@ -34,7 +34,8 @@ private:
 
  public:
   // 3) constructor should have an object name as a c-string. Then the object name should be passed to the f_base constructor.
- f_sample(const char * fname): f_base(fname), m_ch_sample_in(NULL), m_f64par(0.), m_s64par(0), m_u64par(0)
+ f_sample(const char * fname): f_base(fname), m_ch_sample_in(NULL), m_ch_sample_out(NULL), 
+	 m_f64par(0.), m_s64par(0), m_u64par(0)
     {
       // 3-1) register variables to be accessed from consoles by calling register_fpar. These parameters are set via fset command.
       // 3-1-1) Channels can be registered as parameters. (Channels are the data object which can be shared with other filter objects.)
@@ -69,9 +70,13 @@ private:
 
     // Typical channels has setter/getter with mutual exclusion. 
     int val;
-    m_ch_sample_in->get(val);
-    cout << "Channel val=" << val << endl;
-    m_ch_sample_out->set((int) m_f64par);
+	if(m_ch_sample_in){
+		m_ch_sample_in->get(val);
+		cout << "Channel val=" << val << endl;
+	}
+	if(m_ch_sample_out){
+		m_ch_sample_out->set((int) m_f64par);
+	}
     
     return true;
   }
