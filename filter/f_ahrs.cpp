@@ -144,7 +144,7 @@ bool f_ahrs::proc()
 
 			tocnt++;
 			if(tocnt == 1000000){
-				cout << "Synchronization failed." << endl;
+			  cout << m_name << "Synchronization failed." << endl;
 				m_cmd = ERC_S;
 				break;
 			}
