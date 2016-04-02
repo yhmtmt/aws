@@ -69,47 +69,11 @@ f_aws1_nmea_sw::~f_aws1_nmea_sw()
 
 bool f_aws1_nmea_sw::init_run()
 {
-	if(m_chin.size() != 5){
-		cerr << "Error in f_aws1_nmea_sw::init_run. Expected number of input channels is 4." << endl;
-		return false;
-	}
-
-	if(m_chout.size() != 5){
-		cerr << "Error in f_aws1_nmea_sw::init_run. Expected number of output channels is 4." << endl;
-		return false;
-	}
-
-	m_aws_nmea_i = dynamic_cast<ch_nmea*>(m_chin[0]);
-	m_ap_nmea_i = dynamic_cast<ch_nmea*>(m_chin[1]);
-	m_gff_nmea_i = dynamic_cast<ch_nmea*>(m_chin[2]);
-	m_ais_nmea_i = dynamic_cast<ch_nmea*>(m_chin[3]);
-	m_gps_nmea_i = dynamic_cast<ch_nmea*>(m_chin[4]);
-
-	if(m_aws_nmea_i == NULL || m_ap_nmea_i == NULL || m_gff_nmea_i == NULL || m_ais_nmea_i == NULL 
-		|| m_gps_nmea_i == NULL){
-		cerr << "Error in f_aws1_nmea_sw::init_run. The input channel should be ch_nmea." << endl;
-		return false;
-	}
-
-	m_aws_nmea_o = dynamic_cast<ch_nmea*>(m_chout[0]);
-	m_ap_nmea_o = dynamic_cast<ch_nmea*>(m_chout[1]);
-	m_gff_nmea_o = dynamic_cast<ch_nmea*>(m_chout[2]);
-	m_ais_nmea_o = dynamic_cast<ch_nmea*>(m_chout[3]);
-	m_gps_nmea_o = dynamic_cast<ch_nmea*>(m_chout[4]);
-
-	if(m_aws_nmea_o == NULL || m_ap_nmea_o == NULL || m_gff_nmea_o == NULL || m_ais_nmea_o == NULL
-		|| m_gps_nmea_o == NULL){
-		cerr << "Error in f_aws1_nmea_sw::init_run. The input channel should be ch_nmea." << endl;
-		return false;
-	}		
-
 	return true;
 }
 
 void f_aws1_nmea_sw::destroy_run()
 {
-  m_aws_nmea_i = m_ap_nmea_i = m_gff_nmea_i = m_ais_nmea_i = m_gps_nmea_i = NULL;
-  m_aws_nmea_o = m_ap_nmea_o = m_gff_nmea_o = m_ais_nmea_o = m_gps_nmea_o = NULL;
 }
 
 void f_aws1_nmea_sw::aws_to_out()
@@ -166,37 +130,6 @@ void f_aws1_nmea_sw::gff_to_out()
 		if(m_aws_nmea_o)
 			m_aws_nmea_o->push(m_nmea);
 
-		/*
-		if(is_nmea_type("RMC", m_nmea) 
-		|| is_nmea_type("GGA", m_nmea)
-		|| is_nmea_type("GLL", m_nmea)){
-
-		if(m_ais_ocnt == 0){
-		if(m_verb)
-		cout << "AIS < " << m_nmea << endl;
-
-		m_ais_nmea_o->push(m_nmea);
-		m_ais_out = true;
-		}
-		}
-
-		if(is_nmea_type("VTG", m_nmea)){
-		if(m_ais_ocnt == 0){
-		if(m_verb)
-		cout << "AIS < " << m_nmea << endl;
-
-		m_ais_nmea_o->push(m_nmea);
-		m_ais_out = true;
-		}
-
-		if(m_ap_ocnt == 0){
-		if(m_verb)
-		cout << "AP < " << m_nmea << endl;
-		m_ap_nmea_o->push(m_nmea);
-		m_ap_out = true;
-		}	    
-		}
-		*/   
 		if(m_ap_nmea_o && !m_aws_ctrl && 
 			(is_nmea_type("APB", m_nmea) || 
 			is_nmea_type("AAM", m_nmea) ||
@@ -284,12 +217,16 @@ bool f_aws1_nmea_sw::proc()
   
   if(m_aws_nmea_i)
 	aws_to_out();
+
   if(m_ap_nmea_i)
 	ap_to_out();
+
   if(m_gff_nmea_i)
 	gff_to_out();
+
   if(m_ais_nmea_i)
 	ais_to_out();
+
   if(m_gps_nmea_i)
 	gps_to_out();
 

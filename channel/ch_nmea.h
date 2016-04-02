@@ -33,14 +33,14 @@ protected:
 		if(!m_buf)
 			return false;
 
-		char * p = new char [83 * size];
+		char * p = new char [84 * size];
 		if(!p){
 			delete[] m_buf;
 			m_buf = NULL;
 			return false;
 		}
 
-		for(int i = 0; i < size; i++, p+=83){
+		for(int i = 0; i < size; i++, p+=84){
 			m_buf[i] = p;
 		}
 
@@ -81,9 +81,10 @@ public:
 		for(;*p != '\0'; p++, buf++){
 			*buf = *p;
 		}
+
 		*buf = *p;
-		m_head++;
-		m_head %= m_max_buf;
+		m_head = (m_head + 1) % m_max_buf;
+
 		unlock();
 		return true;
 	}
@@ -91,17 +92,29 @@ public:
 	bool push(const char * buf)
 	{
 		lock();
-		int next_tail = (m_tail + 1) % m_max_buf;
-		if(m_head == next_tail){
-			m_head++;
-			m_head %= m_max_buf;
-		}
+
 		char * p = m_buf[m_tail];
-		for( ;*buf != '\0'; buf++, p++){
+		int len = 0;
+		for( ;*buf != '\0' && len < 84; buf++, p++, len++){
 			*p = *buf;
 		}
+
+		if(len == 84){
+			m_buf[m_tail][83] = '\0';
+			cerr << "Error in " << m_name << "::push(const char*). No null character in the string given " << endl;
+			cerr << "    -> string: " << m_buf[m_tail] << endl;
+			return false;
+		}
+
 		*p = *buf;
+
+		int next_tail = (m_tail + 1) % m_max_buf;
+		if(m_head == next_tail){
+			m_new_nmeas--;
+			m_head = (m_head + 1) % m_max_buf;
+		}
 		m_tail = next_tail;
+
 		m_new_nmeas++;
 		unlock();
 		return true;
@@ -118,7 +131,7 @@ public:
 			head += m_max_buf;
 
 		for(int i = 0; i < (int) m_new_nmeas; i++){
-			fout.write((const char *)m_buf[head], sizeof(char) * 83);
+			fout.write((const char *)m_buf[head], sizeof(char) * 84);
 			head = (head + 1) % m_max_buf;
 		}
 		m_new_nmeas = 0;
@@ -134,7 +147,7 @@ public:
 		fin.read((char *) &ul, sizeof(unsigned long long));
 		for(int i = 0; i < (int) ul; i++){
 			int next_tail = (m_tail + 1) % m_max_buf;
-			fin.read((char*) m_buf[m_tail], sizeof(char) * 83);
+			fin.read((char*) m_buf[m_tail], sizeof(char) * 84);
 			if(m_head == next_tail){
 				m_head++;
 				m_head %= m_max_buf;
@@ -146,7 +159,6 @@ public:
 		unlock();
 		return true;
 	}
-
 };
 
 class ch_ship: public ch_base
