@@ -64,7 +64,8 @@ unsigned char calc_nmea_chksum(const char * str)
 	return cs;
 }
 
-bool eval_nmea_chksum(const char * str){
+bool eval_nmea_chksum(const char * str)
+{
 	
 	unsigned char cs = 0x00;
 	int i;

@@ -47,7 +47,7 @@ protected:
 	int m_buf_head;
 	int m_buf_tail;
 
-	char m_nmea[83];
+	char m_nmea[84];
 	int m_nmea_tail;
 	char m_src_type_str[8];
 	enum e_nmea_src{NONE, FILE, COM, UDP} m_nmea_src;
@@ -149,7 +149,7 @@ protected:
 	ch_nmea * m_chin;
 	ch_nmea * m_chout;
 	int m_bm_ver;
-	char m_buf[83];
+	char m_buf[84];
 	bool m_btime_rmc;
 
 	///////////// for AIS Binary message

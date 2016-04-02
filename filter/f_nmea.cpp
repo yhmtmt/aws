@@ -136,8 +136,8 @@ bool f_nmea::rcv_file()
 		//cout << &m_buf[31] << endl;
 		if(m_chout){
 			int len = (int) strlen(&m_buf[31]);
-			if(len >= 83){
-				cerr << "Irregal length sentence detected. :" << m_buf << endl;
+			if(len >= 84){
+				cerr << "Irregal long sentence detected. :" << m_buf << endl;
 				cerr << "the length is " << len << endl;
 				continue;
 			}
@@ -180,7 +180,9 @@ void f_nmea::extract_nmea_from_buffer()
 	while(m_buf_tail){
 		// if the nmea sentence is empty, seek for the head mark ! or $.
 		if(m_nmea_tail == 0){
-			for(;m_buf[m_buf_head] != '!' && m_buf[m_buf_head] != '$' && m_buf_head < m_buf_tail; m_buf_head++);
+			for(;m_buf[m_buf_head] != '!' && m_buf[m_buf_head] != '$' 
+				&& m_buf_head < m_buf_tail; m_buf_head++);
+
 			if(m_buf_head == m_buf_tail){
 				m_buf_head = 0;
 				m_buf_tail = 0;
@@ -189,12 +191,18 @@ void f_nmea::extract_nmea_from_buffer()
 		}
 
 		// Copy the nmea string from buffer 
-		for(;m_buf_head < m_buf_tail; m_buf_head++, m_nmea_tail++){
+		for(;m_buf_head < m_buf_tail && m_nmea_tail < 84; m_buf_head++, m_nmea_tail++){
 			m_nmea[m_nmea_tail] = m_buf[m_buf_head];
 			if(m_buf[m_buf_head] == 0x0D){// detecting CR
 				m_nmea[m_nmea_tail] = '\0';
 				m_nmea_tail = -1; // uses -1 as flag of nmea extraction
 				break;
+			}else if(m_nmea_tail == 84){
+				m_nmea[83] = '\0';
+				cerr << m_name << "::extrac_nmea_from_buffer" << 
+					" No termination character detected in 83 characters." << endl;
+				cerr << "    -> string: " << m_nmea << endl;
+				m_nmea_tail = 0;
 			}
 		}
 
@@ -206,7 +214,7 @@ void f_nmea::extract_nmea_from_buffer()
 			break;
 		}
 
-		// if the complete nmea found, send it to the channel and log file.
+		// If the complete nmea found, send it to the channel and log file.
 		// Then the string remained in the buffer is shiftted to the head.
 		if(m_nmea_tail == -1){
 			if(is_filtered(m_nmea)){
@@ -223,6 +231,7 @@ void f_nmea::extract_nmea_from_buffer()
 					m_flog.open(m_fname_log);
 				}
 			}
+
 			if(m_verb){
 			  cout << m_name << " > " << m_nmea << endl;
 			}
@@ -332,6 +341,7 @@ bool f_nmea::init_run()
 			return false;
 		break;
 	}
+
 	if(m_blog){
 		time_t t = time(NULL);
 		sprintf(m_fname_log, "%s_%lld.nmea", m_name, (long long int)t);

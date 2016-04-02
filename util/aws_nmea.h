@@ -37,6 +37,7 @@ enum e_nd_type{
 
 extern const char * str_nd_type[ENDT_UNDEF];
 
+bool eval_nmea_chksum(const char * str);
 unsigned char calc_nmea_chksum(const char * str);
 unsigned int htoi(const char * str);
 bool parstrcmp(const char * str1, const char * str2);
