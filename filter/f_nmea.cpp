@@ -278,7 +278,7 @@ int f_nmea::send_nmea()
 
 	int len = 0;
 	if(m_chin->pop(m_buf_send)){
-		int _len = strlen(m_buf_send);
+		int _len = (int) strlen(m_buf_send);
 		if(m_buf_send[_len-2] != 0x0D && m_buf_send[_len-1] != 0x0A){
 		  m_buf_send[_len] = 0x0D;
 		  m_buf_send[_len+1] = 0x0A;

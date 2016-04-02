@@ -129,59 +129,51 @@ const c_nmea_dat * c_nmea_dec::decode(const char * str)
 	c_nmea_dat * pnd = NULL;
 	switch(nt){
 	case ENDT_GGA:
-		if(gga.dec(str))
 			pnd = &gga;
 		break;
 	case ENDT_GSA:
-		if(gsa.dec(str))
-			pnd = &gsa;
+		pnd = &gsa;
 		break;
 	case ENDT_GSV:
-		if(gsv.dec(str))
-			pnd = &gsv;
+		pnd = &gsv;
 		break;
 	case ENDT_RMC:
-		if(rmc.dec(str))
-			pnd = &rmc;
+		pnd = &rmc;
 		break;
 	case ENDT_VTG:
-		if(vtg.dec(str))
-			pnd = &vtg;
+		pnd = &vtg;
 		break;
 	case ENDT_ZDA:
-		if(zda.dec(str))
-			pnd = &zda;
+		pnd = &zda;
 		break;
 	case ENDT_TTM:
-		if(ttm.dec(str))
-			pnd = &ttm;
+		pnd = &ttm;
 		break;
 	case ENDT_DBT:
-		if(dbt.dec(str))
-			pnd = &dbt;
+		pnd = &dbt;
 		break;
 	case ENDT_MTW:
-		if(mtw.dec(str))
-			pnd = &mtw;
+		pnd = &mtw;
 		break;
 	case ENDT_VDM:	
-		pnd = vdmdec.dec_vdm(str);
+		pnd = vdmdec.dec(str);
 		break;
 	case ENDT_VDO:
-		pnd = vdmdec.dec_vdo(str);
+		pnd = vdodec.dec(str);
 		break;
 	case ENDT_ABK:
-		if(abk.dec(str))
-			pnd = &abk;
+		pnd = &abk;
 		break;
 	case ENDT_UNDEF:
 		pnd = NULL;
 	};
 	
-	if(pnd){
+	if(pnd && pnd->dec(str)){	
 		pnd->m_toker[0] = str[1];
 		pnd->m_toker[1] = str[2];
 		pnd->m_cs = true;
+	}else{
+		return NULL;
 	}
 
 	return pnd;

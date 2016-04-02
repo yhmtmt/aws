@@ -392,6 +392,7 @@ public:
 class c_vdm_dec
 {
 protected:
+	bool m_vdo;
 	c_vdm_msg1 vdm_msg1;
 	c_vdm_msg4 vdm_msg4;
 	c_vdm_msg5 vdm_msg5;
@@ -427,7 +428,7 @@ protected:
 
 	void clear();
 public:
-	c_vdm_dec():m_pool(NULL)
+	c_vdm_dec():m_pool(NULL), m_vdo(false)
 	{
 	}
 
@@ -439,8 +440,11 @@ public:
 		}
 	}
 
-	c_vdm * dec_vdm(const char * str);
-	c_vdm * dec_vdo(const char * str);
+	void set_vdo(){
+		m_vdo = true;
+	}
+
+	c_vdm * dec(const char * str);
 };
 
 #endif

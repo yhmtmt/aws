@@ -176,7 +176,7 @@ void s_pl::dearmor(const char * str)
 	}
 }
 
-c_vdm * c_vdm_dec::dec_vdm(const char * str)
+c_vdm * c_vdm_dec::dec(const char * str)
 {
 	s_pl * ppl = NULL;
 	c_vdm * pnd;
@@ -247,17 +247,10 @@ c_vdm * c_vdm_dec::dec_vdm(const char * str)
 
 	pnd = dec_payload(ppl);
 	c_vdm_dec::free(ppl);
-
+	pnd->m_vdo = m_vdo;
 	return pnd;
 }
 
-c_vdm * c_vdm_dec::dec_vdo(const char * str)
-{
-	c_vdm * pvdm = dec_vdm(str);
-	if(pvdm != NULL)
-		pvdm->m_vdo = true;
-	return pvdm;
-}
 
 c_vdm * c_vdm_dec::dec_payload(s_pl * ppl)
 {

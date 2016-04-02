@@ -165,6 +165,7 @@ protected:
 	c_abk abk;
 
 	c_vdm_dec vdmdec;
+	c_vdm_dec vdodec;
 public:
 	c_nmea_dec()
 	{
