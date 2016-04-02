@@ -148,12 +148,10 @@ const char * get_ship_type_name(unsigned char uc)
 
 
 //////////////////////////////////////////////// vdm decoder
-list<s_vdm_pl*> s_vdm_pl::m_tmp;
-s_vdm_pl * s_vdm_pl::m_pool = NULL;
 
-void s_vdm_pl::clear()
+void c_vdm_dec::clear()
 {
-	for(list<s_vdm_pl*>::iterator itr = m_tmp.begin(); itr != m_tmp.end(); itr++)
+	for(list<s_pl*>::iterator itr = m_tmp.begin(); itr != m_tmp.end(); itr++)
 		delete *itr;
 	m_tmp.clear();
 }
@@ -167,21 +165,21 @@ char armor(char c)
 	return c;
 }
 
-void s_vdm_pl::dearmor(const char * str)
+void s_pl::dearmor(const char * str)
 {
 	int i;
 
-	for(i = 0; str[i] != '\0' && m_pl_size < 256; i++, m_pl_size++){
-		m_payload[m_pl_size] = str[i] - 48;
-		if(m_payload[m_pl_size] > 40)
-			m_payload[m_pl_size] -= 8;
+	for(i = 0; str[i] != '\0' && pl_size < 256; i++, pl_size++){
+		payload[pl_size] = str[i] - 48;
+		if(payload[pl_size] > 40)
+			payload[pl_size] -= 8;
 	}
 }
 
-c_nmea_dat * c_vdm::dec_vdm(const char * str)
+c_vdm * c_vdm_dec::dec_vdm(const char * str)
 {
+	s_pl * ppl = NULL;
 	c_vdm * pnd;
-	s_vdm_pl * ppl = NULL;
 	int i = 0;
 	int ipar = 0;
 	int len;
@@ -204,42 +202,42 @@ c_nmea_dat * c_vdm::dec_vdm(const char * str)
 			if(len != 0)
 				seqmsgid = htoi(buf);
 			if(fnumber == 1){
-				ppl = s_vdm_pl::alloc();
-				ppl->m_fcounts = fcounts;
-				ppl->m_seqmsgid = seqmsgid;
+				ppl = alloc();
+				ppl->fcounts = fcounts;
+				ppl->seqmsgid = seqmsgid;
 			}else{
 				// finding same seqmsgid
-				list<s_vdm_pl*>::iterator itr = s_vdm_pl::m_tmp.begin();
-				for(;itr != s_vdm_pl::m_tmp.end(); itr++)
-					if((*itr)->m_seqmsgid == seqmsgid)
+				list<s_pl*>::iterator itr = m_tmp.begin();
+				for(;itr != c_vdm_dec::m_tmp.end(); itr++)
+					if((*itr)->seqmsgid == seqmsgid)
 						break;
-				if(itr == s_vdm_pl::m_tmp.end()){ // not found
+				if(itr == c_vdm_dec::m_tmp.end()){ // not found
 					cerr << "Cannot find preceding fragment." << endl;
 					return NULL;
 				}
 				ppl = *itr;
-				s_vdm_pl::m_tmp.erase(itr);
+				c_vdm_dec::m_tmp.erase(itr);
 			}
-			ppl->m_fnumber = fnumber;
+			ppl->fnumber = fnumber;
 			break;
 		case 4: // channnel A or B
-			ppl->m_is_chan_A = buf[0] == 'A';
+			ppl->is_chan_A = buf[0] == 'A';
 			break;
 		case 5: // dearmor payload
 			ppl->dearmor(buf);
 			break;
 		case 6: // number of padded zeros
-			ppl->m_num_padded_zeros = buf[0] - '0';
+			ppl->num_padded_zeros = buf[0] - '0';
 		}
 
 		ipar++;
 	}
 
 	if(!ppl->is_complete()){
-		s_vdm_pl::m_tmp.push_back(ppl);
-		if(s_vdm_pl::m_tmp.size() > 10){
-			s_vdm_pl::free(*s_vdm_pl::m_tmp.begin());
-			s_vdm_pl::m_tmp.pop_front();
+		c_vdm_dec::m_tmp.push_back(ppl);
+		if(c_vdm_dec::m_tmp.size() > 10){
+			c_vdm_dec::free(*c_vdm_dec::m_tmp.begin());
+			c_vdm_dec::m_tmp.pop_front();
 #ifdef _DEBUG
 			cerr << "Payload fragment exceeded 10." << endl;
 #endif
@@ -247,66 +245,67 @@ c_nmea_dat * c_vdm::dec_vdm(const char * str)
 		return NULL;
 	}
 
-	pnd = ppl->dec_payload();
-	s_vdm_pl::free(ppl);
+	pnd = dec_payload(ppl);
+	c_vdm_dec::free(ppl);
 
 	return pnd;
 }
 
-c_nmea_dat * c_vdm::dec_vdo(const char * str)
+c_vdm * c_vdm_dec::dec_vdo(const char * str)
 {
-	c_vdm * pvdm = dynamic_cast<c_vdm*>(dec_vdm(str));
+	c_vdm * pvdm = dec_vdm(str);
 	if(pvdm != NULL)
 		pvdm->m_vdo = true;
 	return pvdm;
 }
 
-c_vdm * s_vdm_pl::dec_payload()
+c_vdm * c_vdm_dec::dec_payload(s_pl * ppl)
 {
-	m_type = (short) m_payload[0];
+	m_type = (short) ppl->payload[0];
 
 	c_vdm * pnd = NULL;
 	switch(m_type){
 	case 1: // Position report class A 
 	case 2: // Position Report Class A (Assigned Schedule)
 	case 3: // Position Report Class A (Response to interrogation)
-		pnd = new c_vdm_msg1;
+		pnd = &vdm_msg1;
 		break;
 	case 4:
 	case 11:
-		pnd = new c_vdm_msg4;
+		pnd = &vdm_msg4;
 		break;
 	case 5:
-		pnd = new c_vdm_msg5;
+		pnd = &vdm_msg5;
 		break;
 	case 8:
-		pnd = new c_vdm_msg8;
+		pnd = &vdm_msg8;
 		break;
 	case 18:
-		pnd = new c_vdm_msg18;
+		pnd = &vdm_msg18;
 		break;
 	case 19:
-		pnd = new c_vdm_msg19;
+		pnd = &vdm_msg19;
 		break;
 	case 24:
-		pnd = new c_vdm_msg24;
+		pnd = &vdm_msg24;
 		break;
 	default:
 		break;
 	}
+
 	if(pnd != NULL)
-		pnd->dec_payload(this);
+		pnd->dec_payload(ppl);
 	return pnd;
 }
 
 ////////////////////////////////////// c_vdm_msg1
 
-void c_vdm_msg1::dec_payload(s_vdm_pl * ppl)
+void c_vdm_msg1::dec_payload(s_pl * ppl)
 {
 	unsigned int tmpu;
 	char tmpc;
 	int tmpi;
-	char * dat = ppl->m_payload;
+	char * dat = ppl->payload;
 
 	// decodes mmsi and repeat flag
 	c_vdm::dec_payload(ppl);
@@ -369,7 +368,7 @@ void c_vdm_msg1::dec_payload(s_vdm_pl * ppl)
 }
 
 
-ostream & c_vdm_msg1::show(ostream & out)
+ostream & c_vdm_msg1::show(ostream & out) const
 {
 	out << "AIS " << (m_is_chan_A ? "A":"B") 
 		<< " MSG" << 1 << ">";
@@ -425,10 +424,10 @@ ostream & c_vdm_msg1::show(ostream & out)
 
 ////////////////////////////////////// c_vdm_msg4
 
-void c_vdm_msg4::dec_payload(s_vdm_pl * ppl)
+void c_vdm_msg4::dec_payload(s_pl * ppl)
 {
 	int tmpi;
-	char * dat = ppl->m_payload;
+	char * dat = ppl->payload;
 
 	// decodes mmsi and repeat flag
 	c_vdm::dec_payload(ppl);
@@ -478,7 +477,7 @@ void c_vdm_msg4::dec_payload(s_vdm_pl * ppl)
 }
 
 
-ostream & c_vdm_msg4::show(ostream & out)
+ostream & c_vdm_msg4::show(ostream & out) const
 {
 	out << "AIS " << (m_is_chan_A ? "A":"B") 
 		<< " MSG" << 4 << ">";
@@ -528,10 +527,10 @@ ostream & c_vdm_msg4::show(ostream & out)
 
 ////////////////////////////////////// c_vdm_msg5
 
-void c_vdm_msg5::dec_payload(s_vdm_pl * ppl)
+void c_vdm_msg5::dec_payload(s_pl * ppl)
 {
 	unsigned char tmpu;
-	char * dat = ppl->m_payload;
+	char * dat = ppl->payload;
 
 	// decodes mmsi and repeat flag
 	c_vdm::dec_payload(ppl);
@@ -599,7 +598,7 @@ void c_vdm_msg5::dec_payload(s_vdm_pl * ppl)
 	m_dte =((dat[70] & 0x08) ? false:true);
 }
 
-ostream & c_vdm_msg5::show(ostream & out)
+ostream & c_vdm_msg5::show(ostream & out) const
 {
 	out << "AIS " << (m_is_chan_A ? "A":"B") 
 		<< " MSG" << 5 << ">";
@@ -654,9 +653,9 @@ ostream & c_vdm_msg5::show(ostream & out)
 	return out;
 }
 ////////////////////////////////////// c_vdm_msg6
-void c_vdm_msg6::dec_payload(s_vdm_pl * ppl)
+void c_vdm_msg6::dec_payload(s_pl * ppl)
 {
-	char * dat = ppl->m_payload;
+	char * dat = ppl->payload;
 	c_vdm::dec_payload(ppl); // 0-37 bit consumed
 	// 40-69 destination MMSI
 	m_mmsi_dst = ((dat[6] & 0x03) << 28) |
@@ -671,30 +670,30 @@ void c_vdm_msg6::dec_payload(s_vdm_pl * ppl)
 	m_fid = ((dat[13] & 0x03) << 4) |
 		((dat[14] & 0x3C) >> 2);
 
-	m_msg_size = ppl->m_pl_size * 6 /* 6bit per char */
-		- 72 - ppl->m_num_padded_zeros;
+	m_msg_size = ppl->pl_size * 6 /* 6bit per char */
+		- 72 - ppl->num_padded_zeros;
 	// 72 to end
 
 	for(int i = 0, byte=12;;){
 		m_msg.msg[i] =  ((dat[byte] & 0x3F) << 2); byte++;
-		if(byte >= ppl->m_pl_size)
+		if(byte >= ppl->pl_size)
 			break;
 
 		m_msg.msg[i] |= (dat[byte] & 0x30 >> 4);
 
-		if(byte >= ppl->m_pl_size)
+		if(byte >= ppl->pl_size)
 			break;
 
 		i++; 
 		m_msg.msg[i] = ((dat[byte] & 0x0F) << 4); byte++;
-		if(byte >= ppl->m_pl_size)
+		if(byte >= ppl->pl_size)
 			break;
 
 		m_msg.msg[i] |= ((dat[byte] & 0x3C) >> 2);
 
 		i++;
 		m_msg.msg[i] = ((dat[byte] & 0x03) << 6); byte++;
-		if(byte >= ppl->m_pl_size)
+		if(byte >= ppl->pl_size)
 			break;
 
 		m_msg.msg[i] |= ((dat[byte] & 0x3F) >> 2); byte++;
@@ -702,15 +701,15 @@ void c_vdm_msg6::dec_payload(s_vdm_pl * ppl)
 	}
 }
 
-ostream & c_vdm_msg6::show(ostream & out)
+ostream & c_vdm_msg6::show(ostream & out) const
 {
 	return out;
 }
 
 ////////////////////////////////////// c_vdm_msg8
-void c_vdm_msg8::dec_payload(s_vdm_pl * ppl)
+void c_vdm_msg8::dec_payload(s_pl * ppl)
 {
-	char * dat = ppl->m_payload;
+	char * dat = ppl->payload;
 
 	c_vdm::dec_payload(ppl); // 0-37 bit consumed
 
@@ -720,28 +719,28 @@ void c_vdm_msg8::dec_payload(s_vdm_pl * ppl)
 	m_fid = ((dat[8] & 0x0F) << 2) |
 		((dat[9] & 0x30) >> 4);
 
-	m_msg_size = ppl->m_pl_size * 6 /* 6bit per char */
-		- 40 - ppl->m_num_padded_zeros;
+	m_msg_size = ppl->pl_size * 6 /* 6bit per char */
+		- 40 - ppl->num_padded_zeros;
 
 	// 40 to end
 	for(int i = 0, byte=6;;){
 		m_msg.msg[i] =  ((dat[byte] & 0x03) << 6); byte++;
-		if(byte >= ppl->m_pl_size)
+		if(byte >= ppl->pl_size)
 			break;
 		m_msg.msg[i] |= (dat[byte] & 0x3F); byte++;
 
-		if(byte >= ppl->m_pl_size)
+		if(byte >= ppl->pl_size)
 			break;
 		i++; 
 		m_msg.msg[i] = ((dat[byte] & 0x3F) << 2); byte++;
-		if(byte >= ppl->m_pl_size)
+		if(byte >= ppl->pl_size)
 			break;
 
 		m_msg.msg[i] |= ((dat[byte] & 0x30) >> 4);
 
 		i++;
 		m_msg.msg[i] = ((dat[byte] & 0x0F) << 4); byte++;
-		if(byte >= ppl->m_pl_size)
+		if(byte >= ppl->pl_size)
 			break;
 
 		m_msg.msg[i] |= ((dat[byte] & 0x3C) >> 2);
@@ -749,7 +748,7 @@ void c_vdm_msg8::dec_payload(s_vdm_pl * ppl)
 	}
 }
 
-ostream & c_vdm_msg8::show(ostream & out)
+ostream & c_vdm_msg8::show(ostream & out) const
 {
 	out << "AIS " << (m_is_chan_A ? "A":"B") 
 		<< " MSG" << 8 << ">";
@@ -790,8 +789,9 @@ ostream & c_vdm_msg8::show(ostream & out)
 	out << endl;
 
 	out << "MSG(as 8bit ascii):" ;
-	m_msg.msg[num_bytes] = '\0';
-	out << m_msg.msg << endl;
+	for(int i = 0; i < num_bytes; i++)
+		out << m_msg.msg[i];
+	out << endl;
 
 	out << "MSG(in Hex):";
 	for(int i = 0; i < num_bytes; i++){
@@ -826,11 +826,11 @@ ostream & c_vdm_msg8::show(ostream & out)
 
 ////////////////////////////////////// c_vdm_msg18
 
-void c_vdm_msg18::dec_payload(s_vdm_pl * ppl)
+void c_vdm_msg18::dec_payload(s_pl * ppl)
 {
 	unsigned int tmpu;
 	int tmpi;
-	char * dat = ppl->m_payload;
+	char * dat = ppl->payload;
 
 	// decodes mmsi and repeat flag
 	c_vdm::dec_payload(ppl); // 0-37 bit consumed
@@ -905,7 +905,7 @@ void c_vdm_msg18::dec_payload(s_vdm_pl * ppl)
 	m_raim = (dat[24] & 0x04 ? true : false);
 }
 
-ostream & c_vdm_msg18::show(ostream & out)
+ostream & c_vdm_msg18::show(ostream & out) const
 {
 	out << "AIS " << (m_is_chan_A ? "A":"B") 
 		<< " MSG" << 18 << ">";
@@ -931,11 +931,11 @@ ostream & c_vdm_msg18::show(ostream & out)
 
 ////////////////////////////////////// c_vdm_msg19
 
-void c_vdm_msg19::dec_payload(s_vdm_pl * ppl)
+void c_vdm_msg19::dec_payload(s_pl * ppl)
 {
 	unsigned int tmpu;
 	int tmpi;
-	char * dat = ppl->m_payload;
+	char * dat = ppl->payload;
 
 	// decodes mmsi and repeat flag
 	c_vdm::dec_payload(ppl); // 0-37 bit consumed
@@ -1034,7 +1034,7 @@ void c_vdm_msg19::dec_payload(s_vdm_pl * ppl)
 }
 
 
-ostream & c_vdm_msg19::show(ostream & out)
+ostream & c_vdm_msg19::show(ostream & out) const
 {
 	out << "AIS " << (m_is_chan_A ? "A":"B") 
 		<< " MSG" << 19 << ">";
@@ -1058,9 +1058,9 @@ ostream & c_vdm_msg19::show(ostream & out)
 }
 
 ////////////////////////////////////// c_vdm_msg24
-void c_vdm_msg24::dec_payload(s_vdm_pl * ppl)
+void c_vdm_msg24::dec_payload(s_pl * ppl)
 {
-	char * dat = ppl->m_payload;
+	char * dat = ppl->payload;
 
 	// decodes mmsi and repeat flag
 	c_vdm::dec_payload(ppl); // 0-37 bit consumed
@@ -1111,7 +1111,7 @@ void c_vdm_msg24::dec_payload(s_vdm_pl * ppl)
 	}
 }
 
-ostream & c_vdm_msg24::show(ostream & out)
+ostream & c_vdm_msg24::show(ostream & out) const
 {
 	out << "AIS " << (m_is_chan_A ? "A":"B") 
 		<< " MSG" << 24 << ">";
@@ -1177,7 +1177,7 @@ c_nmea_dat * c_abk::dec_abk(const char * str)
 	return pnd;
 }
 
-ostream & c_abk::show(ostream & out)
+ostream & c_abk::show(ostream & out) const
 {
 	out << "ABK " << " CH:" << (m_rch == CHA ? "A": (m_rch == CHB ? "B" : "NA")) 
 		<< " MSG" << m_msg_id << " MMSI:" << m_mmsi << " SEQ:" << m_seq << " STAT: ";

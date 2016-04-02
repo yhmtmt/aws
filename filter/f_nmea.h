@@ -148,6 +148,7 @@ class f_nmea_proc: public f_base
 protected:
 	ch_nmea * m_chin;
 	ch_nmea * m_chout;
+	c_nmea_dec m_nmeadec;
 	int m_bm_ver;
 	char m_buf[84];
 	bool m_btime_rmc;

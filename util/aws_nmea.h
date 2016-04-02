@@ -46,22 +46,25 @@ int parstrcpy(char * str, const char * src, char delim, int max_buf = 32);
 e_nd_type get_nd_type(const char * str);
 
 
+class c_nmea_dec;
+
 /////////////////////////// c_nmea_dat and its inheritant
 class c_nmea_dat
 {
 public:
 	char m_toker[2];
 	bool m_cs;
-	static c_nmea_dat * dec_nmea_dat(const char * str);
-	virtual ostream & show(ostream & out)
+	virtual ostream & show(ostream & out) const
 	{
 		return out;
 	};
-	virtual e_nd_type get_type() = 0;
+
+	virtual bool dec(const char * str){ return false; };
+	
+	virtual e_nd_type get_type() const = 0;
 };
 
 #include "aws_nmea_gps.h"
-
 
 /////////////////////// c_ttm (from ARPA)
 class c_ttm: public c_nmea_dat
@@ -84,9 +87,8 @@ public:
 							// field 14 UTC hour, minute, second, milisecond
 	bool m_is_auto;			// field 15 true if the target is automaticaly acquisited
 
-	static c_nmea_dat * dec_ttm(const char * str);
-
-	virtual ostream & show(ostream & out){
+	virtual ostream & show(ostream & out) const
+	{
 		out << "TTM>";
 		out << " ID:" << m_id 
 			<< " DIST:" << m_dist << "(" << m_dist_unit << "M)"
@@ -103,7 +105,9 @@ public:
 		return out;
 	}
 
-	virtual e_nd_type get_type()
+	virtual bool dec(const char * str);
+
+	virtual e_nd_type get_type() const
 	{return ENDT_TTM;};
 };
 
@@ -118,8 +122,9 @@ public:
 	{
 	}
 
-	static c_nmea_dat * dec_dbt(const char * str);
-	virtual e_nd_type get_type()
+	virtual bool dec(const char * str);
+
+	virtual e_nd_type get_type() const
 	{
 		return ENDT_DBT;
 	}
@@ -134,14 +139,37 @@ public:
 	{
 	}
 
-	static c_nmea_dat * dec_mtw(const char * str);
+	virtual bool dec(const char * str);
 
-	virtual e_nd_type get_type()
+	virtual e_nd_type get_type() const
 	{
 		return ENDT_MTW;
 	}
 };
 
 #include "aws_nmea_ais.h"
+
+
+class c_nmea_dec
+{
+protected:
+	c_gga gga;
+	c_gsa gsa;
+	c_gsv gsv;
+	c_rmc rmc;
+	c_vtg vtg;
+	c_zda zda;
+	c_ttm ttm;
+	c_dbt dbt;
+	c_mtw mtw;
+	c_abk abk;
+
+	c_vdm_dec vdmdec;
+public:
+	c_nmea_dec()
+	{
+	}
+	const c_nmea_dat * decode(const char * str);
+};
 
 #endif

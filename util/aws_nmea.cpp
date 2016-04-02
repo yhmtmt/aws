@@ -36,14 +36,6 @@ const char * str_nd_type[ENDT_UNDEF] = {
 	"VDM", "VDO", "ABK"
 };
 
-c_nmea_dat * (*nmea_dec[ENDT_UNDEF])(const char * str) = 
-{
-	c_gga::dec_gga, c_gsa::dec_gsa, c_gsv::dec_gsv, c_rmc::dec_rmc, c_vtg::dec_vtg, c_zda::dec_zda,
-	c_ttm::dec_ttm, 
-	c_dbt::dec_dbt, c_mtw::dec_mtw,
-	c_vdm::dec_vdm, c_vdm::dec_vdo, c_abk::dec_abk
-};
-
 e_nd_type get_nd_type(const char * str)
 {
 	for(int i = 0; i < ENDT_UNDEF; i++){
@@ -124,7 +116,7 @@ int parstrcpy(char * str, const char * src, char delim, int max_buf)
 
 
 ///////////////////////////////////////////// navdat decoder
-c_nmea_dat * c_nmea_dat::dec_nmea_dat(const char * str)
+const c_nmea_dat * c_nmea_dec::decode(const char * str)
 {
 	if(!eval_nmea_chksum(str)){
 		return NULL;
@@ -134,8 +126,58 @@ c_nmea_dat * c_nmea_dat::dec_nmea_dat(const char * str)
 	if(nt == ENDT_UNDEF)
 		return NULL;
 
-	c_nmea_dat * pnd = nmea_dec[nt](str);
-
+	c_nmea_dat * pnd = NULL;
+	switch(nt){
+	case ENDT_GGA:
+		if(gga.dec(str))
+			pnd = &gga;
+		break;
+	case ENDT_GSA:
+		if(gsa.dec(str))
+			pnd = &gsa;
+		break;
+	case ENDT_GSV:
+		if(gsv.dec(str))
+			pnd = &gsv;
+		break;
+	case ENDT_RMC:
+		if(rmc.dec(str))
+			pnd = &rmc;
+		break;
+	case ENDT_VTG:
+		if(vtg.dec(str))
+			pnd = &vtg;
+		break;
+	case ENDT_ZDA:
+		if(zda.dec(str))
+			pnd = &zda;
+		break;
+	case ENDT_TTM:
+		if(ttm.dec(str))
+			pnd = &ttm;
+		break;
+	case ENDT_DBT:
+		if(dbt.dec(str))
+			pnd = &dbt;
+		break;
+	case ENDT_MTW:
+		if(mtw.dec(str))
+			pnd = &mtw;
+		break;
+	case ENDT_VDM:	
+		pnd = vdmdec.dec_vdm(str);
+		break;
+	case ENDT_VDO:
+		pnd = vdmdec.dec_vdo(str);
+		break;
+	case ENDT_ABK:
+		if(abk.dec(str))
+			pnd = &abk;
+		break;
+	case ENDT_UNDEF:
+		pnd = NULL;
+	};
+	
 	if(pnd){
 		pnd->m_toker[0] = str[1];
 		pnd->m_toker[1] = str[2];
@@ -146,9 +188,8 @@ c_nmea_dat * c_nmea_dat::dec_nmea_dat(const char * str)
 }
 
 //////////////////////////////////////////////// ttm decoder
-c_nmea_dat * c_ttm::dec_ttm(const char * str)
+bool c_ttm::dec(const char * str)
 {
-	c_ttm * pnd = new c_ttm;
 	int i = 0;
 	int ipar = 0;
 	int len;
@@ -162,72 +203,71 @@ c_nmea_dat * c_ttm::dec_ttm(const char * str)
 		case 0: // $**TTM
 			break;
 		case 1:
-			pnd->m_id = atoi(buf);
+			m_id = atoi(buf);
 			break;
 		case 2:
-			pnd->m_dist = (float) atof(buf);
+			m_dist = (float) atof(buf);
 			break;
 		case 3:
-			pnd->m_bear = (float) atof(buf);
+			m_bear = (float) atof(buf);
 			break;
 		case 4:
-			pnd->m_is_bear_true = (buf[0] == 'T' ? true : false);
+			m_is_bear_true = (buf[0] == 'T' ? true : false);
 			break;
 		case 5:
-			pnd->m_spd = (float) atof(buf);
+			m_spd = (float) atof(buf);
 			break;
 		case 6:
-			pnd->m_crs = (float) atof(buf);
+			m_crs = (float) atof(buf);
 			break;
 		case 7:
-			pnd->m_is_crs_true = (buf[0] == 'T' ? true : false);
+			m_is_crs_true = (buf[0] == 'T' ? true : false);
 			break;
 		case 8:
-			pnd->m_dcpa = (float) atof(buf);
+			m_dcpa = (float) atof(buf);
 			break;
 		case 9:
-			pnd->m_tcpa = (float) atof(buf);
+			m_tcpa = (float) atof(buf);
 			break;
 		case 10:
-			pnd->m_dist_unit = buf[0];
+			m_dist_unit = buf[0];
 			break;
 		case 11:
-			pnd->m_data[0] = '\0';
+			m_data[0] = '\0';
 			if(strlen(buf) >= 20){
 				break;
 			}
-			strcpy(pnd->m_data, buf); 
+			strcpy(m_data, buf); 
 			break;
 		case 12:
-			pnd->m_state = buf[0];
+			m_state = buf[0];
 			break;
 		case 13:
-			pnd->m_is_ref = (buf[0] == 'R' ? true : false);
+			m_is_ref = (buf[0] == 'R' ? true : false);
 			break;
 		case 14:
 			parstrcpy(tok, buf, 2);
-			pnd->m_utc_h = (char) atoi(tok);
+			m_utc_h = (char) atoi(tok);
 			parstrcpy(tok, buf+2, 2);
-			pnd->m_utc_m = (char) atoi(tok);
+			m_utc_m = (char) atoi(tok);
 			parstrcpy(tok, buf+4, 2);
-			pnd->m_utc_s = (char) atoi(tok);
+			m_utc_s = (char) atoi(tok);
 			parstrcpy(tok, buf+7, 2);
-			pnd->m_utc_ms = (char) atoi(tok);
+			m_utc_ms = (char) atoi(tok);
 			break;
 		case 15:
-			pnd->m_is_auto = (buf[0] == 'A' ? true : false);
+			m_is_auto = (buf[0] == 'A' ? true : false);
 			break;
 		}
 		ipar++;
 	}
 
-	return pnd;
+	return true;
 }
 
 //////////////////////////////////////////////// dbt decoder
-c_nmea_dat * c_dbt::dec_dbt(const char * str)
+bool c_dbt::dec(const char * str)
 {
-	c_dbt * pnd = new c_dbt;
 	int i = 0;
 	int ipar = 0;
 	int len;
@@ -240,21 +280,21 @@ c_nmea_dat * c_dbt::dec_dbt(const char * str)
 		case 0: // $**DBT
 			break;
 		case 1:
-			pnd->dfe = (float) atof(buf);
+			dfe = (float) atof(buf);
 			break;
 		case 2:
 			if(buf[0] != 'f')
 				goto dbterr;
 			break;
 		case 3:
-			pnd->dfa = (float) atof(buf);
+			dfa = (float) atof(buf);
 			break;
 		case 4:
 			if(buf[0] != 'M')
 				goto dbterr;
 			break;
 		case 5:
-			pnd->dfa = (float) atof(buf);
+			dfa = (float) atof(buf);
 			break;
 		case 6:
 			if(buf[0] != 'F')
@@ -264,16 +304,14 @@ c_nmea_dat * c_dbt::dec_dbt(const char * str)
 		ipar++;
 	}
 
-	return pnd;
+	return true;
 dbterr:
-	delete pnd;
-	return NULL;
+	return false;
 }
 
 //////////////////////////////////////////////// mtw decoder
-c_nmea_dat * c_mtw::dec_mtw(const char * str)
+bool c_mtw::dec(const char * str)
 {
-	c_mtw * pnd = new c_mtw;
 	int i = 0;
 	int ipar = 0;
 	int len;
@@ -286,7 +324,7 @@ c_nmea_dat * c_mtw::dec_mtw(const char * str)
 		case 0: // $**MTW
 			break;
 		case 1:
-			pnd->t = (float) atof(buf);
+			t = (float) atof(buf);
 			break;
 		case 2:
 			if(buf[0] != 'C')
@@ -296,9 +334,9 @@ c_nmea_dat * c_mtw::dec_mtw(const char * str)
 		ipar++;
 	}
 
-	return pnd;
+	return true;
 mtwerr:
-	delete pnd;
-	return NULL;
+	return false;
 }
+
 

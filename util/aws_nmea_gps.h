@@ -45,7 +45,8 @@ public:
 	}
 
 	static c_nmea_dat * dec_gga(const char * str);
-	virtual ostream & show(ostream & out){
+	virtual ostream & show(ostream & out) const
+	{
 		out << "GPGGA >";
 		out << " UTC:" << m_h << ":" << m_m << ":" << m_s << endl;
 		out << " SAT:" << m_num_sats;
@@ -59,7 +60,7 @@ public:
 		out << " CS:" << (m_cs ? "yes" : "no") << endl;
 		return out;
 	}
-	virtual e_nd_type get_type()
+	virtual e_nd_type get_type() const
 	{return ENDT_GGA;};
 };
 
@@ -78,10 +79,12 @@ public:
 	}
 
 	static c_nmea_dat * dec_gsa(const char * str);
-	virtual ostream & show(ostream & out){
+	virtual ostream & show(ostream & out) const
+	{
 		return out;
 	};
-	virtual e_nd_type get_type(){
+	virtual e_nd_type get_type() const
+	{
 		return ENDT_GSA;
 	};
 };
@@ -100,10 +103,13 @@ public:
 	}
 
 	static c_nmea_dat * dec_gsv(const char * str);
-	virtual ostream & show(ostream & out){
+	virtual ostream & show(ostream & out) const
+	{
 		return out;
 	};
-	virtual e_nd_type get_type(){
+
+	virtual e_nd_type get_type() const
+	{
 		return ENDT_GSV;
 	};
 };
@@ -130,7 +136,8 @@ public:
 	}
 
 	static c_nmea_dat * dec_rmc(const char * str);
-	virtual ostream & show(ostream & out){
+	virtual ostream & show(ostream & out) const
+	{
 		out << "GPRMC>";
 		out << " UTC:" << m_dy << "," << m_mn << "," << m_yr << "," << m_h << ":" << m_m << ":" << m_s;
 		out << " Pos(lt, ln, h):" 
@@ -141,7 +148,8 @@ public:
 		out << " CS:" << (m_cs ? "yes" : "no") << endl;
 		return out;
 	}
-	virtual e_nd_type get_type()
+
+	virtual e_nd_type get_type() const
 	{return ENDT_RMC;};
 };
 
@@ -156,10 +164,13 @@ public:
 	}
 
 	static c_nmea_dat * dec_vtg(const char * str);
-	virtual ostream & show(ostream & out){
+	virtual ostream & show(ostream & out) const
+	{
 		return out;
 	};
-	virtual e_nd_type get_type(){
+
+	virtual e_nd_type get_type() const
+	{
 		return ENDT_VTG;
 	};
 };
@@ -179,13 +190,14 @@ public:
 
 	static c_nmea_dat * dec_zda(const char * str);
 
-	virtual ostream & show(ostream & out){
+	virtual ostream & show(ostream & out) const
+	{
 		out << "ZDA>";
 		out << " UTC:" << m_dy << "," << m_mn << "," << m_yr << "," << m_h << ":" << m_m << ":" << m_s;
 		out << " CS:" << (m_cs ? "yes" : "no") << endl;
 		return out;
 	}
-	virtual e_nd_type get_type()
+	virtual e_nd_type get_type() const
 	{return ENDT_ZDA;};
 };
 

@@ -141,57 +141,27 @@ const char * get_ship_type_name(unsigned char uc);
 //////////////////////// c_vdm (from AIS)
 class c_vdm;
 
-struct s_vdm_pl
-{
-	static list<s_vdm_pl*> m_tmp; // temporaly store multi fragments message
-	static s_vdm_pl * m_pool;
-	s_vdm_pl * m_pnext;
-
-	short m_fcounts; // number of frangments
-	short m_fnumber; // fragment number
-	short m_seqmsgid; // sequential message id for multi sentence messaage
-	int m_pl_size;
-	char m_payload[256];
-	bool m_is_chan_A; 
-	short m_num_padded_zeros;
-	bool m_cs; // check sum
-
-	char m_type; // message type
-	s_vdm_pl():m_pnext(NULL), m_fcounts(0), m_fnumber(0),
-		m_seqmsgid(-1), m_pl_size(0),  m_is_chan_A(true), 
-		m_cs(false)
+struct s_pl{
+	s_pl * pnext;
+	char payload[256];
+	int pl_size;
+	short fcounts; // number of frangments
+	short fnumber; // fragment number
+	short seqmsgid; // sequential message id for multi sentence messaage
+	bool is_chan_A; 
+	short num_padded_zeros;
+	bool cs; // check sum
+	s_pl():pnext(NULL), pl_size(0), fcounts(0), fnumber(0),
+		seqmsgid(-1), is_chan_A(true), 
+		cs(false)
 	{}
-
-	static void clear();
-
-	c_vdm * dec_payload();
 
 	bool is_complete()
 	{
-		return  m_fcounts == m_fnumber;
+		return  fcounts == fnumber;
 	}
-
-	static s_vdm_pl * alloc(){
-		if(m_pool == NULL)
-			return new s_vdm_pl;
-		s_vdm_pl * tmp = m_pool;
-		m_pool = m_pool->m_pnext;
-		tmp->m_pl_size = 0;
-		return tmp;
-	}
-
-	static void free(s_vdm_pl * ptr){
-		if(m_pool == NULL)
-			m_pool = ptr;
-		else{
-			ptr->m_pnext = m_pool;
-			m_pool = ptr;
-		}
-	}
-
 	void dearmor(const char * str);
 };
-
 
 class c_vdm: public c_nmea_dat
 {
@@ -209,10 +179,10 @@ public:
 	{
 	}
 
-	virtual void dec_payload(s_vdm_pl * ppl)
+	virtual void dec_payload(s_pl * ppl)
 	{
-		m_is_chan_A = ppl->m_is_chan_A;
-		char * dat = ppl->m_payload;
+		m_is_chan_A = ppl->is_chan_A;
+		char * dat = ppl->payload;
 		m_repeate = (dat[1] & 0x30) >> 4;
 
 		m_mmsi = ((dat[1] & 0x0F) << 26) |
@@ -223,9 +193,7 @@ public:
 			((dat[6] & 0x30) >> 4);
 	};
 
-	static c_nmea_dat * dec_vdm(const char * str);
-	static c_nmea_dat * dec_vdo(const char * str);
-	virtual e_nd_type get_type()
+	virtual e_nd_type get_type() const
 	{return ENDT_VDM;};
 };
 
@@ -245,10 +213,10 @@ public:
 	char m_maneuver; // 0:na 1: no special 2:special
 	char m_raim; // RAIM flag
 	unsigned int m_radio; // radio status
-	virtual void dec_payload(s_vdm_pl * ppl);
-	virtual ostream & show(ostream & out);
+	virtual void dec_payload(s_pl * ppl);
+	virtual ostream & show(ostream & out) const;
 	static c_vdm_msg1 * dec_msg1(const char * str);
-	virtual e_nd_type get_type()
+	virtual e_nd_type get_type() const
 	{return ENDT_VDM1;};
 };
 
@@ -265,10 +233,10 @@ public:
 	char m_raim; // RAIM flag
 	unsigned int m_radio; // radio status
 
-	virtual void dec_payload(s_vdm_pl * ppl);
-	virtual ostream & show(ostream & out);
+	virtual void dec_payload(s_pl * ppl);
+	virtual ostream & show(ostream & out) const;
 	static c_vdm_msg4 * dec_msg4(const char * str);
-	virtual e_nd_type get_type()
+	virtual e_nd_type get_type() const
 	{return ENDT_VDM4;};
 };
 
@@ -289,10 +257,10 @@ public:
 	bool m_dte;
 	unsigned char m_destination[21];
 
-	virtual void dec_payload(s_vdm_pl * ppl);
-	virtual ostream & show(ostream & out);
+	virtual void dec_payload(s_pl * ppl);
+	virtual ostream & show(ostream & out) const;
 	static c_vdm_msg5 * dec_msg5(const char * str);
-	virtual e_nd_type get_type()
+	virtual e_nd_type get_type() const
 	{return ENDT_VDM5;};
 };
 
@@ -304,10 +272,10 @@ public:
 	unsigned short m_fid;
 	s_binary_message m_msg;
 	unsigned short m_msg_size;
-	virtual void dec_payload(s_vdm_pl * ppl);
-	virtual ostream & show(ostream & out);
+	virtual void dec_payload(s_pl * ppl);
+	virtual ostream & show(ostream & out) const;
 	static c_vdm_msg6 * dec_msg6(const char * str);
-	virtual e_nd_type get_type()
+	virtual e_nd_type get_type() const
 	{return ENDT_VDM6;}
 };
 
@@ -319,10 +287,10 @@ public:
 	s_binary_message m_msg;
 //	char m_msg[128];
 	unsigned short m_msg_size;
-	virtual void dec_payload(s_vdm_pl * ppl);
-	virtual ostream & show(ostream & out);
+	virtual void dec_payload(s_pl * ppl);
+	virtual ostream & show(ostream & out) const;
 	static c_vdm_msg8 * dec_msg8(const char * str);
-	virtual e_nd_type get_type()
+	virtual e_nd_type get_type() const
 	{return ENDT_VDM8;};
 };
 
@@ -345,9 +313,9 @@ public:
 	bool m_raim; 
 	unsigned int m_radio; // radio status
 
-	virtual ostream & show(ostream & out);
-	virtual void dec_payload(s_vdm_pl * ppl);
-	virtual e_nd_type get_type()
+	virtual ostream & show(ostream & out) const;
+	virtual void dec_payload(s_pl * ppl);
+	virtual e_nd_type get_type() const 
 	{return ENDT_VDM18;};
 };
 
@@ -372,9 +340,9 @@ public:
 
 	unsigned char m_to_port, m_to_starboard;
 
-	virtual ostream & show(ostream & out);
-	virtual void dec_payload(s_vdm_pl * ppl);
-	virtual e_nd_type get_type()
+	virtual ostream & show(ostream & out) const;
+	virtual void dec_payload(s_pl * ppl);
+	virtual e_nd_type get_type() const
 	{return ENDT_VDM19;};
 };
 
@@ -394,9 +362,9 @@ public:
 
 	char m_epfd;
 
-	virtual ostream & show(ostream & out);
-	virtual void dec_payload(s_vdm_pl * ppl);
-	virtual e_nd_type get_type()
+	virtual ostream & show(ostream & out) const;
+	virtual void dec_payload(s_pl * ppl);
+	virtual e_nd_type get_type() const
 	{return ENDT_VDM24;};
 };
 
@@ -415,10 +383,64 @@ public:
 	~c_abk(){};
 
 	static c_nmea_dat * dec_abk(const char * str);
-	virtual ostream & show(ostream & out);
-	virtual e_nd_type get_type()
+	virtual ostream & show(ostream & out) const;
+	virtual e_nd_type get_type() const
 	{return ENDT_ABK;};
 };
 
+/////////////////////////////////////////////////////////// vdm decoder
+class c_vdm_dec
+{
+protected:
+	c_vdm_msg1 vdm_msg1;
+	c_vdm_msg4 vdm_msg4;
+	c_vdm_msg5 vdm_msg5;
+	c_vdm_msg6 vdm_msg6;
+	c_vdm_msg8 vdm_msg8;
+	c_vdm_msg18 vdm_msg18;
+	c_vdm_msg19 vdm_msg19;
+	c_vdm_msg24 vdm_msg24;
+
+	s_pl * m_pool;
+	list<s_pl*> m_tmp; // temporaly store multi fragments message
+
+	c_vdm_dec * m_pnext;
+
+	char m_type; // message type
+
+	
+	c_vdm * dec_payload(s_pl * ppl);
+
+	s_pl * alloc(){
+		if(m_pool == NULL)
+			return new s_pl;
+		s_pl * tmp = m_pool;
+		m_pool = m_pool->pnext;
+		tmp->pl_size = 0;
+		return tmp;
+	}
+
+	void free(s_pl * ptr){
+		ptr->pnext = NULL;
+		m_pool = ptr;
+	}
+
+	void clear();
+public:
+	c_vdm_dec():m_pool(NULL)
+	{
+	}
+
+	~c_vdm_dec()
+	{
+		while(m_pool){
+			s_pl * ppl = m_pool->pnext;
+			delete m_pool;
+		}
+	}
+
+	c_vdm * dec_vdm(const char * str);
+	c_vdm * dec_vdo(const char * str);
+};
 
 #endif

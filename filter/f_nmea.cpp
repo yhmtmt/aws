@@ -341,7 +341,6 @@ bool f_nmea::init_run()
 			return false;
 		break;
 	}
-
 	if(m_blog){
 		time_t t = time(NULL);
 		sprintf(m_fname_log, "%s_%lld.nmea", m_name, (long long int)t);
@@ -450,7 +449,7 @@ bool f_nmea_proc::proc()
 
 	c_ship::list_lock();
 	while(m_chin->pop(m_buf)){
-		c_nmea_dat * pnd = c_nmea_dat::dec_nmea_dat(m_buf);
+		const c_nmea_dat * pnd = m_nmeadec.decode(m_buf);
 		if(pnd == NULL)
 			continue;
 
