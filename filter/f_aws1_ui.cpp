@@ -63,8 +63,7 @@ f_aws1_ui::~f_aws1_ui()
 
 bool f_aws1_ui::init_run()
 {
-  m_acp.ctrl = true;
-  m_acp.ctrl_src = (m_udp_ctrl ? ACS_UDP: ACS_CHAN);
+  m_acp.ctrl_src = ACS_UI;
   m_acp.rud_aws = 127;
   m_acp.meng_aws = 127;
   m_acp.seng_aws = 127;
@@ -462,7 +461,6 @@ void drawGlStateInfTxt(float xorg, float yorg,
 
 void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
 {
-  acpkt.ctrl = m_acp.ctrl;
   acpkt.ctrl_src = m_acp.ctrl_src;
   acpkt.rud_aws = m_acp.rud_aws;
   acpkt.meng_aws = m_acp.meng_aws;
