@@ -81,11 +81,11 @@ void f_aws1_nmea_sw::destroy_run()
 void f_aws1_nmea_sw::aws_to_out()
 {
 	while(m_aws_nmea_i->pop(m_nmea)){
+		e_nd_type type = get_nd_type(m_nmea);
+
 		if(m_verb){
 			cout << "AWS > " << m_nmea << endl;
 		}
-
-		e_nd_type type = get_nd_type(m_nmea);
 
 		if(m_ap_nmea_o && m_aws_ctrl){
 			switch(type){
@@ -228,6 +228,29 @@ void f_aws1_nmea_sw::gps_to_out()
 				m_ap_out = true;
 			}
 			break;
+		}
+
+		if(m_state){
+			switch(type){
+			case ENDT_GGA: // lat, lon, alt
+				{
+					const c_gga * pgga = dynamic_cast<const c_gga*>(m_nmea_dec.decode(m_nmea));
+					if(pgga){
+						m_state->set_position(
+							(pgga->m_lat_dir == EGP_E ? pgga->m_lat_deg : -pgga->m_lat_deg),
+							(pgga->m_lon_dir == EGP_N ? pgga->m_lon_deg : -pgga->m_lon_deg),
+							pgga->m_alt, pgga->m_geos);
+					}
+				}
+				break;
+			case ENDT_VTG: // cog, sog
+				{
+					const c_vtg * pvtg = dynamic_cast<const c_vtg*>(m_nmea_dec.decode(m_nmea));
+					if(pvtg){
+						m_state->set_velocity(pvtg->crs_t, pvtg->v_n);
+					}
+				}
+			}
 		}
 	}
 }

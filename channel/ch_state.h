@@ -20,11 +20,13 @@
 class ch_state: public ch_base
 {
  protected:
-  float r, p, y; // roll pitch yaw
-  float lon, lat, alt; // longitude, latitude, altitude
+  float r, p, y; // roll(deg), pitch(deg), yaw(deg)
+  float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
+  float cog, sog; // Course over ground(deg), Speed over ground (kts)
+
  public:
  ch_state(const char * name): ch_base(name), r(0), p(0), y(0),
-    lon(0), lat(0), alt(0)
+    lon(0), lat(0), alt(0), galt(0), cog(0), sog(0)
     {
     }
 
@@ -37,13 +39,22 @@ class ch_state: public ch_base
     unlock();
   }
 
-  void set_position(const float _lat, const float _lon, const float _alt)
+  void set_position(const float _lat, const float _lon, const float _alt, const float _galt)
   {
     lock();
     lat = _lat;
     lon = _lon;
     alt = _alt;
+	galt = _galt;
     unlock();
+  }
+
+  void set_velocity(const float _cog, const float _sog)
+  {
+	  lock();
+	  cog = _cog;
+	  sog = _sog;
+	  unlock();
   }
 
   void get_attitude(float & _r, float & _p, float & _y)
@@ -55,13 +66,22 @@ class ch_state: public ch_base
     unlock();
   }
 
-  void get_position(float & _lat, float & _lon, float & _alt)
+  void get_position(float & _lat, float & _lon, float & _alt, float & _galt)
   {
     lock();
     _lat = lat;
     _lon = lon;
     _alt = alt;
+	_galt = galt;
     unlock();
+  }
+
+  void get_velocity(float & _cog, float & _sog)
+  {
+	  lock();
+	  _cog = cog;
+	  _sog = sog;
+	  unlock();
   }
 
   virtual size_t get_dsize()
