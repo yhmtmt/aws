@@ -142,8 +142,8 @@ bool f_aws1_ui::init_run()
   for (int i = 2; i < m_num_ctrl_steps; i++){
     sumf += stepf;
     sumb -= stepb;
-    m_meng_pos[m_num_ctrl_steps + i] = m_seng_pos[m_num_ctrl_steps + i] = sumf;
-    m_meng_pos[m_num_ctrl_steps - i] = m_seng_pos[m_num_ctrl_steps - i] = sumb;
+    m_meng_pos[m_num_ctrl_steps + i] = m_seng_pos[m_num_ctrl_steps + i] = saturate_cast<unsigned char>(sumf);
+    m_meng_pos[m_num_ctrl_steps - i] = m_seng_pos[m_num_ctrl_steps - i] = saturate_cast<unsigned char>(sumb);
   }
   
   m_meng_pos[m_num_ctrl_steps * 2] = m_seng_pos[m_num_ctrl_steps * 2] = 255;
@@ -185,16 +185,16 @@ bool f_aws1_ui::proc()
     int naxs, nbtn;
     const float * axs = glfwGetJoystickAxes(m_js, &naxs);
     const unsigned char * btn = glfwGetJoystickButtons(m_js, &nbtn);
-    m_rud_aws_f += axs[0] * (255. / 180.);
-    m_rud_aws_f += axs[2] * (255. / 180.);
+    m_rud_aws_f += (float)(axs[0] * (255. / 180.));
+    m_rud_aws_f += (float)(axs[2] * (255. / 180.));
     m_rud_aws_f = min((float)255.0, m_rud_aws_f);
     m_rud_aws_f = max((float)0.0, m_rud_aws_f);
 
-    m_meng_aws_f -= axs[1] * (255. / 180);
+    m_meng_aws_f -= (float)(axs[1] * (255. / 180));
     m_meng_aws_f = min((float)255.0, m_meng_aws_f);
     m_meng_aws_f = max((float)0.0, m_meng_aws_f);
 
-    m_seng_aws_f -= axs[3] * (255. / 180);
+    m_seng_aws_f -= (float)(axs[3] * (255. / 180));
     m_seng_aws_f = min((float) 255.0, m_seng_aws_f);
     m_seng_aws_f = max((float)0.0, m_seng_aws_f);
     
@@ -228,9 +228,9 @@ bool f_aws1_ui::proc()
   
 
   float roll, pitch, yaw;
-  float lat, lon, alt;
+  float lat, lon, alt, galt;
   m_state->get_attitude(roll, pitch, yaw);
-  m_state->get_position(lat, lon, alt);
+  m_state->get_position(lat, lon, alt, galt);
 
   // render graphics
   glfwMakeContextCurrent(pwin());
@@ -288,9 +288,9 @@ bool f_aws1_ui::proc()
   float wm, hm, lw;
 
   // Drawing engine control indicator 
-  wm = 3 * wfont;
+  wm = (float)(3 * wfont);
   hm = (float)(255.0 * hscale);
-  lw = 1.0 / m_sz_win.width;
+  lw = (float)(1.0 / m_sz_win.width);
 
   x = (float)(wfont - 1.0);
   y = (float)(1.0 - 6 * hfont);
@@ -307,7 +307,7 @@ bool f_aws1_ui::proc()
   // Drawing rudder control indicator
   wm = (float)(255. * wscale);
   hm = (float)(3 * hfont);
-  x =  0. - 255. * 0.5 * wscale;
+  x =  (float)(0. - 255. * 0.5 * wscale);
   drawGlRudderIndicator("RUDDER", 
 			x, y, 
 			wm, hm,  wfont, hfont, lw, 
@@ -331,7 +331,7 @@ void drawGlEngineIndicator(const char * title,
   y1 = yorg;
   x2 = (float) (x1 + w);
   y2 = (float) (y1 - h);
-  xtxt = x2 + 0.1 * w;  
+  xtxt = (float)(x2 + 0.1 * w);  
 
   // draw title
   drawGlText(xorg, (float)(yorg + 0.5 * hfont), title, 
@@ -351,7 +351,7 @@ void drawGlEngineIndicator(const char * title,
   drawGlLine2Df(x1, y1, x2, y1, 0, 1, 0, 1, lw);
 
   // neutral
-  float dhfont = -0.5 * hfont;
+  float dhfont = (float)(-0.5 * hfont);
   x1 = xorg;
   x2 = (float)(xorg + w);
   y1 = y2 = (float) (yorg - 0.5 * h);
@@ -398,22 +398,22 @@ void drawGlRudderIndicator(const char * title,
   x1 = (float)(xorg + 0.5 * w);
 
   // rudder instruction value
-  x2 = rud_inst - 0.5 * w;
+  x2 = (float)(rud_inst - 0.5 * w);
   drawGlLine2Df(x2, y1, x2, y2, 0, 1, 0, 1, lw);
 
   // current rudder instruction value
-  x2 = rud_cur - 0.5 * w;
+  x2 = (float)(rud_cur - 0.5 * w);
   y2 = (float)(yorg - 0.666 * h);
   drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
 
   // current rudder angle
-  x2 = rud_sta - 0.5 * w;
+  x2 = (float)(rud_sta - 0.5 * w);
   y1 = y2;
   y2 = (float)(yorg - h) ;
   drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
 
   // Midship
-  float dwfont = - 0.5 * wfont;
+  float dwfont = (float)(- 0.5 * wfont);
   drawGlLine2Df(x1, y1, x1, y2, 0, 1, 0, 1, lw);
   drawGlText(x1 + dwfont, ytxt, "0", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
   drawGlText(xorg + dwfont, ytxt, "P", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);

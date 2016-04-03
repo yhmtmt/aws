@@ -222,6 +222,7 @@ bool f_camcalib::write_campars(const char * fname)
 	fs << "CamDist" << m_discoeff;
 	fs << "RepErr" << m_err;
 	fs.release();
+	return true;
 }
 
 bool f_camcalib::init_run()

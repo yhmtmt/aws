@@ -245,9 +245,7 @@ void f_base::register_factory()
 	register_factory<f_glfw_window>("glwin");
 	register_factory<f_glfw_stereo_view>("glstvw");
 	register_factory<f_glfw_imview>("glimv");
-#ifndef _WIN32
 	register_factory<f_aws1_ui>("aws1_ui");
-#endif
 #endif
 	// video sources
 #ifdef SANYO_HD5400

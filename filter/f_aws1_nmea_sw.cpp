@@ -237,8 +237,8 @@ void f_aws1_nmea_sw::gps_to_out()
 					const c_gga * pgga = dynamic_cast<const c_gga*>(m_nmea_dec.decode(m_nmea));
 					if(pgga){
 						m_state->set_position(
-							(pgga->m_lat_dir == EGP_E ? pgga->m_lat_deg : -pgga->m_lat_deg),
-							(pgga->m_lon_dir == EGP_N ? pgga->m_lon_deg : -pgga->m_lon_deg),
+							(float) (pgga->m_lat_dir == EGP_E ? pgga->m_lat_deg : -pgga->m_lat_deg),
+							(float) (pgga->m_lon_dir == EGP_N ? pgga->m_lon_deg : -pgga->m_lon_deg),
 							pgga->m_alt, pgga->m_geos);
 					}
 				}
