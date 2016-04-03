@@ -47,6 +47,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("udpctrl", &m_udp_ctrl, "If asserted, Direct UDP is used for control channel. Otherwise, ch_ctrl_{in,out} are used.");
   register_fpar("acdhost", m_acd_host, 1023, "Host address controlling AWS1.");
   register_fpar("acdport", &m_acd_port, "Port number opened for controlling AWS1.");
+  register_fpar("acs", (int*) &m_acp.ctrl_src, (int) ACS_NONE, str_aws1_ctrl_src, "Control source.");
   register_fpar("verb", &m_verb, "Debug mode.");
   register_fpar("rud", &m_rud_aws_f, "Rudder.");
   register_fpar("meng", &m_meng_aws_f, "Main Engine.");
@@ -197,7 +198,6 @@ bool f_aws1_ui::proc()
     m_seng_aws_f = min((float) 255.0, m_seng_aws_f);
     m_seng_aws_f = max((float)0.0, m_seng_aws_f);
     
-
     if(m_verb){
       if(axs){
 	cout << "Axes ";
@@ -232,6 +232,7 @@ bool f_aws1_ui::proc()
   m_state->get_attitude(roll, pitch, yaw);
   m_state->get_position(lat, lon, alt, galt);
   m_state->get_velocity(cog, sog);
+  roll = (float)(-roll + 180.);
 
   // render graphics
   glfwMakeContextCurrent(pwin());
@@ -289,6 +290,8 @@ bool f_aws1_ui::proc()
 
   float wm, hm, lw;
 
+  // Draw main view (1: camera image, 2: 3D rendered map, 3: 2D rendered map)
+
   // Drawing engine control indicator 
   wm = (float)(3 * wfont);
   hm = (float)(255.0 * hscale);
@@ -317,10 +320,22 @@ bool f_aws1_ui::proc()
 			(float)(rud_inst_cur * wscale),
 			(float)(rud_sta * wscale));
 
+  // Drawing ship state information
   x = (float)(wfont - 1.0);
-  y = (float)(22 * hfont - 1.0);
+  y = (float)(hfont - 1.0);
   drawGlStateInfTxt(x, y, wfont, hfont, 
 	  lat, lon, alt, galt, cog, sog, roll, pitch, yaw);
+
+  // Indicate System State
+  x = (float)(1.0 - wfont);
+  y = (float)(1.0 - hfont);
+  drawGlSysStateInfTxt(x, y, wfont, hfont, m_acp.ctrl_src, 1);
+
+  // Drawing attitude indicator (w-mark, hdg scale, pitch scale) for main view type 1 only
+
+  // Drawing map information. both for main view type 1 and 2. 
+
+  
   glfwSwapBuffers(pwin());
   glfwPollEvents();
   
@@ -450,27 +465,44 @@ void drawGlStateInfTxt(float xorg, float yorg,
 	snprintf(ssog, 32, "SOG     : %+06.1fkt", sog);
 	float w = (float)((strlen(salt) + 2) * wfont * 1.2);
 	float h = (float)(18 * hfont);
-	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg - h), 0, 1, 0, 1, 1);
+	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg + h), 0, 1, 0, 1, 1);
 
 	float x, y;
 	x = (float)(xorg + wfont);
-	y = (float)(yorg - 3 * hfont);
+	y = (float)(yorg + hfont);
 
 	drawGlText(x, y, slat, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y -= 2 * hfont;
+	y += 2 * hfont;
 	drawGlText(x, y, slon, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y -= 2 * hfont;
+	y += 2 * hfont;
 	drawGlText(x, y, salt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y -= 2 * hfont;
+	y += 2 * hfont;
 	drawGlText(x, y, scog, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y -= 2 * hfont;
+	y += 2 * hfont;
 	drawGlText(x, y, ssog, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y -= 2 * hfont;
+	y += 2 * hfont;
 	drawGlText(x, y, syaw, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y -= 2 * hfont;
+	y += 2 * hfont;
 	drawGlText(x, y, spch, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y -= 2 * hfont;
+	y += 2 * hfont;
 	drawGlText(x, y, srol, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+}
+
+void drawGlSysStateInfTxt(float xorg, float yorg,
+						  float wfont, float hfont,
+						  e_aws1_ctrl_src ctrl_src, float sz)
+{
+	char str[32]; // "Ctrl: xxxx"
+	snprintf(str, 32, "CTRL: %5s", str_aws1_ctrl_src[ctrl_src]);
+	float w = (float)((strlen(str) + 2) * wfont * 1.2);
+	float h = (float)(4 * hfont);
+
+	float x = (float)(xorg - w);
+	drawGlSquare2Df(xorg, yorg, x, (float)(yorg - h), 0, 1, 0, 1, sz);
+	x += wfont;
+	float y = (float)(yorg - 2 * hfont);
+
+	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
 

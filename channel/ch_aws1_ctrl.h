@@ -21,6 +21,8 @@ enum e_aws1_ctrl_src{
   ACS_UI, ACS_RMT, ACS_AP1, ACS_AP2, ACS_FSET, ACS_NONE
 };
 
+extern const char * str_aws1_ctrl_src[ACS_NONE];
+
 // Both for transmission and reception the same packet structure is used.
 struct s_aws1_ctrl_pars{
   // current time

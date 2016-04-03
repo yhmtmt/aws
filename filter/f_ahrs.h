@@ -52,6 +52,7 @@ protected:
   
   static const char * m_str_razor_cmd[ERC_UNDEF];
   
+  
   struct s_ahrs_ypr{
     float y, p, r;
   } m_ypr;

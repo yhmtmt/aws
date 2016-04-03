@@ -130,11 +130,13 @@ void drawGlRudderIndicator(const char * title,
 			   float lw, float rud_inst, float rud_cur, 
 			   float rud_sta);
 
-void drawGlStateInfTxt(float xorg  /* left top x */, float yorg, /* left top y */
+void drawGlStateInfTxt(float xorg  /* left bottom x */, float yorg, /* left bottom y */
 					float wfont, float hfont,
 				  float lat, float lon, float alt, float galt, 
 				  float cog, float sog, 
 				  float roll, float pitch, float yaw);
 
-
+void drawGlSysStateInfTxt(float xorg/* right top x */, float yorg /* right top y */,
+						  float wfont, float hfont,
+						  e_aws1_ctrl_src ctrl_src, float sz);
 #endif
