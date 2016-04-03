@@ -42,21 +42,23 @@ const char * str_aws1_ctrl_src[ACS_NONE] = {
 };
 
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
-  f_base(name), m_fd(-1), m_sim(false), m_verb(false),
-  m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL), 
+  f_base(name),  m_udp_ui(false), m_fd(-1), m_sim(false), m_verb(false),
+  m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL),  m_ch_ctrl_out(NULL), 
   m_acs_sock(-1), m_acs_port(20100), 
   m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0)
 {
   strcpy(m_dev, "/dev/zgpio1");
   m_flog_name[0] = 0;
 
-  register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl_in, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs.");
+  register_fpar("udp_ui", &m_udp_ui, "Flag enables UDP control input.");
+  register_fpar("ch_ctrl_ui", (ch_base**)&m_ch_ctrl_ui, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs from UI.");
+  register_fpar("ch_ctrl_ap1", (ch_base**)&m_ch_ctrl_ap1, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs from AutoPilot1.");
+  register_fpar("ch_ctrl_ap2", (ch_base**)&m_ch_ctrl_ap2, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs from AutoPilot2.");
   register_fpar("ch_ctrl_out", (ch_base**)&m_ch_ctrl_out, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1 control outputs.");
   register_fpar("device", m_dev, 1023, "AWS1's control gpio device path");
   register_fpar("flog", m_flog_name, 1023, "Control log file.");
   register_fpar("sim", &m_sim, "Simulation mode.");
   register_fpar("verb", &m_verb, "For debug.");
-  register_fpar("ctrl", &m_acp.ctrl, "Yes if aws controls AWS1 (default no)");
 
   register_fpar("acs", (int*) &m_acp.ctrl_src, ACS_NONE, str_aws1_ctrl_src,  "AWS control source.");
   register_fpar("acsport", &m_acs_port, "Port number for AWS1 UDP control.");
@@ -187,7 +189,7 @@ void f_aws1_ctrl::get_gpio()
     m_acp.rud_sta = (unsigned char) m_rud_sta_sim;
   }
  
-  if(!m_acp.ctrl){
+  if(m_acp.ctrl_src == ACS_RMT){
     m_acp.rud_aws = map_oval(m_acp.rud_rmc, 
 			 m_acp.rud_max_rmc, m_acp.rud_nut_rmc, m_acp.rud_min_rmc,
 			 0xff, 0x7f, 0x00);
@@ -219,7 +221,12 @@ void f_aws1_ctrl::set_gpio()
 {
   unsigned int val;
 
-  if(m_acp.ctrl){
+  switch(m_acp.ctrl_src){
+  case ACS_UI:
+  case ACS_AP1:
+  case ACS_AP2:
+  case ACS_FSET:
+  case ACS_NONE:
     m_acp.rud = map_oval(m_acp.rud_aws, 
 		     0xff, 0x7f, 0x00, 
 		     m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min);
@@ -231,20 +238,22 @@ void f_aws1_ctrl::set_gpio()
 		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
 		      m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, 
 		      m_acp.seng_nub, m_acp.seng_min);
-  }else{
+    break;
+  case ACS_RMT:
     m_acp.rud = map_oval(m_acp.rud_rmc, 
-		     m_acp.rud_max_rmc, m_acp.rud_nut_rmc, m_acp.rud_min_rmc,
-		     m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min);
+			 m_acp.rud_max_rmc, m_acp.rud_nut_rmc, m_acp.rud_min_rmc,
+			 m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min);
     m_acp.meng = map_oval(m_acp.meng_rmc, 
-		      m_acp.meng_max_rmc, m_acp.meng_nuf_rmc, m_acp.meng_nut_rmc, 
-		      m_acp.meng_nub_rmc, m_acp.meng_min_rmc,
-		      m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, m_acp.meng_nub, 
-		      m_acp.meng_min);  
+			  m_acp.meng_max_rmc, m_acp.meng_nuf_rmc, m_acp.meng_nut_rmc, 
+			  m_acp.meng_nub_rmc, m_acp.meng_min_rmc,
+			  m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, m_acp.meng_nub, 
+			  m_acp.meng_min);  
     m_acp.seng = map_oval(m_acp.seng_rmc, 
-		      m_acp.seng_max_rmc, m_acp.seng_nuf_rmc, m_acp.seng_nut_rmc, 
-		      m_acp.seng_nub_rmc, m_acp.seng_min_rmc,
-		      m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, m_acp.seng_nub, 
-		      m_acp.seng_min);
+			  m_acp.seng_max_rmc, m_acp.seng_nuf_rmc, m_acp.seng_nut_rmc, 
+			  m_acp.seng_nub_rmc, m_acp.seng_min_rmc,
+			  m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, m_acp.seng_nub, 
+			  m_acp.seng_min);
+    break;
   }
   
   ((unsigned char *) &val)[0] = m_acp.rud;
@@ -252,10 +261,10 @@ void f_aws1_ctrl::set_gpio()
   ((unsigned char *) &val)[2] = m_acp.seng;
   
   m_acp.rud_sta_out = map_oval(m_acp.rud_sta, 
-			   m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
-			   m_acp.rud_sta_out_max, m_acp.rud_sta_out_nut, m_acp.rud_sta_out_min);
+			       m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
+			       m_acp.rud_sta_out_max, m_acp.rud_sta_out_nut, m_acp.rud_sta_out_min);
   ((unsigned char *) &val)[3] = m_acp.rud_sta_out;
-
+  
   if(!m_sim){
     ioctl(m_fd, ZGPIO_IOCSET2, &val);
   }
@@ -265,21 +274,12 @@ bool f_aws1_ctrl::proc()
 {
 
   s_aws1_ctrl_pars acpkt;
-  if(m_acp.ctrl){
-    switch(m_acp.ctrl_src){
-    case ACS_UDP:
-      rcv_acs_udp(acpkt);
-      set_ctrl(acpkt);
-      break;
-    case ACS_CHAN:
-      rcv_acs_chan(acpkt);
-      set_ctrl(acpkt);
-      break;
-    case ACS_FSET:
-    default:
-      // nothing to do
-      break;
-    }
+  if(m_udp_ui){
+    rcv_acs_udp(acpkt);
+    set_ctrl(acpkt);
+  }else{
+    rcv_acs_chan(acpkt);
+    set_ctrl(acpkt);
   }
 
   get_gpio();
@@ -305,20 +305,11 @@ bool f_aws1_ctrl::proc()
   }
 
   set_acpkt(acpkt);
-  if(m_acp.ctrl){
-    switch(m_acp.ctrl_src){
-    case ACS_UDP:
-      snd_acs_udp(acpkt);
-      break;
-    case ACS_CHAN:
-      snd_acs_chan(acpkt);
-      break;
-    case ACS_FSET:
-    default:
-      // nothing to do
-      break;
-    }
-  }
+  if(m_udp_ui)
+    snd_acs_udp(acpkt);
+  else
+    snd_acs_chan(acpkt);
+
   return true;
 }
 
@@ -464,10 +455,10 @@ void f_aws1_ctrl::snd_acs_udp(s_aws1_ctrl_pars & acpkt)
 void f_aws1_ctrl::rcv_acs_chan(s_aws1_ctrl_pars & acpkt)
 {
   acpkt.suc = false;
-  if(m_ch_ctrl_in == NULL){
+  if(m_ch_ctrl_ui == NULL){
     cerr << m_name  << " does not have control input channel." << endl;
   }else{
-    m_ch_ctrl_in->get_pars(acpkt);
+    m_ch_ctrl_ui->get_pars(acpkt);
   }
 }
 
@@ -495,7 +486,36 @@ void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
   }
   
   m_acp.tcur = acpkt.tcur;
-  m_acp.rud_aws = acpkt.rud_aws;
-  m_acp.meng_aws = acpkt.meng_aws;
-  m_acp.seng_aws = acpkt.seng_aws;
+  m_acp.ctrl_src = acpkt.ctrl_src;
+  switch(m_acp.ctrl_src){
+  case ACS_UI:
+    m_acp.rud_aws = acpkt.rud_aws;
+    m_acp.meng_aws = acpkt.meng_aws;
+    m_acp.seng_aws = acpkt.seng_aws;
+    break;
+  case ACS_AP1:
+    if(m_ch_ctrl_ap1){
+      s_aws1_ctrl_pars ctrl;
+      m_ch_ctrl_ap1->get_pars(ctrl);
+      m_acp.rud_aws = ctrl.rud_aws;
+      m_acp.meng_aws = ctrl.meng_aws;
+      m_acp.seng_aws = ctrl.seng_aws;
+      break;
+    }else{
+      cerr << "In " << m_name << ", ";
+      cerr << "No autopilot channel 1 is connected" << endl;
+    }
+  case ACS_AP2:
+    if(m_ch_ctrl_ap2){
+      s_aws1_ctrl_pars ctrl;
+      m_ch_ctrl_ap2->get_pars(ctrl);
+      m_acp.rud_aws = ctrl.rud_aws;
+      m_acp.meng_aws = ctrl.meng_aws;
+      m_acp.seng_aws = ctrl.seng_aws;
+      break;
+    }else{
+      cerr << "In " << m_name << ", ";
+      cerr << "No autopilot channel 2 is connected" << endl;
+    }
+  }
 }

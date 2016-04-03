@@ -84,7 +84,8 @@ inline  int map_oval(int val,
 class f_aws1_ctrl: public f_base
 {
  protected:
-  ch_aws1_ctrl * m_ch_ctrl_in, * m_ch_ctrl_out;   // channel for control parameters
+  ch_aws1_ctrl * m_ch_ctrl_ui, * m_ch_ctrl_ap1, * m_ch_ctrl_ap2, * m_ch_ctrl_out;   // channel for control parameters
+  bool m_udp_ui;
   char m_dev[1024];         // device path, e.g. "/dev/zgpio0"
   char m_flog_name[1024];
   ofstream m_flog;

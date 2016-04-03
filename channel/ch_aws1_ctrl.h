@@ -18,7 +18,7 @@
 #include "ch_base.h"
 
 enum e_aws1_ctrl_src{
-  ACS_FSET, ACS_UDP, ACS_CHAN, ACS_NONE
+  ACS_UI, ACS_RMT, ACS_AP1, ACS_AP2, ACS_FSET, ACS_NONE
 };
 
 // Both for transmission and reception the same packet structure is used.
@@ -27,7 +27,6 @@ struct s_aws1_ctrl_pars{
   long long tcur;
 
   // control modes
-  bool ctrl;
   e_aws1_ctrl_src ctrl_src;
 
   // control output
@@ -95,7 +94,7 @@ struct s_aws1_ctrl_pars{
   bool suc;
 
 s_aws1_ctrl_pars():
-  ctrl(false), ctrl_src(ACS_FSET),
+  ctrl_src(ACS_UI),
     meng_max_rmc(0x81), meng_nuf_rmc(0x80),  meng_nut_rmc(0x7f),  
     meng_nub_rmc(0x7e), meng_min_rmc(0x7d),  
     seng_max_rmc(0x81),  seng_nuf_rmc(0x80), seng_nut_rmc(0x7f),
