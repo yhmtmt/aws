@@ -136,6 +136,5 @@ void drawGlStateInfTxt(float xorg  /* left top x */, float yorg, /* left top y *
 				  float cog, float sog, 
 				  float roll, float pitch, float yaw);
 
-void drawGlAtt(float roll, float pitch, float yaw);
 
 #endif

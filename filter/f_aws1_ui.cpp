@@ -437,10 +437,10 @@ void drawGlStateInfTxt(float xorg, float yorg,
 	char slon[32]; // "LON     : XXX.XXXXXXXXdg"
 	char salt[32]; // "ALT(GEO): XXX.Xm (XXX.Xm)"
 	char satt[32]; // "YPR     : XXX.Xdg XXX.Xdg XXX.Xdg"
-	snprintf(slat, 32, "LAT     : %+03.8fdg", lat);
-	snprintf(slon, 32, "LON     : %+03.8fdg", lon);
-	snprintf(salt, 32, "ALT(GEO): %+03.1fm (%+03.1fm)", alt, galt);
-	snprintf(satt, 32, "YPR     : %+03.1fdg %+03.1fdg %+03.1fdg", yaw, pitch, roll);
+	snprintf(slat, 32, "LAT     : %+013.8fdg", lat);
+	snprintf(slon, 32, "LON     : %+013.8fdg", lon);
+	snprintf(salt, 32, "ALT(GEO): %+04.1fm (%+04.1fm)", alt, galt);
+	snprintf(satt, 32, "YPR     : %+04.1fdg %+04.1fdg %+04.1fdg", yaw, pitch, roll);
 
 	float w = (float)(strlen(satt) * 1.5 * wfont);
 	float h = (float)(10 * hfont);
@@ -459,9 +459,6 @@ void drawGlStateInfTxt(float xorg, float yorg,
 	drawGlText(x, y, satt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
-void drawGlAtt(float roll, float pitch, float yaw)
-{
-}
 
 void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
 {
