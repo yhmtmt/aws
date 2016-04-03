@@ -229,8 +229,10 @@ bool f_aws1_ui::proc()
 
   float roll, pitch, yaw;
   float lat, lon, alt, galt;
+  float cog, sog;
   m_state->get_attitude(roll, pitch, yaw);
   m_state->get_position(lat, lon, alt, galt);
+  m_state->get_velocity(cog, sog);
 
   // render graphics
   glfwMakeContextCurrent(pwin());
@@ -285,6 +287,7 @@ bool f_aws1_ui::proc()
     cout << " RPY = " << roll << "," << pitch << "," << yaw << endl;
     cout << " Pos = " << lat << "," << lon << "," << alt << endl;
   }
+
   float wm, hm, lw;
 
   // Drawing engine control indicator 
@@ -315,6 +318,10 @@ bool f_aws1_ui::proc()
 			(float)(rud_inst_cur * wscale),
 			(float)(rud_sta * wscale));
 
+  x = (float)(wfont - 1.0);
+  y = (float)(12 * hfont - 1.0);
+  drawGlStateInfTxt(x, y, wfont, hfont, 
+	  lat, lon, alt, galt, cog, sog, roll, pitch, yaw);
   glfwSwapBuffers(pwin());
   glfwPollEvents();
   
@@ -364,7 +371,6 @@ void drawGlEngineIndicator(const char * title,
   drawGlLine2Df(x1, y2, x2, y2, 0, 1, 0, 1, lw);
   drawGlText(xtxt, (float)(y2), 
 	     "F", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-
 
   // neutral backward
   y2 = (float)(y1 - (25. / 255.) * h);
@@ -420,6 +426,42 @@ void drawGlRudderIndicator(const char * title,
   drawGlText((float)(xorg + w + dwfont), ytxt, "S", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
+void drawGlStateInfTxt(float xorg, float yorg, 
+					   float wfont, float hfont,
+				  float lat, float lon, float alt, float galt, 
+				  float cog, float sog, 
+				  float roll, float pitch, float yaw)
+{
+	// box and the informations
+	char slat[32]; // "LAT     : XXX.XXXXXXXXdg"
+	char slon[32]; // "LON     : XXX.XXXXXXXXdg"
+	char salt[32]; // "ALT(GEO): XXX.Xm (XXX.Xm)"
+	char satt[32]; // "YPR     : XXX.Xdg XXX.Xdg XXX.Xdg"
+	snprintf(slat, 32, "LAT     : %+03.8fdg", lat);
+	snprintf(slon, 32, "LON     : %+03.8fdg", lon);
+	snprintf(salt, 32, "ALT(GEO): %+03.1fm (%+03.1fm)", alt, galt);
+	snprintf(satt, 32, "YPR     : %+03.1fdg %+03.1fdg %+03.1fdg", yaw, pitch, roll);
+
+	float w = (float)(strlen(satt) * 1.5 * wfont);
+	float h = (float)(10 * hfont);
+	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg - h), 0, 1, 0, 1, 1);
+
+	float x, y;
+	x = (float)(xorg + wfont);
+	y = (float)(yorg - 3 * hfont);
+
+	drawGlText(x, y, slat, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+	drawGlText(x, y, slon, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+	drawGlText(x, y, salt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+	drawGlText(x, y, satt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+}
+
+void drawGlAtt(float roll, float pitch, float yaw)
+{
+}
 
 void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
 {
