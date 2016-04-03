@@ -20,13 +20,15 @@
 // NMEA data type
 enum e_nd_type{
 	/* GPS related NMEA message */
-	ENDT_GGA, ENDT_GSA, ENDT_GSV, ENDT_RMC, ENDT_VTG, ENDT_ZDA,
+	ENDT_GGA, ENDT_GSA, ENDT_GSV, ENDT_RMC, ENDT_VTG, ENDT_ZDA, ENDT_GLL,
 	/* ARPA related NMEA message */
 	ENDT_TTM,
 	/* Fish Finder's NMEA message */
 	ENDT_DBT, ENDT_MTW,
 	/* AIS related NMEA message */
 	ENDT_VDM, ENDT_VDO, ENDT_ABK, 
+	/* Autopilot related NMEA message */
+	ENDT_APB, ENDT_AAM, ENDT_BOD, ENDT_BWC, ENDT_XTE, ENDT_RMB, ENDT_APA,
 	/* Undefined NMEA message */
 	ENDT_UNDEF,
 
@@ -36,6 +38,7 @@ enum e_nd_type{
 };
 
 extern const char * str_nd_type[ENDT_UNDEF];
+e_nd_type get_nd_type(const char * str);
 
 bool eval_nmea_chksum(const char * str);
 unsigned char calc_nmea_chksum(const char * str);
@@ -43,8 +46,6 @@ unsigned int htoi(const char * str);
 bool parstrcmp(const char * str1, const char * str2);
 int parstrcpy(char * str, const char * src, int num);
 int parstrcpy(char * str, const char * src, char delim, int max_buf = 32);
-e_nd_type get_nd_type(const char * str);
-
 
 class c_nmea_dec;
 
@@ -149,7 +150,10 @@ public:
 
 #include "aws_nmea_ais.h"
 
-
+// nmea decoder class 
+// Usage : Instantiate an object, and call decode method with NMEA string as an argument. 
+// * decode method returns an NMEA data object, the object is allocated in the decoder object.
+// * The decoder object should not be used in multiple threads. 
 class c_nmea_dec
 {
 protected:

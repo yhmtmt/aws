@@ -30,10 +30,11 @@ using namespace std;
 #include "aws_nmea.h"
 
 const char * str_nd_type[ENDT_UNDEF] = {
-	"GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", 
+	"GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", "GLL"
 	"TTM", 
 	"DBT", "MTW",
 	"VDM", "VDO", "ABK"
+	"APB", "AAM", "BOD", "BWC", "XTE", "RMB", "APA"
 };
 
 e_nd_type get_nd_type(const char * str)

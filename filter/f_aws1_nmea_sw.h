@@ -24,6 +24,7 @@
 #include "../util/aws_nmea.h"
 
 #include "../channel/ch_nmea.h"
+#include "../channel/ch_state.h"
 
 #include "f_nmea.h"
 
@@ -34,6 +35,9 @@ inline bool is_nmea_type(const char * strt, const char * nmea){
 class f_aws1_nmea_sw: public f_base
 {
 protected:
+	c_nmea_dec m_nmea_dec;
+	ch_state * m_state;
+
 	ch_nmea * m_aws_nmea_i;
 	ch_nmea * m_ap_nmea_i;
 	ch_nmea * m_gff_nmea_i;

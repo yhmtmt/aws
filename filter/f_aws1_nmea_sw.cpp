@@ -35,6 +35,7 @@ using namespace cv;
 #include "f_aws1_nmea_sw.h"
 
 f_aws1_nmea_sw::f_aws1_nmea_sw(const char * name): f_base(name), 
+	m_state(NULL),
 	m_aws_nmea_i(NULL), m_ap_nmea_i(NULL), m_gff_nmea_i(NULL),
 	m_ais_nmea_i(NULL), m_gps_nmea_i(NULL),
 	m_aws_nmea_o(NULL), m_ap_nmea_o(NULL), m_gff_nmea_o(NULL), 
@@ -43,6 +44,7 @@ f_aws1_nmea_sw::f_aws1_nmea_sw(const char * name): f_base(name),
 	m_aws_oint(1), m_ap_oint(1), m_gff_oint(1), m_ais_oint(1), m_gps_oint(1),
 	m_aws_ocnt(0), m_ap_ocnt(0), m_gff_ocnt(0), m_ais_ocnt(0), m_gps_ocnt(0)
 {
+	register_fpar("state", (ch_base**)&m_state, typeid(m_state).name(), "State output channel.");
 	register_fpar("aws_nmea_i", (ch_base**)&m_aws_nmea_i, typeid(m_aws_nmea_i).name(), "Input Channel of aws_nmea.");
 	register_fpar("aws_nmea_o", (ch_base**)&m_aws_nmea_o, typeid(m_aws_nmea_o).name(), "Output Channel of aws_nmea.");
 	register_fpar("ap_nmea_i", (ch_base**)&m_ap_nmea_i, typeid(m_ap_nmea_i).name(), "Input Channel of ap_nmea.");
@@ -82,23 +84,29 @@ void f_aws1_nmea_sw::aws_to_out()
 		if(m_verb){
 			cout << "AWS > " << m_nmea << endl;
 		}
-		if(m_ap_nmea_o && m_aws_ctrl && 
-			(is_nmea_type("APB", m_nmea) || 
-			is_nmea_type("AAM", m_nmea) ||
-			is_nmea_type("BOD", m_nmea) || 
-			is_nmea_type("BWC", m_nmea) || 
-			is_nmea_type("VTG", m_nmea) ||
-			is_nmea_type("XTE", m_nmea) ||
-			is_nmea_type("RMB", m_nmea) || 
-			is_nmea_type("APA", m_nmea)))
-		{
-			if(m_aws_ocnt == 0){
-				if(m_verb){
-					cout << "AP < " << m_nmea << endl;
-				}
-				m_ap_nmea_o->push(m_nmea);			
-				m_ap_out = true;
-			}	
+
+		e_nd_type type = get_nd_type(m_nmea);
+
+		if(m_ap_nmea_o && m_aws_ctrl){
+			switch(type){
+			case ENDT_APB:
+			case ENDT_AAM:
+			case ENDT_BOD:
+			case ENDT_BWC:
+			case ENDT_XTE:
+			case ENDT_RMB:
+			case ENDT_APA:
+				if(m_aws_ocnt == 0){
+					if(m_verb){
+						cout << "AP < " << m_nmea << endl;
+					}
+					m_ap_nmea_o->push(m_nmea);			
+					m_ap_out = true;				
+				}	
+				break;
+			default:
+				break;
+			}
 		}
 	}
 }
@@ -121,6 +129,8 @@ void f_aws1_nmea_sw::ap_to_out()
 void f_aws1_nmea_sw::gff_to_out()
 {
 	while(m_gff_nmea_i->pop(m_nmea)){
+		e_nd_type type = get_nd_type(m_nmea);
+
 		// toker forced to be "GF" to avoid mixing with the GPS's nmea.
 		m_nmea[1] = 'G';
 		m_nmea[2] = 'F';
@@ -130,12 +140,12 @@ void f_aws1_nmea_sw::gff_to_out()
 		if(m_aws_nmea_o)
 			m_aws_nmea_o->push(m_nmea);
 
-		if(m_ap_nmea_o && !m_aws_ctrl && 
-			(is_nmea_type("APB", m_nmea) || 
-			is_nmea_type("AAM", m_nmea) ||
-			is_nmea_type("BOD", m_nmea) || 
-			is_nmea_type("VTG", m_nmea) ||
-			is_nmea_type("XTE", m_nmea))){
+		if(m_ap_nmea_o && !m_aws_ctrl){
+			switch(type){
+			case ENDT_APB:
+			case ENDT_AAM:
+			case ENDT_VTG:
+			case ENDT_XTE:
 				if(m_ap_ocnt == 0){
 					if(m_verb)
 						cout << "AP < " << m_nmea << endl;
@@ -143,6 +153,10 @@ void f_aws1_nmea_sw::gff_to_out()
 					m_ap_nmea_o->push(m_nmea);
 					m_ap_out = true;
 				}
+				break;
+			default:
+				break;
+			}
 		}
 	}
 }
@@ -150,15 +164,18 @@ void f_aws1_nmea_sw::gff_to_out()
 void f_aws1_nmea_sw::ais_to_out()
 {
 	while(m_ais_nmea_i->pop(m_nmea)){
-		if(m_verb)
-			cout << "AIS > " << m_nmea << endl;
+		e_nd_type type = get_nd_type(m_nmea);
 
 		m_nmea[1] = 'A';
 		m_nmea[2] = 'I';
+
+		if(m_verb)
+			cout << "AIS > " << m_nmea << endl;
+		
 		if(m_aws_nmea_o)
 			m_aws_nmea_o->push(m_nmea);
 
-		if(m_gff_nmea_o && is_nmea_type("VDM", m_nmea)){
+		if(m_gff_nmea_o &&  type == ENDT_VDM){
 			if(m_gff_ocnt == 0){
 				if(m_verb)
 					cout << "GFF < " << m_nmea << endl;
@@ -173,25 +190,28 @@ void f_aws1_nmea_sw::ais_to_out()
 void f_aws1_nmea_sw::gps_to_out()
 {
 	while(m_gps_nmea_i->pop(m_nmea)){
+		e_nd_type type = get_nd_type(m_nmea);
+
 		if(m_verb)
 			cout << "GPS > " << m_nmea << endl;
 
 		if(m_aws_nmea_o)
 			m_aws_nmea_o->push(m_nmea);
 
-		if(is_nmea_type("RMC", m_nmea) 
-			|| is_nmea_type("GGA", m_nmea)
-			|| is_nmea_type("GLL", m_nmea)){
-
-				if(m_ais_ocnt == 0){
-					if(m_verb)
-						cout << "AIS < " << m_nmea << endl;
-					if(m_ais_nmea_o)
-						m_ais_nmea_o->push(m_nmea);
-					m_ais_out = true;
-				}
-		}else if(is_nmea_type("VTG", m_nmea)){
-			if(m_ais_ocnt == 0){
+		switch(type){
+		case ENDT_RMC:
+		case ENDT_GGA:
+		case ENDT_GLL:
+			if(m_ais_nmea_o && m_ais_ocnt == 0){
+				if(m_verb)
+					cout << "AIS < " << m_nmea << endl;
+				if(m_ais_nmea_o)
+					m_ais_nmea_o->push(m_nmea);
+				m_ais_out = true;
+			}
+			break;
+		case ENDT_VTG:
+			if(m_ais_nmea_o && m_ais_ocnt == 0){
 				if(m_verb)
 					cout << "AIS < " << m_nmea << endl;
 
@@ -200,13 +220,14 @@ void f_aws1_nmea_sw::gps_to_out()
 				m_ais_out = true;
 			}
 
-			if(m_ap_ocnt == 0){
+			if(m_ap_nmea_o && m_ap_ocnt == 0){
 				if(m_verb)
 					cout << "AP < " << m_nmea << endl;
 				if(m_ap_nmea_o)
 					m_ap_nmea_o->push(m_nmea);
 				m_ap_out = true;
 			}
+			break;
 		}
 	}
 }
