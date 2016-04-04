@@ -3100,7 +3100,7 @@ void f_inspector::adjust_part(short delta)
 {
 	if(!m_pfrm_int)
 		return ;
-	s_frame & fobj = *m_pfrm;
+	s_frame & fobj = *m_pfrm_int;
 
 	if(m_cur_obj < 0 || m_cur_obj >= fobj.objs.size())
 		return;
