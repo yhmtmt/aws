@@ -153,9 +153,16 @@ void f_aws1_nmea_sw::gff_to_out()
 					m_ap_nmea_o->push(m_nmea);
 					m_ap_out = true;
 				}
-				break;
+				break;				
 			default:
 				break;
+			}
+		}
+
+		if(m_state && type == ENDT_DBT){
+			const c_dbt * pdbt = dynamic_cast<const c_dbt*>(m_nmea_dec.decode(m_nmea));
+			if(pdbt){
+				m_state->set_depth(pdbt->dm);
 			}
 		}
 	}

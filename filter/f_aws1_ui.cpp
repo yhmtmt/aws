@@ -229,9 +229,11 @@ bool f_aws1_ui::proc()
   float roll, pitch, yaw;
   float lat, lon, alt, galt;
   float cog, sog;
+  float depth;
   m_state->get_attitude(roll, pitch, yaw);
   m_state->get_position(lat, lon, alt, galt);
   m_state->get_velocity(cog, sog);
+  m_state->get_depth(depth);
   roll = (float)(-roll + 180.);
 
   // render graphics
@@ -324,7 +326,7 @@ bool f_aws1_ui::proc()
   x = (float)(wfont - 1.0);
   y = (float)(hfont - 1.0);
   drawGlStateInfTxt(x, y, wfont, hfont, 
-	  lat, lon, alt, galt, cog, sog, roll, pitch, yaw);
+	  lat, lon, alt, galt, cog, sog, roll, pitch, yaw, depth, 1);
 
   // Indicate System State
   x = (float)(1.0 - wfont);
@@ -444,7 +446,8 @@ void drawGlStateInfTxt(float xorg, float yorg,
 					   float wfont, float hfont,
 				  float lat, float lon, float alt, float galt, 
 				  float cog, float sog, 
-				  float roll, float pitch, float yaw)
+				  float roll, float pitch, float yaw,
+				  float depth, float sz)
 {
 	// box and the informations
 	char slat[32]; // "LAT     : XXX.XXXXXXXXdg"
@@ -455,6 +458,7 @@ void drawGlStateInfTxt(float xorg, float yorg,
 	char syaw[32]; // "YAW     : XXX.Xdg"
 	char spch[32]; // "PITCH   : XXX.Xdg"
 	char srol[32]; // "ROLL    : XXX.Xdg"
+	char sdpt[32]; // "DEPTH   : XXX.Xm"
 	snprintf(slat, 32, "LAT     : %+013.8fdg", lat);
 	snprintf(slon, 32, "LON     : %+013.8fdg", lon);
 	snprintf(salt, 32, "ALT(GEO): %+06.1fm (%+06.1fm)", alt, galt);
@@ -463,9 +467,10 @@ void drawGlStateInfTxt(float xorg, float yorg,
 	snprintf(srol, 32, "ROLL    : %+06.1fdg", roll);
 	snprintf(scog, 32, "COG     : %+06.1fdg", cog);
 	snprintf(ssog, 32, "SOG     : %+06.1fkt", sog);
+	snprintf(sdpt, 32, "DEPTH   : %+06.1fm", depth);
 	float w = (float)((strlen(salt) + 2) * wfont * 1.2);
-	float h = (float)(18 * hfont);
-	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg + h), 0, 1, 0, 1, 1);
+	float h = (float)(20 * hfont);
+	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg + h), 0, 1, 0, 1, sz);
 
 	float x, y;
 	x = (float)(xorg + wfont);
@@ -486,6 +491,8 @@ void drawGlStateInfTxt(float xorg, float yorg,
 	drawGlText(x, y, spch, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 	y += 2 * hfont;
 	drawGlText(x, y, srol, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y += 2 * hfont;
+	drawGlText(x, y, sdpt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
 void drawGlSysStateInfTxt(float xorg, float yorg,

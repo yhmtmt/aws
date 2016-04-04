@@ -134,7 +134,8 @@ void drawGlStateInfTxt(float xorg  /* left bottom x */, float yorg, /* left bott
 					float wfont, float hfont,
 				  float lat, float lon, float alt, float galt, 
 				  float cog, float sog, 
-				  float roll, float pitch, float yaw);
+				  float roll, float pitch, float yaw,
+				  float depth, float sz);
 
 void drawGlSysStateInfTxt(float xorg/* right top x */, float yorg /* right top y */,
 						  float wfont, float hfont,

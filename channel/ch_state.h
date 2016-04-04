@@ -23,10 +23,10 @@ class ch_state: public ch_base
   float r, p, y; // roll(deg), pitch(deg), yaw(deg)
   float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
   float cog, sog; // Course over ground(deg), Speed over ground (kts)
-
+  float depth; // water depth
  public:
  ch_state(const char * name): ch_base(name), r(0), p(0), y(0),
-    lon(0), lat(0), alt(0), galt(0), cog(0), sog(0)
+    lon(0), lat(0), alt(0), galt(0), cog(0), sog(0), depth(0)
     {
     }
 
@@ -57,6 +57,12 @@ class ch_state: public ch_base
 	  unlock();
   }
 
+  void set_depth(const float _depth){
+	  lock();
+	  depth = _depth;
+	  unlock();
+  }
+
   void get_attitude(float & _r, float & _p, float & _y)
   {
     lock();
@@ -81,6 +87,13 @@ class ch_state: public ch_base
 	  lock();
 	  _cog = cog;
 	  _sog = sog;
+	  unlock();
+  }
+
+  void get_depth(float & _depth)
+  {
+	  lock();
+	  _depth = depth;
 	  unlock();
   }
 
