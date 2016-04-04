@@ -21,6 +21,7 @@
 #include "f_aws1_ctrl.h"
 #include "f_glfw_window.h"
 
+#include "../channel/ch_image.h"
 #include "../channel/ch_state.h"
 #include "../channel/ch_aws1_ctrl.h"
 
@@ -29,6 +30,7 @@ class f_aws1_ui: public f_glfw_window
  private:
   ch_state * m_state;
   ch_aws1_ctrl * m_ch_ctrl_in, * m_ch_ctrl_out;
+  ch_image_ref * m_ch_img;
   bool m_udp_ctrl;
   bool m_verb;
   int m_js; 

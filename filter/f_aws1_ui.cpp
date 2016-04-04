@@ -38,12 +38,15 @@ using namespace cv;
 #include "f_aws1_ui.h"
 
 f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
-					 m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL),
+					m_state(NULL),
+					 m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL), m_ch_img(NULL),
 					 m_acd_sock(-1), m_acd_port(20100), m_num_ctrl_steps(4), m_ec(EC_MAIN), m_rud_pos(NULL), m_meng_pos(NULL), m_seng_pos(NULL)
 {
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl_in, typeid(ch_aws1_ctrl).name(), "Control input channel.");
   register_fpar("ch_ctrl_out", (ch_base**)&m_ch_ctrl_out, typeid(ch_aws1_ctrl).name(), "Control output channel.");
+  register_fpar("ch_img", (ch_base**)&m_ch_img, typeid(ch_image_ref).name(), "Image channel");
+
   register_fpar("udpctrl", &m_udp_ctrl, "If asserted, Direct UDP is used for control channel. Otherwise, ch_ctrl_{in,out} are used.");
   register_fpar("acdhost", m_acd_host, 1023, "Host address controlling AWS1.");
   register_fpar("acdport", &m_acd_port, "Port number opened for controlling AWS1.");
@@ -224,17 +227,40 @@ bool f_aws1_ui::proc()
   s_aws1_ctrl_pars acpkt;
   snd_ctrl(acpkt);
   rcv_ctrl(acpkt);
-  
-
+ 
   float roll, pitch, yaw;
   float lat, lon, alt, galt;
   float cog, sog;
   float depth;
-  m_state->get_attitude(roll, pitch, yaw);
-  m_state->get_position(lat, lon, alt, galt);
-  m_state->get_velocity(cog, sog);
-  m_state->get_depth(depth);
+  roll = pitch = yaw = lat = lon = alt = galt = cog = sog = depth = 0.;
+  if(m_state){
+	  m_state->get_attitude(roll, pitch, yaw);
+	  m_state->get_position(lat, lon, alt, galt);
+	  m_state->get_velocity(cog, sog);
+	  m_state->get_depth(depth);
+  }
   roll = (float)(-roll + 180.);
+
+  if(m_ch_img){
+	  Mat img;
+	  long long timg;
+	  img = m_ch_img->get_img(timg);
+	  if(!img.empty()){
+		  if(m_sz_win.width != img.cols || m_sz_win.height != img.rows){
+			  Mat tmp;
+			  resize(img, tmp, m_sz_win);
+			  img = tmp;
+		  }
+
+		  if(img.type() == CV_8U){
+			  glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
+		  }
+		  else{
+			  cnvCVBGR8toGLRGB8(img);
+			  glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
+		  }
+	  }
+  }
 
   // render graphics
   glfwMakeContextCurrent(pwin());

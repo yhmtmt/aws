@@ -25,7 +25,7 @@ using namespace std;
 
 f_aws1_ap::f_aws1_ap(const char * name): f_base(name)
 {
-	register_fpar("ch_state", (ch_base**)&m_state, typeid(m_state).name(), "State channel");
+	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
 	register_fpar("ch_ctrl_out", (ch_base**)&m_ctrl_out, typeid(ch_aws1_ctrl).name(), "Ctrl output channel");
 	register_fpar("ch_ctrl_in", (ch_base**)&m_ctrl_in, typeid(ch_aws1_ctrl).name(), "Ctrl input channel");
 	register_fpar("rud", &m_acp.rud_aws, "Rudder value");
