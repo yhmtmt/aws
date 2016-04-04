@@ -151,6 +151,7 @@ void ch_base::register_factory()
 #include "filter/f_fep01.h"
 #include "filter/f_ahrs.h"
 #include "filter/f_time.h"
+#include "filter//f_aws1_ap.h"
 
 
 // Initialization function. 
@@ -283,4 +284,5 @@ void f_base::register_factory()
 	register_factory<f_time>("tsync");
 
 	register_factory<f_ahrs>("ahrs");
+	register_factory<f_aws1_ap>("aws1_ap");
 }
