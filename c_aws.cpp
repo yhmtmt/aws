@@ -356,7 +356,7 @@ bool c_aws::handle_chan(s_cmd & cmd)
 bool c_aws::handle_fltr(s_cmd & cmd)
 {
 	bool result;
-	if(cmd.num_args < 5)
+	if(cmd.num_args < 3)
 		return false;
 	if(!(result = add_filter(cmd)))
 		sprintf(cmd.get_ret_str(), "Failed to create filter %s of %s.", 
