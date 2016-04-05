@@ -239,7 +239,7 @@ bool f_aws1_ui::proc()
 	  m_state->get_velocity(cog, sog);
 	  m_state->get_depth(depth);
   }
-  roll = (float)(-roll + 180.);
+  yaw = (float)(-yaw + 180.);
 
   if(m_ch_img){
 	  Mat img;
@@ -314,6 +314,8 @@ bool f_aws1_ui::proc()
     cout << "    Rud stat " << rud_sta << endl;
     cout << " RPY = " << roll << "," << pitch << "," << yaw << endl;
     cout << " Pos = " << lat << "," << lon << "," << alt << endl;
+    cout << " Vel = " << cog << "," << sog << endl;
+    cout << " Depth = " << depth << endl;
   }
 
   float wm, hm, lw;
