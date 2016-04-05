@@ -45,16 +45,16 @@ f_aws1_nmea_sw::f_aws1_nmea_sw(const char * name): f_base(name),
 	m_aws_ocnt(0), m_ap_ocnt(0), m_gff_ocnt(0), m_ais_ocnt(0), m_gps_ocnt(0)
 {
 	register_fpar("state", (ch_base**)&m_state, typeid(m_state).name(), "State output channel.");
-	register_fpar("aws_nmea_i", (ch_base**)&m_aws_nmea_i, typeid(m_aws_nmea_i).name(), "Input Channel of aws_nmea.");
-	register_fpar("aws_nmea_o", (ch_base**)&m_aws_nmea_o, typeid(m_aws_nmea_o).name(), "Output Channel of aws_nmea.");
-	register_fpar("ap_nmea_i", (ch_base**)&m_ap_nmea_i, typeid(m_ap_nmea_i).name(), "Input Channel of ap_nmea.");
-	register_fpar("ap_nmea_o", (ch_base**)&m_ap_nmea_o, typeid(m_ap_nmea_o).name(), "Output Channel of ap_nmea.");
-	register_fpar("gff_nmea_i", (ch_base**)&m_gff_nmea_i, typeid(m_gff_nmea_i).name(), "Input Channel of gff_nmea.");
-	register_fpar("gff_nmea_o", (ch_base**)&m_gff_nmea_o, typeid(m_gff_nmea_o).name(), "Output Channel of gff_nmea.");
-	register_fpar("ais_nmea_i", (ch_base**)&m_ais_nmea_i, typeid(m_ais_nmea_i).name(), "Input Channel of ais_nmea.");
-	register_fpar("ais_nmea_o", (ch_base**)&m_ais_nmea_o, typeid(m_ais_nmea_o).name(), "Output Channel of ais_nmea.");
-	register_fpar("gps_nmea_i", (ch_base**)&m_gps_nmea_i, typeid(m_gps_nmea_i).name(), "Input Channel of gps_nmea.");
-	register_fpar("gps_nmea_o", (ch_base**)&m_gps_nmea_o, typeid(m_gps_nmea_o).name(), "Output Channel of gps_nmea.");
+	register_fpar("aws_nmea_i", (ch_base**)&m_aws_nmea_i, typeid(ch_nmea).name(), "Input Channel of aws_nmea.");
+	register_fpar("aws_nmea_o", (ch_base**)&m_aws_nmea_o, typeid(ch_nmea).name(), "Output Channel of aws_nmea.");
+	register_fpar("ap_nmea_i", (ch_base**)&m_ap_nmea_i, typeid(ch_nmea).name(), "Input Channel of ap_nmea.");
+	register_fpar("ap_nmea_o", (ch_base**)&m_ap_nmea_o, typeid(ch_nmea).name(), "Output Channel of ap_nmea.");
+	register_fpar("gff_nmea_i", (ch_base**)&m_gff_nmea_i, typeid(ch_nmea).name(), "Input Channel of gff_nmea.");
+	register_fpar("gff_nmea_o", (ch_base**)&m_gff_nmea_o, typeid(ch_nmea).name(), "Output Channel of gff_nmea.");
+	register_fpar("ais_nmea_i", (ch_base**)&m_ais_nmea_i, typeid(ch_nmea).name(), "Input Channel of ais_nmea.");
+	register_fpar("ais_nmea_o", (ch_base**)&m_ais_nmea_o, typeid(ch_nmea).name(), "Output Channel of ais_nmea.");
+	register_fpar("gps_nmea_i", (ch_base**)&m_gps_nmea_i, typeid(ch_nmea).name(), "Input Channel of gps_nmea.");
+	register_fpar("gps_nmea_o", (ch_base**)&m_gps_nmea_o, typeid(ch_nmea).name(), "Output Channel of gps_nmea.");
 
 	register_fpar("aws_ctrl", &m_aws_ctrl, "If yes, APB message is switched from fish finder to aws (default false)");
 	register_fpar("awsint", &m_aws_oint, "Output interval of aws output channel (default 1)");
@@ -71,7 +71,7 @@ f_aws1_nmea_sw::~f_aws1_nmea_sw()
 
 bool f_aws1_nmea_sw::init_run()
 {
-	return true;
+  return true;
 }
 
 void f_aws1_nmea_sw::destroy_run()
