@@ -44,7 +44,7 @@ f_aws1_nmea_sw::f_aws1_nmea_sw(const char * name): f_base(name),
 	m_aws_oint(1), m_ap_oint(1), m_gff_oint(1), m_ais_oint(1), m_gps_oint(1),
 	m_aws_ocnt(0), m_ap_ocnt(0), m_gff_ocnt(0), m_ais_ocnt(0), m_gps_ocnt(0)
 {
-	register_fpar("state", (ch_base**)&m_state, typeid(m_state).name(), "State output channel.");
+	register_fpar("state", (ch_base**)&m_state, typeid(ch_state).name(), "State output channel.");
 	register_fpar("aws_nmea_i", (ch_base**)&m_aws_nmea_i, typeid(ch_nmea).name(), "Input Channel of aws_nmea.");
 	register_fpar("aws_nmea_o", (ch_base**)&m_aws_nmea_o, typeid(ch_nmea).name(), "Output Channel of aws_nmea.");
 	register_fpar("ap_nmea_i", (ch_base**)&m_ap_nmea_i, typeid(ch_nmea).name(), "Input Channel of ap_nmea.");
