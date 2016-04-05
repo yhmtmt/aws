@@ -57,7 +57,7 @@ protected:
 
 	bool m_aws_out, m_ap_out, m_gff_out, m_ais_out, m_gps_out;
 
-	char m_nmea[83];
+	char m_nmea[84];
 
 	void aws_to_out();
 	void ap_to_out();

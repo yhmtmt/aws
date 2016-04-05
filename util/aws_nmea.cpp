@@ -30,18 +30,18 @@ using namespace std;
 #include "aws_nmea.h"
 
 const char * str_nd_type[ENDT_UNDEF] = {
-	"GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", "GLL"
-	"TTM", 
-	"DBT", "MTW",
-	"VDM", "VDO", "ABK"
-	"APB", "AAM", "BOD", "BWC", "XTE", "RMB", "APA"
+  "GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", "GLL",
+  "TTM", 
+  "DBT", "MTW",
+  "VDM", "VDO", "ABK",
+  "APB", "AAM", "BOD", "BWC", "XTE", "RMB", "APA"
 };
 
 e_nd_type get_nd_type(const char * str)
 {
 	for(int i = 0; i < ENDT_UNDEF; i++){
 		const char * st = str_nd_type[i];
-		if(st[0] == str[3] && str[1] == str[4] && str[2] == str[5])
+		if(st[0] == str[3] && st[1] == str[4] && st[2] == str[5])
 			return (e_nd_type) i;
 	}
 	return ENDT_UNDEF;

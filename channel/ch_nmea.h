@@ -92,7 +92,6 @@ public:
 	bool push(const char * buf)
 	{
 		lock();
-
 		char * p = m_buf[m_tail];
 		int len = 0;
 		for( ;*buf != '\0' && len < 84; buf++, p++, len++){
@@ -103,6 +102,7 @@ public:
 			m_buf[m_tail][83] = '\0';
 			cerr << "Error in " << m_name << "::push(const char*). No null character in the string given " << endl;
 			cerr << "    -> string: " << m_buf[m_tail] << endl;
+			unlock();
 			return false;
 		}
 
