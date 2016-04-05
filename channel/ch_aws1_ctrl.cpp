@@ -18,6 +18,9 @@
 #include <cstring>
 #include <map>
 using namespace std;
+#include <cstring>
+#include <cmath>
+
 #include "ch_aws1_ctrl.h"
 
 const char * str_aws1_ctrl_src[ACS_NONE] = 
