@@ -99,7 +99,7 @@ class ch_state: public ch_base
 
   virtual size_t get_dsize()
   {
-    return sizeof(float) * 6;
+    return sizeof(float) * 10;
   }
   
   virtual size_t write_buf(const char *buf)
@@ -112,8 +112,12 @@ class ch_state: public ch_base
     lat = ptr[3];
     lon = ptr[4];
     alt = ptr[5];
+    galt = ptr[6];
+    cog = ptr[7];
+    sog = ptr[8];
+    depth = ptr[9];
     unlock();
-    return sizeof(float) * 6;
+    return sizeof(float) * 10;
   }
 
   virtual size_t read_buf(char * buf)
@@ -126,8 +130,12 @@ class ch_state: public ch_base
     ptr[3] = lat;
     ptr[4] = lon;
     ptr[5] = alt;
+    ptr[6] = galt;
+    ptr[7] = cog;
+    ptr[8] = sog;
+    ptr[9] = depth;
     unlock();
-    return sizeof(float) * 6;
+    return sizeof(float) * 10;
   }
   
   virtual void print(ostream & out)

@@ -471,11 +471,11 @@ void drawGlRudderIndicator(const char * title,
 }
 
 void drawGlStateInfTxt(float xorg, float yorg, 
-					   float wfont, float hfont,
-				  float lat, float lon, float alt, float galt, 
-				  float cog, float sog, 
-				  float roll, float pitch, float yaw,
-				  float depth, float sz)
+		       float wfont, float hfont,
+		       float lat, float lon, float alt, float galt, 
+		       float cog, float sog, 
+		       float roll, float pitch, float yaw,
+		       float depth, float sz)
 {
 	// box and the informations
 	char slat[32]; // "LAT     : XXX.XXXXXXXXdg"
@@ -524,8 +524,8 @@ void drawGlStateInfTxt(float xorg, float yorg,
 }
 
 void drawGlSysStateInfTxt(float xorg, float yorg,
-						  float wfont, float hfont,
-						  e_aws1_ctrl_src ctrl_src, float sz)
+			  float wfont, float hfont,
+			  e_aws1_ctrl_src ctrl_src, float sz)
 {
 	char str[32]; // "Ctrl: xxxx"
 	snprintf(str, 32, "CTRL: %5s", str_aws1_ctrl_src[ctrl_src]);

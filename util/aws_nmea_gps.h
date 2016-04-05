@@ -44,7 +44,7 @@ public:
 	{
 	}
 
-	static c_nmea_dat * dec_gga(const char * str);
+	virtual bool dec(const char * str);
 	virtual ostream & show(ostream & out) const
 	{
 		out << "GPGGA >";
@@ -78,7 +78,7 @@ public:
 			sused[i] = 0;
 	}
 
-	static c_nmea_dat * dec_gsa(const char * str);
+	virtual bool dec(const char * str);
 	virtual ostream & show(ostream & out) const
 	{
 		return out;
@@ -102,7 +102,7 @@ public:
 		}
 	}
 
-	static c_nmea_dat * dec_gsv(const char * str);
+	virtual bool dec(const char * str);
 	virtual ostream & show(ostream & out) const
 	{
 		return out;
@@ -135,7 +135,7 @@ public:
 	{
 	}
 
-	static c_nmea_dat * dec_rmc(const char * str);
+	virtual bool dec(const char * str);
 	virtual ostream & show(ostream & out) const
 	{
 		out << "GPRMC>";
@@ -163,7 +163,7 @@ public:
 	{
 	}
 
-	static c_nmea_dat * dec_vtg(const char * str);
+	virtual bool dec(const char * str);
 	virtual ostream & show(ostream & out) const
 	{
 		return out;
@@ -188,7 +188,7 @@ public:
 	{
 	}
 
-	static c_nmea_dat * dec_zda(const char * str);
+	virtual bool dec(const char * str);
 
 	virtual ostream & show(ostream & out) const
 	{
