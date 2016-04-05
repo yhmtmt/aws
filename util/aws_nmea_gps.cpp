@@ -30,9 +30,8 @@ using namespace std;
 
 /////////////////////////////////////////// gga decoder
 
-c_nmea_dat * c_gga::dec_gga(const char * str)
+bool c_gga::dec(const char * str)
 {
-	c_gga * pnd = new c_gga;
 	int i = 0;
 	int ipar = 0;
 	int len;
@@ -51,73 +50,72 @@ c_nmea_dat * c_gga::dec_gga(const char * str)
 			break;
 		case 1: // TIME hhmmss
 			parstrcpy(tok, buf, 2);
-			pnd->m_h = (short) atoi(tok);
+			m_h = (short) atoi(tok);
 			parstrcpy(tok, buf+2, 2);
-			pnd->m_m = (short) atoi(tok);
+			m_m = (short) atoi(tok);
 			parstrcpy(tok, buf+4, '\0');
-			pnd->m_s = (float) atof(tok);
+			m_s = (float) atof(tok);
 			break;
 		case 2: // LAT
 			parstrcpy(tok, buf, 2);
-			pnd->m_lat_deg = atof(tok);
+			m_lat_deg = atof(tok);
 			parstrcpy(tok, buf+2, '\0');
-			pnd->m_lat_deg += atof(tok) / 60;
+			m_lat_deg += atof(tok) / 60;
 			break;
 		case 3: // N or S
 			if(buf[0] == 'N')
-				pnd->m_lat_dir = EGP_N;
+				m_lat_dir = EGP_N;
 			else
-				pnd->m_lat_dir = EGP_S;
+				m_lat_dir = EGP_S;
 			break;				
 		case 4: // LON
 			parstrcpy(tok, buf, 3);
-			pnd->m_lon_deg = atof(tok);
+			m_lon_deg = atof(tok);
 			parstrcpy(tok, buf + 3, '\0');
-			pnd->m_lon_deg += atof(tok) / 60;
+			m_lon_deg += atof(tok) / 60;
 			break;
 		case 5: // E or W
 			if(buf[0] == 'E')
-				pnd->m_lon_dir = EGP_E;
+				m_lon_dir = EGP_E;
 			else
-				pnd->m_lon_dir = EGP_W;
+				m_lon_dir = EGP_W;
 			break;
 		case 6: // Fix Stats
-			pnd->m_fix = (e_gp_fix_stat)(buf[0] - '0');
+			m_fix = (e_gp_fix_stat)(buf[0] - '0');
 		case 7: // NUM_SATS
-			pnd->m_num_sats = atoi(buf);
+			m_num_sats = atoi(buf);
 			break;
 		case 8: // HDOP
-			pnd->m_hdop = (float) atof(buf);
+			m_hdop = (float) atof(buf);
 			break;
 		case 9: // Altitude
-			pnd->m_alt = (float) atof(buf);
+			m_alt = (float) atof(buf);
 			break;
 		case 10: // M
 			break;
 		case 11:// Geoidal separation
-			pnd->m_geos = (float) atof(buf);
+			m_geos = (float) atof(buf);
 			break;
 		case 12: // M
 			break;
 		case 13: // dgps age
-			pnd->m_dgps_age = (float) atof(buf);
+			m_dgps_age = (float) atof(buf);
 			break;
 		case 14: // dgps station id
 			if(parstrcpy(tok, buf, '*'))
-				pnd->m_dgps_station = atoi(buf);
+				m_dgps_station = atoi(buf);
 			break;
 		}
 
 		ipar++;
 	}
 
-	return pnd;
+	return this;
 }
 
 /////////////////////////////////////////// gsa decoder
-c_nmea_dat * c_gsa::dec_gsa(const char * str)
+bool c_gsa::dec(const char * str)
 {
-	c_gsa * pnd = new c_gsa;
 	int i = 0;
 	int ipar = 0;
 	int len;
@@ -136,17 +134,17 @@ c_nmea_dat * c_gsa::dec_gsa(const char * str)
 			break;
 		case 1: // Selected measurement mode
 			if(buf[0] == 'A')
-				pnd->s3d2d = 1;
+				s3d2d = 1;
 			else if(buf[0] == 'M')
-				pnd->s3d2d = 2;
+				s3d2d = 2;
 			else
-				pnd->s3d2d = 0;
+				s3d2d = 0;
 			break;
 		case 2: // Measurement mode
 			if(buf[0] <'0' || buf[0] > '3')
-				pnd->mm = 0;
+				mm = 0;
 			else
-				pnd->mm = buf[0] - '0';			
+				mm = buf[0] - '0';			
 			break;
 		case 3: // sat1
 		case 4: // sat2
@@ -161,30 +159,29 @@ c_nmea_dat * c_gsa::dec_gsa(const char * str)
 		case 13: // sat11
 		case 14: // sat12
 			if(buf[0] == '\0'){
-				pnd->sused[ipar - 3] = (unsigned short) atoi(buf);
+				sused[ipar - 3] = (unsigned short) atoi(buf);
 			}
 			break;
 		case 15: // PDOP
-			pnd->pdop = (float) atof(buf);
+			pdop = (float) atof(buf);
 			break;
 		case 16: // HDOP
-			pnd->hdop = (float) atof(buf);
+			hdop = (float) atof(buf);
 			break;
 		case 17: // VDOP
-			pnd->vdop = (float) atof(buf);
+			vdop = (float) atof(buf);
 			break;
 		}
 		ipar++;
 	}
 
-	return pnd;
+	return this;
 }
 
 /////////////////////////////////////////// gsv decoder
-c_nmea_dat * c_gsv::dec_gsv(const char * str)
+bool c_gsv::dec(const char * str)
 {
-	c_gsv * pnd = new c_gsv;
-int i = 0;
+	int i = 0;
 	int ipar = 0, npar = 4;
 	int isat = 0;
 	int len;
@@ -203,19 +200,19 @@ int i = 0;
 			break;
 		case 1: // Number of sentences
 			if(buf[0] < '0' || buf[0] > '4')
-				pnd->ns = 0;
+				ns = 0;
 			else
-				pnd->ns = buf[0] - '0';
+				ns = buf[0] - '0';
 			break;
 		case 2: // Sentence index
 			if(buf[0] < '0' || buf[0] > '4')
-				pnd->si = 0;
+				si = 0;
 			else
-				pnd->si = buf[0] - '0';
+				si = buf[0] - '0';
 			break;
 		case 3: // Number of usable satellites 
-			pnd->nsats_usable = atoi(buf);
-			npar = pnd->nsats_usable - (pnd->si - 1) * 4;
+			nsats_usable = atoi(buf);
+			npar = nsats_usable - (si - 1) * 4;
 			npar = min(4, npar);
 			npar = npar * 4 + 4;
 			isat = 0;
@@ -224,38 +221,37 @@ int i = 0;
 		case 8: // sat2
 		case 12: // sat3
 		case 16: // sat4
-			pnd->sat[isat] = (unsigned short) atoi(buf);
+			sat[isat] = (unsigned short) atoi(buf);
 			break;
 		case 5: // elevation of sat1
 		case 9: // elevation of sat2
 		case 13: // elevation of sat3
 		case 17: // elevation of sat4
-			pnd->el[isat] = (unsigned short) atoi(buf);
+			el[isat] = (unsigned short) atoi(buf);
 			break;
 		case 6: // azimuth of sat1
 		case 10: // azimuth of sat2
 		case 14: // azimuth of sat3
 		case 18: // azimuth of sat4
-			pnd->az[isat] = (unsigned short) atoi(buf);
+			az[isat] = (unsigned short) atoi(buf);
 			break;
 		case 7: // sn
 		case 11: // sn
 		case 15: // sn
 		case 19: // sn
-			pnd->sn[isat] = (unsigned short) atoi(buf);
+			sn[isat] = (unsigned short) atoi(buf);
 			isat++;
 			break;
 		}
 		ipar++;
 	}
 
-	return pnd;
+	return this;
 }
 
 /////////////////////////////////////////// rmc decoder
-c_nmea_dat * c_rmc::dec_rmc(const char * str)
+bool c_rmc::dec(const char * str)
 {
-	c_rmc * pnd = new c_rmc;
 	int i = 0;
 	int ipar = 0;
 	int len;
@@ -275,75 +271,74 @@ c_nmea_dat * c_rmc::dec_rmc(const char * str)
 			break;
 		case 1: // TIME hhmmss
 			parstrcpy(tok, buf, 2);
-			pnd->m_h = (short) atoi(tok);
+			m_h = (short) atoi(tok);
 			parstrcpy(tok, buf+2, 2);
-			pnd->m_m = (short) atoi(tok);
+			m_m = (short) atoi(tok);
 			parstrcpy(tok, buf+4, '\0');
-			pnd->m_s = (float) atof(tok);
+			m_s = (float) atof(tok);
 			break;
 		case 2: // Validity flag
 			if(buf[0] == 'A')
-				pnd->m_v = true;
+				m_v = true;
 			else
-				pnd->m_v = false;
+				m_v = false;
 			break;
 		case 3: // Lat
 			parstrcpy(tok, buf, 2);
-			pnd->m_lat_deg = (float) atof(tok);
+			m_lat_deg = (float) atof(tok);
 			parstrcpy(tok, buf+2, '\0');
-			pnd->m_lat_deg += atof(tok) / 60;
+			m_lat_deg += atof(tok) / 60;
 			break;
 		case 4: // N or S
 			if(buf[0] == 'N')
-				pnd->m_lat_dir = EGP_N;
+				m_lat_dir = EGP_N;
 			else
-				pnd->m_lat_dir = EGP_S;
+				m_lat_dir = EGP_S;
 			break;				
 		case 5: // LON
 			parstrcpy(tok, buf, 3);
-			pnd->m_lon_deg = (float) atof(tok);
+			m_lon_deg = (float) atof(tok);
 			parstrcpy(tok, buf + 3, '\0');
-			pnd->m_lon_deg += atof(tok) / 60;
+			m_lon_deg += atof(tok) / 60;
 			break;
 		case 6: // E or W
 			if(buf[0] == 'E')
-				pnd->m_lon_dir = EGP_E;
+				m_lon_dir = EGP_E;
 			else
-				pnd->m_lon_dir = EGP_W;
+				m_lon_dir = EGP_W;
 			break;
 		case 7: // Speed
-			pnd->m_vel = atof(buf);
+			m_vel = atof(buf);
 			break;
 		case 8: // Course
-			pnd->m_crs = atof(buf);
+			m_crs = atof(buf);
 			break;
 		case 9: // Date
 			parstrcpy(tok, buf, 2);
-			pnd->m_dy = atoi(tok);
+			m_dy = atoi(tok);
 			parstrcpy(tok, buf+2, 2);
-			pnd->m_mn = atoi(tok);
+			m_mn = atoi(tok);
 			parstrcpy(tok, buf+4, 2);
-			pnd->m_yr = atoi(tok);
+			m_yr = atoi(tok);
 			break;
 		case 10: // Course Variation
-			pnd->m_crs_var = atof(buf);
+			m_crs_var = atof(buf);
 			break;
 		case 11: // Direction of Variation
 			if(buf[0] == 'E')
-				pnd->m_crs_var_dir = EGP_E;
+				m_crs_var_dir = EGP_E;
 			else
-				pnd->m_crs_var_dir = EGP_W;
+				m_crs_var_dir = EGP_W;
 			break;
 		}
 		ipar++;
 	}
 
-	return pnd;
+	return this;
 }
 
-c_nmea_dat * c_vtg::dec_vtg(const char * str)
+bool c_vtg::dec(const char * str)
 {
-	c_vtg * pnd = new c_vtg;
 	int i = 0;
 	int ipar = 0;
 	int len;
@@ -361,28 +356,28 @@ c_nmea_dat * c_vtg::dec_vtg(const char * str)
 		case 0: // $**VTG
 			break;
 		case 1: // course (True)
-			pnd->crs_t = (float)atof(buf);
+			crs_t = (float)atof(buf);
 			break;
 		case 2: // 'T'
 			if(buf[0] != 'T')
 				goto vtgerror;
 			break;
 		case 3: // course (Magnetic)
-			pnd->crs_m = (float)atof(buf);
+			crs_m = (float)atof(buf);
 			break;
 		case 4: // 'M'
 			if(buf[0] != 'M')
 				goto vtgerror;
 			break;				
 		case 5: // velocity (kts)
-			pnd->v_n = (float)atof(buf);
+			v_n = (float)atof(buf);
 			break;
 		case 6: // 'N'
 			if(buf[0] != 'N')
 				goto vtgerror;
 			break;
 		case 7: // velocity (km/h)
-			pnd->v_k = (float)atof(buf);
+			v_k = (float)atof(buf);
 			break;
 		case 8: // 'K'
 			if(buf[0] != 'K')
@@ -390,29 +385,27 @@ c_nmea_dat * c_vtg::dec_vtg(const char * str)
 			break;
 		case 9: // Fix status
 			if(buf[0] == 'N')
-				pnd->fm = EGPF_LOST;
+				fm = EGPF_LOST;
 			else if(buf[0] == 'A')
-				pnd->fm = EGPF_GPSF;
+				fm = EGPF_GPSF;
 			else if(buf[0] == 'D')
-				pnd->fm = EGPF_DGPSF;
+				fm = EGPF_DGPSF;
 			else if(buf[0] == 'E')
-				pnd->fm = EGPF_ESTM;
+				fm = EGPF_ESTM;
 			else
 				goto vtgerror;
 		}
 		ipar++;
 	}
 
-	return pnd;
+	return this;
 vtgerror:
-	delete pnd;
 	return NULL;
 }
 
 ////////////////////////////////////////////////zda decoder
-c_nmea_dat * c_zda::dec_zda(const char * str)
+bool c_zda::dec(const char * str)
 {
-	c_zda * pnd = new c_zda;
 	int i = 0;
 	int ipar = 0;
 	int len;
@@ -432,31 +425,31 @@ c_nmea_dat * c_zda::dec_zda(const char * str)
 			break;
 		case 1: // TIME hhmmss
 			parstrcpy(tok, buf, 2);
-			pnd->m_h = (short) atoi(tok);
+			m_h = (short) atoi(tok);
 			parstrcpy(tok, buf+2, 2);
-			pnd->m_m = (short) atoi(tok);
+			m_m = (short) atoi(tok);
 			parstrcpy(tok, buf+4, '\0');
-			pnd->m_s = (float) atof(tok);
+			m_s = (float) atof(tok);
 			break;
 		case 2: // day
-			pnd->m_dy = atoi(buf);
+			m_dy = atoi(buf);
 			break;
 		case 3: // month
-			pnd->m_mn = atoi(buf);
+			m_mn = atoi(buf);
 			break;
 		case 4: // year
-			pnd->m_yr = atoi(buf);
+			m_yr = atoi(buf);
 			break;				
 		case 5: // local zone hour offset
-			pnd->m_lzh = atoi(buf);
+			m_lzh = atoi(buf);
 			break;
 		case 6: // local zone minute offset
-			pnd->m_lzm = atoi(buf);
+			m_lzm = atoi(buf);
 			break;
 		}
 		ipar++;
 	}
 
-	return pnd;
+	return this;
 }
 
