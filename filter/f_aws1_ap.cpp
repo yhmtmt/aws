@@ -20,6 +20,8 @@
 #include <vector>
 #include <map>
 using namespace std;
+#include <cmath>
+#include <cstring>
 
 #include "f_aws1_ap.h"
 
