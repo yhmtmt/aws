@@ -131,9 +131,13 @@ void f_aws1_nmea_sw::gff_to_out()
 	while(m_gff_nmea_i->pop(m_nmea)){
 		e_nd_type type = get_nd_type(m_nmea);
 
-		// toker forced to be "GF" to avoid mixing with the GPS's nmea.
-		m_nmea[1] = 'G';
-		m_nmea[2] = 'F';
+		if(m_state && type == ENDT_DBT){
+			const c_dbt * pdbt = dynamic_cast<const c_dbt*>(m_nmea_dec.decode(m_nmea));
+			if(pdbt){
+				m_state->set_depth(pdbt->dm);
+			}
+		}
+
 		if(m_verb)
 			cout << "GFF > " << m_nmea << endl;
 
@@ -159,12 +163,6 @@ void f_aws1_nmea_sw::gff_to_out()
 			}
 		}
 
-		if(m_state && type == ENDT_DBT){
-			const c_dbt * pdbt = dynamic_cast<const c_dbt*>(m_nmea_dec.decode(m_nmea));
-			if(pdbt){
-				m_state->set_depth(pdbt->dm);
-			}
-		}
 	}
 }
 
@@ -172,9 +170,6 @@ void f_aws1_nmea_sw::ais_to_out()
 {
 	while(m_ais_nmea_i->pop(m_nmea)){
 		e_nd_type type = get_nd_type(m_nmea);
-
-		m_nmea[1] = 'A';
-		m_nmea[2] = 'I';
 
 		if(m_verb)
 			cout << "AIS > " << m_nmea << endl;
@@ -198,6 +193,29 @@ void f_aws1_nmea_sw::gps_to_out()
 {
 	while(m_gps_nmea_i->pop(m_nmea)){
 		e_nd_type type = get_nd_type(m_nmea);
+
+		if(m_state){
+			switch(type){
+			case ENDT_GGA: // lat, lon, alt
+				{
+					const c_gga * pgga = dynamic_cast<const c_gga*>(m_nmea_dec.decode(m_nmea));
+					if(pgga){
+						m_state->set_position(
+							(float) (pgga->m_lat_dir == EGP_E ? pgga->m_lat_deg : -pgga->m_lat_deg),
+							(float) (pgga->m_lon_dir == EGP_N ? pgga->m_lon_deg : -pgga->m_lon_deg),
+							pgga->m_alt, pgga->m_geos);
+					}
+				}
+				break;
+			case ENDT_VTG: // cog, sog
+				{
+					const c_vtg * pvtg = dynamic_cast<const c_vtg*>(m_nmea_dec.decode(m_nmea));
+					if(pvtg){
+						m_state->set_velocity(pvtg->crs_t, pvtg->v_n);
+					}
+				}
+			}
+		}
 
 		if(m_verb)
 			cout << "GPS > " << m_nmea << endl;
@@ -237,28 +255,6 @@ void f_aws1_nmea_sw::gps_to_out()
 			break;
 		}
 
-		if(m_state){
-			switch(type){
-			case ENDT_GGA: // lat, lon, alt
-				{
-					const c_gga * pgga = dynamic_cast<const c_gga*>(m_nmea_dec.decode(m_nmea));
-					if(pgga){
-						m_state->set_position(
-							(float) (pgga->m_lat_dir == EGP_E ? pgga->m_lat_deg : -pgga->m_lat_deg),
-							(float) (pgga->m_lon_dir == EGP_N ? pgga->m_lon_deg : -pgga->m_lon_deg),
-							pgga->m_alt, pgga->m_geos);
-					}
-				}
-				break;
-			case ENDT_VTG: // cog, sog
-				{
-					const c_vtg * pvtg = dynamic_cast<const c_vtg*>(m_nmea_dec.decode(m_nmea));
-					if(pvtg){
-						m_state->set_velocity(pvtg->crs_t, pvtg->v_n);
-					}
-				}
-			}
-		}
 	}
 }
 

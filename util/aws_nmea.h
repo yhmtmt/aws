@@ -129,6 +129,10 @@ public:
 	{
 		return ENDT_DBT;
 	}
+	virtual ostream & show(ostream & out) const
+	{
+	  out << "DBT: " << dfe << "ft " << dm << "m " << dfa << "Ft" << endl;
+	}
 };
 
 //////////////////////// c_mtw (from fish finder)

@@ -120,6 +120,7 @@ int parstrcpy(char * str, const char * src, char delim, int max_buf)
 const c_nmea_dat * c_nmea_dec::decode(const char * str)
 {
 	if(!eval_nmea_chksum(str)){
+	  cerr << "Check sum is not valid. " << str << endl;
 		return NULL;
 	}
 
@@ -130,7 +131,7 @@ const c_nmea_dat * c_nmea_dec::decode(const char * str)
 	c_nmea_dat * pnd = NULL;
 	switch(nt){
 	case ENDT_GGA:
-			pnd = &gga;
+	  pnd = &gga;
 		break;
 	case ENDT_GSA:
 		pnd = &gsa;
@@ -176,7 +177,6 @@ const c_nmea_dat * c_nmea_dec::decode(const char * str)
 	}else{
 		return NULL;
 	}
-
 	return pnd;
 }
 
@@ -280,7 +280,7 @@ bool c_dbt::dec(const char * str)
 				goto dbterr;
 			break;
 		case 3:
-			dfa = (float) atof(buf);
+			dm = (float) atof(buf);
 			break;
 		case 4:
 			if(buf[0] != 'M')
