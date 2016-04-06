@@ -19,6 +19,8 @@
 #include "../channel/ch_aws1_ctrl.h"
 #include "../channel/ch_state.h"
 
+// automatically controls along with the waypoints
+// connects to ch_wp
 class f_aws1_ap: public f_base
 {
 protected:

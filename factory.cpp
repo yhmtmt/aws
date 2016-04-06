@@ -55,6 +55,9 @@ using namespace cv;
 #include "channel/ch_navdat.h"
 #include "channel/ch_state.h"
 #include "channel/ch_aws1_ctrl.h"
+#include "channel/ch_map.h"
+#include "channel/ch_obj.h"
+#include "channel/ch_wp.h"
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
@@ -99,6 +102,9 @@ void ch_base::register_factory()
 	register_factory<ch_ring<char, 4096> >("crbuf4k");
 	register_factory<ch_ring<char, 8192> >("crbuf8k");
 	register_factory<ch_state>("state");
+	register_factory<ch_map>("map");
+	register_factory<ch_obj>("obj");
+	register_factory<ch_wp>("wp");
 }
 
 ////////////////////////////////////////////////// setting up filter factory
@@ -150,9 +156,9 @@ void ch_base::register_factory()
 #include "filter/f_event.h"
 #include "filter/f_fep01.h"
 #include "filter/f_ahrs.h"
+#include "filter/f_map.h"
 #include "filter/f_time.h"
-#include "filter//f_aws1_ap.h"
-
+#include "filter/f_aws1_ap.h"
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
@@ -248,6 +254,7 @@ void f_base::register_factory()
 	register_factory<f_glfw_imview>("glimv");
 	register_factory<f_aws1_ui>("aws1_ui");
 #endif
+
 	// video sources
 #ifdef SANYO_HD5400
 	register_factory<f_netcam>("hd5400");
