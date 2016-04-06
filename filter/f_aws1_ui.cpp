@@ -175,13 +175,17 @@ bool f_aws1_ui::proc()
 {
   if(m_js != -1){
   // joystic handling (assuming JC-U3613M)
-  // U: -32767
-  // D: 32767
-  // L: -32767
-  // R: 32767
+    // Stick value
+  // U: -1
+  // D: 1
+  // L: -1
+  // R: 1
+    // Button Value: 
+    //off: 0  
+    //on: 1
   // AXES 0: 9LR 1: 9UD 2: 10LR 3: 10UD 4: XLR 5: XUD 
   // BTNS 0: 1 1: 2 2: 3 3: 4 4: 5 5: 6 7: 8 8: 9 9: 10 10: 11 12: 13
-    
+  //      X, Y, A, B, LB, RB, LT, LSt, RSt, RT, BACK, START, Guide
     // axis 0, 2  is assigned to rudder
     // axis 1 is assigned to main engine control
     // axis 3 is assigned to sub engine control
