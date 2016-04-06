@@ -19,6 +19,8 @@
 #include <map>
 
 using namespace std;
+#include <cmath>
+#include <cstring>
 
 #include "f_map.h"
 
