@@ -110,7 +110,7 @@ bool c_gga::dec(const char * str)
 		ipar++;
 	}
 
-	return this;
+	return true;
 }
 
 /////////////////////////////////////////// gsa decoder
@@ -175,7 +175,7 @@ bool c_gsa::dec(const char * str)
 		ipar++;
 	}
 
-	return this;
+	return true;
 }
 
 /////////////////////////////////////////// gsv decoder
@@ -246,7 +246,7 @@ bool c_gsv::dec(const char * str)
 		ipar++;
 	}
 
-	return this;
+	return true;
 }
 
 /////////////////////////////////////////// rmc decoder
@@ -334,7 +334,7 @@ bool c_rmc::dec(const char * str)
 		ipar++;
 	}
 
-	return this;
+	return true;
 }
 
 bool c_vtg::dec(const char * str)
@@ -398,9 +398,9 @@ bool c_vtg::dec(const char * str)
 		ipar++;
 	}
 
-	return this;
+	return true;
 vtgerror:
-	return NULL;
+	return false;
 }
 
 ////////////////////////////////////////////////zda decoder
@@ -450,6 +450,6 @@ bool c_zda::dec(const char * str)
 		ipar++;
 	}
 
-	return this;
+	return true;
 }
 

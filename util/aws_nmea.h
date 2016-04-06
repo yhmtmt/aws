@@ -132,6 +132,7 @@ public:
 	virtual ostream & show(ostream & out) const
 	{
 	  out << "DBT: " << dfe << "ft " << dm << "m " << dfa << "Ft" << endl;
+	  return out;
 	}
 };
 
