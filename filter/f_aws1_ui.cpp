@@ -54,7 +54,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("meng", &m_meng_aws_f, "Main Engine.");
   register_fpar("seng", &m_seng_aws_f, "Sub Engine.");
   
-  register_fpar("js", &m_js, "Joystick id");
+  register_fpar("js", &m_js_id, "Joystick id");
 }
 
 
@@ -89,21 +89,8 @@ bool f_aws1_ui::init_run()
   if(!f_glfw_window::init_run())
     return false;
 
-  if(glfwJoystickPresent(m_js) == GL_TRUE){
-    m_js_name = glfwGetJoystickName(m_js);
-    cout << m_js << "th Joystic found as " << m_js_name << endl;
-  }else{
-    m_js = -1;
-  }
-
-  if(m_js == -1){
-    cout << "Listing available joysticks ... " << endl;
-    for(int i = 0; i < GLFW_JOYSTICK_LAST; i++){
-      if(glfwJoystickPresent(i) == GL_TRUE){
-	const char * js_name = glfwGetJoystickName(i);
-	cout << i << " : " << js_name << endl;
-      }
-    }
+  if(m_js.init(m_js_id)){
+	  cout << "Joystick " << m_js.name << " found." << endl;
   }
 
   // allocate control positions
@@ -171,7 +158,9 @@ void f_aws1_ui::destroy_run()
 
 bool f_aws1_ui::proc()
 {
-  if(m_js != -1){
+  if(m_js.id != -1){
+	  m_js.set_btn();
+	  m_js.set_stk();
   // joystic handling (assuming JC-U3613M)
     // Stick value
     // U: -1
@@ -187,38 +176,21 @@ bool f_aws1_ui::proc()
     // axis 0, 2  is assigned to rudder
     // axis 1 is assigned to main engine control
     // axis 3 is assigned to sub engine control
-    int naxs, nbtn;
-    const float * axs = glfwGetJoystickAxes(m_js, &naxs);
-    const unsigned char * btn = glfwGetJoystickButtons(m_js, &nbtn);
-    m_rud_aws_f += (float)(axs[0] * (255. / 180.));
-    m_rud_aws_f += (float)(axs[2] * (255. / 180.));
+    m_rud_aws_f += (float)(m_js.lr1 * (255. / 180.));
+    m_rud_aws_f += (float)(m_js.lr2 * (255. / 180.));
     m_rud_aws_f = min((float)255.0, m_rud_aws_f);
     m_rud_aws_f = max((float)0.0, m_rud_aws_f);
 
-    m_meng_aws_f -= (float)(axs[1] * (255. / 180));
+    m_meng_aws_f -= (float)(m_js.ud1 * (255. / 180));
     m_meng_aws_f = min((float)255.0, m_meng_aws_f);
     m_meng_aws_f = max((float)0.0, m_meng_aws_f);
 
-    m_seng_aws_f -= (float)(axs[3] * (255. / 180));
+    m_seng_aws_f -= (float)(m_js.ud2 * (255. / 180));
     m_seng_aws_f = min((float) 255.0, m_seng_aws_f);
     m_seng_aws_f = max((float)0.0, m_seng_aws_f);
     
     if(m_verb){
-      if(axs){
-	cout << "Axes ";
-	for(int iaxs = 0; iaxs < naxs; iaxs++){
-	  cout << iaxs << ":" << axs[iaxs] << " ";
-	}
-	cout << endl;
-      }
-      
-      if(btn){
-	cout << "Btns ";
-	for(int ibtn = 0; ibtn < nbtn; ibtn++){
-	  cout << ibtn << ":" << (int) btn[ibtn] << " ";
-	}
-	cout << endl;
-      }
+		m_js.print(cout);
     }
   }
 
