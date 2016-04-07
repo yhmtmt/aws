@@ -1205,19 +1205,27 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat &
 			pts[iobj].resize(obj.pmdl->pts.size());
 			obj.calc_part_deformation();
 
-			if(iobj == base_obj){
-				obj.roll = obj.pitch = obj.yaw = 0.;
-				obj.pos.x = obj.pos.y = obj.pos.z = 0.;
-				pts[iobj] = obj.pmdl->pts_deformed;
-				continue;
-			}
-
 			double * p0;
 			Rodrigues(obj.rvec, R);
 			p0 = R.ptr<double>();
 			acam[iobj].x = (float) acos(p0[6]);
 			acam[iobj].y = (float) acos(p0[7]);
 			acam[iobj].z = (float) acos(p0[8]);
+
+			Point3f Merr((float)obj.delta_Tx_rmax, (float)obj.delta_Ty_rmax, (float)obj.delta_Tz_rmax);
+			Point3f Merrtrn;
+			Mat T0 = Mat::zeros(1, 3, CV_64FC1);
+			trnPt(Merr, Merrtrn, Rorg.ptr<double>(), T0.ptr<double>());
+			obj.delta_Tx_rmax_trn =abs(Merrtrn.x);
+			obj.delta_Ty_rmax_trn = abs(Merrtrn.y);
+			obj.delta_Tz_rmax_trn = abs(Merrtrn.z);
+
+			if(iobj == base_obj){
+				obj.roll = obj.pitch = obj.yaw = 0.;
+				obj.pos.x = obj.pos.y = obj.pos.z = 0.;
+				pts[iobj] = obj.pmdl->pts_deformed;
+				continue;
+			}
 
 			obj.tvec.copyTo(T);
 
@@ -1237,13 +1245,6 @@ void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat &
 			p0 = R.ptr<double>();
 		
 			trnPts(obj.pmdl->pts_deformed, pts[iobj], R, T);			
-			Point3f Merr((float)obj.delta_Tx_rmax, (float)obj.delta_Ty_rmax, (float)obj.delta_Tz_rmax);
-			Point3f Merrtrn;
-			Mat T0 = Mat::zeros(1, 3, CV_64FC1);
-			trnPt(Merr, Merrtrn, Rorg.ptr<double>(), T0.ptr<double>());
-			obj.delta_Tx_rmax_trn =abs(Merrtrn.x);
-			obj.delta_Ty_rmax_trn = abs(Merrtrn.y);
-			obj.delta_Tz_rmax_trn = abs(Merrtrn.z);
 			if(xyz)
 				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
 			else
