@@ -17,14 +17,69 @@
 
 #include "ch_base.h"
 
+struct s_wp
+{
+	char label[32]; // waypoint label
+	float lat, lon; // longitude lattitude
+	float x, y, z;	// corresponding ECEF to lat, lon
+	float rarv;		// Arrival threashold radius
+	float v;		// velocity to go
+	long long t;	// arrival time
+};
+
 // contains waypoints
 // has insert, delete, access method
 class ch_wp: public ch_base
 {
 protected:
+	list<s_wp> wps;
+	list<s_wp>::iterator itr;
 public:
 	ch_wp(const char * name):ch_base(name)
 	{
+		itr = wps.begin();
+	}
+
+	void ins(const s_wp & wp){
+		itr = wps.insert(itr, wp);
+	}
+
+	void ers(){
+		itr = wps.erase(itr);
+	}
+	
+	const s_wp & cur(){
+		return *itr;
+	}
+
+	bool is_end(){
+		return itr == wps.end();
+	}
+
+	bool is_begin(){
+		return itr == wps.begin();
+	}
+
+	const s_wp & begin(){
+		return *(itr = wps.begin());
+	}
+
+	void end(){
+		itr = wps.end();
+	}
+
+	void next(){
+		if(wps.end() != itr)
+			itr++;
+	}
+
+	void prev(){
+		if(wps.begin() != itr)
+			itr--;
+	}
+
+	int get_num_wps(){
+		wps.size();
 	}
 };
 
