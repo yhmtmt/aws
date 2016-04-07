@@ -39,11 +39,13 @@ struct s_jc_u3613m
 	float thstk; // stick response threashold
 	float lr1, ud1, lr2, ud2;
 	unsigned char elrx, eudx;
+	int tlrx, tudx;
+
 	int tx, ty, ta, tb, tlb, trb, tlt, tlst, trst, trt, tback, tstart, tguide; // cycle time of the button pressed
 	unsigned char ex, ey, ea, eb, elb, erb, elt, elst, erst, ert, eback, estart, eguide; // cycle time of the button pressed
 
 	s_jc_u3613m():
-		id(-1),	thstk(0.2f),
+		id(-1),	thstk(0.2f), elrx(0), eudx(0), tlrx(0), tudx(0),
 		tx(0), ty(0), ta(0), tb(0), tlb(0), trb(0), tlt(0), tlst(0),
 		trst(0), trt(0), tback(0), tstart(0), tguide(0),
 		ex(0), ey(0), ea(0), eb(0), elb(0), erb(0), elt(0), elst(0),
@@ -67,8 +69,11 @@ struct s_jc_u3613m
 		ud1 = set_stk(axs[1]);
 		lr2 = set_stk(axs[2]);
 		ud2 = set_stk(axs[3]);
+
 		elrx = set_btn(axs[4] > 0.5 ? 1 : 0, elrx);
 		eudx = set_btn(axs[5] > 0.5 ? 1 : 0, eudx);
+		tlrx = set_tbtn(elrx, tlrx);
+		tudx = set_tbtn(eudx, tudx);
 	}
 
 	const float set_stk(const float v){
@@ -80,7 +85,8 @@ struct s_jc_u3613m
 		return 0;
 	}
 
-	void set_btn(){
+	void set_btn()
+	{
 		const unsigned char * btn = glfwGetJoystickButtons(id, &nbtn);
 		ex = set_btn(btn[0], ex);
 		ey = set_btn(btn[1], ey);
@@ -88,12 +94,13 @@ struct s_jc_u3613m
 		eb = set_btn(btn[3], eb);
 		elb = set_btn(btn[4], elb);
 		erb = set_btn(btn[5], erb);
-		elst = set_btn(btn[6], elst);
-		erst = set_btn(btn[7], erst);
-		ert = set_btn(btn[8], ert);
-		eback = set_btn(btn[9], eback);
-		estart = set_btn(btn[10], estart);
-		eguide = set_btn(btn[11], eguide);
+		elt = set_btn(btn[6], elt);
+		elst = set_btn(btn[7], elst);
+		erst = set_btn(btn[8], erst);
+		ert = set_btn(btn[9], ert);
+		eback = set_btn(btn[10], eback);
+		estart = set_btn(btn[11], estart);
+		eguide = set_btn(btn[12], eguide);
 
 		tx = set_tbtn(ex, tx);
 		ty = set_tbtn(ey, ty);
@@ -101,6 +108,7 @@ struct s_jc_u3613m
 		tb = set_tbtn(eb, tb);
 		tlb = set_tbtn(elb, tlb);
 		trb = set_tbtn(erb, trb);
+		tlt = set_tbtn(elt, tlt);
 		tlst = set_tbtn(elst, tlst);
 		trst = set_tbtn(erst, trst);
 		trt = set_tbtn(ert, trt);
@@ -123,7 +131,37 @@ struct s_jc_u3613m
 			return 0;
 		return (EB_STDOWN & enew) ? told + 1 : told;
 	}
-	void print(ostream & out){
+
+	void print(ostream & out)
+	{
+		out << "STK>>";
+		out << "LR1:" << lr1 << " UD1:" << ud1 << " ";
+		out << "LR2:" << lr2 << " UD2:" << ud2 << " ";
+		print(out, "LRX", elrx, tlrx); out << " ";
+		print(out, "LRY", eudx, tudx); 
+		out << endl;
+
+		out << "BTN>>";
+		print(out, "x", ex, tx); out << " ";
+		print(out, "y", ey, ty); out << " ";	
+		print(out, "a", ea, ta); out << " ";
+		print(out, "b", eb, tb); out << " ";
+		print(out, "lb", elb, tlb);	out << " ";
+		print(out, "rb", erb, trb);	out << " ";
+		print(out, "lt", elt, tlt); out << " ";
+		print(out, "lst", elst, tlst); out << " ";
+		print(out, "rst", erst, trst); out << " ";
+		print(out, "rt", ert, trt);	out << " ";
+		print(out, "back", eback, tback); out << " ";
+		print(out, "start", estart, tstart); out << " ";
+		print(out, "guide", eguide, tguide);
+		out << endl;
+	}
+
+	void print(ostream & out, const char * btn, unsigned char e, int t){
+		out << btn << ":" 
+			<< (EB_STDOWN & e ? "D" : "X") << (EB_EVDOWN & e ? "^" : "_")
+			<< (EB_STUP & e ? "U" : "X") << (EB_EVUP & e ? "^" : "_") << " " << t;
 	}
 };
 
