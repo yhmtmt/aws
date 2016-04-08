@@ -664,3 +664,126 @@ void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
     }
   }
 }
+
+
+
+/////////////////////////////////////////////////////////////////////////// f_aws1_ui_test members
+#ifdef _DEBUG
+
+f_aws1_ui_test::f_aws1_ui_test(const char * name):f_base(name),
+	m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL), m_ch_ctrl_out(NULL),
+	r(0), p(0), y(0), lon(0), lat(0), alt(0), galt(0), cog(0), sog(0), depth(0)
+{
+  register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
+  register_fpar("ch_ctrl_ui", (ch_base**)&m_ch_ctrl_ui, typeid(ch_aws1_ctrl).name(), "Control input channel.");
+  register_fpar("ch_ctrl_ap1", (ch_base**)&m_ch_ctrl_ap1, typeid(ch_aws1_ctrl).name(), "Autopilot 1 control input channel.");
+  register_fpar("ch_ctrl_ap2", (ch_base**)&m_ch_ctrl_ap2, typeid(ch_aws1_ctrl).name(), "Autopilot 2 control input channel.");
+  register_fpar("ch_ctrl_out", (ch_base**)&m_ch_ctrl_out, typeid(ch_aws1_ctrl).name(), "Control output channel.");
+  register_fpar("ch_img", (ch_base**)&m_ch_img, typeid(ch_image_ref).name(), "Image channel");	
+
+  // for m_state
+  register_fpar("roll", &r, "Roll(deg)");
+  register_fpar("pitch", &p, "Pitch(deg)");
+  register_fpar("yaw", &y, "Yaw(deg)");
+  register_fpar("lon", &lon, "Longitude(deg)");
+  register_fpar("lat", &lat, "Latitude(deg)");
+  register_fpar("alt", &alt, "Altitude(m)");
+  register_fpar("galt", &galt, "Geoid height(m)");
+  register_fpar("cog", &cog, "Course over ground(deg)");
+  register_fpar("sog", &sog, "Speed over ground(kts)");
+  register_fpar("depth", &depth, "Depth of the water(m).");
+
+  // for ch_ctrl
+  // aws's control parameters
+  register_fpar("awsrud", &m_acp.rud_aws, "Control value of AWS1's rudder.");
+  register_fpar("awsmeng", &m_acp.meng_aws, "Control value of AWS1's main engine.");
+  register_fpar("awsseng", &m_acp.seng_aws, "Control value of AWS1's sub engine.");
+
+  // remote controller's control parameters (Read Only)
+  register_fpar("rmcrud", &m_acp.rud_rmc, "Control value of AWS1's rudder controller.");
+  register_fpar("rmcmeng", &m_acp.meng_rmc, "Control value of AWS1's main engine controller.");
+  register_fpar("rmcseng", &m_acp.seng_rmc, "Control value of AWS1's sub engine controller.");
+  register_fpar("rud_sta", &m_acp.rud_sta, "Rudder Status of AWS1's.");
+
+  // Remote controllers control points of the main engine. 
+  register_fpar("meng_max_rmc", &m_acp.meng_max_rmc, "Maximum control control value of AWS1's main engine controller.");
+  register_fpar("meng_nuf_rmc", &m_acp.meng_nuf_rmc, "Nutral to Forward control value of AWS1's main engine controller.");
+  register_fpar("meng_nut_rmc", &m_acp.meng_nut_rmc, "Nutral control value of AWS1's main engine controller.");
+  register_fpar("meng_nub_rmc", &m_acp.meng_nub_rmc, "Nutral to Backward control value of AWS1's main engine controller.");
+  register_fpar("meng_min_rmc", &m_acp.meng_min_rmc, "Minimum control value of AWS1's main engine controller.");
+
+  // Each control points of the main engine output.
+  register_fpar("meng_max", &m_acp.meng_max, "Maximum control value for AWS1's main engine.");
+  register_fpar("meng_nuf", &m_acp.meng_nuf, "Nutral to Forward control value for AWS1's main engine.");
+  register_fpar("meng_nut", &m_acp.meng_nut, "Nutral control value for AWS1's main engine.");
+  register_fpar("meng_nub", &m_acp.meng_nub, "Nutral to Backward control value for AWS1's main engine.");
+  register_fpar("meng_min", &m_acp.meng_min, "Minimum control value for AWS1's main engine.");
+
+  // Remote controllers control points of the sub engine.
+  register_fpar("seng_max_rmc", &m_acp.seng_max_rmc, "Maximum control value of AWS1's sub engine controller.");
+  register_fpar("seng_nuf_rmc", &m_acp.seng_nuf_rmc, "Nutral to Forward control value of AWS1's sub engine controller.");
+  register_fpar("seng_nut_rmc", &m_acp.seng_nut_rmc, "Nutral control value of AWS1's sub engine controller.");
+  register_fpar("seng_nub_rmc", &m_acp.seng_nub_rmc, "Nutral to Backward control value of AWS1's sub engine controller.");
+  register_fpar("seng_min_rmc", &m_acp.seng_min_rmc, "Minimum control value of AWS1's sub engine controller.");
+
+  // Each control points of the sub engine output
+  register_fpar("seng_max", &m_acp.seng_max, "Maximum control value for AWS1's sub engine.");
+  register_fpar("seng_nuf", &m_acp.seng_nuf, "Nutral to Forward control value for AWS1's sub engine.");
+  register_fpar("seng_nut", &m_acp.seng_nut, "Nutral control value for AWS1's sub engine.");
+  register_fpar("seng_nub", &m_acp.seng_nub, "Nutral to Backward control value for AWS1's sub engine.");
+  register_fpar("seng_min", &m_acp.seng_min, "Minimum control value for AWS1's sub engine.");
+
+  // Remote controller's control points of the rudder.
+  register_fpar("rud_max_rmc", &m_acp.rud_max_rmc, "Maximum control value of AWS1's rudder controller.");
+  register_fpar("rud_nut_rmc", &m_acp.rud_nut_rmc, "Nutral control value of AWS1's rudder controller.");
+  register_fpar("rud_min_rmc", &m_acp.rud_min_rmc, "Minimum control value of AWS1's rudder controller.");
+
+  // Each controll points of the rudder output.
+  register_fpar("rud_max", &m_acp.rud_max, "Maximum control value for AWS1's rudder.");
+  register_fpar("rud_nut", &m_acp.rud_nut, "Nutral control value for AWS1's rudder.");
+  register_fpar("rud_min", &m_acp.rud_min, "Minimum control value for AWS1's rudder.");
+
+  // Rudder indicator's controll points.
+  register_fpar("rud_sta_max", &m_acp.rud_sta_max, "Maximum value of AWS1's rudder angle indicator.");
+  register_fpar("rud_sta_nut", &m_acp.rud_sta_nut, "Nutral value of AWS1's rudder angle indicator.");
+  register_fpar("rud_sta_min", &m_acp.rud_sta_min, "Minimum value of AWS1's rudder angle indicator.");
+
+  // Control points as the rudder indicator output.
+  register_fpar("rud_sta_out_max", &m_acp.rud_sta_out_max, "Maximum output value of AWS1's rudder angle to rudder pump.");
+  register_fpar("rud_sta_out_nut", &m_acp.rud_sta_out_nut, "Nutral output value of AWS1's rudder angle to rudder pump.");
+  register_fpar("rud_sta_out_min", &m_acp.rud_sta_out_min, "Minimum output value of AWS1's rudder angle to rudder pump.");
+
+  register_fpar("meng", &m_acp.meng, "Output value for main engine.");
+  register_fpar("seng", &m_acp.meng, "Output value for sub engine.");
+  register_fpar("rud", &m_acp.rud, "Output value for rudder.");
+  register_fpar("rud_sta_out", &m_acp.rud_sta_out, "Output value for rudder status.");
+
+
+}
+
+bool f_aws1_ui_test::init_run()
+{
+	return true;
+}
+
+void f_aws1_ui_test::destroy_run()
+{
+
+}
+
+bool f_aws1_ui_test::proc()
+{
+	select_control_input();
+
+	simulate_rudder();
+
+	set_control_output();
+
+	set_state();
+
+	simulate_dynamics();
+	return true;
+}
+
+
+#endif

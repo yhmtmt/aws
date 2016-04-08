@@ -253,6 +253,9 @@ void f_base::register_factory()
 	register_factory<f_glfw_stereo_view>("glstvw");
 	register_factory<f_glfw_imview>("glimv");
 	register_factory<f_aws1_ui>("aws1_ui");
+#ifdef _DEBUG
+	register_factory<f_aws1_ui>("aws1_ui_test");
+#endif
 #endif
 
 	// video sources

@@ -26,7 +26,7 @@
 #include "../channel/ch_aws1_ctrl.h"
 
 
-// Joystick handling structure
+//s_jc_u3613m  Joystick handling structure
 struct s_jc_u3613m
 {
 	int id;
@@ -283,4 +283,138 @@ void drawGlStateInfTxt(float xorg  /* left bottom x */, float yorg, /* left bott
 void drawGlSysStateInfTxt(float xorg/* right top x */, float yorg /* right top y */,
 						  float wfont, float hfont,
 						  e_aws1_ctrl_src ctrl_src, float sz);
+
+
+//////////////////////////////////////////////////////// f_aws1_ui_test
+// This class is a test class interfacing only with f_aws1_ui via the compatible channel set.
+// This class is used to manipulate the channel values by fset parameters. 
+#ifdef _DEBUG
+class f_aws1_ui_test: public f_base
+{
+protected:
+	ch_state * m_state;
+	ch_aws1_ctrl * m_ch_ctrl_ui, * m_ch_ctrl_ap1, * m_ch_ctrl_ap2, * m_ch_ctrl_out;
+	ch_image_ref * m_ch_img;
+
+	float r, p, y; // roll(deg), pitch(deg), yaw(deg)
+	float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
+	float cog, sog; // Course over ground(deg), Speed over ground (kts)
+	float depth; // water depth
+
+	s_aws1_ctrl_pars m_acp;
+
+
+  float m_rud_sta_sim;
+public:
+	f_aws1_ui_test(const char * name);
+
+	void select_control_input()
+	{
+		// Control input selection
+		s_aws1_ctrl_pars acp;
+		if(m_ch_ctrl_ui)
+			m_ch_ctrl_ui->get_pars(acp);
+		m_acp.tcur = acp.tcur;
+		m_acp.ctrl_src = acp.ctrl_src;
+		switch(m_acp.ctrl_src){
+		case ACS_UI:
+			m_acp.rud_aws = acp.rud_aws;
+			m_acp.meng_aws = acp.meng_aws;
+			m_acp.seng_aws = acp.seng_aws;
+			break;
+		case ACS_AP1:
+			if(m_ch_ctrl_ap1){
+				m_ch_ctrl_ap1->get_pars(acp);
+				m_acp.rud_aws = acp.rud_aws;
+				m_acp.meng_aws = acp.meng_aws;
+				m_acp.seng_aws = acp.seng_aws;
+			}
+			break;
+		case ACS_AP2:
+			if(m_ch_ctrl_ap2){
+				m_ch_ctrl_ap2->get_pars(acp);
+				m_acp.rud_aws = acp.rud_aws;
+				m_acp.meng_aws = acp.meng_aws;
+				m_acp.seng_aws = acp.seng_aws;
+			}
+			break;
+		default:
+			break;
+		}
+	}
+
+	void simulate_rudder(){
+		// Rudder response simulation
+		unsigned rud_inst = map_oval(m_acp.rud,
+			m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
+			m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min);
+#define RUD_PER_CYCLE 0.45f
+		if(rud_inst > m_acp.rud_sta){
+			m_rud_sta_sim += RUD_PER_CYCLE;
+		}else{
+			m_rud_sta_sim -= RUD_PER_CYCLE;
+		}
+
+		m_acp.rud_sta = (unsigned char) m_rud_sta_sim;
+	}
+
+	void set_control_output()
+	{
+		switch(m_acp.ctrl_src){
+		case ACS_UI:
+		case ACS_AP1:
+		case ACS_AP2:
+		case ACS_FSET:
+		case ACS_NONE:
+			m_acp.rud = map_oval(m_acp.rud_aws, 
+				0xff, 0x7f, 0x00, 
+				m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min);
+			m_acp.meng = map_oval(m_acp.meng_aws, 
+				0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
+				m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, 
+				m_acp.meng_nub, m_acp.meng_min);  
+			m_acp.seng = map_oval(m_acp.seng_aws, 
+				0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
+				m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, 
+				m_acp.seng_nub, m_acp.seng_min);
+			break;
+		case ACS_RMT:
+			m_acp.rud = map_oval(m_acp.rud_rmc, 
+				m_acp.rud_max_rmc, m_acp.rud_nut_rmc, m_acp.rud_min_rmc,
+				m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min);
+			m_acp.meng = map_oval(m_acp.meng_rmc, 
+				m_acp.meng_max_rmc, m_acp.meng_nuf_rmc, m_acp.meng_nut_rmc, 
+				m_acp.meng_nub_rmc, m_acp.meng_min_rmc,
+				m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, m_acp.meng_nub, 
+				m_acp.meng_min);  
+			m_acp.seng = map_oval(m_acp.seng_rmc, 
+				m_acp.seng_max_rmc, m_acp.seng_nuf_rmc, m_acp.seng_nut_rmc, 
+				m_acp.seng_nub_rmc, m_acp.seng_min_rmc,
+				m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, m_acp.seng_nub, 
+				m_acp.seng_min);
+			break;
+		}
+		if(m_ch_ctrl_out){
+			m_ch_ctrl_out->set_pars(m_acp);
+		}
+	}
+
+	void set_state(){
+		if(m_state){
+			m_state->set_attitude(r, p, y);
+			m_state->set_position(lat, lon, alt, galt);
+			m_state->set_velocity(cog, sog);
+			m_state->set_depth(depth);
+		}
+	}
+
+	void simulate_dynamics()
+	{
+	}
+
+	virtual bool init_run();
+	virtual void destroy_run();
+	virtual bool proc();
+};
+#endif
 #endif
