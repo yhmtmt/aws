@@ -38,14 +38,14 @@ struct s_jc_u3613m
 
 	float thstk; // stick response threashold
 	float lr1, ud1, lr2, ud2;
-	unsigned char elrx, eudx;
-	int tlrx, tudx;
+	unsigned char eux, erx, edx, elx;
+	int tux, trx, tdx, tlx;
 
 	int tx, ty, ta, tb, tlb, trb, tlt, tlst, trst, trt, tback, tstart, tguide; // cycle time of the button pressed
 	unsigned char ex, ey, ea, eb, elb, erb, elt, elst, erst, ert, eback, estart, eguide; // cycle time of the button pressed
 
 	s_jc_u3613m():
-		id(-1),	thstk(0.2f), elrx(0), eudx(0), tlrx(0), tudx(0),
+		id(-1),	thstk(0.2f), eux(0), erx(0), edx(0), elx(0), tux(0), trx(0), tdx(0), tlx(0),
 		tx(0), ty(0), ta(0), tb(0), tlb(0), trb(0), tlt(0), tlst(0),
 		trst(0), trt(0), tback(0), tstart(0), tguide(0),
 		ex(0), ey(0), ea(0), eb(0), elb(0), erb(0), elt(0), elst(0),
@@ -54,9 +54,9 @@ struct s_jc_u3613m
 	}
 
 	bool init(int _id){
-		if(glfwJoystickPresent(id) == GL_TRUE){
+		if(glfwJoystickPresent(_id) == GL_TRUE){
 			id = _id;
-			name = glfwGetJoystickName(id);
+			name = glfwGetJoystickName(_id);
 			return true;
 		}
 		id = -1;
@@ -69,15 +69,21 @@ struct s_jc_u3613m
 		ud1 = set_stk(axs[1]);
 		lr2 = set_stk(axs[2]);
 		ud2 = set_stk(axs[3]);
-
-		elrx = set_btn(axs[4] > 0.5 ? 1 : 0, elrx);
-		eudx = set_btn(axs[5] > 0.5 ? 1 : 0, eudx);
-		tlrx = set_tbtn(elrx, tlrx);
-		tudx = set_tbtn(eudx, tudx);
+		
+		if(naxs > 4){ // may be in linux
+			erx = set_btn(axs[4] > 0.5 ? 1 : 0, erx);
+			elx = set_btn(axs[4] < -0.5 ? 1 : 0, elx);
+			eux = set_btn(axs[5] > 0.5 ? 1 : 0, eux);
+			edx = set_btn(axs[5] < -0.5 ? 1 : 0, edx);
+			trx = set_tbtn(erx, trx);
+			tlx = set_tbtn(elx, tlx);
+			tux = set_tbtn(eux, tux);
+			tdx = set_tbtn(edx, tdx);
+		}
 	}
 
 	const float set_stk(const float v){
-		if(v < thstk){
+		if(v < -thstk){
 			return v + thstk;
 		}else if(v > thstk){
 			return v - thstk;
@@ -95,13 +101,12 @@ struct s_jc_u3613m
 		elb = set_btn(btn[4], elb);
 		erb = set_btn(btn[5], erb);
 		elt = set_btn(btn[6], elt);
-		elst = set_btn(btn[7], elst);
-		erst = set_btn(btn[8], erst);
-		ert = set_btn(btn[9], ert);
+		ert = set_btn(btn[7], ert);
+		elst = set_btn(btn[8], elst);
+		erst = set_btn(btn[9], erst);
 		eback = set_btn(btn[10], eback);
 		estart = set_btn(btn[11], estart);
 		eguide = set_btn(btn[12], eguide);
-
 		tx = set_tbtn(ex, tx);
 		ty = set_tbtn(ey, ty);
 		ta = set_tbtn(ea, ta);
@@ -115,6 +120,18 @@ struct s_jc_u3613m
 		tback = set_tbtn(eback, tback);
 		tstart = set_tbtn(estart, tstart);
 		tguide = set_tbtn(eguide, tguide);
+		if(nbtn > 13){ // maybe windows case
+			// U13, R14, D15, L16
+			erx = set_btn(btn[14], erx);
+			elx = set_btn(btn[16], elx);
+			eux = set_btn(btn[13], eux);
+			edx = set_btn(btn[15], edx);
+
+			trx = set_tbtn(erx, trx);
+			tlx = set_tbtn(elx, tlx);
+			tux = set_tbtn(eux, tux);
+			tdx = set_tbtn(edx, tdx);
+		}
 	}
 
 	unsigned char set_btn(unsigned char vnew, unsigned char eold)
@@ -137,8 +154,10 @@ struct s_jc_u3613m
 		out << "STK>>";
 		out << "LR1:" << lr1 << " UD1:" << ud1 << " ";
 		out << "LR2:" << lr2 << " UD2:" << ud2 << " ";
-		print(out, "LRX", elrx, tlrx); out << " ";
-		print(out, "LRY", eudx, tudx); 
+		print(out, "LX", elx, tlx); out << " ";
+		print(out, "RX", erx, trx); out << " ";
+		print(out, "UX", eux, tux); out << " ";
+		print(out, "DX", edx, tdx); 
 		out << endl;
 
 		out << "BTN>>";
