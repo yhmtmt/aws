@@ -671,6 +671,7 @@ void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
 #ifdef _DEBUG
 
 f_aws1_ui_test::f_aws1_ui_test(const char * name):f_base(name),
+	m_state(NULL),
 	m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL), m_ch_ctrl_out(NULL),
 	r(0), p(0), y(0), lon(0), lat(0), alt(0), galt(0), cog(0), sog(0), depth(0)
 {
