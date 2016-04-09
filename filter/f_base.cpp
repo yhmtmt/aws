@@ -139,6 +139,11 @@ bool f_base::s_fpar::get(char * valstr, size_t sz){
 		n = snprintf(valstr, sz, "%s", cstr);break;
 	case ENUM:
 		n = snprintf(valstr, sz, "%s", str_enum[*s32]);break;
+	case CH:
+		if(*ppch)
+			n = snprintf(valstr, sz, "%s", (*ppch)->get_name());
+		else
+			n = snprintf(valstr, sz, "NULL");
 	}
 	return n < sz;	
 }
