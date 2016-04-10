@@ -360,7 +360,7 @@ bool f_ch_share::proc()
 	    for(int och = 0; och < m_chout.size(); och++)
 	      m_chout[och]->print(cout);
 	  }
-	  m_rbuf_tail = 0;
+	  m_rbuf_head = m_rbuf_tail = 0;
 	}
       }else if(FD_ISSET(m_sock, &fe)){
 	cerr << "Socket error during recieving packet in " << m_name;
