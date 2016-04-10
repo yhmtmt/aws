@@ -31,6 +31,9 @@ struct s_rotpar
 	s_rotpar():roll(0), pitch(0), yaw(0){};
 };
 
+void bihtoecef(const float lat, const float lon, const float alt, float & x, float & y, float & z);
+void eceftobih(const float x, const float y, const float z, float & lat, float & lon, float & alt);
+
 void bihtoecef(const s_bihpos & Xbih, Point3d & Xecef);
 void eceftobih(Mat & Xecef, Mat & Xbih);
 void bihtowrld(Point3d & Xorg, Mat & Xrot, s_bihpos & Xbih, Point3d & Xwrld);

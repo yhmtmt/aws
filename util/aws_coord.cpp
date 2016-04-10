@@ -22,6 +22,21 @@ using namespace cv;
 
 #include "aws_coord.h"
 
+void bihtoecef(const float lat, const float lon, const float alt, 
+			   float & x, float & y, float & z)
+{
+	double slat = sin(lat);
+	double clat = cos(lat);
+	double slon = sin(lon);
+	double clon = cos(lon);
+	double N = AE / sqrt(1 - EE2 * slat * slat);
+
+	double tmp = (N + alt) * clat;
+	x = tmp * clon;
+	y = tmp * slon;
+	z = (N * (1 - EE2) + alt) * slat;
+}
+
 void bihtoecef(const s_bihpos & Xbih, Point3d & Xecef)
 {
 	double slat = sin(Xbih.lat);
@@ -34,6 +49,20 @@ void bihtoecef(const s_bihpos & Xbih, Point3d & Xecef)
 	Xecef.x = tmp * clon;
 	Xecef.y = tmp * slon;
 	Xecef.z = (N * (1 - EE2) + Xbih.alt) * slat;
+}
+
+void eceftobih(const float x, const float y, const float z, float & lat, float & lon, float & alt)
+{
+	double p = sqrt(x* x + y * y);
+	double th = atan(z * AE / (p * BE));
+	double s = sin(th);
+	double c = cos(th);
+	s = s * s * s;
+	c = c * c* c;
+	lat = atan2(z + EE2_B * s, p - EE2_A * c);
+	lon = atan2(y, x);
+	s = sin(lat);
+	alt = p / cos(lat) - AE / sqrt(1 - EE2 * s * s);
 }
 
 void eceftobih(Point3d & Xecef, s_bihpos & Xbih)
