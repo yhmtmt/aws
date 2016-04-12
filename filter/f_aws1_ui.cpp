@@ -35,10 +35,15 @@ using namespace cv;
 
 #include "f_aws1_ui.h"
 
+const char * f_aws1_ui::m_str_aws1_ui_mode[AUM_UNDEF] = {
+	"normal", "map"
+};
+
 f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
 					m_state(NULL),
 					 m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL), m_ch_img(NULL),
-					 m_acd_sock(-1), m_acd_port(20100), m_num_ctrl_steps(4), m_ec(EC_MAIN), m_rud_pos(NULL), m_meng_pos(NULL), m_seng_pos(NULL)
+					 m_acd_sock(-1), m_acd_port(20100), 
+					 m_mode(AUM_NORMAL)
 {
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl_in, typeid(ch_aws1_ctrl).name(), "Control input channel.");
@@ -55,11 +60,19 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("seng", &m_seng_aws_f, "Sub Engine.");
   
   register_fpar("js", &m_js_id, "Joystick id");
+
+  register_fpar("mode", (int*)&m_mode, AUM_UNDEF, m_str_aws1_ui_mode, "UI mode.");
+  m_ui[AUM_NORMAL]	= new c_aws1_ui_normal(this);
+  m_ui[AUM_MAP]		= new c_aws1_ui_map(this);
 }
 
 
 f_aws1_ui::~f_aws1_ui()
 {
+	delete m_ui[AUM_NORMAL];
+	m_ui[AUM_NORMAL] = NULL;
+	delete m_ui[AUM_MAP];
+	m_ui[AUM_NORMAL] = NULL;
 }
 
 
@@ -93,70 +106,20 @@ bool f_aws1_ui::init_run()
 	  cout << "Joystick " << m_js.name << " found." << endl;
   }
 
-  // allocate control positions
-  m_rud_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
-  m_meng_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
-  m_seng_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
-
-  double stepf, stepb;
-  double sumf, sumb;
-  m_rud_pos[m_num_ctrl_steps] = 127;
-  stepf = (double) (255 - 127) / (double) m_num_ctrl_steps;
-  stepb = (double) (127 - 0) / (double) m_num_ctrl_steps;
-  sumf = sumb = 127.;
-  for(int i = 1; i < m_num_ctrl_steps; i++){
-    sumf += stepf;
-    sumb -= stepb;
-    m_rud_pos[m_num_ctrl_steps - i] = (unsigned char) sumb;
-    m_rud_pos[m_num_ctrl_steps + i] = (unsigned char) sumf;
-  }
-  m_rud_pos[m_num_ctrl_steps * 2] = 255;
-  m_rud_pos[0] = 0;
-
-  stepf = (double) (255 - 127 - 25) / (double) (m_num_ctrl_steps - 1);
-  stepb = (double) (127 - 25 - 0) / (double) (m_num_ctrl_steps - 1);
-  sumf = sumb = 127.;
-
-  m_meng_pos[m_num_ctrl_steps] = 127;
-  m_meng_pos[m_num_ctrl_steps+1] = 127 + 25;
-  m_meng_pos[m_num_ctrl_steps-1] = 127 - 25;
-
-  m_seng_pos[m_num_ctrl_steps] = 127;
-  m_seng_pos[m_num_ctrl_steps+1] = 127 + 25;
-  m_seng_pos[m_num_ctrl_steps-1] = 127 - 25;
-
-  sumf = 127 + 25;
-  sumb = 127 - 25;
-  for (int i = 2; i < m_num_ctrl_steps; i++){
-    sumf += stepf;
-    sumb -= stepb;
-    m_meng_pos[m_num_ctrl_steps + i] = m_seng_pos[m_num_ctrl_steps + i] = saturate_cast<unsigned char>(sumf);
-    m_meng_pos[m_num_ctrl_steps - i] = m_seng_pos[m_num_ctrl_steps - i] = saturate_cast<unsigned char>(sumb);
-  }
-  
-  m_meng_pos[m_num_ctrl_steps * 2] = m_seng_pos[m_num_ctrl_steps * 2] = 255;
-  m_meng_pos[0] = m_seng_pos[0] = 0;
 
   return true;
 }
 
 void f_aws1_ui::destroy_run()
 {
-  delete[] m_rud_pos;
-  delete[] m_meng_pos;
-  delete[] m_seng_pos;
-
-  m_rud_pos = NULL;
-  m_meng_pos = NULL;
-  m_seng_pos = NULL;
-
   if(m_udp_ctrl){
     closesocket(m_acd_sock);
     m_acd_sock = -1;
   }
 }
 
-bool f_aws1_ui::proc()
+
+void f_aws1_ui::ui_set_js_ctrl()
 {
   if(m_js.id != -1){
 	  m_js.set_btn();
@@ -197,153 +160,220 @@ bool f_aws1_ui::proc()
   m_acp.rud_aws = (unsigned char) m_rud_aws_f;
   m_acp.meng_aws = (unsigned char) m_meng_aws_f;
   m_acp.seng_aws = (unsigned char) m_seng_aws_f;
+}
 
-  s_aws1_ctrl_pars acpkt;
-  snd_ctrl(acpkt);
-  rcv_ctrl(acpkt);
- 
-  float roll, pitch, yaw;
-  float lat, lon, alt, galt;
-  float cog, sog;
-  float depth;
-  roll = pitch = yaw = lat = lon = alt = galt = cog = sog = depth = 0.;
-  if(m_state){
-	  m_state->get_attitude(roll, pitch, yaw);
-	  m_state->get_position(lat, lon, alt, galt);
-	  m_state->get_velocity(cog, sog);
-	  m_state->get_depth(depth);
-  }
-  yaw = (float)(-yaw + 180.);
+void f_aws1_ui::ui_show_img()
+{
+	glRasterPos2i(-1, -1);
+	if(m_ch_img){
+		Mat img;
+		long long timg;
+		img = m_ch_img->get_img(timg);
+		if(!img.empty()){
+			if(m_sz_win.width != img.cols || m_sz_win.height != img.rows){
+				Mat tmp;
+				resize(img, tmp, m_sz_win);
+				img = tmp;
+			}
 
-  glfwMakeContextCurrent(pwin());
-  glRasterPos2i(-1, -1);
-  if(m_ch_img){
-    Mat img;
-    long long timg;
-    img = m_ch_img->get_img(timg);
-    if(!img.empty()){
-      if(m_sz_win.width != img.cols || m_sz_win.height != img.rows){
-	Mat tmp;
-	resize(img, tmp, m_sz_win);
-	img = tmp;
-      }
-      
-      if(img.type() == CV_8U){
-	glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
-      }
-      else{
-	cnvCVBGR8toGLRGB8(img);
-	glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
-      }
-    }
-  }
-  else
-     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
- 
-  // render graphics
-  double wscale = 1.0 / (double) m_sz_win.width;
-  double hscale = 1.0 / (double) m_sz_win.height;  
-  float wfont = (float)(13. * wscale);
-  float hfont = (float)(13. * hscale);
-  float x = (float)(wfont - 1);
-  float y = (float)(1 - 3 * hfont);
+			if(img.type() == CV_8U){
+				glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
+			}
+			else{
+				cnvCVBGR8toGLRGB8(img);
+				glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
+			}
+		}
+	}
+	else
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
 
-  // show time
-  drawGlText(x, y, m_time_str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+void f_aws1_ui::ui_show_rudder(float wscale, float hscale)
+{
+	glRasterPos2i(-1, -1);
+	float wfont = (float)(13. * wscale);
+	float hfont = (float)(13. * hscale);
+	float wm = (float)(255. * wscale);
+	float hm = (float)(3 * hfont);
+	float lw = (float)(1.0 / m_sz_win.width);
 
-  float rud_inst, rud_inst_cur;
-  float meng_inst, meng_inst_cur;
-  float seng_inst, seng_inst_cur;
-  float rud_sta;
+	float rud_inst = (float)m_acp.rud_aws;
+	float rud_inst_cur = 
+		(float)map_oval(m_acp.rud, 
+		m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
+		0xff, 0x7f, 0x00);
+	float rud_sta = 
+		(float) map_oval(m_acp.rud_sta, 
+		m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
+		0xff, 0x7f, 0x00);
 
-  rud_inst = (float)m_acp.rud_aws;
-  rud_inst_cur = 
-    (float)map_oval(m_acp.rud, 
-		    m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
-		    0xff, 0x7f, 0x00);
+	float x =  (float)(0. - 255. * 0.5 * wscale);
+	float y = (float)(1.0 - 6 * hfont);
 
-  meng_inst = (float)m_acp.meng_aws;
-  meng_inst_cur = 
-    (float)map_oval(m_acp.meng,
-		    m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, 
-		    m_acp.meng_nub, m_acp.meng_min,
-		    0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
-  
-  seng_inst = (float)m_acp.seng_aws;
-  seng_inst_cur = 
-    (float) map_oval(m_acp.seng,
-		     m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, 
-		     m_acp.seng_nub, m_acp.seng_min,
-		     0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
-  
-  rud_sta = 
-    (float) map_oval(m_acp.rud_sta, 
-		     m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
-		     0xff, 0x7f, 0x00);
-  
+	drawGlRudderIndicator("RUDDER", 
+		x, y, 
+		wm, hm,  wfont, hfont, lw, 
+		(float)(rud_inst * wscale),
+		(float)(rud_inst_cur * wscale),
+		(float)(rud_sta * wscale));
+	if(m_verb){
+		cout << "    Inst rud " << rud_inst;
+		cout << "    Ctrl rud " << rud_inst_cur;
+		cout << "    Rud stat " << rud_sta << endl;
+	}
+}
+
+void f_aws1_ui::ui_show_meng(float wscale, float hscale)
+{
+	glRasterPos2i(-1, -1);
+	float wfont = (float)(13. * wscale);
+	float hfont = (float)(13. * hscale);
+	float wm = (float)(3 * wfont);
+	float hm = (float)(255.0 * hscale);
+	float lw = (float)(1.0 / m_sz_win.width);
+
+	float meng_inst = (float)m_acp.meng_aws;
+	float meng_inst_cur = 
+		(float)map_oval(m_acp.meng,
+		m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, 
+		m_acp.meng_nub, m_acp.meng_min,
+		0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
+	float x = (float)(wfont - 1.0);
+	float y = (float)(1.0 - 6 * hfont);
+	drawGlEngineIndicator("M/E", x, y, wm, hm, wfont, hfont, lw, 
+		(float)(meng_inst * hscale),
+		(float)(meng_inst_cur * hscale));
+	if(m_verb){
+		cout << "    Inst meng " << meng_inst ;
+		cout << "    Ctrl meng " << meng_inst_cur << endl;
+	}
+}
+
+void f_aws1_ui::ui_show_seng(float wscale, float hscale)
+{
+	glRasterPos2i(-1, -1);
+
+	float wfont = (float)(13. * wscale);
+	float hfont = (float)(13. * hscale);
+	float wm = (float)(3 * wfont);
+	float hm = (float)(255.0 * hscale);
+	float lw = (float)(1.0 / m_sz_win.width);
+
+	float seng_inst = (float)m_acp.seng_aws;
+	float seng_inst_cur = 
+		(float) map_oval(m_acp.seng,
+		m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, 
+		m_acp.seng_nub, m_acp.seng_min,
+		0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
+	float x = (float)(6 * wfont - 1.0);
+	float y = (float)(1.0 - 6 * hfont);
+	drawGlEngineIndicator("S/E", x, y, wm, hm, wfont, hfont, lw, 
+		(float)(seng_inst * hscale),
+		(float)(seng_inst_cur * hscale));
   if(m_verb){
-    cout << "Control value in " << m_name << endl;
-    cout << "    Inst rud " << rud_inst << " meng " << meng_inst << " seng " << seng_inst << endl;
-    cout << "    Ctrl rud " << rud_inst_cur << " meng " << meng_inst_cur << " seng " << seng_inst_cur << endl;
-    cout << "    Rud stat " << rud_sta << endl;
-    cout << " RPY = " << roll << "," << pitch << "," << yaw << endl;
-    cout << " Pos = " << lat << "," << lon << "," << alt << endl;
-    cout << " Vel = " << cog << "," << sog << endl;
-    cout << " Depth = " << depth << endl;
+	  cout << "    Inst seng " << seng_inst << endl;
+	  cout << "    Ctrl seng " << seng_inst_cur << endl;
   }
+}
 
-  float wm, hm, lw;
+void f_aws1_ui::ui_show_state(float wscale, float hscale)
+{
+	glRasterPos2i(-1, -1);
 
-  // Draw main view (1: camera image, 2: 3D rendered map, 3: 2D rendered map)
+	float wfont = (float)(13. * wscale);
+	float hfont = (float)(13. * hscale);
+	float roll, pitch, yaw;
+	float lat, lon, alt, galt;
+	float cog, sog;
+	float depth;
+	roll = pitch = yaw = lat = lon = alt = galt = cog = sog = depth = 0.;
+	if(m_state){
+		m_state->get_attitude(roll, pitch, yaw);
+		m_state->get_position(lat, lon, alt, galt);
+		m_state->get_velocity(cog, sog);
+		m_state->get_depth(depth);
+	}
+	yaw = (float)(yaw + 180.);
 
-  // Drawing engine control indicator 
-  wm = (float)(3 * wfont);
-  hm = (float)(255.0 * hscale);
-  lw = (float)(1.0 / m_sz_win.width);
+	// Drawing ship state information
+	float x = (float)(wfont - 1.0);
+	float y = (float)(hfont - 1.0);
+	drawGlStateInfTxt(x, y, wfont, hfont, 
+		lat, lon, alt, galt, cog, sog, roll, pitch, yaw, depth, 1);
+  if(m_verb){
+	  cout << " RPY = " << roll << "," << pitch << "," << yaw << endl;
+	  cout << " Pos = " << lat << "," << lon << "," << alt << endl;
+	  cout << " Vel = " << cog << "," << sog << endl;
+	  cout << " Depth = " << depth << endl;
+  }
+}
 
-  x = (float)(wfont - 1.0);
-  y = (float)(1.0 - 6 * hfont);
-  drawGlEngineIndicator("M/E", x, y, wm, hm, wfont, hfont, lw, 
-			(float)(meng_inst * hscale),
-			(float)(meng_inst_cur * hscale));
- 
-  x += (float)(5 * wfont);
-  drawGlEngineIndicator("S/E", x, y, wm, hm, wfont, hfont, lw, 
-			(float)(seng_inst * hscale),
-			(float)(seng_inst_cur * hscale));
-  
+void f_aws1_ui::ui_show_sys_state(float wscale, float hscale)
+{
+	glRasterPos2i(-1, -1);
 
-  // Drawing rudder control indicator
-  wm = (float)(255. * wscale);
-  hm = (float)(3 * hfont);
-  x =  (float)(0. - 255. * 0.5 * wscale);
-  drawGlRudderIndicator("RUDDER", 
-			x, y, 
-			wm, hm,  wfont, hfont, lw, 
-			(float)(rud_inst * wscale),
-			(float)(rud_inst_cur * wscale),
-			(float)(rud_sta * wscale));
+	float wfont = (float)(13. * wscale);
+	float hfont = (float)(13. * hscale);
+	float xorg = (float)(1.0 - wfont);
+	float yorg = (float)(1.0 - hfont);
+	float lw = (float)(1.0 / m_sz_win.width);
 
-  // Drawing ship state information
-  x = (float)(wfont - 1.0);
-  y = (float)(hfont - 1.0);
-  drawGlStateInfTxt(x, y, wfont, hfont, 
-	  lat, lon, alt, galt, cog, sog, roll, pitch, yaw, depth, 1);
+	char str[32]; // "XXXX: xxxxxxx"	
+	float w = (float)((15 + 2) * wfont * 1.2);
+	float h = (float)(6 * hfont);
+	float x = (float)(xorg - w);	
+	drawGlSquare2Df(xorg, yorg, x, (float)(yorg - h), 0, 1, 0, 1, lw);
 
-  // Indicate System State
-  x = (float)(1.0 - wfont);
-  y = (float)(1.0 - hfont);
-  drawGlSysStateInfTxt(x, y, wfont, hfont, m_acp.ctrl_src, 1);
+	snprintf(str, 32, "CTRL: %8s", str_aws1_ctrl_src[m_acp.ctrl_src]);
+	x += wfont;
+	float y = (float)(yorg - 2 * hfont);
+	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
-  // Drawing attitude indicator (w-mark, hdg scale, pitch scale) for main view type 1 only
+	snprintf(str, 32, "MODE: %8s", m_str_aws1_ui_mode[m_mode]);
+	y -= 2 * hfont;
+	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+}
 
-  // Drawing map information. both for main view type 1 and 2. 
+bool f_aws1_ui::proc()
+{
+	c_aws1_ui_core & ui = *m_ui[m_mode];
 
-  
-  glfwSwapBuffers(pwin());
-  glfwPollEvents();
-  
-  return true;
+	// process joypad inputs
+	ui.js(m_js); // mode dependent joypad handler
+	//--> system joypad handling
+
+	//<-- system joypad handling	
+
+	s_aws1_ctrl_pars acpkt;
+	snd_ctrl(acpkt);
+	rcv_ctrl(acpkt);
+
+
+	glfwMakeContextCurrent(pwin());
+
+	// render graphics
+	float wscale = (float)(1.0 / m_sz_win.width);
+	float hscale = (float)(1.0 / m_sz_win.height);  
+
+	// information rendering
+	ui.draw(wscale, hscale); // mode dependent rendering
+
+	//--> system information rendering
+	// show time
+	float wfont = (float)(13. * wscale);
+	float hfont = (float)(13. * hscale);
+	float x = (float)(wfont - 1);
+	float y = (float)(1 - 3 * hfont);
+	drawGlText(x, y, m_time_str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+
+	ui_show_sys_state(wscale, hscale);
+	//<-- system information rendering
+
+	glfwSwapBuffers(pwin());
+	glfwPollEvents();
+
+	return true;
 }
 
 void drawGlEngineIndicator(const char * title,
@@ -497,24 +527,6 @@ void drawGlStateInfTxt(float xorg, float yorg,
 	drawGlText(x, y, sdpt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
-void drawGlSysStateInfTxt(float xorg, float yorg,
-			  float wfont, float hfont,
-			  e_aws1_ctrl_src ctrl_src, float sz)
-{
-	char str[32]; // "Ctrl: xxxx"
-	snprintf(str, 32, "CTRL: %5s", str_aws1_ctrl_src[ctrl_src]);
-	float w = (float)((strlen(str) + 2) * wfont * 1.2);
-	float h = (float)(4 * hfont);
-
-	float x = (float)(xorg - w);
-	drawGlSquare2Df(xorg, yorg, x, (float)(yorg - h), 0, 1, 0, 1, sz);
-	x += wfont;
-	float y = (float)(yorg - 2 * hfont);
-
-	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-}
-
-
 void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
 {
   acpkt.ctrl_src = m_acp.ctrl_src;
@@ -630,42 +642,92 @@ void f_aws1_ui::_mouse_button_callback(int button, int action, int mods)
 
 void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
 {
-  if(action == GLFW_PRESS){
-
-    switch(key){
-    case GLFW_KEY_RIGHT:
-      m_rud_aws_f = step_up(m_acp.rud_aws, m_rud_pos);
-      break;
-    case GLFW_KEY_LEFT:
-      m_rud_aws_f = step_down(m_acp.rud_aws, m_rud_pos);
-      break;
-    case GLFW_KEY_UP:
-      if(m_ec == EC_MAIN){
-	m_meng_aws_f = step_up(m_acp.meng_aws, m_meng_pos);
-      }else{
-	m_seng_aws_f = step_up(m_acp.seng_aws, m_seng_pos);
-      }
-      break;
-    case GLFW_KEY_DOWN:
-      if(m_ec == EC_MAIN){
-	m_meng_aws_f = step_down(m_acp.meng_aws, m_meng_pos);
-      }else{
-	m_seng_aws_f = step_down(m_acp.seng_aws, m_seng_pos);
-      }
-      break;
-    case GLFW_KEY_E:
-      if(m_ec == EC_MAIN){
-	m_ec = EC_SUB;
-      }else{
-	m_ec = EC_MAIN;
-      }
-    default:
-      break;
-    }
-  }
+	m_ui[m_mode]->key(key, scancode, action, mods);
 }
 
 
+/////////////////////////////////////////////////////////////////////////// c_aws1_ui_core
+
+
+/////////////////////////////////////////////////////////////////////////// c_aws1_ui_normal
+void c_aws1_ui_normal::js(const s_jc_u3613m & js)
+{
+	pui->ui_set_js_ctrl();	
+}
+
+void c_aws1_ui_normal::draw(float xscale, float yscale)
+{
+	pui->ui_show_img();
+
+	pui->ui_show_meng(xscale, yscale);
+	pui->ui_show_seng(xscale, yscale);
+	pui->ui_show_rudder(xscale, yscale);
+	pui->ui_show_state(xscale, yscale);
+
+  // Drawing attitude indicator (w-mark, hdg scale, pitch scale) for main view type 1 only
+  // Drawing map information. both for main view type 1 and 2. 
+}
+
+void c_aws1_ui_normal::key(int key, int scancode, int action, int mods)
+{
+	if(action == GLFW_PRESS){
+		switch(key){
+		case GLFW_KEY_RIGHT:
+			{
+				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
+				pui->ui_set_rud_f(step_up(acp.rud_aws, m_rud_pos));
+			}
+			break;
+		case GLFW_KEY_LEFT:
+			{
+				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
+				pui->ui_set_rud_f(step_down(acp.rud_aws, m_rud_pos));
+			}
+			break;
+		case GLFW_KEY_UP:
+			{
+				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
+				if(m_ec == EC_MAIN){
+					pui->ui_set_meng_f(step_up(acp.meng_aws, m_meng_pos));
+				}else{
+					pui->ui_set_seng_f(step_up(acp.seng_aws, m_seng_pos));
+				}
+			}
+			break;
+		case GLFW_KEY_DOWN:
+			{
+				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
+				if(m_ec == EC_MAIN){
+					pui->ui_set_meng_f(step_down(acp.meng_aws, m_meng_pos));
+				}else{
+					pui->ui_set_seng_f(step_down(acp.seng_aws, m_seng_pos));
+				}
+			}
+			break;
+		case GLFW_KEY_E:
+			if(m_ec == EC_MAIN){
+				m_ec = EC_SUB;
+			}else{
+				m_ec = EC_MAIN;
+			}
+		default:
+			break;
+		}
+	}
+}
+
+/////////////////////////////////////////////////////////////////////////// c_aws1_ui_map
+void c_aws1_ui_map::js(const s_jc_u3613m & js)
+{
+}
+
+void c_aws1_ui_map::draw(float xscale, float yscale)
+{
+}
+
+void c_aws1_ui_map::key(int key, int scancode, int action, int mods)
+{
+}
 
 /////////////////////////////////////////////////////////////////////////// f_aws1_ui_test members
 

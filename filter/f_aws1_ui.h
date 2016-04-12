@@ -184,6 +184,12 @@ struct s_jc_u3613m
 	}
 };
 
+
+
+class c_aws1_ui_core;
+class c_aws1_ui_normal;
+class c_aws1_ui_map;
+
 class f_aws1_ui: public f_glfw_window
 {
  private:
@@ -215,6 +221,90 @@ class f_aws1_ui: public f_glfw_window
   virtual void _mouse_button_callback(int button, int action, int mods);
   virtual void _key_callback(int key, int scancode, int action, int mods);
 
+  float m_rud_aws_f;
+  float m_meng_aws_f;
+  float m_seng_aws_f;
+
+  // User interface mode sets
+  enum e_aws1_ui_mode {
+	  AUM_NORMAL, AUM_MAP, AUM_UNDEF
+  } m_mode;
+
+  static const  char * m_str_aws1_ui_mode[AUM_UNDEF];
+  c_aws1_ui_core * m_ui[AUM_UNDEF];
+
+ public:
+  f_aws1_ui(const char * name);
+  virtual ~f_aws1_ui();
+
+  virtual bool init_run();
+
+  virtual void destroy_run();
+
+  virtual bool proc();
+
+  // ui related method
+  const s_aws1_ctrl_pars & ui_get_ctrl_par(){
+	  return m_acp;
+  };
+
+  // set (rudder, meng, seng) according to the js state.
+  void ui_set_js_ctrl();
+
+  void ui_set_rud_f(const float rud_f)
+  {
+	  m_rud_aws_f = rud_f;
+  }
+
+  void ui_set_meng_f(const float meng_f)
+  {
+	  m_meng_aws_f = meng_f;
+  }
+
+  void ui_set_seng_f(const float seng_f)
+  {
+	  m_seng_aws_f = seng_f;
+  }
+
+  void ui_show_img();
+  void ui_show_rudder(float wscale, float hscale);
+  void ui_show_meng(float wscale, float hscale);
+  void ui_show_seng(float wscale, float hscale);
+  void ui_show_state(float wscale, float hscale);
+  void ui_show_sys_state(float wscale, float hscale);
+};
+
+
+class c_aws1_ui_core
+{
+protected:
+	f_aws1_ui * pui;
+public:
+	c_aws1_ui_core(f_aws1_ui * _pui):pui(_pui)
+	{
+	}
+
+	virtual ~c_aws1_ui_core()
+	{
+		pui = NULL;
+	}
+
+	virtual void js(const s_jc_u3613m  & js)
+	{
+	}
+
+	virtual void draw(float xscale, float yscale)
+	{
+	};
+
+	virtual void key(int key, int scancode, int action, int mods)
+	{
+	};
+};
+
+class c_aws1_ui_normal: public c_aws1_ui_core
+{
+protected:
   // for keyboard control
   int m_num_ctrl_steps;
   enum e_eng_ctrl{
@@ -267,19 +357,85 @@ class f_aws1_ui: public f_glfw_window
     return vpos[m_num_ctrl_steps];
   }
 
-  float m_rud_aws_f;
-  float m_meng_aws_f;
-  float m_seng_aws_f;
- public:
-  f_aws1_ui(const char * name);
-  virtual ~f_aws1_ui();
+public:
+	c_aws1_ui_normal(f_aws1_ui * _pui):c_aws1_ui_core(_pui), m_num_ctrl_steps(4), m_ec(EC_MAIN),
+		m_rud_pos(NULL), m_meng_pos(NULL), m_seng_pos(NULL)
+	{
+		// allocate control positions
+		m_rud_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
+		m_meng_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
+		m_seng_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
 
-  virtual bool init_run();
+		double stepf, stepb;
+		double sumf, sumb;
+		m_rud_pos[m_num_ctrl_steps] = 127;
+		stepf = (double) (255 - 127) / (double) m_num_ctrl_steps;
+		stepb = (double) (127 - 0) / (double) m_num_ctrl_steps;
+		sumf = sumb = 127.;
+		for(int i = 1; i < m_num_ctrl_steps; i++){
+			sumf += stepf;
+			sumb -= stepb;
+			m_rud_pos[m_num_ctrl_steps - i] = (unsigned char) sumb;
+			m_rud_pos[m_num_ctrl_steps + i] = (unsigned char) sumf;
+		}
+		m_rud_pos[m_num_ctrl_steps * 2] = 255;
+		m_rud_pos[0] = 0;
 
-  virtual void destroy_run();
+		stepf = (double) (255 - 127 - 25) / (double) (m_num_ctrl_steps - 1);
+		stepb = (double) (127 - 25 - 0) / (double) (m_num_ctrl_steps - 1);
+		sumf = sumb = 127.;
 
-  virtual bool proc();
+		m_meng_pos[m_num_ctrl_steps] = 127;
+		m_meng_pos[m_num_ctrl_steps+1] = 127 + 25;
+		m_meng_pos[m_num_ctrl_steps-1] = 127 - 25;
+
+		m_seng_pos[m_num_ctrl_steps] = 127;
+		m_seng_pos[m_num_ctrl_steps+1] = 127 + 25;
+		m_seng_pos[m_num_ctrl_steps-1] = 127 - 25;
+
+		sumf = 127 + 25;
+		sumb = 127 - 25;
+		for (int i = 2; i < m_num_ctrl_steps; i++){
+			sumf += stepf;
+			sumb -= stepb;
+			m_meng_pos[m_num_ctrl_steps + i] = m_seng_pos[m_num_ctrl_steps + i] = saturate_cast<unsigned char>(sumf);
+			m_meng_pos[m_num_ctrl_steps - i] = m_seng_pos[m_num_ctrl_steps - i] = saturate_cast<unsigned char>(sumb);
+		}
+
+		m_meng_pos[m_num_ctrl_steps * 2] = m_seng_pos[m_num_ctrl_steps * 2] = 255;
+		m_meng_pos[0] = m_seng_pos[0] = 0;
+
+	}
+
+	~c_aws1_ui_normal()
+	{
+		delete[] m_rud_pos;
+		delete[] m_meng_pos;
+		delete[] m_seng_pos;
+
+		m_rud_pos = NULL;
+		m_meng_pos = NULL;
+		m_seng_pos = NULL;
+	}
+
+	virtual void js(const s_jc_u3613m  & js);
+	virtual void draw(float xscale, float yscale);
+	virtual void key(int key, int scancode, int action, int mods);
 };
+
+class c_aws1_ui_map: public c_aws1_ui_core
+{
+protected:
+public:
+	c_aws1_ui_map(f_aws1_ui * _pui):c_aws1_ui_core(_pui)
+	{
+	}
+
+	virtual void js(const s_jc_u3613m  & js);
+	virtual void draw(float xscale, float yscale);
+	virtual void key(int key, int scancode, int action, int mods);
+};
+
 
 void drawGlEngineIndicator(const char * title, 
 			   float xorg, float yorg, float w, float h, 
@@ -298,10 +454,6 @@ void drawGlStateInfTxt(float xorg  /* left bottom x */, float yorg, /* left bott
 				  float cog, float sog, 
 				  float roll, float pitch, float yaw,
 				  float depth, float sz);
-
-void drawGlSysStateInfTxt(float xorg/* right top x */, float yorg /* right top y */,
-						  float wfont, float hfont,
-						  e_aws1_ctrl_src ctrl_src, float sz);
 
 
 //////////////////////////////////////////////////////// f_aws1_ui_test
@@ -322,7 +474,7 @@ protected:
 	s_aws1_ctrl_pars m_acp;
 
 
-  float m_rud_sta_sim;
+	float m_rud_sta_sim;
 public:
 	f_aws1_ui_test(const char * name);
 
