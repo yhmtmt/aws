@@ -215,6 +215,8 @@ bool f_aws1_ui::proc()
   }
   yaw = (float)(-yaw + 180.);
 
+  glfwMakeContextCurrent(pwin());
+  glRasterPos2i(-1, -1);
   if(m_ch_img){
     Mat img;
     long long timg;
@@ -235,12 +237,10 @@ bool f_aws1_ui::proc()
       }
     }
   }
-  
+  else
+     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+ 
   // render graphics
-  glfwMakeContextCurrent(pwin());
-  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  
-  glRasterPos2i(-1, -1);
   double wscale = 1.0 / (double) m_sz_win.width;
   double hscale = 1.0 / (double) m_sz_win.height;  
   float wfont = (float)(13. * wscale);

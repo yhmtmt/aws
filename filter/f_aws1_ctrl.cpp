@@ -482,7 +482,7 @@ void f_aws1_ctrl::set_acpkt(s_aws1_ctrl_pars & acpkt)
 void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
 {
   if(!acpkt.suc){
-    cerr << "Failed to recieve packet." << endl;
+    //  cerr << "Failed to recieve packet." << endl;
     return;
   }
   
@@ -501,11 +501,11 @@ void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
       m_acp.rud_aws = ctrl.rud_aws;
       m_acp.meng_aws = ctrl.meng_aws;
       m_acp.seng_aws = ctrl.seng_aws;
-      break;
     }else{
       cerr << "In " << m_name << ", ";
       cerr << "No autopilot channel 1 is connected" << endl;
     }
+    break;
   case ACS_AP2:
     if(m_ch_ctrl_ap2){
       s_aws1_ctrl_pars ctrl;
@@ -513,10 +513,10 @@ void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
       m_acp.rud_aws = ctrl.rud_aws;
       m_acp.meng_aws = ctrl.meng_aws;
       m_acp.seng_aws = ctrl.seng_aws;
-      break;
     }else{
       cerr << "In " << m_name << ", ";
       cerr << "No autopilot channel 2 is connected" << endl;
     }
+    break;
   }
 }

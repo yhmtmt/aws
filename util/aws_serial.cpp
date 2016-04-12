@@ -154,6 +154,7 @@ AWS_SERIAL open_serial(const char * dname, int cbr, bool nonblk)
 	copt.c_cc[VTIME] = 1;
 	copt.c_cflag |= (CLOCAL | CREAD);
 	*/
+	cfmakeraw(&copt);
 
 	tcflush(h, TCIFLUSH);
 

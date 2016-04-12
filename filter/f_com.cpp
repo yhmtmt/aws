@@ -316,6 +316,11 @@ bool f_ch_share::proc()
 	break;
       }
     }
+    if(m_verb){
+      cout << "Inputs" << endl;
+      for(int ich = 0; ich < m_chin.size(); ich++)
+	m_chin[ich]->print(cout);
+    }
   }
 
   // recieving phase
@@ -326,24 +331,37 @@ bool f_ch_share::proc()
       FD_SET(m_sock, &fr);
       FD_SET(m_sock, &fe);
       tv.tv_sec = 0;
-      tv.tv_usec = 10000; 
+      tv.tv_usec = 1000; 
       
       res = select((int) m_sock + 1, &fr, NULL, &fe, &tv);
       if(FD_ISSET(m_sock, &fr)){
-			int res = 0;
-			//res = recv(m_sock, m_rbuf, m_len_pkt_rcv - m_rbuf_tail, 0);
-			m_sz_sock_addr_snd = sizeof(m_sock_addr_snd);
-		res = recvfrom(m_sock, 
-				(char*) m_rbuf + m_rbuf_tail, 
-				m_len_pkt_rcv - m_rbuf_tail,
-				0,
-				(sockaddr*) & m_sock_addr_snd, 
-				&m_sz_sock_addr_snd);
-				
-		if(res == -1)
-			break;
-		else
-			m_rbuf_tail += res;
+	int res = 0;
+	//res = recv(m_sock, m_rbuf, m_len_pkt_rcv - m_rbuf_tail, 0);
+	m_sz_sock_addr_snd = sizeof(m_sock_addr_snd);
+	res = recvfrom(m_sock, 
+		       (char*) m_rbuf + m_rbuf_tail, 
+		       m_len_pkt_rcv - m_rbuf_tail,
+		       0,
+		       (sockaddr*) & m_sock_addr_snd, 
+		       &m_sz_sock_addr_snd);
+	
+	if(res == -1)
+	  break;
+	else
+	  m_rbuf_tail += res;
+
+	if(m_rbuf_tail == m_len_pkt_rcv){
+	  m_client_fixed = true;
+	  for(int och = 0; och < m_chout.size(); och++){
+	    m_rbuf_head += m_chout[och]->write_buf(m_rbuf + m_rbuf_head);
+	  }
+	  if(m_verb){
+	    cout << "Outputs:" << m_rbuf_tail << "/" << res << endl;
+	    for(int och = 0; och < m_chout.size(); och++)
+	      m_chout[och]->print(cout);
+	  }
+	  m_rbuf_head = m_rbuf_tail = 0;
+	}
       }else if(FD_ISSET(m_sock, &fe)){
 	cerr << "Socket error during recieving packet in " << m_name;
 	cerr << ". Now closing socket." << endl;
@@ -351,26 +369,11 @@ bool f_ch_share::proc()
 	return init_run();
       }else{
 	// time out;
-	m_rbuf_tail = 0;
-	break;
+	return true;
       }
   }
 
-  if(m_rbuf_tail == m_len_pkt_rcv){
-	  m_client_fixed = true;
-    for(int och = 0; och < m_chout.size(); och++){
-      m_rbuf_head += m_chout[och]->write_buf(m_rbuf + m_rbuf_head);
-    }
-  }
 
-  if(m_verb){
-    cout << "Inputs" << endl;
-    for(int ich = 0; ich < m_chin.size(); ich++)
-      m_chin[ich]->print(cout);
-	cout << "Outputs" << endl;
-    for(int och = 0; och < m_chout.size(); och++)
-      m_chout[och]->print(cout);
-  }
   return true;
 }
 

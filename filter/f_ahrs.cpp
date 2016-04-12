@@ -115,7 +115,8 @@ bool f_ahrs::proc()
 		m_cmd = ERC_UNDEF;
 		// seeking for #SYNCHaw<cr><lf>
 		int len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, m_readlen - m_rbuf_tail);
-		m_rbuf_tail += len;
+		if(len > 0)
+		  m_rbuf_tail += len;
 		int i, j = 0;
 		int tocnt = 0;
 		while(1){
@@ -140,7 +141,9 @@ bool f_ahrs::proc()
 				break;
 
 			len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, m_readlen - m_rbuf_tail);
-			m_rbuf_tail += len;
+
+			if(len > 0)
+			  m_rbuf_tail += len;
 
 			tocnt++;
 			if(tocnt == 1000000){
@@ -155,7 +158,10 @@ bool f_ahrs::proc()
 		m_rbuf_tail = m_rbuf_tail - m_rbuf_head;
 		m_rbuf_head = 0;
 	}else{	
-		m_rbuf_tail += read_serial(m_hserial, m_rbuf + m_rbuf_tail, m_readlen - m_rbuf_tail);
+	  int len = read_serial(m_hserial, m_rbuf + m_rbuf_tail, m_readlen - m_rbuf_tail);
+
+	  if(len > 0)
+	    m_rbuf_tail += len;
 	}
 
 	if(m_cmd == ERC_S)

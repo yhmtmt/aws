@@ -73,8 +73,8 @@ struct s_jc_u3613m
 		if(naxs > 4){ // may be in linux
 			erx = set_btn(axs[4] > 0.5 ? 1 : 0, erx);
 			elx = set_btn(axs[4] < -0.5 ? 1 : 0, elx);
-			eux = set_btn(axs[5] > 0.5 ? 1 : 0, eux);
-			edx = set_btn(axs[5] < -0.5 ? 1 : 0, edx);
+			edx = set_btn(axs[5] > 0.5 ? 1 : 0, edx);
+			eux = set_btn(axs[5] < -0.5 ? 1 : 0, eux);
 			trx = set_tbtn(erx, trx);
 			tlx = set_tbtn(elx, tlx);
 			tux = set_tbtn(eux, tux);
@@ -168,9 +168,9 @@ struct s_jc_u3613m
 		print(out, "lb", elb, tlb);	out << " ";
 		print(out, "rb", erb, trb);	out << " ";
 		print(out, "lt", elt, tlt); out << " ";
+		print(out, "rt", ert, trt);	out << " ";
 		print(out, "lst", elst, tlst); out << " ";
 		print(out, "rst", erst, trst); out << " ";
-		print(out, "rt", ert, trt);	out << " ";
 		print(out, "back", eback, tback); out << " ";
 		print(out, "start", estart, tstart); out << " ";
 		print(out, "guide", eguide, tguide);
