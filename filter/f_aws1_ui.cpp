@@ -668,7 +668,6 @@ void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
 
 
 /////////////////////////////////////////////////////////////////////////// f_aws1_ui_test members
-#ifdef _DEBUG
 
 f_aws1_ui_test::f_aws1_ui_test(const char * name):f_base(name),
 	m_state(NULL),
@@ -786,6 +785,3 @@ bool f_aws1_ui_test::proc()
 	simulate_dynamics();
 	return true;
 }
-
-
-#endif

@@ -307,7 +307,6 @@ void drawGlSysStateInfTxt(float xorg/* right top x */, float yorg /* right top y
 //////////////////////////////////////////////////////// f_aws1_ui_test
 // This class is a test class interfacing only with f_aws1_ui via the compatible channel set.
 // This class is used to manipulate the channel values by fset parameters. 
-#ifdef _DEBUG
 class f_aws1_ui_test: public f_base
 {
 protected:
@@ -435,5 +434,4 @@ public:
 	virtual void destroy_run();
 	virtual bool proc();
 };
-#endif
 #endif
