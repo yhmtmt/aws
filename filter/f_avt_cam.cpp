@@ -168,7 +168,7 @@ void f_avt_cam::register_params(s_cam_params & cam)
 	register_fpar(cam.strParams[6], &cam.m_StreamBytesPerSecond, "StreamBytesPerSecond (default 115000000)");
 
 	// about exposure
-	register_fpar(cam.strParams[7], (int*) &cam.m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode (default Auto)");
+	register_fpar(cam.strParams[7], (int*) &cam.m_ExposureMode, (int)(emExternal) + 1, strExposureMode, "ExposureMode");
 	register_fpar(cam.strParams[8], &cam.m_ExposureAutoAdjustTol, "ExposureAutoAdjusttol (default 5)");
 	register_fpar(cam.strParams[9], (int*)&cam.m_ExposureAutoAlg, (int)eaaFitRange, strExposureAutoAlg, "ExposureAutoAlg (default Mean)");
 	register_fpar(cam.strParams[10], &cam.m_ExposureAutoMax, "ExposureAutoMax (default 500000us)");
