@@ -209,15 +209,48 @@ void f_aws1_ui::ui_show_rudder(float wscale, float hscale)
 		m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
 		0xff, 0x7f, 0x00);
 
-	float x =  (float)(0. - 255. * 0.5 * wscale);
-	float y = (float)(1.0 - 6 * hfont);
+	float xorg =  (float)(0. - 255. * 0.5 * wscale);
+	float yorg = (float)(1.0 - 6 * hfont);
+	float x1, x2, y1, y2, ytxt;
 
-	drawGlRudderIndicator("RUDDER", 
-		x, y, 
-		wm, hm,  wfont, hfont, lw, 
-		(float)(rud_inst * wscale),
-		(float)(rud_inst_cur * wscale),
-		(float)(rud_sta * wscale));
+	// draw title
+	drawGlText((float)(xorg + 0.5 * (wm - wfont * (double)strlen("RUDDER"))), 
+		(float)(yorg + 0.5 * hfont), "RUDDER", 
+		0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+
+	x1 = xorg;
+	x2 = (float)(xorg + wm);
+	y1 = yorg;
+	y2 = (float)(yorg - hm);
+	ytxt = (float) (yorg - 1.2 * hm - hfont);
+
+	// indicator box
+	drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
+
+	x1 = (float)(xorg + 0.5 * wm);
+
+	// rudder instruction value
+	x2 = (float)(rud_inst * wscale - 0.5 * wm);
+	drawGlLine2Df(x2, y1, x2, y2, 0, 1, 0, 1, lw);
+
+	// current rudder instruction value
+	x2 = (float)(rud_inst_cur * wscale - 0.5 * wm);
+	y2 = (float)(yorg - 0.666 * hm);
+	drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
+
+	// current rudder angle
+	x2 = (float)(rud_sta * wscale - 0.5 * wm);
+	y1 = y2;
+	y2 = (float)(yorg - hm) ;
+	drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
+
+	// Midship
+	float dwfont = (float)(- 0.5 * wfont);
+	drawGlLine2Df(x1, y1, x1, y2, 0, 1, 0, 1, lw);
+	drawGlText(x1 + dwfont, ytxt, "0", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	drawGlText(xorg + dwfont, ytxt, "P", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	drawGlText((float)(xorg + wm + dwfont), ytxt, "S", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+
 	if(m_verb){
 		cout << "    Inst rud " << rud_inst;
 		cout << "    Ctrl rud " << rud_inst_cur;
@@ -284,6 +317,7 @@ void f_aws1_ui::ui_show_state(float wscale, float hscale)
 
 	float wfont = (float)(13. * wscale);
 	float hfont = (float)(13. * hscale);
+	float lw = (float)(1.0 / m_sz_win.width);
 	float roll, pitch, yaw;
 	float lat, lon, alt, galt;
 	float cog, sog;
@@ -298,10 +332,54 @@ void f_aws1_ui::ui_show_state(float wscale, float hscale)
 	yaw = (float)(yaw + 180.);
 
 	// Drawing ship state information
-	float x = (float)(wfont - 1.0);
-	float y = (float)(hfont - 1.0);
-	drawGlStateInfTxt(x, y, wfont, hfont, 
-		lat, lon, alt, galt, cog, sog, roll, pitch, yaw, depth, 1);
+	float xorg = (float)(wfont - 1.0);
+	float yorg = (float)(hfont - 1.0);
+	// box and the informations
+	char slat[32]; // "LAT     : XXX.XXXXXXXXdg"
+	char slon[32]; // "LON     : XXX.XXXXXXXXdg"
+	char salt[32]; // "ALT(GEO): XXX.Xm (XXX.Xm)"
+	char scog[32]; // "COG     : XXX.Xdg"
+	char ssog[32]; // "SOG     : XXX.Xkt"
+	char syaw[32]; // "YAW     : XXX.Xdg"
+	char spch[32]; // "PITCH   : XXX.Xdg"
+	char srol[32]; // "ROLL    : XXX.Xdg"
+	char sdpt[32]; // "DEPTH   : XXX.Xm"
+	snprintf(slat, 32, "LAT     : %+013.8fdg", lat);
+	snprintf(slon, 32, "LON     : %+013.8fdg", lon);
+	snprintf(salt, 32, "ALT(GEO): %+06.1fm (%+06.1fm)", alt, galt);
+	snprintf(syaw, 32, "YAW     : %+06.1fdg", yaw);
+	snprintf(spch, 32, "PITCH   : %+06.1fdg", pitch);
+	snprintf(srol, 32, "ROLL    : %+06.1fdg", roll);
+	snprintf(scog, 32, "COG     : %+06.1fdg", cog);
+	snprintf(ssog, 32, "SOG     : %+06.1fkt", sog);
+	snprintf(sdpt, 32, "DEPTH   : %+06.1fm", depth);
+
+	float w = (float)((strlen(salt) + 2) * wfont * 1.2);
+	float h = (float)(20 * hfont);
+	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg + h), 0, 1, 0, 1, lw);
+
+	float x, y;
+	x = (float)(xorg + wfont);
+	y = (float)(yorg + hfont);
+
+	drawGlText(x, y, slat, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y += 2 * hfont;
+	drawGlText(x, y, slon, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y += 2 * hfont;
+	drawGlText(x, y, salt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y += 2 * hfont;
+	drawGlText(x, y, scog, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y += 2 * hfont;
+	drawGlText(x, y, ssog, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y += 2 * hfont;
+	drawGlText(x, y, syaw, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y += 2 * hfont;
+	drawGlText(x, y, spch, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y += 2 * hfont;
+	drawGlText(x, y, srol, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	y += 2 * hfont;
+	drawGlText(x, y, sdpt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+
   if(m_verb){
 	  cout << " RPY = " << roll << "," << pitch << "," << yaw << endl;
 	  cout << " Pos = " << lat << "," << lon << "," << alt << endl;
@@ -426,106 +504,6 @@ void drawGlEngineIndicator(const char * title,
   drawGlLine2Df(x1, y2, x2, y2, 0, 1, 0, 1, lw);
   drawGlText(xtxt, (float)(y2 - hfont), 
 	     "B", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-}
-
-void drawGlRudderIndicator(const char * title,
-			   float xorg, float yorg, float w, float h,
-			   float wfont, float hfont, 
-			   float lw, float rud_inst, float rud_cur, float rud_sta)
-{
-  float x1, x2, y1, y2, ytxt;
-  
-  // draw title
-  drawGlText((float)(xorg + 0.5 * (w - wfont * (double)strlen(title))), 
-	     (float)(yorg + 0.5 * hfont), title, 
-	     0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-  
-  x1 = xorg;
-  x2 = (float)(xorg + w);
-  y1 = yorg;
-  y2 = (float)(yorg - h);
-  
-  ytxt = (float) (yorg - 1.2 * h - hfont);
-
-  // indicator box
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
-
-  x1 = (float)(xorg + 0.5 * w);
-
-  // rudder instruction value
-  x2 = (float)(rud_inst - 0.5 * w);
-  drawGlLine2Df(x2, y1, x2, y2, 0, 1, 0, 1, lw);
-
-  // current rudder instruction value
-  x2 = (float)(rud_cur - 0.5 * w);
-  y2 = (float)(yorg - 0.666 * h);
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
-
-  // current rudder angle
-  x2 = (float)(rud_sta - 0.5 * w);
-  y1 = y2;
-  y2 = (float)(yorg - h) ;
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
-
-  // Midship
-  float dwfont = (float)(- 0.5 * wfont);
-  drawGlLine2Df(x1, y1, x1, y2, 0, 1, 0, 1, lw);
-  drawGlText(x1 + dwfont, ytxt, "0", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-  drawGlText(xorg + dwfont, ytxt, "P", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-  drawGlText((float)(xorg + w + dwfont), ytxt, "S", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-}
-
-void drawGlStateInfTxt(float xorg, float yorg, 
-		       float wfont, float hfont,
-		       float lat, float lon, float alt, float galt, 
-		       float cog, float sog, 
-		       float roll, float pitch, float yaw,
-		       float depth, float sz)
-{
-	// box and the informations
-	char slat[32]; // "LAT     : XXX.XXXXXXXXdg"
-	char slon[32]; // "LON     : XXX.XXXXXXXXdg"
-	char salt[32]; // "ALT(GEO): XXX.Xm (XXX.Xm)"
-	char scog[32]; // "COG     : XXX.Xdg"
-	char ssog[32]; // "SOG     : XXX.Xkt"
-	char syaw[32]; // "YAW     : XXX.Xdg"
-	char spch[32]; // "PITCH   : XXX.Xdg"
-	char srol[32]; // "ROLL    : XXX.Xdg"
-	char sdpt[32]; // "DEPTH   : XXX.Xm"
-	snprintf(slat, 32, "LAT     : %+013.8fdg", lat);
-	snprintf(slon, 32, "LON     : %+013.8fdg", lon);
-	snprintf(salt, 32, "ALT(GEO): %+06.1fm (%+06.1fm)", alt, galt);
-	snprintf(syaw, 32, "YAW     : %+06.1fdg", yaw);
-	snprintf(spch, 32, "PITCH   : %+06.1fdg", pitch);
-	snprintf(srol, 32, "ROLL    : %+06.1fdg", roll);
-	snprintf(scog, 32, "COG     : %+06.1fdg", cog);
-	snprintf(ssog, 32, "SOG     : %+06.1fkt", sog);
-	snprintf(sdpt, 32, "DEPTH   : %+06.1fm", depth);
-	float w = (float)((strlen(salt) + 2) * wfont * 1.2);
-	float h = (float)(20 * hfont);
-	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg + h), 0, 1, 0, 1, sz);
-
-	float x, y;
-	x = (float)(xorg + wfont);
-	y = (float)(yorg + hfont);
-
-	drawGlText(x, y, slat, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
-	drawGlText(x, y, slon, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
-	drawGlText(x, y, salt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
-	drawGlText(x, y, scog, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
-	drawGlText(x, y, ssog, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
-	drawGlText(x, y, syaw, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
-	drawGlText(x, y, spch, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
-	drawGlText(x, y, srol, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
-	drawGlText(x, y, sdpt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
 void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)

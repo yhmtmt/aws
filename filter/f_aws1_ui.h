@@ -271,23 +271,11 @@ class f_aws1_ui: public f_glfw_window
   void ui_show_sys_state(float wscale, float hscale);
 };
 
+// helps f_aws1_ui::ui_show_meng and ui_show_seng 
 void drawGlEngineIndicator(const char * title, 
 			   float xorg, float yorg, float w, float h, 
 			   float wfont, float hfont,
 			   float lw, float val_inst, float val_cur);
-
-void drawGlRudderIndicator(const char * title, 
-			   float xorg, float yorg, float w, float h,
-			   float wfont, float hfont, 
-			   float lw, float rud_inst, float rud_cur, 
-			   float rud_sta);
-
-void drawGlStateInfTxt(float xorg  /* left bottom x */, float yorg, /* left bottom y */
-					float wfont, float hfont,
-				  float lat, float lon, float alt, float galt, 
-				  float cog, float sog, 
-				  float roll, float pitch, float yaw,
-				  float depth, float sz);
 
 
 //////////////////////////////////////////////////////// f_aws1_ui_test
