@@ -95,7 +95,7 @@ else
 endif 
 	DEFS += -DGLFW_WINDOW 
 	FILTER += f_glfw_window
-	FILTER += f_aws1_ui
+	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev
 endif
 
 ifeq ($(SANYO_HD5400),y)
