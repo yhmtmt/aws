@@ -43,7 +43,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					m_state(NULL),
 					 m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL), m_ch_img(NULL),
 					 m_acd_sock(-1), m_acd_port(20100), 
-					 m_mode(AUM_NORMAL)
+					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0)
 {
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl_in, typeid(ch_aws1_ctrl).name(), "Control input channel.");
@@ -65,6 +65,8 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   m_ui[AUM_NORMAL]	= new c_aws1_ui_normal(this);
   m_ui[AUM_MAP]		= new c_aws1_ui_map(this);
   m_ui[AUM_DEV]		= new c_aws1_ui_dev(this);
+
+  register_fpar("menu", &m_ui_menu, "Invoke menu");
 }
 
 
@@ -123,8 +125,6 @@ void f_aws1_ui::destroy_run()
 void f_aws1_ui::ui_set_js_ctrl()
 {
   if(m_js.id != -1){
-	  m_js.set_btn();
-	  m_js.set_stk();
   // joystic handling (assuming JC-U3613M)
     // Stick value
     // U: -1
@@ -414,14 +414,176 @@ void f_aws1_ui::ui_show_sys_state(float wscale, float hscale)
 	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
+void f_aws1_ui::ui_show_menu(float wscale, float hscale)
+{
+	glRasterPos2i(-1, -1);
+	//-----------------------//
+	//     System MENU       //
+	//-----------------------//
+	//  <Control> | <Value>  //
+	//  <UI     > | <Value>  //
+	//  <Exit   > | <Value>  //
+	//-----------------------//
+	//  <Apply(a)>  <Cancel(b)> //
+	///////////////////////////
+	float wfont = (float)(1.2 * 13. * wscale);
+	float hfont = (float)(1.2 * 13. * hscale);
+	const char * title = "System Menu"; /* 11 characters */
+
+	const char * items[3] = { /* 7characters the longest.*/
+		"Control", "UI", "Quit"
+	};
+
+	float alpha_bg = 0.5;
+	float alpha_txt = 1.0;
+	
+	float wcol_l = 12 * wfont;
+	float wcol_r = 12 * wfont;
+	float wm = wcol_l + wcol_r + 2 * wfont;
+	float hm = 2 * 5 * hfont + 3 * hfont; 
+	float lw = (float)(1.0 / m_sz_win.width);
+
+	float xorg = (float)(- 0.5 * wm);
+	float yorg = (float)(- 0.5 * hm);
+
+	// draw menu background
+	drawGlSquare2Df(xorg, yorg, (float)(xorg + wm), (float)(yorg + hm), 0, 0, 0, alpha_bg);
+
+	// draw frame 
+	drawGlSquare2Df(xorg, yorg, (float)(xorg + wm), (float)(yorg + hm), 0, 1, 0, alpha_bg, lw);
+
+	// draw bars
+	float x = (float)(xorg + wm);
+	float y = (float)(yorg + 3 * hfont);
+	drawGlLine2Df(xorg, y, x, y, 0, 1, 0, alpha_bg, lw); 
+	y = (float)(yorg + hm - 3 * hfont);
+	drawGlLine2Df(xorg, y, x, y, 0, 1, 0, alpha_bg, lw);
+	x = 0.;
+	drawGlLine2Df(x, y, x, (float)(yorg + 3 * hfont), 0, 1, 0, alpha_bg, lw);
+
+	// Draw Text
+	x = (float)(- 0.5 * 11 * wfont);
+	float xv = wfont;
+	y = (float)(yorg + hm - 2 * hfont);
+
+	drawGlText(x, y, title, 0, 1, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+
+	// Control
+	x = (float) (xorg + wfont);
+	y -= (float)(3 * hfont);
+	if(m_menu_focus == 0)
+		drawGlSquare2Df(xorg, (float)(y + 1.5 * hfont), (float)(xorg + wm), (float)(y - 0.5 * hfont),
+			0, 1, 0, alpha_bg);
+	float g = m_menu_focus == 0 ? 0.f : 1.f;
+	drawGlText(x, y, items[0], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	drawGlText(xv, y, str_aws1_ctrl_src[m_menu_acs], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+
+	// UI
+	y -= (float)(2 * hfont);
+	if(m_menu_focus == 1)
+		drawGlSquare2Df(xorg, (float)(y + 1.5 * hfont), (float)(xorg + wm), (float)(y - 0.5 * hfont),
+			0, 1, 0, alpha_bg);
+	g = m_menu_focus == 1 ? 0.f : 1.f;
+	drawGlText(x, y, items[1], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	drawGlText(xv, y, m_str_aws1_ui_mode[m_menu_mode], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+
+	// Exit
+	y -= (float)(2 * hfont);
+	if(m_menu_focus == 2)
+		drawGlSquare2Df(xorg, (float)(y + 1.5 * hfont), (float)(xorg + wm), (float)(y - 0.5 * hfont),
+			0, 1, 0, alpha_bg);
+	g = m_menu_focus == 2 ? 0.f : 1.f;
+	drawGlText(x, y, items[2], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	drawGlText(xv, y, m_quit ? "yes":"no", 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+
+	// OK/Cancel
+	y -= (float)(3 * hfont);
+	drawGlText(x, y,  "(a) Apply", 0, 1, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	drawGlText(xv, y, "(b) Cancel", 0, 1, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+}
+
+void f_aws1_ui::ui_handle_menu()
+{
+	if(m_js.estart & s_jc_u3613m::EB_EVDOWN){
+		m_ui_menu = true;
+		m_quit = false;
+		m_menu_acs = m_acp.ctrl_src;
+		m_menu_mode = m_mode;
+		return;
+	}
+
+	if(!m_ui_menu)
+		return;
+
+	if(m_js.estart & s_jc_u3613m::EB_EVDOWN || m_js.eb & s_jc_u3613m::EB_EVDOWN)
+	{// cancel 
+		m_ui_menu = false;
+	}
+
+	if(m_js.ea & s_jc_u3613m::EB_EVDOWN)
+	{
+		if(m_quit){
+			m_bactive = false;
+		}
+		m_acp.ctrl_src = m_menu_acs;
+		m_mode = m_menu_mode;
+		m_ui_menu = false;
+	}
+
+	if(m_js.edx & s_jc_u3613m::EB_EVDOWN || m_js.tdx > 60){
+		m_js.tdx = 0;
+		m_menu_focus = (m_menu_focus + 1 ) % 3;
+	}
+
+	if(m_js.eux & s_jc_u3613m::EB_EVDOWN || m_js.tux > 60){
+		m_js.tux = 0;
+		m_menu_focus = (m_menu_focus + 4 ) % 3;
+	}
+
+	if(m_js.elx & s_jc_u3613m::EB_EVDOWN || m_js.tlx > 60){
+		m_js.tlx = 0;
+		switch(m_menu_focus){
+		case 0:
+			m_menu_acs = (e_aws1_ctrl_src) ((m_menu_acs + ACS_NONE + 1) % ACS_NONE);
+			break;
+		case 1:
+			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + AUM_UNDEF + 1) % AUM_UNDEF);
+			break;
+		case 2:
+			m_quit = !m_quit;
+			break;
+		}
+	}
+	if(m_js.erx & s_jc_u3613m::EB_EVDOWN || m_js.trx > 60){
+		m_js.trx = 0;
+		switch(m_menu_focus){
+		case 0:
+			m_menu_acs = (e_aws1_ctrl_src) ((m_menu_acs + 1) % ACS_NONE);
+			break;
+		case 1:
+			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + 1) % AUM_UNDEF);
+			break;
+		case 2:
+			m_quit = !m_quit;
+			break;
+		}
+	}
+}
+
 bool f_aws1_ui::proc()
 {
 	c_aws1_ui_core & ui = *m_ui[m_mode];
 
 	// process joypad inputs
-	ui.js(m_js); // mode dependent joypad handler
-	//--> system joypad handling
+	if(m_js.id != -1){
+		m_js.set_btn();
+		m_js.set_stk();
+	}
+	if(!m_ui_menu)
+		ui.js(m_js); // mode dependent joypad handler
 
+	//--> system joypad handling
+	ui_handle_menu();
 	//<-- system joypad handling	
 
 	s_aws1_ctrl_pars acpkt;
@@ -447,6 +609,10 @@ bool f_aws1_ui::proc()
 	drawGlText(x, y, m_time_str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
 	ui_show_sys_state(wscale, hscale);
+
+	if(m_ui_menu)
+		ui_show_menu(wscale, hscale);
+	
 	//<-- system information rendering
 
 	glfwSwapBuffers(pwin());

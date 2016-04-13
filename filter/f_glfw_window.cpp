@@ -113,9 +113,9 @@ void drawGlText(float x, float y, const char * str,
 		float r, float g, float b , float alpha,
 		void* font)
 {
-  glRasterPos2f(x, y);
   glColor4f(r, g, b, alpha);
   int l = (int) strlen(str);
+  glRasterPos2f(x, y);
   for(int i = 0; i < l; i++){
     glutBitmapCharacter(font, str[i]);
   }

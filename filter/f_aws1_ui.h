@@ -269,6 +269,15 @@ class f_aws1_ui: public f_glfw_window
   void ui_show_seng(float wscale, float hscale);
   void ui_show_state(float wscale, float hscale);
   void ui_show_sys_state(float wscale, float hscale);
+
+  bool m_ui_menu;
+  
+  int m_menu_focus;
+  e_aws1_ctrl_src m_menu_acs;
+  e_aws1_ui_mode m_menu_mode;
+  bool m_quit;
+  void ui_show_menu(float wscale, float hscale);
+  void ui_handle_menu();
 };
 
 // helps f_aws1_ui::ui_show_meng and ui_show_seng 
