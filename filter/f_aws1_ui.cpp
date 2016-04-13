@@ -36,7 +36,7 @@ using namespace cv;
 #include "f_aws1_ui.h"
 
 const char * f_aws1_ui::m_str_aws1_ui_mode[AUM_UNDEF] = {
-	"normal", "map"
+	"normal", "map", "dev"
 };
 
 f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
@@ -64,6 +64,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("mode", (int*)&m_mode, AUM_UNDEF, m_str_aws1_ui_mode, "UI mode.");
   m_ui[AUM_NORMAL]	= new c_aws1_ui_normal(this);
   m_ui[AUM_MAP]		= new c_aws1_ui_map(this);
+  m_ui[AUM_DEV]		= new c_aws1_ui_dev(this);
 }
 
 

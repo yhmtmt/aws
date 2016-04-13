@@ -214,6 +214,7 @@ class f_aws1_ui: public f_glfw_window
     m_mx = xpos;
     m_my = ypos;
   }
+
   virtual void _mouse_button_callback(int button, int action, int mods);
   virtual void _key_callback(int key, int scancode, int action, int mods);
 
@@ -223,7 +224,7 @@ class f_aws1_ui: public f_glfw_window
 
   // User interface mode sets
   enum e_aws1_ui_mode {
-	  AUM_NORMAL, AUM_MAP, AUM_UNDEF
+	  AUM_NORMAL, AUM_MAP, AUM_DEV, AUM_UNDEF
   } m_mode;
 
   static const  char * m_str_aws1_ui_mode[AUM_UNDEF];
@@ -287,7 +288,6 @@ void drawGlStateInfTxt(float xorg  /* left bottom x */, float yorg, /* left bott
 				  float cog, float sog, 
 				  float roll, float pitch, float yaw,
 				  float depth, float sz);
-
 
 
 //////////////////////////////////////////////////////// f_aws1_ui_test

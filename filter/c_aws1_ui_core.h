@@ -47,5 +47,6 @@ public:
 
 #include "c_aws1_ui_normal.h"
 #include "c_aws1_ui_map.h"
+#include "c_aws1_ui_dev.h"
 
 #endif
