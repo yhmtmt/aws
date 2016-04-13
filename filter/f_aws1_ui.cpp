@@ -635,7 +635,6 @@ void f_aws1_ui::rcv_ctrl(s_aws1_ctrl_pars & acpkt)
   }
 }
 
-
 void f_aws1_ui::_mouse_button_callback(int button, int action, int mods)
 {
 }
@@ -643,90 +642,6 @@ void f_aws1_ui::_mouse_button_callback(int button, int action, int mods)
 void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
 {
 	m_ui[m_mode]->key(key, scancode, action, mods);
-}
-
-
-/////////////////////////////////////////////////////////////////////////// c_aws1_ui_core
-
-
-/////////////////////////////////////////////////////////////////////////// c_aws1_ui_normal
-void c_aws1_ui_normal::js(const s_jc_u3613m & js)
-{
-	pui->ui_set_js_ctrl();	
-}
-
-void c_aws1_ui_normal::draw(float xscale, float yscale)
-{
-	pui->ui_show_img();
-
-	pui->ui_show_meng(xscale, yscale);
-	pui->ui_show_seng(xscale, yscale);
-	pui->ui_show_rudder(xscale, yscale);
-	pui->ui_show_state(xscale, yscale);
-
-  // Drawing attitude indicator (w-mark, hdg scale, pitch scale) for main view type 1 only
-  // Drawing map information. both for main view type 1 and 2. 
-}
-
-void c_aws1_ui_normal::key(int key, int scancode, int action, int mods)
-{
-	if(action == GLFW_PRESS){
-		switch(key){
-		case GLFW_KEY_RIGHT:
-			{
-				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
-				pui->ui_set_rud_f(step_up(acp.rud_aws, m_rud_pos));
-			}
-			break;
-		case GLFW_KEY_LEFT:
-			{
-				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
-				pui->ui_set_rud_f(step_down(acp.rud_aws, m_rud_pos));
-			}
-			break;
-		case GLFW_KEY_UP:
-			{
-				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
-				if(m_ec == EC_MAIN){
-					pui->ui_set_meng_f(step_up(acp.meng_aws, m_meng_pos));
-				}else{
-					pui->ui_set_seng_f(step_up(acp.seng_aws, m_seng_pos));
-				}
-			}
-			break;
-		case GLFW_KEY_DOWN:
-			{
-				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
-				if(m_ec == EC_MAIN){
-					pui->ui_set_meng_f(step_down(acp.meng_aws, m_meng_pos));
-				}else{
-					pui->ui_set_seng_f(step_down(acp.seng_aws, m_seng_pos));
-				}
-			}
-			break;
-		case GLFW_KEY_E:
-			if(m_ec == EC_MAIN){
-				m_ec = EC_SUB;
-			}else{
-				m_ec = EC_MAIN;
-			}
-		default:
-			break;
-		}
-	}
-}
-
-/////////////////////////////////////////////////////////////////////////// c_aws1_ui_map
-void c_aws1_ui_map::js(const s_jc_u3613m & js)
-{
-}
-
-void c_aws1_ui_map::draw(float xscale, float yscale)
-{
-}
-
-void c_aws1_ui_map::key(int key, int scancode, int action, int mods)
-{
 }
 
 /////////////////////////////////////////////////////////////////////////// f_aws1_ui_test members
