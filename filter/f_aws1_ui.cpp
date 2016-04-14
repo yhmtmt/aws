@@ -306,7 +306,7 @@ void f_aws1_ui::ui_show_seng(float wscale, float hscale)
 		(float)(seng_inst * hscale),
 		(float)(seng_inst_cur * hscale));
   if(m_verb){
-	  cout << "    Inst seng " << seng_inst << endl;
+	  cout << "    Inst seng " << seng_inst;
 	  cout << "    Ctrl seng " << seng_inst_cur << endl;
   }
 }
@@ -537,17 +537,17 @@ void f_aws1_ui::ui_handle_menu()
 
 	if(m_js.eux & s_jc_u3613m::EB_EVDOWN || m_js.tux > 60){
 		m_js.tux = 0;
-		m_menu_focus = (m_menu_focus + 4 ) % 3;
+		m_menu_focus = (m_menu_focus + 2 ) % 3;
 	}
 
 	if(m_js.elx & s_jc_u3613m::EB_EVDOWN || m_js.tlx > 60){
 		m_js.tlx = 0;
 		switch(m_menu_focus){
 		case 0:
-			m_menu_acs = (e_aws1_ctrl_src) ((m_menu_acs + ACS_NONE + 1) % ACS_NONE);
+			m_menu_acs = (e_aws1_ctrl_src) ((m_menu_acs + ACS_NONE - 1) % ACS_NONE);
 			break;
 		case 1:
-			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + AUM_UNDEF + 1) % AUM_UNDEF);
+			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + AUM_UNDEF - 1) % AUM_UNDEF);
 			break;
 		case 2:
 			m_quit = !m_quit;
