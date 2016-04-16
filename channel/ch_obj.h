@@ -16,6 +16,7 @@
 // along with ch_obj.h.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ch_base.h"
+#include "../util/aws_coord.h"
 
 // Object source (Defines how the object is detected.)
 enum e_obj_src
@@ -108,6 +109,11 @@ public:
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_BIH);
 	}
 
+	void set_bih_from_ecef(){
+		m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_BIH);
+		eceftobih(m_x, m_y, m_z, m_lat, m_lon, m_alt);	
+	}
+
 	void reset_bih(){
 		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_BIH);
 	}
@@ -140,6 +146,23 @@ public:
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_ECEF);
 	}
 
+	void set_ecef_from_bih()
+	{
+		m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_ECEF);
+		bihtoecef(m_lat, m_lon, m_alt, m_x, m_y, m_z);
+	}
+
+	void set_ecef_from_rel(const Mat & Rorg, float xorg, float yorg, float zorg)
+	{
+		if(m_dtype & EOD_POS_REL){
+			const double * ptr = Rorg.ptr<double>();
+			m_x = (float)(ptr[0] * m_xr + ptr[3] * m_yr + ptr[6] * m_zr + xorg);
+			m_y = (float)(ptr[1] * m_xr + ptr[4] * m_yr + ptr[7] * m_zr + yorg);
+			m_z = (float)(ptr[2] * m_xr + ptr[5] * m_yr + ptr[8] * m_zr + zorg);
+			m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_ECEF);
+		}
+	}
+
 	void reset_ecef(){
 		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_ECEF);
 	}
@@ -155,6 +178,21 @@ public:
 		m_vy = vy;
 		m_vz = vz;
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_ECEF);
+	}
+
+	void set_vel_ecef_from_bih(const Mat & Rorg)
+	{
+		if(m_dtype & EOD_POS_BIH){
+			float theta = (float)(m_cog * (PI / 180.));
+			float c = cos(theta);
+			float s = sin(theta);
+			const double * ptr = Rorg.ptr<double>();
+			m_vx = (float)(s * ptr[0] + c * ptr[3]);
+			m_vy = (float)(s * ptr[1] + c * ptr[4]);
+			m_vz = (float)(s * ptr[2] + c * ptr[5]);
+
+			m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_ECEF);
+		}
 	}
 
 	void reset_vel_ecef(){
@@ -174,6 +212,21 @@ public:
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_REL);
 	}
 
+	void set_pos_rel_from_ecef(const Mat & Rorg, float xorg, float yorg, float zorg)
+	{
+		if(m_dtype & EOD_POS_ECEF){
+			const double * ptr = Rorg.ptr<double>();
+			xorg = (float)(m_x - xorg);
+			yorg = (float)(m_y - yorg);
+			zorg = (float)(m_z - zorg);
+			m_xr = (float)(ptr[0] * xorg + ptr[1] * yorg + ptr[2] * zorg);
+			m_yr = (float)(ptr[3] * yorg + ptr[4] * yorg + ptr[5] * zorg);
+			m_zr = (float)(ptr[6] * zorg + ptr[7] * yorg + ptr[8] * zorg);
+
+			m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_REL);	
+		}
+	}
+
 	void reset_pos_rel(){
 		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_REL);
 	}
@@ -189,6 +242,17 @@ public:
 		m_vyr = vyr;
 		m_vzr = vzr;
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_REL);
+	}
+
+	void set_vel_rel_from_ecef(const Mat & Rorg)
+	{
+		if(m_dtype & EOD_VEL_ECEF){
+			const double * ptr = Rorg.ptr<double>();
+			m_vxr = (float)(m_vx * ptr[0] + m_vy * ptr[1] + m_vz * ptr[2]);
+			m_vyr = (float)(m_vx * ptr[3] + m_vy * ptr[4] + m_vz * ptr[5]);
+			m_vzr = (float)(m_vx * ptr[6] + m_vy * ptr[7] + m_vz * ptr[8]);
+			m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_REL);
+		}
 	}
 
 	void reset_vel_rel(){
