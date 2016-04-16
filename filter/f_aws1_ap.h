@@ -18,6 +18,7 @@
 #include "f_base.h"
 #include "../channel/ch_aws1_ctrl.h"
 #include "../channel/ch_state.h"
+#include "../channel/ch_wp.h"
 
 // automatically controls along with the waypoints
 // connects to ch_wp
@@ -27,6 +28,7 @@ protected:
 	ch_state * m_state;
 	ch_aws1_ctrl * m_ctrl_out;
 	ch_aws1_ctrl * m_ctrl_in;
+	ch_wp * m_wp;
 	s_aws1_ctrl_pars m_acp;
 public:
 	f_aws1_ap(const char * name);

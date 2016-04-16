@@ -18,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <list>
 #include <map>
 using namespace std;
 #include <cmath>
@@ -25,11 +26,13 @@ using namespace std;
 
 #include "f_aws1_ap.h"
 
-f_aws1_ap::f_aws1_ap(const char * name): f_base(name)
+f_aws1_ap::f_aws1_ap(const char * name): f_base(name), m_state(NULL), m_ctrl_out(NULL), m_ctrl_in(NULL),
+	m_wp(NULL)
 {
 	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
 	register_fpar("ch_ctrl_out", (ch_base**)&m_ctrl_out, typeid(ch_aws1_ctrl).name(), "Ctrl output channel");
 	register_fpar("ch_ctrl_in", (ch_base**)&m_ctrl_in, typeid(ch_aws1_ctrl).name(), "Ctrl input channel");
+	register_fpar("ch_wp", (ch_base**)&m_wp, typeid(ch_wp).name(), "Waypoint channel");
 	register_fpar("rud", &m_acp.rud_aws, "Rudder value");
 	register_fpar("meng", &m_acp.meng_aws, "Main engine value");
 	register_fpar("seng", &m_acp.seng_aws, "Sub engine value");

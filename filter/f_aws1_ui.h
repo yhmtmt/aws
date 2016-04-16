@@ -24,6 +24,8 @@
 #include "../channel/ch_image.h"
 #include "../channel/ch_state.h"
 #include "../channel/ch_aws1_ctrl.h"
+#include "../channel/ch_wp.h"
+#include "../channel/ch_obj.h"
 
 
 //s_jc_u3613m  Joystick handling structure
@@ -191,6 +193,8 @@ class f_aws1_ui: public f_glfw_window
  private:
   ch_state * m_state;
   ch_aws1_ctrl * m_ch_ctrl_in, * m_ch_ctrl_out;
+  ch_wp * m_ch_wp;
+  ch_obj * m_ch_obj;
   ch_image_ref * m_ch_img;
   bool m_udp_ctrl;
   bool m_verb;

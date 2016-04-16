@@ -102,7 +102,8 @@ public:
 		m_t = t;
 	}
 
-	void set_bih(const float lat, const float lon, const float alt){
+	// Position and velocity in BIH coordinate.
+	void set_pos_bih(const float lat, const float lon, const float alt){
 		m_lat = lat;
 		m_lon = lon;
 		m_alt = alt;
@@ -115,10 +116,10 @@ public:
 	}
 
 	void reset_bih(){
-		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_BIH);
+		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_BIH & ~EOD_VEL_BIH);
 	}
 
-	void get_bih(float & lat, float & lon, float & alt){
+	void get_pos_bih(float & lat, float & lon, float & alt){
 		lat = m_lat;
 		lon = m_lon;
 		alt = m_alt;
@@ -130,16 +131,13 @@ public:
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_BIH);
 	}
 
-	void reset_vel_bih(){
-		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_VEL_BIH);
-	}
-
 	void get_vel_bih(float & cog, float & sog){
 		cog = m_cog;
 		sog = m_sog;
 	}
 
-	void set_ecef(const float x, const float y, const float z){
+	// Position and velocity in ECEF coordinate.
+	void set_pos_ecef(const float x, const float y, const float z){
 		m_x = x;
 		m_y = y;
 		m_z = z;
@@ -164,10 +162,10 @@ public:
 	}
 
 	void reset_ecef(){
-		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_ECEF);
+		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_ECEF & ~EOD_VEL_ECEF);
 	}
 
-	void get_ecef(float & x, float & y, float & z){
+	void get_pos_ecef(float & x, float & y, float & z){
 		x = m_x;
 		y = m_y;
 		z = m_z;
@@ -195,16 +193,13 @@ public:
 		}
 	}
 
-	void reset_vel_ecef(){
-		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_VEL_ECEF);
-	}
-
 	void get_vel_ecef(float & vx, float & vy, float & vz){
 		vx = m_vx;
 		vy = m_vy;
 		vz = m_vz;
 	}
 
+	// For position and velocity in relative coordinate to my own ship.
 	void set_pos_rel(const float xr, const float yr, const float zr){
 		m_xr = xr;
 		m_yr = yr;
@@ -228,7 +223,7 @@ public:
 	}
 
 	void reset_pos_rel(){
-		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_REL);
+		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_REL & ~EOD_VEL_REL);
 	}
 
 	void get_pos_rel(float & xr, float & yr, float & zr){
@@ -253,10 +248,6 @@ public:
 			m_vzr = (float)(m_vx * ptr[6] + m_vy * ptr[7] + m_vz * ptr[8]);
 			m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_REL);
 		}
-	}
-
-	void reset_vel_rel(){
-		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_VEL_REL);
 	}
 
 	void get_vel_rel(float & vxr, float & vyr, float & vzr){
@@ -327,13 +318,13 @@ public:
 
 		set_time(t);
 		m_mmsi = mmsi;
-		set_bih(lat, lon, 0.);
+		set_pos_bih(lat, lon, 0.);
 		set_vel_bih(cog, sog);
 	}
 
 	void update(const long long t, float lat, float lon, float cog, float sog){
 		m_dtype = EOD_AIS;
-		set_bih(lat, lon, 0.);
+		set_pos_bih(lat, lon, 0.);
 		set_vel_bih(cog, sog);
 	}
 };
