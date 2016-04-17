@@ -163,10 +163,10 @@ void f_aws1_ui::ui_show_img()
 void f_aws1_ui::ui_show_rudder(float wscale, float hscale)
 {
 	glRasterPos2i(-1, -1);
-	float wfont = (float)(13. * wscale);
+	float wfont = (float)(8. * wscale);
 	float hfont = (float)(13. * hscale);
 	float wm = (float)(255. * wscale);
-	float hm = (float)(3 * hfont);
+	float hm = (float)(1.5 * hfont);
 	float lw = (float)(1.0 / m_sz_win.width);
 
 	float rud_inst = (float)m_acp.rud_aws;
@@ -231,9 +231,9 @@ void f_aws1_ui::ui_show_rudder(float wscale, float hscale)
 void f_aws1_ui::ui_show_meng(float wscale, float hscale)
 {
 	glRasterPos2i(-1, -1);
-	float wfont = (float)(13. * wscale);
+	float wfont = (float)(8. * wscale);
 	float hfont = (float)(13. * hscale);
-	float wm = (float)(3 * wfont);
+	float wm = (float)(3.0 * wfont);
 	float hm = (float)(255.0 * hscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 
@@ -258,9 +258,9 @@ void f_aws1_ui::ui_show_seng(float wscale, float hscale)
 {
 	glRasterPos2i(-1, -1);
 
-	float wfont = (float)(13. * wscale);
+	float wfont = (float)(8. * wscale);
 	float hfont = (float)(13. * hscale);
-	float wm = (float)(3 * wfont);
+	float wm = (float)(3.0 * wfont);
 	float hm = (float)(255.0 * hscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 
@@ -285,7 +285,7 @@ void f_aws1_ui::ui_show_state(float wscale, float hscale)
 {
 	glRasterPos2i(-1, -1);
 
-	float wfont = (float)(13. * wscale);
+	float wfont = (float)(8. * wscale);
 	float hfont = (float)(13. * hscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 	float roll, pitch, yaw;
@@ -324,30 +324,30 @@ void f_aws1_ui::ui_show_state(float wscale, float hscale)
 	snprintf(ssog, 32, "SOG     : %+06.1fkt", sog);
 	snprintf(sdpt, 32, "DEPTH   : %+06.1fm", depth);
 
-	float w = (float)((strlen(salt) + 2) * wfont * 1.2);
-	float h = (float)(20 * hfont);
+	float w = (float)((strlen(salt) + 2) * wfont);
+	float h = (float)(10 * hfont);
 	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg + h), 0, 1, 0, 1, lw);
 
 	float x, y;
 	x = (float)(xorg + wfont);
-	y = (float)(yorg + hfont);
+	y = (float)(yorg + 0.5 * hfont);
 
 	drawGlText(x, y, slat, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
+	y += hfont;
 	drawGlText(x, y, slon, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
+	y += hfont;
 	drawGlText(x, y, salt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
+	y += hfont;
 	drawGlText(x, y, scog, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
+	y += hfont;
 	drawGlText(x, y, ssog, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
+	y += hfont;
 	drawGlText(x, y, syaw, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
+	y += hfont;
 	drawGlText(x, y, spch, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
+	y += hfont;
 	drawGlText(x, y, srol, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-	y += 2 * hfont;
+	y += hfont;
 	drawGlText(x, y, sdpt, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
   if(m_verb){
@@ -362,15 +362,15 @@ void f_aws1_ui::ui_show_sys_state(float wscale, float hscale)
 {
 	glRasterPos2i(-1, -1);
 
-	float wfont = (float)(13. * wscale);
+	float wfont = (float)(8. * wscale);
 	float hfont = (float)(13. * hscale);
 	float xorg = (float)(1.0 - wfont);
 	float yorg = (float)(1.0 - hfont);
 	float lw = (float)(1.0 / m_sz_win.width);
 
 	char str[32]; // "XXXX: xxxxxxx"	
-	float w = (float)((15 + 2) * wfont * 1.2);
-	float h = (float)(6 * hfont);
+	float w = (float)((15 + 2) * wfont);
+	float h = (float)(4 * hfont);
 	float x = (float)(xorg - w);	
 	drawGlSquare2Df(xorg, yorg, x, (float)(yorg - h), 0, 1, 0, 1, lw);
 
@@ -380,7 +380,7 @@ void f_aws1_ui::ui_show_sys_state(float wscale, float hscale)
 	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
 	snprintf(str, 32, "MODE: %8s", m_str_aws1_ui_mode[m_mode]);
-	y -= 2 * hfont;
+	y -= hfont;
 	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
@@ -396,8 +396,8 @@ void f_aws1_ui::ui_show_menu(float wscale, float hscale)
 	//-----------------------//
 	//<Apply(a)>  <Cancel(b)>//
 	///////////////////////////
-	float wfont = (float)(1.2 * 13. * wscale);
-	float hfont = (float)(1.2 * 13. * hscale);
+	float wfont = (float)(8. * wscale);
+	float hfont = (float)(13. * hscale);
 	const char * title = "System Menu"; /* 11 characters */
 
 	const char * items[3] = { /* 7characters the longest.*/
@@ -410,7 +410,7 @@ void f_aws1_ui::ui_show_menu(float wscale, float hscale)
 	float wcol_l = 12 * wfont;
 	float wcol_r = 12 * wfont;
 	float wm = wcol_l + wcol_r + 2 * wfont;
-	float hm = 2 * 5 * hfont + 3 * hfont; 
+	float hm = (float)(6.5 * hfont); 
 	float lw = (float)(1.0 / m_sz_win.width);
 
 	float xorg = (float)(- 0.5 * wm);
@@ -424,50 +424,49 @@ void f_aws1_ui::ui_show_menu(float wscale, float hscale)
 
 	// draw bars
 	float x = (float)(xorg + wm);
-	float y = (float)(yorg + 3 * hfont);
+	float y = (float)(yorg + 1.5 * hfont);
 	drawGlLine2Df(xorg, y, x, y, 0, 1, 0, alpha_bg, lw); 
-	y = (float)(yorg + hm - 3 * hfont);
+	y = (float)(yorg + hm - 1.5 * hfont);
 	drawGlLine2Df(xorg, y, x, y, 0, 1, 0, alpha_bg, lw);
 	x = 0.;
-	drawGlLine2Df(x, y, x, (float)(yorg + 3 * hfont), 0, 1, 0, alpha_bg, lw);
+	drawGlLine2Df(x, y, x, (float)(yorg + 1.5 * hfont), 0, 1, 0, alpha_bg, lw);
 
 	// Draw Text
-	x = (float)(- 0.5 * 11 * wfont);
+	x = (float) (xorg + 0.5 * wfont);
 	float xv = wfont;
-	y = (float)(yorg + hm - 2 * hfont);
+	y = (float)(yorg + hm - hfont);
 
 	drawGlText(x, y, title, 0, 1, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
 	// Control
-	x = (float) (xorg + wfont);
-	y -= (float)(3 * hfont);
+	y -= (float)(1.5 * hfont);
 	if(m_menu_focus == 0)
-		drawGlSquare2Df(xorg, (float)(y + 1.5 * hfont), (float)(xorg + wm), (float)(y - 0.5 * hfont),
+		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
 			0, 1, 0, alpha_bg);
 	float g = m_menu_focus == 0 ? 0.f : 1.f;
 	drawGlText(x, y, items[0], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, str_aws1_ctrl_src[m_menu_acs], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
 	// UI
-	y -= (float)(2 * hfont);
+	y -= (float)(hfont);
 	if(m_menu_focus == 1)
-		drawGlSquare2Df(xorg, (float)(y + 1.5 * hfont), (float)(xorg + wm), (float)(y - 0.5 * hfont),
+		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
 			0, 1, 0, alpha_bg);
 	g = m_menu_focus == 1 ? 0.f : 1.f;
 	drawGlText(x, y, items[1], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, m_str_aws1_ui_mode[m_menu_mode], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
 	// Exit
-	y -= (float)(2 * hfont);
+	y -= (float)(hfont);
 	if(m_menu_focus == 2)
-		drawGlSquare2Df(xorg, (float)(y + 1.5 * hfont), (float)(xorg + wm), (float)(y - 0.5 * hfont),
+		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
 			0, 1, 0, alpha_bg);
 	g = m_menu_focus == 2 ? 0.f : 1.f;
 	drawGlText(x, y, items[2], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, m_quit ? "yes":"no", 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
 	// OK/Cancel
-	y -= (float)(3 * hfont);
+	y -= (float)(1.5 * hfont);
 	drawGlText(x, y,  "(a) Apply", 0, 1, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, "(b) Cancel", 0, 1, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 }
@@ -568,8 +567,8 @@ bool f_aws1_ui::proc()
 	glfwMakeContextCurrent(pwin());
 
 	// render graphics
-	float wscale = (float)(1.0 / m_sz_win.width);
-	float hscale = (float)(1.0 / m_sz_win.height);  
+	float wscale = (float)(2.0 / m_sz_win.width);
+	float hscale = (float)(2.0 / m_sz_win.height);  
 
 	// information rendering
 	ui.draw(wscale, hscale); // mode dependent rendering

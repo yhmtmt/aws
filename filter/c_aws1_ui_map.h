@@ -17,14 +17,33 @@
 #define _F_AWS1_UI_MAP_H_
 
 
+
+
 // provides 2D map of objects and map near around 
 class c_aws1_ui_map: public c_aws1_ui_core
 {
 protected:
+	enum e_map_operation{
+		EMO_EDT_WP, EMD_EDT_MAP
+	} m_op;
+
+	// EMD_EDT_WP: Edit way point
+	//		A: Add waypoint to the cursor point
+	//		B: Delete selected waypoint 
+	//		Left/Right: Waypoint selection
+
+	// EMD_EDT_MAP: Edit map (Still not defined)
+	//
+
+	Point2f m_ship_pts[3];
+	Point2f m_circ_pts[36];
+
+	float m_map_range; // range in meter (default 10km)
+	Point2f m_cur_pos;
+	Point2f m_map_pos; // relative position to my own ship (in meter)
 public:
-	c_aws1_ui_map(f_aws1_ui * _pui):c_aws1_ui_core(_pui)
-	{
-	}
+	c_aws1_ui_map(f_aws1_ui * _pui);
+
 	virtual ~c_aws1_ui_map()
 	{
 	}

@@ -23,14 +23,14 @@ class c_aws1_ui_core
 protected:
 	f_aws1_ui * pui;
 
-	inline ch_state * get_state();
-	inline ch_aws1_ctrl * get_ctrl_in();
-	inline ch_aws1_ctrl * get_ctrl_out();
-	inline ch_wp * get_wp();
-	inline ch_obj * get_obj();
-	inline ch_image * get_img();
-	inline s_aws1_ctrl_pars & get_acp();
-
+	 ch_state * get_state();
+	 ch_aws1_ctrl * get_ctrl_in();
+	 ch_aws1_ctrl * get_ctrl_out();
+	 ch_wp * get_wp();
+	 ch_obj * get_obj();
+	 ch_image * get_img();
+	 s_aws1_ctrl_pars & get_acp();
+	 const Size & get_window_size();
 public:
 	c_aws1_ui_core(f_aws1_ui * _pui):pui(_pui)
 	{

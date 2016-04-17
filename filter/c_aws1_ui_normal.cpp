@@ -167,3 +167,8 @@ s_aws1_ctrl_pars & c_aws1_ui_core::get_acp()
 {
 	return pui->m_acp;
 }
+
+const Size & c_aws1_ui_core::get_window_size()
+{
+	return pui->m_sz_win;
+}
