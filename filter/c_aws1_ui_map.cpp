@@ -85,16 +85,18 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 	const Size & sz_win = get_window_size();
 	float lw = xscale;
 
-	float fxmeter, fymeter, ifxmeter, ifymeter;
+	float fxmeter, fymeter, ifxmeter, ifymeter, fx, fy;
 
 	if(yscale > xscale){ // 1 in y direction equals to m_map_range
-		fxmeter = (float)(((float) sz_win.height / (float)sz_win.width) * m_map_range);
-		fymeter = m_map_range;
+		fx = (float)((float) sz_win.height / (float) sz_win.width);
+		fy = 1.0;
 	}else{ // 1 in x direction equals to m_map_range
-		fxmeter = m_map_range;
-		fymeter =  (float)(((float) sz_win.width / (float)sz_win.height) * m_map_range);
+		fx = 1.0;
+		fy = (float)((float) sz_win.width / (float) sz_win.height);
 	}
 
+	fxmeter = fx * m_map_range;
+	fymeter = fy * m_map_range;
 	ifxmeter = (float)(1.0 / fxmeter);
 	ifymeter = (float)(1.0 / fymeter);
 
@@ -102,11 +104,11 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 	{
 		Point2f pts[36]; // scaled points
 		for(int i = 0; i < 36; i++){
-			pts[i].x = m_circ_pts[i].x * fxmeter;
-			pts[i].y = m_circ_pts[i].y * fymeter;
+			pts[i].x = m_circ_pts[i].x * fx;
+			pts[i].y = m_circ_pts[i].y * fy;
 		}
 
-		drawGlPolygon2Df(pts, 10, 0, 1, 0, 0, lw); // own ship triangle
+		drawGlPolygon2Df(pts, 36, 0, 1, 0, 0, lw); // own ship triangle
 	}
 
 	// draw own ship
