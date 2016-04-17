@@ -121,7 +121,6 @@ void drawGlText(float x, float y, const char * str,
   }
 }
 
-
 void drawGlSquare2Df(float x1, float y1, float x2, float y2, 
 		     float r, float g, float b, float alpha, float size)
 {
@@ -146,6 +145,51 @@ void drawGlSquare2Df(float x1, float y1, float x2, float y2,
   glVertex2f(x1, y2); 
   glEnd();
 }
+
+void drawGlTriangle2Df(float x1, float y1, float x2, float y2, 
+					float x3,float y3, float r, float g, float b, float alpha, float size)
+{
+  glColor4f(r, g, b, alpha);
+  glLineWidth(size);
+  glBegin(GL_LINE_LOOP);
+  glVertex2f(x1, y1);
+  glVertex2f(x2, y2);
+  glVertex2f(x3, y3);
+  glEnd();
+}
+
+void drawGlTriangle2Df(float x1, float y1, float x2, float y2, 
+					float x3,float y3, float r, float g, float b, float alpha)
+{
+  glColor4f(r, g, b, alpha);
+  glBegin(GL_TRIANGLES);
+  glVertex2f(x1, y1);
+  glVertex2f(x2, y2);
+  glVertex2f(x3, y3);
+  glEnd();
+}
+
+void drawGlPolygon2Df(Point2f * pts, int num_pts, 
+					  float r, float g, float b, float alpha, float size)
+{
+  glColor4f(r, g, b, alpha);
+  glLineWidth(size);
+  glBegin(GL_LINE_LOOP);
+  for(int i = 0; i<  num_pts; i++)
+	  glVertex2f(pts[i].x, pts[i].y);
+  glEnd();
+}
+
+void drawGlPolygon2Df(Point2f * pts, int num_pts, 
+					  float r, float g, float b, float alpha)
+{
+  glColor4f(r, g, b, alpha);
+  glBegin(GL_POLYGON);
+  for(int i = 0; i<  num_pts; i++)
+	  glVertex2f(pts[i].x, pts[i].y);
+  glEnd();
+}
+
 
 void drawGlLine2Df(float x1, float y1, float x2, float y2,
 		   float r, float g, float b, float alpha, float size)

@@ -47,6 +47,20 @@ void drawGlSquare2Df(float x1, float y1, float x2, float y2,
 void drawGlSquare2Df(float x1, float y1, float x2, float y2, 
 		     float r, float g, float b, float alpha);
 
+void drawGlTriangle2Df(float x1, float y1, float x2, float y2, 
+					float x3,float y3, float r, float g, float b, float alpha, float size);
+
+void drawGlTriangle2Df(float x1, float y1, float x2, float y2, 
+					float x3,float y3, float r, float g, float b, float alpha);
+
+void drawGlPolygon2Df(Point2f * pts, int num_pts, 
+					  float r, float g, float b, float alpha, float size);
+
+void drawGlPolygon2Df(Point2f * pts, int num_pts, 
+					  float r, float g, float b, float alpha);
+
+
+
 void drawGlLine2Df(float x1, float y1, float x2, float y2,
 		   float r, float g, float b, float alpha, float size);
 
