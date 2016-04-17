@@ -17,11 +17,15 @@
 #define _F_AWS1_UI_MAP_H_
 
 
+// provides 2D map of objects and map near around 
 class c_aws1_ui_map: public c_aws1_ui_core
 {
 protected:
 public:
 	c_aws1_ui_map(f_aws1_ui * _pui):c_aws1_ui_core(_pui)
+	{
+	}
+	virtual ~c_aws1_ui_map()
 	{
 	}
 

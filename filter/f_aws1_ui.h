@@ -252,6 +252,9 @@ class f_aws1_ui: public f_glfw_window
   // set (rudder, meng, seng) according to the js state.
   void ui_set_js_ctrl();
 
+  // If LT+LB+RT+RB is detected, the system forces the controls to be nutral state. Called by default.
+  void ui_force_ctrl_stop();
+
   void ui_set_rud_f(const float rud_f)
   {
 	  m_rud_aws_f = rud_f;

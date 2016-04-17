@@ -78,6 +78,8 @@ f_aws1_ui::~f_aws1_ui()
 	m_ui[AUM_NORMAL] = NULL;
 	delete m_ui[AUM_MAP];
 	m_ui[AUM_NORMAL] = NULL;
+	delete m_ui[AUM_DEV];
+	m_ui[AUM_DEV] = NULL;
 }
 
 
@@ -163,6 +165,22 @@ void f_aws1_ui::ui_set_js_ctrl()
   m_acp.rud_aws = (unsigned char) m_rud_aws_f;
   m_acp.meng_aws = (unsigned char) m_meng_aws_f;
   m_acp.seng_aws = (unsigned char) m_seng_aws_f;
+}
+
+void f_aws1_ui::ui_force_ctrl_stop()
+{
+	if(m_js.id != -1){
+		if(m_js.elb & s_jc_u3613m::EB_STDOWN &&
+			m_js.elt & s_jc_u3613m::EB_STDOWN &&
+			m_js.erb & s_jc_u3613m::EB_STDOWN &&
+			m_js.ert & s_jc_u3613m::EB_STDOWN){
+				m_rud_aws_f = 127.;
+				m_meng_aws_f = 127.;
+				m_seng_aws_f = 127.;
+				m_acp.ctrl_src = ACS_UI;
+				m_mode = AUM_NORMAL;
+		}
+	}
 }
 
 void f_aws1_ui::ui_show_img()
@@ -581,6 +599,9 @@ bool f_aws1_ui::proc()
 		m_js.set_btn();
 		m_js.set_stk();
 	}
+
+	ui_force_ctrl_stop();
+
 	if(!m_ui_menu)
 		ui.js(m_js); // mode dependent joypad handler
 
@@ -588,11 +609,12 @@ bool f_aws1_ui::proc()
 	ui_handle_menu();
 	//<-- system joypad handling	
 
+	// communictation with control channels or control udp sockets
 	s_aws1_ctrl_pars acpkt;
 	snd_ctrl(acpkt);
 	rcv_ctrl(acpkt);
 
-
+	// Window forcus is now at this window
 	glfwMakeContextCurrent(pwin());
 
 	// render graphics
@@ -617,7 +639,10 @@ bool f_aws1_ui::proc()
 	
 	//<-- system information rendering
 
+	// show rendering surface.
 	glfwSwapBuffers(pwin());
+
+	// UI polling.
 	glfwPollEvents();
 
 	return true;
