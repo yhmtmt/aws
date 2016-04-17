@@ -474,7 +474,7 @@ void f_aws1_ui::ui_show_menu(float wscale, float hscale)
 
 void f_aws1_ui::ui_handle_menu()
 {
-	if(m_js.estart & s_jc_u3613m::EB_EVDOWN){
+	if((m_js.estart & s_jc_u3613m::EB_EVDOWN) && (m_ui_menu == false)){
 		m_ui_menu = true;
 		m_quit = false;
 		m_menu_acs = m_acp.ctrl_src;
@@ -485,7 +485,7 @@ void f_aws1_ui::ui_handle_menu()
 	if(!m_ui_menu)
 		return;
 
-	if(m_js.estart & s_jc_u3613m::EB_EVDOWN || m_js.eb & s_jc_u3613m::EB_EVDOWN)
+	if((m_js.estart & s_jc_u3613m::EB_EVDOWN) || (m_js.eb & s_jc_u3613m::EB_EVDOWN))
 	{// cancel 
 		m_ui_menu = false;
 	}
