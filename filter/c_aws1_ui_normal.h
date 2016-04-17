@@ -29,6 +29,10 @@ protected:
   unsigned char * m_meng_pos;
   unsigned char * m_seng_pos;
 
+  float m_rud_aws_f;
+  float m_meng_aws_f;
+  float m_seng_aws_f;
+
   unsigned char step_down(unsigned char val, unsigned char * vpos){
     int i = m_num_ctrl_steps;
     int iup = 2 * m_num_ctrl_steps, idown = 0;
@@ -73,7 +77,8 @@ protected:
 
 public:
 	c_aws1_ui_normal(f_aws1_ui * _pui):c_aws1_ui_core(_pui), m_num_ctrl_steps(4), m_ec(EC_MAIN),
-		m_rud_pos(NULL), m_meng_pos(NULL), m_seng_pos(NULL)
+		m_rud_pos(NULL), m_meng_pos(NULL), m_seng_pos(NULL), m_rud_aws_f(127.), m_meng_aws_f(127.),
+		m_seng_aws_f(127.)
 	{
 		// allocate control positions
 		m_rud_pos = new unsigned char[m_num_ctrl_steps * 2 + 1];
@@ -130,6 +135,13 @@ public:
 		m_rud_pos = NULL;
 		m_meng_pos = NULL;
 		m_seng_pos = NULL;
+	}
+
+	void set_ctrl(unsigned char rud, unsigned char meng, unsigned char seng)
+	{
+		m_rud_aws_f = rud;
+		m_meng_aws_f = meng;
+		m_seng_aws_f = seng;
 	}
 
 	virtual void js(const s_jc_u3613m  & js);

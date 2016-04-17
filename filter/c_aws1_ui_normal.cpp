@@ -37,7 +37,40 @@ using namespace cv;
 /////////////////////////////////////////////////////////////////////////// c_aws1_ui_normal
 void c_aws1_ui_normal::js(const s_jc_u3613m & js)
 {
-	pui->ui_set_js_ctrl();	
+  if(js.id != -1){
+  // joystic handling (assuming JC-U3613M)
+    // Stick value
+    // U: -1
+    // D: 1
+    // L: -1
+    // R: 1
+    // Button Value: 
+    //off: 0  
+    //on: 1
+    // AXES 0: 9LR 1: 9UD 2: 10LR 3: 10UD 4: XLR 5: XUD 
+    // BTNS 0: 1 1: 2 2: 3 3: 4 4: 5 5: 6 7: 8 8: 9 9: 10 10: 11 12: 13
+    //      X, Y, A, B, LB, RB, LT, LSt, RSt, RT, BACK, START, Guide
+    // axis 0, 2  is assigned to rudder
+    // axis 1 is assigned to main engine control
+    // axis 3 is assigned to sub engine control
+    m_rud_aws_f += (float)(js.lr1 * (255. / 180.));
+    m_rud_aws_f += (float)(js.lr2 * (255. / 180.));
+    m_rud_aws_f = min((float)255.0, m_rud_aws_f);
+    m_rud_aws_f = max((float)0.0, m_rud_aws_f);
+
+    m_meng_aws_f -= (float)(js.ud1 * (255. / 180));
+    m_meng_aws_f = min((float)255.0, m_meng_aws_f);
+    m_meng_aws_f = max((float)0.0, m_meng_aws_f);
+
+    m_seng_aws_f -= (float)(js.ud2 * (255. / 180));
+    m_seng_aws_f = min((float) 255.0, m_seng_aws_f);
+    m_seng_aws_f = max((float)0.0, m_seng_aws_f);    
+  }
+
+  s_aws1_ctrl_pars & acp = get_acp();
+  acp.rud_aws = (unsigned char) m_rud_aws_f;
+  acp.meng_aws = (unsigned char) m_meng_aws_f;
+  acp.seng_aws = (unsigned char) m_seng_aws_f;
 }
 
 void c_aws1_ui_normal::draw(float xscale, float yscale)
@@ -59,33 +92,33 @@ void c_aws1_ui_normal::key(int key, int scancode, int action, int mods)
 		switch(key){
 		case GLFW_KEY_RIGHT:
 			{
-				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
-				pui->ui_set_rud_f(step_up(acp.rud_aws, m_rud_pos));
+				const s_aws1_ctrl_pars & acp = get_acp();
+				m_rud_aws_f = (step_up(acp.rud_aws, m_rud_pos));
 			}
 			break;
 		case GLFW_KEY_LEFT:
 			{
-				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
-				pui->ui_set_rud_f(step_down(acp.rud_aws, m_rud_pos));
+				const s_aws1_ctrl_pars & acp = get_acp();
+				m_rud_aws_f = (step_down(acp.rud_aws, m_rud_pos));
 			}
 			break;
 		case GLFW_KEY_UP:
 			{
-				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
+				const s_aws1_ctrl_pars & acp = get_acp();
 				if(m_ec == EC_MAIN){
-					pui->ui_set_meng_f(step_up(acp.meng_aws, m_meng_pos));
+					m_meng_aws_f = (step_up(acp.meng_aws, m_meng_pos));
 				}else{
-					pui->ui_set_seng_f(step_up(acp.seng_aws, m_seng_pos));
+					m_seng_aws_f = (step_up(acp.seng_aws, m_seng_pos));
 				}
 			}
 			break;
 		case GLFW_KEY_DOWN:
 			{
-				const s_aws1_ctrl_pars & acp = pui->ui_get_ctrl_par();
+				const s_aws1_ctrl_pars & acp = get_acp();
 				if(m_ec == EC_MAIN){
-					pui->ui_set_meng_f(step_down(acp.meng_aws, m_meng_pos));
+					m_meng_aws_f = (step_down(acp.meng_aws, m_meng_pos));
 				}else{
-					pui->ui_set_seng_f(step_down(acp.seng_aws, m_seng_pos));
+					m_seng_aws_f = (step_down(acp.seng_aws, m_seng_pos));
 				}
 			}
 			break;
@@ -99,4 +132,38 @@ void c_aws1_ui_normal::key(int key, int scancode, int action, int mods)
 			break;
 		}
 	}
+}
+
+
+///////////////////////////////////////////////////// members of c_aws1_ui_core
+ch_state * c_aws1_ui_core::get_state()
+{
+	return pui->m_state;
+}
+
+ch_aws1_ctrl * c_aws1_ui_core::get_ctrl_in()
+{
+	return pui->m_ch_ctrl_in;
+}
+
+ch_aws1_ctrl * c_aws1_ui_core::get_ctrl_out()
+{
+	return pui->m_ch_ctrl_out;
+}
+
+ch_wp * c_aws1_ui_core::get_wp(){
+	return pui->m_ch_wp;
+}
+
+ch_obj * c_aws1_ui_core::get_obj(){
+	return pui->m_ch_obj;
+}
+
+ch_image * c_aws1_ui_core::get_img(){
+	return pui->m_ch_img;
+}
+
+s_aws1_ctrl_pars & c_aws1_ui_core::get_acp()
+{
+	return pui->m_acp;
 }

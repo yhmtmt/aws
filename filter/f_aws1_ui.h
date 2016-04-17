@@ -196,6 +196,9 @@ class f_aws1_ui: public f_glfw_window
   ch_wp * m_ch_wp;
   ch_obj * m_ch_obj;
   ch_image_ref * m_ch_img;
+
+  friend class c_aws1_ui_core;
+
   bool m_udp_ctrl;
   bool m_verb;
   s_jc_u3613m m_js;
@@ -222,10 +225,6 @@ class f_aws1_ui: public f_glfw_window
   virtual void _mouse_button_callback(int button, int action, int mods);
   virtual void _key_callback(int key, int scancode, int action, int mods);
 
-  float m_rud_aws_f;
-  float m_meng_aws_f;
-  float m_seng_aws_f;
-
   // User interface mode sets
   enum e_aws1_ui_mode {
 	  AUM_NORMAL, AUM_MAP, AUM_DEV, AUM_UNDEF
@@ -244,31 +243,8 @@ class f_aws1_ui: public f_glfw_window
 
   virtual bool proc();
 
-  // ui related method
-  const s_aws1_ctrl_pars & ui_get_ctrl_par(){
-	  return m_acp;
-  };
-
-  // set (rudder, meng, seng) according to the js state.
-  void ui_set_js_ctrl();
-
   // If LT+LB+RT+RB is detected, the system forces the controls to be nutral state. Called by default.
   void ui_force_ctrl_stop();
-
-  void ui_set_rud_f(const float rud_f)
-  {
-	  m_rud_aws_f = rud_f;
-  }
-
-  void ui_set_meng_f(const float meng_f)
-  {
-	  m_meng_aws_f = meng_f;
-  }
-
-  void ui_set_seng_f(const float seng_f)
-  {
-	  m_seng_aws_f = seng_f;
-  }
 
   void ui_show_img();
   void ui_show_rudder(float wscale, float hscale);
@@ -292,7 +268,6 @@ void drawGlEngineIndicator(const char * title,
 			   float xorg, float yorg, float w, float h, 
 			   float wfont, float hfont,
 			   float lw, float val_inst, float val_cur);
-
 
 //////////////////////////////////////////////////////// f_aws1_ui_test
 // This class is a test class interfacing only with f_aws1_ui via the compatible channel set.

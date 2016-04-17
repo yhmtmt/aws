@@ -57,9 +57,6 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("acdport", &m_acd_port, "Port number opened for controlling AWS1.");
   register_fpar("acs", (int*) &m_acp.ctrl_src, (int) ACS_NONE, str_aws1_ctrl_src, "Control source.");
   register_fpar("verb", &m_verb, "Debug mode.");
-  register_fpar("rud", &m_rud_aws_f, "Rudder.");
-  register_fpar("meng", &m_meng_aws_f, "Main Engine.");
-  register_fpar("seng", &m_seng_aws_f, "Sub Engine.");
   
   register_fpar("js", &m_js_id, "Joystick id");
 
@@ -89,9 +86,6 @@ bool f_aws1_ui::init_run()
   m_acp.rud_aws = 127;
   m_acp.meng_aws = 127;
   m_acp.seng_aws = 127;
-  m_rud_aws_f = 127.;
-  m_meng_aws_f = 127.;
-  m_seng_aws_f = 127.;
 
   // initializing udp socket
   if(m_udp_ctrl){
@@ -125,48 +119,6 @@ void f_aws1_ui::destroy_run()
   }
 }
 
-
-void f_aws1_ui::ui_set_js_ctrl()
-{
-  if(m_js.id != -1){
-  // joystic handling (assuming JC-U3613M)
-    // Stick value
-    // U: -1
-    // D: 1
-    // L: -1
-    // R: 1
-    // Button Value: 
-    //off: 0  
-    //on: 1
-    // AXES 0: 9LR 1: 9UD 2: 10LR 3: 10UD 4: XLR 5: XUD 
-    // BTNS 0: 1 1: 2 2: 3 3: 4 4: 5 5: 6 7: 8 8: 9 9: 10 10: 11 12: 13
-    //      X, Y, A, B, LB, RB, LT, LSt, RSt, RT, BACK, START, Guide
-    // axis 0, 2  is assigned to rudder
-    // axis 1 is assigned to main engine control
-    // axis 3 is assigned to sub engine control
-    m_rud_aws_f += (float)(m_js.lr1 * (255. / 180.));
-    m_rud_aws_f += (float)(m_js.lr2 * (255. / 180.));
-    m_rud_aws_f = min((float)255.0, m_rud_aws_f);
-    m_rud_aws_f = max((float)0.0, m_rud_aws_f);
-
-    m_meng_aws_f -= (float)(m_js.ud1 * (255. / 180));
-    m_meng_aws_f = min((float)255.0, m_meng_aws_f);
-    m_meng_aws_f = max((float)0.0, m_meng_aws_f);
-
-    m_seng_aws_f -= (float)(m_js.ud2 * (255. / 180));
-    m_seng_aws_f = min((float) 255.0, m_seng_aws_f);
-    m_seng_aws_f = max((float)0.0, m_seng_aws_f);
-    
-    if(m_verb){
-		m_js.print(cout);
-    }
-  }
-
-  m_acp.rud_aws = (unsigned char) m_rud_aws_f;
-  m_acp.meng_aws = (unsigned char) m_meng_aws_f;
-  m_acp.seng_aws = (unsigned char) m_seng_aws_f;
-}
-
 void f_aws1_ui::ui_force_ctrl_stop()
 {
 	if(m_js.id != -1){
@@ -174,9 +126,7 @@ void f_aws1_ui::ui_force_ctrl_stop()
 			m_js.elt & s_jc_u3613m::EB_STDOWN &&
 			m_js.erb & s_jc_u3613m::EB_STDOWN &&
 			m_js.ert & s_jc_u3613m::EB_STDOWN){
-				m_rud_aws_f = 127.;
-				m_meng_aws_f = 127.;
-				m_seng_aws_f = 127.;
+				((c_aws1_ui_normal *)m_ui[AUM_NORMAL])->set_ctrl(127, 127, 127);
 				m_acp.ctrl_src = ACS_UI;
 				m_mode = AUM_NORMAL;
 		}
@@ -444,7 +394,7 @@ void f_aws1_ui::ui_show_menu(float wscale, float hscale)
 	//  <UI     > | <Value>  //
 	//  <Exit   > | <Value>  //
 	//-----------------------//
-	//  <Apply(a)>  <Cancel(b)> //
+	//<Apply(a)>  <Cancel(b)>//
 	///////////////////////////
 	float wfont = (float)(1.2 * 13. * wscale);
 	float hfont = (float)(1.2 * 13. * hscale);
