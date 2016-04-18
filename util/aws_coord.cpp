@@ -32,9 +32,9 @@ void bihtoecef(const float lat, const float lon, const float alt,
 	double N = AE / sqrt(1 - EE2 * slat * slat);
 
 	double tmp = (N + alt) * clat;
-	x = tmp * clon;
-	y = tmp * slon;
-	z = (N * (1 - EE2) + alt) * slat;
+	x = (float)(tmp * clon);
+	y = (float)(tmp * slon);
+	z = (float)((N * (1 - EE2) + alt) * slat);
 }
 
 void bihtoecef(const s_bihpos & Xbih, Point3d & Xecef)
@@ -59,10 +59,10 @@ void eceftobih(const float x, const float y, const float z, float & lat, float &
 	double c = cos(th);
 	s = s * s * s;
 	c = c * c* c;
-	lat = atan2(z + EE2_B * s, p - EE2_A * c);
-	lon = atan2(y, x);
-	s = sin(lat);
-	alt = p / cos(lat) - AE / sqrt(1 - EE2 * s * s);
+	lat = (float)atan2(z + EE2_B * s, p - EE2_A * c);
+	lon = (float)atan2(y, x);
+	s = (float)sin(lat);
+	alt = (float)(p / cos(lat) - AE / sqrt(1 - EE2 * s * s));
 }
 
 void eceftobih(Point3d & Xecef, s_bihpos & Xbih)
@@ -138,6 +138,36 @@ void wrldtobih(Point3d & Xorg, Mat & Xrot, Point3d & Xwrld, s_bihpos & Xbih)
 	eceftobih(Xecef, Xbih);
 }
 
+void wrldtoecef(const Mat & Rrot, 
+				const float xorg, const float yorg, const float zorg, 
+				const float xwrld, const float ywrld, const float zwrld,
+				float & xecef, float & yecef, float & zecef
+				)
+{
+	const double * ptr = Rrot.ptr<double>();
+
+	float x = (float)(xwrld - xorg);	
+	float y = (float)(ywrld - yorg);
+	float z = (float)(zwrld - zorg);
+
+	xecef = (float)(ptr[0] * x + ptr[3] * y + ptr[6] * z);
+	yecef = (float)(ptr[1] * x + ptr[4] * y + ptr[7] * z);
+	zecef = (float)(ptr[2] * x + ptr[5] * y + ptr[8] * z);
+}
+
+void eceftowrld(const Mat & Rrot, 
+				const float xorg, const float yorg, const float zorg, 
+				const float xecef, const float yecef, const float zecef,
+				float & xwrld, float & ywrld, float & zwrld
+				)
+{
+	const double * ptr = Rrot.ptr<double>();
+	xwrld = (float)(ptr[0] * xecef + ptr[1] * yecef + ptr[2] * zecef + xorg);
+	ywrld = (float)(ptr[3] * xecef + ptr[4] * yecef + ptr[5] * zecef + yorg);
+	zwrld = (float)(ptr[6] * xecef + ptr[7] * yecef + ptr[8] * zecef + zorg);
+}
+
+
 // wrldtoecef converts a world point Xwrld to a ECEF point Xecef
 // Xorg is the origin in the ECEF coordinate and Xrot is the rotation matrix
 // for ECEF to world which can be calculated by getwrldrot(). 
@@ -178,6 +208,44 @@ void eceftowrld(Point3d & Xorg, Mat & Xrot, Point3d & Xecef, Point3d & Xwrld)
 	ptr0 = Xrot.ptr<double>(2);
 	Xwrld.z = ptr0[0] * Xecef.x
 		+ ptr0[1] * Xecef.y + ptr0[2] * Xecef.z;
+}
+
+
+void getwrldrot(const float lat, const float lon, Mat & Rwrld)
+{
+	double c, s;
+
+	// pi/2
+	c = 0;
+	s = 1;
+
+	Rwrld = Mat::eye(3, 3, CV_64FC1);
+	Rwrld.at<double>(0, 0) = c;
+	Rwrld.at<double>(1, 1) = c;
+	Rwrld.at<double>(0, 1) = s;
+	Rwrld.at<double>(1, 0) = -s;
+
+	// pi/2 - lat
+	c = sin(lat);
+	s = cos(lat);
+	Mat tmp = Mat::eye(3, 3, CV_64FC1);
+	tmp.at<double>(0, 0) = c;
+	tmp.at<double>(2, 2) = c;
+	tmp.at<double>(0, 2) = -s;
+	tmp.at<double>(2, 0) = s;
+
+	Rwrld *= tmp;
+
+	// lon
+	c = cos(lon);
+	s = sin(lon);
+	tmp = Mat::eye(3, 3, CV_64FC1);
+	tmp.at<double>(0, 0) = c;
+	tmp.at<double>(1, 1) = c;
+	tmp.at<double>(0, 1) = s;
+	tmp.at<double>(1, 0) = -s;
+
+	Rwrld *= tmp;
 }
 
 // getwrldrot calculates world rotation matrix from bih 

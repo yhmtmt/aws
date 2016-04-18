@@ -153,10 +153,7 @@ public:
 	void set_ecef_from_rel(const Mat & Rorg, float xorg, float yorg, float zorg)
 	{
 		if(m_dtype & EOD_POS_REL){
-			const double * ptr = Rorg.ptr<double>();
-			m_x = (float)(ptr[0] * m_xr + ptr[3] * m_yr + ptr[6] * m_zr + xorg);
-			m_y = (float)(ptr[1] * m_xr + ptr[4] * m_yr + ptr[7] * m_zr + yorg);
-			m_z = (float)(ptr[2] * m_xr + ptr[5] * m_yr + ptr[8] * m_zr + zorg);
+			wrldtoecef(Rorg, xorg, yorg, zorg, m_xr, m_yr, m_zr, m_x, m_y, m_z);
 			m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_ECEF);
 		}
 	}
@@ -210,14 +207,7 @@ public:
 	void set_pos_rel_from_ecef(const Mat & Rorg, float xorg, float yorg, float zorg)
 	{
 		if(m_dtype & EOD_POS_ECEF){
-			const double * ptr = Rorg.ptr<double>();
-			xorg = (float)(m_x - xorg);
-			yorg = (float)(m_y - yorg);
-			zorg = (float)(m_z - zorg);
-			m_xr = (float)(ptr[0] * xorg + ptr[1] * yorg + ptr[2] * zorg);
-			m_yr = (float)(ptr[3] * yorg + ptr[4] * yorg + ptr[5] * zorg);
-			m_zr = (float)(ptr[6] * zorg + ptr[7] * yorg + ptr[8] * zorg);
-
+			eceftowrld(Rorg, xorg, yorg, zorg, m_x, m_y, m_z, m_xr, m_yr, m_zr);
 			m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_REL);	
 		}
 	}
@@ -385,7 +375,7 @@ public:
 	}
 
 	int get_num_objs(){
-		objs.size();
+		return (int) objs.size();
 	}
 };
 

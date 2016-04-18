@@ -24,6 +24,9 @@ using namespace std;
 #include <cmath>
 #include <cstring>
 
+#include <opencv2/opencv.hpp>
+using namespace cv;
+
 #include "f_aws1_ap.h"
 
 f_aws1_ap::f_aws1_ap(const char * name): f_base(name), m_state(NULL), m_ctrl_out(NULL), m_ctrl_in(NULL),

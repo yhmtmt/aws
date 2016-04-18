@@ -111,17 +111,27 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 		drawGlPolygon2Df(pts, 36, 0, 1, 0, 0, lw); // own ship triangle
 	}
 
+	Mat Rorg;
+	Point3f Porg;
+	
 	// draw own ship
 	{
 		Point2f offset = Point2f((float)(-m_map_pos.x * ifxmeter), (float)(-m_map_pos.y * ifymeter));
 		ch_state * pstate = get_state();
-		float cog, sog, roll, pitch, yaw;
+		float lat, lon, alt, galt, cog, sog, roll, pitch, yaw;
 		Point2f pts[3]; // rotated version of the ship points
+
+		pstate->get_position(lat, lon, alt, galt);
 		pstate->get_velocity(cog, sog);
 		pstate->get_attitude(roll, pitch, yaw);
+
+		bihtoecef(lat, lon, alt, Porg.x, Porg.y, Porg.z);
+		getwrldrot(lat, lon, Rorg);
+
 		float theta = (float)(yaw * (PI / 180.));
 		float c = (float) cos(theta), s = (float) sin(theta);
 		float ws = (float)(xscale * 10), hs = (float)(yscale * 10);
+
 		for(int i = 0; i < 3; i++){
 			// rotating the points
 			// multiply [ c -s; s c]
@@ -141,8 +151,26 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 	}
 
 	// draw waypoints
+	{
+		ch_wp * pwp = get_wp();
+		int num_wps = pwp->get_num_wps();
+		pwp->begin();
+		for(;pwp->is_end(); pwp->next()){
+			s_wp & wp = pwp->cur();
+			
+		}
+	}
 
 	// draw objects
+	{
+		ch_obj * pobj = get_obj();
+		int num_obj = pobj->get_num_objs();
+		for(;pobj->is_end(); pobj->next()){
+			c_obj & obj = *pobj->cur();
+			if(obj.get_type() & EOT_SHIP){				
+			}
+		}
+	}
 
 	// draw operation lists (right bottom)
 

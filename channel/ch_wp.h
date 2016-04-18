@@ -16,15 +16,47 @@
 // along with ch_wp.h.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ch_base.h"
+#include "../util/aws_coord.h"
 
 struct s_wp
 {
-	char label[32]; // waypoint label
+ 	char label[32]; // waypoint label (0 terminated string)
 	float lat, lon; // longitude lattitude
 	float x, y, z;	// corresponding ECEF to lat, lon
+	float rx, ry, rz; // Relative position in my own ship coordinate
 	float rarv;		// Arrival threashold radius
 	float v;		// velocity to go
 	long long t;	// arrival time
+
+	s_wp():lat(0.), lon(0.), x(0.), y(0.), z(0.), rarv(0.), v(0.), t(-1)
+	{
+	}
+
+	s_wp(const char _label[32], float _lat, float _lon, float _rarv, float _v):
+		lat(_lat), lon(_lon), x(0.), y(0.), z(0.), rarv(_rarv), v(_v), t(-1)
+	{
+		memcpy(label, label, 32);
+		bihtoecef(lat, lon, 0., x, y, z);
+	}
+
+	~s_wp()
+	{
+	}
+
+	void update_pos_rel(const Mat & Rorg, float xorg, float yorg, float zorg)
+	{
+		eceftowrld(Rorg, xorg, yorg, zorg, x, y, z, rx, ry, rz);
+	}
+
+	void set_arrival_time(const long long _t)
+	{
+		t = _t;
+	}
+
+	const long long get_arrival_time()
+	{
+		return t;
+	}
 };
 
 // contains waypoints
@@ -48,7 +80,7 @@ public:
 		itr = wps.erase(itr);
 	}
 	
-	const s_wp & cur(){
+	s_wp & cur(){
 		return *itr;
 	}
 
@@ -79,7 +111,7 @@ public:
 	}
 
 	int get_num_wps(){
-		wps.size();
+		return (int) wps.size();
 	}
 };
 
