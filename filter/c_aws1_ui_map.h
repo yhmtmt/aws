@@ -35,12 +35,27 @@ protected:
 	// EMD_EDT_MAP: Edit map (Still not defined)
 	//
 
+	// Window scale parameters
+	float fx, fy, fxmeter, fymeter, ifxmeter, ifymeter;
+	// Own ship coordinate transformation 
+	Mat Rorg;		// Rotation matrix of the own ship coordinate
+	Point3f Porg;   // Origin of the own ship coordinate
+
+
 	Point2f m_ship_pts[3];
 	Point2f m_circ_pts[36];
 
 	float m_map_range; // range in meter (default 10km)
-	Point2f m_cur_pos;
+
+	Point2f m_cur_pos; // in pixel
+	float cp_rx, cp_ry;
+	float cp_x, cp_y, cp_z;
+	float cp_lat, cp_lon, cp_alt;
+
 	Point2f m_map_pos; // relative position to my own ship (in meter)
+	float mp_x, mp_y, mp_z;
+	float mp_lat, mp_lon, mp_alt;
+
 public:
 	c_aws1_ui_map(f_aws1_ui * _pui);
 

@@ -63,31 +63,10 @@ c_aws1_ui_map::c_aws1_ui_map(f_aws1_ui * _pui):c_aws1_ui_core(_pui), m_op(EMO_ED
 
 void c_aws1_ui_map::js(const s_jc_u3613m & js)
 {
-	// Operation selection (cross key)
-
-	// Cursor move (right stick)
-	m_cur_pos.x += (float)(js.lr2 * (1.0/60.0));
-    m_cur_pos.y += (float)(js.ud2 * (1.0/60.0) );		
-
-	// Map move (left stick)	
-	m_map_pos.x += (float)(js.lr2 * (1.0/60.0));
-    m_map_pos.y += (float)(js.ud2 * (1.0/60.0) );	
-	if(js.elst & s_jc_u3613m::EB_STDOWN){ // back to the own ship 
-		m_map_pos.x = m_map_pos.y = 0.;
-	}
-
-}
-
-void c_aws1_ui_map::draw(float xscale, float yscale)
-{
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 	const Size & sz_win = get_window_size();
-	float lw = xscale;
-
 	float fxmeter, fymeter, ifxmeter, ifymeter, fx, fy;
 
-	if(yscale > xscale){ // 1 in y direction equals to m_map_range
+	if(sz_win.width > sz_win.height){ // 1 in y direction equals to m_map_range
 		fx = (float)((float) sz_win.height / (float) sz_win.width);
 		fy = 1.0;
 	}else{ // 1 in x direction equals to m_map_range
@@ -99,7 +78,64 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 	fymeter = fy * m_map_range;
 	ifxmeter = (float)(1.0 / fxmeter);
 	ifymeter = (float)(1.0 / fymeter);
+	
+	float lat, lon, alt, galt;
+	ch_state * pstate = get_state();
+	pstate->get_position(lat, lon, alt, galt);
 
+	bihtoecef(lat, lon, alt, Porg.x, Porg.y, Porg.z);
+	getwrldrot(lat, lon, Rorg);
+
+	// Operation selection (cross key)
+	
+	// Map move (left stick)	
+	m_map_pos.x += (float)(js.lr2 * fxmeter * (1.0/60.0));
+    m_map_pos.y += (float)(js.ud2 * fymeter * (1.0/60.0) );	
+
+	if(js.elst & s_jc_u3613m::EB_STDOWN){ // back to the own ship 
+		m_map_pos.x = m_map_pos.y = 0.;
+	}
+
+	// calculating the map center positioin in three coordinate
+	wrldtoecef(Rorg, Porg.x, Porg.y, Porg.z, m_map_pos.x, m_map_pos.y, 0.f, mp_x, mp_y, mp_z);
+	eceftobih(mp_x, mp_y, mp_z, mp_lat, mp_lon, mp_alt);
+
+	// Cursor move (right stick)
+	m_cur_pos.x += (float)(js.lr2 * fx * (1.0/60.0));
+    m_cur_pos.y += (float)(js.ud2 * fy * (1.0/60.0));		
+	m_cur_pos.x = max(-1.f, m_cur_pos.x);
+	m_cur_pos.x = min(1.f, m_cur_pos.x);
+	m_cur_pos.y = max(-1.f, m_cur_pos.y);
+	m_cur_pos.y = min(1.f, m_cur_pos.y);
+
+	// calculating the cursor position in three coordinate
+	cp_rx = (float)(m_cur_pos.x * m_map_range - m_map_pos.x);
+	cp_ry = (float)(m_cur_pos.y * m_map_range - m_map_pos.y);
+
+	wrldtoecef(Rorg, Porg.x, Porg.y, Porg.z, cp_rx, cp_ry, 0.f, cp_x, cp_y, cp_z);
+	eceftobih(cp_x, cp_y, cp_z, cp_lat, cp_lon, cp_alt);
+
+	if(js.erst & s_jc_u3613m::EB_STDOWN){
+		ch_wp * pwp = get_wp();
+		s_wp wp;
+		wp.rx = cp_rx; 
+		wp.ry = cp_ry;
+		wp.rz = 0.;
+		wp.x = cp_x;
+		wp.y = cp_y;
+		wp.z = cp_z;
+		wp.lat = cp_lat;
+		wp.lon = cp_lon;
+		wp.rarv = 10.; // 10meter
+		pwp->ins(wp);
+	}
+}
+
+void c_aws1_ui_map::draw(float xscale, float yscale)
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	float lw = xscale;
 	// draw circle centered at my own ship 
 	{
 		Point2f pts[36]; // scaled points
@@ -110,23 +146,16 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 
 		drawGlPolygon2Df(pts, 36, 0, 1, 0, 0, lw); // own ship triangle
 	}
-
-	Mat Rorg;
-	Point3f Porg;
 	
 	// draw own ship
 	{
 		Point2f offset = Point2f((float)(-m_map_pos.x * ifxmeter), (float)(-m_map_pos.y * ifymeter));
 		ch_state * pstate = get_state();
-		float lat, lon, alt, galt, cog, sog, roll, pitch, yaw;
+		float cog, sog, roll, pitch, yaw;
 		Point2f pts[3]; // rotated version of the ship points
 
-		pstate->get_position(lat, lon, alt, galt);
 		pstate->get_velocity(cog, sog);
 		pstate->get_attitude(roll, pitch, yaw);
-
-		bihtoecef(lat, lon, alt, Porg.x, Porg.y, Porg.z);
-		getwrldrot(lat, lon, Rorg);
 
 		float theta = (float)(yaw * (PI / 180.));
 		float c = (float) cos(theta), s = (float) sin(theta);
@@ -157,7 +186,7 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 		pwp->begin();
 		for(;pwp->is_end(); pwp->next()){
 			s_wp & wp = pwp->cur();
-			
+			wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
 		}
 	}
 
