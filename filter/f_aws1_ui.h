@@ -44,7 +44,7 @@ struct s_jc_u3613m
 	int tux, trx, tdx, tlx;
 
 	int tx, ty, ta, tb, tlb, trb, tlt, tlst, trst, trt, tback, tstart, tguide; // cycle time of the button pressed
-	unsigned char ex, ey, ea, eb, elb, erb, elt, elst, erst, ert, eback, estart, eguide; // cycle time of the button pressed
+	unsigned char ex, ey, ea, eb, elb, erb, elt, elst, erst, ert, eback, estart, eguide; // button event flags
 
 	s_jc_u3613m():
 		id(-1),	thstk(0.2f), eux(0), erx(0), edx(0), elx(0), tux(0), trx(0), tdx(0), tlx(0),
@@ -183,6 +183,27 @@ struct s_jc_u3613m
 		out << btn << ":" 
 			<< (EB_STDOWN & e ? "D" : "X") << (EB_EVDOWN & e ? "^" : "_")
 			<< (EB_STUP & e ? "U" : "X") << (EB_EVUP & e ? "^" : "_") << " " << t;
+	}
+
+	// Event detectors.
+	bool is_event_down(unsigned char e)
+	{
+		return EB_EVDOWN & e ? true : false;
+	}
+
+	bool is_state_down(unsigned char e)
+	{
+		return EB_STDOWN & e ? true : false;
+	}
+
+	bool is_event_up(unsigned char e)
+	{
+		return EB_EVUP & e ? true : false;
+	}
+
+	bool is_event_down(unsigned char e)
+	{
+		return EB_STUP & e ? true : false;
 	}
 };
 
