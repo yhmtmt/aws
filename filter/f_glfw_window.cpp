@@ -185,8 +185,31 @@ void drawGlPolygon2Df(Point2f * pts, int num_pts,
 {
   glColor4f(r, g, b, alpha);
   glBegin(GL_POLYGON);
-  for(int i = 0; i<  num_pts; i++)
+  for(int i = 0; i <  num_pts; i++)
 	  glVertex2f(pts[i].x, pts[i].y);
+  glEnd();
+}
+
+void drawGlPolygon2Df(Point2f * pts, int num_pts, 					  
+					  Point2f & offset,
+					  float r, float g, float b, float alpha, float size)
+{
+  glColor4f(r, g, b, alpha);
+  glLineWidth(size);
+  glBegin(GL_LINE_LOOP);
+  for(int i = 0; i<  num_pts; i++)
+	  glVertex2f((float)(pts[i].x + offset.x), (float)(pts[i].y + offset.y));
+  glEnd();
+}
+
+void drawGlPolygon2Df(Point2f * pts, int num_pts, 					  
+					  Point2f & offset,
+					  float r, float g, float b, float alpha)
+{
+  glColor4f(r, g, b, alpha);
+  glBegin(GL_POLYGON);
+  for(int i = 0; i <  num_pts; i++)
+	  glVertex2f((float)(pts[i].x + offset.x), (float)(pts[i].y + offset.y));
   glEnd();
 }
 

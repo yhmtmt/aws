@@ -62,6 +62,7 @@ protected:
 	float m_vx, m_vy, m_vz;		// Velocity in ECEF
 	float m_xr, m_yr, m_zr;		// Relative orthogonal coordinate (centered at my own ship)
 	float m_vxr, m_vyr, m_vzr;	// Reltative velocity in orthogonal coordinate centered at my own ship
+	float m_roll, m_pitch, m_yaw; // The attitude Roll pitch yaw
 public:
 	c_obj();
 	virtual ~c_obj();
@@ -244,6 +245,26 @@ public:
 		vxr = m_vxr;
 		vyr = m_vyr;
 		vzr = m_vzr;
+	}
+
+	void set_att(const float roll, const float pitch, const float yaw)
+	{
+		m_roll = roll;
+		m_pitch = pitch;
+		m_yaw = yaw;
+		m_dtype = (e_obj_data_type)(m_dtype | EOD_ATTD);
+	}
+
+	void reset_att()
+	{
+		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_ATTD);
+	}
+
+	void get_att(float & roll, float & pitch, float & yaw)
+	{
+		roll = m_roll;
+		pitch = m_pitch;
+		yaw = m_yaw;
 	}
 };
 

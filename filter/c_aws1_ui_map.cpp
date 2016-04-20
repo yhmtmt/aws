@@ -134,6 +134,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 void c_aws1_ui_map::draw(float xscale, float yscale)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	Point2f offset = Point2f((float)(-m_map_pos.x * ifxmeter), (float)(-m_map_pos.y * ifymeter));
 
 	float lw = xscale;
 	// draw circle centered at my own ship 
@@ -149,7 +150,6 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 	
 	// draw own ship
 	{
-		Point2f offset = Point2f((float)(-m_map_pos.x * ifxmeter), (float)(-m_map_pos.y * ifymeter));
 		ch_state * pstate = get_state();
 		float cog, sog, roll, pitch, yaw;
 		Point2f pts[3]; // rotated version of the ship points
@@ -183,10 +183,20 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 	{
 		ch_wp * pwp = get_wp();
 		int num_wps = pwp->get_num_wps();
+		Point2f pts[36]; // scaled points
+		for(int i = 0; i < 36; i++){
+			pts[i].x = (float)(m_circ_pts[i].x * 10. * xscale);
+			pts[i].y = (float)(m_circ_pts[i].y * 10. * yscale);
+		}
+
 		pwp->begin();
 		for(;pwp->is_end(); pwp->next()){
 			s_wp & wp = pwp->cur();
-			wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
+			wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
+			Point2f pos;
+			pos.x = (float)((wp.rx - m_map_pos.x) * ifxmeter);
+			pos.y = (float)((wp.ry - m_map_pos.y) * ifymeter);
+			drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); // own ship triangle
 		}
 	}
 
@@ -197,8 +207,48 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 		for(;pobj->is_end(); pobj->next()){
 			c_obj & obj = *pobj->cur();
 			if(obj.get_type() & EOT_SHIP){				
+				float x, y, z, vx, vy, vz, c, s, theta, r, p, yw;
+				if(obj.get_dtype() & EOD_POS_REL){
+					obj.get_pos_rel(x, y, z);
+				}
+				if(obj.get_dtype() & EOD_VEL_REL){
+					obj.get_vel_rel(vx, vy, vz);
+				}
+				if(obj.get_dtype() & EOD_ATTD){	
+					obj.get_att(r, p, yw);
+				}
+
+				theta = (float)(yw * (PI / 180.));
+				c = (float) cos(theta), s = (float) sin(theta);
+
+				float ws = (float)(xscale * 10), hs = (float)(yscale * 10);
+				vx *= 180.f;
+				vy *= 180.f;
+
+				Point2f pts[3];
+				for(int i = 0; i < 3; i++){
+					// rotating the points
+					// multiply [ c -s; s c]
+					pts[i].x = (float)(ws * (m_ship_pts[i].x * c - m_ship_pts[i].y * s + offset.x));
+					pts[i].y = (float)(hs * (m_ship_pts[i].x * s + m_ship_pts[i].y * c + offset.y));
+				}
+				drawGlPolygon2Df(pts, 3, 0, 1, 0, 0.5); // own ship triangle
+				drawGlLine2Df(offset.x, offset.y, (float)(offset.x + vx), (float)(offset.y + vy), 0., 1., 0., 1.0, lw);
 			}
 		}
+	}
+
+	// draw cursor
+	{
+		float x1, x2, y1, y2;
+		x1 = x2 = y1 = y2 = 16 * xscale;
+		x1 = m_cur_pos.x - x1;
+		x2 = m_cur_pos.x + x2;
+		y1 = m_cur_pos.y - y1;
+		y2 = m_cur_pos.y - y2;
+		drawGlSquare2Df(x1, y1, x2, y2, 0, 1., 0., 0.5);
+		drawGlLine2Df(x1, m_cur_pos.y, x2, m_cur_pos.y, 0., 1., 0., 1., 1.);
+		drawGlLine2Df(m_cur_pos.x, y1, m_cur_pos.y, y2, 0., 1., 0., 1., 1.);
 	}
 
 	// draw operation lists (right bottom)
