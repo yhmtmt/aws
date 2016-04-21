@@ -31,6 +31,13 @@ protected:
 	 ch_image * get_img();
 	 s_aws1_ctrl_pars & get_acp();
 	 const Size & get_window_size();
+
+	// normal coordinate to pixel coordinate transformation
+	void nml2pix(const float xnml, const float ynml, float & xpix, float & ypix);
+
+	// pixel coordinate to normal coordinate transformation
+	void pix2nml(const float xpix, const float ypix, float & xnml, float & ynml);
+
 public:
 	c_aws1_ui_core(f_aws1_ui * _pui):pui(_pui)
 	{
@@ -45,7 +52,7 @@ public:
 	{
 	}
 
-	virtual void draw(float xscale, float yscale)
+	virtual void draw()
 	{
 	};
 

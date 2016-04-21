@@ -25,7 +25,7 @@ public:
 	}
 
 	virtual void js(const s_jc_u3613m  & js);
-	virtual void draw(float xscale, float yscale);
+	virtual void draw();
 	virtual void key(int key, int scancode, int action, int mods);
 };
 

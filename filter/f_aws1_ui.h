@@ -243,6 +243,8 @@ class f_aws1_ui: public f_glfw_window
     m_my = ypos;
   }
 
+  float m_xscale, m_yscale, m_ixscale, m_iyscale;
+
   virtual void _mouse_button_callback(int button, int action, int mods);
   virtual void _key_callback(int key, int scancode, int action, int mods);
 
@@ -268,11 +270,11 @@ class f_aws1_ui: public f_glfw_window
   void ui_force_ctrl_stop();
 
   void ui_show_img();
-  void ui_show_rudder(float wscale, float hscale);
-  void ui_show_meng(float wscale, float hscale);
-  void ui_show_seng(float wscale, float hscale);
-  void ui_show_state(float wscale, float hscale);
-  void ui_show_sys_state(float wscale, float hscale);
+  void ui_show_rudder();
+  void ui_show_meng();
+  void ui_show_seng();
+  void ui_show_state();
+  void ui_show_sys_state();
 
   bool m_ui_menu;
   
@@ -280,7 +282,7 @@ class f_aws1_ui: public f_glfw_window
   e_aws1_ctrl_src m_menu_acs;
   e_aws1_ui_mode m_menu_mode;
   bool m_quit;
-  void ui_show_menu(float wscale, float hscale);
+  void ui_show_menu();
   void ui_handle_menu();
 };
 

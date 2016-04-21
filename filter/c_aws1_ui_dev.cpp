@@ -40,7 +40,7 @@ void c_aws1_ui_dev::js(const s_jc_u3613m & js)
 {
 }
 
-void c_aws1_ui_dev::draw(float xscale, float yscale)
+void c_aws1_ui_dev::draw()
 {
 }
 

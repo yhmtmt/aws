@@ -73,14 +73,14 @@ void c_aws1_ui_normal::js(const s_jc_u3613m & js)
   acp.seng_aws = (unsigned char) m_seng_aws_f;
 }
 
-void c_aws1_ui_normal::draw(float xscale, float yscale)
+void c_aws1_ui_normal::draw()
 {
 	pui->ui_show_img();
 
-	pui->ui_show_meng(xscale, yscale);
-	pui->ui_show_seng(xscale, yscale);
-	pui->ui_show_rudder(xscale, yscale);
-	pui->ui_show_state(xscale, yscale);
+	pui->ui_show_meng();
+	pui->ui_show_seng();
+	pui->ui_show_rudder();
+	pui->ui_show_state();
 
   // Drawing attitude indicator (w-mark, hdg scale, pitch scale) for main view type 1 only
   // Drawing map information. both for main view type 1 and 2. 
@@ -171,4 +171,18 @@ s_aws1_ctrl_pars & c_aws1_ui_core::get_acp()
 const Size & c_aws1_ui_core::get_window_size()
 {
 	return pui->m_sz_win;
+
+
+}
+
+// normal coordinate to pixel coordinate transformation
+void c_aws1_ui_core::nml2pix(const float xnml, const float ynml, float & xpix, float & ypix){
+	xpix = (float)(xnml * pui->m_xscale);
+	ypix = (float)(ynml * pui->m_yscale);
+}
+
+// pixel coordinate to normal coordinate transformation
+void c_aws1_ui_core::pix2nml(const float xpix, const float ypix, float & xnml, float & ynml){		
+	xnml = (float)(xpix * pui->m_ixscale);
+	ynml = (float)(ypix * pui->m_iyscale);
 }

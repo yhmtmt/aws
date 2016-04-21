@@ -160,12 +160,12 @@ void f_aws1_ui::ui_show_img()
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 }
 
-void f_aws1_ui::ui_show_rudder(float wscale, float hscale)
+void f_aws1_ui::ui_show_rudder()
 {
 	glRasterPos2i(-1, -1);
-	float wfont = (float)(8. * wscale);
-	float hfont = (float)(13. * hscale);
-	float wm = (float)(255. * wscale);
+	float wfont = (float)(8. * m_ixscale);
+	float hfont = (float)(13. * m_iyscale);
+	float wm = (float)(255. * m_ixscale);
 	float hm = (float)(1.5 * hfont);
 	float lw = (float)(1.0 / m_sz_win.width);
 
@@ -179,7 +179,7 @@ void f_aws1_ui::ui_show_rudder(float wscale, float hscale)
 		m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
 		0xff, 0x7f, 0x00);
 
-	float xorg =  (float)(0. - 255. * 0.5 * wscale);
+	float xorg =  (float)(0. - 255. * 0.5 * m_ixscale);
 	float yorg = (float)(1.0 - 6 * hfont);
 	float x1, x2, y1, y2, ytxt;
 
@@ -200,16 +200,16 @@ void f_aws1_ui::ui_show_rudder(float wscale, float hscale)
 	x1 = (float)(xorg + 0.5 * wm);
 
 	// rudder instruction value
-	x2 = (float)(rud_inst * wscale - 0.5 * wm);
+	x2 = (float)(rud_inst * m_ixscale - 0.5 * wm);
 	drawGlLine2Df(x2, y1, x2, y2, 0, 1, 0, 1, lw);
 
 	// current rudder instruction value
-	x2 = (float)(rud_inst_cur * wscale - 0.5 * wm);
+	x2 = (float)(rud_inst_cur * m_ixscale - 0.5 * wm);
 	y2 = (float)(yorg - 0.666 * hm);
 	drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
 
 	// current rudder angle
-	x2 = (float)(rud_sta * wscale - 0.5 * wm);
+	x2 = (float)(rud_sta * m_ixscale - 0.5 * wm);
 	y1 = y2;
 	y2 = (float)(yorg - hm) ;
 	drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
@@ -228,13 +228,13 @@ void f_aws1_ui::ui_show_rudder(float wscale, float hscale)
 	}
 }
 
-void f_aws1_ui::ui_show_meng(float wscale, float hscale)
+void f_aws1_ui::ui_show_meng()
 {
 	glRasterPos2i(-1, -1);
-	float wfont = (float)(8. * wscale);
-	float hfont = (float)(13. * hscale);
+	float wfont = (float)(8. * m_ixscale);
+	float hfont = (float)(13. * m_iyscale);
 	float wm = (float)(3.0 * wfont);
-	float hm = (float)(255.0 * hscale);
+	float hm = (float)(255.0 * m_iyscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 
 	float meng_inst = (float)m_acp.meng_aws;
@@ -246,22 +246,22 @@ void f_aws1_ui::ui_show_meng(float wscale, float hscale)
 	float x = (float)(wfont - 1.0);
 	float y = (float)(1.0 - 6 * hfont);
 	drawGlEngineIndicator("M/E", x, y, wm, hm, wfont, hfont, lw, 
-		(float)(meng_inst * hscale),
-		(float)(meng_inst_cur * hscale));
+		(float)(meng_inst * m_iyscale),
+		(float)(meng_inst_cur * m_iyscale));
 	if(m_verb){
 		cout << "    Inst meng " << meng_inst ;
 		cout << "    Ctrl meng " << meng_inst_cur << endl;
 	}
 }
 
-void f_aws1_ui::ui_show_seng(float wscale, float hscale)
+void f_aws1_ui::ui_show_seng()
 {
 	glRasterPos2i(-1, -1);
 
-	float wfont = (float)(8. * wscale);
-	float hfont = (float)(13. * hscale);
+	float wfont = (float)(8. * m_ixscale);
+	float hfont = (float)(13. * m_iyscale);
 	float wm = (float)(3.0 * wfont);
-	float hm = (float)(255.0 * hscale);
+	float hm = (float)(255.0 * m_iyscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 
 	float seng_inst = (float)m_acp.seng_aws;
@@ -273,20 +273,20 @@ void f_aws1_ui::ui_show_seng(float wscale, float hscale)
 	float x = (float)(6 * wfont - 1.0);
 	float y = (float)(1.0 - 6 * hfont);
 	drawGlEngineIndicator("S/E", x, y, wm, hm, wfont, hfont, lw, 
-		(float)(seng_inst * hscale),
-		(float)(seng_inst_cur * hscale));
+		(float)(seng_inst * m_iyscale),
+		(float)(seng_inst_cur * m_iyscale));
   if(m_verb){
 	  cout << "    Inst seng " << seng_inst;
 	  cout << "    Ctrl seng " << seng_inst_cur << endl;
   }
 }
 
-void f_aws1_ui::ui_show_state(float wscale, float hscale)
+void f_aws1_ui::ui_show_state()
 {
 	glRasterPos2i(-1, -1);
 
-	float wfont = (float)(8. * wscale);
-	float hfont = (float)(13. * hscale);
+	float wfont = (float)(8. * m_ixscale);
+	float hfont = (float)(13. * m_iyscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 	float roll, pitch, yaw;
 	float lat, lon, alt, galt;
@@ -358,12 +358,12 @@ void f_aws1_ui::ui_show_state(float wscale, float hscale)
   }
 }
 
-void f_aws1_ui::ui_show_sys_state(float wscale, float hscale)
+void f_aws1_ui::ui_show_sys_state()
 {
 	glRasterPos2i(-1, -1);
 
-	float wfont = (float)(8. * wscale);
-	float hfont = (float)(13. * hscale);
+	float wfont = (float)(8. * m_ixscale);
+	float hfont = (float)(13. * m_iyscale);
 	float xorg = (float)(1.0 - wfont);
 	float yorg = (float)(1.0 - hfont);
 	float lw = (float)(1.0 / m_sz_win.width);
@@ -384,7 +384,7 @@ void f_aws1_ui::ui_show_sys_state(float wscale, float hscale)
 	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
-void f_aws1_ui::ui_show_menu(float wscale, float hscale)
+void f_aws1_ui::ui_show_menu()
 {
 	glRasterPos2i(-1, -1);
 	//-----------------------//
@@ -396,8 +396,8 @@ void f_aws1_ui::ui_show_menu(float wscale, float hscale)
 	//-----------------------//
 	//<Apply(a)>  <Cancel(b)>//
 	///////////////////////////
-	float wfont = (float)(8. * wscale);
-	float hfont = (float)(13. * hscale);
+	float wfont = (float)(8. * m_ixscale);
+	float hfont = (float)(13. * m_iyscale);
 	const char * title = "System Menu"; /* 11 characters */
 
 	const char * items[3] = { /* 7characters the longest.*/
@@ -567,24 +567,29 @@ bool f_aws1_ui::proc()
 	glfwMakeContextCurrent(pwin());
 
 	// render graphics
-	float wscale = (float)(2.0 / m_sz_win.width);
-	float hscale = (float)(2.0 / m_sz_win.height);  
+	if(m_xscale != (float) m_sz_win.width || m_yscale != (float) m_sz_win.height){
+		m_xscale = (float) m_sz_win.width;
+		m_yscale = (float) m_sz_win.height;
+		m_ixscale = (float)(2.0 / (double) m_sz_win.width);
+		m_iyscale = (float)(2.0 / (double) m_sz_win.height);
+	}
 
 	// information rendering
-	ui.draw(wscale, hscale); // mode dependent rendering
+	ui.draw(); // mode dependent rendering
 
 	//--> system information rendering
 	// show time
-	float wfont = (float)(13. * wscale);
-	float hfont = (float)(13. * hscale);
+
+	float wfont = (float)(8. * m_ixscale);
+	float hfont = (float)(13. * m_iyscale);
 	float x = (float)(wfont - 1);
-	float y = (float)(1 - 3 * hfont);
+	float y = (float)(1 - 2 * hfont);
 	drawGlText(x, y, m_time_str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
-	ui_show_sys_state(wscale, hscale);
+	ui_show_sys_state();
 
 	if(m_ui_menu)
-		ui_show_menu(wscale, hscale);
+		ui_show_menu();
 	
 	//<-- system information rendering
 

@@ -37,10 +37,26 @@ protected:
 
 	// Window scale parameters
 	float fx, fy, fxmeter, fymeter, ifxmeter, ifymeter;
+
+	void pix2mtr(const float xpix, const float ypix, float & xmtr, float & ymtr){		
+	}
+
+	void mtr2pix(const float xmtr, const float ymtr, float & xpix, float & ypix){
+	}
+
+	void nml2mtr(const float xnml, const float ynml, float & xmtr, float & ymtr){
+		xmtr = (float)(fxmeter * xnml);
+		ymtr = (float)(fymeter * ynml);
+	}
+
+	void mtr2nml(const float xmtr, const float ymtr, float & xnml, float & ynml){
+		xnml = (float)(ifxmeter * xmtr);
+		ynml = (float)(ifymeter * ymtr);
+	}
+
 	// Own ship coordinate transformation 
 	Mat Rorg;		// Rotation matrix of the own ship coordinate
 	Point3f Porg;   // Origin of the own ship coordinate
-
 
 	Point2f m_ship_pts[3];
 	Point2f m_circ_pts[36];
@@ -64,7 +80,7 @@ public:
 	}
 
 	virtual void js(const s_jc_u3613m  & js);
-	virtual void draw(float xscale, float yscale);
+	virtual void draw();
 	virtual void key(int key, int scancode, int action, int mods);
 };
 

@@ -22,6 +22,7 @@
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
 #include "../util/aws_nmea.h"
+#include "../util/aws_coord.h"
 
 #include "../channel/ch_nmea.h"
 #include "../channel/ch_state.h"

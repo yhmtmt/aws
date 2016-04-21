@@ -64,11 +64,10 @@ c_aws1_ui_map::c_aws1_ui_map(f_aws1_ui * _pui):c_aws1_ui_core(_pui), m_op(EMO_ED
 void c_aws1_ui_map::js(const s_jc_u3613m & js)
 {
 	const Size & sz_win = get_window_size();
-	float fxmeter, fymeter, ifxmeter, ifymeter, fx, fy;
 
 	if(sz_win.width > sz_win.height){ // 1 in y direction equals to m_map_range
-		fx = (float)((float) sz_win.height / (float) sz_win.width);
-		fy = 1.0;
+		fxmeter = (float)((float) sz_win.height / (float) sz_win.width);
+		fymeter = 1.0;
 	}else{ // 1 in x direction equals to m_map_range
 		fx = 1.0;
 		fy = (float)((float) sz_win.width / (float) sz_win.height);
@@ -78,7 +77,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	fymeter = fy * m_map_range;
 	ifxmeter = (float)(1.0 / fxmeter);
 	ifymeter = (float)(1.0 / fymeter);
-	
+
 	float lat, lon, alt, galt;
 	ch_state * pstate = get_state();
 	pstate->get_position(lat, lon, alt, galt);
@@ -130,12 +129,14 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	}
 }
 
-void c_aws1_ui_map::draw(float xscale, float yscale)
+void c_aws1_ui_map::draw()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	Point2f offset = Point2f((float)(-m_map_pos.x * ifxmeter), (float)(-m_map_pos.y * ifymeter));
 
-	float lw = xscale;
+	float lw;
+	pix2nml(1, 1, lw, lw);
+
 	// draw circle centered at my own ship 
 	{
 		Point2f pts[36]; // scaled points
@@ -158,7 +159,8 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 
 		float theta = (float)(yaw * (PI / 180.));
 		float c = (float) cos(theta), s = (float) sin(theta);
-		float ws = (float)(xscale * 10), hs = (float)(yscale * 10);
+		float ws, hs;
+		pix2nml(10., 10., ws, hs);
 
 		for(int i = 0; i < 3; i++){
 			// rotating the points
@@ -184,8 +186,8 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 		int num_wps = pwp->get_num_wps();
 		Point2f pts[36]; // scaled points
 		for(int i = 0; i < 36; i++){
-			pts[i].x = (float)(m_circ_pts[i].x * 10. * xscale);
-			pts[i].y = (float)(m_circ_pts[i].y * 10. * yscale);
+			pix2nml((float)(m_circ_pts[i].x * 10.),(float)(m_circ_pts[i].y * 10.),
+				pts[i].x, pts[i].y);
 		}
 
 		pwp->begin();
@@ -220,7 +222,8 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 				theta = (float)(yw * (PI / 180.));
 				c = (float) cos(theta), s = (float) sin(theta);
 
-				float ws = (float)(xscale * 10), hs = (float)(yscale * 10);
+				float ws, hs;
+				pix2nml(10., 10., ws, hs);
 				vx *= 180.f;
 				vy *= 180.f;
 
@@ -240,7 +243,10 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 	// draw cursor
 	{
 		float x1, x2, y1, y2;
-		x1 = x2 = y1 = y2 = 16 * xscale;
+		x1 = y1 = 16.;
+		pix2nml(x1, y1, x1, y1);
+		x2 = x1;
+		y2 = y1;
 		x1 = m_cur_pos.x - x1;
 		x2 = m_cur_pos.x + x2;
 		y1 = m_cur_pos.y - y1;
@@ -253,12 +259,12 @@ void c_aws1_ui_map::draw(float xscale, float yscale)
 	// draw operation lists (right bottom)
 
 	// draw Engine and Rudder status 
-	pui->ui_show_meng(xscale, yscale);
-	pui->ui_show_seng(xscale, yscale);
-	pui->ui_show_rudder(xscale, yscale);
+	pui->ui_show_meng();
+	pui->ui_show_seng();
+	pui->ui_show_rudder();
 
 	// draw own ship status
-	pui->ui_show_state(xscale, yscale);
+	pui->ui_show_state();
 }
 
 void c_aws1_ui_map::key(int key, int scancode, int action, int mods)
