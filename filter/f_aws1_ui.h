@@ -201,7 +201,7 @@ struct s_jc_u3613m
 		return EB_EVUP & e ? true : false;
 	}
 
-	bool is_event_down(unsigned char e)
+	bool is_state_up(unsigned char e)
 	{
 		return EB_STUP & e ? true : false;
 	}

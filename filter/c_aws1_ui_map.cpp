@@ -82,9 +82,8 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	float lat, lon, alt, galt;
 	ch_state * pstate = get_state();
 	pstate->get_position(lat, lon, alt, galt);
-
-	bihtoecef(lat, lon, alt, Porg.x, Porg.y, Porg.z);
-	getwrldrot(lat, lon, Rorg);
+	pstate->get_position_ecef(Porg.x, Porg.y, Porg.z);
+	Rorg = pstate->get_enu_rotation();
 
 	// Operation selection (cross key)
 	
