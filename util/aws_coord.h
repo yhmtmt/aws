@@ -54,6 +54,7 @@ void wrldtobih(Point3d & Xorg, Mat & Xrot, Point3d & Xwrld, s_bihpos & Xbih);
 void wrldtoecef(Point3d & Xorg, Mat & Xrot, Point3d & Xwrld, Point3d & Xecef);
 void eceftowrld(Point3d & Xorg, Mat & Xrot, Point3d & Xwrld, Point3d & Xecef);
 
+void getwrldrotf(const float lat, const float lon, Mat & Rwrld);
 void getwrldrot(const s_bihpos & Xbih, Mat & Rwrld);
 void getmatrotRPY(s_rotpar par, Mat & R);
 void getmatrotYPR(s_rotpar par, Mat & R);

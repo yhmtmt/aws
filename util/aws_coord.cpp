@@ -210,6 +210,42 @@ void eceftowrld(Point3d & Xorg, Mat & Xrot, Point3d & Xecef, Point3d & Xwrld)
 		+ ptr0[1] * Xecef.y + ptr0[2] * Xecef.z;
 }
 
+void getwrldrotf(const float lat, const float lon, Mat & Rwrld)
+{
+	float c, s;
+
+	// pi/2
+	c = 0;
+	s = 1;
+
+	Rwrld = Mat::eye(3, 3, CV_32FC1);
+	Rwrld.at<float>(0, 0) = c;
+	Rwrld.at<float>(1, 1) = c;
+	Rwrld.at<float>(0, 1) = s;
+	Rwrld.at<float>(1, 0) = -s;
+
+	// pi/2 - lat
+	c = sin(lat);
+	s = cos(lat);
+	Mat tmp = Mat::eye(3, 3, CV_32FC1);
+	tmp.at<float>(0, 0) = c;
+	tmp.at<float>(2, 2) = c;
+	tmp.at<float>(0, 2) = -s;
+	tmp.at<float>(2, 0) = s;
+
+	Rwrld *= tmp;
+
+	// lon
+	c = cos(lon);
+	s = sin(lon);
+	tmp = Mat::eye(3, 3, CV_32FC1);
+	tmp.at<float>(0, 0) = c;
+	tmp.at<float>(1, 1) = c;
+	tmp.at<float>(0, 1) = s;
+	tmp.at<float>(1, 0) = -s;
+
+	Rwrld *= tmp;
+}
 
 void getwrldrot(const float lat, const float lon, Mat & Rwrld)
 {
