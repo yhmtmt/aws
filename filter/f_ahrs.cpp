@@ -24,6 +24,9 @@
 
 using namespace std;
 
+#include <opencv2/opencv.hpp>
+using namespace cv;
+
 #include "f_ahrs.h"
 
 const char * f_ahrs::m_str_razor_cmd[ERC_UNDEF] = {
