@@ -104,6 +104,7 @@ void ch_base::register_factory()
 	register_factory<ch_state>("state");
 	register_factory<ch_map>("map");
 	register_factory<ch_obj>("obj");
+	register_factory<ch_ais_obj>("ais_obj");
 	register_factory<ch_wp>("wp");
 }
 

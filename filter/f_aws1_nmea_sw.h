@@ -26,6 +26,7 @@
 
 #include "../channel/ch_nmea.h"
 #include "../channel/ch_state.h"
+#include "../channel/ch_obj.h"
 
 #include "f_nmea.h"
 
@@ -38,6 +39,7 @@ class f_aws1_nmea_sw: public f_base
 protected:
 	c_nmea_dec m_nmea_dec;
 	ch_state * m_state;
+	ch_ais_obj * m_ais_obj;
 
 	ch_nmea * m_aws_nmea_i;
 	ch_nmea * m_ap_nmea_i;

@@ -35,7 +35,7 @@ using namespace cv;
 #include "f_aws1_nmea_sw.h"
 
 f_aws1_nmea_sw::f_aws1_nmea_sw(const char * name): f_base(name), 
-	m_state(NULL),
+	m_state(NULL), m_ais_obj(NULL),
 	m_aws_nmea_i(NULL), m_ap_nmea_i(NULL), m_gff_nmea_i(NULL),
 	m_ais_nmea_i(NULL), m_gps_nmea_i(NULL),
 	m_aws_nmea_o(NULL), m_ap_nmea_o(NULL), m_gff_nmea_o(NULL), 
@@ -45,6 +45,7 @@ f_aws1_nmea_sw::f_aws1_nmea_sw(const char * name): f_base(name),
 	m_aws_ocnt(0), m_ap_ocnt(0), m_gff_ocnt(0), m_ais_ocnt(0), m_gps_ocnt(0)
 {
 	register_fpar("state", (ch_base**)&m_state, typeid(ch_state).name(), "State output channel.");
+	register_fpar("ais_obj", (ch_base**)&m_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel.");
 	register_fpar("aws_nmea_i", (ch_base**)&m_aws_nmea_i, typeid(ch_nmea).name(), "Input Channel of aws_nmea.");
 	register_fpar("aws_nmea_o", (ch_base**)&m_aws_nmea_o, typeid(ch_nmea).name(), "Output Channel of aws_nmea.");
 	register_fpar("ap_nmea_i", (ch_base**)&m_ap_nmea_i, typeid(ch_nmea).name(), "Input Channel of ap_nmea.");
@@ -184,6 +185,32 @@ void f_aws1_nmea_sw::ais_to_out()
 
 				m_gff_nmea_o->push(m_nmea);
 				m_gff_out = true;
+			}
+
+			const c_vdm * pvdm = dynamic_cast<const c_vdm*>(m_nmea_dec.decode(m_nmea));
+			pvdm->m_mmsi;
+			switch(pvdm->get_type()){
+			case ENDT_VDM1:
+				{
+					const c_vdm_msg1 * pvdm1 = dynamic_cast<const c_vdm_msg1*>(pvdm);
+					m_ais_obj->push(m_cur_time, pvdm1->m_mmsi, pvdm1->m_lat, pvdm1->m_lon,
+						pvdm1->m_course, pvdm1->m_speed, pvdm1->m_heading);
+				}
+				break;
+			case ENDT_VDM18:
+				{
+					const c_vdm_msg18 * pvdm18 = dynamic_cast<const c_vdm_msg18*>(pvdm);
+					m_ais_obj->push(m_cur_time, pvdm18->m_mmsi, pvdm18->m_lat, pvdm18->m_lon, 
+						pvdm18->m_course, pvdm18->m_speed, pvdm18->m_heading);
+				}
+				break;
+			case ENDT_VDM19:
+				{
+					const c_vdm_msg19 * pvdm19 = dynamic_cast<const c_vdm_msg19*>(pvdm);
+					m_ais_obj->push(m_cur_time, pvdm19->m_mmsi, pvdm19->m_lat, pvdm19->m_lon, 
+						pvdm19->m_course, pvdm19->m_speed, pvdm19->m_heading);
+				}
+				break;
 			}
 		}		
 	}

@@ -103,6 +103,10 @@ public:
 		m_t = t;
 	}
 
+	const long long get_time(){
+		return m_t;
+	}
+
 	// Position and velocity in BIH coordinate.
 	void set_pos_bih(const float lat, const float lon, const float alt){
 		m_lat = lat;
@@ -182,11 +186,14 @@ public:
 			float theta = (float)(m_cog * (PI / 180.));
 			float c = cos(theta);
 			float s = sin(theta);
+			float v = (float)(m_sog * KNOT);
 			const double * ptr = Rorg.ptr<double>();
 			m_vx = (float)(s * ptr[0] + c * ptr[3]);
 			m_vy = (float)(s * ptr[1] + c * ptr[4]);
 			m_vz = (float)(s * ptr[2] + c * ptr[5]);
-
+			m_vx *= v;
+			m_vy *= v;
+			m_vz *= v;
 			m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_ECEF);
 		}
 	}
@@ -237,6 +244,21 @@ public:
 			m_vxr = (float)(m_vx * ptr[0] + m_vy * ptr[1] + m_vz * ptr[2]);
 			m_vyr = (float)(m_vx * ptr[3] + m_vy * ptr[4] + m_vz * ptr[5]);
 			m_vzr = (float)(m_vx * ptr[6] + m_vy * ptr[7] + m_vz * ptr[8]);
+			m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_REL);
+		}
+	}
+
+	void set_vel_rel_from_bih()
+	{
+		if(m_dtype & EOD_VEL_BIH){
+			float c, s;
+			float theta = (float)(m_cog * (PI / 180.));
+			float v = (float)(m_sog * KNOT);
+			c = (float) cos(theta);
+			s = (float) sin(theta);
+			m_vxr = (float) (v * s);
+			m_vyr = (float) (v * c);
+			m_vzr = 0.f;
 			m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_REL);
 		}
 	}
@@ -316,10 +338,10 @@ protected:
 	unsigned int m_mmsi;
 public:
 	c_ais_obj();
-	c_ais_obj(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog);
+	c_ais_obj(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg);
 	virtual ~c_ais_obj();
 
-	void set(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog)
+	void set(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
 	{
 		m_type = EOT_SHIP;
 		m_src = EOS_AIS;
@@ -327,14 +349,16 @@ public:
 			m_tst = EOST_TRCK;
 		m_dtype= EOD_AIS;
 
+		m_yaw = hdg;
 		set_time(t);
 		m_mmsi = mmsi;
 		set_pos_bih(lat, lon, 0.);
 		set_vel_bih(cog, sog);
 	}
 
-	void update(const long long t, float lat, float lon, float cog, float sog){
+	void update(const long long t, float lat, float lon, float cog, float sog, float hdg){
 		m_dtype = EOD_AIS;
+		m_yaw = hdg;
 		set_pos_bih(lat, lon, 0.);
 		set_vel_bih(cog, sog);
 	}
@@ -379,6 +403,109 @@ public:
 
 	c_obj * begin(){
 		return *(itr = objs.begin());
+	}
+
+	void end(){
+		itr = objs.end();
+	}
+
+	void next(){
+		if(objs.end() != itr)
+			itr++;
+	}
+
+	void prev(){
+		if(objs.begin() != itr)
+			itr--;
+	}
+
+	int get_num_objs(){
+		return (int) objs.size();
+	}
+};
+
+
+class ch_ais_obj:public ch_base
+{
+protected:
+	map<unsigned int, c_ais_obj *> objs;
+	map<unsigned int, c_ais_obj *>::iterator itr;
+public:
+	ch_ais_obj(const char * name): ch_base(name)
+	{
+		itr = objs.begin();
+	}
+
+	virtual ~ch_ais_obj()
+	{
+	}
+	void push(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
+	{
+		itr = objs.find(mmsi);
+		if(itr != objs.end()){
+			c_ais_obj & obj = *(itr->second);
+			obj.update(t, lat, lon, cog, sog, hdg);
+			obj.set_ecef_from_bih();
+			
+		}else{
+			c_ais_obj * pobj = new c_ais_obj(t, mmsi, lat, lon, cog, sog, hdg);
+			objs.insert(map<unsigned int, c_ais_obj *>::value_type(mmsi, pobj));
+			pobj->set_ecef_from_bih();
+		}
+	}
+	
+	void update_rel_pos(const Mat & R, const float x, const float y, const float z)
+	{
+		for(itr = objs.begin(); itr != objs.end(); itr++){
+			c_ais_obj * pobj = itr->second;
+			pobj->set_pos_rel_from_ecef(R, x, y, z);
+			pobj->set_vel_ecef_from_bih(R);
+			//pobj->set_vel_rel_from_ecef(R);
+			pobj->set_vel_rel_from_bih();
+		}
+	}
+
+	void remove_out(float range)
+	{
+		float r2 = (float)(range * range);
+		for(itr = objs.begin(); itr != objs.end();){
+			c_ais_obj * pobj = itr->second;
+			float x, y, z;
+			pobj->get_pos_rel(x, y, z);
+			float d = (float)(x * x + y * y + z * z);
+			if(d < r2){
+				itr = objs.erase(itr);
+			}else{
+				itr++;
+			}
+		}
+	}
+
+	void remove_old(const long long told){
+		for(itr = objs.begin(); itr != objs.end();){
+			c_ais_obj * pobj = itr->second;
+			if(pobj->get_time() < told){
+				itr = objs.erase(itr);
+			}else{
+				itr++;
+			}
+		}
+	}
+
+	c_ais_obj * cur(){
+		return itr->second;
+	}
+
+	bool is_end(){
+		return itr == objs.end();
+	}
+
+	bool is_begin(){
+		return itr == objs.begin();
+	}
+
+	c_ais_obj * begin(){
+		return (itr = objs.begin())->second;
 	}
 
 	void end(){
