@@ -58,6 +58,12 @@ c_ais_obj::c_ais_obj():m_mmsi(0)
 {
 }
 
+c_ais_obj::c_ais_obj(const c_ais_obj & obj)
+{
+	set(obj);
+}
+
+
 c_ais_obj::c_ais_obj(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
 {
 	set(t, mmsi, lat, lon, cog, sog, hdg);

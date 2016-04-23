@@ -338,6 +338,7 @@ protected:
 	unsigned int m_mmsi;
 public:
 	c_ais_obj();
+	c_ais_obj(const c_ais_obj & obj);
 	c_ais_obj(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg);
 	virtual ~c_ais_obj();
 
@@ -361,6 +362,71 @@ public:
 		m_yaw = hdg;
 		set_pos_bih(lat, lon, 0.);
 		set_vel_bih(cog, sog);
+	}
+
+	void set(const c_ais_obj & obj){
+		set(obj.m_t, obj.m_mmsi, obj.m_lat, obj.m_lon, obj.m_cog, obj.m_sog, obj.m_yaw);
+	}
+
+	void update(const c_ais_obj & obj){
+		update(obj.m_t, obj.m_lat, obj.m_lon, obj.m_cog, obj.m_sog, obj.m_yaw);
+	}
+
+	const unsigned int get_mmsi(){
+		return m_mmsi;
+	}
+
+	static size_t get_dsize()
+	{
+		return sizeof(long long) + sizeof(unsigned int) + sizeof(float) * 5;
+	}
+
+	void write_buf(const char * buf)
+	{
+		m_t = *((long long*) buf);
+		buf += sizeof(long long);
+
+		m_mmsi = *((unsigned int*) buf);
+		buf += sizeof(unsigned int);
+
+		m_lat = *((float*)buf);
+		buf += sizeof(float);
+
+		m_lon = *((float*)buf);
+		buf += sizeof(float);
+
+		m_cog = *((float*)buf);
+		buf += sizeof(float);
+
+		m_sog = *((float*)buf);
+		buf += sizeof(float);
+
+		m_yaw = *((float*)buf);
+		buf += sizeof(float);
+	}
+
+	void read_buf(const char * buf)
+	{
+		*((long long*) buf) = m_t;
+		buf += sizeof(long long);
+
+		*((unsigned int*) buf) = m_mmsi;
+		buf += sizeof(unsigned int);
+
+		*((float*)buf) = m_lat;
+		buf += sizeof(float);
+
+		*((float*)buf) = m_lon;
+		buf += sizeof(float);
+
+		*((float*)buf) = m_cog;
+		buf += sizeof(float);
+
+		*((float*)buf) = m_sog;
+		buf += sizeof(float);
+
+		*((float*)buf) = m_yaw;
+		buf += sizeof(float);
 	}
 };
 
@@ -430,6 +496,7 @@ class ch_ais_obj:public ch_base
 protected:
 	map<unsigned int, c_ais_obj *> objs;
 	map<unsigned int, c_ais_obj *>::iterator itr;
+	list<c_ais_obj*> updates;
 public:
 	ch_ais_obj(const char * name): ch_base(name)
 	{
@@ -441,21 +508,25 @@ public:
 	}
 	void push(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
 	{
+		lock();
 		itr = objs.find(mmsi);
 		if(itr != objs.end()){
 			c_ais_obj & obj = *(itr->second);
 			obj.update(t, lat, lon, cog, sog, hdg);
 			obj.set_ecef_from_bih();
-			
+			updates.push_back(itr->second);
 		}else{
 			c_ais_obj * pobj = new c_ais_obj(t, mmsi, lat, lon, cog, sog, hdg);
 			objs.insert(map<unsigned int, c_ais_obj *>::value_type(mmsi, pobj));
 			pobj->set_ecef_from_bih();
+			updates.push_back(pobj);
 		}
+		unlock();
 	}
 	
 	void update_rel_pos_and_vel(const Mat & R, const float x, const float y, const float z)
 	{
+		lock();
 		for(itr = objs.begin(); itr != objs.end(); itr++){
 			c_ais_obj * pobj = itr->second;
 			pobj->set_pos_rel_from_ecef(R, x, y, z);
@@ -463,10 +534,12 @@ public:
 			//pobj->set_vel_rel_from_ecef(R);
 			pobj->set_vel_rel_from_bih();
 		}
+		unlock();
 	}
 
 	void remove_out(float range)
 	{
+		lock();
 		float r2 = (float)(range * range);
 		for(itr = objs.begin(); itr != objs.end();){
 			c_ais_obj * pobj = itr->second;
@@ -479,9 +552,11 @@ public:
 				itr++;
 			}
 		}
+		unlock();
 	}
 
 	void remove_old(const long long told){
+		lock();
 		for(itr = objs.begin(); itr != objs.end();){
 			c_ais_obj * pobj = itr->second;
 			if(pobj->get_time() < told){
@@ -490,6 +565,7 @@ public:
 				itr++;
 			}
 		}
+		unlock();
 	}
 
 	c_ais_obj * cur(){
@@ -524,6 +600,44 @@ public:
 
 	int get_num_objs(){
 		return (int) objs.size();
+	}
+
+	virtual size_t get_dsize()
+	{
+		return c_ais_obj::get_dsize();
+	}
+
+	virtual size_t write_buf(const char * buf)
+	{
+		lock();
+		c_ais_obj obj;
+		obj.write_buf(buf);
+	
+		itr = objs.find(obj.get_mmsi());
+		if(itr != objs.end()){
+			c_ais_obj & obj = *(itr->second);
+			obj.update(obj);
+			obj.set_ecef_from_bih();
+			updates.push_back(itr->second);
+		}else{
+			c_ais_obj * pobj = new c_ais_obj(obj);
+			objs.insert(map<unsigned int, c_ais_obj *>::value_type(obj.get_mmsi(), pobj));
+			pobj->set_ecef_from_bih();
+			updates.push_back(pobj);
+		}
+
+		unlock();
+		return get_dsize();
+	}
+
+	virtual size_t read_buf(char * buf)
+	{
+		lock();
+		c_ais_obj * pobj = *(updates.begin());
+		updates.pop_front();
+		pobj->read_buf(buf);
+		unlock();
+		return get_dsize();
 	}
 };
 
