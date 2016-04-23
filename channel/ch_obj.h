@@ -454,7 +454,7 @@ public:
 		}
 	}
 	
-	void update_rel_pos(const Mat & R, const float x, const float y, const float z)
+	void update_rel_pos_and_vel(const Mat & R, const float x, const float y, const float z)
 	{
 		for(itr = objs.begin(); itr != objs.end(); itr++){
 			c_ais_obj * pobj = itr->second;

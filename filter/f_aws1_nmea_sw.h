@@ -77,4 +77,5 @@ public:
 	virtual bool proc();
 };
 
+
 #endif
