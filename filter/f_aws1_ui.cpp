@@ -299,7 +299,10 @@ void f_aws1_ui::ui_show_state()
 		m_state->get_velocity(cog, sog);
 		m_state->get_depth(depth);
 	}
-	yaw = (float)(yaw + 180.);
+
+	if(yaw < 0){
+		yaw = (float)(yaw + 360.);
+	}
 
 	// Drawing ship state information
 	float xorg = (float)(wfont - 1.0);
