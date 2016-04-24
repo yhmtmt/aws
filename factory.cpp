@@ -160,6 +160,7 @@ void ch_base::register_factory()
 #include "filter/f_map.h"
 #include "filter/f_time.h"
 #include "filter/f_aws1_ap.h"
+#include "filter/f_obj_manager.h"
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
@@ -294,4 +295,5 @@ void f_base::register_factory()
 
 	register_factory<f_ahrs>("ahrs");
 	register_factory<f_aws1_ap>("aws1_ap");
+	register_factory<f_obj_manager>("obj_manager");
 }
