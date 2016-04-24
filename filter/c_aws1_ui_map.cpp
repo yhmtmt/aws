@@ -113,8 +113,19 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 
 	wrldtoecef(Rorg, Porg.x, Porg.y, Porg.z, cp_rx, cp_ry, 0.f, cp_x, cp_y, cp_z);
 	eceftobih(cp_x, cp_y, cp_z, cp_lat, cp_lon, cp_alt);
+	if(js.is_event_down(js.elx)){
+		ch_wp * pwp = get_wp();
+		pwp->prev_focus();
+	}else if(js.is_event_down(js.erx)){
+		ch_wp * pwp = get_wp();
+		pwp->next_focus();
+	}
 
-	if(js.erst & s_jc_u3613m::EB_STDOWN){
+	if(js.is_event_down(js.eb)){
+		ch_wp * pwp = get_wp();
+		pwp->ers();
+	}
+	if(js.is_event_down(js.ea)){
 		ch_wp * pwp = get_wp();
 		s_wp wp;
 		wp.rx = cp_rx; 
@@ -198,7 +209,11 @@ void c_aws1_ui_map::draw()
 			Point2f pos;
 			pos.x = (float)((wp.rx - m_map_pos.x) * ifxmeter);
 			pos.y = (float)((wp.ry - m_map_pos.y) * ifymeter);
-			drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); // own ship triangle
+			if(pwp->is_focused()){
+				drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); // own ship triangle
+			}else{
+				drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); // own ship triangle
+			}
 		}
 	}
 

@@ -186,22 +186,22 @@ struct s_jc_u3613m
 	}
 
 	// Event detectors.
-	bool is_event_down(unsigned char e)
+	bool is_event_down(unsigned char e) const
 	{
 		return EB_EVDOWN & e ? true : false;
 	}
 
-	bool is_state_down(unsigned char e)
+	bool is_state_down(unsigned char e) const
 	{
 		return EB_STDOWN & e ? true : false;
 	}
 
-	bool is_event_up(unsigned char e)
+	bool is_event_up(unsigned char e) const
 	{
 		return EB_EVUP & e ? true : false;
 	}
 
-	bool is_state_up(unsigned char e)
+	bool is_state_up(unsigned char e) const
 	{
 		return EB_STUP & e ? true : false;
 	}

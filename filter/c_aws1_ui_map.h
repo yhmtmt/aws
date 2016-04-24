@@ -76,6 +76,7 @@ protected:
 
 	void draw_ship_object(c_obj & obj);
 
+	int m_cur_wp;
 public:
 	c_aws1_ui_map(f_aws1_ui * _pui);
 
