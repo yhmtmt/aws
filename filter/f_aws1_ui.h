@@ -300,6 +300,8 @@ class f_aws1_ui_test: public f_base
 {
 protected:
 	ch_state * m_state;
+	ch_ais_obj * m_ch_ais_obj;
+
 	ch_aws1_ctrl * m_ch_ctrl_ui, * m_ch_ctrl_ap1, * m_ch_ctrl_ap2, * m_ch_ctrl_out;
 	ch_image_ref * m_ch_img;
 
@@ -310,6 +312,9 @@ protected:
 
 	s_aws1_ctrl_pars m_acp;
 
+	bool m_add_ais_ship;
+	unsigned int ais_mmsi;
+	float ais_lat, ais_lon, ais_cog, ais_sog, ais_yaw;
 
 	float m_rud_sta_sim;
 public:
@@ -417,6 +422,14 @@ public:
 
 	void simulate_dynamics()
 	{
+	}
+
+	void add_ais_ship()
+	{
+		if(m_ch_ais_obj && m_add_ais_ship){
+			m_add_ais_ship = false;
+			m_ch_ais_obj->push(m_cur_time, ais_mmsi, ais_lat, ais_lon, ais_cog, ais_sog, ais_yaw);
+		}
 	}
 
 	virtual bool init_run();

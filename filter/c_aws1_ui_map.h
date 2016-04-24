@@ -72,6 +72,10 @@ protected:
 	float mp_x, mp_y, mp_z;
 	float mp_lat, mp_lon, mp_alt;
 
+	Point2f offset;
+
+	void draw_ship_object(c_obj & obj);
+
 public:
 	c_aws1_ui_map(f_aws1_ui * _pui);
 

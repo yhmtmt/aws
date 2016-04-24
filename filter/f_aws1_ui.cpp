@@ -779,12 +779,14 @@ void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
 /////////////////////////////////////////////////////////////////////////// f_aws1_ui_test members
 
 f_aws1_ui_test::f_aws1_ui_test(const char * name):f_base(name),
-	m_state(NULL),
+	m_state(NULL), m_ch_ais_obj(NULL),
 	m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL), m_ch_ctrl_out(NULL),
 	r(0), p(0), y(0), lon(0), lat(0), alt(0), galt(0), cog(0), sog(0), depth(0),
-	m_rud_sta_sim(0.f)
+	m_rud_sta_sim(0.f),
+	m_add_ais_ship(false), ais_mmsi(0), ais_lat(0), ais_lon(0), ais_cog(0), ais_sog(0), ais_yaw(0)
 {
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
+  register_fpar("ch_ais_obj", (ch_base**)&m_ch_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel");
   register_fpar("ch_ctrl_ui", (ch_base**)&m_ch_ctrl_ui, typeid(ch_aws1_ctrl).name(), "Control input channel.");
   register_fpar("ch_ctrl_ap1", (ch_base**)&m_ch_ctrl_ap1, typeid(ch_aws1_ctrl).name(), "Autopilot 1 control input channel.");
   register_fpar("ch_ctrl_ap2", (ch_base**)&m_ch_ctrl_ap2, typeid(ch_aws1_ctrl).name(), "Autopilot 2 control input channel.");
@@ -868,7 +870,14 @@ f_aws1_ui_test::f_aws1_ui_test(const char * name):f_base(name),
   register_fpar("rud", &m_acp.rud, "Output value for rudder.");
   register_fpar("rud_sta_out", &m_acp.rud_sta_out, "Output value for rudder status.");
 
-
+  // for AIS data injection
+  register_fpar("add_ais", &m_add_ais_ship, "If yew, new ais ship is added according to the parameter.");
+  register_fpar("ais_mmsi", &ais_mmsi, "MMSI of the AIS ship to be added.");
+  register_fpar("ais_lat", &ais_lat, "lattitude of the AIS ship to be added.");
+  register_fpar("ais_lon", &ais_lon, "longitude of the AIS ship to be added.");
+  register_fpar("ais_cog", &ais_cog, "COG of the AIS ship to be added.");	
+  register_fpar("ais_sog", &ais_sog, "SOG of the AIS ship to be added.");	
+  register_fpar("ais_yaw", &ais_yaw, "YAW of the AIS ship to be added.");	
 }
 
 bool f_aws1_ui_test::init_run()
