@@ -29,6 +29,10 @@ protected:
 	ch_state * m_state;
 	ch_ais_obj * m_ais_obj;
 	ch_obj * m_obj;
+
+	long long m_dtold;
+	float m_range;
+
 public:
 	f_obj_manager(const char * name);
 	virtual ~f_obj_manager();

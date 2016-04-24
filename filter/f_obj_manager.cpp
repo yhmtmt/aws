@@ -32,11 +32,14 @@ using namespace cv;
 
 #include "f_obj_manager.h"
 
-f_obj_manager::f_obj_manager(const char * name): f_base(name), m_state(NULL), m_ais_obj(NULL)
+f_obj_manager::f_obj_manager(const char * name): f_base(name), m_state(NULL), m_ais_obj(NULL),
+	m_range(10000), m_dtold(180 * SEC)
 {
 	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
 	register_fpar("ch_ais_obj", (ch_base**)&m_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel.");
 	register_fpar("ch_obj", (ch_base**)&m_obj, typeid(ch_obj).name(), "Generic object channel.");
+	register_fpar("dtold", &m_dtold, "Time the objects alive from their update.");
+	register_fpar("range", &m_range, "The object range of interest.");
 }
 
 f_obj_manager::~f_obj_manager()
@@ -63,8 +66,11 @@ bool f_obj_manager::proc()
 
 	if(m_ais_obj){
 		// update enu coordinate
-		if(!Renu.empty())
+		if(!Renu.empty()){
 			m_ais_obj->update_rel_pos_and_vel(Renu, x, y, z);
+			m_ais_obj->remove_old(m_dtold);
+			m_ais_obj->remove_out(m_range);
+		}
 	}
 
 	if(m_obj){
