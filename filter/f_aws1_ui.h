@@ -216,6 +216,7 @@ class f_aws1_ui: public f_glfw_window
   ch_aws1_ctrl * m_ch_ctrl_in, * m_ch_ctrl_out;
   ch_wp * m_ch_wp;
   ch_obj * m_ch_obj;
+  ch_ais_obj * m_ch_ais_obj;
   ch_image_ref * m_ch_img;
 
   friend class c_aws1_ui_core;

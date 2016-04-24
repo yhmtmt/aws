@@ -89,6 +89,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	// Map move (left stick)	
 	m_map_pos.x += (float)(js.lr2 * fxmeter * (1.0/60.0));
     m_map_pos.y += (float)(js.ud2 * fymeter * (1.0/60.0) );	
+	offset = Point2f((float)(-m_map_pos.x * ifxmeter), (float)(-m_map_pos.y * ifymeter));
 
 	if(js.elst & s_jc_u3613m::EB_STDOWN){ // back to the own ship 
 		m_map_pos.x = m_map_pos.y = 0.;
@@ -132,7 +133,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 void c_aws1_ui_map::draw()
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	Point2f offset = Point2f((float)(-m_map_pos.x * ifxmeter), (float)(-m_map_pos.y * ifymeter));
+	
 
 	float lw;
 	pix2nml(1, 1, lw, lw);
@@ -208,34 +209,7 @@ void c_aws1_ui_map::draw()
 		for(;pobj->is_end(); pobj->next()){
 			c_obj & obj = *pobj->cur();
 			if(obj.get_type() & EOT_SHIP){				
-				float x, y, z, vx, vy, vz, c, s, theta, r, p, yw;
-				if(obj.get_dtype() & EOD_POS_REL){
-					obj.get_pos_rel(x, y, z);
-				}
-				if(obj.get_dtype() & EOD_VEL_REL){
-					obj.get_vel_rel(vx, vy, vz);
-				}
-				if(obj.get_dtype() & EOD_ATTD){	
-					obj.get_att(r, p, yw);
-				}
-
-				theta = (float)(yw * (PI / 180.));
-				c = (float) cos(theta), s = (float) sin(theta);
-
-				float ws, hs;
-				pix2nml(10., 10., ws, hs);
-				vx *= 180.f;
-				vy *= 180.f;
-
-				Point2f pts[3];
-				for(int i = 0; i < 3; i++){
-					// rotating the points
-					// multiply [ c -s; s c]
-					pts[i].x = (float)(ws * (m_ship_pts[i].x * c - m_ship_pts[i].y * s + offset.x));
-					pts[i].y = (float)(hs * (m_ship_pts[i].x * s + m_ship_pts[i].y * c + offset.y));
-				}
-				drawGlPolygon2Df(pts, 3, 0, 1, 0, 0.5); // own ship triangle
-				drawGlLine2Df(offset.x, offset.y, (float)(offset.x + vx), (float)(offset.y + vy), 0., 1., 0., 1.0, lw);
+				draw_ship_object(obj);
 			}
 		}
 	}
@@ -269,4 +243,38 @@ void c_aws1_ui_map::draw()
 
 void c_aws1_ui_map::key(int key, int scancode, int action, int mods)
 {
+}
+
+void c_aws1_ui_map::draw_ship_object(c_obj & obj)
+{
+	float x, y, z, vx, vy, vz, c, s, theta, r, p, yw;
+	if(obj.get_dtype() & EOD_POS_REL){
+		obj.get_pos_rel(x, y, z);
+	}
+	if(obj.get_dtype() & EOD_VEL_REL){
+		obj.get_vel_rel(vx, vy, vz);
+	}
+	if(obj.get_dtype() & EOD_ATTD){	
+		obj.get_att(r, p, yw);
+	}
+
+	theta = (float)(yw * (PI / 180.));
+	c = (float) cos(theta), s = (float) sin(theta);
+
+	float ws, hs;
+	pix2nml(10., 10., ws, hs);
+	vx *= 180.f;
+	vy *= 180.f;
+
+	Point2f pts[3];
+	for(int i = 0; i < 3; i++){
+		// rotating the points
+		// multiply [ c -s; s c]
+		pts[i].x = (float)(ws * (m_ship_pts[i].x * c - m_ship_pts[i].y * s + offset.x));
+		pts[i].y = (float)(hs * (m_ship_pts[i].x * s + m_ship_pts[i].y * c + offset.y));
+	}
+	drawGlPolygon2Df(pts, 3, 0, 1, 0, 0.5); // own ship triangle
+	float lw;
+	pix2nml(1, 1, lw, lw);
+	drawGlLine2Df(offset.x, offset.y, (float)(offset.x + vx), (float)(offset.y + vy), 0., 1., 0., 1.0, lw);
 }

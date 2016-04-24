@@ -27,6 +27,7 @@ protected:
 	 ch_aws1_ctrl * get_ctrl_in();
 	 ch_aws1_ctrl * get_ctrl_out();
 	 ch_wp * get_wp();
+	 ch_ais_obj * get_ais_obj();
 	 ch_obj * get_obj();
 	 ch_image * get_img();
 	 s_aws1_ctrl_pars & get_acp();

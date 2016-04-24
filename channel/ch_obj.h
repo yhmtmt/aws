@@ -347,7 +347,7 @@ public:
 		m_src = EOS_AIS;
 		if(m_tst == EOST_DET || m_tst == EOST_TRCK)
 			m_tst = EOST_TRCK;
-		m_dtype= EOD_AIS;
+		m_dtype= (e_obj_data_type)(EOD_AIS | EOD_ATTD);
 
 		m_yaw = hdg;
 		set_time(t);
@@ -357,7 +357,7 @@ public:
 	}
 
 	void update(const long long t, float lat, float lon, float cog, float sog, float hdg){
-		m_dtype = EOD_AIS;
+		m_dtype = (e_obj_data_type)(EOD_AIS | EOD_ATTD);
 		m_yaw = hdg;
 		set_pos_bih(lat, lon, 0.);
 		set_vel_bih(cog, sog);

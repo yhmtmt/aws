@@ -159,6 +159,11 @@ ch_obj * c_aws1_ui_core::get_obj(){
 	return pui->m_ch_obj;
 }
 
+ch_ais_obj * c_aws1_ui_core::get_ais_obj()
+{
+	return pui->m_ch_ais_obj;
+}
+
 ch_image * c_aws1_ui_core::get_img(){
 	return pui->m_ch_img;
 }
