@@ -17,6 +17,7 @@
 #define _F_OBJ_MANAGER_H_
 
 #include "f_base.h"
+#include "../channel/ch_state.h"
 #include "../channel/ch_obj.h"
 
 // Description:
@@ -25,7 +26,9 @@
 class f_obj_manager: public f_base
 {
 protected:
+	ch_state * m_state;
 	ch_ais_obj * m_ais_obj;
+	ch_obj * m_obj;
 public:
 	f_obj_manager(const char * name);
 	virtual ~f_obj_manager();

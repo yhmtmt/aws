@@ -308,6 +308,7 @@ protected:
 public:
 	c_vobj();
 	c_vobj(const long long t, const Rect & rc, const Mat & tmp, const f_base * pfsrc, bool manual=false);
+	virtual ~c_vobj();
 
 	void set(const long long t, const Rect & rc, const Mat & tmp, const f_base * pfsrc, bool manual=false)
 	{
@@ -327,8 +328,6 @@ public:
 			m_src = EOS_VAUTO;
 		}
 	}
-
-	virtual ~c_vobj();
 };
 
 // AIS object
@@ -489,7 +488,6 @@ public:
 		return (int) objs.size();
 	}
 };
-
 
 class ch_ais_obj:public ch_base
 {

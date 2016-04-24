@@ -32,9 +32,11 @@ using namespace cv;
 
 #include "f_obj_manager.h"
 
-f_obj_manager::f_obj_manager(const char * name): f_base(name), m_ais_obj(NULL)
+f_obj_manager::f_obj_manager(const char * name): f_base(name), m_state(NULL), m_ais_obj(NULL)
 {
-	register_fpar("ais_obj", (ch_base**)&m_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel.");
+	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
+	register_fpar("ch_ais_obj", (ch_base**)&m_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel.");
+	register_fpar("ch_obj", (ch_base**)&m_obj, typeid(ch_obj).name(), "Generic object channel.");
 }
 
 f_obj_manager::~f_obj_manager()
@@ -52,6 +54,21 @@ void f_obj_manager::destroy_run()
 
 bool f_obj_manager::proc()
 {
+	Mat Renu;
+	float x, y, z;
+	if(m_state){
+		Renu = m_state->get_enu_rotation();
+		m_state->get_position_ecef(x, y, z);
+	}
+
+	if(m_ais_obj){
+		// update enu coordinate
+		if(!Renu.empty())
+			m_ais_obj->update_rel_pos_and_vel(Renu, x, y, z);
+	}
+
+	if(m_obj){
+	}
 
 	return true;
 }
