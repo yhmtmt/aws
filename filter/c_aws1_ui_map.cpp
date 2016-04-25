@@ -196,39 +196,43 @@ void c_aws1_ui_map::draw()
 	{
 		Point2f pos_prev = m_cur_pos;
 		ch_wp * pwp = get_wp();
-		int num_wps = pwp->get_num_wps();
-		Point2f pts[36]; // scaled points
-		for(int i = 0; i < 36; i++){
-			pix2nml((float)(m_circ_pts[i].x * 10.),(float)(m_circ_pts[i].y * 10.),
-				pts[i].x, pts[i].y);
-		}
-
-		pwp->begin();
-		for(;pwp->is_end(); pwp->next()){
-			s_wp & wp = pwp->cur();
-			wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
-			Point2f pos;
-			pos.x = (float)((wp.rx - m_map_pos.x) * ifxmeter);
-			pos.y = (float)((wp.ry - m_map_pos.y) * ifymeter);
-			if(pwp->is_focused()){
-				drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); // own ship triangle
-			}else{
-				drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); // own ship triangle
+		if(pwp){
+			int num_wps = pwp->get_num_wps();
+			Point2f pts[36]; // scaled points
+			for(int i = 0; i < 36; i++){
+				pix2nml((float)(m_circ_pts[i].x * 10.),(float)(m_circ_pts[i].y * 10.),
+					pts[i].x, pts[i].y);
 			}
 
-			drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
-			pos_prev = pos;
+			pwp->begin();
+			for(;pwp->is_end(); pwp->next()){
+				s_wp & wp = pwp->cur();
+				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
+				Point2f pos;
+				pos.x = (float)((wp.rx - m_map_pos.x) * ifxmeter);
+				pos.y = (float)((wp.ry - m_map_pos.y) * ifymeter);
+				if(pwp->is_focused()){
+					drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); // own ship triangle
+				}else{
+					drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); // own ship triangle
+				}
+
+				drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
+				pos_prev = pos;
+			}
 		}
 	}
 
 	// draw objects
 	{
 		ch_obj * pobj = get_obj();
-		int num_obj = pobj->get_num_objs();
-		for(;pobj->is_end(); pobj->next()){
-			c_obj & obj = *pobj->cur();
-			if(obj.get_type() & EOT_SHIP){				
-				draw_ship_object(obj);
+		if(pobj){
+			int num_obj = pobj->get_num_objs();
+			for(;pobj->is_end(); pobj->next()){
+				c_obj & obj = *pobj->cur();
+				if(obj.get_type() & EOT_SHIP){				
+					draw_ship_object(obj);
+				}
 			}
 		}
 	}
