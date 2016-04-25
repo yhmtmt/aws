@@ -118,6 +118,8 @@ public:
 	void set_bih_from_ecef(){
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_BIH);
 		eceftobih(m_x, m_y, m_z, m_lat, m_lon, m_alt);	
+		m_lat *= (float)(180. / PI);
+		m_lon *= (float)(180. / PI);
 	}
 
 	void reset_bih(){
@@ -152,7 +154,7 @@ public:
 	void set_ecef_from_bih()
 	{
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_ECEF);
-		bihtoecef(m_lat, m_lon, m_alt, m_x, m_y, m_z);
+		bihtoecef((float)(m_lat * (PI/180.)), (float)(m_lon * (PI/180.)), m_alt, m_x, m_y, m_z);
 	}
 
 	void set_ecef_from_rel(const Mat & Rorg, float xorg, float yorg, float zorg)
@@ -504,6 +506,7 @@ public:
 	virtual ~ch_ais_obj()
 	{
 	}
+
 	void push(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
 	{
 		lock();
@@ -512,7 +515,6 @@ public:
 			c_ais_obj & obj = *(itr->second);
 			obj.update(t, lat, lon, cog, sog, hdg);
 			obj.set_ecef_from_bih();
-			updates.push_back(itr->second);
 		}else{
 			c_ais_obj * pobj = new c_ais_obj(t, mmsi, lat, lon, cog, sog, hdg);
 			objs.insert(map<unsigned int, c_ais_obj *>::value_type(mmsi, pobj));
@@ -544,7 +546,8 @@ public:
 			float x, y, z;
 			pobj->get_pos_rel(x, y, z);
 			float d = (float)(x * x + y * y + z * z);
-			if(d < r2){
+			if(d > r2){
+				delete itr->second;
 				itr = objs.erase(itr);
 			}else{
 				itr++;
@@ -558,6 +561,7 @@ public:
 		for(itr = objs.begin(); itr != objs.end();){
 			c_ais_obj * pobj = itr->second;
 			if(pobj->get_time() < told){
+				delete itr->second;
 				itr = objs.erase(itr);
 			}else{
 				itr++;
@@ -566,20 +570,36 @@ public:
 		unlock();
 	}
 
-	c_ais_obj * cur(){
-		return itr->second;
+	// Note: 
+	// get_cur_state, is_end, is_begin, begin, end, next, prev do not lock mutex. 
+	// If you use them, lock/unlock methods should be called by their user.
+
+	void get_cur_state(float & x, float & y, float & z, float & vx, float & vy, float & vz, float & yw){
+		c_ais_obj & obj = *(itr->second);
+		float r, p;
+		if(obj.get_dtype() & EOD_POS_REL){
+			obj.get_pos_rel(x, y, z);
+		}
+		if(obj.get_dtype() & EOD_VEL_REL){
+			obj.get_vel_rel(vx, vy, vz);
+		}
+		if(obj.get_dtype() & EOD_ATTD){	
+			obj.get_att(r, p, yw);
+		}	
 	}
 
 	bool is_end(){
-		return itr == objs.end();
+		bool r = itr == objs.end();
+		return r;
 	}
 
 	bool is_begin(){
-		return itr == objs.begin();
+		bool r = itr == objs.begin();
+		return r;
 	}
 
-	c_ais_obj * begin(){
-		return (itr = objs.begin())->second;
+	void begin(){
+		itr = objs.begin();
 	}
 
 	void end(){
@@ -597,8 +617,11 @@ public:
 	}
 
 	int get_num_objs(){
-		return (int) objs.size();
+		int r;
+		r = (int) objs.size();
+		return r;
 	}
+
 
 	virtual size_t get_dsize()
 	{

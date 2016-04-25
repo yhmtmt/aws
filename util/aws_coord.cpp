@@ -145,14 +145,10 @@ void wrldtoecef(const Mat & Rrot,
 				)
 {
 	const double * ptr = Rrot.ptr<double>();
+	xecef = (float)(ptr[0] * xwrld + ptr[3] * ywrld + ptr[6] * zwrld + xorg);
+	yecef = (float)(ptr[1] * xwrld + ptr[4] * ywrld + ptr[7] * zwrld + yorg);
+	zecef = (float)(ptr[2] * xwrld + ptr[5] * ywrld + ptr[8] * zwrld + zorg);
 
-	float x = (float)(xwrld - xorg);	
-	float y = (float)(ywrld - yorg);
-	float z = (float)(zwrld - zorg);
-
-	xecef = (float)(ptr[0] * x + ptr[3] * y + ptr[6] * z);
-	yecef = (float)(ptr[1] * x + ptr[4] * y + ptr[7] * z);
-	zecef = (float)(ptr[2] * x + ptr[5] * y + ptr[8] * z);
 }
 
 void eceftowrld(const Mat & Rrot, 
@@ -162,9 +158,13 @@ void eceftowrld(const Mat & Rrot,
 				)
 {
 	const double * ptr = Rrot.ptr<double>();
-	xwrld = (float)(ptr[0] * xecef + ptr[1] * yecef + ptr[2] * zecef + xorg);
-	ywrld = (float)(ptr[3] * xecef + ptr[4] * yecef + ptr[5] * zecef + yorg);
-	zwrld = (float)(ptr[6] * xecef + ptr[7] * yecef + ptr[8] * zecef + zorg);
+	float x = (float)(xecef - xorg);	
+	float y = (float)(yecef - yorg);
+	float z = (float)(zecef - zorg);
+
+	xwrld = (float)(ptr[0] * x + ptr[1] * y + ptr[2] * z);
+	ywrld = (float)(ptr[3] * x + ptr[4] * y + ptr[5] * z);
+	zwrld = (float)(ptr[6] * x + ptr[7] * y + ptr[8] * z);
 }
 
 

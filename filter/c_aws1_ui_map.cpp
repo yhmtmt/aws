@@ -109,22 +109,28 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	m_cur_pos.y = min(1.f, m_cur_pos.y);
 
 	// calculating the cursor position in three coordinate
-	cp_rx = (float)(m_cur_pos.x * m_map_range + m_map_pos.x);
-	cp_ry = (float)(m_cur_pos.y * m_map_range + m_map_pos.y);
+	cp_rx = (float)(m_cur_pos.x * fxmeter + m_map_pos.x);
+	cp_ry = (float)(m_cur_pos.y * fymeter + m_map_pos.y);
 
 	wrldtoecef(Rorg, Porg.x, Porg.y, Porg.z, cp_rx, cp_ry, 0.f, cp_x, cp_y, cp_z);
 	eceftobih(cp_x, cp_y, cp_z, cp_lat, cp_lon, cp_alt);
 	if(js.is_event_down(js.elx)){
 		ch_wp * pwp = get_wp();
+		pwp->lock();
 		pwp->prev_focus();
+		pwp->unlock();
 	}else if(js.is_event_down(js.erx)){
 		ch_wp * pwp = get_wp();
+		pwp->lock();
 		pwp->next_focus();
+		pwp->unlock();
 	}
 
 	if(js.is_event_down(js.eb)){
 		ch_wp * pwp = get_wp();
+		pwp->lock();
 		pwp->ers();
+		pwp->unlock();
 	}
 	if(js.is_event_down(js.ea)){
 		ch_wp * pwp = get_wp();
@@ -138,7 +144,9 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 		wp.lat = cp_lat;
 		wp.lon = cp_lon;
 		wp.rarv = 10.; // 10meter
+		pwp->lock();
 		pwp->ins(wp);
+		pwp->unlock();
 	}
 }
 
@@ -178,8 +186,8 @@ void c_aws1_ui_map::draw()
 		for(int i = 0; i < 3; i++){
 			// rotating the points
 			// multiply [ c -s; s c]
-			pts[i].x = (float)(ws * (m_ship_pts[i].x * c - m_ship_pts[i].y * s) + offset.x);
-			pts[i].y = (float)(hs * (m_ship_pts[i].x * s + m_ship_pts[i].y * c) + offset.y);
+			pts[i].x = (float)(ws * (m_ship_pts[i].x * c + m_ship_pts[i].y * s) + offset.x);
+			pts[i].y = (float)(hs * (- m_ship_pts[i].x * s + m_ship_pts[i].y * c) + offset.y);
 		}
 
 		drawGlPolygon2Df(pts, 3, 0, 1, 0, 0, lw); // own ship triangle
@@ -195,9 +203,11 @@ void c_aws1_ui_map::draw()
 
 	// draw waypoints
 	{
-		Point2f pos_prev = -offset;
+		Point2f pos_prev = offset;
 		ch_wp * pwp = get_wp();
 		if(pwp){
+			pwp->lock();
+
 			int num_wps = pwp->get_num_wps();
 			Point2f pts[36]; // scaled points
 			for(int i = 0; i < 36; i++){
@@ -211,8 +221,8 @@ void c_aws1_ui_map::draw()
 				s_wp & wp = pwp->cur();
 				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
 				Point2f pos;
-				pos.x = (float)((wp.rx - m_map_pos.x) * m_imap_range);
-				pos.y = (float)((wp.ry - m_map_pos.y) * m_imap_range);
+				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
+				pos.y = (float)((wp.ry * ifymeter) + offset.y);
 
 				if(pwp->is_focused()){
 					drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); // own ship triangle
@@ -223,20 +233,37 @@ void c_aws1_ui_map::draw()
 				drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
 				pos_prev = pos;
 			}
+
+			pwp->unlock();
 		}
 	}
 
 	// draw objects
 	{
+		/*
 		ch_obj * pobj = get_obj();
 		if(pobj){
-			int num_obj = pobj->get_num_objs();
-			for(;!pobj->is_end(); pobj->next()){
+			for(pobj->begin();!pobj->is_end(); pobj->next()){
 				c_obj & obj = *pobj->cur();
 				if(obj.get_type() & EOT_SHIP){				
 					draw_ship_object(obj);
 				}
 			}
+		}
+		*/
+	}
+
+	// draw ais objects
+	{
+		ch_ais_obj * pobj = get_ais_obj();
+		if(pobj){
+			pobj->lock();
+			for(pobj->begin();!pobj->is_end(); pobj->next()){
+				float x, y, z, vx, vy, vz, yw;
+				pobj->get_cur_state(x, y, z, vx, vy, vz, yw);
+				draw_ship_object(x, y, z, vx, vy, vz, yw);
+			}
+			pobj->unlock();
 		}
 	}
 
@@ -271,36 +298,29 @@ void c_aws1_ui_map::key(int key, int scancode, int action, int mods)
 {
 }
 
-void c_aws1_ui_map::draw_ship_object(c_obj & obj)
+void c_aws1_ui_map::draw_ship_object(const float x, const float y, const float z, 
+		const float vx, const float vy, const float vz, const float yw)
 {
-	float x, y, z, vx, vy, vz, c, s, theta, r, p, yw;
-	if(obj.get_dtype() & EOD_POS_REL){
-		obj.get_pos_rel(x, y, z);
-	}
-	if(obj.get_dtype() & EOD_VEL_REL){
-		obj.get_vel_rel(vx, vy, vz);
-	}
-	if(obj.get_dtype() & EOD_ATTD){	
-		obj.get_att(r, p, yw);
-	}
-
-	theta = (float)(yw * (PI / 180.));
-	c = (float) cos(theta), s = (float) sin(theta);
+	float theta = (float)(yw * (PI / 180.));
+	float c = (float) cos(theta), s = (float) sin(theta);
 
 	float ws, hs;
 	pix2nml(10., 10., ws, hs);
-	vx *= 180.f;
-	vy *= 180.f;
+	Point2f _offset = offset;
+	_offset.x += x * ifxmeter;
+	_offset.y += y * ifymeter;
 
 	Point2f pts[3];
 	for(int i = 0; i < 3; i++){
 		// rotating the points
 		// multiply [ c -s; s c]
-		pts[i].x = (float)(ws * (m_ship_pts[i].x * c - m_ship_pts[i].y * s + offset.x));
-		pts[i].y = (float)(hs * (m_ship_pts[i].x * s + m_ship_pts[i].y * c + offset.y));
+		pts[i].x = (float)(ws * (m_ship_pts[i].x * c + m_ship_pts[i].y * s));
+		pts[i].y = (float)(hs * (- m_ship_pts[i].x * s + m_ship_pts[i].y * c));
 	}
-	drawGlPolygon2Df(pts, 3, 0, 1, 0, 0.5); // own ship triangle
+	drawGlPolygon2Df(pts, 3, _offset, 0, 1, 0, 0.5); // own ship triangle
 	float lw;
 	pix2nml(1, 1, lw, lw);
-	drawGlLine2Df(offset.x, offset.y, (float)(offset.x + vx), (float)(offset.y + vy), 0., 1., 0., 1.0, lw);
+	drawGlLine2Df(_offset.x, _offset.y, 
+		(float)(_offset.x + vx * ifxmeter * 180.f), (float)(_offset.y + vy * ifymeter * 180.f), 
+		0., 1., 0., 1.0, lw);
 }

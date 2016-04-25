@@ -51,8 +51,9 @@ class ch_state: public ch_base
     lon = _lon;
     alt = _alt;
 	galt = _galt;
-	getwrldrot(lat, lon, R);
-	bihtoecef(lat, lon, alt, x, y, z);
+	float lat_rad = (float)(lat * (PI / 180.)), lon_rad = (float)(lon * (PI / 180.));
+	getwrldrot(lat_rad, lon_rad, R);
+	bihtoecef(lat_rad, lon_rad, alt, x, y, z);
     unlock();
   }
 

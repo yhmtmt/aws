@@ -901,5 +901,8 @@ bool f_aws1_ui_test::proc()
 	set_state();
 
 	simulate_dynamics();
+
+	add_ais_ship();
+
 	return true;
 }

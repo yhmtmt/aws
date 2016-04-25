@@ -430,6 +430,12 @@ public:
 		if(m_ch_ais_obj && m_add_ais_ship){
 			m_add_ais_ship = false;
 			m_ch_ais_obj->push(m_cur_time, ais_mmsi, ais_lat, ais_lon, ais_cog, ais_sog, ais_yaw);
+			if(m_state){
+				Mat R = m_state->get_enu_rotation();
+				float x, y, z;
+				m_state->get_position_ecef(x, y, z);
+				m_ch_ais_obj->update_rel_pos_and_vel(R, x, y, z);
+			}
 		}
 	}
 

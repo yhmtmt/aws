@@ -212,6 +212,9 @@ void f_aws1_nmea_sw::ais_to_out()
 				}
 				break;
 			}
+
+			// clean up ais objects older than 5 minutes
+			m_ais_obj->remove_old(m_cur_time - (long long) 300 * (long long) SEC);
 		}		
 	}
 }

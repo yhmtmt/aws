@@ -71,39 +71,31 @@ protected:
 public:
 	ch_wp(const char * name):ch_base(name), focus(0)
 	{
-		lock();
 		itr_focus = itr = wps.begin();
-		unlock();
 	}
 
 	void ins(const s_wp & wp){
-		lock();
 		if(itr_focus == wps.end())
 			itr_focus = wps.insert(itr_focus, wp);
 		else{
 			itr_focus++;
 			itr_focus = wps.insert(itr_focus, wp);
 		}
-		unlock();
 	}
 
 	void ers(){
-		lock();
 		if(wps.end() != itr_focus)
 			itr_focus = wps.erase(itr_focus);
 
 		if(itr_focus == wps.end())
 			focus = (int) wps.size();
-		unlock();
 	}
 
 	void set_focus(int i)
 	{
-		lock();
 		int j;
 		for(j = 0, itr_focus = wps.begin(); itr_focus != wps.end() && j < i; j++);
 		focus = j;
-		unlock();
 	}
 
 	int get_focus()
@@ -113,7 +105,6 @@ public:
 
 	void next_focus()
 	{
-		lock();
 		if(itr_focus != wps.end())
 			itr_focus++;
 
@@ -122,25 +113,20 @@ public:
 		}else{
 			focus++;
 		}
-		unlock();
 	}
 
 	void prev_focus()
 	{
-		lock();
 		if(itr_focus != wps.begin())
 			itr_focus--;
 		if(itr_focus == wps.begin())
 			focus = 0;
 		else
 			focus--;
-		unlock();
 	}
 	bool is_focused()
 	{
-		lock();
 		bool r = itr == itr_focus;
-		unlock();
 		return r;
 	}
 	
@@ -153,50 +139,36 @@ public:
 	}
 
 	bool is_begin(){
-		lock();
 		bool r = itr == wps.begin();
-		unlock();
 		return r;
 	}
 
 	void  begin(){
-		lock();
 		itr = wps.begin();
-		unlock();
 	}
 
 	void end(){
-		lock();
 		itr = wps.end();
-		unlock();
 	}
 
 	s_wp & seek(int i){
-		lock();
 		for(itr = wps.begin(); i!= 0 && itr != wps.end(); itr++, i--);
 		s_wp & r = *itr;
-		unlock();
 		return r;
 	}
 
 	void next(){
-		lock();
 		if(wps.end() != itr)
 			itr++;
-		unlock();
 	}
 
 	void prev(){
-		lock();
 		if(wps.begin() != itr)
 			itr--;
-		unlock();
 	}
 
 	int get_num_wps(){
-		lock();
 		int r = (int) wps.size();
-		unlock();
 		return r;
 	}
 };

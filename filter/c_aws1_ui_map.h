@@ -75,7 +75,8 @@ protected:
 
 	Point2f offset;
 
-	void draw_ship_object(c_obj & obj);
+	void draw_ship_object(const float x, const float y, const float z, 
+		const float vx, const float vy, const float vz, const float yw);
 
 	int m_cur_wp;
 public:
