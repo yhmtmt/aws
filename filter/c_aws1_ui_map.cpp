@@ -73,6 +73,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 		fy = (float)((float) sz_win.width / (float) sz_win.height);
 	}
 
+	m_imap_range = (float)(1.0 / m_map_range);
 	fxmeter = fx * m_map_range;
 	fymeter = fy * m_map_range;
 	ifxmeter = (float)(1.0 / fxmeter);
@@ -88,7 +89,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	
 	// Map move (left stick)	
 	m_map_pos.x += (float)(js.lr1 * fxmeter * (1.0/60.0));
-    m_map_pos.y += (float)(js.ud1 * fymeter * (1.0/60.0) );	
+    m_map_pos.y -= (float)(js.ud1 * fymeter * (1.0/60.0) );	
 	offset = Point2f((float)(-m_map_pos.x * ifxmeter), (float)(-m_map_pos.y * ifymeter));
 
 	if(js.elst & s_jc_u3613m::EB_STDOWN){ // back to the own ship 
@@ -108,8 +109,8 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	m_cur_pos.y = min(1.f, m_cur_pos.y);
 
 	// calculating the cursor position in three coordinate
-	cp_rx = (float)(m_cur_pos.x * m_map_range - m_map_pos.x);
-	cp_ry = (float)(m_cur_pos.y * m_map_range - m_map_pos.y);
+	cp_rx = (float)(m_cur_pos.x * m_map_range + m_map_pos.x);
+	cp_ry = (float)(m_cur_pos.y * m_map_range + m_map_pos.y);
 
 	wrldtoecef(Rorg, Porg.x, Porg.y, Porg.z, cp_rx, cp_ry, 0.f, cp_x, cp_y, cp_z);
 	eceftobih(cp_x, cp_y, cp_z, cp_lat, cp_lon, cp_alt);
@@ -177,8 +178,8 @@ void c_aws1_ui_map::draw()
 		for(int i = 0; i < 3; i++){
 			// rotating the points
 			// multiply [ c -s; s c]
-			pts[i].x = (float)(ws * (m_ship_pts[i].x * c - m_ship_pts[i].y * s + offset.x));
-			pts[i].y = (float)(hs * (m_ship_pts[i].x * s + m_ship_pts[i].y * c + offset.y));
+			pts[i].x = (float)(ws * (m_ship_pts[i].x * c - m_ship_pts[i].y * s) + offset.x);
+			pts[i].y = (float)(hs * (m_ship_pts[i].x * s + m_ship_pts[i].y * c) + offset.y);
 		}
 
 		drawGlPolygon2Df(pts, 3, 0, 1, 0, 0, lw); // own ship triangle
@@ -194,7 +195,7 @@ void c_aws1_ui_map::draw()
 
 	// draw waypoints
 	{
-		Point2f pos_prev = m_cur_pos;
+		Point2f pos_prev = -offset;
 		ch_wp * pwp = get_wp();
 		if(pwp){
 			int num_wps = pwp->get_num_wps();
@@ -205,12 +206,14 @@ void c_aws1_ui_map::draw()
 			}
 
 			pwp->begin();
+			int i = 0;
 			for(;!pwp->is_end(); pwp->next()){
 				s_wp & wp = pwp->cur();
 				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
 				Point2f pos;
-				pos.x = (float)((wp.rx - m_map_pos.x) * ifxmeter);
-				pos.y = (float)((wp.ry - m_map_pos.y) * ifymeter);
+				pos.x = (float)((wp.rx - m_map_pos.x) * m_imap_range);
+				pos.y = (float)((wp.ry - m_map_pos.y) * m_imap_range);
+
 				if(pwp->is_focused()){
 					drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); // own ship triangle
 				}else{

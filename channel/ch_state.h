@@ -25,7 +25,7 @@ class ch_state: public ch_base
   float roll, pitch, yaw; // roll(deg), pitch(deg), yaw(deg)
   float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
   float x, y, z; // ecef coordinate
-  Mat R; // Rotation matrix for ENU transformation
+  Mat R, Rret; // Rotation matrix for ENU transformation
   float cog, sog; // Course over ground(deg), Speed over ground (kts)
   float depth; // water depth
  public:
@@ -100,7 +100,10 @@ class ch_state: public ch_base
 
   const Mat & get_enu_rotation()
   {
-	  return R;
+	  lock();
+		 R.copyTo(Rret);
+	  unlock();
+	  return Rret;
   }
 
   void get_velocity(float & _cog, float & _sog)

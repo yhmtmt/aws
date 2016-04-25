@@ -62,6 +62,7 @@ protected:
 	Point2f m_circ_pts[36];
 
 	float m_map_range; // range in meter (default 10km)
+	float m_imap_range; 
 
 	Point2f m_cur_pos; // in pixel
 	float cp_rx, cp_ry;
