@@ -194,6 +194,7 @@ void c_aws1_ui_map::draw()
 
 	// draw waypoints
 	{
+		Point2f pos_prev = m_cur_pos;
 		ch_wp * pwp = get_wp();
 		int num_wps = pwp->get_num_wps();
 		Point2f pts[36]; // scaled points
@@ -214,6 +215,9 @@ void c_aws1_ui_map::draw()
 			}else{
 				drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); // own ship triangle
 			}
+
+			drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
+			pos_prev = pos;
 		}
 	}
 
