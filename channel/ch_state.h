@@ -32,6 +32,7 @@ class ch_state: public ch_base
  ch_state(const char * name): ch_base(name), roll(0), pitch(0), yaw(0),
     lon(0), lat(0), alt(0), galt(0), x(0), y(0), z(0), cog(0), sog(0), depth(0)
     {
+		R = Mat::eye(3, 3, CV_64FC1);
     }
 
   void set_attitude(const float _r, const float _p, const float _y)

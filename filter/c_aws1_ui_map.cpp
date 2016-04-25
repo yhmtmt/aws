@@ -66,8 +66,8 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	const Size & sz_win = get_window_size();
 
 	if(sz_win.width > sz_win.height){ // 1 in y direction equals to m_map_range
-		fxmeter = (float)((float) sz_win.height / (float) sz_win.width);
-		fymeter = 1.0;
+		fx = (float)((float) sz_win.height / (float) sz_win.width);
+		fy = 1.0;
 	}else{ // 1 in x direction equals to m_map_range
 		fx = 1.0;
 		fy = (float)((float) sz_win.width / (float) sz_win.height);
@@ -87,8 +87,8 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	// Operation selection (cross key)
 	
 	// Map move (left stick)	
-	m_map_pos.x += (float)(js.lr2 * fxmeter * (1.0/60.0));
-    m_map_pos.y += (float)(js.ud2 * fymeter * (1.0/60.0) );	
+	m_map_pos.x += (float)(js.lr1 * fxmeter * (1.0/60.0));
+    m_map_pos.y += (float)(js.ud1 * fymeter * (1.0/60.0) );	
 	offset = Point2f((float)(-m_map_pos.x * ifxmeter), (float)(-m_map_pos.y * ifymeter));
 
 	if(js.elst & s_jc_u3613m::EB_STDOWN){ // back to the own ship 
@@ -101,7 +101,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 
 	// Cursor move (right stick)
 	m_cur_pos.x += (float)(js.lr2 * fx * (1.0/60.0));
-    m_cur_pos.y += (float)(js.ud2 * fy * (1.0/60.0));		
+    m_cur_pos.y -= (float)(js.ud2 * fy * (1.0/60.0));		
 	m_cur_pos.x = max(-1.f, m_cur_pos.x);
 	m_cur_pos.x = min(1.f, m_cur_pos.x);
 	m_cur_pos.y = max(-1.f, m_cur_pos.y);
@@ -205,7 +205,7 @@ void c_aws1_ui_map::draw()
 			}
 
 			pwp->begin();
-			for(;pwp->is_end(); pwp->next()){
+			for(;!pwp->is_end(); pwp->next()){
 				s_wp & wp = pwp->cur();
 				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
 				Point2f pos;
@@ -228,7 +228,7 @@ void c_aws1_ui_map::draw()
 		ch_obj * pobj = get_obj();
 		if(pobj){
 			int num_obj = pobj->get_num_objs();
-			for(;pobj->is_end(); pobj->next()){
+			for(;!pobj->is_end(); pobj->next()){
 				c_obj & obj = *pobj->cur();
 				if(obj.get_type() & EOT_SHIP){				
 					draw_ship_object(obj);
@@ -247,10 +247,10 @@ void c_aws1_ui_map::draw()
 		x1 = m_cur_pos.x - x1;
 		x2 = m_cur_pos.x + x2;
 		y1 = m_cur_pos.y - y1;
-		y2 = m_cur_pos.y - y2;
-		drawGlSquare2Df(x1, y1, x2, y2, 0, 1., 0., 0.5);
+		y2 = m_cur_pos.y + y2;
+		drawGlSquare2Df(x1, y1, x2, y2, 0, 1., 0., 0.5, lw);
 		drawGlLine2Df(x1, m_cur_pos.y, x2, m_cur_pos.y, 0., 1., 0., 1., 1.);
-		drawGlLine2Df(m_cur_pos.x, y1, m_cur_pos.y, y2, 0., 1., 0., 1., 1.);
+		drawGlLine2Df(m_cur_pos.x, y1, m_cur_pos.x, y2, 0., 1., 0., 1., 1.);
 	}
 
 	// draw operation lists (right bottom)

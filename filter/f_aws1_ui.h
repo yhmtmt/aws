@@ -415,6 +415,7 @@ public:
 		if(m_state){
 			m_state->set_attitude(r, p, y);
 			m_state->set_position(lat, lon, alt, galt);
+		
 			m_state->set_velocity(cog, sog);
 			m_state->set_depth(depth);
 		}
