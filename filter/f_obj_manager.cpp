@@ -71,6 +71,7 @@ bool f_obj_manager::proc()
 			m_ais_obj->remove_old(m_cur_time - m_dtold);
 			m_ais_obj->remove_out(m_range);
 		}
+		m_ais_obj->reset_updates();
 	}
 
 	if(m_obj){
