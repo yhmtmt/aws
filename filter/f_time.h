@@ -47,6 +47,7 @@ protected:
 	struct s_tpkt{
 		unsigned int id;
 		long long tc1, ts1, ts2, tc2, del;
+		int tz_min; // time zone in minute
 		// we assume client time has offset to, therefore 
 		//    ts1 - tc1 = d + R(Ts) + to
 		//    tc2 - ts2 = d + R(Tc) - to

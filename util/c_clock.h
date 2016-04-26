@@ -23,10 +23,10 @@
 #else
 #include <sys/time.h>
 #endif
-#define USEC 10
-#define MSEC 10000
-#define SEC 10000000
-#define MNU 600000000
+#define USEC 10L
+#define MSEC 10000L
+#define SEC 10000000L
+#define MNU 600000000L
 
 struct tmex: public tm{
 	int tm_msec;

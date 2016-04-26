@@ -308,6 +308,7 @@ bool f_time::strep()
 		m_trpkt.tc1 << " ts1: " << m_trpkt.ts1 << " ts2: " << m_trpkt.ts2 << endl;
 #endif
 	m_trpkt.ts2 = m_cur_time;
+	m_trpkt.tz_min = f_base::get_tz();
 	sendto(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, m_sz_rep);
 	mode = RCV;
 	return clearpkts();
@@ -321,10 +322,11 @@ bool f_time::strep()
 bool f_time::stfix()
 {
 	long long delta = m_trpkt.calc_delta();
+	f_base::set_tz(m_trpkt.tz_min);
 	//	cout << "ts1 - tc1" << m_trpkt.ts1 - m_trpkt.tc1 << endl;
 	//	cout << "tc2 - ts2" << m_trpkt.tc2 - m_trpkt.ts2 << endl;
 	//	cout << "(ts1-tc1)-(tc2-ts2)" << (m_trpkt.ts1 - m_trpkt.tc1) -
-	//	  (m_trpkt.tc2 - m_trpkt.ts2 ) <<endl;
+	//	  (m_trpkt.tc2 - m_trpkt.ts2 ) << endl;
 
 	m_clk.set_time_delta(delta);
 	m_tnext_adj = m_cur_time + (long long) m_adjust_intvl * SEC;
@@ -347,7 +349,6 @@ bool f_time::clearpkts()
 	socklen_t len_del;
 	long long del = m_adjust_intvl * SEC;
 	while(1){
-
 		timeval to;
 		to.tv_sec = 0;
 		to.tv_usec = 0;

@@ -281,7 +281,7 @@ long long c_clock::get_time()
 void c_clock::wait()
 {
 	long long delta_adjust = 0;
-	if(abs(m_delta) < m_delta_adjust || abs(m_delta) > 300 * SEC)
+	if(abs(m_delta) < m_delta_adjust || abs(m_delta) > (300 * (long long) SEC))
 		delta_adjust = m_delta;
 	else
 		delta_adjust = (m_delta < 0 ? -m_delta_adjust : m_delta_adjust);

@@ -648,7 +648,6 @@ public:
 		return r;
 	}
 
-
 	virtual size_t get_dsize()
 	{
 		return c_ais_obj::get_dsize();
