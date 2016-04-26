@@ -60,7 +60,7 @@ public:
 		return out;
 	};
 
-	virtual bool dec(const char * str){ return false; };
+	virtual bool dec(const char * str){ return true; };
 	
 	virtual e_nd_type get_type() const = 0;
 };

@@ -187,34 +187,36 @@ void f_aws1_nmea_sw::ais_to_out()
 				m_gff_out = true;
 			}
 
-			const c_vdm * pvdm = dynamic_cast<const c_vdm*>(m_nmea_dec.decode(m_nmea));
-			pvdm->m_mmsi;
-			switch(pvdm->get_type()){
-			case ENDT_VDM1:
-				{
-					const c_vdm_msg1 * pvdm1 = dynamic_cast<const c_vdm_msg1*>(pvdm);
-					m_ais_obj->push(m_cur_time, pvdm1->m_mmsi, pvdm1->m_lat, pvdm1->m_lon,
-						pvdm1->m_course, pvdm1->m_speed, pvdm1->m_heading);
-				}
-				break;
-			case ENDT_VDM18:
-				{
-					const c_vdm_msg18 * pvdm18 = dynamic_cast<const c_vdm_msg18*>(pvdm);
-					m_ais_obj->push(m_cur_time, pvdm18->m_mmsi, pvdm18->m_lat, pvdm18->m_lon, 
-						pvdm18->m_course, pvdm18->m_speed, pvdm18->m_heading);
-				}
-				break;
-			case ENDT_VDM19:
-				{
-					const c_vdm_msg19 * pvdm19 = dynamic_cast<const c_vdm_msg19*>(pvdm);
-					m_ais_obj->push(m_cur_time, pvdm19->m_mmsi, pvdm19->m_lat, pvdm19->m_lon, 
-						pvdm19->m_course, pvdm19->m_speed, pvdm19->m_heading);
-				}
-				break;
+			const c_nmea_dat * pnd = m_nmea_dec.decode(m_nmea);
+			if(pnd){
+			  //pnd->show(cout);
+			  switch(pnd->get_type()){			  
+			  case ENDT_VDM1:
+			    {
+			      const c_vdm_msg1 * pvdm1 = dynamic_cast<const c_vdm_msg1*>(pnd);
+			      m_ais_obj->push(m_cur_time, pvdm1->m_mmsi, pvdm1->m_lat, pvdm1->m_lon,
+					      pvdm1->m_course, pvdm1->m_speed, pvdm1->m_heading);
+			    }
+			    break;
+			  case ENDT_VDM18:
+			    {
+			      const c_vdm_msg18 * pvdm18 = dynamic_cast<const c_vdm_msg18*>(pnd);
+			      m_ais_obj->push(m_cur_time, pvdm18->m_mmsi, pvdm18->m_lat, pvdm18->m_lon, 
+					      pvdm18->m_course, pvdm18->m_speed, pvdm18->m_heading);
+			    }
+			    break;
+			  case ENDT_VDM19:
+			    {
+			      const c_vdm_msg19 * pvdm19 = dynamic_cast<const c_vdm_msg19*>(pnd);
+			      m_ais_obj->push(m_cur_time, pvdm19->m_mmsi, pvdm19->m_lat, pvdm19->m_lon, 
+					      pvdm19->m_course, pvdm19->m_speed, pvdm19->m_heading);
+			    }
+			    break;
+			  }
+			  
+			  // clean up ais objects older than 5 minutes
+			  m_ais_obj->remove_old(m_cur_time - (long long) 300 * (long long) SEC);
 			}
-
-			// clean up ais objects older than 5 minutes
-			m_ais_obj->remove_old(m_cur_time - (long long) 300 * (long long) SEC);
 		}		
 	}
 }

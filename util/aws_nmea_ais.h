@@ -422,7 +422,7 @@ protected:
 	}
 
 	void free(s_pl * ptr){
-		ptr->pnext = NULL;
+		ptr->pnext = m_pool;
 		m_pool = ptr;
 	}
 
@@ -437,6 +437,7 @@ public:
 		while(m_pool){
 			s_pl * ppl = m_pool->pnext;
 			delete m_pool;
+			m_pool = ppl;
 		}
 	}
 

@@ -255,7 +255,6 @@ c_vdm * c_vdm_dec::dec(const char * str)
 c_vdm * c_vdm_dec::dec_payload(s_pl * ppl)
 {
 	m_type = (short) ppl->payload[0];
-
 	c_vdm * pnd = NULL;
 	switch(m_type){
 	case 1: // Position report class A 

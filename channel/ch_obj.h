@@ -350,7 +350,8 @@ public:
 
 	virtual void print(ostream & out){
 	  cout << "AIS Object MMSI: " << m_mmsi << 
-	    " lat " << m_lat << " lon " << m_lon << endl;
+	    " lat " << m_lat << " lon " << m_lon 
+	       << " xr " << m_xr << " yr " << m_yr << " zr " << m_zr << endl;
 	}
 
 	void set(const long long t, const unsigned int mmsi, 
@@ -549,11 +550,13 @@ public:
 	{
 		lock();
 		for(itr = objs.begin(); itr != objs.end(); itr++){
-			c_ais_obj * pobj = itr->second;
+		  c_ais_obj * pobj = itr->second;
+		    
 			pobj->set_pos_rel_from_ecef(R, x, y, z);
 			pobj->set_vel_ecef_from_bih(R);
 			//pobj->set_vel_rel_from_ecef(R);
 			pobj->set_vel_rel_from_bih();
+			pobj->print(cout);
 		}
 		unlock();
 	}
@@ -655,8 +658,6 @@ public:
 		c_ais_obj obj;
 
 		obj.write_buf(buf);
-		cout << "Recieve ";
-		obj.print(cout);
 		if(obj.get_mmsi() != 0){
 		  itr = objs.find(obj.get_mmsi());
 		  if(itr != objs.end()){
@@ -680,14 +681,10 @@ public:
 		lock();
 		if(updates.size()){
 		  c_ais_obj * pobj = *(updates.begin());
-		  if(pobj){
-		    updates.pop_front();
-		    pobj->read_buf(buf);
-		    cout << "Send ";
-		    pobj->print(cout);
-		  }else{
-		    c_ais_obj::read_buf_null(buf);
-		  }
+		  updates.pop_front();
+		  pobj->read_buf(buf);
+		}else{
+		  c_ais_obj::read_buf_null(buf);
 		}
 		unlock();
 		return get_dsize();
