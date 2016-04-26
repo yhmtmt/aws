@@ -177,75 +177,77 @@ bool f_nmea::rcv_udp()
 
 void f_nmea::extract_nmea_from_buffer()
 {
-	while(m_buf_tail){
-		// if the nmea sentence is empty, seek for the head mark ! or $.
-		if(m_nmea_tail == 0){
-			for(;m_buf[m_buf_head] != '!' && m_buf[m_buf_head] != '$' 
-				&& m_buf_head < m_buf_tail; m_buf_head++);
-
-			if(m_buf_head == m_buf_tail){
-				m_buf_head = 0;
-				m_buf_tail = 0;
-				break;
-			}
-		}
-
-		// Copy the nmea string from buffer 
-		for(;m_buf_head < m_buf_tail && m_nmea_tail < 84; m_buf_head++, m_nmea_tail++){
-			m_nmea[m_nmea_tail] = m_buf[m_buf_head];
-			if(m_buf[m_buf_head] == 0x0D){// detecting CR
-				m_nmea[m_nmea_tail] = '\0';
-				m_nmea_tail = -1; // uses -1 as flag of nmea extraction
-				break;
-			}else if(m_nmea_tail == 84){
-				m_nmea[83] = '\0';
-				cerr << m_name << "::extrac_nmea_from_buffer" << 
-					" No termination character detected in 83 characters." << endl;
-				cerr << "    -> string: " << m_nmea << endl;
-				m_nmea_tail = 0;
-			}
-		}
-
-		// if the  buffer ends before the full nmea sentence is transfered
-		// we need to fill buffer with newly received data.
-		if(m_buf_head == m_buf_tail){
-			m_buf_head = 0;
-			m_buf_tail = 0;
-			break;
-		}
-
-		// If the complete nmea found, send it to the channel and log file.
-		// Then the string remained in the buffer is shiftted to the head.
-		if(m_nmea_tail == -1){
-			if(is_filtered(m_nmea)){
-				if(!m_chout->push(m_nmea)){
-					cerr << "Buffer overflow in ch_nmea " << m_chout->get_name() << endl;
-				}
-			}
-
-			if(m_blog){
-				if(m_flog.is_open())
-					m_flog << get_time_str() << m_nmea << endl;
-				else{
-					sprintf(m_fname_log, "%s_%lld.nmea", m_name, m_cur_time);
-					m_flog.open(m_fname_log);
-				}
-			}
-
-			if(m_verb){
-			  cout << m_name << " > " << m_nmea << endl;
-			}
-
-			// remained data moves to the buffer head
-			int itail = 0;
-			for(; m_buf_head < m_buf_tail; m_buf_head++, itail++){
-				m_buf[itail] = m_buf[m_buf_head];
-			}
-			m_buf_head = 0; 
-			m_buf_tail = itail;
-			m_nmea_tail = 0;
-		}
+  while(m_buf_tail){
+    // if the nmea sentence is empty, seek for the head mark ! or $.
+    if(m_nmea_tail == 0){
+      for(;m_buf[m_buf_head] != '!' 
+	    && m_buf[m_buf_head] != '$' 
+	    && m_buf_head < m_buf_tail; m_buf_head++);
+      
+      if(m_buf_head == m_buf_tail){
+	m_buf_head = 0;
+	m_buf_tail = 0;
+	break;
+      }
+    }
+    
+    // Copy the nmea string from buffer 
+    for(;m_buf_head < m_buf_tail && m_nmea_tail < 84; 
+	m_buf_head++, m_nmea_tail++){
+      m_nmea[m_nmea_tail] = m_buf[m_buf_head];
+      if(m_buf[m_buf_head] == 0x0D){// detecting CR
+	m_nmea[m_nmea_tail] = '\0';
+	m_nmea_tail = -1; // uses -1 as flag of nmea extraction
+	break;
+      }else if(m_nmea_tail == 84){
+	m_nmea[83] = '\0';
+	cerr << m_name << "::extrac_nmea_from_buffer" << 
+	  " No termination character detected in 83 characters." << endl;
+	cerr << "    -> string: " << m_nmea << endl;
+	m_nmea_tail = 0;
+      }
+    }
+    
+    // if the  buffer ends before the full nmea sentence is transfered
+    // we need to fill buffer with newly received data.
+    if(m_buf_head == m_buf_tail){
+      m_buf_head = 0;
+      m_buf_tail = 0;
+      break;
+    }
+    
+    // If the complete nmea found, send it to the channel and log file.
+    // Then the string remained in the buffer is shiftted to the head.
+    if(m_nmea_tail == -1){
+      if(is_filtered(m_nmea)){
+	if(!m_chout->push(m_nmea)){
+	  cerr << "Buffer overflow in ch_nmea " << m_chout->get_name() << endl;
 	}
+      }
+      
+      if(m_blog){
+	if(m_flog.is_open())
+	  m_flog << get_time_str() << m_nmea << endl;
+	else{
+	  sprintf(m_fname_log, "%s_%lld.nmea", m_name, m_cur_time);
+	  m_flog.open(m_fname_log);
+	}
+      }
+      
+      if(m_verb){
+	cout << m_name << " > " << m_nmea << endl;
+      }
+      
+      // remained data moves to the buffer head
+      int itail = 0;
+      for(; m_buf_head < m_buf_tail; m_buf_head++, itail++){
+	m_buf[itail] = m_buf[m_buf_head];
+      }
+      m_buf_head = 0; 
+      m_buf_tail = itail;
+      m_nmea_tail = 0;
+    }
+  }
 }
 
 bool f_nmea::proc(){
