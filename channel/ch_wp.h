@@ -75,12 +75,12 @@ public:
 	}
 
 	void ins(const s_wp & wp){
-		if(itr_focus == wps.end())
-			itr_focus = wps.insert(itr_focus, wp);
-		else{
-			itr_focus++;
-			itr_focus = wps.insert(itr_focus, wp);
-		}
+	  if(itr_focus == wps.end()){
+	    itr_focus = wps.insert(itr_focus, wp);
+	  }else{
+	    itr_focus++;
+	    itr_focus = wps.insert(itr_focus, wp);
+	  }
 	}
 
 	void ers(){

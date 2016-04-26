@@ -216,7 +216,6 @@ void c_aws1_ui_map::draw()
 			}
 
 			pwp->begin();
-			int i = 0;
 			for(;!pwp->is_end(); pwp->next()){
 				s_wp & wp = pwp->cur();
 				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
@@ -233,7 +232,6 @@ void c_aws1_ui_map::draw()
 				drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
 				pos_prev = pos;
 			}
-
 			pwp->unlock();
 		}
 	}
@@ -301,6 +299,7 @@ void c_aws1_ui_map::key(int key, int scancode, int action, int mods)
 void c_aws1_ui_map::draw_ship_object(const float x, const float y, const float z, 
 		const float vx, const float vy, const float vz, const float yw)
 {
+  cout << "Drawing ship " << x << " " << y << " " << z << " " << endl;
 	float theta = (float)(yw * (PI / 180.));
 	float c = (float) cos(theta), s = (float) sin(theta);
 
