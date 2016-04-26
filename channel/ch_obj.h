@@ -340,10 +340,12 @@ protected:
 public:
 	c_ais_obj();
 	c_ais_obj(const c_ais_obj & obj);
-	c_ais_obj(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg);
+	c_ais_obj(const long long t, const unsigned int mmsi, 
+		  float lat, float lon, float cog, float sog, float hdg);
 	virtual ~c_ais_obj();
 
-	void set(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
+	void set(const long long t, const unsigned int mmsi, 
+		 float lat, float lon, float cog, float sog, float hdg)
 	{
 		m_type = EOT_SHIP;
 		m_src = EOS_AIS;
@@ -358,7 +360,8 @@ public:
 		set_vel_bih(cog, sog);
 	}
 
-	void update(const long long t, float lat, float lon, float cog, float sog, float hdg){
+	void update(const long long t, float lat, float lon, 
+		    float cog, float sog, float hdg){
 		m_dtype = (e_obj_data_type)(EOD_AIS | EOD_ATTD);
 		m_yaw = hdg;
 		set_pos_bih(lat, lon, 0.);
@@ -406,7 +409,7 @@ public:
 		buf += sizeof(float);
 	}
 
-	void read_buf(const char * buf)
+	void read_buf(char * buf)
 	{
 		*((long long*) buf) = m_t;
 		buf += sizeof(long long);
@@ -428,6 +431,9 @@ public:
 
 		*((float*)buf) = m_yaw;
 		buf += sizeof(float);
+	}
+	static void read_buf_null(char * buf){
+	  memset((void*)buf, 0, get_dsize());
 	}
 };
 
@@ -633,20 +639,20 @@ public:
 		lock();
 		c_ais_obj obj;
 		obj.write_buf(buf);
-	
-		itr = objs.find(obj.get_mmsi());
-		if(itr != objs.end()){
-			c_ais_obj & obj = *(itr->second);
-			obj.update(obj);
-			obj.set_ecef_from_bih();
-			updates.push_back(itr->second);
-		}else{
-			c_ais_obj * pobj = new c_ais_obj(obj);
-			objs.insert(map<unsigned int, c_ais_obj *>::value_type(obj.get_mmsi(), pobj));
-			pobj->set_ecef_from_bih();
-			updates.push_back(pobj);
+		if(obj.get_mmsi() != 0){
+		  itr = objs.find(obj.get_mmsi());
+		  if(itr != objs.end()){
+		    c_ais_obj & obj = *(itr->second);
+		    obj.update(obj);
+		    obj.set_ecef_from_bih();
+		    updates.push_back(itr->second);
+		  }else{
+		    c_ais_obj * pobj = new c_ais_obj(obj);
+		    objs.insert(map<unsigned int, c_ais_obj *>::value_type(obj.get_mmsi(), pobj));
+		    pobj->set_ecef_from_bih();
+		    updates.push_back(pobj);
+		  }
 		}
-
 		unlock();
 		return get_dsize();
 	}
@@ -655,8 +661,12 @@ public:
 	{
 		lock();
 		c_ais_obj * pobj = *(updates.begin());
-		updates.pop_front();
-		pobj->read_buf(buf);
+		if(pobj){
+		  updates.pop_front();
+		  pobj->read_buf(buf);
+		}else{
+		  c_ais_obj::read_buf_null(buf);
+		}
 		unlock();
 		return get_dsize();
 	}

@@ -51,7 +51,7 @@ LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
 # listing filter module
 FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01 f_time \
-	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map
+	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map f_obj_manager
 
 # listing channel module
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj
