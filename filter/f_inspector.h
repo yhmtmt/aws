@@ -258,9 +258,6 @@ private:
 	//
 	// Camera Parameter
 	//
-	enum e_campar{
-		ECP_FX = 0, ECP_FY, ECP_CX, ECP_CY, ECP_K1, ECP_K2, ECP_P1, ECP_P2, ECP_K3, ECP_K4, ECP_K5, ECP_K6
-	};
 	static const char * m_str_campar[ECP_K6+1];
 
 	char m_fname_campar[1024]; // name of camera parameter file

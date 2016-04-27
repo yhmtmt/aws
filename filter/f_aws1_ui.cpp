@@ -44,7 +44,8 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					 m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL), m_ch_wp(NULL), 
 					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL),
 					 m_acd_sock(-1), m_acd_port(20100), 
-					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0)
+					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
+					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.)
 {
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl_in, typeid(ch_aws1_ctrl).name(), "Control input channel.");
@@ -69,6 +70,11 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   m_ui[AUM_DEV]		= new c_aws1_ui_dev(this);
 
   register_fpar("menu", &m_ui_menu, "Invoke menu");
+
+  register_fpar("fx", &m_fx, "Focal length in x direction.");
+  register_fpar("fy", &m_fy, "Focal length in y direction.");
+  register_fpar("cx", &m_cx, "Principal point in x direction.");
+  register_fpar("cy", &m_cy, "Principal point in y direction.");
 }
 
 
@@ -364,6 +370,29 @@ void f_aws1_ui::ui_show_state()
   }
 }
 
+void f_aws1_ui::ui_show_attitude()
+{
+	glRasterPos2i(-1, -1);
+
+	float wfont = (float)(8. * m_ixscale);
+	float hfont = (float)(13. * m_iyscale);
+	float lw = (float)(1.0 / m_sz_win.width);
+	float roll, pitch, yaw;
+	float lat, lon, alt, galt;
+	float cog, sog;
+	float depth;
+
+	roll = pitch = yaw = lat = lon = alt = galt = cog = sog = depth = 0.;
+	if(m_state){
+		m_state->get_attitude(roll, pitch, yaw);
+		m_state->get_position(lat, lon, alt, galt);
+		m_state->get_velocity(cog, sog);
+		m_state->get_depth(depth);
+	}
+
+
+}
+
 void f_aws1_ui::ui_show_sys_state()
 {
 	glRasterPos2i(-1, -1);
@@ -547,6 +576,10 @@ void f_aws1_ui::ui_handle_menu()
 
 bool f_aws1_ui::proc()
 {
+	if(m_ch_img){
+
+	}
+
 	c_aws1_ui_core & ui = *m_ui[m_mode];
 
 	// process joypad inputs

@@ -219,6 +219,12 @@ class f_aws1_ui: public f_glfw_window
   ch_ais_obj * m_ch_ais_obj;
   ch_image_ref * m_ch_img;
 
+  // Main image view related parameters
+  // Main image view shows an image from m_ch_img, the focal length and the principal point are defined as follows.
+  float m_fx, m_fy; // focal length of the main image view
+  float m_cx, m_cy; // principal point of the main image view
+  // Note that image in m_ch_img should be the undistorted image.
+
   friend class c_aws1_ui_core;
 
   bool m_udp_ctrl;
@@ -276,6 +282,9 @@ class f_aws1_ui: public f_glfw_window
   void ui_show_seng();
   void ui_show_state();
   void ui_show_sys_state();
+
+  void ui_show_attitude();
+
 
   bool m_ui_menu;
   

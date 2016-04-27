@@ -18,12 +18,25 @@
 
 #include "ch_base.h"
 
+enum e_campar{
+	ECP_FX = 0, ECP_FY, ECP_CX, ECP_CY, ECP_K1, ECP_K2, ECP_P1, ECP_P2, ECP_K3, ECP_K4, ECP_K5, ECP_K6
+};
+
 class ch_image: public ch_base
 {
 protected:
 	pthread_mutex_t m_mtx_bk, m_mtx_fr;
+	bool m_bparam[ECP_K6+1];
+	double m_param[ECP_K6+1];
+	bool m_brvec;
+	union{
+		double rvec[3];
+		double R[9];
+	};
+	double tvec[3];
+	
 public:
-	ch_image(const char * name):ch_base(name)
+	ch_image(const char * name):ch_base(name), m_brvec(true)
 	{
 		pthread_mutex_init(&m_mtx_bk, NULL);
 		pthread_mutex_init(&m_mtx_fr, NULL);
@@ -32,6 +45,56 @@ public:
 	{
 		pthread_mutex_destroy(&m_mtx_bk);
 		pthread_mutex_destroy(&m_mtx_fr);
+	}
+
+	void set_int_campar(const e_campar & epar, const double val)
+	{
+		m_bparam[epar] = true;
+		m_param[epar] = val;
+	}
+
+	bool get_int_campar(const e_campar & epar, double & val)
+	{
+		return m_bparam[epar];
+	}
+
+	void set_ext_campar(const double * _rvec, const double * _tvec)
+	{
+		m_brvec = true;
+		rvec[0] = _rvec[0];
+		tvec[0] = _tvec[0];
+		rvec[1] = _rvec[1];
+		tvec[1] = _tvec[1];
+		rvec[2] = _rvec[2];
+		tvec[2] = _tvec[2];
+	}
+
+	bool get_ext_campar(double * _rvec, double * _tvec)
+	{
+		_rvec[0] = rvec[0];
+		_tvec[0] = tvec[0];
+		_rvec[1] = rvec[1];
+		_tvec[1] = tvec[1];
+		_rvec[2] = rvec[2];
+		_tvec[2] = tvec[2];
+		return m_brvec;
+	}
+
+	void set_ext_campar_mat(const double * _R, const double * _tvec)
+	{
+		memcpy((void*)R, (void*)_R, sizeof(double) * 9);
+		tvec[0] = _tvec[0];
+		tvec[1] = _tvec[1];
+		tvec[2] = _tvec[2];
+	}
+
+	bool get_ext_campar_mat(double * _R, double * _tvec)
+	{
+		memcpy((void*)_R, (void*)R, sizeof(double) * 9);
+		_tvec[0] = tvec[0];
+		_tvec[1] = tvec[1];
+		_tvec[2] = tvec[2];
+		return !m_brvec;
 	}
 
 	void lock_fr(){pthread_mutex_lock(&m_mtx_fr);};
