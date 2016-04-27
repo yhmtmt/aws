@@ -49,17 +49,24 @@ public:
 
 	void set_int_campar(const e_campar & epar, const double val)
 	{
+		lock();
 		m_bparam[epar] = true;
 		m_param[epar] = val;
+		unlock();
 	}
 
-	bool get_int_campar(const e_campar & epar, double & val)
+	bool get_int_campar(const e_campar epar, double & val)
 	{
-		return m_bparam[epar];
+		lock();
+		val = m_param[epar];
+		bool r = m_bparam[epar];
+		unlock();
+		return r;
 	}
 
 	void set_ext_campar(const double * _rvec, const double * _tvec)
 	{
+		lock();
 		m_brvec = true;
 		rvec[0] = _rvec[0];
 		tvec[0] = _tvec[0];
@@ -67,34 +74,43 @@ public:
 		tvec[1] = _tvec[1];
 		rvec[2] = _rvec[2];
 		tvec[2] = _tvec[2];
+		unlock();
 	}
 
 	bool get_ext_campar(double * _rvec, double * _tvec)
 	{
+		lock();
 		_rvec[0] = rvec[0];
 		_tvec[0] = tvec[0];
 		_rvec[1] = rvec[1];
 		_tvec[1] = tvec[1];
 		_rvec[2] = rvec[2];
 		_tvec[2] = tvec[2];
-		return m_brvec;
+		bool r = m_brvec;
+		unlock();
+		return 	r;
 	}
 
 	void set_ext_campar_mat(const double * _R, const double * _tvec)
 	{
+		lock();
 		memcpy((void*)R, (void*)_R, sizeof(double) * 9);
 		tvec[0] = _tvec[0];
 		tvec[1] = _tvec[1];
 		tvec[2] = _tvec[2];
+		unlock();
 	}
 
 	bool get_ext_campar_mat(double * _R, double * _tvec)
 	{
+		lock();
 		memcpy((void*)_R, (void*)R, sizeof(double) * 9);
 		_tvec[0] = tvec[0];
 		_tvec[1] = tvec[1];
 		_tvec[2] = tvec[2];
-		return !m_brvec;
+		bool r = !m_brvec;
+		unlock();
+		return r;
 	}
 
 	void lock_fr(){pthread_mutex_lock(&m_mtx_fr);};
