@@ -349,7 +349,7 @@ public:
 	virtual ~c_ais_obj();
 
 	virtual void print(ostream & out){
-	  cout << "AIS Object MMSI: " << m_mmsi << 
+	  out << "AIS Object MMSI: " << m_mmsi << 
 	    " lat " << m_lat << " lon " << m_lon 
 	       << " xr " << m_xr << " yr " << m_yr << " zr " << m_zr << endl;
 	}
@@ -442,6 +442,7 @@ public:
 		*((float*)buf) = m_yaw;
 		buf += sizeof(float);
 	}
+
 	static void read_buf_null(char * buf){
 	  memset((void*)buf, 0, get_dsize());
 	}
