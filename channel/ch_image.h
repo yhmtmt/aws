@@ -29,6 +29,7 @@ protected:
 	bool m_bparam[ECP_K6+1];
 	double m_param[ECP_K6+1];
 	bool m_brvec;
+	bool m_bR;
 	union{
 		double rvec[3];
 		double R[9];
@@ -36,8 +37,11 @@ protected:
 	double tvec[3];
 	
 public:
-	ch_image(const char * name):ch_base(name), m_brvec(true)
+	ch_image(const char * name):ch_base(name), m_brvec(true), m_bR(false)
 	{
+		for(int i = 0; i < ECP_K6 + 1; i++){
+			m_bparam[i] = false;
+		}
 		pthread_mutex_init(&m_mtx_bk, NULL);
 		pthread_mutex_init(&m_mtx_fr, NULL);
 	}
@@ -45,6 +49,14 @@ public:
 	{
 		pthread_mutex_destroy(&m_mtx_bk);
 		pthread_mutex_destroy(&m_mtx_fr);
+	}
+
+	void reset_campar()
+	{
+		for(int i = 0; i < ECP_K6 + 1; i++){
+			m_bparam[i] = false;
+		}
+		m_brvec = m_bR = false;
 	}
 
 	void set_int_campar(const e_campar & epar, const double val)
@@ -94,6 +106,7 @@ public:
 	void set_ext_campar_mat(const double * _R, const double * _tvec)
 	{
 		lock();
+		m_bR = true;
 		memcpy((void*)R, (void*)_R, sizeof(double) * 9);
 		tvec[0] = _tvec[0];
 		tvec[1] = _tvec[1];
@@ -108,7 +121,7 @@ public:
 		_tvec[0] = tvec[0];
 		_tvec[1] = tvec[1];
 		_tvec[2] = tvec[2];
-		bool r = !m_brvec;
+		bool r = m_bR;
 		unlock();
 		return r;
 	}

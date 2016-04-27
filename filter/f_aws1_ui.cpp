@@ -577,7 +577,34 @@ void f_aws1_ui::ui_handle_menu()
 bool f_aws1_ui::proc()
 {
 	if(m_ch_img){
+		double fx, fy, cx, cy;
+		bool bfx, bfy, bcx, bcy;
 
+		if(bfx = m_ch_img->get_int_campar(ECP_FX, fx)){
+			m_fx = (float)(fx * m_ixscale);
+
+			bfy = m_ch_img->get_int_campar(ECP_FY, fy);
+			if(!bfy) // if y focal length is not sat, fx is used.
+				m_fy = (float)(fx * m_iyscale);
+			else
+				m_fy = (float)(fy * m_iyscale);
+
+			// Note that the image coordinate is left to right, top to bottom.
+			// In the OpenGL coordinate, the vertical axis should be upsidedown.
+			bcx = m_ch_img->get_int_campar(ECP_CX, cx);
+			if(bcx){
+				m_cx = (float)(cx * m_ixscale - 1.0);
+			}else{
+				m_cx = 0.;
+			}
+
+			bcy = m_ch_img->get_int_campar(ECP_CY, cy);
+			if(bcy){
+				m_cy = (float)(1. - cy * m_iyscale);
+			}else{
+				m_cy = 0.;
+			}
+		}
 	}
 
 	c_aws1_ui_core & ui = *m_ui[m_mode];
