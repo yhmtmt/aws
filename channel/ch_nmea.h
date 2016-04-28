@@ -107,7 +107,6 @@ public:
 		}
 
 		*p = *buf;
-
 		int next_tail = (m_tail + 1) % m_max_buf;
 		if(m_head == next_tail){
 			m_new_nmeas--;

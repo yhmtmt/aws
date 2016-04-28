@@ -79,8 +79,8 @@ unsigned int htoi(const char * str)
 	unsigned int r = 0;
 	for(int i = 0; str[i] != '\0'; i++){
 		r *= 16;
-		r += (str[i] > 'a' ? str[i] - 'a' + 10: 
-		(str[i] > 'A' ? str[i] - 'A'  + 10: str[i] - '0') );
+		r += (str[i] >= 'a' ? str[i] - 'a' + 10: 
+		(str[i] >= 'A' ? str[i] - 'A'  + 10: str[i] - '0') );
 	}
 
 	return r;
