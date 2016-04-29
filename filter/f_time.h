@@ -69,7 +69,8 @@ protected:
 	sockaddr_in m_sock_addr_snd, m_sock_addr_rep, m_sock_addr_rcv;
 	int m_adjust_intvl;
 	long long m_tnext_adj;
-
+	int m_rcv_wait_count;
+	int m_max_rcv_wait_count;
 	bool sttrn();
 	bool strcv();
 	bool stwai();

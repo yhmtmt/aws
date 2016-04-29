@@ -28,7 +28,8 @@ using namespace cv;
 #include "f_time.h"
 
 
-f_time::f_time(const char * name): f_base(name), m_verb(false), mode(RCV), m_adjust_intvl(10), m_tnext_adj(0)
+f_time::f_time(const char * name): f_base(name), m_verb(false), mode(RCV), m_adjust_intvl(10),
+	m_tnext_adj(0), m_max_rcv_wait_count(1000)
 {
 	m_host_dst[0] = '\0';
 	register_fpar("verb", &m_verb, "Verbose for debug.");
@@ -36,6 +37,7 @@ f_time::f_time(const char * name): f_base(name), m_verb(false), mode(RCV), m_adj
 	register_fpar("port_svr", &m_port_dst, "Server UDP port.");
 	register_fpar("host_svr", m_host_dst, 1024, "Server address.");
 	register_fpar("Tadj", &m_adjust_intvl, "Time interval adjustment occurs in second.");
+	register_fpar("MaxWaitCount", &m_max_rcv_wait_count, "Wait count for recieving reply packet.");
 }
 
 bool f_time::init_run()
@@ -125,6 +127,7 @@ bool f_time::sttrn()
 #endif
 		socklen_t sz = sizeof(m_sock_addr_snd);
 		sendto(m_sock, (const char*) &m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_snd, sz);
+		m_rcv_wait_count = 0;
 		mode = WAI;
 	}
 	return true;
@@ -147,13 +150,13 @@ bool f_time::stwai()
 	s_tpkt rcvpkt;
 	socklen_t sz = sizeof(m_sock_addr_rep);
 	long long del = m_adjust_intvl * SEC;
-	int count = 0;
+	int count = 0; // error counter
 
 	// In the loop all the packets recieved at this moment are consumed.
 	while(1){
 		timeval to;
 		to.tv_sec = 0;
-		to.tv_usec = 0;
+		to.tv_usec = 10000; // waits 10msec
 		fd_set fdrd, fder;
 		FD_ZERO(&fdrd);
 		FD_ZERO(&fder);
@@ -209,11 +212,13 @@ bool f_time::stwai()
 				cerr << "Unknown error." << endl;
 				return false;
 			}
-		}else{
-			if(count == 0)
+		}else{ // time out
+			if(m_rcv_wait_count < 1000 && count == 0){
 				mode = WAI;
-			else
+				m_rcv_wait_count++;
+			}else{
 				mode = TRN;
+			}
 			break;
 		}
 	}
