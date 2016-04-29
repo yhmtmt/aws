@@ -63,7 +63,7 @@ bool f_ahrs::init_run()
 #ifdef _WIN32
 	m_hserial = open_serial(m_port, m_br);
 #else
-	m_hserial = open_serial(m_dname, m_brcd);
+	m_hserial = open_serial(m_dname, m_br);
 #endif
 	if(m_hserial == NULL_SERIAL)
 		return false;
