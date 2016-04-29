@@ -314,7 +314,7 @@ protected:
 	ch_aws1_ctrl * m_ch_ctrl_ui, * m_ch_ctrl_ap1, * m_ch_ctrl_ap2, * m_ch_ctrl_out;
 	ch_image_ref * m_ch_img;
 
-	bool m_ahrs; 
+	bool m_ahrs, m_gps; 
 	float r, p, y; // roll(deg), pitch(deg), yaw(deg)
 	float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
 	float cog, sog; // Course over ground(deg), Speed over ground (kts)
@@ -427,8 +427,11 @@ public:
 			if(!m_ahrs)
 				m_state->set_attitude(r, p, y);
 
-			m_state->set_position(lat, lon, alt, galt);		
-			m_state->set_velocity(cog, sog);
+			if(!m_gps){
+				m_state->set_position(lat, lon, alt, galt);		
+				m_state->set_velocity(cog, sog);
+			}
+
 			m_state->set_depth(depth);
 		}
 	}

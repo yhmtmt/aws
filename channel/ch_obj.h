@@ -557,7 +557,6 @@ public:
 			pobj->set_vel_ecef_from_bih(R);
 			//pobj->set_vel_rel_from_ecef(R);
 			pobj->set_vel_rel_from_bih();
-			pobj->print(cout);
 		}
 		unlock();
 	}
@@ -571,7 +570,6 @@ public:
 			float x, y, z;
 			pobj->get_pos_rel(x, y, z);
 			float d = (float)(x * x + y * y + z * z);
-			cout << "object " << pobj->get_mmsi() << " at " << x << "," << y << "," << z << " distance " << d << " limit " << r2 << endl;
 			if(d > r2){
 				delete itr->second;
 				itr = objs.erase(itr);
@@ -587,7 +585,6 @@ public:
 		for(itr = objs.begin(); itr != objs.end();){
 			c_ais_obj * pobj = itr->second;
 			if(pobj->get_time() < told){
-			  cout << "object " << pobj->get_mmsi() << "time " << pobj->get_time() << " limit " << told << endl;
 				delete itr->second;
 				itr = objs.erase(itr);
 			}else{

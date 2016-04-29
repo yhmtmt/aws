@@ -841,7 +841,7 @@ void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
 f_aws1_ui_test::f_aws1_ui_test(const char * name):f_base(name),
 	m_state(NULL), m_ch_ais_obj(NULL),
 	m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL), m_ch_ctrl_out(NULL),
-	m_ahrs(false), r(0), p(0), y(0), lon(0), lat(0), alt(0), galt(0), cog(0), sog(0), depth(0),
+	m_ahrs(false), m_gps(false), r(0), p(0), y(0), lon(0), lat(0), alt(0), galt(0), cog(0), sog(0), depth(0),
 	m_rud_sta_sim(0.f),
 	m_add_ais_ship(false), ais_mmsi(0), ais_lat(0), ais_lon(0), ais_cog(0), ais_sog(0), ais_yaw(0)
 {
@@ -855,6 +855,7 @@ f_aws1_ui_test::f_aws1_ui_test(const char * name):f_base(name),
 
   // for m_state
   register_fpar("ahrs", &m_ahrs, "Yes if AHRS is on the test."); 
+  register_fpar("gps", &m_gps, "Yes if GPS is on the test.");
   register_fpar("roll", &r, "Roll(deg)");
   register_fpar("pitch", &p, "Pitch(deg)");
   register_fpar("yaw", &y, "Yaw(deg)");

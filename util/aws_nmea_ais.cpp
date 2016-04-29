@@ -247,7 +247,8 @@ c_vdm * c_vdm_dec::dec(const char * str)
 
 	pnd = dec_payload(ppl);
 	c_vdm_dec::free(ppl);
-	pnd->m_vdo = m_vdo;
+	if(pnd != NULL)
+		pnd->m_vdo = m_vdo;
 	return pnd;
 }
 

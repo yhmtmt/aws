@@ -299,7 +299,6 @@ void c_aws1_ui_map::key(int key, int scancode, int action, int mods)
 void c_aws1_ui_map::draw_ship_object(const float x, const float y, const float z, 
 		const float vx, const float vy, const float vz, const float yw)
 {
-  cout << "Drawing ship " << x << " " << y << " " << z << " " << endl;
 	float theta = (float)(yw * (PI / 180.));
 	float c = (float) cos(theta), s = (float) sin(theta);
 

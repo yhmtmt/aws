@@ -190,7 +190,7 @@ void f_nmea::extract_nmea_from_buffer()
 	break;
       }
     }
-    
+	
     // Copy the nmea string from buffer 
     for(;m_buf_head < m_buf_tail && m_nmea_tail < 84; 
 	m_buf_head++, m_nmea_tail++){
