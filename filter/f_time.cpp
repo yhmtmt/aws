@@ -188,6 +188,7 @@ bool f_time::stwai()
 						m_trpkt.ts1 = rcvpkt.ts1;
 						m_trpkt.ts2 = rcvpkt.ts2;
 						m_trpkt.tc2 = m_cur_time;
+						m_trpkt.tz_min = rcvpkt.tz_min;
 						if(count == 0){
 							mode = FIX;
 						}else{
