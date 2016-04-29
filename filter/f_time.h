@@ -60,6 +60,7 @@ protected:
 		};
 	} m_trpkt;
 
+	bool m_verb;
 	char m_host_dst[1024];
 	unsigned short m_port, m_port_dst;
 	int m_len_pkt;

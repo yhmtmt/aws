@@ -28,9 +28,10 @@ using namespace cv;
 #include "f_time.h"
 
 
-f_time::f_time(const char * name): f_base(name), mode(RCV), m_adjust_intvl(10), m_tnext_adj(0)
+f_time::f_time(const char * name): f_base(name), m_verb(false), mode(RCV), m_adjust_intvl(10), m_tnext_adj(0)
 {
 	m_host_dst[0] = '\0';
+	register_fpar("verb", &m_verb, "Verbose for debug.");
 	register_fpar("port", &m_port, "UDP port.");
 	register_fpar("port_svr", &m_port_dst, "Server UDP port.");
 	register_fpar("host_svr", m_host_dst, 1024, "Server address.");
@@ -70,6 +71,10 @@ void f_time::destroy_run()
 
 bool f_time::proc()
 {
+	if(m_verb)
+		cout << m_time_str << endl;
+
+
 	switch(mode){
 	case TRN: // -> RCV or WAI
 		if(!sttrn())
@@ -304,9 +309,10 @@ bool f_time::strcv()
 bool f_time::strep()
 {
 #ifdef DEBUG_F_TIME
-	cout << "Replying tsync request id: " << m_trpkt.id << " tc1: " << 
-		m_trpkt.tc1 << " ts1: " << m_trpkt.ts1 << " ts2: " << m_trpkt.ts2 << endl;
+		cout << "Replying tsync request id: " << m_trpkt.id << " tc1: " << 
+			m_trpkt.tc1 << " ts1: " << m_trpkt.ts1 << " ts2: " << m_trpkt.ts2 << endl;
 #endif
+
 	m_trpkt.ts2 = m_cur_time;
 	m_trpkt.tz_min = f_base::get_tz();
 	sendto(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, m_sz_rep);
@@ -331,11 +337,11 @@ bool f_time::stfix()
 	m_clk.set_time_delta(delta);
 	m_tnext_adj = m_cur_time + (long long) m_adjust_intvl * SEC;
 	mode = RCV;
-#ifdef DEBUG_F_TIME
-	cout << "Fix the time id: " << m_trpkt.id << " delta: " << delta << endl;
-	cout << "Next request is set as Tnext: " <<  m_tnext_adj << endl;
-	cout << "Move to RCV mode." << endl;
-#endif
+	if(m_verb){
+		cout << "Fix the time id: " << m_trpkt.id << " delta: " << delta << endl;
+		cout << "Next request is set as Tnext: " <<  m_tnext_adj << endl;
+		cout << "Move to RCV mode." << endl;
+	}
 	return clearpkts();
 }
 
@@ -343,7 +349,6 @@ bool f_time::stfix()
 // Consume remained packet from clients. for every client del command is sent with different wait time.
 bool f_time::clearpkts()
 {
-
 	s_tpkt rcvpkt;
 	sockaddr_in addr_del;
 	socklen_t len_del;
