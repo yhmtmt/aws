@@ -136,6 +136,11 @@ void c_aws1_ui_normal::key(int key, int scancode, int action, int mods)
 
 
 ///////////////////////////////////////////////////// members of c_aws1_ui_core
+const long long c_aws1_ui_core::get_cur_time()
+{
+	return pui->m_cur_time;
+}
+
 ch_state * c_aws1_ui_core::get_state()
 {
 	return pui->m_state;

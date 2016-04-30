@@ -215,9 +215,11 @@ void c_aws1_ui_map::draw()
 					pts[i].x, pts[i].y);
 			}
 
+			// drawing waypoint
 			pwp->begin();
+			s_wp wp;
 			for(;!pwp->is_end(); pwp->next()){
-				s_wp & wp = pwp->cur();
+				s_wp wp = pwp->cur();
 				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
 				Point2f pos;
 				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
@@ -230,8 +232,29 @@ void c_aws1_ui_map::draw()
 				}
 
 				drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
+
+				long long tarr = wp.get_arrival_time();
+				if(tarr > 0){
+					tarr -= get_cur_time();
+					char str[32];
+					snprintf(str, 32, "%lld", tarr / SEC);
+					drawGlText(pos.x, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);
+				}
+
 				pos_prev = pos;
 			}
+
+			// checking waypoint arrival
+			if(pwp->is_finished()){
+				s_wp & wp = pwp->get_next_wp();
+				float d2 = wp.rx * wp.rx + wp.ry * wp.ry + wp.rz * wp.rz;
+				float r2 = wp.rarv * wp.rarv;
+				if(d2 < r2){// arrived
+					wp.set_arrival_time(get_cur_time());
+					pwp->set_next_wp();
+				}
+			}
+
 			pwp->unlock();
 		}
 	}

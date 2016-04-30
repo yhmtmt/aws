@@ -68,10 +68,18 @@ protected:
 	list<s_wp>::iterator itr;
 	int focus;
 	list<s_wp>::iterator itr_focus;
+
+	void find_next(){
+		for(itr = wps.begin(); itr != wps.end() && itr->get_arrival_time() > 0; itr++);
+
+		itr_next = itr;
+	}
+
+	list<s_wp>::iterator itr_next;
 public:
 	ch_wp(const char * name):ch_base(name), focus(0)
 	{
-		itr_focus = itr = wps.begin();
+		itr_next = itr_focus = itr = wps.begin();
 	}
 
 	void ins(const s_wp & wp){
@@ -81,6 +89,21 @@ public:
 	    itr_focus++;
 	    itr_focus = wps.insert(itr_focus, wp);
 	  }
+
+	  find_next();
+	}
+
+	bool is_finished(){
+		return itr_next == wps.end();
+	}
+
+	s_wp & get_next_wp(){		
+		return *itr_next;
+	}
+
+	void set_next_wp(){
+		if(itr_next != wps.end())
+			itr_next++;
 	}
 
 	void ers(){
@@ -89,6 +112,8 @@ public:
 
 		if(itr_focus == wps.end())
 			focus = (int) wps.size();
+
+	  find_next();
 	}
 
 	void set_focus(int i)

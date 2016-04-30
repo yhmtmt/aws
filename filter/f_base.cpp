@@ -46,6 +46,7 @@ f_base* f_base::create(const char * tname, const char * fname)
 	CreateFilter creator = itr->second;
 	return (f_base*) creator(fname);
 }
+
 //////////////////////////////////////////////////// filter parameter
 bool f_base::s_fpar::set(const char * valstr){	
 	switch(type){

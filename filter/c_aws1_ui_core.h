@@ -23,6 +23,8 @@ class c_aws1_ui_core
 protected:
 	f_aws1_ui * pui;
 
+	const long long get_cur_time();
+
 	 ch_state * get_state();
 	 ch_aws1_ctrl * get_ctrl_in();
 	 ch_aws1_ctrl * get_ctrl_out();
