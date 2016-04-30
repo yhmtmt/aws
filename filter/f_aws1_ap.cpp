@@ -74,14 +74,23 @@ void f_aws1_ap::destroy_run()
 bool f_aws1_ap::proc()
 {
 	float cog, sog;
+	if(!m_state){
+		return false;
+	}
+	if(!m_ctrl_in){
+		return false;
+	}
+	s_aws1_ctrl_pars acpkt;
 	m_state->get_velocity(cog, sog);
-	
-	{
+	m_ctrl_in->get_pars(acpkt);
+	if(acpkt.ctrl_src == ACS_AP1)
+	{		
 		m_wp->lock();
 		if(m_wp->is_finished()){
 			m_rud = 127.;
 			m_meng = 127.;
 			m_seng = 127.;
+			m_icdiff = m_isdiff = 0.;
 		}else{
 			s_wp & wp = m_wp->get_next_wp();			
 			float ctgt = (float) (atan2f(wp.rx, wp.ry) * 180. / PI);
@@ -102,6 +111,11 @@ bool f_aws1_ap::proc()
 		}
 
 		m_wp->unlock();
+	}else{
+		m_rud = 127.;
+		m_meng = 127.;
+		m_seng = 127.;
+		m_icdiff = m_isdiff = 0.;
 	}
 
 	if(m_ctrl_out){
