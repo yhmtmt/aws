@@ -30,6 +30,18 @@ protected:
 	ch_aws1_ctrl * m_ctrl_in;
 	ch_wp * m_wp;
 	s_aws1_ctrl_pars m_acp;
+
+
+	float m_meng, m_seng, m_rud;
+	float m_smax;
+	float m_meng_max, m_meng_min;
+	float m_seng_max, m_seng_min;
+
+	float m_cdiff, m_sdiff; // differences to the target values of course and speed.
+	float m_dcdiff, m_dsdiff; // difference of cdiff and sdiff
+	float m_icdiff, m_isdiff; // integral of cdiff and sdiff
+	float m_pc, m_ic, m_dc;
+	float m_ps, m_is, m_ds;
 public:
 	f_aws1_ap(const char * name);
 	virtual ~f_aws1_ap();

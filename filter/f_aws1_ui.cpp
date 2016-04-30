@@ -204,6 +204,7 @@ void f_aws1_ui::ui_show_rudder()
 	ytxt = (float) (yorg - 1.2 * hm - hfont);
 
 	// indicator box
+	drawGlSquare2Df(x1, y1, x2, y2, 0, 0, 0, 1);
 	drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
 
 	x1 = (float)(xorg + 0.5 * wm);
@@ -338,6 +339,7 @@ void f_aws1_ui::ui_show_state()
 
 	float w = (float)((strlen(salt) + 2) * wfont);
 	float h = (float)(10 * hfont);
+	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg + h), 0, 0, 0, 1);
 	drawGlSquare2Df(xorg, yorg, (float)(xorg + w), (float)(yorg + h), 0, 1, 0, 1, lw);
 
 	float x, y;
@@ -389,8 +391,6 @@ void f_aws1_ui::ui_show_attitude()
 		m_state->get_velocity(cog, sog);
 		m_state->get_depth(depth);
 	}
-
-
 }
 
 void f_aws1_ui::ui_show_sys_state()
