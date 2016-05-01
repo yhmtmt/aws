@@ -114,6 +114,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 
 	wrldtoecef(Rorg, Porg.x, Porg.y, Porg.z, cp_rx, cp_ry, 0.f, cp_x, cp_y, cp_z);
 	eceftobih(cp_x, cp_y, cp_z, cp_lat, cp_lon, cp_alt);
+
 	if(js.is_event_down(js.elx)){
 		ch_wp * pwp = get_wp();
 		pwp->lock();
@@ -132,6 +133,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 		pwp->ers();
 		pwp->unlock();
 	}
+
 	if(js.is_event_down(js.ea)){
 		ch_wp * pwp = get_wp();
 		s_wp wp;
@@ -148,6 +150,14 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 		pwp->ins(wp);
 		pwp->unlock();
 	}
+
+	if(js.is_event_down(js.elb)){
+		m_map_range *= 0.1;
+		m_imap_range *= 10.;
+	}else if(js.is_event_down(js.erb)){
+		m_map_range *= 10.;
+		m_imap_range *= 0.1;
+	}
 }
 
 void c_aws1_ui_map::draw()
@@ -157,9 +167,10 @@ void c_aws1_ui_map::draw()
   pstate->get_velocity(cog, sog);
   pstate->get_attitude(roll, pitch, yaw);
   
+  float wfont = 8, hfont = 13;
+  pix2nml(wfont, hfont, wfont, hfont);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
-
 	float lw;
 	pix2nml(1, 1, lw, lw);
 
@@ -203,7 +214,8 @@ void c_aws1_ui_map::draw()
 
 	// draw waypoints
 	{
-		Point2f pos_prev = offset;
+		bool prev = false;
+		Point2f pos_prev;
 		ch_wp * pwp = get_wp();
 		if(pwp){
 			pwp->lock();
@@ -231,16 +243,18 @@ void c_aws1_ui_map::draw()
 					drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); 
 				}
 
-				drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
+				if(prev)
+					drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
 
 				long long tarr = wp.get_arrival_time();
 				if(tarr > 0){
 					tarr -= get_cur_time();
 					char str[32];
 					snprintf(str, 32, "%lld", tarr / SEC);
-					drawGlText(pos.x, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);
+					drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);
 				}
 
+				prev = true;
 				pos_prev = pos;
 			}
 
@@ -248,8 +262,8 @@ void c_aws1_ui_map::draw()
 			if(!pwp->is_finished()){
 				s_wp & wp = pwp->get_next_wp();
 				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
-				float d2 = wp.rx * wp.rx + wp.ry * wp.ry + wp.rz * wp.rz;
-				cout << "wp " << wp.rx << "," << wp.ry << "," << wp.rz << endl;
+				float d2 = wp.rx * wp.rx + wp.ry * wp.ry;
+				
 				float d = (float)sqrt(d2);
 				float ctgt = (float)(atan2(wp.rx, wp.ry) * 180. / PI);
 				float cdiff = cog - ctgt;
@@ -259,9 +273,7 @@ void c_aws1_ui_map::draw()
 				  else
 				    cdiff -= 360.;
 				}
-				char str[32];
-				snprintf(str, 32, "D%04.1f,C%04.1f", d, cdiff);
-				float r2 = wp.rarv * wp.rarv;
+
 				Point2f pos;
 				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
 				pos.y = (float)((wp.ry * ifymeter) + offset.y);
@@ -270,11 +282,13 @@ void c_aws1_ui_map::draw()
 					  pts[i].x, pts[i].y);
 				}
 			
-				drawGlText(pos.x, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);	
-				drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); // own ship triangle
-				
-				
-				if(d2 < r2){// arrived
+				char str[32];
+				snprintf(str, 32, "D%04.1f,C%04.1f", d, cdiff);
+				drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);	
+				drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 1., lw); // own ship triangle				
+				drawGlLine2Df(pos.x, pos.y, offset.x, offset.y, 0, 1.0, 0., 1., lw);
+
+				if(d < wp.rarv){// arrived
 				  wp.set_arrival_time(get_cur_time());
 					pwp->set_next_wp();
 				}

@@ -109,7 +109,11 @@ bool f_aws1_ap::proc()
 					cdiff -= 360.;
 				}
 			}
+			cdiff *= (float)(1./180.); // normalize
+
 			float sdiff = (float)(m_smax - sog);
+			sdiff *= (float)(1./m_smax);
+
 			m_dcdiff = (float)(cdiff - m_cdiff);
 			m_dsdiff = (float)(sdiff - m_sdiff);
 			m_icdiff += cdiff;
@@ -117,9 +121,10 @@ bool f_aws1_ap::proc()
 			m_cdiff = cdiff;
 			m_sdiff = sdiff;
 			
-			m_rud += m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff;
-			m_meng += m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff;
-
+			m_rud += (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255);
+			m_meng += (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255);
+			m_rud = (float) min(m_rud, 255.);
+			m_rud = (float) max(m_rud, 0.);
 			m_meng = min(m_meng, m_meng_max);
 			m_meng = max(m_meng, m_meng_min);
 		}
