@@ -96,6 +96,14 @@ bool f_aws1_ap::proc()
 			s_wp & wp = m_wp->get_next_wp();			
 			float ctgt = (float) (atan2f(wp.rx, wp.ry) * 180. / PI);
 			float cdiff = (float)(ctgt - cog);		
+			float cdiff_n;
+			if(abs(cdiff) > 180.){
+				if(cdiff < 0){
+					cdiff += 360.;
+				}else{
+					cdiff -= 360.;
+				}
+			}
 			float sdiff = (float)(m_smax - sog);
 			m_dcdiff = (float)(cdiff - m_cdiff);
 			m_dsdiff = (float)(sdiff - m_sdiff);
@@ -103,7 +111,7 @@ bool f_aws1_ap::proc()
 			m_isdiff += sdiff;
 			m_cdiff = cdiff;
 			m_sdiff = sdiff;
-
+			
 			m_rud += m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff;
 			m_meng += m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff;
 
