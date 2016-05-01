@@ -80,6 +80,7 @@ bool f_aws1_ap::proc()
 	if(!m_ctrl_in){
 		return false;
 	}
+
 	s_aws1_ctrl_pars acpkt;
 	m_state->get_velocity(cog, sog);
 	m_ctrl_in->get_pars(acpkt);
