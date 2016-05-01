@@ -38,7 +38,7 @@ using namespace cv;
 /////////////////////////////////////////////////////////////////////////// c_aws1_ui_map
 
 c_aws1_ui_map::c_aws1_ui_map(f_aws1_ui * _pui):c_aws1_ui_core(_pui), m_op(EMO_EDT_WP),
-	m_map_range(10000)
+	m_map_range(1000)
 {
 	m_cur_pos.x = m_cur_pos.y = 0.;
 	m_map_pos.x = m_map_pos.y = 0.;
@@ -152,6 +152,11 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 
 void c_aws1_ui_map::draw()
 {
+  float cog, sog, roll, pitch, yaw;
+  ch_state * pstate = get_state();
+  pstate->get_velocity(cog, sog);
+  pstate->get_attitude(roll, pitch, yaw);
+  
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 
@@ -171,12 +176,7 @@ void c_aws1_ui_map::draw()
 	
 	// draw own ship
 	{
-		ch_state * pstate = get_state();
-		float cog, sog, roll, pitch, yaw;
 		Point2f pts[3]; // rotated version of the ship points
-
-		pstate->get_velocity(cog, sog);
-		pstate->get_attitude(roll, pitch, yaw);
 
 		float theta = (float)(yaw * (PI / 180.));
 		float c = (float) cos(theta), s = (float) sin(theta);
@@ -226,9 +226,9 @@ void c_aws1_ui_map::draw()
 				pos.y = (float)((wp.ry * ifymeter) + offset.y);
 
 				if(pwp->is_focused()){
-					drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); // own ship triangle
+					drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); 
 				}else{
-					drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); // own ship triangle
+					drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); 
 				}
 
 				drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
@@ -245,12 +245,37 @@ void c_aws1_ui_map::draw()
 			}
 
 			// checking waypoint arrival
-			if(pwp->is_finished()){
+			if(!pwp->is_finished()){
 				s_wp & wp = pwp->get_next_wp();
+				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
 				float d2 = wp.rx * wp.rx + wp.ry * wp.ry + wp.rz * wp.rz;
+				cout << "wp " << wp.rx << "," << wp.ry << "," << wp.rz << endl;
+				float d = (float)sqrt(d2);
+				float ctgt = (float)(atan2(wp.rx, wp.ry) * 180. / PI);
+				float cdiff = cog - ctgt;
+				if(abs(cdiff) > 180.){
+				  if(cdiff < 0)
+				    cdiff += 360.;
+				  else
+				    cdiff -= 360.;
+				}
+				char str[32];
+				snprintf(str, 32, "D%04.1f,C%04.1f", d, cdiff);
 				float r2 = wp.rarv * wp.rarv;
+				Point2f pos;
+				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
+				pos.y = (float)((wp.ry * ifymeter) + offset.y);
+				for(int i = 0; i < 36; i++){
+				  pix2nml((float)(m_circ_pts[i].x * wp.rarv),(float)(m_circ_pts[i].y * wp.rarv),
+					  pts[i].x, pts[i].y);
+				}
+			
+				drawGlText(pos.x, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);	
+				drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); // own ship triangle
+				
+				
 				if(d2 < r2){// arrived
-					wp.set_arrival_time(get_cur_time());
+				  wp.set_arrival_time(get_cur_time());
 					pwp->set_next_wp();
 				}
 			}

@@ -83,6 +83,11 @@ bool f_aws1_ap::proc()
 
 	s_aws1_ctrl_pars acpkt;
 	m_state->get_velocity(cog, sog);
+	Mat Rorg;
+	Point3f Porg;
+	Rorg = m_state->get_enu_rotation();
+	m_state->get_position_ecef(Porg.x, Porg.y, Porg.z);
+
 	m_ctrl_in->get_pars(acpkt);
 	if(acpkt.ctrl_src == ACS_AP1)
 	{		
@@ -94,6 +99,7 @@ bool f_aws1_ap::proc()
 			m_icdiff = m_isdiff = 0.;
 		}else{
 			s_wp & wp = m_wp->get_next_wp();			
+			wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
 			float ctgt = (float) (atan2f(wp.rx, wp.ry) * 180. / PI);
 			float cdiff = (float)(ctgt - cog);		
 			if(abs(cdiff) > 180.){
