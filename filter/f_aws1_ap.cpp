@@ -31,8 +31,8 @@ using namespace cv;
 
 f_aws1_ap::f_aws1_ap(const char * name): f_base(name), m_state(NULL), m_ctrl_out(NULL), m_ctrl_in(NULL),
 	m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
-	m_pc(0.1), m_ic(0.1), m_dc(0.1), m_ps(0.1), m_is(0.1), m_ds(0.1),
-	m_cdiff(0.), m_sdiff(0.), m_dcdiff(0.), m_icdiff(0.), m_dsdiff(0.), m_isdiff(0.)
+	m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
+	m_cdiff(0.f), m_sdiff(0.f), m_dcdiff(0.f), m_icdiff(0.f), m_dsdiff(0.f), m_isdiff(0.f)
 {
 	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
 	register_fpar("ch_ctrl_out", (ch_base**)&m_ctrl_out, typeid(ch_aws1_ctrl).name(), "Ctrl output channel");
@@ -96,7 +96,6 @@ bool f_aws1_ap::proc()
 			s_wp & wp = m_wp->get_next_wp();			
 			float ctgt = (float) (atan2f(wp.rx, wp.ry) * 180. / PI);
 			float cdiff = (float)(ctgt - cog);		
-			float cdiff_n;
 			if(abs(cdiff) > 180.){
 				if(cdiff < 0){
 					cdiff += 360.;
@@ -128,9 +127,9 @@ bool f_aws1_ap::proc()
 	}
 
 	if(m_ctrl_out){
-		m_acp.meng = saturate_cast<unsigned char>(m_meng);
-		m_acp.seng = saturate_cast<unsigned char>(m_seng);
-		m_acp.rud = saturate_cast<unsigned char>(m_rud);
+		m_acp.meng_aws = saturate_cast<unsigned char>(m_meng);
+		m_acp.seng_aws = saturate_cast<unsigned char>(m_seng);
+		m_acp.rud_aws = saturate_cast<unsigned char>(m_rud);
 		m_ctrl_out->set_pars(m_acp);
 	}
 
