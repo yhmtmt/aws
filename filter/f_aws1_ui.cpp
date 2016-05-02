@@ -634,8 +634,8 @@ bool f_aws1_ui::proc()
 
 	// render graphics
 	if(m_xscale != (float) m_sz_win.width || m_yscale != (float) m_sz_win.height){
-		m_xscale = (float) m_sz_win.width;
-		m_yscale = (float) m_sz_win.height;
+		m_xscale = (float) (m_sz_win.width * 0.5);
+		m_yscale = (float) (m_sz_win.height * 0.5);
 		m_ixscale = (float)(2.0 / (double) m_sz_win.width);
 		m_iyscale = (float)(2.0 / (double) m_sz_win.height);
 	}
