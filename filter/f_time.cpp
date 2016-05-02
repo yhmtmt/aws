@@ -166,7 +166,7 @@ bool f_time::stwai()
 		if(n > 0){
 			if(FD_ISSET(m_sock, &fdrd)){
 				sz = sizeof(m_sock_addr_rep);
-				recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &sz);
+				int res = recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &sz);
 				if(rcvpkt.id == m_trpkt.id){
 					if(rcvpkt.del != 0){
 #ifdef DEBUG_F_TIME
