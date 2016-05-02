@@ -22,7 +22,7 @@
 
 #include "f_base.h"
 
-//#define DEBUG_F_TIME
+#define DEBUG_F_TIME
 
 // Filter for time synchronization.
 // This uses simple time exchanging scheme using UDP. 
@@ -58,8 +58,11 @@ protected:
 		long long calc_delta(){
 			return ((ts1 - tc1) - (tc2 - ts2)) / 2;  
 		};
+	  void pack(char * buf);
+	  void unpack(const char * buf);
 	} m_trpkt;
 
+	char m_trbuf[sizeof(s_tpkt)];
 	bool m_verb;
 	char m_host_dst[1024];
 	unsigned short m_port, m_port_dst;

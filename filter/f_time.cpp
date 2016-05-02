@@ -27,6 +27,36 @@ using namespace cv;
 
 #include "f_time.h"
 
+void f_time::s_tpkt::pack(char * buf)
+{
+  *((unsigned int*)buf) = id;
+  buf += sizeof(unsigned int);
+  *((long long*)buf) = tc1;
+  buf += sizeof(long long);
+  *((long long*)buf) = ts1;
+  buf += sizeof(long long);
+  *((long long*)buf) = tc2;
+  buf += sizeof(long long);
+  *((long long*)buf) = ts2;
+  buf += sizeof(long long);
+  *((int*)buf) = tz_min;
+}
+
+void f_time::s_tpkt::unpack(const char * buf)
+{
+  id = *((unsigned int*)buf);
+  buf += sizeof(unsigned int);
+  tc1 = *((long long*)buf);
+  buf += sizeof(long long);
+  ts1 = *((long long*)buf);
+  buf += sizeof(long long);
+  tc2 = *((long long*)buf);
+  buf += sizeof(long long);
+  ts2 = *((long long*)buf);
+  buf += sizeof(long long);
+  tz_min = *((int*)buf);
+}
+
 
 f_time::f_time(const char * name): f_base(name), m_verb(false), mode(RCV), m_adjust_intvl(10),
 	m_tnext_adj(0), m_max_rcv_wait_count(1000)
@@ -126,7 +156,8 @@ bool f_time::sttrn()
 			<< " Tc1:" << m_trpkt.tc1 << endl;
 #endif
 		socklen_t sz = sizeof(m_sock_addr_snd);
-		sendto(m_sock, (const char*) &m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_snd, sz);
+		m_trpkt.pack(m_trbuf);
+		sendto(m_sock, (const char*)m_trbuf, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_snd, sz);
 		m_rcv_wait_count = 0;
 		mode = WAI;
 	}
@@ -166,7 +197,8 @@ bool f_time::stwai()
 		if(n > 0){
 			if(FD_ISSET(m_sock, &fdrd)){
 				sz = sizeof(m_sock_addr_rep);
-				recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &sz);
+				recvfrom(m_sock, (char*)m_trbuf, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &sz);
+				rcvpkt.unpack(m_trbuf);
 				if(rcvpkt.id == m_trpkt.id){
 					if(rcvpkt.del != 0){
 #ifdef DEBUG_F_TIME
@@ -202,7 +234,8 @@ bool f_time::stwai()
 					cout << "Different tsync packet recieved sent id: " << m_trpkt.id << " rcvd id: " << rcvpkt.id << endl;
 					cout << "Denying request with wait time " << del << endl;
 #endif
-					sendto(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, sz);
+					rcvpkt.pack(m_trbuf);
+					sendto(m_sock, (char*)m_trbuf, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, sz);
 					del += m_adjust_intvl * SEC;
 					count++;
 				}
@@ -265,7 +298,8 @@ bool f_time::strcv()
 	if(n > 0){
 		if(FD_ISSET(m_sock, &fdrd)){
 			m_sz_rep = sizeof(m_sock_addr_rep);
-			recvfrom(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &m_sz_rep);
+			recvfrom(m_sock, (char*)m_trbuf, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, &m_sz_rep);
+			m_trpkt.unpack(m_trbuf);
 			m_trpkt.ts1 = m_cur_time;
 #ifdef DEBUG_F_TIME
 			cout << "Tsync packet is recieved from client id: " << m_trpkt.id << " tc1: " << m_trpkt.tc1 << " ts1: " << m_cur_time << endl;
@@ -314,14 +348,17 @@ bool f_time::strcv()
 // REP -> RCV always occurs.
 bool f_time::strep()
 {
-#ifdef DEBUG_F_TIME
-		cout << "Replying tsync request id: " << m_trpkt.id << " tc1: " << 
-			m_trpkt.tc1 << " ts1: " << m_trpkt.ts1 << " ts2: " << m_trpkt.ts2 << endl;
-#endif
-
 	m_trpkt.ts2 = m_cur_time;
 	m_trpkt.tz_min = f_base::get_tz();
-	sendto(m_sock, (char*)&m_trpkt, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, m_sz_rep);
+	m_trpkt.del = 0;
+
+#ifdef DEBUG_F_TIME 
+		cout << "Replying tsync request id: " << m_trpkt.id << " tc1: " << 
+		  m_trpkt.tc1 << " ts1: " << m_trpkt.ts1 << " ts2: " << m_trpkt.ts2 << " tz:" << m_trpkt.tz_min << " del: " << m_trpkt.del << " Size: " << sizeof(s_tpkt) << endl;
+#endif
+
+		m_trpkt.pack(m_trbuf);
+	sendto(m_sock, (char*)m_trbuf, sizeof(s_tpkt), 0, (sockaddr*)&m_sock_addr_rep, m_sz_rep);
 	mode = RCV;
 	return clearpkts();
 }
@@ -372,7 +409,8 @@ bool f_time::clearpkts()
 		if(n > 0){
 			if(FD_ISSET(m_sock, &fdrd)){
 				len_del = sizeof(addr_del);
-				n = recvfrom(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, &len_del);
+				n = recvfrom(m_sock, (char*)m_trbuf, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, &len_del);
+				rcvpkt.unpack(m_trbuf);
 				if(n == SOCKET_ERROR){
 #ifdef _WIN32
 					cerr << "Failed to recieve packet recvfrom() " << strerror(errno) << endl;	
@@ -386,7 +424,8 @@ bool f_time::clearpkts()
 				cout << "Sending del packet id " << rcvpkt.id << " Twait: " << del << endl;
 #endif
 				rcvpkt.del = del;
-				sendto(m_sock, (char*)&rcvpkt, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, len_del);
+				rcvpkt.pack(m_trbuf);
+				sendto(m_sock, (char*)m_trbuf, sizeof(s_tpkt), 0, (sockaddr*)&addr_del, len_del);
 			}else if(FD_ISSET(m_sock, &fder)){
 				cerr << "Socket error." << endl;
 				return false;
