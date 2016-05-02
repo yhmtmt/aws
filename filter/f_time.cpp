@@ -61,7 +61,6 @@ void f_time::s_tpkt::unpack(const char * buf)
   tz_min = *((int*)buf);
 }
 
-
 f_time::f_time(const char * name): f_base(name), m_verb(false), mode(RCV), m_adjust_intvl(10),
 	m_tnext_adj(0), m_max_rcv_wait_count(1000)
 {
