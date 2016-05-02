@@ -123,10 +123,10 @@ bool f_aws1_ap::proc()
 			
 			m_rud += (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255);
 			m_meng += (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255);
-			m_rud = (float) min(m_rud, 255.);
-			m_rud = (float) max(m_rud, 0.);
-			m_meng = min(m_meng, m_meng_max);
-			m_meng = max(m_meng, m_meng_min);
+			m_rud = (float) min(m_rud, 255.f);
+			m_rud = (float) max(m_rud, 0.f);
+			m_meng = (float) min(m_meng, m_meng_max);
+			m_meng = (float) max(m_meng, m_meng_min);
 		}
 
 		m_wp->unlock();
