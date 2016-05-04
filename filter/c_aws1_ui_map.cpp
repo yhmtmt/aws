@@ -152,11 +152,11 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	}
 
 	if(js.is_event_down(js.elb)){
-		m_map_range *= 0.1;
-		m_imap_range *= 10.;
+		m_map_range *= 0.1f;
+		m_imap_range *= 10.f;
 	}else if(js.is_event_down(js.erb)){
-		m_map_range *= 10.;
-		m_imap_range *= 0.1;
+		m_map_range *= 10.f;
+		m_imap_range *= 0.1f;
 	}
 }
 
