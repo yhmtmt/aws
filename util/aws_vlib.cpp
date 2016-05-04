@@ -2944,3 +2944,46 @@ void cnvCVGRAY8toGLGRAY8(Mat & img)
   
   img = gl_img;
 }
+
+
+//////////////////////////////////////////////////////////////////////////////////////// mat img read/write
+bool write_raw_img(const Mat & img, const char * fname)
+{
+	FILE * pf = fopen(fname, "wb");
+	if(pf){
+		int r, c, type, size;
+		r = img.rows;
+		c = img.cols;
+		type = img.type();
+		size = (int)(r * c * img.channels() * img.elemSize());
+		fwrite((void*)&type, sizeof(int), 1, pf);
+		fwrite((void*)&r, sizeof(int), 1, pf);
+		fwrite((void*)&c, sizeof(int), 1, pf);
+		fwrite((void*)&size, sizeof(int), 1, pf);
+		fwrite((void*)img.data, sizeof(char), size, pf);
+	}else{
+		cerr << "Failed to write " << fname << "." << endl;
+		return false;
+	}
+	fclose(pf);
+	return true;
+}
+
+bool read_raw_img(Mat & img, const char * fname)
+{
+	FILE * pf = fopen(fname, "rb");
+	if(pf){
+		int r, c, type, size;
+		r = c = type = size = 0;
+		fread((void*)type, sizeof(int), 1, pf);
+		fread((void*)r, sizeof(int), 1, pf);
+		fread((void*)c, sizeof(int), 1, pf);
+		fread((void*)size, sizeof(int), 1, pf);
+		img.create(r, c, type);
+		fread((void*)img.data, sizeof(char), size, pf);
+	}else{
+		cerr << "Failed to read " << fname << "." << endl;
+		return false;
+	}
+	return true;
+}

@@ -98,21 +98,23 @@ class f_imwrite: public f_misc
 {
 protected:
 	ch_image * m_pin;
+	bool m_verb;
 	enum eImgType{
-		eitTIFF, eitJPG, eitJP2, eitPNG
+		eitTIFF, eitJPG, eitJP2, eitPNG, eitRAW
 	} m_type;
 
-	static const char * m_strImgType[eitPNG+1];
+	static const char * m_strImgType[eitRAW+1];
 	int m_qjpg; // 0 to 100
 	int m_qpng; // 0 to 10
 	char m_path[1024];
 	long long m_cur_timg;
 public:
-	f_imwrite(const char * name): f_misc(name), m_pin(NULL), m_type(eitJPG), m_cur_timg(0)
+	f_imwrite(const char * name): f_misc(name), m_verb(false), m_pin(NULL), m_type(eitJPG), m_cur_timg(0)
 	{
 		m_path[0] = '.';
 		m_path[1] = '\0';
-		register_fpar("type", (int*)&m_type, (int)eitPNG+1, m_strImgType, "Image type");
+		register_fpar("verb", &m_verb, "Verbose for debug.");
+		register_fpar("type", (int*)&m_type, (int)eitRAW+1, m_strImgType, "Image type");
 		register_fpar("qjpg", &m_qjpg, "Jpeg quality [0-100]");
 		register_fpar("qpng", &m_qpng, "PNG quality [0-10]");
 		register_fpar("path", m_path, 1024, "File path");

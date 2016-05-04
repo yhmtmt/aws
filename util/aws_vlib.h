@@ -1363,4 +1363,10 @@ struct AWSAttitude{
 	bool write(const char * fname);
 };
 
+//////////////////////////////////////////////////////////////////////// mat img read/write
+
+bool write_raw_img(const Mat & img, const char * fname);
+
+bool read_raw_img(Mat & img, const char * fname);
+
 #endif

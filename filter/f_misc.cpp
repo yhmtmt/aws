@@ -86,8 +86,8 @@ bool f_debayer::proc(){
 }
 
 ////////////////////////////////////////////////////////// f_imwrite members
-const char * f_imwrite::m_strImgType[eitPNG+1] = {
-	"tiff", "jpg", "jp2", "png"
+const char * f_imwrite::m_strImgType[eitRAW+1] = {
+	"tiff", "jpg", "jp2", "png", "raw"
 };
 
 bool f_imwrite::proc()
@@ -119,8 +119,12 @@ bool f_imwrite::proc()
 		param[1] = m_qpng;
 		imwrite(buf, img, param);
 		break;
+	case eitRAW:
+		write_raw_img(img, buf);
+		break;
 	}
-	cout << "Writing " << buf << endl;
+	if(m_verb)
+		cout << "Writing " << buf << endl;
 	return true;
 }
 
