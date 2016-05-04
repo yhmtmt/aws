@@ -200,7 +200,7 @@ protected:
 		tPvFrame * m_frame;
 		unsigned char ** m_img_buf;
 		tPvHandle m_hcam;
-
+		vector<Mat> m_mat_frame;
 		int m_cur_frm;
 
 		///////////////////// parameters

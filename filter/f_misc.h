@@ -94,6 +94,65 @@ public:
 	virtual bool proc();
 };
 
+class f_imread: public f_misc
+{
+protected:
+	ch_image * m_pout;
+	char m_fname[1024];
+	ifstream m_flist;
+	bool m_verb;
+
+public:
+	f_imread(const char * name): f_misc(name), m_verb(false)
+	{
+		m_fname[0] = '\0';
+		register_fpar("flst", m_fname, 1024, "Image list file.");
+	};
+
+	~f_imread()
+	{
+	}
+
+	virtual bool init_run()
+	{
+		m_flist.open(m_fname);
+
+		if(!m_flist.is_open()){
+			cerr << m_fname << " cannot be opened." << endl;
+			return false;
+		}
+
+		return true;
+	}
+
+	virtual void destroy_run()
+	{
+		m_flist.close();
+	}
+
+	virtual bool proc()
+	{
+		char buf[1024];
+		bool raw = false;
+		m_flist.getline(buf, 1024);
+		{
+			char * p = buf;
+			char * d = NULL;
+			for(;*p != '\0'; p++)
+				if(*p == '.') d = p;
+			if(d[1] == 'r' && d[2] == 'a' && d[3] == 'w')
+				raw = true;
+		}
+		Mat img;
+
+		if(raw)
+			read_raw_img(img, buf);
+		else
+			img = imread(buf);
+		m_pout->set_img(img, m_cur_time);
+	}
+};
+
 class f_imwrite: public f_misc
 {
 protected:

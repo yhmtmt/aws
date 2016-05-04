@@ -499,6 +499,39 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 	memset(m_frame, 0, sizeof(tPvFrame) * m_num_buf);
 	m_frm_done.resize(m_num_buf);
 
+	m_mat_frame.resize(m_num_buf);
+	for(int ibuf = 0; ibuf < m_num_buf; ibuf++){
+		switch(m_PixelFormat){
+		case ePvFmtMono8:
+			m_mat_frame[ibuf] = Mat(m_Height, m_Width, CV_8UC1);
+			break;
+		case ePvFmtMono16:
+			m_mat_frame[ibuf] = Mat(m_Height, m_Width,  CV_16UC1);
+			break;
+		case ePvFmtBayer8:
+			m_mat_frame[ibuf] = Mat(m_Height, m_Width,  CV_8UC1);
+			break;
+		case ePvFmtBayer16:
+			m_mat_frame[ibuf] = Mat(m_Height, m_Width,  CV_16UC1);
+			break;
+		case ePvFmtRgb24:
+			m_mat_frame[ibuf] = Mat(m_Height, m_Width,  CV_8UC3);
+			break;
+		case ePvFmtRgb48:
+			m_mat_frame[ibuf] = Mat(m_Height, m_Width,  CV_16UC3);
+			break;
+		case ePvFmtYuv411:
+		case ePvFmtYuv422:
+		case ePvFmtYuv444:
+		case ePvFmtBgr24:
+		case ePvFmtRgba32:
+		case ePvFmtBgra32:
+		case ePvFmtMono12Packed:
+		case ePvFmtBayer12Packed:
+		default:
+			break;
+		}
+	}
 #if  defined(_M_AMD64) || defined(_x64)
 	unsigned long long ibuf;
 #else
@@ -510,7 +543,7 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 		m_frame[ibuf].Context[0] = (void*) this;
 		m_frame[ibuf].Context[1] = (void*) ibuf;
 		m_frame[ibuf].ImageBufferSize = m_size_buf;
-		m_frame[ibuf].ImageBuffer = (void*) new unsigned char[m_size_buf];
+		m_frame[ibuf].ImageBuffer = (void*) m_mat_frame[ibuf].data;
 		if(!m_frame[ibuf].ImageBuffer){
 			f_base::send_err(pcam, __FILE__, __LINE__, FERR_AVT_CAM_ALLOC);
 			goto free_buf;
@@ -592,9 +625,6 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 
 free_buf:
 	cerr << "Freeing buffer." << endl;
-	for(ibuf = 0; ibuf < (unsigned) m_num_buf; ibuf++){
-		delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
-	}
 	delete m_frame;
 	m_frame = NULL;
 
@@ -635,12 +665,6 @@ void f_avt_cam::s_cam_params::destroy(f_avt_cam * pcam)
 	}
 
 	if(m_frame != NULL){
-		int ibuf;
-		for(ibuf = 0; ibuf < m_num_buf; ibuf++){
-			if(m_frame[ibuf].ImageBuffer){
-				delete[] (unsigned char *) m_frame[ibuf].ImageBuffer;
-			}
-		}
 		delete[] m_frame;
 		m_frame = NULL;
 	}
@@ -1162,53 +1186,21 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 #endif
 
 	if(pfrm->Status == ePvErrSuccess){
-	  // cout << "Cam[" << m_host << "] Frame[" << pfrm->FrameCount <<"] Arrived " << endl;
-		Mat img;
-		switch(pfrm->Format){
-		case ePvFmtMono8:
-			img = Mat(pfrm->Height, pfrm->Width, CV_8UC1, pfrm->ImageBuffer);
-			break;
-		case ePvFmtMono16:
-			img = Mat(pfrm->Height, pfrm->Width, CV_16UC1, pfrm->ImageBuffer);
-			break;
-		case ePvFmtBayer8:
-			img = Mat(pfrm->Height, pfrm->Width, CV_8UC1, pfrm->ImageBuffer);
-			break;
-		case ePvFmtBayer16:
-			img = Mat(pfrm->Height, pfrm->Width, CV_16UC1, pfrm->ImageBuffer);
-			break;
-		case ePvFmtRgb24:
-			img = Mat(pfrm->Height, pfrm->Width, CV_8UC3, pfrm->ImageBuffer);
-			break;
-		case ePvFmtRgb48:
-			img = Mat(pfrm->Height, pfrm->Width, CV_16UC3, pfrm->ImageBuffer);
-			break;
-		case ePvFmtYuv411:
-		case ePvFmtYuv422:
-		case ePvFmtYuv444:
-		case ePvFmtBgr24:
-		case ePvFmtRgba32:
-		case ePvFmtBgra32:
-		case ePvFmtMono12Packed:
-		case ePvFmtBayer12Packed:
-		default:
-			break;
-		}
-
-		if(!img.empty()){
+	  // cout << "Cam[" << m_host << "] Frame[" << pfrm->FrameCount <<"] Arrived " << endl;		
+		if(!m_mat_frame[ibuf].empty()){
 			Mat tmp;
 			if(m_ReverseSoftware && (m_ReverseX || m_ReverseY)){
 				int flag;
 				flag = (m_ReverseY ? 
 					(m_ReverseX ? -1 : 0) : 1);
-				flip(img, tmp, flag);
-				img = tmp;				
+				flip(m_mat_frame[ibuf], tmp, flag);
+				m_mat_frame[ibuf] = tmp;				
 			}
 			if(bundist){
-				remap(img, tmp, udmap1, udmap2, INTER_LINEAR);
-				img = tmp;
+				remap(m_mat_frame[ibuf], tmp, udmap1, udmap2, INTER_LINEAR);
+				m_mat_frame[ibuf] = tmp;
 			}
-			pout->set_img(img, m_cur_time, pfrm->FrameCount);
+			pout->set_img(m_mat_frame[ibuf], m_cur_time, pfrm->FrameCount);
 		}
 	}else if(bemsg){
 		switch(pfrm->Status){
@@ -1234,7 +1226,8 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 	for(ibuf = 0; ibuf < (unsigned int) m_num_buf; ibuf++){
 #endif
 		if(m_frm_done[ibuf]){
-			if(!pout->is_buf_in_use((const unsigned char*) m_frame[ibuf].ImageBuffer)){
+			if(*m_mat_frame[ibuf].refcount == 1){
+		//	if(!pout->is_buf_in_use((const unsigned char*) m_frame[ibuf].ImageBuffer)){
 				PvErr = PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
 				if(PvErr == ePvErrSuccess){
 					m_frm_done[ibuf] = false;
