@@ -77,7 +77,7 @@ const char * f_avt_cam::m_strParams[NUM_PV_PARAMS] = {
 	"Strobe1Duration", "Strobe1Delay", "Strobe1ControlledDuration", "Strobe1Mode",
 	"SyncOut1Mode", "SyncOut2Mode", "SyncOut3Mode", "SyncOut4Mode", 
 	"SyncOut1Invert", "SyncOut2Invert", "SyncOut3Invert", "SyncOut4Invert", 
-	"fcp", "ud", "udw", "udh", "emsg"
+	"fcp", "ud", "udw", "udh", "emsg", "verb"
 };
 
 const char * f_avt_cam::strStrobeMode[esmUndef] = {
@@ -121,7 +121,8 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
   m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0), m_ReverseSoftware(false), m_ReverseX(false), m_ReverseY(false),
   m_Strobe1Mode(esmUndef), m_Strobe1ControlledDuration(escdUndef), m_Strobe1Duration(UINT_MAX), m_Strobe1Delay(UINT_MAX),
   m_SyncOut1Mode(esomUndef), m_SyncOut2Mode(esomUndef), m_SyncOut3Mode(esomUndef), m_SyncOut4Mode(esomUndef),
-  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef), bundist(false), bemsg(false)
+  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef), bundist(false),
+  bemsg(false), verb(false)
 {
 	if(icam == -1){
 		strParams = m_strParams;
@@ -226,6 +227,7 @@ void f_avt_cam::register_params(s_cam_params & cam)
 	register_fpar(cam.strParams[51], &cam.szud.width, "Width of the undistorted image.");
 	register_fpar(cam.strParams[52], &cam.szud.height, "Height of the undistorted image.");
 	register_fpar(cam.strParams[53], &cam.bemsg, "If asserted, error message is enabled in the callback.");
+	register_fpar(cam.strParams[54], &cam.verb, "Verbose for debug.");
 }
 
 const char * f_avt_cam::get_err_msg(int code)
@@ -1221,6 +1223,9 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 
 	m_cur_frm = pfrm->FrameCount;
 	m_frm_done[ibuf] = true;
+	if(verb){
+		cout << "Frame[" << m_cur_frm << "] arrived." << endl;
+	}
 
 	tPvErr PvErr;
 #if  defined(_M_AMD64) || defined(_x64)

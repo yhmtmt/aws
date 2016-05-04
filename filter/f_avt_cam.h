@@ -185,7 +185,7 @@ protected:
 	long long m_ttrig_int;
 	long long m_ttrig_prev;
 
-	#define NUM_PV_PARAMS 54
+	#define NUM_PV_PARAMS 55
 	static const char * m_strParams[NUM_PV_PARAMS];
 	struct s_cam_params{
 		bool m_bactive;
@@ -280,6 +280,7 @@ protected:
 		Mat udmap1, udmap2; // undistort map1, undistort map2
 		Size szud;		// Size of undistorted image 
 		bool bemsg;			// Error message enabling flag
+		bool verb;			// verbose for debug
 	};
 
 	void register_params(s_cam_params & cam);
