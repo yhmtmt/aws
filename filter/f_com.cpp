@@ -288,7 +288,7 @@ bool f_ch_share::proc()
   if(m_svr && m_client_fixed || !m_svr){
     m_wbuf_head = m_wbuf_tail = 0;
     for(int ich = 0; ich < m_chin.size(); ich++)
-      m_wbuf_tail += m_chin[ich]->read_buf(m_wbuf + m_wbuf_tail);
+      m_wbuf_tail += (int)(m_chin[ich]->read_buf(m_wbuf + m_wbuf_tail));
     
     while(m_wbuf_tail != m_wbuf_head){
       FD_ZERO(&fe);
@@ -353,7 +353,7 @@ bool f_ch_share::proc()
 	if(m_rbuf_tail == m_len_pkt_rcv){
 	  m_client_fixed = true;
 	  for(int och = 0; och < m_chout.size(); och++){
-	    m_rbuf_head += m_chout[och]->write_buf(m_rbuf + m_rbuf_head);
+	    m_rbuf_head += (int)(m_chout[och]->write_buf(m_rbuf + m_rbuf_head));
 	  }
 	  if(m_verb){
 	    cout << "Outputs:" << m_rbuf_tail << "/" << res << endl;

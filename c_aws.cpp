@@ -334,9 +334,10 @@ bool c_aws::handle_stop()
 	}
 
 	for(vector<f_base*>::iterator fitr = m_filters.begin();
-	    fitr != m_filters.end(); fitr++)
-	  (*fitr)->runstat();
-
+	    fitr != m_filters.end(); fitr++){
+			(*fitr)->destroy();
+			(*fitr)->runstat();
+	}
 	return true;
 }
 

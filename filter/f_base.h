@@ -361,12 +361,13 @@ protected:
 	static pthread_mutex_t m_mutex; 
 	static pthread_cond_t m_cond;	
 
-	virtual bool init_run()
+
+	virtual bool seek(long long seek_time)
 	{
 		return true;
 	}
 
-	virtual bool seek(long long seek_time)
+	virtual bool init_run()
 	{
 		return true;
 	}
@@ -436,7 +437,6 @@ public:
 		m_bactive= false;
 		if(!m_bochrep){
 			if(m_bstopped || is_main_thread()){
-				destroy_run();
 				m_bstopped = true;
 				return true;
 			}
@@ -447,6 +447,10 @@ public:
 		return false;
 	}
 	
+	void destroy(){
+		destroy_run();
+	}
+
 	void runstat(){
 	  cout << get_name() << " stopped." << endl;
 	  cout << "Processing rate was " << m_proc_rate;
