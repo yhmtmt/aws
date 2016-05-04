@@ -30,7 +30,7 @@ struct s_aws1_ctrl_pars{
 
   // control modes
   e_aws1_ctrl_src ctrl_src;
-
+  
   // control output
   unsigned char rud;
   unsigned char meng;
