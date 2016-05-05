@@ -2382,6 +2382,50 @@ void cnvBayerGR8ToG8Q(Mat & src, Mat & dst)
 	}
 }
 
+// calculates the difference at B cells, and L1 norm is stored.
+void cnvBayerGR8ToDG8Q(Mat & src, Mat & dst)
+{
+	if(src.type() != CV_8UC1)
+		return;
+
+	dst = Mat((src.rows >> 1) - 1, (src.cols >> 1) - 1, CV_8UC1);
+
+	int step_size = (int) (src.step.p[0] / sizeof(unsigned char));
+	int next_skip = step_size - src.cols + 2;
+
+	unsigned char * psrc0, * psrc1, *psrc2, * pdst;
+	psrc0 = (unsigned char*) src.data;
+	psrc1 = psrc0 + step_size;
+	psrc2 = psrc1 + step_size;
+	psrc0 += 2;
+	psrc1 += 1;
+	psrc2 += 2;
+	pdst = (unsigned char*) dst.data;
+
+	for(int y = 0; y < dst.rows; y++){
+		for(int x = 0; x < dst.cols; x++){ 			
+			// src0: G R G R
+			// src1: B G B G
+			// src2: G R G R
+
+			// Green 
+			short dx = (short)*psrc1;
+			psrc1 += 2;
+			dx = abs((short)*psrc1 - dx);
+			short dy = abs((short)*psrc2 - (short)*psrc0);
+			*pdst = (unsigned char)((dy + dx) >> 1);
+
+			psrc0 += 2;
+			psrc2 += 2;
+			pdst++;
+		}
+
+		psrc0 = psrc1 + next_skip + 1;
+		psrc1 = psrc0 + step_size - 1;
+		psrc2 = psrc1 + step_size + 1;
+	}
+}
+
 void cnvBayerGR16ToBGR16(Mat & src, Mat & dst)
 {
 	if(src.type() != CV_16UC1)

@@ -38,7 +38,7 @@ using namespace cv;
 
 ////////////////////////////////////////////////////////// f_debayer members
 const char * f_debayer::m_strBayer[UNKNOWN] = {
-	"BG8", "GB8", "RG8", "GR8", "GR8NN", "GR8Q", "GR8GQ", "BG16", "GB16", "RG16", "GR16"
+	"BG8", "GB8", "RG8", "GR8", "GR8NN", "GR8Q", "GR8GQ", "GR8DGQ", "BG16", "GB16", "RG16", "GR16"
 };
 
 bool f_debayer::proc(){
@@ -75,6 +75,9 @@ bool f_debayer::proc(){
 		break;
 	case GR8GQ:
 		cnvBayerGR8ToG8Q(img ,bgr);
+		break;
+	case GR8DGQ:
+		cnvBayerGR8ToDG8Q(img, bgr);
 		break;
 	case BG16:
 		cnvBayerBG16ToBGR16(img, bgr);

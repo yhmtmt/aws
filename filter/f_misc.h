@@ -52,7 +52,7 @@ protected:
 	ch_image * m_pin, * m_pout;
 	long long m_timg;
 	enum e_bayer_type{
-		BG8, GB8, RG8, GR8, GR8NN, GR8Q, GR8GQ, BG16, GB16, RG16, GR16, UNKNOWN
+		BG8, GB8, RG8, GR8, GR8NN, GR8Q, GR8GQ, GR8DGQ, BG16, GB16, RG16, GR16, UNKNOWN
 	} m_type;
 	static const char * m_strBayer[UNKNOWN];
 
