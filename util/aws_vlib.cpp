@@ -2207,6 +2207,7 @@ void cnvBayerGR8ToBGR8(Mat & src, Mat & dst)
 	}
 }
 
+// nearest neighbour
 void cnvBayerGR8ToBGR8NN(Mat & src, Mat & dst)
 {
 	if(src.type() != CV_8UC1)
@@ -2302,6 +2303,50 @@ void cnvBayerGR8ToBGR8NN(Mat & src, Mat & dst)
 		}
 		psrc0 += next_skip;
 		psrc1 += next_skip;
+	}
+}
+
+// quarter  
+void cnvBayerGR8ToBGR8Q(Mat & src, Mat & dst)
+{
+	if(src.type() != CV_8UC1)
+		return;
+
+	dst = Mat(src.rows >> 1, src.cols >> 1, CV_8UC3);
+
+	int step_size = (int) (src.step.p[0] / sizeof(unsigned char));
+	int next_skip = step_size - src.cols;
+
+	unsigned char * psrc0, * psrc1, * pdst;
+	psrc0 = (unsigned char*) src.data;
+	psrc1 = psrc0 + step_size;
+	pdst = (unsigned char*) dst.data;
+
+	for(int y = 0; y < dst.rows; y++){
+		for(int x = 0; x < dst.cols; x++){ 
+			// src0: G R
+			// src1: B G
+
+			// Blue 
+			*pdst = *psrc1;
+			psrc1++;
+			pdst++;
+
+			// Green 
+			*pdst = (unsigned char)(((unsigned short)*psrc0 + (unsigned short)*psrc1) >> 1);
+			psrc0++;
+			pdst++;
+
+			// Red
+			*pdst = *(psrc0);
+			pdst++;
+
+			psrc0++;
+			psrc1++;
+		}
+
+		psrc0 = psrc1 + next_skip;
+		psrc1 = psrc0 + step_size;
 	}
 }
 

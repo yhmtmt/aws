@@ -1057,6 +1057,7 @@ void cnvBayerRG8ToBGR8(Mat & src, Mat & dst);
 void cnvBayerRG16ToBGR16(Mat & src, Mat & dst);
 void cnvBayerGR8ToBGR8(Mat & src, Mat & dst);
 void cnvBayerGR8ToBGR8NN(Mat & src, Mat & dst);
+void cnvBayerGR8ToBGR8Q(Mat & src, Mat & dst);
 void cnvBayerGR16ToBGR16(Mat & src, Mat & dst);
 void cnvBayerGB8ToBGR8(Mat & src, Mat & dst);
 void cnvBayerGB16ToBGR16(Mat & src, Mat & dst);
