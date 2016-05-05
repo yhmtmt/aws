@@ -1911,11 +1911,11 @@ void cnvBayerRG8ToBGR8(Mat & src, Mat & dst)
 			pdst++;
 			//green
 // y % 2 == 1 && x % 2 == 1 -> g(x,y) = (bayer(x-1,y) + bayer(x+1,y) + bayer(x,y-1) + bayer(x,y+1)) >> 2
-			*pdst = (psrc1[-1]+psrc1[+1]+psrc0[0]+psrc2[0]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]+(unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 2);
 			pdst++;
 			//red
 // y % 2 == 1 && x % 2 == 1 -> r(x,y) = (bayer(x-1,y-1) + bayer(x-1,y+1) + bayer(x+1,y-1) + bayer(x+1,y+1)) >> 2
-			*pdst = (psrc0[-1]+psrc0[+1]+psrc2[-1]+psrc2[+1]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc0[-1]+(unsigned short)psrc0[+1]+(unsigned short)psrc2[-1]+(unsigned short)psrc2[+1]) >> 2);
 			pdst++;
 
 			psrc0++;
@@ -1926,7 +1926,7 @@ void cnvBayerRG8ToBGR8(Mat & src, Mat & dst)
 			// odd x
 			//blue
 // y % 2 == 1 && x % 2 == 0 -> b(x,y) = (bayer(x-1,y) + bayer(x+1,y)) >> 1
-			*pdst = (psrc1[-1]+psrc1[+1]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]) >> 1);
 			pdst++;
 			//green
 // y % 2 == 1 && x % 2 == 0 -> g(x,y) = bayer(x,y)
@@ -1934,7 +1934,7 @@ void cnvBayerRG8ToBGR8(Mat & src, Mat & dst)
 			pdst++;
 			//red
 // y % 2 == 1 && x % 2 == 0 -> r(x,y) = (bayer(x,y-1) + bayer(x,y+1)) >> 1
-			*pdst = (psrc0[0]+psrc2[0]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 1);
 			pdst++;
 
 			psrc0++;
@@ -1951,7 +1951,7 @@ void cnvBayerRG8ToBGR8(Mat & src, Mat & dst)
 			//even x
 			//blue
 // y % 2 == 0 && x % 2 == 1 -> b(x,y) = (bayer(x,y-1) + bayer(x,y+1)) >> 1
-			*pdst = (psrc0[0]+psrc2[0]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 1);
 			pdst++;
 			//green
 // y % 2 == 0 && x % 2 == 1 -> g(x,y) = bayer(x,y)
@@ -1959,7 +1959,7 @@ void cnvBayerRG8ToBGR8(Mat & src, Mat & dst)
 			pdst++;
 			//red
 // y % 2 == 0 && x % 2 == 1 -> r(x,y) = (bayer(x-1,y) + bayer(x+1,y)) >> 1
-			*pdst = (psrc1[-1]+psrc1[+1]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]) >> 1);
 			pdst++;
 
 			psrc0++;
@@ -1970,11 +1970,11 @@ void cnvBayerRG8ToBGR8(Mat & src, Mat & dst)
 			// odd x
 			//blue
 // y % 2 == 0 && x % 2 == 0 -> b(x,y) = (bayer(x-1,y-1) + bayer(x-1,y+1) + bayer(x+1,y-1) + bayer(x+1,y+1)) >> 2
-			*pdst = (psrc0[-1]+psrc0[+1]+psrc2[-1]+psrc2[+1]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc0[-1]+(unsigned short)psrc0[+1]+(unsigned short)psrc2[-1]+(unsigned short)psrc2[+1]) >> 2);
 			pdst++;
 			//green
 // y % 2 == 0 && x % 2 == 0 -> g(x,y) = (bayer(x-1,y) + bayer(x+1,y) + bayer(x,y-1) + bayer(x,y+1)) >> 2
-			*pdst = (psrc1[-1]+psrc1[+1]+psrc0[0]+psrc2[0]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]+(unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 2);
 			pdst++;
 			//red
 // y % 2 == 0 && x % 2 == 0 -> r(x,y) = bayer(x,y)
@@ -2017,11 +2017,11 @@ void cnvBayerRG16ToBGR16(Mat & src, Mat & dst)
 			pdst++;
 			//green
 // y % 2 == 1 && x % 2 == 1 -> g(x,y) = (bayer(x-1,y) + bayer(x+1,y) + bayer(x,y-1) + bayer(x,y+1)) >> 2
-			*pdst = (psrc1[-1]+psrc1[+1]+psrc0[0]+psrc2[0]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]+(unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 2);
 			pdst++;
 			//red
 // y % 2 == 1 && x % 2 == 1 -> r(x,y) = (bayer(x-1,y-1) + bayer(x-1,y+1) + bayer(x+1,y-1) + bayer(x+1,y+1)) >> 2
-			*pdst = (psrc0[-1]+psrc0[+1]+psrc2[-1]+psrc2[+1]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc0[-1]+(unsigned short)psrc0[+1]+(unsigned short)psrc2[-1]+(unsigned short)psrc2[+1]) >> 2);
 			pdst++;
 
 			psrc0++;
@@ -2032,7 +2032,7 @@ void cnvBayerRG16ToBGR16(Mat & src, Mat & dst)
 			// odd x
 			//blue
 // y % 2 == 1 && x % 2 == 0 -> b(x,y) = (bayer(x-1,y) + bayer(x+1,y)) >> 1
-			*pdst = (psrc1[-1]+psrc1[+1]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]) >> 1);
 			pdst++;
 			//green
 // y % 2 == 1 && x % 2 == 0 -> g(x,y) = bayer(x,y)
@@ -2040,7 +2040,7 @@ void cnvBayerRG16ToBGR16(Mat & src, Mat & dst)
 			pdst++;
 			//red
 // y % 2 == 1 && x % 2 == 0 -> r(x,y) = (bayer(x,y-1) + bayer(x,y+1)) >> 1
-			*pdst = (psrc0[0]+psrc2[0]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 1);
 			pdst++;
 
 			psrc0++;
@@ -2057,7 +2057,7 @@ void cnvBayerRG16ToBGR16(Mat & src, Mat & dst)
 			//even x
 			//blue
 // y % 2 == 0 && x % 2 == 1 -> b(x,y) = (bayer(x,y-1) + bayer(x,y+1)) >> 1
-			*pdst = (psrc0[0]+psrc2[0]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 1);
 			pdst++;
 			//green
 // y % 2 == 0 && x % 2 == 1 -> g(x,y) = bayer(x,y)
@@ -2065,7 +2065,7 @@ void cnvBayerRG16ToBGR16(Mat & src, Mat & dst)
 			pdst++;
 			//red
 // y % 2 == 0 && x % 2 == 1 -> r(x,y) = (bayer(x-1,y) + bayer(x+1,y)) >> 1
-			*pdst = (psrc1[-1]+psrc1[+1]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]) >> 1);
 			pdst++;
 
 			psrc0++;
@@ -2076,11 +2076,11 @@ void cnvBayerRG16ToBGR16(Mat & src, Mat & dst)
 			// odd x
 			//blue
 // y % 2 == 0 && x % 2 == 0 -> b(x,y) = (bayer(x-1,y-1) + bayer(x-1,y+1) + bayer(x+1,y-1) + bayer(x+1,y+1)) >> 2
-			*pdst = (psrc0[-1]+psrc0[+1]+psrc2[-1]+psrc2[+1]) >> 2;
+			*pdst = (unsigned char)(((unsigned short) psrc0[-1]+(unsigned short) psrc0[+1]+(unsigned short) psrc2[-1]+(unsigned short) psrc2[+1]) >> 2);
 			pdst++;
 			//green
 // y % 2 == 0 && x % 2 == 0 -> g(x,y) = (bayer(x-1,y) + bayer(x+1,y) + bayer(x,y-1) + bayer(x,y+1)) >> 2
-			*pdst = (psrc1[-1]+psrc1[+1]+psrc0[0]+psrc2[0]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]+(unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 2);
 			pdst++;
 			//red
 // y % 2 == 0 && x % 2 == 0 -> r(x,y) = bayer(x,y)
