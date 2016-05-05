@@ -52,7 +52,7 @@ protected:
 	ch_image * m_pin, * m_pout;
 	long long m_timg;
 	enum e_bayer_type{
-		BG8, GB8, RG8, GR8, BG16, GB16, RG16, GR16, UNKNOWN
+		BG8, GB8, RG8, GR8, GR8NN, BG16, GB16, RG16, GR16, UNKNOWN
 	} m_type;
 	static const char * m_strBayer[UNKNOWN];
 
@@ -62,7 +62,7 @@ public:
 	{
 		register_fpar("bayer", (int*)&m_type,
 			(int) UNKNOWN, m_strBayer,
-			"Type of bayer pattern. {BG8, GB8, RG8, GR8, BG16, GB16, RG16, GR16}");
+			"Type of bayer pattern. ");
 	}
 
 	virtual bool init_run()

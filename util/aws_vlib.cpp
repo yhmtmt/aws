@@ -2122,7 +2122,7 @@ void cnvBayerGR8ToBGR8(Mat & src, Mat & dst)
 			//even x
 			//blue
 // y % 2 == 1 && x % 2 == 0 -> b(x,y) = (bayer(x-1,y) + bayer(x+1,y)) >> 1
-			*pdst = (psrc1[-1]+psrc1[+1]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]) >> 1);
 			pdst++;
 			//green
 // y % 2 == 1 && x % 2 == 0 -> g(x,y) = bayer(x,y)
@@ -2130,7 +2130,7 @@ void cnvBayerGR8ToBGR8(Mat & src, Mat & dst)
 			pdst++;
 			//red
 // y % 2 == 1 && x % 2 == 0 -> r(x,y) = (bayer(x,y-1) + bayer(x,y+1)) >> 1
-			*pdst = (psrc0[0]+psrc2[0]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 1);
 			pdst++;
 
 			psrc0++;
@@ -2145,11 +2145,11 @@ void cnvBayerGR8ToBGR8(Mat & src, Mat & dst)
 			pdst++;
 			//green
 // y % 2 == 1 && x % 2 == 1 -> g(x,y) = (bayer(x-1,y) + bayer(x+1,y) + bayer(x,y-1) + bayer(x,y+1)) >> 2
-			*pdst = (psrc1[-1]+psrc1[+1]+psrc0[0]+psrc2[0]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]+(unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 2);
 			pdst++;
 			//red
 // y % 2 == 1 && x % 2 == 1 -> r(x,y) = (bayer(x-1,y-1) + bayer(x-1,y+1) + bayer(x+1,y-1) + bayer(x+1,y+1)) >> 2
-			*pdst = (psrc0[-1]+psrc0[+1]+psrc2[-1]+psrc2[+1]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc0[-1]+(unsigned short)psrc0[+1]+(unsigned short)psrc2[-1]+(unsigned short)psrc2[+1]) >> 2);
 			pdst++;
 
 			psrc0++;
@@ -2166,11 +2166,11 @@ void cnvBayerGR8ToBGR8(Mat & src, Mat & dst)
 			//even x
 			//blue
 // y % 2 == 0 && x % 2 == 0 -> b(x,y) = (bayer(x-1,y-1) + bayer(x-1,y+1) + bayer(x+1,y-1) + bayer(x+1,y+1)) >> 2
-			*pdst = (psrc0[-1]+psrc0[+1]+psrc2[-1]+psrc2[+1]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc0[-1]+(unsigned short)psrc0[+1]+(unsigned short)psrc2[-1]+(unsigned short)psrc2[+1]) >> 2);
 			pdst++;
 			//green
 // y % 2 == 0 && x % 2 == 0 -> g(x,y) = (bayer(x-1,y) + bayer(x+1,y) + bayer(x,y-1) + bayer(x,y+1)) >> 2
-			*pdst = (psrc1[-1]+psrc1[+1]+psrc0[0]+psrc2[0]) >> 2;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]+(unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 2);
 			pdst++;
 			//red
 // y % 2 == 0 && x % 2 == 0 -> r(x,y) = bayer(x,y)
@@ -2185,7 +2185,7 @@ void cnvBayerGR8ToBGR8(Mat & src, Mat & dst)
 			// odd x
 			//blue
 // y % 2 == 0 && x % 2 == 1 -> b(x,y) = (bayer(x,y-1) + bayer(x,y+1)) >> 1
-			*pdst = (psrc0[0]+psrc2[0]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc0[0]+(unsigned short)psrc2[0]) >> 1);
 			pdst++;
 			//green
 // y % 2 == 0 && x % 2 == 1 -> g(x,y) = bayer(x,y)
@@ -2193,7 +2193,7 @@ void cnvBayerGR8ToBGR8(Mat & src, Mat & dst)
 			pdst++;
 			//red
 // y % 2 == 0 && x % 2 == 1 -> r(x,y) = (bayer(x-1,y) + bayer(x+1,y)) >> 1
-			*pdst = (psrc1[-1]+psrc1[+1]) >> 1;
+			*pdst = (unsigned char)(((unsigned short)psrc1[-1]+(unsigned short)psrc1[+1]) >> 1);
 			pdst++;
 
 			psrc0++;
@@ -2204,6 +2204,104 @@ void cnvBayerGR8ToBGR8(Mat & src, Mat & dst)
 		psrc0 += next_skip;
 		psrc1 += next_skip;
 		psrc2 += next_skip;
+	}
+}
+
+void cnvBayerGR8ToBGR8NN(Mat & src, Mat & dst)
+{
+	if(src.type() != CV_8UC1)
+		return;
+
+	dst = Mat(src.rows - 2, src.cols - 2, CV_8UC3);
+
+	int step_size = (int) (src.step.p[0] / sizeof(unsigned char));
+	int next_skip = src.cols - step_size + 2;
+
+	unsigned char * psrc0, * psrc1, * pdst;
+	psrc0 = (unsigned char*) src.data;
+	psrc1 = psrc0 + step_size;
+	pdst = (unsigned char*) dst.data;
+
+	for(int y = 0; y < dst.rows; y++){
+		for(int x = 0; x < dst.cols; x++){ // even y
+			// even x
+			// src0: G R
+			// src1: B G
+			// Blue 
+			*pdst = *psrc1;
+			psrc1++;
+			pdst++;
+
+			// Green 
+			*pdst = (unsigned char)(((unsigned short)*psrc0 + (unsigned short)*psrc1) >> 1);
+			psrc0++;
+			pdst++;
+
+			// Red
+			*pdst = *(psrc0);
+			pdst++;
+
+			x++;
+			// odd x
+			// src1: G R
+			// src2: B G
+			// Blue
+			*pdst = *(psrc1 + 1);
+			pdst++;
+
+			// Green
+			*pdst = (unsigned char)(((unsigned short)*psrc1 + (unsigned short)*(psrc0+1)) >> 1);
+			pdst++;
+
+			// Red
+			*pdst = *psrc0;
+			pdst++;
+
+			psrc0++;
+			psrc1++;
+		}
+		y++;
+		psrc0 += next_skip;
+		psrc1 += next_skip;
+
+		for(int x = 0; x < dst.cols; x++){ // odd y
+			// even x
+			// src0: B G B G ...
+			// src1: G R G R ...
+			// Blue 
+			*pdst = *psrc0;
+			pdst++;
+
+			// Green 
+			psrc0++;
+			*pdst = (unsigned char)(((unsigned short)*psrc1 + (unsigned short)*psrc0) >> 1);
+			pdst++;
+
+			// Red
+			psrc1++;
+			*pdst = *psrc1;
+			*pdst++;
+
+			x++;
+			// odd x
+			// src0: G B
+			// src1: R G
+			*pdst = *(psrc0 + 1);
+			pdst++;
+
+			// Green 
+			*pdst = (unsigned char)(((unsigned short)*psrc0 + (unsigned short)*(psrc1 + 1)) >> 1);
+			pdst++;
+
+			// Red
+			*pdst = *psrc1;
+			*pdst++;
+
+			psrc0++;
+			psrc1++;
+		}
+		psrc0 += next_skip;
+		psrc1 += next_skip;
 	}
 }
 
