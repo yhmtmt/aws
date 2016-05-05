@@ -106,6 +106,7 @@ public:
 	f_imread(const char * name): f_misc(name), m_verb(false)
 	{
 		m_fname[0] = '\0';
+		register_fpar("verb", &m_verb, "Verbose for debug");
 		register_fpar("flst", m_fname, 1024, "Image list file.");
 	};
 
@@ -121,6 +122,16 @@ public:
 			cerr << m_fname << " cannot be opened." << endl;
 			return false;
 		}
+		if(!m_chout.size()){
+			cerr << "Output channel is not sat." << endl;
+			return false;
+		}
+
+		m_pout = dynamic_cast<ch_image*>(m_chout[0]);
+		if(!m_pout){
+			cerr << "Output channel is not sat as ch_image." << endl;
+			return false;
+		}
 
 		return true;
 	}
@@ -130,27 +141,7 @@ public:
 		m_flist.close();
 	}
 
-	virtual bool proc()
-	{
-		char buf[1024];
-		bool raw = false;
-		m_flist.getline(buf, 1024);
-		{
-			char * p = buf;
-			char * d = NULL;
-			for(;*p != '\0'; p++)
-				if(*p == '.') d = p;
-			if(d[1] == 'r' && d[2] == 'a' && d[3] == 'w')
-				raw = true;
-		}
-		Mat img;
-
-		if(raw)
-			read_raw_img(img, buf);
-		else
-			img = imread(buf);
-		m_pout->set_img(img, m_cur_time);
-	}
+	virtual bool proc();
 };
 
 class f_imwrite: public f_misc

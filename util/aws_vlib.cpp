@@ -2975,10 +2975,10 @@ bool read_raw_img(Mat & img, const char * fname)
 	if(pf){
 		int r, c, type, size;
 		r = c = type = size = 0;
-		fread((void*)type, sizeof(int), 1, pf);
-		fread((void*)r, sizeof(int), 1, pf);
-		fread((void*)c, sizeof(int), 1, pf);
-		fread((void*)size, sizeof(int), 1, pf);
+		fread((void*)&type, sizeof(int), 1, pf);
+		fread((void*)&r, sizeof(int), 1, pf);
+		fread((void*)&c, sizeof(int), 1, pf);
+		fread((void*)&size, sizeof(int), 1, pf);
 		img.create(r, c, type);
 		fread((void*)img.data, sizeof(char), size, pf);
 	}else{

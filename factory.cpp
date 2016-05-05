@@ -236,7 +236,7 @@ void f_base::register_factory()
 	register_factory<f_camcalib>("camcalib");
 
 	register_factory<f_imwrite>("imwrite");
-
+	register_factory<f_imread>("imread");
 	// windows
 #ifdef FWINDOW
 	register_factory<f_window>("window");

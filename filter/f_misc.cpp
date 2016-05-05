@@ -85,6 +85,66 @@ bool f_debayer::proc(){
 	return true;
 }
 
+////////////////////////////////////////////////////////// f_imread members
+bool f_imread::proc()
+{
+	char buf[1024];
+	bool raw = false;
+	if(m_flist.eof()){
+		cout << "File is finished." << endl;
+		return false;
+	}
+
+	m_flist.getline(buf, 1024);
+	char * d = NULL;
+	char * u = NULL;
+
+	{
+		char * p = buf;
+		for(;*p != '\0'; p++){
+			if(*p == '.') d = p;
+			if(*p == '_') u = p;
+		}
+		if(d == NULL){
+			cerr << "The file does not have any extension." << endl;
+			return true;
+		}
+		if(d[1] == 'r' && d[2] == 'a' && d[3] == 'w')
+			raw = true;
+	}
+
+	Mat img;
+	if(raw)
+		read_raw_img(img, buf);
+	else
+		img = imread(buf);
+
+	long long timg = m_cur_time;
+	if(u != NULL){
+		*d = '\0';
+		timg = atoll(u + 1);
+	}
+
+	if(m_verb){
+		tmex tm;
+		gmtimeex(timg / MSEC  + m_time_zone_minute * 60000, tm);
+		snprintf(buf, 32, "[%s %s %02d %02d:%02d:%02d.%03d %d] ", 
+			getWeekStr(tm.tm_wday), 
+			getMonthStr(tm.tm_mon),
+			tm.tm_mday,
+			tm.tm_hour,
+			tm.tm_min,
+			tm.tm_sec,
+			tm.tm_msec,
+			tm.tm_year + 1900);
+		cout << timg << "->" << buf << endl;
+	}
+
+	m_pout->set_img(img, timg);
+	return true;
+}
+
+
 ////////////////////////////////////////////////////////// f_imwrite members
 const char * f_imwrite::m_strImgType[eitRAW+1] = {
 	"tiff", "jpg", "jp2", "png", "raw"
