@@ -168,19 +168,20 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 		}
 		if(js.is_event_down(js.ea)){
 			char fname[1024];
-			snprintf(fname, 1024, "%s/%s%d.rt", get_path_storage());
+			snprintf(fname, 1024, "%s/%03d.rt", get_path_storage(), m_rt_sv);
 			FILE * pf = fopen(fname, "w");
 			
 			if(pf){
-				fprintf(pf, m_aws1_waypoint_file_version);
+				fprintf(pf, "%s\n", m_aws1_waypoint_file_version);
 			
 				ch_wp * pwp = get_wp();
-				fprintf(pf, "%d", pwp->get_num_wps());
+				fprintf(pf, "%d\n", pwp->get_num_wps());
 				pwp->lock();
 				int i = 0;
 				for(pwp->begin();!pwp->is_end(); pwp->next()){
 					s_wp & wp = pwp->cur();
-					fprintf(pf, "%d %013.8f %013.8f %03.1f", i, wp.lat, wp.lon, wp.rarv);
+					fprintf(pf, "%d %013.8f %013.8f %03.1f\n", i, (float)(wp.lat * (180 / PI)),
+						(float)(wp.lon * (180 / PI)), wp.rarv);
 					i++;
 				}
 				pwp->unlock();
@@ -203,14 +204,14 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 
 		if(js.is_event_down(js.ea)){
 			char fname[1024];
-			snprintf(fname, 1024, "%s/%s%d.rt", get_path_storage());
-			FILE * pf = fopen(fname, "w");
+			snprintf(fname, 1024, "%s/%03d.rt", get_path_storage(), m_rt_ld);
+			FILE * pf = fopen(fname, "r");
 
 			if(pf){
 				bool valid = true;
 				const char * p = m_aws1_waypoint_file_version;
 				char c;
-				for(c = getc(pf); c != EOF && c != '\n'; c =getc(pf)){
+				for(c = fgetc(pf); c != EOF && c != '\n'; c = fgetc(pf), p++){
 					if(*p != c){
 						valid = false;
 					}
@@ -218,19 +219,21 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 				if(c == '\n' && valid){
 					ch_wp * pwp = get_wp();
 					int num_wps;
-					if(EOF == fscanf(pf, "%d", &num_wps)){
+					if(EOF == fscanf(pf, "%d\n", &num_wps)){
 						cerr << "Unexpected end of file was detected in " << fname << "." << endl;
 						break;
 					}
 					float lat, lon, rarv;
 					pwp->lock();
+					pwp->clear();
+
 					for(int i = 0; i < num_wps; i++){
 						int _i;
-						if(EOF == fscanf(pf, "%d %013.8f %013.8f %03.1f", &_i, &lat, &lon, &rarv)){
+						if(EOF == fscanf(pf, "%d %f %f %f\n", &_i, &lat, &lon, &rarv)){
 							cerr << "Unexpected end of file was detected in " << fname << "." << endl;
 							break;
 						}
-						pwp->ins(lat, lon, rarv);
+						pwp->ins((float)(lat * (PI / 180.)), (float)(lon * (PI / 180.)), rarv);
 					}
 					pwp->unlock();
 				}else{
@@ -502,7 +505,7 @@ void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
 	}; // max 29 chars
 
 	// calculate the box's position and scale
-	float width = (float)(wfont * 24);
+	float width = (float)(wfont * 31);
 	float height = (float)(hfont * 10.5);
 
 	float x0 = (float)(1. - width), y0 = (float)(-1.0 + height); 
@@ -524,7 +527,7 @@ void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
 	drawGlText(x, y, title, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
 	x = (float)(wfont + x0);
-	xv = (float)(13 * wfont + x0);
+	xv = (float)(17 * wfont + x0);
 	y = (float)(y0 - 3.5 * hfont);
 	char str[12];
 	float ystep = (float)(1.5 * hfont);
@@ -556,7 +559,7 @@ void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
 			snprintf(str, 12, "RT[%03d]", m_rt_ld);
 			break;
 		case EMO_RNG:
-			snprintf(str, 12, "%4.0fkm", m_map_range * 0.001);
+			snprintf(str, 12, "%4.1fkm", m_map_range * 0.001);
 			break;
 		}
 		drawGlText(xv, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);

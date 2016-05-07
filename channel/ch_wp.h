@@ -79,11 +79,18 @@ public:
 		itr_next = itr_focus = itr = wps.begin();
 	}
 
+	void clear()
+	{
+		for(itr = wps.begin(); itr != wps.end(); itr++)
+			delete *itr;
+		wps.clear();
+		focus = 0;
+		itr_next = itr_focus = itr = wps.begin();
+	}
+
 	void ins(float lat, float lon, float rarv , float v = 0.){
-		if(itr_focus == wps.end()){
-			s_wp * pwp = new s_wp(lat, lon, rarv, v);
-			itr_focus = wps.insert(itr_focus, pwp);
-		}
+		s_wp * pwp = new s_wp(lat, lon, rarv, v);
+		itr_focus = wps.insert(itr_focus, pwp);		
 		focus++;
 		itr_focus++;
 
@@ -147,6 +154,7 @@ public:
 		else
 			focus--;
 	}
+
 	bool is_focused()
 	{
 		bool r = itr == itr_focus;
