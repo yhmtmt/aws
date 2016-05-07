@@ -64,31 +64,35 @@ struct s_wp
 class ch_wp: public ch_base
 {
 protected:
-	list<s_wp> wps;
-	list<s_wp>::iterator itr;
+	list<s_wp*> wps;
+	list<s_wp*>::iterator itr;
 	int focus;
-	list<s_wp>::iterator itr_focus;
+	list<s_wp*>::iterator itr_focus;
+	list<s_wp*>::iterator itr_next;
 
 	void find_next(){
-		for(itr = wps.begin(); itr != wps.end() && itr->get_arrival_time() > 0; itr++);
+		for(itr = wps.begin(); itr != wps.end() && (*itr)->get_arrival_time() > 0; itr++);
 
 		itr_next = itr;
 	}
 
-	list<s_wp>::iterator itr_next;
 public:
 	ch_wp(const char * name):ch_base(name), focus(0)
 	{
 		itr_next = itr_focus = itr = wps.begin();
 	}
 
-	void ins(const s_wp & wp){
-	  if(itr_focus == wps.end()){
-	    itr_focus = wps.insert(itr_focus, wp);
-	  }else{
-	    itr_focus++;
-	    itr_focus = wps.insert(itr_focus, wp);
-	  }
+
+	void ins(float lat, float lon, float rarv){
+		if(itr_focus == wps.end()){
+			s_wp * pwp = new s_wp;
+			pwp->lat = lat;
+			pwp->lon = lon;
+			pwp->rarv = rarv;
+			itr_focus = wps.insert(itr_focus, pwp);
+		}else{
+			itr_focus++;
+		}
 
 	  find_next();
 	}
@@ -98,7 +102,7 @@ public:
 	}
 
 	s_wp & get_next_wp(){		
-		return *itr_next;
+		return **itr_next;
 	}
 
 	void set_next_wp(){
@@ -107,9 +111,10 @@ public:
 	}
 
 	void ers(){
-		if(wps.end() != itr_focus)
+		if(wps.end() != itr_focus){
+			delete *itr_focus;
 			itr_focus = wps.erase(itr_focus);
-
+		}
 		if(itr_focus == wps.end())
 			focus = (int) wps.size();
 
@@ -156,7 +161,7 @@ public:
 	}
 	
 	s_wp & cur(){
-		return *itr;
+		return **itr;
 	}
 
 	bool is_end(){
@@ -178,7 +183,7 @@ public:
 
 	s_wp & seek(int i){
 		for(itr = wps.begin(); i!= 0 && itr != wps.end(); itr++, i--);
-		s_wp & r = *itr;
+		s_wp & r = **itr;
 		return r;
 	}
 

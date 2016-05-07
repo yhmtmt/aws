@@ -136,6 +136,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 
 	if(js.is_event_down(js.ea)){
 		ch_wp * pwp = get_wp();
+		/*
 		s_wp wp;
 		wp.rx = cp_rx; 
 		wp.ry = cp_ry;
@@ -146,8 +147,9 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 		wp.lat = cp_lat;
 		wp.lon = cp_lon;
 		wp.rarv = 10.; // 10meter
+		*/
 		pwp->lock();
-		pwp->ins(wp);
+		pwp->ins(cp_lat, cp_lon, 10.);
 		pwp->unlock();
 	}
 
