@@ -137,9 +137,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 			pwp->lock();
 			pwp->ers();
 			pwp->unlock();
-		}
-
-		if(js.is_event_down(js.ea)){
+		}else if(js.is_event_down(js.ea)){
 			ch_wp * pwp = get_wp();
 			/*
 			s_wp wp;
@@ -255,12 +253,26 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 		break;
 	}
 
+	if(js.is_event_down(js.eux)){
+		m_op = (e_map_operation) (m_op == EMO_EDT_RT ? EMO_RNG : m_op - 1);
+	}else if(js.is_event_down(js.edx)){
+		m_op = (e_map_operation) ((m_op + 1) % (EMO_RNG + 1));
+	}
+
 	if(js.is_event_down(js.elb)){
 		m_map_range *= 0.1f;
 		m_imap_range *= 10.f;
 	}else if(js.is_event_down(js.erb)){
 		m_map_range *= 10.f;
 		m_imap_range *= 0.1f;
+	}
+
+	if(m_map_range > 100000000){
+		m_map_range = 100000000.f;
+		m_imap_range = (float)(1. / 100000000.);
+	}else if(m_map_range < 100){
+		m_map_range = 100.f;
+		m_imap_range = (float)(1. / 100.);
 	}
 }
 
@@ -497,7 +509,7 @@ void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
 	float x1 = 1.0, y1 = -1.0;
 	float x, y, xv;
 
-	drawGlSquare2Df(x0, y0, x1, y1, 0, 1, 0, 1);
+	drawGlSquare2Df(x0, y0, x1, y1, 0, 0, 0, 1);
 	drawGlSquare2Df(x0, y0, x1, y1, 0, 1, 0, 1, lw);
 	drawGlLine2Df(x0, y0, x1, y0, 0, 1, 0, 1, lw);
 	y = (float)(y0 - 2 * hfont);
@@ -526,11 +538,11 @@ void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
 
 		drawGlText(x, y, items[i], 0, clr, 0, 1, GLUT_BITMAP_8_BY_13);
 
-		switch(m_op){
+		switch(i){
 		case EMO_EDT_RT:
 			{
 				ch_wp * pwp = get_wp();
-				if(pwp){
+				if(pwp && pwp->get_num_wps() && pwp->get_num_wps() != pwp->get_focus()){
 					snprintf(str, "WP[%03d]", pwp->get_focus());
 				}else{
 					snprintf(str, 12, "N/A");
@@ -544,14 +556,14 @@ void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
 			snprintf(str, 12, "RT[%03d]", m_rt_ld);
 			break;
 		case EMO_RNG:
-			snprintf(str, 12, "%08f(m)", m_map_range);
+			snprintf(str, 12, "%4.0fkm", m_map_range * 0.001);
 			break;
 		}
 		drawGlText(xv, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-		y += ystep;
+		y -= ystep;
 	}
 
-	y = 10.;
+	y = (float)(y0 - 10. * hfont);
 	drawGlText(x, y, mexp[m_op], 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 

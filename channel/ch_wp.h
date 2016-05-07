@@ -20,7 +20,6 @@
 
 struct s_wp
 {
- 	char label[32]; // waypoint label (0 terminated string)
 	float lat, lon; // longitude lattitude
 	float x, y, z;	// corresponding ECEF to lat, lon
 	float rx, ry, rz; // Relative position in my own ship coordinate
@@ -32,10 +31,9 @@ struct s_wp
 	{
 	}
 
-	s_wp(const char _label[32], float _lat, float _lon, float _rarv, float _v):
+	s_wp(float _lat, float _lon, float _rarv, float _v):
 		lat(_lat), lon(_lon), x(0.), y(0.), z(0.), rarv(_rarv), v(_v), t(-1)
 	{
-		memcpy(label, label, 32);
 		bihtoecef(lat, lon, 0., x, y, z);
 	}
 
@@ -72,7 +70,6 @@ protected:
 
 	void find_next(){
 		for(itr = wps.begin(); itr != wps.end() && (*itr)->get_arrival_time() > 0; itr++);
-
 		itr_next = itr;
 	}
 
@@ -82,17 +79,13 @@ public:
 		itr_next = itr_focus = itr = wps.begin();
 	}
 
-
-	void ins(float lat, float lon, float rarv){
+	void ins(float lat, float lon, float rarv , float v = 0.){
 		if(itr_focus == wps.end()){
-			s_wp * pwp = new s_wp;
-			pwp->lat = lat;
-			pwp->lon = lon;
-			pwp->rarv = rarv;
+			s_wp * pwp = new s_wp(lat, lon, rarv, v);
 			itr_focus = wps.insert(itr_focus, pwp);
-		}else{
-			itr_focus++;
 		}
+		focus++;
+		itr_focus++;
 
 	  find_next();
 	}
