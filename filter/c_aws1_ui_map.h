@@ -24,15 +24,34 @@ class c_aws1_ui_map: public c_aws1_ui_core
 {
 protected:
 	enum e_map_operation{
-		EMO_EDT_WP, EMD_EDT_MAP
+		EMO_EDT_RT, EMO_SV_RT, EMO_LD_RT, EMO_RNG/*, EMD_EDT_MAP*/
 	} m_op;
+#define MAX_RT_FILES 10
+	const char * m_aws1_waypoint_file_version;
+	int m_rt_sv;
+	int m_rt_ld;
 
-	// EMD_EDT_WP: Edit way point
+	void draw_ui_map_operation(float wfont, float hfont, float lw);
+	// EMO_EDT_RT: Edit Route
 	//		A: Add waypoint to the cursor point
 	//		B: Delete selected waypoint 
 	//		Left/Right: Waypoint selection
 
-	// EMD_EDT_MAP: Edit map (Still not defined)
+	// EMO_SV_RT
+	//		A: Save Route
+	//		Left/Right: Select Route file
+	// 
+
+	// EMO_LD_RT
+	//		A: Load Route
+	//		Left/Right: Select Route file
+	//	
+
+	// EMO_RNG
+	//		Left: *0.1
+	//      Right: *10
+
+	// EMO_EDT_MAP: Edit map (Still not defined)
 	//
 
 	// Window scale parameters

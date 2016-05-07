@@ -218,7 +218,8 @@ class f_aws1_ui: public f_glfw_window
   ch_obj * m_ch_obj;
   ch_ais_obj * m_ch_ais_obj;
   ch_image_ref * m_ch_img;
-
+ 
+  char m_path_storage[1024];
   // Main image view related parameters
   // Main image view shows an image from m_ch_img, the focal length and the principal point are defined as follows.
   float m_fx, m_fy; // focal length of the main image view

@@ -14,6 +14,8 @@
 // along with c_aws1_ui_map.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "stdafx.h"
+#include <stdio.h>
+#include <stdlib.h>
 
 #include <iostream>
 #include <fstream>
@@ -37,8 +39,9 @@ using namespace cv;
 
 /////////////////////////////////////////////////////////////////////////// c_aws1_ui_map
 
-c_aws1_ui_map::c_aws1_ui_map(f_aws1_ui * _pui):c_aws1_ui_core(_pui), m_op(EMO_EDT_WP),
-	m_map_range(1000)
+c_aws1_ui_map::c_aws1_ui_map(f_aws1_ui * _pui):c_aws1_ui_core(_pui), 
+	m_aws1_waypoint_file_version("#aws1_waypoint_v_0.00"), m_op(EMO_EDT_RT),
+	m_rt_sv(0), m_rt_ld(0), m_map_range(1000)
 {
 	m_cur_pos.x = m_cur_pos.y = 0.;
 	m_map_pos.x = m_map_pos.y = 0.;
@@ -115,42 +118,141 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	wrldtoecef(Rorg, Porg.x, Porg.y, Porg.z, cp_rx, cp_ry, 0.f, cp_x, cp_y, cp_z);
 	eceftobih(cp_x, cp_y, cp_z, cp_lat, cp_lon, cp_alt);
 
-	if(js.is_event_down(js.elx)){
-		ch_wp * pwp = get_wp();
-		pwp->lock();
-		pwp->prev_focus();
-		pwp->unlock();
-	}else if(js.is_event_down(js.erx)){
-		ch_wp * pwp = get_wp();
-		pwp->lock();
-		pwp->next_focus();
-		pwp->unlock();
-	}
+	switch(m_op){
+	case EMO_EDT_RT:
+		if(js.is_event_down(js.elx)){
+			ch_wp * pwp = get_wp();
+			pwp->lock();
+			pwp->prev_focus();
+			pwp->unlock();
+		}else if(js.is_event_down(js.erx)){
+			ch_wp * pwp = get_wp();
+			pwp->lock();
+			pwp->next_focus();
+			pwp->unlock();
+		}
 
-	if(js.is_event_down(js.eb)){
-		ch_wp * pwp = get_wp();
-		pwp->lock();
-		pwp->ers();
-		pwp->unlock();
-	}
+		if(js.is_event_down(js.eb)){
+			ch_wp * pwp = get_wp();
+			pwp->lock();
+			pwp->ers();
+			pwp->unlock();
+		}
 
-	if(js.is_event_down(js.ea)){
-		ch_wp * pwp = get_wp();
-		/*
-		s_wp wp;
-		wp.rx = cp_rx; 
-		wp.ry = cp_ry;
-		wp.rz = 0.;
-		wp.x = cp_x;
-		wp.y = cp_y;
-		wp.z = cp_z;
-		wp.lat = cp_lat;
-		wp.lon = cp_lon;
-		wp.rarv = 10.; // 10meter
-		*/
-		pwp->lock();
-		pwp->ins(cp_lat, cp_lon, 10.);
-		pwp->unlock();
+		if(js.is_event_down(js.ea)){
+			ch_wp * pwp = get_wp();
+			/*
+			s_wp wp;
+			wp.rx = cp_rx; 
+			wp.ry = cp_ry;
+			wp.rz = 0.;
+			wp.x = cp_x;
+			wp.y = cp_y;
+			wp.z = cp_z;
+			wp.lat = cp_lat;
+			wp.lon = cp_lon;
+			wp.rarv = 10.; // 10meter
+			*/
+			pwp->lock();
+			pwp->ins(cp_lat, cp_lon, 10.);
+			pwp->unlock();
+		}
+		break;
+	case EMO_SV_RT:	
+		if(js.is_event_down(js.elx)){
+			m_rt_sv--;
+			if(m_rt_sv < 0)
+				m_rt_sv += MAX_RT_FILES;
+		}else if(js.is_event_down(js.erx)){
+			m_rt_sv++;
+			if(m_rt_sv > MAX_RT_FILES)
+				m_rt_sv -= MAX_RT_FILES;
+		}
+		if(js.is_event_down(js.ea)){
+			char fname[1024];
+			snprintf(fname, 1024, "%s/%s%d.rt", get_path_storage());
+			FILE * pf = fopen(fname, "w");
+			
+			if(pf){
+				fprintf(pf, m_aws1_waypoint_file_version);
+			
+				ch_wp * pwp = get_wp();
+				fprintf(pf, "%d", pwp->get_num_wps());
+				pwp->lock();
+				int i = 0;
+				for(pwp->begin();!pwp->is_end(); pwp->next()){
+					s_wp & wp = pwp->cur();
+					fprintf(pf, "%d %013.8f %013.8f %03.1f", i, wp.lat, wp.lon, wp.rarv);
+					i++;
+				}
+				pwp->unlock();
+			}else{
+				cerr << "Failed to save route file " << fname << "." << endl;
+			}
+			fclose(pf);
+		}
+		break;
+	case EMO_LD_RT:
+		if(js.is_event_down(js.elx)){
+			m_rt_sv--;
+			if(m_rt_sv < 0)
+				m_rt_sv += MAX_RT_FILES;
+		}else if(js.is_event_down(js.erx)){
+			m_rt_sv++;
+			if(m_rt_sv > MAX_RT_FILES)
+				m_rt_sv -= MAX_RT_FILES;
+		}
+
+		if(js.is_event_down(js.ea)){
+			char fname[1024];
+			snprintf(fname, 1024, "%s/%s%d.rt", get_path_storage());
+			FILE * pf = fopen(fname, "w");
+
+			if(pf){
+				bool valid = true;
+				const char * p = m_aws1_waypoint_file_version;
+				char c;
+				for(c = getc(pf); c != EOF && c != '\n'; c =getc(pf)){
+					if(*p != c){
+						valid = false;
+					}
+				}
+				if(c == '\n' && valid){
+					ch_wp * pwp = get_wp();
+					int num_wps;
+					if(EOF == fscanf(pf, "%d", &num_wps)){
+						cerr << "Unexpected end of file was detected in " << fname << "." << endl;
+						break;
+					}
+					float lat, lon, rarv;
+					pwp->lock();
+					for(int i = 0; i < num_wps; i++){
+						int _i;
+						if(EOF == fscanf(pf, "%d %013.8f %013.8f %03.1f", &_i, &lat, &lon, &rarv)){
+							cerr << "Unexpected end of file was detected in " << fname << "." << endl;
+							break;
+						}
+						pwp->ins(lat, lon, rarv);
+					}
+					pwp->unlock();
+				}else{
+					cerr << "The file " << fname << " does not match the current waypoint file version." << endl;
+				}
+			}else{
+				cerr << "Failed to save route file " << fname << "." << endl;
+			}
+			fclose(pf);
+		}
+		break;
+	case EMO_RNG:
+		if(js.is_event_down(js.elx)){
+			m_map_range *= 0.1f;
+			m_imap_range *= 10.f;
+		}else if(js.is_event_down(js.erx)){
+			m_map_range *= 10.f;
+			m_imap_range *= 0.1f;
+		}
+		break;
 	}
 
 	if(js.is_event_down(js.elb)){
@@ -346,6 +448,7 @@ void c_aws1_ui_map::draw()
 	}
 
 	// draw operation lists (right bottom)
+	draw_ui_map_operation(wfont, hfont, lw);
 
 	// draw Engine and Rudder status 
 	pui->ui_show_meng();
@@ -354,6 +457,102 @@ void c_aws1_ui_map::draw()
 
 	// draw own ship status
 	pui->ui_show_state();
+}
+
+void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
+{
+   	// (x0, y0)                        <-24chars
+	// |------------------------------| 
+	// |            Menu              |
+	// |------------------------------|y0-2hfont
+	// |  Edit Route  | <selected WP> |
+	// |  Save Route  | <File Index>  |
+	// |  Load Route  | <File Index>  |
+	// |  Range       | < Range >     |
+	// |------------------------------|y0-8.5hfont
+	// | Button Explantion            |
+	// |------------------------------| <- Right end
+	//                ^|              ^|
+	//                12chars           Bottom end (1, -1) = (x1, y1)
+
+	const char * title = "Menu";
+	const char * items[4] = {
+		"Edit Route",
+		"Save Route", 
+		"Load Route", 
+		"Range"
+	}; // max 10 chars
+	const char * mexp[4] = {
+		"Select(<- ->), Add(a), Del(b)",
+		"Select(<- ->), Save(a)",
+		"Select(<- ->), Load(a)",
+		"0.1x (<-, LB), 10x(->, RB)"
+	}; // max 29 chars
+
+	// calculate the box's position and scale
+	float width = (float)(wfont * 24);
+	float height = (float)(hfont * 10.5);
+
+	float x0 = (float)(1. - width), y0 = (float)(-1.0 + height); 
+	float x1 = 1.0, y1 = -1.0;
+	float x, y, xv;
+
+	drawGlSquare2Df(x0, y0, x1, y1, 0, 1, 0, 1);
+	drawGlSquare2Df(x0, y0, x1, y1, 0, 1, 0, 1, lw);
+	drawGlLine2Df(x0, y0, x1, y0, 0, 1, 0, 1, lw);
+	y = (float)(y0 - 2 * hfont);
+	drawGlLine2Df(x0, y, x1, y, 0, 1, 0, 1, lw);
+	y = (float)(y0 - 8.5 * hfont);
+	drawGlLine2Df(x0, y, x1, y, 0, 1, 0, 1, lw);
+	y = y1;
+	drawGlLine2Df(x0, y, x1, y, 0, 1, 0, 1, lw);
+
+	x = (float)(10 * wfont + x0);
+	y = (float)(y0 - 1.5 * hfont);
+	drawGlText(x, y, title, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+
+	x = (float)(wfont + x0);
+	xv = (float)(13 * wfont + x0);
+	y = (float)(y0 - 3.5 * hfont);
+	char str[12];
+	float ystep = (float)(1.5 * hfont);
+	float clr;
+	for(int i = 0; i < 4; i++){
+		if(i == (int)m_op){
+			clr = 1.0;
+		}else{
+			clr = 0.5;
+		}
+
+		drawGlText(x, y, items[i], 0, clr, 0, 1, GLUT_BITMAP_8_BY_13);
+
+		switch(m_op){
+		case EMO_EDT_RT:
+			{
+				ch_wp * pwp = get_wp();
+				if(pwp){
+					snprintf(str, "WP[%03d]", pwp->get_focus());
+				}else{
+					snprintf(str, 12, "N/A");
+				}
+			}
+			break;
+		case EMO_SV_RT:
+			snprintf(str, 12, "RT[%03d]", m_rt_sv);
+			break;
+		case EMO_LD_RT:
+			snprintf(str, 12, "RT[%03d]", m_rt_ld);
+			break;
+		case EMO_RNG:
+			snprintf(str, 12, "%08f(m)", m_map_range);
+			break;
+		}
+		drawGlText(xv, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+		y += ystep;
+	}
+
+	y = 10.;
+	drawGlText(x, y, mexp[m_op], 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
 void c_aws1_ui_map::key(int key, int scancode, int action, int mods)

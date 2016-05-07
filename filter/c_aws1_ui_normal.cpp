@@ -181,8 +181,11 @@ s_aws1_ctrl_pars & c_aws1_ui_core::get_acp()
 const Size & c_aws1_ui_core::get_window_size()
 {
 	return pui->m_sz_win;
+}
 
-
+const char * c_aws1_ui_core::get_path_storage()
+{
+	return pui->m_path_storage;
 }
 
 // normal coordinate to pixel coordinate transformation

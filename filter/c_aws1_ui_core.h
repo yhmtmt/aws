@@ -34,7 +34,7 @@ protected:
 	 ch_image * get_img();
 	 s_aws1_ctrl_pars & get_acp();
 	 const Size & get_window_size();
-
+	 const char * get_path_storage();
 	// normal coordinate to pixel coordinate transformation
 	void nml2pix(const float xnml, const float ynml, float & xpix, float & ypix);
 
