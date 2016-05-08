@@ -163,7 +163,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 				m_rt_sv += MAX_RT_FILES;
 		}else if(js.is_event_down(js.erx)){
 			m_rt_sv++;
-			if(m_rt_sv > MAX_RT_FILES)
+			if(m_rt_sv >= MAX_RT_FILES)
 				m_rt_sv -= MAX_RT_FILES;
 		}
 		if(js.is_event_down(js.ea)){
@@ -198,7 +198,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 				m_rt_sv += MAX_RT_FILES;
 		}else if(js.is_event_down(js.erx)){
 			m_rt_sv++;
-			if(m_rt_sv > MAX_RT_FILES)
+			if(m_rt_sv >= MAX_RT_FILES)
 				m_rt_sv -= MAX_RT_FILES;
 		}
 
@@ -562,7 +562,7 @@ void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
 			snprintf(str, 12, "%4.1fkm", m_map_range * 0.001);
 			break;
 		}
-		drawGlText(xv, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+		drawGlText(xv, y, str, 0, clr, 0, 1, GLUT_BITMAP_8_BY_13);
 		y -= ystep;
 	}
 
