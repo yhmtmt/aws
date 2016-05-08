@@ -31,6 +31,7 @@ protected:
 	ch_wp * m_wp;
 	s_aws1_ctrl_pars m_acp;
 
+	bool m_verb;
 
 	float m_meng, m_seng, m_rud;
 	float m_smax;

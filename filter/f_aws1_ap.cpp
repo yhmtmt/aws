@@ -30,6 +30,7 @@ using namespace cv;
 #include "f_aws1_ap.h"
 
 f_aws1_ap::f_aws1_ap(const char * name): f_base(name), m_state(NULL), m_ctrl_out(NULL), m_ctrl_in(NULL),
+	m_verb(false),
 	m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
 	m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
 	m_cdiff(0.f), m_sdiff(0.f), m_dcdiff(0.f), m_icdiff(0.f), m_dsdiff(0.f), m_isdiff(0.f)
@@ -38,6 +39,8 @@ f_aws1_ap::f_aws1_ap(const char * name): f_base(name), m_state(NULL), m_ctrl_out
 	register_fpar("ch_ctrl_out", (ch_base**)&m_ctrl_out, typeid(ch_aws1_ctrl).name(), "Ctrl output channel");
 	register_fpar("ch_ctrl_in", (ch_base**)&m_ctrl_in, typeid(ch_aws1_ctrl).name(), "Ctrl input channel");
 	register_fpar("ch_wp", (ch_base**)&m_wp, typeid(ch_wp).name(), "Waypoint channel");
+
+	register_fpar("verb", &m_verb, "Verbose for debug.");
 	register_fpar("rud", &m_acp.rud_aws, "Rudder value");
 	register_fpar("meng", &m_acp.meng_aws, "Main engine value");
 	register_fpar("seng", &m_acp.seng_aws, "Sub engine value");
@@ -121,12 +124,16 @@ bool f_aws1_ap::proc()
 			m_cdiff = cdiff;
 			m_sdiff = sdiff;
 			
-			m_rud += (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255);
-			m_meng += (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255);
+			m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255);
+			m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255);
 			m_rud = (float) min(m_rud, 255.f);
 			m_rud = (float) max(m_rud, 0.f);
 			m_meng = (float) min(m_meng, m_meng_max);
 			m_meng = (float) max(m_meng, m_meng_min);
+			if(m_verb){
+				printf("ap rud=%3.1f c=%2.2f dc=%2.2f ic=%2.2f", m_rud, m_cdiff, m_dcdiff, m_icdiff);
+				printf(" meg=%3.1f s=%2.2f ds=%2.2f is=%2.2f \n", m_meng, m_sdiff, m_dsdiff, m_isdiff);
+			}
 		}
 
 		m_wp->unlock();
