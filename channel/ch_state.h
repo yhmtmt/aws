@@ -22,6 +22,7 @@
 class ch_state: public ch_base
 {
  protected:
+	 long long tatt, tpos, tvel, tdp;
   float roll, pitch, yaw; // roll(deg), pitch(deg), yaw(deg)
   float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
   float x, y, z; // ecef coordinate
@@ -29,24 +30,26 @@ class ch_state: public ch_base
   float cog, sog; // Course over ground(deg), Speed over ground (kts)
   float depth; // water depth
  public:
- ch_state(const char * name): ch_base(name), roll(0), pitch(0), yaw(0),
+ ch_state(const char * name): ch_base(name), tatt(0), tpos(0), tvel(0), tdp(0), roll(0), pitch(0), yaw(0),
     lon(0), lat(0), alt(0), galt(0), x(0), y(0), z(0), cog(0), sog(0), depth(0)
     {
 		R = Mat::eye(3, 3, CV_64FC1);
     }
 
-  void set_attitude(const float _r, const float _p, const float _y)
+  void set_attitude(const long long _tatt, const float _r, const float _p, const float _y)
   {
     lock();
+	tatt = _tatt;
     roll = _r; 
     pitch = _p;
     yaw = _y;
     unlock();
   }
 
-  void set_position(const float _lat, const float _lon, const float _alt, const float _galt)
+  void set_position(const long long _tpos, const float _lat, const float _lon, const float _alt, const float _galt)
   {
     lock();
+	tpos = _tpos;
     lat = _lat;
     lon = _lon;
     alt = _alt;
@@ -57,32 +60,36 @@ class ch_state: public ch_base
     unlock();
   }
 
-  void set_velocity(const float _cog, const float _sog)
+  void set_velocity(const long long & _tvel, const float _cog, const float _sog)
   {
 	  lock();
+	  tvel = _tvel;
 	  cog = _cog;
 	  sog = _sog;
 	  unlock();
   }
 
-  void set_depth(const float _depth){
+  void set_depth(const long long & _tdp, const float _depth){
 	  lock();
+	  tdp = _tdp;
 	  depth = _depth;
 	  unlock();
   }
 
-  void get_attitude(float & _r, float & _p, float & _y)
+  void get_attitude(long long & _tatt, float & _r, float & _p, float & _y)
   {
     lock();
+	_tatt = tatt;
     _r = roll;
     _p = pitch;
     _y = yaw;
     unlock();
   }
 
-  void get_position(float & _lat, float & _lon, float & _alt, float & _galt)
+  void get_position(long long & _tpos, float & _lat, float & _lon, float & _alt, float & _galt)
   {
     lock();
+	_tpos = tpos;
     _lat = lat;
     _lon = lon;
     _alt = alt;
@@ -90,47 +97,57 @@ class ch_state: public ch_base
     unlock();
   }
 
-  void get_position_ecef(float & _x, float & _y, float & _z)
+  void get_position_ecef(long long & _tpos, float & _x, float & _y, float & _z)
   {
 	  lock();
+	  _tpos = tpos;
 	  _x = x;
 	  _y = y;
 	  _z = z;
 	  unlock();
   }
 
-  const Mat & get_enu_rotation()
+  const Mat & get_enu_rotation(long long & _tpos)
   {
 	  lock();
-		 R.copyTo(Rret);
+	  _tpos = tpos;
+	  R.copyTo(Rret);
 	  unlock();
 	  return Rret;
   }
 
-  void get_velocity(float & _cog, float & _sog)
+  void get_velocity(long long & _tvel, float & _cog, float & _sog)
   {
 	  lock();
+	  _tvel = tvel;
 	  _cog = cog;
 	  _sog = sog;
 	  unlock();
   }
 
-  void get_depth(float & _depth)
+  void get_depth(long long & _tdp, float & _depth)
   {
 	  lock();
+	  _tdp = tdp;
 	  _depth = depth;
 	  unlock();
   }
 
   virtual size_t get_dsize()
   {
-    return sizeof(float) * 13 + sizeof(double) * 9;
+    return sizeof(long long) * 4 + sizeof(float) * 13 + sizeof(double) * 9;
   }
   
   virtual size_t write_buf(const char *buf)
   {
     lock();
-    const float * ptr = (const float*) buf;
+	const long long *lptr = (const long long*) buf;
+	tpos = lptr[0];
+	tatt = lptr[1];;
+	tvel = lptr[2];
+	tdp = lptr[3];
+
+    const float * ptr = (const float*) (lptr + 4);
     roll = ptr[0];
     pitch = ptr[1];
     yaw = ptr[2];
@@ -144,6 +161,7 @@ class ch_state: public ch_base
     cog = ptr[10];
     sog = ptr[11];
     depth = ptr[12];
+
 	const double * dptr = (const double*)(ptr + 13);
 	memcpy((void*)R.data, (void*) dptr, sizeof(double) * 9);
     unlock();
@@ -153,7 +171,12 @@ class ch_state: public ch_base
   virtual size_t read_buf(char * buf)
   {
     lock();
-    float * ptr =  (float*) buf;
+	long long * lptr = (long long *) buf;
+	lptr[0] = tpos;
+	lptr[1] = tatt;
+	lptr[2] = tvel;
+	lptr[3] = tdp;
+    float * ptr =  (float*) (lptr + 4);
     ptr[0] = roll;
     ptr[1] = pitch;
     ptr[2] = yaw;

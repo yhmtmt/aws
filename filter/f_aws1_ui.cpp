@@ -23,12 +23,13 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include <GL/glew.h>
-
-#include <GLFW/glfw3.h>
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+
+#include <GL/glew.h>
+
+#include <GLFW/glfw3.h>
 
 #include <GL/glut.h>
 #include <GL/glu.h>
@@ -307,10 +308,11 @@ void f_aws1_ui::ui_show_state()
 	float depth;
 	roll = pitch = yaw = lat = lon = alt = galt = cog = sog = depth = 0.;
 	if(m_state){
-		m_state->get_attitude(roll, pitch, yaw);
-		m_state->get_position(lat, lon, alt, galt);
-		m_state->get_velocity(cog, sog);
-		m_state->get_depth(depth);
+		long long t = 0;
+		m_state->get_attitude(t, roll, pitch, yaw);
+		m_state->get_position(t, lat, lon, alt, galt);
+		m_state->get_velocity(t, cog, sog);
+		m_state->get_depth(t, depth);
 	}
 
 	if(yaw < 0){
@@ -389,10 +391,11 @@ void f_aws1_ui::ui_show_attitude()
 
 	roll = pitch = yaw = lat = lon = alt = galt = cog = sog = depth = 0.;
 	if(m_state){
-		m_state->get_attitude(roll, pitch, yaw);
-		m_state->get_position(lat, lon, alt, galt);
-		m_state->get_velocity(cog, sog);
-		m_state->get_depth(depth);
+		long long t = 0;
+		m_state->get_attitude(t, roll, pitch, yaw);
+		m_state->get_position(t, lat, lon, alt, galt);
+		m_state->get_velocity(t, cog, sog);
+		m_state->get_depth(t, depth);
 	}
 }
 

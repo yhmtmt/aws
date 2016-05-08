@@ -260,7 +260,7 @@ bool f_ahrs::proc()
 	}
 
 	if(m_state){
-	  m_state->set_attitude(m_ypr.r, m_ypr.p, m_ypr.y);
+	  m_state->set_attitude(m_cur_time, m_ypr.r, m_ypr.p, m_ypr.y);
 	}
 
 	return true;

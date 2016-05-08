@@ -25,12 +25,13 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include <GL/glew.h>
-
-#include <GLFW/glfw3.h>
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+
+#include <GL/glew.h>
+
+#include <GLFW/glfw3.h>
 
 #include <GL/glut.h>
 #include <GL/glu.h>
@@ -83,10 +84,11 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	ifymeter = (float)(1.0 / fymeter);
 
 	float lat, lon, alt, galt;
+	long long t = 0;
 	ch_state * pstate = get_state();
-	pstate->get_position(lat, lon, alt, galt);
-	pstate->get_position_ecef(Porg.x, Porg.y, Porg.z);
-	Rorg = pstate->get_enu_rotation();
+	pstate->get_position(t, lat, lon, alt, galt);
+	pstate->get_position_ecef(t, Porg.x, Porg.y, Porg.z);
+	Rorg = pstate->get_enu_rotation(t);
 
 	// Operation selection (cross key)
 	
@@ -282,9 +284,10 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 void c_aws1_ui_map::draw()
 {
   float cog, sog, roll, pitch, yaw;
+  long long t = 0;
   ch_state * pstate = get_state();
-  pstate->get_velocity(cog, sog);
-  pstate->get_attitude(roll, pitch, yaw);
+  pstate->get_velocity(t, cog, sog);
+  pstate->get_attitude(t, roll, pitch, yaw);
   
   float wfont = 8, hfont = 13;
   pix2nml(wfont, hfont, wfont, hfont);

@@ -425,15 +425,16 @@ public:
 
 	void set_state(){
 		if(m_state){
+			long long t = 0;
 			if(!m_ahrs)
-				m_state->set_attitude(r, p, y);
+				m_state->set_attitude(t, r, p, y);
 
 			if(!m_gps){
-				m_state->set_position(lat, lon, alt, galt);		
-				m_state->set_velocity(cog, sog);
+				m_state->set_position(t, lat, lon, alt, galt);		
+				m_state->set_velocity(t, cog, sog);
 			}
 
-			m_state->set_depth(depth);
+			m_state->set_depth(t, depth);
 		}
 	}
 
@@ -447,9 +448,10 @@ public:
 			m_add_ais_ship = false;
 			m_ch_ais_obj->push(m_cur_time, ais_mmsi, ais_lat, ais_lon, ais_cog, ais_sog, ais_yaw);
 			if(m_state){
-				Mat R = m_state->get_enu_rotation();
+				long long t = 0;
+				Mat R = m_state->get_enu_rotation(t);
 				float x, y, z;
-				m_state->get_position_ecef(x, y, z);
+				m_state->get_position_ecef(t, x, y, z);
 				m_ch_ais_obj->update_rel_pos_and_vel(R, x, y, z);
 			}
 		}

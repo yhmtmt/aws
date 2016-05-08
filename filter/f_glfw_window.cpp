@@ -24,12 +24,13 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include <GL/glew.h>
-
-#include <GLFW/glfw3.h>
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+
+#include <GL/glew.h>
+
+#include <GLFW/glfw3.h>
 
 #include <GL/glut.h>
 #include <GL/glu.h>

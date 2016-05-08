@@ -135,7 +135,7 @@ void f_aws1_nmea_sw::gff_to_out()
 		if(m_state && type == ENDT_DBT){
 			const c_dbt * pdbt = dynamic_cast<const c_dbt*>(m_nmea_dec.decode(m_nmea));
 			if(pdbt){
-				m_state->set_depth(pdbt->dm);
+				m_state->set_depth(m_cur_time, pdbt->dm);
 			}
 		}
 
@@ -234,7 +234,7 @@ void f_aws1_nmea_sw::gps_to_out()
 	{
 	  const c_gga * pgga = dynamic_cast<const c_gga*>(m_nmea_dec.decode(m_nmea));
 	  if(pgga){
-	    m_state->set_position(
+	    m_state->set_position(m_cur_time, 
 				  (float) (pgga->m_lat_dir == EGP_N ? pgga->m_lat_deg : -pgga->m_lat_deg),
 				  (float) (pgga->m_lon_dir == EGP_E ? pgga->m_lon_deg : -pgga->m_lon_deg),
 				  pgga->m_alt, pgga->m_geos);
@@ -245,7 +245,7 @@ void f_aws1_nmea_sw::gps_to_out()
 	{
 	  const c_vtg * pvtg = dynamic_cast<const c_vtg*>(m_nmea_dec.decode(m_nmea));
 	  if(pvtg){
-	    m_state->set_velocity(pvtg->crs_t, pvtg->v_n);
+	    m_state->set_velocity(m_cur_time, pvtg->crs_t, pvtg->v_n);
 	  }
 	}
       case ENDT_RMC: // time

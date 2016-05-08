@@ -85,11 +85,12 @@ bool f_aws1_ap::proc()
 	}
 
 	s_aws1_ctrl_pars acpkt;
-	m_state->get_velocity(cog, sog);
+	long long t = 0;
+	m_state->get_velocity(t, cog, sog);
 	Mat Rorg;
 	Point3f Porg;
-	Rorg = m_state->get_enu_rotation();
-	m_state->get_position_ecef(Porg.x, Porg.y, Porg.z);
+	Rorg = m_state->get_enu_rotation(t);
+	m_state->get_position_ecef(t, Porg.x, Porg.y, Porg.z);
 
 	m_ctrl_in->get_pars(acpkt);
 	if(acpkt.ctrl_src == ACS_AP1)

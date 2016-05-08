@@ -60,8 +60,9 @@ bool f_obj_manager::proc()
 	Mat Renu;
 	float x, y, z;
 	if(m_state){
-		Renu = m_state->get_enu_rotation();
-		m_state->get_position_ecef(x, y, z);
+		long long t = 0;
+		Renu = m_state->get_enu_rotation(t);
+		m_state->get_position_ecef(t, x, y, z);
 	}
 
 	if(m_ais_obj){
