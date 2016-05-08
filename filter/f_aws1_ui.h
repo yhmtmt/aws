@@ -229,17 +229,12 @@ class f_aws1_ui: public f_glfw_window
 
   friend class c_aws1_ui_core;
 
-  bool m_udp_ctrl;
   bool m_verb;
   s_jc_u3613m m_js;
   int m_js_id;
   const char * m_js_name;
-  char m_acd_host[1024];
-  unsigned short m_acd_port;
-  SOCKET m_acd_sock;
-  sockaddr_in m_acd_sock_addr;
 
-	s_aws1_ctrl_inst m_inst;
+  s_aws1_ctrl_inst m_inst;
   s_aws1_ctrl_stat m_stat;
 
   // send control packet to m_acd_socket or m_ch_ctrl_out

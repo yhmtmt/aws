@@ -44,7 +44,6 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					m_state(NULL),
 					 m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL), 
 					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL),
-					 m_acd_sock(-1), m_acd_port(20100), 
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
 					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.)
 {
@@ -60,9 +59,6 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 
   register_fpar("storage", m_path_storage, 1024, "Path to the storage device");
 
-  register_fpar("udpctrl", &m_udp_ctrl, "If asserted, Direct UDP is used for control channel. Otherwise, ch_ctrl_{in,out} are used.");
-  register_fpar("acdhost", m_acd_host, 1023, "Host address controlling AWS1.");
-  register_fpar("acdport", &m_acd_port, "Port number opened for controlling AWS1.");
   register_fpar("acs", (int*) &m_stat.ctrl_src, (int) ACS_NONE, str_aws1_ctrl_src, "Control source.");
   register_fpar("verb", &m_verb, "Debug mode.");
   
@@ -100,18 +96,6 @@ bool f_aws1_ui::init_run()
   m_inst.meng_aws = 127;
   m_inst.seng_aws = 127;
 
-  // initializing udp socket
-  if(m_udp_ctrl){
-    m_acd_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if(m_acd_sock == -1){
-      cerr << "Failed to create control socket in " << m_name << "." << endl;
-      return false;
-    }
-    
-    m_acd_sock_addr.sin_family = AF_INET;
-    m_acd_sock_addr.sin_port = htons(m_acd_port);
-    set_sockaddr_addr(m_acd_sock_addr, m_acd_host);
-  }
 
   if(!f_glfw_window::init_run())
     return false;
@@ -126,10 +110,6 @@ bool f_aws1_ui::init_run()
 
 void f_aws1_ui::destroy_run()
 {
-  if(m_udp_ctrl){
-    closesocket(m_acd_sock);
-    m_acd_sock = -1;
-  }
 }
 
 void f_aws1_ui::ui_force_ctrl_stop()
@@ -732,11 +712,7 @@ void f_aws1_ui::snd_ctrl_inst()
   inst.rud_aws = m_stat.rud_aws;
   inst.meng_aws = m_stat.meng_aws;
   inst.seng_aws = m_stat.seng_aws;
-  int len;
-  if(m_udp_ctrl){
-    len = sendto(m_acd_sock, (char*) &inst, sizeof(inst), 
-		 0, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr));
-  }else if(m_ch_ctrl_inst){
+  if(m_ch_ctrl_inst){
     m_ch_ctrl_inst->set(inst);
   }
 }
@@ -744,44 +720,10 @@ void f_aws1_ui::snd_ctrl_inst()
 void f_aws1_ui::rcv_ctrl_stat()
 {
 	s_aws1_ctrl_stat stat;
-  if(m_udp_ctrl){
-    int res;
-    fd_set fr, fe;
-    timeval tv;
-    
-    FD_ZERO(&fr);
-    FD_ZERO(&fe);
-    FD_SET(m_acd_sock, &fr);
-    FD_SET(m_acd_sock, &fe);
-    
-    tv.tv_sec = 0;
-    tv.tv_usec = 10000;
-    
-    res = select((int) m_acd_sock + 1, &fr, NULL, &fe, &tv);
-    
-    if(res > 0){
-      if(FD_ISSET(m_acd_sock, &fr)){
-	int len = recv(m_acd_sock, (char*) &stat, sizeof(stat), 0);
-	if(len == SOCKET_ERROR){
-	  cerr << "Socket error during recieving packet in " << m_name << "." << endl;
-	  return;
-	}
-      }else if(FD_ISSET(m_acd_sock, &fe)){
-	cerr << "Socket error during recieving packet in " << m_name << "." << endl;
-	return;
-      }
-      
-    }else if(res == -1){
-      int en = errno;
-      cerr << "Error no " << en << " " << strerror(en) << endl;	  
-	  return;
-    }else{
-      cerr << "Unknown error in " << m_name << "." << endl;
-	  return;
-    }
-  }else if(m_ch_ctrl_stat){
+  if(m_ch_ctrl_stat){
     m_ch_ctrl_stat->get(stat);
-  }
+  }else 
+	  return;
 
   m_stat.rud_rmc = stat.rud_rmc;
   m_stat.meng_rmc = stat.meng_rmc;
