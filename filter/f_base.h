@@ -122,47 +122,6 @@ protected:
 	vector<ch_base *> m_chin;
 	vector<ch_base *> m_chout;
 
-
-	//////////////// channel log. only output log is recorded///////////////
-	// Notice: You can record output channel state for each cycle by asserting m_bochlog and 
-	// specifying file name for m_fochlogpath. The file specified as m_fochlogpath should have 
-	// a list of  <drive path> <threashold>. The logging method generates log files to the drives 
-	// until the usage goes over the threashold.
-	// The log file can also be replayed by asserting m_bochrep. Both m_bochrep and m_bochlog cannot be 
-	// asserted simultaneously. In the replay mode, init_run(), destroy_run(), proc() is all ignored,
-	// and the filter only sets the values from log file to their output channel. This could be 
-	// helpful to analyze the phenomenon occured at execution time.
-
-	char m_fochlogpath[1024];	// file path to a file of a list of logging drives
-	char m_fjochlog[1024];		// journal file of the ochlogs.
-	int m_curochlogdrv;			// index of the current och log drive.
-	vector<string> m_ochlogdrv;	// path to the logging drive
-	vector<float> m_thdrvuse;	// threashold of drive use. 
-	int m_tdrvchk;				// time interval for drive use check.
-	union{
-		long long m_tcurochlog; // time epoch of the current ochlog
-		long long m_tnextdrvchk; // next drive check time
-	};
-	long long m_cur_time_rec;	//
-	float m_spddrvuse;			// speed of drive use.
-	float m_drvuseprev;			// previous drive use.
-	bool m_bochlog;				// enabling log
-	bool m_bochrep;				// replaying log
-	ofstream m_ochlogout;		// output file (under logging)
-	ifstream m_ochlogin;		// input file (under replaying)
-
-	// load log path
-	bool load_ochlogpath();
-
-	// opening och log file.
-	bool open_ochlogfile();
-
-	// logging method (called in filter thread)
-	void logoch();
-
-	// replay method (called in filter thread)
-	bool repoch();
-
 public:
 	void set_ichan(ch_base * pchan){
 		m_chin.push_back(pchan);
@@ -385,36 +344,11 @@ public:
 	// invoke main thread.
 	virtual bool run(long long start_time, long long end_time)
 	{
-		if(!m_bochrep){ // if output channel replay mode is specified, the init/destroy scheme dont work.
-			if(!init_run()){
-				return false;
-			}
-		}
-
-		m_prev_time = start_time;
-
-		if(m_bochlog && m_bochrep){
-			cerr << "Output channel logging and replay cannot be executed simultaneously." << endl;
+		if(!init_run()){
 			return false;
 		}
 
-		if(m_bochlog)
-			m_tnextdrvchk = start_time;
-
-		if(m_bochrep)
-			m_cur_time_rec = m_tcurochlog = -1;
-
-		m_spddrvuse = 0.;
-		m_drvuseprev = 0.;
-		if(m_bochlog && m_fochlogpath[0] != '\0'){
-			if(!load_ochlogpath()){
-				cerr << "Output channel log won't be." << endl;
-			}
-
-			if(!open_ochlogfile()){
-				cerr << "Output channel log won't be." << endl;
-			}
-		}
+		m_prev_time = start_time;
 
 		if(!seek(start_time)){
 			return false;
@@ -435,13 +369,8 @@ public:
 	virtual bool stop()
 	{	
 		m_bactive= false;
-		if(!m_bochrep){
-			if(m_bstopped || is_main_thread()){
-				m_bstopped = true;
-				return true;
-			}
-		}else{
-			m_ochlogin.close();
+		if(m_bstopped || is_main_thread()){
+			m_bstopped = true;
 			return true;
 		}
 		return false;

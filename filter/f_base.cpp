@@ -232,26 +232,17 @@ void * f_base::fthread(void * ptr)
 	f_base * filter = (f_base *) ptr;
 	while(filter->m_bactive){
 		filter->m_count_pre = filter->m_count_clock;
-		
+
 		while(filter->m_cycle < (int) filter->m_intvl){
 			filter->clock_wait();
 			filter->m_cycle++;
 		}
 		filter->lock_cmd();
 
-		if(filter->m_bochrep){
-			if(!filter->repoch())
-				filter->m_bactive = false;
-		} else if(filter->m_bochlog){
-			filter->logoch();
-		}
-
 		filter->calc_time_diff();
 
-		if (!filter->m_bochrep){
-		  if(!filter->proc()){
+		if(!filter->proc()){
 			filter->m_bactive = false;
-		  }
 		}
 
 		if(filter->m_clk.is_run()){
@@ -320,9 +311,7 @@ void f_base::clock(long long cur_time){
 }
 
 f_base::f_base(const char * name):m_offset_time(0), m_bactive(false), 
-	m_intvl(1), m_bstopped(true), m_cmd(false), 
-	m_bochlog(false), m_bochrep(false), m_tdrvchk(10 * SEC), m_spddrvuse(0), m_curochlogdrv(-1)
-
+	m_intvl(1), m_bstopped(true), m_cmd(false)
 {
 	pthread_mutex_init(&m_mutex_cmd, NULL);
 	pthread_cond_init(&m_cnd_cmd, NULL);
@@ -335,16 +324,6 @@ f_base::f_base(const char * name):m_offset_time(0), m_bactive(false),
 	register_fpar("ClockCount", &m_count_clock, "Number of clock cycles passed." );
 	register_fpar("ProcRate", &m_proc_rate, "Processing rate.(Read only)");
 	register_fpar("MaxCycle", &m_max_cycle, "Maximum cycles per processing.(Read Only)");
-
-	// och logging
-	m_fochlogpath[0] = '\0';
-	m_fjochlog[0] = '\0';
-
-	register_fpar("fochlogpath", m_fochlogpath, 1024, "File path to a file of a list of storages for the output channel logs."); 
-	register_fpar("fjochlog", m_fjochlog, 1024, "File path to a journal of the output channel logs.");
-	register_fpar("ochlog", &m_bochlog, "Enable output channel logging mode.");
-	register_fpar("ochrep", &m_bochrep, "Enable output channel replay mode.");
-	register_fpar("tdrvchk", & m_tdrvchk, "Time interval checking drive use specified in fochlogpath.");
 }
 
 f_base::~f_base()
@@ -437,216 +416,3 @@ bool f_base::get_par(s_cmd & cmd){
 	return true;
 }
 
-bool f_base::load_ochlogpath()
-{
-	if(!m_bochlog)
-		return false;
-	if(m_fochlogpath[0] == '\0')
-		return false;
-
-	try{
-		ifstream fochlogpath(m_fochlogpath);
-		if(fochlogpath.is_open()){
-			// in the file,  the list of @<path> <threashold><crlf> is appeared.
-			char buf[1024];
-			while(!fochlogpath.eof()){
-				fochlogpath.getline(buf, 1024);
-				if(buf[0] != '@')
-					break;
-				// extract file path 
-				char * ph = buf + 1, * pt = ph;
-				while(*pt != ' ' || *(pt-1) == '\\'){
-					pt++;
-				}
-				*pt = '\0';
-				m_ochlogdrv.push_back(string(ph));
-
-				// extract threashold 
-				ph = pt + 1;
-				float th = (float) atof(ph);
-				if(th <= 0. || th >= 1.){
-					m_ochlogdrv.clear();
-					m_thdrvuse.clear();
-					cerr << "Irregal file format " << m_fochlogpath << endl;
-					cerr << "File should include a list of \"<path> <threashold>\" pairs." << endl; 
-					m_bochlog = false;
-					return false;
-				}
-
-				m_thdrvuse.push_back(th);
-			}
-		}else{
-			cerr << "Failed to open file includes ochlog paths " << m_fochlogpath << endl;
-			m_bochlog = false;
-			return false;
-		}
-	}catch(...){
-		cerr << "Failed to load ochlog paths from " << m_fochlogpath << endl;
-		m_bochlog = false;
-		return false;
-	}
-	return true;
-}
-
-// Opens new ochlog file on available drive in the given list.
-// If the function fails, the logging mode is disabled by deasserting m_bochlog.
-bool f_base::open_ochlogfile()
-{
-	if(m_ochlogout.is_open())
-		m_ochlogout.close();
-
-	float drvuse;
-
-	// find and check the use of the new drive.
-	m_curochlogdrv = -1;
-	do{
-		m_curochlogdrv++;
-		if(m_curochlogdrv >= m_ochlogdrv.size()){
-			cerr << "Filter " << m_name << " ran out the output channel logging drives." << endl;
-			m_bochlog = false;
-			return false;
-		}
-		drvuse = getDrvUse(m_ochlogdrv[m_curochlogdrv].c_str());
-	}while(drvuse >= m_thdrvuse[m_curochlogdrv]);
-
-	m_drvuseprev = drvuse;
-
-	// opening journal file.
-	ofstream fochjournal;
-	if(m_fjochlog[0] == '\0'){
-		snprintf(m_fjochlog, 1023, "%s.jochlog", m_name);
-	}
-	
-	fochjournal.open(m_fjochlog, ios_base::app);
-	if(!fochjournal.is_open()){
-		cerr << "Failed to open journal file " << m_fjochlog << endl;
-		m_bochlog = false;
-		return false;
-	}
-
-	// opening new ochlog file.
-	char buf[1024];
-	snprintf(buf, 1023, "%s/%s_%lld.ochlog", 
-		m_ochlogdrv[m_curochlogdrv].c_str(), m_name, m_cur_time);
-
-	m_ochlogout.open(buf, ios_base::binary);
-	if(!m_ochlogout.is_open()){
-		cerr << "Failed to open new log file " << buf << endl;
-		m_bochlog = false;
-		fochjournal.close();
-		return false;
-	}
-
-	// recording time of the log file and the file path to the journal 
-	fochjournal << m_cur_time << endl << buf << endl;
-	fochjournal.close();
-
-	return true;
-}
-
-// Logging output channel data. The data is recorded in the ochlog file with binary mode. 
-// Each output channel has the write method which seriarizes their data. Of course, corresponding
-// read method is used in the replay mode. 
-// Therefore the data at a cycle should be <time:8byte> <och #0> <och #1> .... <och #n>, and each <och #i> 
-// depends on the implementation of the read/write method in each channel.
-// The drive use is periodically checked according to the cycle specified in m_tdrvchk (10 sec in default).
-// The speed consuming drives are recoreded, and I intended to control the checking period according to this.
-// But still not impelemented.
-// This function is called immediatelly after calling proc(). Note that, the tran() method has not been called yet.
-void f_base::logoch()
-{
-	if(m_bochlog){
-		// check free disk
-		if(m_tnextdrvchk > m_cur_time){
-			float drvuse = getDrvUse(m_ochlogdrv[m_curochlogdrv].c_str());
-			//  if not free, create and open log file in the next candidate drive
-			if(drvuse > m_thdrvuse[m_curochlogdrv]){
-				// if the drive use is larger than the threashold, open new log file on the new drive available.
-				if(!open_ochlogfile()){
-					return;
-				}
-			}else{
-				// updating speed of drive use
-				m_spddrvuse = (float) (0.9 *  m_spddrvuse + 0.1 * (drvuse - m_drvuseprev));
-			}
-
-			m_tnextdrvchk += (long long) m_tdrvchk;
-		}
-
-		if(m_ochlogout.is_open()){
-			m_ochlogout.write((const char*)&m_cur_time, sizeof(long long));
-			for(int i = 0; i < m_chout.size(); i++)
-				m_chout[i]->write(this, m_ochlogout, m_cur_time);
-		}else{
-			if(!open_ochlogfile()){
-				return;
-			}
-		}
-	}
-}
-
-// Replaying ochlogfile. This method is called instead of proc(). Therefore, the init_run() and init_destroy()
-// is not called if the m_bochrep is asserted. 
-// Journal file is used to seek the file contains the record of the current time, then the record is found 
-// merely feeding the data until encountering the current time recoord.
-bool f_base::repoch()
-{
-	// seek log file related to the time
-	if(m_bochrep){
-		long long ltime;
-		do{
-			// seeking log file.
-			if(m_ochlogin.eof()){
-				m_ochlogin.close();
-			}
-
-			if(m_ochlogin.is_open()){
-				if(m_cur_time_rec == -1){
-					m_ochlogin.read((char*) &m_cur_time_rec, sizeof(long long));
-					//cout << "Recorded time " << m_cur_time_rec << " Current time " << m_cur_time << endl;
-				}
-
-				if(m_cur_time_rec < 0){
-					m_ochlogin.close();
-					break;
-				}
-
-				ltime = m_cur_time_rec;
-				
-				if(ltime <= m_cur_time){
-					for(int i = 0; i < m_chout.size(); i++)
-						m_chout[i]->read(this, m_ochlogin, m_cur_time);
-					m_cur_time_rec = -1;
-				}
-			}else{
-				ifstream fochjournal;
-				
-				if(m_fjochlog[0] == '\0')
-					snprintf(m_fjochlog, 1023, "%s.jochlog", m_name);
-				fochjournal.open(m_fjochlog);
-				if(!fochjournal.is_open()){
-					cerr << "Failed to open journal file " << m_fjochlog << endl;
-					return false;
-				}
-
-				char buf[1024];
-				while(1){
-					if(fochjournal.eof()){
-						cerr << "Ochlog in " << m_name << " is end." << endl;
-						return false;
-					}
-
-					fochjournal.getline(buf, 1024);
-					ltime = atoll(buf);
-					if(ltime > m_tcurochlog)
-						break;
-				}
-				fochjournal.getline(buf, 1024);
-				m_ochlogin.open(buf, ios_base::binary);
-				//cout << "Opening ochlog " << buf <<endl;
-				m_tcurochlog = ltime;
-			}
-		}while(m_cur_time > ltime);
-	}
-	return true;
-}
