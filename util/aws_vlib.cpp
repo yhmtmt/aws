@@ -3192,16 +3192,31 @@ bool read_raw_img(Mat & img, const char * fname)
 	FILE * pf = fopen(fname, "rb");
 	if(pf){
 		int r, c, type, size;
+		size_t res;
 		r = c = type = size = 0;
-		fread((void*)&type, sizeof(int), 1, pf);
-		fread((void*)&r, sizeof(int), 1, pf);
-		fread((void*)&c, sizeof(int), 1, pf);
-		fread((void*)&size, sizeof(int), 1, pf);
+		res = fread((void*)&type, sizeof(int), 1, pf);
+		if(!res)
+		  goto failed;
+		res = fread((void*)&r, sizeof(int), 1, pf);
+		if(!res)
+		  goto failed;
+		res = fread((void*)&c, sizeof(int), 1, pf);
+		if(!res)
+		  goto failed;
+		res =fread((void*)&size, sizeof(int), 1, pf);
+		if(!res)
+		  goto failed;
 		img.create(r, c, type);
-		fread((void*)img.data, sizeof(char), size, pf);
+		res = fread((void*)img.data, sizeof(char), size, pf);
+		if(!res)
+		  goto failed;
 	}else{
 		cerr << "Failed to read " << fname << "." << endl;
 		return false;
 	}
+
 	return true;
+ failed:
+	cerr << "Failedto read " << fname << "." << endl;
+	return false;
 }

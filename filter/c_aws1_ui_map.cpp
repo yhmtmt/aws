@@ -546,7 +546,7 @@ void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
 			{
 				ch_wp * pwp = get_wp();
 				if(pwp && pwp->get_num_wps() && pwp->get_num_wps() != pwp->get_focus()){
-					snprintf(str, "WP[%03d]", pwp->get_focus());
+				  snprintf(str, 12, "WP[%03d]", pwp->get_focus());
 				}else{
 					snprintf(str, 12, "N/A");
 				}
