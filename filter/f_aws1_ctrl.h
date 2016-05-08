@@ -84,8 +84,8 @@ inline  int map_oval(int val,
 class f_aws1_ctrl: public f_base
 {
  protected:
-  ch_aws1_ctrl * m_ch_ctrl_ui, * m_ch_ctrl_ap1, * m_ch_ctrl_ap2, * m_ch_ctrl_out;   // channel for control parameters
-  bool m_udp_ui;
+  ch_aws1_ctrl_inst * m_ch_ctrl_ui, * m_ch_ctrl_ap1, * m_ch_ctrl_ap2;
+  ch_aws1_ctrl_stat * m_ch_ctrl_stat;   // channel for control parameters
   char m_dev[1024];         // device path, e.g. "/dev/zgpio0"
   char m_flog_name[1024];
   ofstream m_flog;
@@ -116,26 +116,13 @@ class f_aws1_ctrl: public f_base
 
   void lpf();
 
-  s_aws1_ctrl_pars m_acp;
+  s_aws1_ctrl_stat m_stat;
 
   void get_gpio();
   void set_gpio();
 
-  // Control server (for ACS_UDP)
-  unsigned short m_acs_port;
-  SOCKET m_acs_sock;
-  sockaddr_in m_acs_sock_addr, m_acs_ret_addr;
-  socklen_t m_sz_acs_ret_addr;
-
-  void rcv_acs_udp(s_aws1_ctrl_pars & acpkt);
-  void snd_acs_udp(s_aws1_ctrl_pars & acpkt);
-
-  // Control channel (for ACS_CHAN)
-  void rcv_acs_chan(s_aws1_ctrl_pars & acpkt);
-  void snd_acs_chan(s_aws1_ctrl_pars & acpkt);
-
-  void set_acpkt(s_aws1_ctrl_pars & acpkt);
-  void set_ctrl(s_aws1_ctrl_pars & acpkt);
+  void set_stat();
+  void get_inst();
 
 public:
   f_aws1_ctrl(const char * name);

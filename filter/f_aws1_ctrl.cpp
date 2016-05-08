@@ -43,26 +43,22 @@ const char * f_aws1_ctrl:: m_str_adclpf_type[ADCLPF_NONE] = {
 */
 
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
-  f_base(name),  m_udp_ui(false), m_fd(-1), m_sim(false), m_verb(false),
-  m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL),  m_ch_ctrl_out(NULL), 
-  m_acs_sock(-1), m_acs_port(20100), 
+  f_base(name),  m_fd(-1), m_sim(false), m_verb(false),
+  m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL),  m_ch_ctrl_stat(NULL), 
   m_adclpf(false), m_sz_adclpf(5), m_cur_adcsmpl(0), m_sigma_adclpf(3.0)
 {
   strcpy(m_dev, "/dev/zgpio1");
   m_flog_name[0] = 0;
 
-  register_fpar("udp_ui", &m_udp_ui, "Flag enables UDP control input.");
-  register_fpar("ch_ctrl_ui", (ch_base**)&m_ch_ctrl_ui, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs from UI.");
-  register_fpar("ch_ctrl_ap1", (ch_base**)&m_ch_ctrl_ap1, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs from AutoPilot1.");
-  register_fpar("ch_ctrl_ap2", (ch_base**)&m_ch_ctrl_ap2, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1's control inputs from AutoPilot2.");
-  register_fpar("ch_ctrl_out", (ch_base**)&m_ch_ctrl_out, typeid(ch_aws1_ctrl).name(), "Channel of the AWS1 control outputs.");
+  register_fpar("ch_ctrl_ui", (ch_base**)&m_ch_ctrl_ui, typeid(ch_aws1_ctrl_inst).name(), "Channel of the AWS1's control inputs from UI.");
+  register_fpar("ch_ctrl_ap1", (ch_base**)&m_ch_ctrl_ap1, typeid(ch_aws1_ctrl_inst).name(), "Channel of the AWS1's control inputs from AutoPilot1.");
+  register_fpar("ch_ctrl_ap2", (ch_base**)&m_ch_ctrl_ap2, typeid(ch_aws1_ctrl_inst).name(), "Channel of the AWS1's control inputs from AutoPilot2.");
+  register_fpar("ch_ctrl_stat", (ch_base**)&m_ch_ctrl_stat, typeid(ch_aws1_ctrl_stat).name(), "Channel of the AWS1 control outputs.");
   register_fpar("device", m_dev, 1023, "AWS1's control gpio device path");
   register_fpar("flog", m_flog_name, 1023, "Control log file.");
   register_fpar("sim", &m_sim, "Simulation mode.");
   register_fpar("verb", &m_verb, "For debug.");
-
-  register_fpar("acs", (int*) &m_acp.ctrl_src, ACS_NONE, str_aws1_ctrl_src,  "AWS control source.");
-  register_fpar("acsport", &m_acs_port, "Port number for AWS1 UDP control.");
+  register_fpar("acs", (int*) &m_stat.ctrl_src, ACS_NONE, str_aws1_ctrl_src,  "AWS control source.");
   // LPF related parameters
   register_fpar("adclpf", &m_adclpf, "LPF is applied for the ADC inputs.");
   register_fpar("sz_adclpf", &m_sz_adclpf, "Window size of the ADC-LPF.");
@@ -70,68 +66,68 @@ f_aws1_ctrl::f_aws1_ctrl(const char * name):
   register_fpar("sigma_adclpf", &m_sigma_adclpf, "Standard deviation of the gaussian kernel of the ADC-LPF (This can only be used in the case of the filter type is gauss)");
 
   // aws's control parameters
-  register_fpar("awsrud", &m_acp.rud_aws, "Control value of AWS1's rudder.");
-  register_fpar("awsmeng", &m_acp.meng_aws, "Control value of AWS1's main engine.");
-  register_fpar("awsseng", &m_acp.seng_aws, "Control value of AWS1's sub engine.");
+  register_fpar("awsrud", &m_stat.rud_aws, "Control value of AWS1's rudder.");
+  register_fpar("awsmeng", &m_stat.meng_aws, "Control value of AWS1's main engine.");
+  register_fpar("awsseng", &m_stat.seng_aws, "Control value of AWS1's sub engine.");
 
   // remote controller's control parameters (Read Only)
-  register_fpar("rmcrud", &m_acp.rud_rmc, "Control value of AWS1's rudder controller.");
-  register_fpar("rmcmeng", &m_acp.meng_rmc, "Control value of AWS1's main engine controller.");
-  register_fpar("rmcseng", &m_acp.seng_rmc, "Control value of AWS1's sub engine controller.");
-  register_fpar("rud_sta", &m_acp.rud_sta, "Rudder Status of AWS1's.");
+  register_fpar("rmcrud", &m_stat.rud_rmc, "Control value of AWS1's rudder controller.");
+  register_fpar("rmcmeng", &m_stat.meng_rmc, "Control value of AWS1's main engine controller.");
+  register_fpar("rmcseng", &m_stat.seng_rmc, "Control value of AWS1's sub engine controller.");
+  register_fpar("rud_sta", &m_stat.rud_sta, "Rudder Status of AWS1's.");
 
   // Remote controllers control points of the main engine. 
-  register_fpar("meng_max_rmc", &m_acp.meng_max_rmc, "Maximum control control value of AWS1's main engine controller.");
-  register_fpar("meng_nuf_rmc", &m_acp.meng_nuf_rmc, "Nutral to Forward control value of AWS1's main engine controller.");
-  register_fpar("meng_nut_rmc", &m_acp.meng_nut_rmc, "Nutral control value of AWS1's main engine controller.");
-  register_fpar("meng_nub_rmc", &m_acp.meng_nub_rmc, "Nutral to Backward control value of AWS1's main engine controller.");
-  register_fpar("meng_min_rmc", &m_acp.meng_min_rmc, "Minimum control value of AWS1's main engine controller.");
+  register_fpar("meng_max_rmc", &m_stat.meng_max_rmc, "Maximum control control value of AWS1's main engine controller.");
+  register_fpar("meng_nuf_rmc", &m_stat.meng_nuf_rmc, "Nutral to Forward control value of AWS1's main engine controller.");
+  register_fpar("meng_nut_rmc", &m_stat.meng_nut_rmc, "Nutral control value of AWS1's main engine controller.");
+  register_fpar("meng_nub_rmc", &m_stat.meng_nub_rmc, "Nutral to Backward control value of AWS1's main engine controller.");
+  register_fpar("meng_min_rmc", &m_stat.meng_min_rmc, "Minimum control value of AWS1's main engine controller.");
 
   // Each control points of the main engine output.
-  register_fpar("meng_max", &m_acp.meng_max, "Maximum control value for AWS1's main engine.");
-  register_fpar("meng_nuf", &m_acp.meng_nuf, "Nutral to Forward control value for AWS1's main engine.");
-  register_fpar("meng_nut", &m_acp.meng_nut, "Nutral control value for AWS1's main engine.");
-  register_fpar("meng_nub", &m_acp.meng_nub, "Nutral to Backward control value for AWS1's main engine.");
-  register_fpar("meng_min", &m_acp.meng_min, "Minimum control value for AWS1's main engine.");
+  register_fpar("meng_max", &m_stat.meng_max, "Maximum control value for AWS1's main engine.");
+  register_fpar("meng_nuf", &m_stat.meng_nuf, "Nutral to Forward control value for AWS1's main engine.");
+  register_fpar("meng_nut", &m_stat.meng_nut, "Nutral control value for AWS1's main engine.");
+  register_fpar("meng_nub", &m_stat.meng_nub, "Nutral to Backward control value for AWS1's main engine.");
+  register_fpar("meng_min", &m_stat.meng_min, "Minimum control value for AWS1's main engine.");
 
   // Remote controllers control points of the sub engine.
-  register_fpar("seng_max_rmc", &m_acp.seng_max_rmc, "Maximum control value of AWS1's sub engine controller.");
-  register_fpar("seng_nuf_rmc", &m_acp.seng_nuf_rmc, "Nutral to Forward control value of AWS1's sub engine controller.");
-  register_fpar("seng_nut_rmc", &m_acp.seng_nut_rmc, "Nutral control value of AWS1's sub engine controller.");
-  register_fpar("seng_nub_rmc", &m_acp.seng_nub_rmc, "Nutral to Backward control value of AWS1's sub engine controller.");
-  register_fpar("seng_min_rmc", &m_acp.seng_min_rmc, "Minimum control value of AWS1's sub engine controller.");
+  register_fpar("seng_max_rmc", &m_stat.seng_max_rmc, "Maximum control value of AWS1's sub engine controller.");
+  register_fpar("seng_nuf_rmc", &m_stat.seng_nuf_rmc, "Nutral to Forward control value of AWS1's sub engine controller.");
+  register_fpar("seng_nut_rmc", &m_stat.seng_nut_rmc, "Nutral control value of AWS1's sub engine controller.");
+  register_fpar("seng_nub_rmc", &m_stat.seng_nub_rmc, "Nutral to Backward control value of AWS1's sub engine controller.");
+  register_fpar("seng_min_rmc", &m_stat.seng_min_rmc, "Minimum control value of AWS1's sub engine controller.");
 
   // Each control points of the sub engine output
-  register_fpar("seng_max", &m_acp.seng_max, "Maximum control value for AWS1's sub engine.");
-  register_fpar("seng_nuf", &m_acp.seng_nuf, "Nutral to Forward control value for AWS1's sub engine.");
-  register_fpar("seng_nut", &m_acp.seng_nut, "Nutral control value for AWS1's sub engine.");
-  register_fpar("seng_nub", &m_acp.seng_nub, "Nutral to Backward control value for AWS1's sub engine.");
-  register_fpar("seng_min", &m_acp.seng_min, "Minimum control value for AWS1's sub engine.");
+  register_fpar("seng_max", &m_stat.seng_max, "Maximum control value for AWS1's sub engine.");
+  register_fpar("seng_nuf", &m_stat.seng_nuf, "Nutral to Forward control value for AWS1's sub engine.");
+  register_fpar("seng_nut", &m_stat.seng_nut, "Nutral control value for AWS1's sub engine.");
+  register_fpar("seng_nub", &m_stat.seng_nub, "Nutral to Backward control value for AWS1's sub engine.");
+  register_fpar("seng_min", &m_stat.seng_min, "Minimum control value for AWS1's sub engine.");
 
   // Remote controller's control points of the rudder.
-  register_fpar("rud_max_rmc", &m_acp.rud_max_rmc, "Maximum control value of AWS1's rudder controller.");
-  register_fpar("rud_nut_rmc", &m_acp.rud_nut_rmc, "Nutral control value of AWS1's rudder controller.");
-  register_fpar("rud_min_rmc", &m_acp.rud_min_rmc, "Minimum control value of AWS1's rudder controller.");
+  register_fpar("rud_max_rmc", &m_stat.rud_max_rmc, "Maximum control value of AWS1's rudder controller.");
+  register_fpar("rud_nut_rmc", &m_stat.rud_nut_rmc, "Nutral control value of AWS1's rudder controller.");
+  register_fpar("rud_min_rmc", &m_stat.rud_min_rmc, "Minimum control value of AWS1's rudder controller.");
 
   // Each controll points of the rudder output.
-  register_fpar("rud_max", &m_acp.rud_max, "Maximum control value for AWS1's rudder.");
-  register_fpar("rud_nut", &m_acp.rud_nut, "Nutral control value for AWS1's rudder.");
-  register_fpar("rud_min", &m_acp.rud_min, "Minimum control value for AWS1's rudder.");
+  register_fpar("rud_max", &m_stat.rud_max, "Maximum control value for AWS1's rudder.");
+  register_fpar("rud_nut", &m_stat.rud_nut, "Nutral control value for AWS1's rudder.");
+  register_fpar("rud_min", &m_stat.rud_min, "Minimum control value for AWS1's rudder.");
 
   // Rudder indicator's controll points.
-  register_fpar("rud_sta_max", &m_acp.rud_sta_max, "Maximum value of AWS1's rudder angle indicator.");
-  register_fpar("rud_sta_nut", &m_acp.rud_sta_nut, "Nutral value of AWS1's rudder angle indicator.");
-  register_fpar("rud_sta_min", &m_acp.rud_sta_min, "Minimum value of AWS1's rudder angle indicator.");
+  register_fpar("rud_sta_max", &m_stat.rud_sta_max, "Maximum value of AWS1's rudder angle indicator.");
+  register_fpar("rud_sta_nut", &m_stat.rud_sta_nut, "Nutral value of AWS1's rudder angle indicator.");
+  register_fpar("rud_sta_min", &m_stat.rud_sta_min, "Minimum value of AWS1's rudder angle indicator.");
 
   // Control points as the rudder indicator output.
-  register_fpar("rud_sta_out_max", &m_acp.rud_sta_out_max, "Maximum output value of AWS1's rudder angle to rudder pump.");
-  register_fpar("rud_sta_out_nut", &m_acp.rud_sta_out_nut, "Nutral output value of AWS1's rudder angle to rudder pump.");
-  register_fpar("rud_sta_out_min", &m_acp.rud_sta_out_min, "Minimum output value of AWS1's rudder angle to rudder pump.");
+  register_fpar("rud_sta_out_max", &m_stat.rud_sta_out_max, "Maximum output value of AWS1's rudder angle to rudder pump.");
+  register_fpar("rud_sta_out_nut", &m_stat.rud_sta_out_nut, "Nutral output value of AWS1's rudder angle to rudder pump.");
+  register_fpar("rud_sta_out_min", &m_stat.rud_sta_out_min, "Minimum output value of AWS1's rudder angle to rudder pump.");
 
-  register_fpar("meng", &m_acp.meng, "Output value for main engine.");
-  register_fpar("seng", &m_acp.meng, "Output value for sub engine.");
-  register_fpar("rud", &m_acp.rud, "Output value for rudder.");
-  register_fpar("rud_sta_out", &m_acp.rud_sta_out, "Output value for rudder status.");
+  register_fpar("meng", &m_stat.meng, "Output value for main engine.");
+  register_fpar("seng", &m_stat.meng, "Output value for sub engine.");
+  register_fpar("rud", &m_stat.rud, "Output value for rudder.");
+  register_fpar("rud_sta_out", &m_stat.rud_sta_out, "Output value for rudder status.");
 }
 
 f_aws1_ctrl::~f_aws1_ctrl()
@@ -148,7 +144,7 @@ bool f_aws1_ctrl::init_run()
       return false;
     }
   }else{
-    m_rud_sta_sim = (float) m_acp.rud_sta;
+    m_rud_sta_sim = (float) m_stat.rud_sta;
   }
 
   if(m_flog_name[0] != 0){
@@ -173,34 +169,34 @@ void f_aws1_ctrl::get_gpio()
   unsigned int val;
   if(!m_sim){
     ioctl(m_fd, ZGPIO_IOCGET, &val);
-    m_acp.rud_rmc = ((unsigned char*) &val)[0];
-    m_acp.meng_rmc = ((unsigned char*) &val)[1];
-    m_acp.seng_rmc = ((unsigned char*) &val)[2];
-    m_acp.rud_sta = ((unsigned char*) &val)[3];
+    m_stat.rud_rmc = ((unsigned char*) &val)[0];
+    m_stat.meng_rmc = ((unsigned char*) &val)[1];
+    m_stat.seng_rmc = ((unsigned char*) &val)[2];
+    m_stat.rud_sta = ((unsigned char*) &val)[3];
   }else{
-    unsigned rud_inst = map_oval(m_acp.rud,
-		m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
-		m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min);
+    unsigned rud_inst = map_oval(m_stat.rud,
+		m_stat.rud_max, m_stat.rud_nut, m_stat.rud_min,
+		m_stat.rud_sta_max, m_stat.rud_sta_nut, m_stat.rud_sta_min);
 #define RUD_PER_CYCLE 0.45
-    if(rud_inst > m_acp.rud_sta){
+    if(rud_inst > m_stat.rud_sta){
       m_rud_sta_sim += RUD_PER_CYCLE;
     }else{
       m_rud_sta_sim -= RUD_PER_CYCLE;
     }
-    m_acp.rud_sta = (unsigned char) m_rud_sta_sim;
+    m_stat.rud_sta = (unsigned char) m_rud_sta_sim;
   }
  
-  if(m_acp.ctrl_src == ACS_RMT){
-    m_acp.rud_aws = map_oval(m_acp.rud_rmc, 
-			 m_acp.rud_max_rmc, m_acp.rud_nut_rmc, m_acp.rud_min_rmc,
+  if(m_stat.ctrl_src == ACS_RMT){
+    m_stat.rud_aws = map_oval(m_stat.rud_rmc, 
+			 m_stat.rud_max_rmc, m_stat.rud_nut_rmc, m_stat.rud_min_rmc,
 			 0xff, 0x7f, 0x00);
-    m_acp.meng_aws = map_oval(m_acp.meng_rmc,
-			  m_acp.meng_max_rmc, m_acp.meng_nuf_rmc, m_acp.meng_nut_rmc, 
-			  m_acp.meng_nub_rmc, m_acp.meng_min_rmc,
+    m_stat.meng_aws = map_oval(m_stat.meng_rmc,
+			  m_stat.meng_max_rmc, m_stat.meng_nuf_rmc, m_stat.meng_nut_rmc, 
+			  m_stat.meng_nub_rmc, m_stat.meng_min_rmc,
 			  0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
-    m_acp.seng_aws = map_oval(m_acp.seng_rmc,
-			  m_acp.seng_max_rmc, m_acp.seng_nuf_rmc, m_acp.seng_nut_rmc, 
-			  m_acp.seng_nub_rmc, m_acp.seng_min_rmc,
+    m_stat.seng_aws = map_oval(m_stat.seng_rmc,
+			  m_stat.seng_max_rmc, m_stat.seng_nuf_rmc, m_stat.seng_nut_rmc, 
+			  m_stat.seng_nub_rmc, m_stat.seng_min_rmc,
 			  0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
   }
 }
@@ -222,49 +218,49 @@ void f_aws1_ctrl::set_gpio()
 {
   unsigned int val;
 
-  switch(m_acp.ctrl_src){
+  switch(m_stat.ctrl_src){
   case ACS_UI:
   case ACS_AP1:
   case ACS_AP2:
   case ACS_FSET:
   case ACS_NONE:
-    m_acp.rud = map_oval(m_acp.rud_aws, 
+    m_stat.rud = map_oval(m_stat.rud_aws, 
 		     0xff, 0x7f, 0x00, 
-		     m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min);
-    m_acp.meng = map_oval(m_acp.meng_aws, 
+		     m_stat.rud_max, m_stat.rud_nut, m_stat.rud_min);
+    m_stat.meng = map_oval(m_stat.meng_aws, 
 		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
-		      m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, 
-		      m_acp.meng_nub, m_acp.meng_min);  
-    m_acp.seng = map_oval(m_acp.seng_aws, 
+		      m_stat.meng_max, m_stat.meng_nuf, m_stat.meng_nut, 
+		      m_stat.meng_nub, m_stat.meng_min);  
+    m_stat.seng = map_oval(m_stat.seng_aws, 
 		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
-		      m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, 
-		      m_acp.seng_nub, m_acp.seng_min);
+		      m_stat.seng_max, m_stat.seng_nuf, m_stat.seng_nut, 
+		      m_stat.seng_nub, m_stat.seng_min);
     break;
   case ACS_RMT:
-    m_acp.rud = map_oval(m_acp.rud_rmc, 
-			 m_acp.rud_max_rmc, m_acp.rud_nut_rmc, m_acp.rud_min_rmc,
-			 m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min);
-    m_acp.meng = map_oval(m_acp.meng_rmc, 
-			  m_acp.meng_max_rmc, m_acp.meng_nuf_rmc, m_acp.meng_nut_rmc, 
-			  m_acp.meng_nub_rmc, m_acp.meng_min_rmc,
-			  m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, m_acp.meng_nub, 
-			  m_acp.meng_min);  
-    m_acp.seng = map_oval(m_acp.seng_rmc, 
-			  m_acp.seng_max_rmc, m_acp.seng_nuf_rmc, m_acp.seng_nut_rmc, 
-			  m_acp.seng_nub_rmc, m_acp.seng_min_rmc,
-			  m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, m_acp.seng_nub, 
-			  m_acp.seng_min);
+    m_stat.rud = map_oval(m_stat.rud_rmc, 
+			 m_stat.rud_max_rmc, m_stat.rud_nut_rmc, m_stat.rud_min_rmc,
+			 m_stat.rud_max, m_stat.rud_nut, m_stat.rud_min);
+    m_stat.meng = map_oval(m_stat.meng_rmc, 
+			  m_stat.meng_max_rmc, m_stat.meng_nuf_rmc, m_stat.meng_nut_rmc, 
+			  m_stat.meng_nub_rmc, m_stat.meng_min_rmc,
+			  m_stat.meng_max, m_stat.meng_nuf, m_stat.meng_nut, m_stat.meng_nub, 
+			  m_stat.meng_min);  
+    m_stat.seng = map_oval(m_stat.seng_rmc, 
+			  m_stat.seng_max_rmc, m_stat.seng_nuf_rmc, m_stat.seng_nut_rmc, 
+			  m_stat.seng_nub_rmc, m_stat.seng_min_rmc,
+			  m_stat.seng_max, m_stat.seng_nuf, m_stat.seng_nut, m_stat.seng_nub, 
+			  m_stat.seng_min);
     break;
   }
   
-  ((unsigned char *) &val)[0] = m_acp.rud;
-  ((unsigned char *) &val)[1] = m_acp.meng;
-  ((unsigned char *) &val)[2] = m_acp.seng;
+  ((unsigned char *) &val)[0] = m_stat.rud;
+  ((unsigned char *) &val)[1] = m_stat.meng;
+  ((unsigned char *) &val)[2] = m_stat.seng;
   
-  m_acp.rud_sta_out = map_oval(m_acp.rud_sta, 
-			       m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
-			       m_acp.rud_sta_out_max, m_acp.rud_sta_out_nut, m_acp.rud_sta_out_min);
-  ((unsigned char *) &val)[3] = m_acp.rud_sta_out;
+  m_stat.rud_sta_out = map_oval(m_stat.rud_sta, 
+			       m_stat.rud_sta_max, m_stat.rud_sta_nut, m_stat.rud_sta_min,
+			       m_stat.rud_sta_out_max, m_stat.rud_sta_out_nut, m_stat.rud_sta_out_min);
+  ((unsigned char *) &val)[3] = m_stat.rud_sta_out;
   
   if(!m_sim){
     ioctl(m_fd, ZGPIO_IOCSET2, &val);
@@ -273,15 +269,7 @@ void f_aws1_ctrl::set_gpio()
 
 bool f_aws1_ctrl::proc()
 {
-
-  s_aws1_ctrl_pars acpkt;
-  if(m_udp_ui){
-    rcv_acs_udp(acpkt);
-    set_ctrl(acpkt);
-  }else{
-    rcv_acs_chan(acpkt);
-    set_ctrl(acpkt);
-  }
+  get_inst();
 
   get_gpio();
   if(m_adclpf)
@@ -291,26 +279,21 @@ bool f_aws1_ctrl::proc()
 
   if(m_verb){
     cout << "Control Values." << endl;
-    cout << "    rmc rud " << (int) m_acp.rud_rmc << " meng " << (int) m_acp.meng_rmc << " seng " << (int) m_acp.seng_rmc << endl;
-    cout << "    aws rud " << (int) m_acp.rud_aws << " meng " << (int) m_acp.meng_aws << " seng " << (int) m_acp.seng_aws << endl;
-    cout << "    out rud " << (int) m_acp.rud << " meng " << (int) m_acp.meng << " seng " << (int) m_acp.seng << endl;
-    cout << "    rud stat in " << (int) m_acp.rud_sta << " out " << (int) m_acp.rud_sta_out << endl;
+    cout << "    rmc rud " << (int) m_stat.rud_rmc << " meng " << (int) m_stat.meng_rmc << " seng " << (int) m_stat.seng_rmc << endl;
+    cout << "    aws rud " << (int) m_stat.rud_aws << " meng " << (int) m_stat.meng_aws << " seng " << (int) m_stat.seng_aws << endl;
+    cout << "    out rud " << (int) m_stat.rud << " meng " << (int) m_stat.meng << " seng " << (int) m_stat.seng << endl;
+    cout << "    rud stat in " << (int) m_stat.rud_sta << " out " << (int) m_stat.rud_sta_out << endl;
 
   }
   if(m_flog.is_open()){
     m_flog << m_cur_time << " ";
-    m_flog << (int) m_acp.rud_rmc << " " << (int) m_acp.meng_rmc << " " << (int) m_acp.seng_rmc << " ";
-    m_flog << (int) m_acp.rud_aws << " " << (int) m_acp.meng_aws << " " << (int) m_acp.seng_aws << " ";
-    m_flog << (int) m_acp.rud << " " << (int) m_acp.meng << " " << (int) m_acp.seng << " ";
-    m_flog << (int) m_acp.rud_sta << " " << (int) m_acp.rud_sta_out << endl;
+    m_flog << (int) m_stat.rud_rmc << " " << (int) m_stat.meng_rmc << " " << (int) m_stat.seng_rmc << " ";
+    m_flog << (int) m_stat.rud_aws << " " << (int) m_stat.meng_aws << " " << (int) m_stat.seng_aws << " ";
+    m_flog << (int) m_stat.rud << " " << (int) m_stat.meng << " " << (int) m_stat.seng << " ";
+    m_flog << (int) m_stat.rud_sta << " " << (int) m_stat.rud_sta_out << endl;
   }
 
-  set_acpkt(acpkt);
-  if(m_udp_ui)
-    snd_acs_udp(acpkt);
-  else
-    snd_acs_chan(acpkt);
-
+  set_stat();
   return true;
 }
 
@@ -320,10 +303,10 @@ void f_aws1_ctrl::lpf()
     if(m_verb)
     // allocating memory
     m_kern_adclpf.resize(m_sz_adclpf);
-    m_rud_smpl.resize(m_sz_adclpf, (int) m_acp.rud_rmc);
-    m_meng_smpl.resize(m_sz_adclpf, (int) m_acp.meng_rmc);
-    m_seng_smpl.resize(m_sz_adclpf, (int) m_acp.seng_rmc);
-    //m_rud_sta_smpl.resize(m_sz_adclpf, (int) m_acp.rud_sta);
+    m_rud_smpl.resize(m_sz_adclpf, (int) m_stat.rud_rmc);
+    m_meng_smpl.resize(m_sz_adclpf, (int) m_stat.meng_rmc);
+    m_seng_smpl.resize(m_sz_adclpf, (int) m_stat.seng_rmc);
+    //m_rud_sta_smpl.resize(m_sz_adclpf, (int) m_stat.rud_sta);
 
     // building filter kernel.
     switch(m_type_adclpf){
@@ -360,10 +343,10 @@ void f_aws1_ctrl::lpf()
       cout << " done." << endl;
   }
 
-  m_rud_smpl[m_cur_adcsmpl] = m_acp.rud_rmc;
-  m_meng_smpl[m_cur_adcsmpl] = m_acp.meng_rmc;
-  m_seng_smpl[m_cur_adcsmpl] = m_acp.seng_rmc;
-  //m_rud_sta_smpl[m_cur_adcsmpl] = m_acp.rud_sta;
+  m_rud_smpl[m_cur_adcsmpl] = m_stat.rud_rmc;
+  m_meng_smpl[m_cur_adcsmpl] = m_stat.meng_rmc;
+  m_seng_smpl[m_cur_adcsmpl] = m_stat.seng_rmc;
+  //m_rud_sta_smpl[m_cur_adcsmpl] = m_stat.rud_sta;
   
 
   // kernel convolution
@@ -376,131 +359,43 @@ void f_aws1_ctrl::lpf()
     //rud_sta += m_rud_sta_smpl[j] * m_kern_adclpf[i];
   }
   
-  m_acp.rud_rmc = rud;
-  m_acp.meng_rmc = meng;
-  m_acp.seng_rmc = seng;
-  // m_acp.rud_sta = rud_sta;
+  m_stat.rud_rmc = rud;
+  m_stat.meng_rmc = meng;
+  m_stat.seng_rmc = seng;
+  // m_stat.rud_sta = rud_sta;
 
   m_cur_adcsmpl = (m_cur_adcsmpl > 0 ? m_cur_adcsmpl - 1 : m_sz_adclpf - 1);
 }
 
-void f_aws1_ctrl::rcv_acs_udp(s_aws1_ctrl_pars & acpkt)
+void f_aws1_ctrl::set_stat()
 {
-  acpkt.suc = false;
-  if(m_acs_sock == -1){
-    m_acs_sock = socket(AF_INET, SOCK_DGRAM, 0);
-    if(m_acs_sock == -1){
-      cerr << "Failed to create socket in " << m_name << "." << endl;
-      m_acp.ctrl_src = ACS_FSET;
-      return;
-    }
-    m_acs_sock_addr.sin_family = AF_INET;
-    m_acs_sock_addr.sin_port = htons(m_acs_port);
-    cout << m_name << " is opening udp port " << m_acs_port << "." << endl;
-    set_sockaddr_addr(m_acs_sock_addr);
-    if(::bind(m_acs_sock, (sockaddr*) &m_acs_sock_addr, sizeof(m_acs_sock_addr)) == SOCKET_ERROR){
-      cerr << "Socket error during binding UDP socket in " << m_name;
-      cerr << ". AWS Control Source is automatically set to ACS_FSET." << endl;
-      m_acp.ctrl_src = ACS_FSET;
-      m_acs_sock = -1;
-    }
-  }else{
-    m_sz_acs_ret_addr = sizeof(m_acs_ret_addr);
-    int res;
-    fd_set fr, fe;
-    timeval tv;
-    
-    // recieving packet
-    FD_ZERO(&fr);
-    FD_ZERO(&fe);
-    FD_SET(m_acs_sock, &fr);
-    FD_SET(m_acs_sock, &fe);
-    tv.tv_sec = 0;
-    tv.tv_usec = 10000;
+  m_stat.tcur = m_cur_time;
+  m_ch_ctrl_stat->set(m_stat);
+}
 
-    res = select((int) m_acs_sock + 1, &fr, NULL, &fe, &tv);
-    if(res > 0){
-      if(FD_ISSET(m_acs_sock, &fr)){
-	int len = recvfrom(m_acs_sock, (char*) &acpkt, sizeof(acpkt), 0, (sockaddr*)&m_acs_ret_addr, &m_sz_acs_ret_addr);
-	if(len == SOCKET_ERROR){
-	  cerr << "Socket error during recieving packet in " << m_name;
-	  cerr << " . Now closing socket." << endl;
-	  closesocket(m_acs_sock);
-	  m_acs_sock = -1;
-	  m_acp.ctrl_src = ACS_FSET;
-	}
-      }else if(FD_ISSET(m_acs_sock, &fe)){
-	cerr << "Socket error during recieving packet in " << m_name;
-	cerr << " . Now closing socket." << endl;
-	closesocket(m_acs_sock);
-	m_acs_sock = -1;
-	m_acp.ctrl_src = ACS_FSET;
-      }
-    }else if(res == -1){
-      int en = errno;
-      cerr << "Error no " << en << " " << strerror(en) << endl;
-    }else{
-      cerr << "Unknown error in " << m_name << "." << endl;
-    }
+void f_aws1_ctrl::get_inst()
+{
+
+  s_aws1_ctrl_inst inst;
+  if(m_ch_ctrl_ui){
+    m_ch_ctrl_ui->get(inst);
   }
-}
 
-void f_aws1_ctrl::snd_acs_udp(s_aws1_ctrl_pars & acpkt)
-{
-  if(m_acs_sock == -1)
-    return;
+  m_stat.tcur = inst.tcur;
+  m_stat.ctrl_src = inst.ctrl_src;
 
-  int len = sendto(m_acs_sock, (char*) &acpkt, sizeof(acpkt), 0, (sockaddr*)&m_acs_ret_addr, m_sz_acs_ret_addr);
-}
-
-void f_aws1_ctrl::rcv_acs_chan(s_aws1_ctrl_pars & acpkt)
-{
-  acpkt.suc = false;
-  if(m_ch_ctrl_ui == NULL){
-    cerr << m_name  << " does not have control input channel." << endl;
-  }else{
-    m_ch_ctrl_ui->get_pars(acpkt);
-  }
-}
-
-void f_aws1_ctrl::snd_acs_chan(s_aws1_ctrl_pars & acpkt)
-{
-  if(m_ch_ctrl_out == NULL){
-    cerr << m_name << " does not have control output channel." << endl;
-  }else{
-    m_ch_ctrl_out->set_pars(acpkt);
-  }
-}
-
-void f_aws1_ctrl::set_acpkt(s_aws1_ctrl_pars & acpkt)
-{
-  acpkt = m_acp;
-  acpkt.tcur = m_cur_time;
-  acpkt.suc = true;
-}
-
-void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
-{
-  if(!acpkt.suc){
-    //  cerr << "Failed to recieve packet." << endl;
-    return;
-  }
-  
-  m_acp.tcur = acpkt.tcur;
-  m_acp.ctrl_src = acpkt.ctrl_src;
-  switch(m_acp.ctrl_src){
+  switch(m_stat.ctrl_src){
   case ACS_UI:
-    m_acp.rud_aws = acpkt.rud_aws;
-    m_acp.meng_aws = acpkt.meng_aws;
-    m_acp.seng_aws = acpkt.seng_aws;
+    m_stat.rud_aws = inst.rud_aws;
+    m_stat.meng_aws = inst.meng_aws;
+    m_stat.seng_aws = inst.seng_aws;
     break;
   case ACS_AP1:
     if(m_ch_ctrl_ap1){
-      s_aws1_ctrl_pars ctrl;
-      m_ch_ctrl_ap1->get_pars(ctrl);
-      m_acp.rud_aws = ctrl.rud_aws;
-      m_acp.meng_aws = ctrl.meng_aws;
-      m_acp.seng_aws = ctrl.seng_aws;
+      m_ch_ctrl_ap1->get(inst);
+      m_stat.rud_aws = inst.rud_aws;
+      m_stat.meng_aws = inst.meng_aws;
+      m_stat.seng_aws = inst.seng_aws;
     }else{
       cerr << "In " << m_name << ", ";
       cerr << "No autopilot channel 1 is connected" << endl;
@@ -508,11 +403,10 @@ void f_aws1_ctrl::set_ctrl(s_aws1_ctrl_pars & acpkt)
     break;
   case ACS_AP2:
     if(m_ch_ctrl_ap2){
-      s_aws1_ctrl_pars ctrl;
-      m_ch_ctrl_ap2->get_pars(ctrl);
-      m_acp.rud_aws = ctrl.rud_aws;
-      m_acp.meng_aws = ctrl.meng_aws;
-      m_acp.seng_aws = ctrl.seng_aws;
+      m_ch_ctrl_ap2->get(inst);
+      m_stat.rud_aws = inst.rud_aws;
+      m_stat.meng_aws = inst.meng_aws;
+      m_stat.seng_aws = inst.seng_aws;
     }else{
       cerr << "In " << m_name << ", ";
       cerr << "No autopilot channel 2 is connected" << endl;
