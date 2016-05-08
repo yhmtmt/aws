@@ -85,7 +85,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 
 	float lat, lon, alt, galt;
 	long long t = 0;
-	ch_state * pstate = get_state();
+	ch_state * pstate = get_ch_state();
 	pstate->get_position(t, lat, lon, alt, galt);
 	pstate->get_position_ecef(t, Porg.x, Porg.y, Porg.z);
 	Rorg = pstate->get_enu_rotation(t);
@@ -123,24 +123,24 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	switch(m_op){
 	case EMO_EDT_RT:
 		if(js.is_event_down(js.elx)){
-			ch_wp * pwp = get_wp();
+			ch_wp * pwp = get_ch_wp();
 			pwp->lock();
 			pwp->prev_focus();
 			pwp->unlock();
 		}else if(js.is_event_down(js.erx)){
-			ch_wp * pwp = get_wp();
+			ch_wp * pwp = get_ch_wp();
 			pwp->lock();
 			pwp->next_focus();
 			pwp->unlock();
 		}
 
 		if(js.is_event_down(js.eb)){
-			ch_wp * pwp = get_wp();
+			ch_wp * pwp = get_ch_wp();
 			pwp->lock();
 			pwp->ers();
 			pwp->unlock();
 		}else if(js.is_event_down(js.ea)){
-			ch_wp * pwp = get_wp();
+			ch_wp * pwp = get_ch_wp();
 			/*
 			s_wp wp;
 			wp.rx = cp_rx; 
@@ -176,7 +176,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 			if(pf){
 				fprintf(pf, "%s\n", m_aws1_waypoint_file_version);
 			
-				ch_wp * pwp = get_wp();
+				ch_wp * pwp = get_ch_wp();
 				fprintf(pf, "%d\n", pwp->get_num_wps());
 				pwp->lock();
 				int i = 0;
@@ -219,7 +219,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 					}
 				}
 				if(c == '\n' && valid){
-					ch_wp * pwp = get_wp();
+					ch_wp * pwp = get_ch_wp();
 					int num_wps;
 					if(EOF == fscanf(pf, "%d\n", &num_wps)){
 						cerr << "Unexpected end of file was detected in " << fname << "." << endl;
@@ -285,7 +285,7 @@ void c_aws1_ui_map::draw()
 {
   float cog, sog, roll, pitch, yaw;
   long long t = 0;
-  ch_state * pstate = get_state();
+  ch_state * pstate = get_ch_state();
   pstate->get_velocity(t, cog, sog);
   pstate->get_attitude(t, roll, pitch, yaw);
   
@@ -338,7 +338,7 @@ void c_aws1_ui_map::draw()
 	{
 		bool prev = false;
 		Point2f pos_prev;
-		ch_wp * pwp = get_wp();
+		ch_wp * pwp = get_ch_wp();
 		if(pwp){
 			pwp->lock();
 
@@ -437,7 +437,7 @@ void c_aws1_ui_map::draw()
 
 	// draw ais objects
 	{
-		ch_ais_obj * pobj = get_ais_obj();
+		ch_ais_obj * pobj = get_ch_ais_obj();
 		if(pobj){
 			pobj->lock();
 			for(pobj->begin();!pobj->is_end(); pobj->next()){
@@ -547,7 +547,7 @@ void c_aws1_ui_map::draw_ui_map_operation(float wfont, float hfont, float lw)
 		switch(i){
 		case EMO_EDT_RT:
 			{
-				ch_wp * pwp = get_wp();
+				ch_wp * pwp = get_ch_wp();
 				if(pwp && pwp->get_num_wps() && pwp->get_num_wps() != pwp->get_focus()){
 				  snprintf(str, 12, "WP[%03d]", pwp->get_focus());
 				}else{

@@ -68,10 +68,10 @@ void c_aws1_ui_normal::js(const s_jc_u3613m & js)
     m_seng_aws_f = max((float)0.0, m_seng_aws_f);    
   }
 
-  s_aws1_ctrl_pars & acp = get_acp();
-  acp.rud_aws = (unsigned char) m_rud_aws_f;
-  acp.meng_aws = (unsigned char) m_meng_aws_f;
-  acp.seng_aws = (unsigned char) m_seng_aws_f;
+  s_aws1_ctrl_inst & inst = get_ctrl_inst();
+  inst.rud_aws = (unsigned char) m_rud_aws_f;
+  inst.meng_aws = (unsigned char) m_meng_aws_f;
+  inst.seng_aws = (unsigned char) m_seng_aws_f;
 }
 
 void c_aws1_ui_normal::draw()
@@ -93,19 +93,19 @@ void c_aws1_ui_normal::key(int key, int scancode, int action, int mods)
 		switch(key){
 		case GLFW_KEY_RIGHT:
 			{
-				const s_aws1_ctrl_pars & acp = get_acp();
+				const s_aws1_ctrl_inst & acp = get_ctrl_inst();
 				m_rud_aws_f = (step_up(acp.rud_aws, m_rud_pos));
 			}
 			break;
 		case GLFW_KEY_LEFT:
 			{
-				const s_aws1_ctrl_pars & acp = get_acp();
+				const s_aws1_ctrl_inst & acp = get_ctrl_inst();
 				m_rud_aws_f = (step_down(acp.rud_aws, m_rud_pos));
 			}
 			break;
 		case GLFW_KEY_UP:
 			{
-				const s_aws1_ctrl_pars & acp = get_acp();
+				const s_aws1_ctrl_inst & acp = get_ctrl_inst();
 				if(m_ec == EC_MAIN){
 					m_meng_aws_f = (step_up(acp.meng_aws, m_meng_pos));
 				}else{
@@ -115,7 +115,7 @@ void c_aws1_ui_normal::key(int key, int scancode, int action, int mods)
 			break;
 		case GLFW_KEY_DOWN:
 			{
-				const s_aws1_ctrl_pars & acp = get_acp();
+				const s_aws1_ctrl_inst & acp = get_ctrl_inst();
 				if(m_ec == EC_MAIN){
 					m_meng_aws_f = (step_down(acp.meng_aws, m_meng_pos));
 				}else{
@@ -142,41 +142,41 @@ const long long c_aws1_ui_core::get_cur_time()
 	return pui->m_cur_time;
 }
 
-ch_state * c_aws1_ui_core::get_state()
+ch_state * c_aws1_ui_core::get_ch_state()
 {
 	return pui->m_state;
 }
 
-ch_aws1_ctrl * c_aws1_ui_core::get_ctrl_in()
+ch_aws1_ctrl_inst * c_aws1_ui_core::get_ch_ctrl_inst()
 {
-	return pui->m_ch_ctrl_in;
+	return pui->m_ch_ctrl_inst;
 }
 
-ch_aws1_ctrl * c_aws1_ui_core::get_ctrl_out()
+ch_aws1_ctrl_stat * c_aws1_ui_core::get_ch_ctrl_stat()
 {
-	return pui->m_ch_ctrl_out;
+	return pui->m_ch_ctrl_stat;
 }
 
-ch_wp * c_aws1_ui_core::get_wp(){
+ch_wp * c_aws1_ui_core::get_ch_wp(){
 	return pui->m_ch_wp;
 }
 
-ch_obj * c_aws1_ui_core::get_obj(){
+ch_obj * c_aws1_ui_core::get_ch_obj(){
 	return pui->m_ch_obj;
 }
 
-ch_ais_obj * c_aws1_ui_core::get_ais_obj()
+ch_ais_obj * c_aws1_ui_core::get_ch_ais_obj()
 {
 	return pui->m_ch_ais_obj;
 }
 
-ch_image * c_aws1_ui_core::get_img(){
+ch_image * c_aws1_ui_core::get_ch_img(){
 	return pui->m_ch_img;
 }
 
-s_aws1_ctrl_pars & c_aws1_ui_core::get_acp()
+s_aws1_ctrl_inst & c_aws1_ui_core::get_ctrl_inst()
 {
-	return pui->m_acp;
+	return pui->m_inst;
 }
 
 const Size & c_aws1_ui_core::get_window_size()

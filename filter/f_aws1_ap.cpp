@@ -29,21 +29,21 @@ using namespace cv;
 
 #include "f_aws1_ap.h"
 
-f_aws1_ap::f_aws1_ap(const char * name): f_base(name), m_state(NULL), m_ctrl_out(NULL), m_ctrl_in(NULL),
+f_aws1_ap::f_aws1_ap(const char * name): f_base(name), m_state(NULL), m_ctrl_inst(NULL), m_ctrl_stat(NULL),
 	m_verb(false),
 	m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
 	m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
 	m_cdiff(0.f), m_sdiff(0.f), m_dcdiff(0.f), m_icdiff(0.f), m_dsdiff(0.f), m_isdiff(0.f)
 {
 	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
-	register_fpar("ch_ctrl_out", (ch_base**)&m_ctrl_out, typeid(ch_aws1_ctrl).name(), "Ctrl output channel");
-	register_fpar("ch_ctrl_in", (ch_base**)&m_ctrl_in, typeid(ch_aws1_ctrl).name(), "Ctrl input channel");
+	register_fpar("ch_ctrl_inst", (ch_base**)&m_ctrl_inst, typeid(ch_aws1_ctrl_inst).name(), "Ctrl instruction channel");
+	register_fpar("ch_ctrl_stat", (ch_base**)&m_ctrl_stat, typeid(ch_aws1_ctrl_stat).name(), "Ctrl status channel");
 	register_fpar("ch_wp", (ch_base**)&m_wp, typeid(ch_wp).name(), "Waypoint channel");
 
 	register_fpar("verb", &m_verb, "Verbose for debug.");
-	register_fpar("rud", &m_acp.rud_aws, "Rudder value");
-	register_fpar("meng", &m_acp.meng_aws, "Main engine value");
-	register_fpar("seng", &m_acp.seng_aws, "Sub engine value");
+	register_fpar("rud", &m_inst.rud_aws, "Rudder value");
+	register_fpar("meng", &m_inst.meng_aws, "Main engine value");
+	register_fpar("seng", &m_inst.seng_aws, "Sub engine value");
 
 	register_fpar("smax", &m_smax, "Maximum speed in knot");
 
@@ -80,11 +80,11 @@ bool f_aws1_ap::proc()
 	if(!m_state){
 		return false;
 	}
-	if(!m_ctrl_in){
+	if(!m_ctrl_stat){
 		return false;
 	}
 
-	s_aws1_ctrl_pars acpkt;
+	s_aws1_ctrl_stat stat;
 	long long t = 0;
 	m_state->get_velocity(t, cog, sog);
 	Mat Rorg;
@@ -92,8 +92,8 @@ bool f_aws1_ap::proc()
 	Rorg = m_state->get_enu_rotation(t);
 	m_state->get_position_ecef(t, Porg.x, Porg.y, Porg.z);
 
-	m_ctrl_in->get_pars(acpkt);
-	if(acpkt.ctrl_src == ACS_AP1)
+	m_ctrl_stat->get(stat);
+	if(stat.ctrl_src == ACS_AP1)
 	{		
 		m_wp->lock();
 		if(m_wp->is_finished()){
@@ -145,11 +145,11 @@ bool f_aws1_ap::proc()
 		m_icdiff = m_isdiff = 0.;
 	}
 
-	if(m_ctrl_out){
-		m_acp.meng_aws = saturate_cast<unsigned char>(m_meng);
-		m_acp.seng_aws = saturate_cast<unsigned char>(m_seng);
-		m_acp.rud_aws = saturate_cast<unsigned char>(m_rud);
-		m_ctrl_out->set_pars(m_acp);
+	if(m_ctrl_inst){
+		m_inst.meng_aws = saturate_cast<unsigned char>(m_meng);
+		m_inst.seng_aws = saturate_cast<unsigned char>(m_seng);
+		m_inst.rud_aws = saturate_cast<unsigned char>(m_rud);
+		m_ctrl_inst->set(m_inst);
 	}
 
 	return true;

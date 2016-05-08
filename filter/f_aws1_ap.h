@@ -26,10 +26,10 @@ class f_aws1_ap: public f_base
 {
 protected:
 	ch_state * m_state;
-	ch_aws1_ctrl * m_ctrl_out;
-	ch_aws1_ctrl * m_ctrl_in;
+	ch_aws1_ctrl_inst * m_ctrl_inst;
+	ch_aws1_ctrl_stat * m_ctrl_stat;
 	ch_wp * m_wp;
-	s_aws1_ctrl_pars m_acp;
+	s_aws1_ctrl_inst m_inst;
 
 	bool m_verb;
 

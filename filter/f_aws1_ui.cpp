@@ -42,7 +42,7 @@ const char * f_aws1_ui::m_str_aws1_ui_mode[AUM_UNDEF] = {
 
 f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
 					m_state(NULL),
-					 m_ch_ctrl_in(NULL), m_ch_ctrl_out(NULL), m_ch_wp(NULL), 
+					 m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL), 
 					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL),
 					 m_acd_sock(-1), m_acd_port(20100), 
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
@@ -51,8 +51,8 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 	m_path_storage[0] = '.';m_path_storage[1] = '\0';
 
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
-  register_fpar("ch_ctrl_in", (ch_base**)&m_ch_ctrl_in, typeid(ch_aws1_ctrl).name(), "Control input channel.");
-  register_fpar("ch_ctrl_out", (ch_base**)&m_ch_ctrl_out, typeid(ch_aws1_ctrl).name(), "Control output channel.");
+  register_fpar("ch_ctrl_inst", (ch_base**)&m_ch_ctrl_inst, typeid(ch_aws1_ctrl_inst).name(), "Control input channel.");
+  register_fpar("ch_ctrl_stat", (ch_base**)&m_ch_ctrl_stat, typeid(ch_aws1_ctrl_stat).name(), "Control output channel.");
   register_fpar("ch_wp", (ch_base**)&m_ch_wp, typeid(ch_wp).name(), "Waypoint channel");
   register_fpar("ch_obj", (ch_base**)&m_ch_obj, typeid(ch_obj).name(), "Object channel");
   register_fpar("ch_ais_obj", (ch_base**)&m_ch_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel");
@@ -63,7 +63,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("udpctrl", &m_udp_ctrl, "If asserted, Direct UDP is used for control channel. Otherwise, ch_ctrl_{in,out} are used.");
   register_fpar("acdhost", m_acd_host, 1023, "Host address controlling AWS1.");
   register_fpar("acdport", &m_acd_port, "Port number opened for controlling AWS1.");
-  register_fpar("acs", (int*) &m_acp.ctrl_src, (int) ACS_NONE, str_aws1_ctrl_src, "Control source.");
+  register_fpar("acs", (int*) &m_stat.ctrl_src, (int) ACS_NONE, str_aws1_ctrl_src, "Control source.");
   register_fpar("verb", &m_verb, "Debug mode.");
   
   register_fpar("js", &m_js_id, "Joystick id");
@@ -95,10 +95,10 @@ f_aws1_ui::~f_aws1_ui()
 
 bool f_aws1_ui::init_run()
 {
-  m_acp.ctrl_src = ACS_UI;
-  m_acp.rud_aws = 127;
-  m_acp.meng_aws = 127;
-  m_acp.seng_aws = 127;
+  m_inst.ctrl_src = ACS_UI;
+  m_inst.rud_aws = 127;
+  m_inst.meng_aws = 127;
+  m_inst.seng_aws = 127;
 
   // initializing udp socket
   if(m_udp_ctrl){
@@ -140,7 +140,7 @@ void f_aws1_ui::ui_force_ctrl_stop()
 			m_js.erb & s_jc_u3613m::EB_STDOWN &&
 			m_js.ert & s_jc_u3613m::EB_STDOWN){
 				((c_aws1_ui_normal *)m_ui[AUM_NORMAL])->set_ctrl(127, 127, 127);
-				m_acp.ctrl_src = ACS_UI;
+				m_stat.ctrl_src = ACS_UI;
 				m_mode = AUM_NORMAL;
 		}
 	}
@@ -182,14 +182,14 @@ void f_aws1_ui::ui_show_rudder()
 	float hm = (float)(1.5 * hfont);
 	float lw = (float)(1.0 / m_sz_win.width);
 
-	float rud_inst = (float)m_acp.rud_aws;
+	float rud_inst = (float)m_stat.rud_aws;
 	float rud_inst_cur = 
-		(float)map_oval(m_acp.rud, 
-		m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
+		(float)map_oval(m_stat.rud, 
+		m_stat.rud_max, m_stat.rud_nut, m_stat.rud_min,
 		0xff, 0x7f, 0x00);
 	float rud_sta = 
-		(float) map_oval(m_acp.rud_sta, 
-		m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min,
+		(float) map_oval(m_stat.rud_sta, 
+		m_stat.rud_sta_max, m_stat.rud_sta_nut, m_stat.rud_sta_min,
 		0xff, 0x7f, 0x00);
 
 	float xorg =  (float)(0. - 255. * 0.5 * m_ixscale);
@@ -251,11 +251,11 @@ void f_aws1_ui::ui_show_meng()
 	float hm = (float)(255.0 * m_iyscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 
-	float meng_inst = (float)m_acp.meng_aws;
+	float meng_inst = (float)m_stat.meng_aws;
 	float meng_inst_cur = 
-		(float)map_oval(m_acp.meng,
-		m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, 
-		m_acp.meng_nub, m_acp.meng_min,
+		(float)map_oval(m_stat.meng,
+		m_stat.meng_max, m_stat.meng_nuf, m_stat.meng_nut, 
+		m_stat.meng_nub, m_stat.meng_min,
 		0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
 	float x = (float)(wfont - 1.0);
 	float y = (float)(1.0 - 6 * hfont);
@@ -278,11 +278,11 @@ void f_aws1_ui::ui_show_seng()
 	float hm = (float)(255.0 * m_iyscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 
-	float seng_inst = (float)m_acp.seng_aws;
+	float seng_inst = (float)m_stat.seng_aws;
 	float seng_inst_cur = 
-		(float) map_oval(m_acp.seng,
-		m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, 
-		m_acp.seng_nub, m_acp.seng_min,
+		(float) map_oval(m_stat.seng,
+		m_stat.seng_max, m_stat.seng_nuf, m_stat.seng_nut, 
+		m_stat.seng_nub, m_stat.seng_min,
 		0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
 	float x = (float)(6 * wfont - 1.0);
 	float y = (float)(1.0 - 6 * hfont);
@@ -415,7 +415,7 @@ void f_aws1_ui::ui_show_sys_state()
 	float x = (float)(xorg - w);	
 	drawGlSquare2Df(xorg, yorg, x, (float)(yorg - h), 0, 1, 0, 1, lw);
 
-	snprintf(str, 32, "CTRL: %8s", str_aws1_ctrl_src[m_acp.ctrl_src]);
+	snprintf(str, 32, "CTRL: %8s", str_aws1_ctrl_src[m_stat.ctrl_src]);
 	x += wfont;
 	float y = (float)(yorg - 2 * hfont);
 	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
@@ -517,7 +517,7 @@ void f_aws1_ui::ui_handle_menu()
 	if((m_js.estart & s_jc_u3613m::EB_EVDOWN) && (m_ui_menu == false)){
 		m_ui_menu = true;
 		m_quit = false;
-		m_menu_acs = m_acp.ctrl_src;
+		m_menu_acs = m_stat.ctrl_src;
 		m_menu_mode = m_mode;
 		return;
 	}
@@ -535,7 +535,7 @@ void f_aws1_ui::ui_handle_menu()
 		if(m_quit){
 			m_bactive = false;
 		}
-		m_acp.ctrl_src = m_menu_acs;
+		m_stat.ctrl_src = m_menu_acs;
 		m_mode = m_menu_mode;
 		m_ui_menu = false;
 	}
@@ -631,9 +631,8 @@ bool f_aws1_ui::proc()
 	//<-- system joypad handling	
 
 	// communictation with control channels or control udp sockets
-	s_aws1_ctrl_pars acpkt;
-	snd_ctrl(acpkt);
-	rcv_ctrl(acpkt);
+	snd_ctrl_inst();
+	rcv_ctrl_stat();
 
 	// Window forcus is now at this window
 	glfwMakeContextCurrent(pwin());
@@ -725,26 +724,26 @@ void drawGlEngineIndicator(const char * title,
 	     "B", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 }
 
-void f_aws1_ui::snd_ctrl(s_aws1_ctrl_pars & acpkt)
+void f_aws1_ui::snd_ctrl_inst()
 {
-  acpkt.ctrl_src = m_acp.ctrl_src;
-  acpkt.rud_aws = m_acp.rud_aws;
-  acpkt.meng_aws = m_acp.meng_aws;
-  acpkt.seng_aws = m_acp.seng_aws;
-  acpkt.suc = true;
+	s_aws1_ctrl_inst inst;
+
+  inst.ctrl_src = m_stat.ctrl_src;
+  inst.rud_aws = m_stat.rud_aws;
+  inst.meng_aws = m_stat.meng_aws;
+  inst.seng_aws = m_stat.seng_aws;
   int len;
   if(m_udp_ctrl){
-    len = sendto(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 
+    len = sendto(m_acd_sock, (char*) &inst, sizeof(inst), 
 		 0, (sockaddr*)&m_acd_sock_addr, sizeof(m_acd_sock_addr));
-  }else if(m_ch_ctrl_out){
-    m_ch_ctrl_out->set_pars(acpkt);
+  }else if(m_ch_ctrl_inst){
+    m_ch_ctrl_inst->set(inst);
   }
 }
 
-void f_aws1_ui::rcv_ctrl(s_aws1_ctrl_pars & acpkt)
+void f_aws1_ui::rcv_ctrl_stat()
 {
-  acpkt.suc = false;
-
+	s_aws1_ctrl_stat stat;
   if(m_udp_ctrl){
     int res;
     fd_set fr, fe;
@@ -762,75 +761,75 @@ void f_aws1_ui::rcv_ctrl(s_aws1_ctrl_pars & acpkt)
     
     if(res > 0){
       if(FD_ISSET(m_acd_sock, &fr)){
-	int len = recv(m_acd_sock, (char*) &acpkt, sizeof(acpkt), 0);
+	int len = recv(m_acd_sock, (char*) &stat, sizeof(stat), 0);
 	if(len == SOCKET_ERROR){
 	  cerr << "Socket error during recieving packet in " << m_name << "." << endl;
-	  acpkt.suc = false;
+	  return;
 	}
       }else if(FD_ISSET(m_acd_sock, &fe)){
 	cerr << "Socket error during recieving packet in " << m_name << "." << endl;
-	acpkt.suc = false;
+	return;
       }
       
     }else if(res == -1){
       int en = errno;
-      cerr << "Error no " << en << " " << strerror(en) << endl;
+      cerr << "Error no " << en << " " << strerror(en) << endl;	  
+	  return;
     }else{
       cerr << "Unknown error in " << m_name << "." << endl;
+	  return;
     }
-  }else if(m_ch_ctrl_in){
-    m_ch_ctrl_in->get_pars(acpkt);
+  }else if(m_ch_ctrl_stat){
+    m_ch_ctrl_stat->get(stat);
   }
 
-  if(acpkt.suc){
-    m_acp.rud_rmc = acpkt.rud_rmc;
-    m_acp.meng_rmc = acpkt.meng_rmc;
-    m_acp.seng_rmc = acpkt.seng_rmc;
-    m_acp.rud = acpkt.rud;
-    m_acp.meng = acpkt.meng;
-    m_acp.seng = acpkt.seng;
-    m_acp.rud_sta = acpkt.rud_sta;
-    m_acp.rud_sta_out = acpkt.rud_sta_out;
-    
-    m_acp.rud_max_rmc = acpkt.rud_max_rmc;
-    m_acp.rud_nut_rmc = acpkt.rud_nut_rmc;
-    m_acp.rud_min_rmc = acpkt.rud_min_rmc;
-    
-    m_acp.meng_max_rmc = acpkt.meng_max_rmc;
-    m_acp.meng_nuf_rmc = acpkt.meng_nuf_rmc;
-    m_acp.meng_nut_rmc = acpkt.meng_nut_rmc;
-    m_acp.meng_nub_rmc = acpkt.meng_nub_rmc;
-    m_acp.meng_min_rmc = acpkt.meng_min_rmc;
-    
-    m_acp.seng_max_rmc = acpkt.seng_max_rmc;
-    m_acp.seng_nuf_rmc = acpkt.seng_nuf_rmc;
-    m_acp.seng_nut_rmc = acpkt.seng_nut_rmc;
-    m_acp.seng_nub_rmc = acpkt.seng_nub_rmc;
-    m_acp.seng_min_rmc = acpkt.seng_min_rmc;
-    
-    m_acp.rud_sta_max = acpkt.rud_sta_max;
-    m_acp.rud_sta_nut = acpkt.rud_sta_nut;
-    m_acp.rud_sta_min = acpkt.rud_sta_min;
+  m_stat.rud_rmc = stat.rud_rmc;
+  m_stat.meng_rmc = stat.meng_rmc;
+  m_stat.seng_rmc = stat.seng_rmc;
+  m_stat.rud = stat.rud;
+  m_stat.meng = stat.meng;
+  m_stat.seng = stat.seng;
+  m_stat.rud_sta = stat.rud_sta;
+  m_stat.rud_sta_out = stat.rud_sta_out;
 
-    m_acp.meng_max = acpkt.meng_max;
-    m_acp.meng_nuf = acpkt.meng_nuf;
-    m_acp.meng_nut = acpkt.meng_nut;
-    m_acp.meng_nub = acpkt.meng_nub;
-    m_acp.meng_min = acpkt.meng_min;
+  m_stat.rud_max_rmc = stat.rud_max_rmc;
+  m_stat.rud_nut_rmc = stat.rud_nut_rmc;
+  m_stat.rud_min_rmc = stat.rud_min_rmc;
 
-    m_acp.seng_max = acpkt.seng_max;
-    m_acp.seng_nuf = acpkt.seng_nuf;
-    m_acp.seng_nut = acpkt.seng_nut;
-    m_acp.seng_nub = acpkt.seng_nub;
-    m_acp.seng_min = acpkt.seng_min;
-    m_acp.rud_max = acpkt.rud_max;
-    m_acp.rud_nut = acpkt.rud_nut;
-    m_acp.rud_min = acpkt.rud_min;
-    
-    m_acp.rud_sta_out_max = acpkt.rud_sta_out_max;
-    m_acp.rud_sta_out_nut = acpkt.rud_sta_out_nut;
-    m_acp.rud_sta_out_min = acpkt.rud_sta_out_min;
-  }
+  m_stat.meng_max_rmc = stat.meng_max_rmc;
+  m_stat.meng_nuf_rmc = stat.meng_nuf_rmc;
+  m_stat.meng_nut_rmc = stat.meng_nut_rmc;
+  m_stat.meng_nub_rmc = stat.meng_nub_rmc;
+  m_stat.meng_min_rmc = stat.meng_min_rmc;
+
+  m_stat.seng_max_rmc = stat.seng_max_rmc;
+  m_stat.seng_nuf_rmc = stat.seng_nuf_rmc;
+  m_stat.seng_nut_rmc = stat.seng_nut_rmc;
+  m_stat.seng_nub_rmc = stat.seng_nub_rmc;
+  m_stat.seng_min_rmc = stat.seng_min_rmc;
+
+  m_stat.rud_sta_max = stat.rud_sta_max;
+  m_stat.rud_sta_nut = stat.rud_sta_nut;
+  m_stat.rud_sta_min = stat.rud_sta_min;
+
+  m_stat.meng_max = stat.meng_max;
+  m_stat.meng_nuf = stat.meng_nuf;
+  m_stat.meng_nut = stat.meng_nut;
+  m_stat.meng_nub = stat.meng_nub;
+  m_stat.meng_min = stat.meng_min;
+
+  m_stat.seng_max = stat.seng_max;
+  m_stat.seng_nuf = stat.seng_nuf;
+  m_stat.seng_nut = stat.seng_nut;
+  m_stat.seng_nub = stat.seng_nub;
+  m_stat.seng_min = stat.seng_min;
+  m_stat.rud_max = stat.rud_max;
+  m_stat.rud_nut = stat.rud_nut;
+  m_stat.rud_min = stat.rud_min;
+
+  m_stat.rud_sta_out_max = stat.rud_sta_out_max;
+  m_stat.rud_sta_out_nut = stat.rud_sta_out_nut;
+  m_stat.rud_sta_out_min = stat.rud_sta_out_min;
 }
 
 void f_aws1_ui::_mouse_button_callback(int button, int action, int mods)
@@ -846,17 +845,17 @@ void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)
 
 f_aws1_ui_test::f_aws1_ui_test(const char * name):f_base(name),
 	m_state(NULL), m_ch_ais_obj(NULL),
-	m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL), m_ch_ctrl_out(NULL),
+	m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL), m_ch_ctrl_stat(NULL),
 	m_ahrs(false), m_gps(false), r(0), p(0), y(0), lon(0), lat(0), alt(0), galt(0), cog(0), sog(0), depth(0),
 	m_rud_sta_sim(0.f),
 	m_add_ais_ship(false), ais_mmsi(0), ais_lat(0), ais_lon(0), ais_cog(0), ais_sog(0), ais_yaw(0)
 {
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_ais_obj", (ch_base**)&m_ch_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel");
-  register_fpar("ch_ctrl_ui", (ch_base**)&m_ch_ctrl_ui, typeid(ch_aws1_ctrl).name(), "Control input channel.");
-  register_fpar("ch_ctrl_ap1", (ch_base**)&m_ch_ctrl_ap1, typeid(ch_aws1_ctrl).name(), "Autopilot 1 control input channel.");
-  register_fpar("ch_ctrl_ap2", (ch_base**)&m_ch_ctrl_ap2, typeid(ch_aws1_ctrl).name(), "Autopilot 2 control input channel.");
-  register_fpar("ch_ctrl_out", (ch_base**)&m_ch_ctrl_out, typeid(ch_aws1_ctrl).name(), "Control output channel.");
+  register_fpar("ch_ctrl_ui", (ch_base**)&m_ch_ctrl_ui, typeid(ch_aws1_ctrl_inst).name(), "Control input channel.");
+  register_fpar("ch_ctrl_ap1", (ch_base**)&m_ch_ctrl_ap1, typeid(ch_aws1_ctrl_inst).name(), "Autopilot 1 control input channel.");
+  register_fpar("ch_ctrl_ap2", (ch_base**)&m_ch_ctrl_ap2, typeid(ch_aws1_ctrl_inst).name(), "Autopilot 2 control input channel.");
+  register_fpar("ch_ctrl_stat", (ch_base**)&m_ch_ctrl_stat, typeid(ch_aws1_ctrl_stat).name(), "Control output channel.");
   register_fpar("ch_img", (ch_base**)&m_ch_img, typeid(ch_image_ref).name(), "Image channel");	
 
   // for m_state
@@ -875,68 +874,68 @@ f_aws1_ui_test::f_aws1_ui_test(const char * name):f_base(name),
 
   // for ch_ctrl
   // aws's control parameters
-  register_fpar("awsrud", &m_acp.rud_aws, "Control value of AWS1's rudder.");
-  register_fpar("awsmeng", &m_acp.meng_aws, "Control value of AWS1's main engine.");
-  register_fpar("awsseng", &m_acp.seng_aws, "Control value of AWS1's sub engine.");
+  register_fpar("awsrud", &m_stat.rud_aws, "Control value of AWS1's rudder.");
+  register_fpar("awsmeng", &m_stat.meng_aws, "Control value of AWS1's main engine.");
+  register_fpar("awsseng", &m_stat.seng_aws, "Control value of AWS1's sub engine.");
 
   // remote controller's control parameters (Read Only)
-  register_fpar("rmcrud", &m_acp.rud_rmc, "Control value of AWS1's rudder controller.");
-  register_fpar("rmcmeng", &m_acp.meng_rmc, "Control value of AWS1's main engine controller.");
-  register_fpar("rmcseng", &m_acp.seng_rmc, "Control value of AWS1's sub engine controller.");
-  register_fpar("rud_sta", &m_acp.rud_sta, "Rudder Status of AWS1's.");
+  register_fpar("rmcrud", &m_stat.rud_rmc, "Control value of AWS1's rudder controller.");
+  register_fpar("rmcmeng", &m_stat.meng_rmc, "Control value of AWS1's main engine controller.");
+  register_fpar("rmcseng", &m_stat.seng_rmc, "Control value of AWS1's sub engine controller.");
+  register_fpar("rud_sta", &m_stat.rud_sta, "Rudder Status of AWS1's.");
 
   // Remote controllers control points of the main engine. 
-  register_fpar("meng_max_rmc", &m_acp.meng_max_rmc, "Maximum control control value of AWS1's main engine controller.");
-  register_fpar("meng_nuf_rmc", &m_acp.meng_nuf_rmc, "Nutral to Forward control value of AWS1's main engine controller.");
-  register_fpar("meng_nut_rmc", &m_acp.meng_nut_rmc, "Nutral control value of AWS1's main engine controller.");
-  register_fpar("meng_nub_rmc", &m_acp.meng_nub_rmc, "Nutral to Backward control value of AWS1's main engine controller.");
-  register_fpar("meng_min_rmc", &m_acp.meng_min_rmc, "Minimum control value of AWS1's main engine controller.");
+  register_fpar("meng_max_rmc", &m_stat.meng_max_rmc, "Maximum control control value of AWS1's main engine controller.");
+  register_fpar("meng_nuf_rmc", &m_stat.meng_nuf_rmc, "Nutral to Forward control value of AWS1's main engine controller.");
+  register_fpar("meng_nut_rmc", &m_stat.meng_nut_rmc, "Nutral control value of AWS1's main engine controller.");
+  register_fpar("meng_nub_rmc", &m_stat.meng_nub_rmc, "Nutral to Backward control value of AWS1's main engine controller.");
+  register_fpar("meng_min_rmc", &m_stat.meng_min_rmc, "Minimum control value of AWS1's main engine controller.");
 
   // Each control points of the main engine output.
-  register_fpar("meng_max", &m_acp.meng_max, "Maximum control value for AWS1's main engine.");
-  register_fpar("meng_nuf", &m_acp.meng_nuf, "Nutral to Forward control value for AWS1's main engine.");
-  register_fpar("meng_nut", &m_acp.meng_nut, "Nutral control value for AWS1's main engine.");
-  register_fpar("meng_nub", &m_acp.meng_nub, "Nutral to Backward control value for AWS1's main engine.");
-  register_fpar("meng_min", &m_acp.meng_min, "Minimum control value for AWS1's main engine.");
+  register_fpar("meng_max", &m_stat.meng_max, "Maximum control value for AWS1's main engine.");
+  register_fpar("meng_nuf", &m_stat.meng_nuf, "Nutral to Forward control value for AWS1's main engine.");
+  register_fpar("meng_nut", &m_stat.meng_nut, "Nutral control value for AWS1's main engine.");
+  register_fpar("meng_nub", &m_stat.meng_nub, "Nutral to Backward control value for AWS1's main engine.");
+  register_fpar("meng_min", &m_stat.meng_min, "Minimum control value for AWS1's main engine.");
 
   // Remote controllers control points of the sub engine.
-  register_fpar("seng_max_rmc", &m_acp.seng_max_rmc, "Maximum control value of AWS1's sub engine controller.");
-  register_fpar("seng_nuf_rmc", &m_acp.seng_nuf_rmc, "Nutral to Forward control value of AWS1's sub engine controller.");
-  register_fpar("seng_nut_rmc", &m_acp.seng_nut_rmc, "Nutral control value of AWS1's sub engine controller.");
-  register_fpar("seng_nub_rmc", &m_acp.seng_nub_rmc, "Nutral to Backward control value of AWS1's sub engine controller.");
-  register_fpar("seng_min_rmc", &m_acp.seng_min_rmc, "Minimum control value of AWS1's sub engine controller.");
+  register_fpar("seng_max_rmc", &m_stat.seng_max_rmc, "Maximum control value of AWS1's sub engine controller.");
+  register_fpar("seng_nuf_rmc", &m_stat.seng_nuf_rmc, "Nutral to Forward control value of AWS1's sub engine controller.");
+  register_fpar("seng_nut_rmc", &m_stat.seng_nut_rmc, "Nutral control value of AWS1's sub engine controller.");
+  register_fpar("seng_nub_rmc", &m_stat.seng_nub_rmc, "Nutral to Backward control value of AWS1's sub engine controller.");
+  register_fpar("seng_min_rmc", &m_stat.seng_min_rmc, "Minimum control value of AWS1's sub engine controller.");
 
   // Each control points of the sub engine output
-  register_fpar("seng_max", &m_acp.seng_max, "Maximum control value for AWS1's sub engine.");
-  register_fpar("seng_nuf", &m_acp.seng_nuf, "Nutral to Forward control value for AWS1's sub engine.");
-  register_fpar("seng_nut", &m_acp.seng_nut, "Nutral control value for AWS1's sub engine.");
-  register_fpar("seng_nub", &m_acp.seng_nub, "Nutral to Backward control value for AWS1's sub engine.");
-  register_fpar("seng_min", &m_acp.seng_min, "Minimum control value for AWS1's sub engine.");
+  register_fpar("seng_max", &m_stat.seng_max, "Maximum control value for AWS1's sub engine.");
+  register_fpar("seng_nuf", &m_stat.seng_nuf, "Nutral to Forward control value for AWS1's sub engine.");
+  register_fpar("seng_nut", &m_stat.seng_nut, "Nutral control value for AWS1's sub engine.");
+  register_fpar("seng_nub", &m_stat.seng_nub, "Nutral to Backward control value for AWS1's sub engine.");
+  register_fpar("seng_min", &m_stat.seng_min, "Minimum control value for AWS1's sub engine.");
 
   // Remote controller's control points of the rudder.
-  register_fpar("rud_max_rmc", &m_acp.rud_max_rmc, "Maximum control value of AWS1's rudder controller.");
-  register_fpar("rud_nut_rmc", &m_acp.rud_nut_rmc, "Nutral control value of AWS1's rudder controller.");
-  register_fpar("rud_min_rmc", &m_acp.rud_min_rmc, "Minimum control value of AWS1's rudder controller.");
+  register_fpar("rud_max_rmc", &m_stat.rud_max_rmc, "Maximum control value of AWS1's rudder controller.");
+  register_fpar("rud_nut_rmc", &m_stat.rud_nut_rmc, "Nutral control value of AWS1's rudder controller.");
+  register_fpar("rud_min_rmc", &m_stat.rud_min_rmc, "Minimum control value of AWS1's rudder controller.");
 
   // Each controll points of the rudder output.
-  register_fpar("rud_max", &m_acp.rud_max, "Maximum control value for AWS1's rudder.");
-  register_fpar("rud_nut", &m_acp.rud_nut, "Nutral control value for AWS1's rudder.");
-  register_fpar("rud_min", &m_acp.rud_min, "Minimum control value for AWS1's rudder.");
+  register_fpar("rud_max", &m_stat.rud_max, "Maximum control value for AWS1's rudder.");
+  register_fpar("rud_nut", &m_stat.rud_nut, "Nutral control value for AWS1's rudder.");
+  register_fpar("rud_min", &m_stat.rud_min, "Minimum control value for AWS1's rudder.");
 
   // Rudder indicator's controll points.
-  register_fpar("rud_sta_max", &m_acp.rud_sta_max, "Maximum value of AWS1's rudder angle indicator.");
-  register_fpar("rud_sta_nut", &m_acp.rud_sta_nut, "Nutral value of AWS1's rudder angle indicator.");
-  register_fpar("rud_sta_min", &m_acp.rud_sta_min, "Minimum value of AWS1's rudder angle indicator.");
+  register_fpar("rud_sta_max", &m_stat.rud_sta_max, "Maximum value of AWS1's rudder angle indicator.");
+  register_fpar("rud_sta_nut", &m_stat.rud_sta_nut, "Nutral value of AWS1's rudder angle indicator.");
+  register_fpar("rud_sta_min", &m_stat.rud_sta_min, "Minimum value of AWS1's rudder angle indicator.");
 
   // Control points as the rudder indicator output.
-  register_fpar("rud_sta_out_max", &m_acp.rud_sta_out_max, "Maximum output value of AWS1's rudder angle to rudder pump.");
-  register_fpar("rud_sta_out_nut", &m_acp.rud_sta_out_nut, "Nutral output value of AWS1's rudder angle to rudder pump.");
-  register_fpar("rud_sta_out_min", &m_acp.rud_sta_out_min, "Minimum output value of AWS1's rudder angle to rudder pump.");
+  register_fpar("rud_sta_out_max", &m_stat.rud_sta_out_max, "Maximum output value of AWS1's rudder angle to rudder pump.");
+  register_fpar("rud_sta_out_nut", &m_stat.rud_sta_out_nut, "Nutral output value of AWS1's rudder angle to rudder pump.");
+  register_fpar("rud_sta_out_min", &m_stat.rud_sta_out_min, "Minimum output value of AWS1's rudder angle to rudder pump.");
 
-  register_fpar("meng", &m_acp.meng, "Output value for main engine.");
-  register_fpar("seng", &m_acp.meng, "Output value for sub engine.");
-  register_fpar("rud", &m_acp.rud, "Output value for rudder.");
-  register_fpar("rud_sta_out", &m_acp.rud_sta_out, "Output value for rudder status.");
+  register_fpar("meng", &m_stat.meng, "Output value for main engine.");
+  register_fpar("seng", &m_stat.meng, "Output value for sub engine.");
+  register_fpar("rud", &m_stat.rud, "Output value for rudder.");
+  register_fpar("rud_sta_out", &m_stat.rud_sta_out, "Output value for rudder status.");
 
   // for AIS data injection
   register_fpar("add_ais", &m_add_ais_ship, "If yew, new ais ship is added according to the parameter.");

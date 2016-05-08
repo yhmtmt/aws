@@ -213,7 +213,8 @@ class f_aws1_ui: public f_glfw_window
 {
  private:
   ch_state * m_state;
-  ch_aws1_ctrl * m_ch_ctrl_in, * m_ch_ctrl_out;
+  ch_aws1_ctrl_inst * m_ch_ctrl_inst;
+  ch_aws1_ctrl_stat * m_ch_ctrl_stat;
   ch_wp * m_ch_wp;
   ch_obj * m_ch_obj;
   ch_ais_obj * m_ch_ais_obj;
@@ -238,12 +239,13 @@ class f_aws1_ui: public f_glfw_window
   SOCKET m_acd_sock;
   sockaddr_in m_acd_sock_addr;
 
-  s_aws1_ctrl_pars m_acp;
+	s_aws1_ctrl_inst m_inst;
+  s_aws1_ctrl_stat m_stat;
 
   // send control packet to m_acd_socket or m_ch_ctrl_out
-  void snd_ctrl(s_aws1_ctrl_pars & acpkt);
+  void snd_ctrl_inst();
   // Recive control state (rudder angle) from m_acd_socket or m_ch_ctrl_in.
-  void rcv_ctrl(s_aws1_ctrl_pars & acpkt);
+  void rcv_ctrl_stat();
 
   double m_mx, m_my;
   virtual void _cursor_position_callback(double xpos, double ypos){
@@ -311,8 +313,9 @@ class f_aws1_ui_test: public f_base
 protected:
 	ch_state * m_state;
 	ch_ais_obj * m_ch_ais_obj;
+	ch_aws1_ctrl_stat * m_ch_ctrl_stat;
 
-	ch_aws1_ctrl * m_ch_ctrl_ui, * m_ch_ctrl_ap1, * m_ch_ctrl_ap2, * m_ch_ctrl_out;
+	ch_aws1_ctrl_inst * m_ch_ctrl_ui, * m_ch_ctrl_ap1, * m_ch_ctrl_ap2;
 	ch_image_ref * m_ch_img;
 
 	bool m_ahrs, m_gps; 
@@ -320,8 +323,7 @@ protected:
 	float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
 	float cog, sog; // Course over ground(deg), Speed over ground (kts)
 	float depth; // water depth
-
-	s_aws1_ctrl_pars m_acp;
+	s_aws1_ctrl_stat m_stat;
 
 	bool m_add_ais_ship;
 	unsigned int ais_mmsi;
@@ -334,31 +336,31 @@ public:
 	void select_control_input()
 	{
 		// Control input selection
-		s_aws1_ctrl_pars acp;
+		s_aws1_ctrl_inst acp;
 		if(m_ch_ctrl_ui)
-			m_ch_ctrl_ui->get_pars(acp);
-		m_acp.tcur = acp.tcur;
-		m_acp.ctrl_src = acp.ctrl_src;
-		switch(m_acp.ctrl_src){
+			m_ch_ctrl_ui->get(acp);
+		m_stat.tcur = acp.tcur;
+		m_stat.ctrl_src = acp.ctrl_src;
+		switch(m_stat.ctrl_src){
 		case ACS_UI:
-			m_acp.rud_aws = acp.rud_aws;
-			m_acp.meng_aws = acp.meng_aws;
-			m_acp.seng_aws = acp.seng_aws;
+			m_stat.rud_aws = acp.rud_aws;
+			m_stat.meng_aws = acp.meng_aws;
+			m_stat.seng_aws = acp.seng_aws;
 			break;
 		case ACS_AP1:
 			if(m_ch_ctrl_ap1){
-				m_ch_ctrl_ap1->get_pars(acp);
-				m_acp.rud_aws = acp.rud_aws;
-				m_acp.meng_aws = acp.meng_aws;
-				m_acp.seng_aws = acp.seng_aws;
+				m_ch_ctrl_ap1->get(acp);
+				m_stat.rud_aws = acp.rud_aws;
+				m_stat.meng_aws = acp.meng_aws;
+				m_stat.seng_aws = acp.seng_aws;
 			}
 			break;
 		case ACS_AP2:
 			if(m_ch_ctrl_ap2){
-				m_ch_ctrl_ap2->get_pars(acp);
-				m_acp.rud_aws = acp.rud_aws;
-				m_acp.meng_aws = acp.meng_aws;
-				m_acp.seng_aws = acp.seng_aws;
+				m_ch_ctrl_ap2->get(acp);
+				m_stat.rud_aws = acp.rud_aws;
+				m_stat.meng_aws = acp.meng_aws;
+				m_stat.seng_aws = acp.seng_aws;
 			}
 			break;
 		default:
@@ -368,58 +370,57 @@ public:
 
 	void simulate_rudder(){
 		// Rudder response simulation
-		unsigned rud_inst = map_oval(m_acp.rud,
-			m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min,
-			m_acp.rud_sta_max, m_acp.rud_sta_nut, m_acp.rud_sta_min);
+		unsigned rud_inst = map_oval(m_stat.rud,
+			m_stat.rud_max, m_stat.rud_nut, m_stat.rud_min,
+			m_stat.rud_sta_max, m_stat.rud_sta_nut, m_stat.rud_sta_min);
 #define RUD_PER_CYCLE 0.45f
-		if(rud_inst > m_acp.rud_sta){
+		if(rud_inst > m_stat.rud_sta){
 			m_rud_sta_sim += RUD_PER_CYCLE;
 		}else{
 			m_rud_sta_sim -= RUD_PER_CYCLE;
 		}
 
-		m_acp.rud_sta = (unsigned char) m_rud_sta_sim;
+		m_stat.rud_sta = (unsigned char) m_rud_sta_sim;
 	}
 
 	void set_control_output()
 	{
-		switch(m_acp.ctrl_src){
+		switch(m_stat.ctrl_src){
 		case ACS_UI:
 		case ACS_AP1:
 		case ACS_AP2:
 		case ACS_FSET:
 		case ACS_NONE:
-			m_acp.rud = map_oval(m_acp.rud_aws, 
+			m_stat.rud = map_oval(m_stat.rud_aws, 
 				0xff, 0x7f, 0x00, 
-				m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min);
-			m_acp.meng = map_oval(m_acp.meng_aws, 
+				m_stat.rud_max, m_stat.rud_nut, m_stat.rud_min);
+			m_stat.meng = map_oval(m_stat.meng_aws, 
 				0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
-				m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, 
-				m_acp.meng_nub, m_acp.meng_min);  
-			m_acp.seng = map_oval(m_acp.seng_aws, 
+				m_stat.meng_max, m_stat.meng_nuf, m_stat.meng_nut, 
+				m_stat.meng_nub, m_stat.meng_min);  
+			m_stat.seng = map_oval(m_stat.seng_aws, 
 				0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
-				m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, 
-				m_acp.seng_nub, m_acp.seng_min);
+				m_stat.seng_max, m_stat.seng_nuf, m_stat.seng_nut, 
+				m_stat.seng_nub, m_stat.seng_min);
 			break;
 		case ACS_RMT:
-			m_acp.rud = map_oval(m_acp.rud_rmc, 
-				m_acp.rud_max_rmc, m_acp.rud_nut_rmc, m_acp.rud_min_rmc,
-				m_acp.rud_max, m_acp.rud_nut, m_acp.rud_min);
-			m_acp.meng = map_oval(m_acp.meng_rmc, 
-				m_acp.meng_max_rmc, m_acp.meng_nuf_rmc, m_acp.meng_nut_rmc, 
-				m_acp.meng_nub_rmc, m_acp.meng_min_rmc,
-				m_acp.meng_max, m_acp.meng_nuf, m_acp.meng_nut, m_acp.meng_nub, 
-				m_acp.meng_min);  
-			m_acp.seng = map_oval(m_acp.seng_rmc, 
-				m_acp.seng_max_rmc, m_acp.seng_nuf_rmc, m_acp.seng_nut_rmc, 
-				m_acp.seng_nub_rmc, m_acp.seng_min_rmc,
-				m_acp.seng_max, m_acp.seng_nuf, m_acp.seng_nut, m_acp.seng_nub, 
-				m_acp.seng_min);
+			m_stat.rud = map_oval(m_stat.rud_rmc, 
+				m_stat.rud_max_rmc, m_stat.rud_nut_rmc, m_stat.rud_min_rmc,
+				m_stat.rud_max, m_stat.rud_nut, m_stat.rud_min);
+			m_stat.meng = map_oval(m_stat.meng_rmc, 
+				m_stat.meng_max_rmc, m_stat.meng_nuf_rmc, m_stat.meng_nut_rmc, 
+				m_stat.meng_nub_rmc, m_stat.meng_min_rmc,
+				m_stat.meng_max, m_stat.meng_nuf, m_stat.meng_nut, m_stat.meng_nub, 
+				m_stat.meng_min);  
+			m_stat.seng = map_oval(m_stat.seng_rmc, 
+				m_stat.seng_max_rmc, m_stat.seng_nuf_rmc, m_stat.seng_nut_rmc, 
+				m_stat.seng_nub_rmc, m_stat.seng_min_rmc,
+				m_stat.seng_max, m_stat.seng_nuf, m_stat.seng_nut, m_stat.seng_nub, 
+				m_stat.seng_min);
 			break;
 		}
-		if(m_ch_ctrl_out){
-			m_acp.suc = true;
-			m_ch_ctrl_out->set_pars(m_acp);
+		if(m_ch_ctrl_stat){
+			m_ch_ctrl_stat->set(m_stat);
 		}
 	}
 

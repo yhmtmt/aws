@@ -25,14 +25,15 @@ protected:
 
 	const long long get_cur_time();
 
-	 ch_state * get_state();
-	 ch_aws1_ctrl * get_ctrl_in();
-	 ch_aws1_ctrl * get_ctrl_out();
-	 ch_wp * get_wp();
-	 ch_ais_obj * get_ais_obj();
-	 ch_obj * get_obj();
-	 ch_image * get_img();
-	 s_aws1_ctrl_pars & get_acp();
+	 ch_state * get_ch_state();
+	 ch_aws1_ctrl_inst * get_ch_ctrl_inst();
+	 ch_aws1_ctrl_stat * get_ch_ctrl_stat();
+	 ch_wp * get_ch_wp();
+	 ch_ais_obj * get_ch_ais_obj();
+	 ch_obj * get_ch_obj();
+	 ch_image * get_ch_img();
+
+	 s_aws1_ctrl_inst & get_ctrl_inst();
 	 const Size & get_window_size();
 	 const char * get_path_storage();
 	// normal coordinate to pixel coordinate transformation
