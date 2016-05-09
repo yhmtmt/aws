@@ -162,7 +162,7 @@ void f_aws1_ui::ui_show_rudder()
 	float hm = (float)(1.5 * hfont);
 	float lw = (float)(1.0 / m_sz_win.width);
 
-	float rud_inst = (float)m_stat.rud_aws;
+	float rud_inst = (float)m_inst.rud_aws;
 	float rud_inst_cur = 
 		(float)map_oval(m_stat.rud, 
 		m_stat.rud_max, m_stat.rud_nut, m_stat.rud_min,
@@ -231,7 +231,7 @@ void f_aws1_ui::ui_show_meng()
 	float hm = (float)(255.0 * m_iyscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 
-	float meng_inst = (float)m_stat.meng_aws;
+	float meng_inst = (float)m_inst.meng_aws;
 	float meng_inst_cur = 
 		(float)map_oval(m_stat.meng,
 		m_stat.meng_max, m_stat.meng_nuf, m_stat.meng_nut, 
@@ -258,7 +258,7 @@ void f_aws1_ui::ui_show_seng()
 	float hm = (float)(255.0 * m_iyscale);
 	float lw = (float)(1.0 / m_sz_win.width);
 
-	float seng_inst = (float)m_stat.seng_aws;
+	float seng_inst = (float)m_inst.seng_aws;
 	float seng_inst_cur = 
 		(float) map_oval(m_stat.seng,
 		m_stat.seng_max, m_stat.seng_nuf, m_stat.seng_nut, 
@@ -515,7 +515,7 @@ void f_aws1_ui::ui_handle_menu()
 		if(m_quit){
 			m_bactive = false;
 		}
-		m_stat.ctrl_src = m_menu_acs;
+		m_inst.ctrl_src = m_menu_acs;
 		m_mode = m_menu_mode;
 		m_ui_menu = false;
 	}
@@ -670,6 +670,7 @@ void drawGlEngineIndicator(const char * title,
 	     0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
   // indicator box
+  drawGlSquare2Df(x1, y1, x2, y2, 0, 0, 0, 1);
   drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
 
   // current value
@@ -708,10 +709,10 @@ void f_aws1_ui::snd_ctrl_inst()
 {
 	s_aws1_ctrl_inst inst;
 
-  inst.ctrl_src = m_stat.ctrl_src;
-  inst.rud_aws = m_stat.rud_aws;
-  inst.meng_aws = m_stat.meng_aws;
-  inst.seng_aws = m_stat.seng_aws;
+  inst.ctrl_src = m_inst.ctrl_src;
+  inst.rud_aws = m_inst.rud_aws;
+  inst.meng_aws = m_inst.meng_aws;
+  inst.seng_aws = m_inst.seng_aws;
   if(m_ch_ctrl_inst){
     m_ch_ctrl_inst->set(inst);
   }
