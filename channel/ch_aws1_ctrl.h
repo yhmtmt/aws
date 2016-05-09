@@ -213,7 +213,7 @@ public:
 
 	virtual size_t read_buf(char * buf){
 		lock();
-		memcpy((void*)&buf, (void*)&stat, sizeof(s_aws1_ctrl_stat));
+		memcpy((void*)buf, (void*)&stat, sizeof(s_aws1_ctrl_stat));
 		unlock();
 		return get_dsize();
 	}
