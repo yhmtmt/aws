@@ -725,7 +725,7 @@ void f_aws1_ui::rcv_ctrl_stat()
     m_ch_ctrl_stat->get(stat);
   }else 
 	  return;
-
+  m_stat.ctrl_src = stat.ctrl_src;
   m_stat.rud_rmc = stat.rud_rmc;
   m_stat.meng_rmc = stat.meng_rmc;
   m_stat.seng_rmc = stat.seng_rmc;

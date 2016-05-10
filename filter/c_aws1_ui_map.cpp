@@ -195,13 +195,13 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 		break;
 	case EMO_LD_RT:
 		if(js.is_event_down(js.elx)){
-			m_rt_sv--;
-			if(m_rt_sv < 0)
-				m_rt_sv += MAX_RT_FILES;
+			m_rt_ld--;
+			if(m_rt_ld < 0)
+				m_rt_ld += MAX_RT_FILES;
 		}else if(js.is_event_down(js.erx)){
-			m_rt_sv++;
-			if(m_rt_sv >= MAX_RT_FILES)
-				m_rt_sv -= MAX_RT_FILES;
+			m_rt_ld++;
+			if(m_rt_ld >= MAX_RT_FILES)
+			  m_rt_ld -= MAX_RT_FILES;
 		}
 
 		if(js.is_event_down(js.ea)){
