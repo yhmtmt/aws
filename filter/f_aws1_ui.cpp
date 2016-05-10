@@ -120,7 +120,7 @@ void f_aws1_ui::ui_force_ctrl_stop()
 			m_js.erb & s_jc_u3613m::EB_STDOWN &&
 			m_js.ert & s_jc_u3613m::EB_STDOWN){
 				((c_aws1_ui_normal *)m_ui[AUM_NORMAL])->set_ctrl(127, 127, 127);
-				m_stat.ctrl_src = ACS_UI;
+				m_inst.ctrl_src = ACS_UI;
 				m_mode = AUM_NORMAL;
 		}
 	}
