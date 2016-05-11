@@ -395,6 +395,30 @@ public:
 		return sizeof(long long) + sizeof(unsigned int) + sizeof(float) * 5;
 	}
 
+	int write(FILE * pf)
+	{
+		fwrite((void*)&m_t , sizeof(long long), 1, pf);
+		fwrite((void*)&m_mmsi, sizeof(unsigned int), 1, pf);
+		fwrite((void*)&m_lat, sizeof(float), 1, pf);
+		fwrite((void*)&m_lon, sizeof(float), 1, pf);
+		fwrite((void*)&m_cog, sizeof(float), 1, pf);
+		fwrite((void*)&m_sog, sizeof(float), 1, pf);
+		fwrite((void*)&m_yaw, sizeof(float), 1, pf);
+		return sizeof(long long) + sizeof(float) * 5;
+	}
+
+	int read(FILE * pf)
+	{
+		fread((void*)&m_t , sizeof(long long), 1, pf);
+		fread((void*)&m_mmsi, sizeof(unsigned int), 1, pf);
+		fread((void*)&m_lat, sizeof(float), 1, pf);
+		fread((void*)&m_lon, sizeof(float), 1, pf);
+		fread((void*)&m_cog, sizeof(float), 1, pf);
+		fread((void*)&m_sog, sizeof(float), 1, pf);
+		fread((void*)&m_yaw, sizeof(float), 1, pf);
+		return sizeof(long long) + sizeof(float) * 5;		
+	}
+
 	void write_buf(const char * buf)
 	{
 		m_t = *((long long*) buf);
@@ -514,8 +538,9 @@ protected:
 	map<unsigned int, c_ais_obj *> objs;
 	map<unsigned int, c_ais_obj *>::iterator itr;
 	list<c_ais_obj*> updates;
+	long long m_tfile;
 public:
-	ch_ais_obj(const char * name): ch_base(name)
+	ch_ais_obj(const char * name): ch_base(name), m_tfile(0)
 	{
 		itr = objs.begin();
 	}
@@ -684,9 +709,59 @@ public:
 		  pobj->read_buf(buf);
 		}else{
 		  c_ais_obj::read_buf_null(buf);
+		  unlock();
+		  return 0;
 		}
 		unlock();
 		return get_dsize();
+	}
+
+	virtual int write(FILE * pf)
+	{
+		int sz = 0;
+
+		if(pf){
+			lock();
+			long long tnew = m_tfile;
+			
+			for(itr = objs.begin(); itr != objs.end(); itr++){
+				c_ais_obj & obj = *(itr->second);
+				if(obj.get_time() > m_tfile){
+					tnew = max(tnew, obj.get_time());
+					sz += obj.write(pf);
+				}
+			}
+			m_tfile = tnew;
+			unlock();
+		}
+		return sz;
+	}
+
+	virtual int read(FILE * pf, long long tcur)
+	{
+		c_ais_obj obj;
+		int sz = 0;
+		if(pf){
+			lock();
+			while(m_tfile < tcur){
+				obj.read(pf);
+				m_tfile = obj.get_time();
+				itr = objs.find(obj.get_mmsi());
+				if(itr != objs.end()){
+					c_ais_obj & obj = *(itr->second);
+					obj.update(obj);
+					obj.set_ecef_from_bih();
+					updates.push_back(itr->second);
+				}else{
+					c_ais_obj * pobj = new c_ais_obj(obj);
+					objs.insert(map<unsigned int, c_ais_obj *>::value_type(obj.get_mmsi(), pobj));
+					pobj->set_ecef_from_bih();
+					updates.push_back(pobj);
+				}				
+			}
+			unlock();
+		}
+		return sz;
 	}
 };
 

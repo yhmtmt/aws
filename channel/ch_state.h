@@ -23,14 +23,19 @@ class ch_state: public ch_base
 {
  protected:
 	 long long tatt, tpos, tvel, tdp;
+	 long long tattf, tposf, tvelf, tdpf;
   float roll, pitch, yaw; // roll(deg), pitch(deg), yaw(deg)
   float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
   float x, y, z; // ecef coordinate
   Mat R, Rret; // Rotation matrix for ENU transformation
   float cog, sog; // Course over ground(deg), Speed over ground (kts)
   float depth; // water depth
+  long long m_tfile;
  public:
- ch_state(const char * name): ch_base(name), tatt(0), tpos(0), tvel(0), tdp(0), roll(0), pitch(0), yaw(0),
+ ch_state(const char * name): ch_base(name), 
+	 m_tfile(0),
+	 tatt(0), tpos(0), tvel(0), tdp(0), tattf(0), tposf(0), tvelf(0), tdpf(0), 
+	 roll(0), pitch(0), yaw(0),
     lon(0), lat(0), alt(0), galt(0), x(0), y(0), z(0), cog(0), sog(0), depth(0)
     {
 		R = Mat::eye(3, 3, CV_64FC1);
@@ -200,6 +205,110 @@ class ch_state: public ch_base
   {
     out << "channel " << m_name << " RPY= " << roll << "," << pitch << "," << yaw 
 	<< " pos= " << lat << "," << lon << "," << alt << endl;
+  }
+
+  virtual int write(FILE * pf)
+  {
+	  int sz = 0;
+	  if(tdp <= m_tfile && tvel <= m_tfile || tatt <= m_tfile || tpos <= m_tfile){
+		  return sz;
+	  }
+
+	  if(pf){
+		  sz = sizeof(long long) * 4;
+
+		  lock();
+		  fwrite((void*) &tpos, sizeof(long long), 1, pf);
+		  
+		  if(tposf < tpos){			  
+			  fwrite((void*) &lat, sizeof(float), 1, pf);
+			  fwrite((void*) &lon, sizeof(float), 1, pf);
+			  fwrite((void*) &alt, sizeof(float), 1, pf);
+			  fwrite((void*) &galt, sizeof(float), 1, pf);
+			  tposf = tpos;
+			  m_tfile  = max(m_tfile, tposf);
+			  sz += sizeof(float) * 4;
+		  }
+
+		  fwrite((void*) &tatt, sizeof(long long), 1, pf);
+		  if(tattf < tatt){
+			  fwrite((void*) &roll, sizeof(float), 1, pf);
+			  fwrite((void*) &pitch, sizeof(float), 1, pf);
+			  fwrite((void*) &yaw, sizeof(float), 1, pf);
+			  tattf = tatt;
+			  m_tfile = max(m_tfile, tattf);
+			  sz += sizeof(float) * 3;
+		  }
+
+		  fwrite((void*) &tvel, sizeof(long long), 1, pf);
+		  if(tvelf < tvel){
+			  fwrite((void*) &cog, sizeof(float), 1, pf);
+			  fwrite((void*) &sog, sizeof(float), 1, pf);
+			  tvelf = tvel;
+			  m_tfile = max(m_tfile, tvelf);
+			  sz += sizeof(float) * 2;
+		  }
+
+		  fwrite((void*) &tdp, sizeof(float), 1, pf);
+		  if(tdpf < tdp){
+			  fwrite((void*) &depth, sizeof(float), 1, pf);
+			  tdpf = tdp;
+			  m_tfile = max(m_tfile, tdpf);
+			  sz += sizeof(float);
+		  }
+		  unlock();
+	  }
+	  return sz;
+  }
+
+  virtual int read(FILE * pf, long long tcur)
+  {
+	  int sz = 0;
+	  if(tdp > tcur || tvel > tcur || tatt > tcur || tpos > tcur){
+		  return 0;
+	  }
+
+	  if(pf){
+		  lock();
+		  long long t;
+		  fread((void*) &t, sizeof(long long), 1, pf);
+		  if(t != tposf){
+			  fread((void*) &lat, sizeof(float), 1, pf);
+			  fread((void*) &lon, sizeof(float), 1, pf);
+			  fread((void*) &alt, sizeof(float), 1, pf);
+			  fread((void*) &galt, sizeof(float), 1, pf);			
+			  tposf = tpos = t;
+			  sz += sizeof(float) * 4;
+		  }
+
+		  fread((void*) &t, sizeof(long long), 1, pf);
+		  if(tattf < tatt){
+			  fread((void*) &roll, sizeof(float), 1, pf);
+			  fread((void*) &pitch, sizeof(float), 1, pf);
+			  fread((void*) &yaw, sizeof(float), 1, pf);
+			  tattf = tatt = t;
+			  sz += sizeof(float) * 3;
+		  }
+
+		  fread((void*) &t, sizeof(long long), 1, pf);
+		  if(tvelf < tvel){
+			  fread((void*) &cog, sizeof(float), 1, pf);
+			  fread((void*) &sog, sizeof(float), 1, pf);
+			  tvelf = tvel = t;
+			  sz += sizeof(float) * 2;
+		  }
+
+		  fread((void*) &t, sizeof(float), 1, pf);
+		  if(tdpf < tdp){
+			  fread((void*) &depth, sizeof(float), 1, pf);
+			  tdpf = tdp = t;
+			  sz += sizeof(float);
+		  }
+
+		  unlock();
+	  }
+
+	  return sz;
   }
 };
 

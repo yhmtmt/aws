@@ -118,52 +118,6 @@ public:
 		unlock();
 		return true;
 	}
-
-	// for channel logging
-	virtual bool write(f_base * pf, ofstream & fout, long long t)
-	{
-		lock();
-		unsigned long long ul = (unsigned long long) (m_new_nmeas);
-		fout.write((const char *) &ul, sizeof(unsigned long long));
-		int head = m_tail - m_new_nmeas;
-		if(head < 0) 
-			head += m_max_buf;
-
-		for(int i = 0; i < (int) m_new_nmeas; i++){
-			fout.write((const char *)m_buf[head], sizeof(char) * 84);
-			head = (head + 1) % m_max_buf;
-		}
-		m_new_nmeas = 0;
-		unlock();
-		return true;
-	}
-
-	// for channel replay
-	virtual bool read(f_base * pf, ifstream & fin, long long t)
-	{
-		lock();
-		unsigned long long ul;
-		fin.read((char *) &ul, sizeof(unsigned long long));
-		for(int i = 0; i < (int) ul; i++){
-			int next_tail = (m_tail + 1) % m_max_buf;
-			fin.read((char*) m_buf[m_tail], sizeof(char) * 84);
-			if(m_head == next_tail){
-				m_head++;
-				m_head %= m_max_buf;
-			}else{
-				m_tail = next_tail;
-			}
-		}
-		
-		unlock();
-		return true;
-	}
-};
-
-class ch_ship: public ch_base
-{
-private:
-
 };
 
 #endif

@@ -185,6 +185,65 @@ public:
 	virtual bool proc();
 };
 
+class f_write_ch_log: public f_base
+{
+private:
+	char m_path[1024];
+	bool m_verb;
+public:
+	f_write_ch_log(const char * fname): f_base(fname), m_verb(false)
+	{
+		m_path[0] = '.';m_path[1] = '\0';
+		register_fpar("path", m_path, 1024, "Storage path for logging");
+	}
+
+	virtual ~f_write_ch_log()
+	{
+	}
+
+	virtual bool init_run()
+	{
+	}
+
+	virtual void destroy_run()
+	{
+	}
+
+	virtual bool proc()
+	{
+	}
+};
+
+class f_read_ch_log: public f_base
+{
+private:
+	char m_path[1024];
+	bool m_verb;
+public:
+	f_read_ch_log(const char * fname): f_base(fname), m_verb(false)
+	{
+		m_path[0] = '.';m_path[1] = '\0';
+		register_fpar("path", m_path, 1024, "Storage path for logging");
+	}
+
+	virtual ~f_read_ch_log()
+	{
+	}
+
+	virtual bool init_run()
+	{
+	}
+
+	virtual void destroy_run()
+	{
+	}
+
+	virtual bool proc()
+	{
+	}
+};
+
+
 class f_ch_share: public f_base
 {
  private:

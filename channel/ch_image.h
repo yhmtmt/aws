@@ -25,6 +25,13 @@ enum e_campar{
 class ch_image: public ch_base
 {
 protected:
+	int m_back, m_front;
+	
+	Mat m_img[2];
+	long long m_time[2]; // frame time (aws time)
+	long long m_ifrm[2]; // frame index (if available.)
+	long long m_tfile;	 // time fwrite called
+
 	pthread_mutex_t m_mtx_bk, m_mtx_fr;
 	bool m_bparam[ECP_K6+1];
 	double m_param[ECP_K6+1];
@@ -37,8 +44,11 @@ protected:
 	double tvec[3];
 	
 public:
-	ch_image(const char * name):ch_base(name), m_brvec(true), m_bR(false)
+	ch_image(const char * name):ch_base(name), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0)
 	{
+		m_time[0] = m_time[1] = 0;
+		m_ifrm[0] = m_ifrm[1] = -1;
+
 		for(int i = 0; i < ECP_K6 + 1; i++){
 			m_bparam[i] = false;
 		}
@@ -135,22 +145,20 @@ public:
 	virtual Mat get_img(long long & t, long long & ifrm) = 0;
 	virtual void set_img(Mat & img, long long t) = 0;
 	virtual void set_img(Mat & img, long long t, long long ifrm) = 0;
+
+	// file writer method
+	virtual int write(FILE * pf);
+	// file reader method
+	virtual int read(FILE * pf, long long tcur);
 };
 
 // ch_image_cln output clone of the image for get_img
 class ch_image_cln: public ch_image
 {
 protected:
-	int m_back, m_front;
-	
-	Mat m_img[2];
-	long long m_time[2]; // frame time (aws time)
-	long long m_ifrm[2]; // frame index (if available.)
 public:
-	ch_image_cln(const char * name):ch_image(name), m_front(0), m_back(1)
+	ch_image_cln(const char * name):ch_image(name)
 	{
-		m_time[0] = m_time[1] = 0;
-		m_ifrm[0] = m_ifrm[1] = -1;
 	}
 
 	virtual ~ch_image_cln()
@@ -210,28 +218,15 @@ public:
 		unlock_fr();
 		unlock_bk();
 	}
-
-	// for channel logging
-	virtual bool write(f_base * pf, ofstream & fout, long long t);
-
-	// for channel replay
-	virtual bool read(f_base * pf, ifstream & fin, long long t);
 };
 
 // ch_image_ref returns reference of the image for get_img. Don't change the data if you use this as inputs for multiple filters.
 class ch_image_ref: public ch_image
 {
 protected:
-	int m_back, m_front;
-	Mat m_img[2];
-	long long m_time[2];
-	long long m_ifrm[2]; // frame index (if available.)
 public:
-	ch_image_ref(const char * name): ch_image(name), 
-		m_front(0), m_back(1)
+	ch_image_ref(const char * name): ch_image(name)
 	{
-		m_time[0] = m_time[1] = 0;
-		m_ifrm[0] = m_ifrm[1] = -1;
 	}
 
 	virtual ~ch_image_ref(){
@@ -277,18 +272,7 @@ public:
 		m_back = tmp;
 		unlock_fr();
 		unlock_bk();
-	}
-	
-	bool is_buf_in_use(const unsigned char * buf){
-		return m_img[m_front].data == buf || m_img[m_back].data == buf;
-	}
-
-	// for channel logging
-	virtual bool write(f_base * pf, ofstream & fout, long long t);
-
-	// for channel replay
-	virtual bool read(f_base * pf, ifstream & fin, long long t);
-	
+	}	
 };
 
 #endif

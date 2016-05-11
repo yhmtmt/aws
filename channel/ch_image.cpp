@@ -27,90 +27,85 @@ using namespace cv;
 #include "../util/aws_thread.h"
 #include "ch_image.h"
 
-bool ch_image_cln::read(f_base * pf, ifstream & fin, long long t)
+int ch_image::write(FILE * pf)
 {
-  lock_bk();
-  unsigned long long ul;
-  m_time[m_back] = t;
-  fin.read((char*) &m_ifrm[m_back], sizeof(long long));
-  //  cout << "Frame index " << m_ifrm[m_back] << endl;
-  fin.read((char*) &ul, sizeof(unsigned long long));
-  //  cout << "Compressed Frame size " << ul << endl;
-  Mat bufm(1, (int) ul, CV_8UC1);
-  fin.read((char*) bufm.data, (streamsize) ul);
-
-  imdecode(bufm, CV_LOAD_IMAGE_ANYDEPTH, &m_img[m_back]);
-  //  cout << "Resulting image size " << m_img[m_back].cols << "x" << m_img[m_back].rows << endl; 
-  //  cout << "Exiting ch_image::read" << endl;
-  lock_fr();
-
-  unlock_fr();
-  int tmp = m_front;
-  m_front = m_back;
-  m_back = tmp;
-
-  unlock_bk();
-  return true;
+	if(pf){
+		if(m_tfile < m_time[m_front]){
+			lock_fr();
+			m_tfile = m_time[m_front];
+			Mat & img = m_img[m_front];
+			int r, c, type, size;
+			r = img.rows;
+			c = img.cols;
+			type = img.type();
+			size = (int)(r * c * img.channels() * img.elemSize());
+			fwrite((void*)m_tfile, sizeof(long long), 1, pf);
+			fwrite((void*)&type, sizeof(int), 1, pf);
+			fwrite((void*)&r, sizeof(int), 1, pf);
+			fwrite((void*)&c, sizeof(int), 1, pf);
+			fwrite((void*)&size, sizeof(int), 1, pf);
+			fwrite((void*)img.data, sizeof(char), size, pf);
+			unlock_fr();
+			return sizeof(long long) + 4 * sizeof(int) + size;
+		}else{
+			fwrite((void*)m_tfile, sizeof(long long), 1, pf);
+			return sizeof(long long);
+		}
+	}
+	return 0;
 }
 
-bool ch_image_cln::write(f_base * pf, ofstream & fout, long long t)
+int ch_image::read(FILE * pf, long long tcur)
 {
-  lock_fr();  
-  vector<uchar> buf;
-  imencode(".png", m_img[m_front], buf);
-  //  cout << "Buffer size " << buf.size() << endl;
-  Mat bufm(buf);
-  uchar * ptr = bufm.ptr<uchar>();
-  unsigned long long ul = (unsigned long long) (bufm.cols * bufm.rows);
-  //  cout << "Mat Buffer size " << bufm.cols  << "x" << bufm.rows << endl;
-  fout.write((const char*) &m_ifrm[m_front], sizeof(long long));
-  fout.write((const char*) &ul, sizeof(unsigned long long));
-  fout.write((const char*) ptr, (streamsize) ul);
-  //  cout << "Exiting ch_image::write" << endl;
-  unlock_fr();
-  return true;
-}
+	if(m_tfile > tcur)
+		return 0;
 
-bool ch_image_ref::read(f_base * pf, ifstream & fin, long long t)
-{
-  lock_bk();
-  unsigned long long ul;
-  m_time[m_back] = t;
-  fin.read((char*) &m_ifrm[m_back], sizeof(long long));
-  //  cout << "Frame index " << m_ifrm[m_back] << endl;
-  fin.read((char*) &ul, sizeof(unsigned long long));
-  //  cout << "Compressed Frame size " << ul << endl;
-  Mat bufm(1, (int) ul, CV_8UC1);
-  fin.read((char*) bufm.data, (streamsize) ul);
+	if(pf){
+		long long tsave;
+		int r, c, type, size;
+		size_t res;
+		r = c = type = size = 0;
+		res = fread((void*)&tsave, sizeof(long long), 1, pf);
+		if(!res)
+			return 0;
 
-  imdecode(bufm, CV_LOAD_IMAGE_ANYDEPTH, &m_img[m_back]);
-  //  cout << "Resulting image size " << m_img[m_back].cols << "x" << m_img[m_back].rows << endl; 
-  //  cout << "Exiting ch_image::read" << endl;
-  lock_fr();
+		if(tsave == m_tfile){
+			return sizeof(long long);
+		}
 
-  unlock_fr();
-  int tmp = m_front;
-  m_front = m_back;
-  m_back = tmp;
+		lock_bk();
+		m_time[m_back] = tsave;
 
-  unlock_bk();
-  return true;
-}
+		res = fread((void*)&type, sizeof(int), 1, pf);
+		if(!res)
+			goto failed;
+		res = fread((void*)&r, sizeof(int), 1, pf);
+		if(!res)
+			goto failed;
+		res = fread((void*)&c, sizeof(int), 1, pf);
+		if(!res)
+			goto failed;
+		res =fread((void*)&size, sizeof(int), 1, pf);
+		if(!res)
+			goto failed;
 
-bool ch_image_ref::write(f_base * pf, ofstream & fout, long long t)
-{
-  lock_fr();  
-  vector<uchar> buf;
-  imencode(".png", m_img[m_front], buf);
-  //  cout << "Buffer size " << buf.size() << endl;
-  Mat bufm(buf);
-  uchar * ptr = bufm.ptr<uchar>();
-  unsigned long long ul = (unsigned long long) (bufm.cols * bufm.rows);
-  //  cout << "Mat Buffer size " << bufm.cols  << "x" << bufm.rows << endl;
-  fout.write((const char*) &m_ifrm[m_front], sizeof(long long));
-  fout.write((const char*) &ul, sizeof(unsigned long long));
-  fout.write((const char*) ptr, (streamsize) ul);
-  //  cout << "Exiting ch_image::write" << endl;
-  unlock_fr();
-  return true;
+		Mat img = m_img[m_back];
+		if(img.type() != type || img.rows != r || img.cols != c){
+			img.create(r, c, type);
+		}
+		res = fread((void*)img.data, sizeof(char), size, pf);
+		if(!res)
+			goto failed;
+
+		lock_fr();
+		int tmp = m_front;
+		m_front = m_back;
+		m_back = tmp;
+		unlock_fr();
+
+		unlock_bk();
+	}
+failed:
+	unlock_bk();
+	return 0;
 }

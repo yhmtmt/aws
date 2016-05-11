@@ -127,8 +127,9 @@ class ch_aws1_ctrl_inst: public ch_base
 {
 protected:
 	s_aws1_ctrl_inst inst;
+	long long m_tfile;
 public:
-	ch_aws1_ctrl_inst(const char * name): ch_base(name)
+	ch_aws1_ctrl_inst(const char * name): ch_base(name), m_tfile(0)
 	{
 	}
 
@@ -173,14 +174,62 @@ public:
 		<< " seng "<< (int) inst.seng_aws 
 		<< endl;
   }
+
+
+	// file writer method
+	virtual int write(FILE * pf)
+	{
+		if(m_tfile == inst.tcur){
+			return 0;
+		}
+
+		int sz = 0;
+		if(pf){
+			lock();
+			fwrite((void*)inst.tcur, sizeof(long long), 1, pf);
+			fwrite((void*)inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
+			fwrite((void*)inst.rud_aws, sizeof(unsigned char), 1, pf);
+			fwrite((void*)inst.meng_aws, sizeof(unsigned char), 1, pf);
+			fwrite((void*)inst.seng_aws, sizeof(unsigned char), 1, pf);
+			sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
+			m_tfile = inst.tcur;
+			unlock();
+		}
+
+		return sz;
+	}
+
+	// file reader method
+	virtual int read(FILE * pf, long long tcur)
+	{
+		if(tcur < m_tfile){
+			return 0;
+		}
+
+		int sz = 0;
+		if(pf){
+			lock();
+			fread((void*)inst.tcur, sizeof(long long), 1, pf);
+			fread((void*)inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
+			fread((void*)inst.rud_aws, sizeof(unsigned char), 1, pf);
+			fread((void*)inst.meng_aws, sizeof(unsigned char), 1, pf);
+			fread((void*)inst.seng_aws, sizeof(unsigned char), 1, pf);
+			sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
+			m_tfile = inst.tcur;
+			unlock();
+			
+		}
+		return 0;
+	}
 };
 
 class ch_aws1_ctrl_stat: public ch_base
 {
 protected:
 	s_aws1_ctrl_stat stat;
+	long long m_tfile;
 public:
-	ch_aws1_ctrl_stat(const char * name): ch_base(name)
+	ch_aws1_ctrl_stat(const char * name): ch_base(name), m_tfile(0)
 	{
 	}
 
@@ -225,5 +274,42 @@ public:
 	 <<  (int) stat.meng_aws << " seng " <<  (int) stat.seng << " " << (int) stat.seng_aws << " rud_sta " 
 	 <<  (int) stat.rud_sta << " rud_sta_out " <<  (int) stat.rud_sta_out << endl;
   }
+
+	// file writer method
+	virtual int write(FILE * pf)
+	{
+		if(m_tfile == stat.tcur){
+			return 0;
+		}
+
+		int sz = 0;
+		if(pf){
+			lock();
+			fwrite((void*)&stat, sizeof(stat), 1, pf);
+			sz = sizeof(stat);
+			m_tfile = stat.tcur;
+			unlock();
+		}
+
+		return sz;
+	}
+
+	// file reader method
+	virtual int read(FILE * pf, long long tcur)
+	{
+		if(tcur < m_tfile){
+			return 0;
+		}
+
+		int sz = 0;
+		if(pf){
+			lock();
+			fread((void*)&stat, sizeof(stat), 1, pf);
+			sz = sizeof(stat);
+			m_tfile = stat.tcur;
+			unlock();
+		}
+		return sz;
+	}
 };
 #endif

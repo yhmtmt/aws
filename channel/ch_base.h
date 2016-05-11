@@ -85,18 +85,6 @@ public:
 		snprintf(rcmd.get_ret_str(), RET_LEN, "%s %d", m_name, ich);
 	}
 
-	// for channel logging
-	virtual bool write(f_base * pf, ofstream & fout, long long t)
-	{
-		return true;
-	}
-
-	// for channel replay
-	virtual bool read(f_base * pf, ifstream & fin, long long t)
-	{
-		return true;
-	}
-
 	virtual size_t get_dsize()
 	{ 
 	  return 0;
@@ -114,6 +102,18 @@ public:
 	
 	virtual void print(ostream & out)
 	{
+	}
+
+	// file writer method
+	virtual int write(FILE * pf)
+	{
+		return 0;
+	}
+
+	// file reader method
+	virtual int read(FILE * pf, long long tcur)
+	{
+		return 0;
 	}
 };
 
