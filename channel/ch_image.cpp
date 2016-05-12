@@ -57,10 +57,9 @@ int ch_image::write(FILE * pf)
 
 int ch_image::read(FILE * pf, long long tcur)
 {
-	if(m_tfile > tcur)
+	if(!pf)
 		return 0;
-
-	if(pf){
+	while(m_tfile <= tcur){
 		long long tsave;
 		int r, c, type, size;
 		size_t res;
@@ -74,7 +73,7 @@ int ch_image::read(FILE * pf, long long tcur)
 		}
 
 		lock_bk();
-		m_time[m_back] = tsave;
+		m_time[m_back] = m_tfile = tsave;
 
 		res = fread((void*)&type, sizeof(int), 1, pf);
 		if(!res)
@@ -85,7 +84,7 @@ int ch_image::read(FILE * pf, long long tcur)
 		res = fread((void*)&c, sizeof(int), 1, pf);
 		if(!res)
 			goto failed;
-		res =fread((void*)&size, sizeof(int), 1, pf);
+		res = fread((void*)&size, sizeof(int), 1, pf);
 		if(!res)
 			goto failed;
 

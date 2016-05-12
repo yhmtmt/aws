@@ -899,3 +899,134 @@ bool f_rcv_img::proc()
 	m_pimgout->set_img(img, m_cur_time);
 	return true;
 }
+
+//////////////////////////////////////////////////////////////// f_write_ch_log
+bool f_write_ch_log::init_run()
+{
+	char fname[1024];
+	snprintf(fname, 1024, "%s/%s.jr", m_path, m_name);
+	ofstream fjr(fname, ios_base::app);
+	if(!fjr.is_open())
+		return false;
+
+	fjr << "#S " << m_cur_time << endl;
+
+	m_logs.resize(m_chin.size());
+	int ich;
+	for(ich = 0; ich < m_chin.size(); ich++){
+		snprintf(fname, 1024, "%s/%s_%lld.log", m_path, m_name, m_cur_time);
+		m_logs[ich] = fopen(fname, "wb");
+		fjr << fname << endl;
+		if(!m_logs[ich]){
+			cerr << "Failed to open " << fname << "." << endl;
+			ich--;
+			goto failed;
+		}
+	}
+	fjr.close();
+	return true;
+
+failed:
+	for(;ich >= 0; ich--){
+		fclose(m_logs[ich]);
+		m_logs[ich] = NULL;
+	}
+	return false;
+}
+
+void f_write_ch_log::destroy_run()
+{
+	char fname[1024];
+	snprintf(fname, 1024, "%s/%s.jr", m_path, m_name);
+	ofstream fjr(fname, ios_base::app);
+	for(int ich = 0; ich < m_chin.size(); ich++){
+		fclose(m_logs[ich]);
+	}
+	m_logs.clear();
+	fjr << "#E " << m_cur_time << endl;
+	fjr.close();
+}
+
+bool f_write_ch_log::proc()
+{
+	for(int ich = 0; ich < m_chin.size(); ich++)
+		m_chin[ich]->write(m_logs[ich]);
+	return true;
+}
+
+//////////////////////////////////////////////////////////////// f_read_ch_log
+bool f_read_ch_log::init_run()
+{
+	char fname[1024];
+	snprintf(fname, 1024, "%s/%s.jr", m_path, m_name);
+	ifstream fjr(fname);
+	char buf[1024];
+	if(!fjr.is_open()){
+		return false;
+	}
+
+	m_logs.resize(m_chout.size());
+
+	bool seek = false;
+	int och;
+	while(!seek){
+		if(fjr.eof()){
+			return false;
+		}
+		fjr.getline(buf, 1024);
+		if(buf[0] != '#' || buf[1] != 'S')
+			return false;
+		long long ts = atol(&buf[3]);
+
+		fjr.getline(buf, 1024);
+		for(och = 0; och < m_chout.size(); och++){
+			m_logs[och] = fopen(buf, "rb");
+			if(m_logs[och]){
+				och--;
+				cerr << "Failed to open file " << buf << "." << endl;
+				goto failed;
+			}
+		}
+
+		fjr.getline(buf, 1024);
+		if(buf[0] != '#' || buf[1] != 'E'){
+			cerr << "Unknown record \"" << buf << "\".#E expected. " << endl;
+			goto failed;
+		}
+
+		long long te = stol(&buf[3]);
+		if(ts <= m_cur_time || te > m_cur_time){
+			seek = true;
+		}else{
+			for(; och >= 0; och--){
+				fclose(m_logs[och]);
+				m_logs[och] = NULL;
+			}
+		}
+	}
+
+	return true;
+failed:
+	for(;och >= 0; och--)
+		fclose(m_logs[och]);
+	m_logs.clear();
+	return false;
+}
+
+void f_read_ch_log::destroy_run()
+{
+	if(m_logs.size())
+	{
+		for(int ich = 0; ich < m_chin.size(); ich++){
+			fclose(m_logs[ich]);
+		}
+		m_logs.clear();
+	}
+}
+
+bool f_read_ch_log::proc()
+{
+	for(int ich = 0; ich < m_chin.size(); ich++)
+		m_chin[ich]->read(m_logs[ich], m_cur_time);
+	return true;
+}

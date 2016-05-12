@@ -209,66 +209,66 @@ class ch_state: public ch_base
 
   virtual int write(FILE * pf)
   {
+	  if(!pf)
+		  return 0;
+
 	  int sz = 0;
 	  if(tdp <= m_tfile && tvel <= m_tfile || tatt <= m_tfile || tpos <= m_tfile){
 		  return sz;
 	  }
 
-	  if(pf){
-		  sz = sizeof(long long) * 4;
+	  sz = sizeof(long long) * 4;
 
-		  lock();
-		  fwrite((void*) &tpos, sizeof(long long), 1, pf);
-		  
-		  if(tposf < tpos){			  
-			  fwrite((void*) &lat, sizeof(float), 1, pf);
-			  fwrite((void*) &lon, sizeof(float), 1, pf);
-			  fwrite((void*) &alt, sizeof(float), 1, pf);
-			  fwrite((void*) &galt, sizeof(float), 1, pf);
-			  tposf = tpos;
-			  m_tfile  = max(m_tfile, tposf);
-			  sz += sizeof(float) * 4;
-		  }
+	  lock();
+	  fwrite((void*) &tpos, sizeof(long long), 1, pf);
 
-		  fwrite((void*) &tatt, sizeof(long long), 1, pf);
-		  if(tattf < tatt){
-			  fwrite((void*) &roll, sizeof(float), 1, pf);
-			  fwrite((void*) &pitch, sizeof(float), 1, pf);
-			  fwrite((void*) &yaw, sizeof(float), 1, pf);
-			  tattf = tatt;
-			  m_tfile = max(m_tfile, tattf);
-			  sz += sizeof(float) * 3;
-		  }
-
-		  fwrite((void*) &tvel, sizeof(long long), 1, pf);
-		  if(tvelf < tvel){
-			  fwrite((void*) &cog, sizeof(float), 1, pf);
-			  fwrite((void*) &sog, sizeof(float), 1, pf);
-			  tvelf = tvel;
-			  m_tfile = max(m_tfile, tvelf);
-			  sz += sizeof(float) * 2;
-		  }
-
-		  fwrite((void*) &tdp, sizeof(float), 1, pf);
-		  if(tdpf < tdp){
-			  fwrite((void*) &depth, sizeof(float), 1, pf);
-			  tdpf = tdp;
-			  m_tfile = max(m_tfile, tdpf);
-			  sz += sizeof(float);
-		  }
-		  unlock();
+	  if(tposf < tpos){			  
+		  fwrite((void*) &lat, sizeof(float), 1, pf);
+		  fwrite((void*) &lon, sizeof(float), 1, pf);
+		  fwrite((void*) &alt, sizeof(float), 1, pf);
+		  fwrite((void*) &galt, sizeof(float), 1, pf);
+		  tposf = tpos;
+		  m_tfile  = max(m_tfile, tposf);
+		  sz += sizeof(float) * 4;
 	  }
+
+	  fwrite((void*) &tatt, sizeof(long long), 1, pf);
+	  if(tattf < tatt){
+		  fwrite((void*) &roll, sizeof(float), 1, pf);
+		  fwrite((void*) &pitch, sizeof(float), 1, pf);
+		  fwrite((void*) &yaw, sizeof(float), 1, pf);
+		  tattf = tatt;
+		  m_tfile = max(m_tfile, tattf);
+		  sz += sizeof(float) * 3;
+	  }
+
+	  fwrite((void*) &tvel, sizeof(long long), 1, pf);
+	  if(tvelf < tvel){
+		  fwrite((void*) &cog, sizeof(float), 1, pf);
+		  fwrite((void*) &sog, sizeof(float), 1, pf);
+		  tvelf = tvel;
+		  m_tfile = max(m_tfile, tvelf);
+		  sz += sizeof(float) * 2;
+	  }
+
+	  fwrite((void*) &tdp, sizeof(float), 1, pf);
+	  if(tdpf < tdp){
+		  fwrite((void*) &depth, sizeof(float), 1, pf);
+		  tdpf = tdp;
+		  m_tfile = max(m_tfile, tdpf);
+		  sz += sizeof(float);
+	  }
+	  unlock();
 	  return sz;
   }
 
   virtual int read(FILE * pf, long long tcur)
   {
-	  int sz = 0;
-	  if(tdp > tcur || tvel > tcur || tatt > tcur || tpos > tcur){
+	  if(!pf)
 		  return 0;
-	  }
 
-	  if(pf){
+	  int sz = 0;
+	  while(tdp <= tcur && tvel <= tcur && tatt <= tcur && tpos <= tcur){
 		  lock();
 		  long long t;
 		  fread((void*) &t, sizeof(long long), 1, pf);
@@ -307,7 +307,6 @@ class ch_state: public ch_base
 
 		  unlock();
 	  }
-
 	  return sz;
   }
 };

@@ -330,7 +330,6 @@ bool c_aws::handle_stop()
 		    fitr != m_filters.end(); fitr++){
 		  stopped = stopped && (*fitr)->stop(); 
 		}
-		f_base::clock(-1);
 	}
 
 	for(vector<f_base*>::iterator fitr = m_filters.begin();
@@ -338,6 +337,8 @@ bool c_aws::handle_stop()
 			(*fitr)->destroy();
 			(*fitr)->runstat();
 	}
+
+	f_base::clock(-1);
 	return true;
 }
 
@@ -748,8 +749,8 @@ bool c_aws::handle_run(s_cmd & cmd)
 		m_bonline, m_time_rate);
 	m_time = f_base::m_clk.get_time();
 
-	f_base::init_run_all();
 	f_base::clock(m_start_time);
+	f_base::init_run_all();
 
 	// check filter's status. 
 	for(vector<f_base*>::iterator fitr = m_filters.begin();

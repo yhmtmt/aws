@@ -190,6 +190,7 @@ class f_write_ch_log: public f_base
 private:
 	char m_path[1024];
 	bool m_verb;
+	vector<FILE * > m_logs;
 public:
 	f_write_ch_log(const char * fname): f_base(fname), m_verb(false)
 	{
@@ -201,17 +202,9 @@ public:
 	{
 	}
 
-	virtual bool init_run()
-	{
-	}
-
-	virtual void destroy_run()
-	{
-	}
-
-	virtual bool proc()
-	{
-	}
+	virtual bool init_run();
+	virtual void destroy_run();
+	virtual bool proc();
 };
 
 class f_read_ch_log: public f_base
@@ -219,6 +212,7 @@ class f_read_ch_log: public f_base
 private:
 	char m_path[1024];
 	bool m_verb;
+	vector<FILE *> m_logs;
 public:
 	f_read_ch_log(const char * fname): f_base(fname), m_verb(false)
 	{
@@ -230,17 +224,9 @@ public:
 	{
 	}
 
-	virtual bool init_run()
-	{
-	}
-
-	virtual void destroy_run()
-	{
-	}
-
-	virtual bool proc()
-	{
-	}
+	virtual bool init_run();
+	virtual void destroy_run();
+	virtual bool proc();
 };
 
 
