@@ -281,20 +281,53 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	}
 }
 
+void c_aws1_ui_map::draw_coast_line(const vector<Point3f> & cl, float lw)
+{
+	glColor4f(0, 1, 0, 1);
+	glLineWidth(lw);
+	glBegin(GL_LINE_STRIP);
+	double * pR = Rorg.ptr<double>();
+
+	for(int i = 0; i < cl.size(); i++){
+		Point3f pt3d = cl[i] - Porg;
+		Point2f pt2d;
+		pt2d.x = (float)((pt3d.x * pR[0] + pt3d.y * pR[1] + pt3d.z * pR[2]) * ifxmeter + offset.x);
+		pt2d.y = (float)((pt3d.x * pR[3] + pt3d.y * pR[4] + pt3d.z * pR[5]) * ifymeter + offset.y);
+		glVertex2f(pt2d.x, pt2d.y);
+	}
+	glEnd();
+}
+
 void c_aws1_ui_map::draw()
 {
   float cog, sog, roll, pitch, yaw;
+  Point3f cecef;
   long long t = 0;
   ch_state * pstate = get_ch_state();
   pstate->get_velocity(t, cog, sog);
   pstate->get_attitude(t, roll, pitch, yaw);
-  
+  pstate->get_position_ecef(t, cecef.x, cecef.y, cecef.z);
   float wfont = 8, hfont = 13;
   pix2nml(wfont, hfont, wfont, hfont);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	
 	float lw;
 	pix2nml(1, 1, lw, lw);
+
+	// draw map
+	{
+		ch_map * pmap = get_ch_map();
+		if(pmap){
+			pmap->lock();
+			for(pmap->cls_begin(); !pmap->is_cls_end(); pmap->cls_next()){
+				// Rorg, Porg, offset
+				draw_coast_line(pmap->cls_cur(), lw);
+			}
+			pmap->unlock();
+		}
+		pmap->set_range(m_map_range);
+		pmap->set_center(Porg.x, Porg.y, Porg.z);
+	}
 
 	// draw circle centered at my own ship 
 	{

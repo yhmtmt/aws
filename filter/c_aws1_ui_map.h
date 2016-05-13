@@ -97,6 +97,8 @@ protected:
 	void draw_ship_object(const float x, const float y, const float z, 
 		const float vx, const float vy, const float vz, const float yw);
 
+
+	void draw_coast_line(const vector<Point3f> & cl, float lw);
 	int m_cur_wp;
 public:
 	c_aws1_ui_map(f_aws1_ui * _pui);

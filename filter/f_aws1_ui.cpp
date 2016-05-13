@@ -41,8 +41,9 @@ const char * f_aws1_ui::m_str_aws1_ui_mode[AUM_UNDEF] = {
 };
 
 f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
-					m_state(NULL),
-					 m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL), 
+					m_state(NULL), m_ch_sys(NULL),
+					 m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL),
+					 m_ch_map(NULL),
 					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
 					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.)
@@ -50,9 +51,11 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 	m_path_storage[0] = '.';m_path_storage[1] = '\0';
 
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
+  register_fpar("ch_sys", (ch_base**)&m_ch_sys, typeid(ch_aws1_sys).name(), "System property channel");
   register_fpar("ch_ctrl_inst", (ch_base**)&m_ch_ctrl_inst, typeid(ch_aws1_ctrl_inst).name(), "Control input channel.");
   register_fpar("ch_ctrl_stat", (ch_base**)&m_ch_ctrl_stat, typeid(ch_aws1_ctrl_stat).name(), "Control output channel.");
   register_fpar("ch_wp", (ch_base**)&m_ch_wp, typeid(ch_wp).name(), "Waypoint channel");
+  register_fpar("ch_map", (ch_base**)&m_ch_map, typeid(ch_map).name(), "Map channel");
   register_fpar("ch_obj", (ch_base**)&m_ch_obj, typeid(ch_obj).name(), "Object channel");
   register_fpar("ch_ais_obj", (ch_base**)&m_ch_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel");
   register_fpar("ch_img", (ch_base**)&m_ch_img, typeid(ch_image_ref).name(), "Image channel");

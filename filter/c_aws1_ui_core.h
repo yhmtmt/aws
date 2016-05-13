@@ -32,7 +32,7 @@ protected:
 	 ch_ais_obj * get_ch_ais_obj();
 	 ch_obj * get_ch_obj();
 	 ch_image * get_ch_img();
-
+	 ch_map * get_ch_map();
 	 s_aws1_ctrl_inst & get_ctrl_inst();
 	 const Size & get_window_size();
 	 const char * get_path_storage();

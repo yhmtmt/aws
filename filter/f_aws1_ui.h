@@ -24,6 +24,8 @@
 #include "../channel/ch_image.h"
 #include "../channel/ch_state.h"
 #include "../channel/ch_aws1_ctrl.h"
+#include "../channel/ch_aws1_sys.h"
+#include "../channel/ch_map.h"
 #include "../channel/ch_wp.h"
 #include "../channel/ch_obj.h"
 
@@ -213,9 +215,11 @@ class f_aws1_ui: public f_glfw_window
 {
  private:
   ch_state * m_state;
+  ch_aws1_sys * m_ch_sys;
   ch_aws1_ctrl_inst * m_ch_ctrl_inst;
   ch_aws1_ctrl_stat * m_ch_ctrl_stat;
   ch_wp * m_ch_wp;
+  ch_map * m_ch_map;
   ch_obj * m_ch_obj;
   ch_ais_obj * m_ch_ais_obj;
   ch_image_ref * m_ch_img;

@@ -16,15 +16,39 @@
 // along with f_map.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "f_base.h"
-
+#include "../channel/ch_state.h"
+#include "../channel/ch_map.h"
 
 // load location related map, and save newly added data.
 // connects ch_map
 class f_map: public f_base
 {
 protected:
+	char m_path[1024];
+	char m_list[1024];
+	ch_map * m_ch_map;
+
+	struct s_cl_bb{
+		Point3f bb[4];
+		bool in_range;
+	};
+
+	list<s_cl_bb>  m_cl_bbs; // corners of the bounding box of the coast line
+	list<vector<Point3f>*> m_cls; // coast lines
+
 public:
-	f_map(const char * name):f_base(name)
+	f_map(const char * name):f_base(name), m_ch_map(NULL)
+	{
+		m_path[0] = '.';
+		m_path[1] = '\0';
+		m_list[0] = '\0';
+
+		register_fpar("path", m_path, 1024, "Path to map data.");
+		register_fpar("list", m_list, 1024, "List file of maps.");
+		register_fpar("ch_map", (ch_base**) m_ch_map, typeid(ch_map).name(), "Map channel.");
+	}
+
+	virtual ~f_map()
 	{
 	}
 

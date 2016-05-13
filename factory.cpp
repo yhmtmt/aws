@@ -54,6 +54,7 @@ using namespace cv;
 #include "channel/ch_ais.h"
 #include "channel/ch_navdat.h"
 #include "channel/ch_state.h"
+#include "channel/ch_aws1_sys.h"
 #include "channel/ch_aws1_ctrl.h"
 #include "channel/ch_map.h"
 #include "channel/ch_obj.h"
@@ -108,6 +109,7 @@ void ch_base::register_factory()
 	register_factory<ch_obj>("obj");
 	register_factory<ch_ais_obj>("ais_obj");
 	register_factory<ch_wp>("wp");
+	register_factory<ch_aws1_sys>("aws1_sys");
 }
 
 ////////////////////////////////////////////////// setting up filter factory
@@ -290,6 +292,8 @@ void f_base::register_factory()
 	register_factory<f_serial>("ser");
 	register_factory<f_udp>("udp");
 	register_factory<f_ch_share>("ch_share");
+	register_factory<f_write_ch_log>("write_ch_log");
+	register_factory<f_read_ch_log>("read_ch_log");
 	register_factory<f_dummy_data>("dd");
 	register_factory<f_rec_data>("rd");
 
@@ -298,4 +302,6 @@ void f_base::register_factory()
 	register_factory<f_ahrs>("ahrs");
 	register_factory<f_aws1_ap>("aws1_ap");
 	register_factory<f_obj_manager>("obj_manager");
+
+	register_factory<f_map>("map");
 }
