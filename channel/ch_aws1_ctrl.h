@@ -190,11 +190,11 @@ public:
 		int sz = 0;
 		if(pf){
 			lock();
-			fwrite((void*)inst.tcur, sizeof(long long), 1, pf);
-			fwrite((void*)inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
-			fwrite((void*)inst.rud_aws, sizeof(unsigned char), 1, pf);
-			fwrite((void*)inst.meng_aws, sizeof(unsigned char), 1, pf);
-			fwrite((void*)inst.seng_aws, sizeof(unsigned char), 1, pf);
+			fwrite((void*)&inst.tcur, sizeof(long long), 1, pf);
+			fwrite((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
+			fwrite((void*)&inst.rud_aws, sizeof(unsigned char), 1, pf);
+			fwrite((void*)&inst.meng_aws, sizeof(unsigned char), 1, pf);
+			fwrite((void*)&inst.seng_aws, sizeof(unsigned char), 1, pf);
 			sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
 			m_tfile = inst.tcur;
 			unlock();
@@ -212,11 +212,11 @@ public:
 		int sz = 0;
 		while(m_tfile <= tcur){
 			lock();
-			fread((void*)inst.tcur, sizeof(long long), 1, pf);
-			fread((void*)inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
-			fread((void*)inst.rud_aws, sizeof(unsigned char), 1, pf);
-			fread((void*)inst.meng_aws, sizeof(unsigned char), 1, pf);
-			fread((void*)inst.seng_aws, sizeof(unsigned char), 1, pf);
+			fread((void*)&inst.tcur, sizeof(long long), 1, pf);
+			fread((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
+			fread((void*)&inst.rud_aws, sizeof(unsigned char), 1, pf);
+			fread((void*)&inst.meng_aws, sizeof(unsigned char), 1, pf);
+			fread((void*)&inst.seng_aws, sizeof(unsigned char), 1, pf);
 			sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
 			m_tfile = inst.tcur;
 			unlock();			
