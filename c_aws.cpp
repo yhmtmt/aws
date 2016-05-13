@@ -330,6 +330,7 @@ bool c_aws::handle_stop()
 		    fitr != m_filters.end(); fitr++){
 		  stopped = stopped && (*fitr)->stop(); 
 		}
+		f_base::clock(f_base::get_time());
 	}
 
 	for(vector<f_base*>::iterator fitr = m_filters.begin();
@@ -338,7 +339,7 @@ bool c_aws::handle_stop()
 			(*fitr)->runstat();
 	}
 
-	f_base::clock(-1);
+	
 	return true;
 }
 
