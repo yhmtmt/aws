@@ -36,14 +36,22 @@ bool f_map::init_run()
 
 	ifstream flist;
 	ifstream fmap;
-	flist.open(m_list);
+	char path[1024];
+	snprintf(path, 1024, "%s/%s", m_path, m_list);
+	flist.open(path);
+	if(!flist.is_open()){
+		cerr << "Failed to open " << path << "." << endl;
+		return false;
+	}
 
 	list<Point2f> line;
 	char buf[1024];
 	while(!flist.eof()){
 		flist.getline(buf, 1024);
-		fmap.open(buf);
+		snprintf(path, 1024, "%s/%s", m_path, buf);
+		fmap.open(path);
 		if(!fmap.is_open()){
+			cerr << "Cannot open " << path << "." << endl;
 			continue;
 		}
 
@@ -51,11 +59,11 @@ bool f_map::init_run()
 		while(!fmap.eof()){
 			fmap.getline(buf, 1024);
 			if(!bline){
-				if(strcmp(buf, "<gml:posList>") == 0){
+				if(strcmp(buf, "\t\t\t<gml:posList>") == 0){
 					bline = true;
 				}
 			}else{
-				if(strcmp(buf, "</gml:posList>") == 0){
+				if(strcmp(buf, "\t\t\t</gml:posList>") == 0){
 					vector<Point3f> * pline = new vector<Point3f>;
 					pline->resize(line.size());
 					Point2f pmax(-FLT_MAX, -FLT_MAX), pmin(FLT_MAX, FLT_MAX);
@@ -79,14 +87,15 @@ bool f_map::init_run()
 					bihtoecef(pmin.x, pmax.y, 0.f, bb.bb[3].x, bb.bb[3].y, bb.bb[3].z);
 					bb.in_range = false;
 					m_cl_bbs.push_back(bb);
+					bline = false;
 				}else{
 					Point2f pt;
 					char * p;
 					for(p = buf; *p != ' ' && *p != '\0'; p++);
 					*p = '\0';
 					p++;
-					pt.x = (float) atof(buf);
-					pt.y = (float) atof(p);
+					pt.x = (float) (atof(buf) * PI / 180.);
+					pt.y = (float) (atof(p) * PI / 180.);
 					line.push_back(pt);
 				}				
 			}
@@ -98,7 +107,7 @@ bool f_map::init_run()
 	return true;
 failed:
 	for(list<vector<Point3f>*>::iterator itr = m_cls.begin(); itr != m_cls.end(); itr++){
-		delete[] *itr;
+		delete *itr;
 	}
 	m_cls.clear();
 	m_cl_bbs.clear();
@@ -108,7 +117,7 @@ failed:
 void f_map::destroy_run()
 {
 	for(list<vector<Point3f>*>::iterator itr = m_cls.begin(); itr != m_cls.end(); itr++){
-		delete[] *itr;
+		delete *itr;
 	}
 	m_cls.clear();
 	m_cl_bbs.clear();

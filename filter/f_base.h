@@ -368,7 +368,7 @@ public:
 	// stop main thread. the function is called from c_aws until the thread stops.
 	virtual bool stop()
 	{	
-		m_bactive= false;
+		m_bactive = false;
 		if(m_bstopped || is_main_thread()){
 			m_bstopped = true;
 			return true;

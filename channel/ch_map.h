@@ -34,6 +34,7 @@ public:
 
 	virtual ~ch_map()
 	{
+		m_cls.clear();
 	}
 
 	void set_range(const float range){

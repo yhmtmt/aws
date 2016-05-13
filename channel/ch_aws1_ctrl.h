@@ -34,6 +34,10 @@ struct s_aws1_ctrl_inst{
   unsigned char rud_aws;
   unsigned char meng_aws;
   unsigned char seng_aws;
+
+  s_aws1_ctrl_inst(): tcur(0), ctrl_src(ACS_UI), rud_aws(127), meng_aws(127), seng_aws(127)
+  {
+  }
 };
 
 struct s_aws1_ctrl_stat{

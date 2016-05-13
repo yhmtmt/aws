@@ -45,7 +45,7 @@ public:
 
 		register_fpar("path", m_path, 1024, "Path to map data.");
 		register_fpar("list", m_list, 1024, "List file of maps.");
-		register_fpar("ch_map", (ch_base**) m_ch_map, typeid(ch_map).name(), "Map channel.");
+		register_fpar("ch_map", (ch_base**) &m_ch_map, typeid(ch_map).name(), "Map channel.");
 	}
 
 	virtual ~f_map()
