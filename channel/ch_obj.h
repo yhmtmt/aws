@@ -409,13 +409,28 @@ public:
 
 	int read(FILE * pf)
 	{
-		fread((void*)&m_t , sizeof(long long), 1, pf);
-		fread((void*)&m_mmsi, sizeof(unsigned int), 1, pf);
-		fread((void*)&m_lat, sizeof(float), 1, pf);
-		fread((void*)&m_lon, sizeof(float), 1, pf);
-		fread((void*)&m_cog, sizeof(float), 1, pf);
-		fread((void*)&m_sog, sizeof(float), 1, pf);
-		fread((void*)&m_yaw, sizeof(float), 1, pf);
+	  size_t res;
+		res = fread((void*)&m_t , sizeof(long long), 1, pf);
+		if(!res)
+		  return 0;
+		res = fread((void*)&m_mmsi, sizeof(unsigned int), 1, pf);
+		if(!res)
+		  return 0;
+		res = fread((void*)&m_lat, sizeof(float), 1, pf);
+		if(!res)
+		  return 0;
+		res = fread((void*)&m_lon, sizeof(float), 1, pf);
+		if(!res)
+		  return 0;
+		res = fread((void*)&m_cog, sizeof(float), 1, pf);
+		if(!res)
+		  return 0;
+		res = fread((void*)&m_sog, sizeof(float), 1, pf);
+		if(!res)
+		  return 0;
+		res = fread((void*)&m_yaw, sizeof(float), 1, pf);
+		if(!res)
+		  return 0;
 		return sizeof(long long) + sizeof(float) * 5;		
 	}
 

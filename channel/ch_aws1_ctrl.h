@@ -35,7 +35,8 @@ struct s_aws1_ctrl_inst{
   unsigned char meng_aws;
   unsigned char seng_aws;
 
-  s_aws1_ctrl_inst(): tcur(0), ctrl_src(ACS_UI), rud_aws(127), meng_aws(127), seng_aws(127)
+  s_aws1_ctrl_inst(): tcur(0), ctrl_src(ACS_UI), 
+    rud_aws(127), meng_aws(127), seng_aws(127)
   {
   }
 };
@@ -129,188 +130,207 @@ s_aws1_ctrl_stat():
 
 class ch_aws1_ctrl_inst: public ch_base
 {
-protected:
-	s_aws1_ctrl_inst inst;
-	long long m_tfile;
-public:
-	ch_aws1_ctrl_inst(const char * name): ch_base(name), m_tfile(0)
-	{
-	}
-
-	void set(const s_aws1_ctrl_inst & _inst){
-		lock();
-		inst = _inst;
-		unlock();
-	}
-
-	void get(s_aws1_ctrl_inst & _inst){
-		lock();
-		_inst = inst;
-		unlock();
-	}
-
-	virtual size_t get_dsize()
-	{
-		return sizeof(s_aws1_ctrl_inst);
-	}
-
-	virtual size_t write_buf(const char * buf)
-	{
-		lock();
-		memcpy((void*)&inst, (void*) buf, sizeof(s_aws1_ctrl_inst));
-		unlock();
-		return get_dsize();
-	}
-
-	virtual size_t read_buf(char * buf)
-	{
-		lock();
-		memcpy((void*) buf, (void*)&inst, sizeof(s_aws1_ctrl_inst));
-		unlock();
-		return get_dsize();
-	}
-
+ protected:
+  s_aws1_ctrl_inst inst;
+  long long m_tfile;
+ public:
+ ch_aws1_ctrl_inst(const char * name): ch_base(name), m_tfile(0)
+    {
+    }
+  
+  void set(const s_aws1_ctrl_inst & _inst){
+    lock();
+    inst = _inst;
+    unlock();
+  }
+  
+  void get(s_aws1_ctrl_inst & _inst){
+    lock();
+    _inst = inst;
+    unlock();
+  }
+  
+  virtual size_t get_dsize()
+  {
+    return sizeof(s_aws1_ctrl_inst);
+  }
+  
+  virtual size_t write_buf(const char * buf)
+  {
+    lock();
+    memcpy((void*)&inst, (void*) buf, sizeof(s_aws1_ctrl_inst));
+    unlock();
+    return get_dsize();
+  }
+  
+  virtual size_t read_buf(char * buf)
+  {
+    lock();
+    memcpy((void*) buf, (void*)&inst, sizeof(s_aws1_ctrl_inst));
+    unlock();
+    return get_dsize();
+  }
+  
   virtual void print(ostream & out)
   {
     out << "channel " << m_name 
-		<< " rud " <<  (int) inst.rud_aws 
-		<< " meng "<<  (int) inst.meng_aws 
-		<< " seng "<< (int) inst.seng_aws 
-		<< endl;
+	<< " rud " <<  (int) inst.rud_aws 
+	<< " meng "<<  (int) inst.meng_aws 
+	<< " seng "<< (int) inst.seng_aws 
+	<< endl;
   }
-
-
-	// file writer method
-	virtual int write(FILE * pf)
-	{
-		if(m_tfile == inst.tcur){
-			return 0;
-		}
-
-		int sz = 0;
-		if(pf){
-			lock();
-			fwrite((void*)&inst.tcur, sizeof(long long), 1, pf);
-			fwrite((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
-			fwrite((void*)&inst.rud_aws, sizeof(unsigned char), 1, pf);
-			fwrite((void*)&inst.meng_aws, sizeof(unsigned char), 1, pf);
-			fwrite((void*)&inst.seng_aws, sizeof(unsigned char), 1, pf);
-			sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
-			m_tfile = inst.tcur;
-			unlock();
-		}
-
-		return sz;
-	}
-
-	// file reader method
-	virtual int read(FILE * pf, long long tcur)
-	{
-	  if(!pf)
-			return 0;
-
-		int sz = 0;
-		while(m_tfile <= tcur && !feof(pf)){
-			lock();
-			fread((void*)&inst.tcur, sizeof(long long), 1, pf);
-			fread((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
-			fread((void*)&inst.rud_aws, sizeof(unsigned char), 1, pf);
-			fread((void*)&inst.meng_aws, sizeof(unsigned char), 1, pf);
-			fread((void*)&inst.seng_aws, sizeof(unsigned char), 1, pf);
-			sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
-			m_tfile = inst.tcur;
-			unlock();			
-		}
-		return 0;
-	}
+  
+  
+  // file writer method
+  virtual int write(FILE * pf)
+  {
+    if(m_tfile == inst.tcur){
+      return 0;
+    }
+    
+    int sz = 0;
+    if(pf){
+      lock();
+      fwrite((void*)&inst.tcur, sizeof(long long), 1, pf);
+      fwrite((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
+      fwrite((void*)&inst.rud_aws, sizeof(unsigned char), 1, pf);
+      fwrite((void*)&inst.meng_aws, sizeof(unsigned char), 1, pf);
+      fwrite((void*)&inst.seng_aws, sizeof(unsigned char), 1, pf);
+      sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
+      m_tfile = inst.tcur;
+      unlock();
+    }
+    
+    return sz;
+  }
+  
+  // file reader method
+  virtual int read(FILE * pf, long long tcur)
+  {
+    if(!pf)
+      return 0;
+    
+    int sz = 0;
+    while(m_tfile <= tcur && !feof(pf)){
+      lock();
+      size_t res;
+      res = fread((void*)&inst.tcur, sizeof(long long), 1, pf);
+      if(!res)
+	goto eof;
+      res = fread((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
+      if(!res)
+	goto eof;
+      res = fread((void*)&inst.rud_aws, sizeof(unsigned char), 1, pf);
+      if(!res)
+	goto eof;
+      res = fread((void*)&inst.meng_aws, sizeof(unsigned char), 1, pf);
+      if(!res)
+	goto eof;
+      res = fread((void*)&inst.seng_aws, sizeof(unsigned char), 1, pf);
+      if(!res)
+	goto eof;
+      sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
+      m_tfile = inst.tcur;
+      unlock();			
+    }
+    return 0;
+  eof:
+    unlock();
+    return 0;
+  }
 };
 
 class ch_aws1_ctrl_stat: public ch_base
 {
 protected:
-	s_aws1_ctrl_stat stat;
-	long long m_tfile;
+  s_aws1_ctrl_stat stat;
+  long long m_tfile;
 public:
-	ch_aws1_ctrl_stat(const char * name): ch_base(name), m_tfile(0)
-	{
-	}
-
-	void set(const s_aws1_ctrl_stat & _stat)
-	{
-		lock();
-		stat = _stat;
-		unlock();
-	}
-
-	void get(s_aws1_ctrl_stat & _stat)
-	{
-		lock();
-		_stat = stat;
-		unlock();
-	}
-
-	virtual size_t get_dsize()
-	{
-		return sizeof(s_aws1_ctrl_stat);
-	}
-
-	virtual size_t write_buf(const char * buf)
-	{
-		lock();
-		memcpy((void*)&stat, (void*)buf, sizeof(s_aws1_ctrl_stat));
-		unlock();
-		return get_dsize();
-	}
-
-	virtual size_t read_buf(char * buf){
-		lock();
-		memcpy((void*)buf, (void*)&stat, sizeof(s_aws1_ctrl_stat));
-		unlock();
-		return get_dsize();
-	}
-
+ ch_aws1_ctrl_stat(const char * name): ch_base(name), m_tfile(0)
+    {
+    }
+  
+  void set(const s_aws1_ctrl_stat & _stat)
+  {
+    lock();
+    stat = _stat;
+    unlock();
+  }
+  
+  void get(s_aws1_ctrl_stat & _stat)
+  {
+    lock();
+    _stat = stat;
+    unlock();
+  }
+  
+  virtual size_t get_dsize()
+  {
+    return sizeof(s_aws1_ctrl_stat);
+  }
+  
+  virtual size_t write_buf(const char * buf)
+  {
+    lock();
+    memcpy((void*)&stat, (void*)buf, sizeof(s_aws1_ctrl_stat));
+    unlock();
+    return get_dsize();
+  }
+  
+  virtual size_t read_buf(char * buf){
+    lock();
+    memcpy((void*)buf, (void*)&stat, sizeof(s_aws1_ctrl_stat));
+    unlock();
+    return get_dsize();
+  }
+  
   virtual void print(ostream & out)
   {
     out << "channel " << m_name << " rud " <<  (int) stat.rud  << " " 
-	 <<  (int) stat.rud_aws << " meng " <<  (int) stat.meng << " " 
-	 <<  (int) stat.meng_aws << " seng " <<  (int) stat.seng << " " << (int) stat.seng_aws << " rud_sta " 
-	 <<  (int) stat.rud_sta << " rud_sta_out " <<  (int) stat.rud_sta_out << endl;
+	<<  (int) stat.rud_aws << " meng " <<  (int) stat.meng << " " 
+	<<  (int) stat.meng_aws << " seng " <<  (int) stat.seng << " " << (int) stat.seng_aws << " rud_sta " 
+	<<  (int) stat.rud_sta << " rud_sta_out " <<  (int) stat.rud_sta_out << endl;
   }
-
-	// file writer method
-	virtual int write(FILE * pf)
-	{
-		if(m_tfile == stat.tcur){
-			return 0;
-		}
-
-		int sz = 0;
-		if(pf){
-			lock();
-			fwrite((void*)&stat, sizeof(stat), 1, pf);
-			sz = sizeof(stat);
-			m_tfile = stat.tcur;
-			unlock();
-		}
-
-		return sz;
-	}
-
-	// file reader method
-	virtual int read(FILE * pf, long long tcur)
-	{
-	  if(!pf)
-	    return 0;
-
-		int sz = 0;
-		while(m_tfile <= tcur && !feof(pf)){
-			lock();
-			fread((void*)&stat, sizeof(stat), 1, pf);
-			sz = sizeof(stat);
-			m_tfile = stat.tcur;
-			unlock();
-		}
-		return sz;
-	}
+  
+  // file writer method
+  virtual int write(FILE * pf)
+  {
+    if(m_tfile == stat.tcur){
+      return 0;
+    }
+    
+    int sz = 0;
+    if(pf){
+      lock();
+      fwrite((void*)&stat, sizeof(stat), 1, pf);
+      sz = sizeof(stat);
+      m_tfile = stat.tcur;
+      unlock();
+    }
+    
+    return sz;
+  }
+  
+  // file reader method
+  virtual int read(FILE * pf, long long tcur)
+  {
+    if(!pf)
+      return 0;
+    
+    int sz = 0;
+    while(m_tfile <= tcur && !feof(pf)){
+      lock();
+      size_t res = fread((void*)&stat, sizeof(stat), 1, pf);
+      if(!res)
+	goto eof;
+      sz += res;
+      m_tfile = stat.tcur;
+      unlock();
+    }
+    return sz;
+  eof:
+    unlock();
+    return sz;
+  }
 };
 #endif

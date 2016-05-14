@@ -69,6 +69,7 @@ void c_aws1_ui_normal::js(const s_jc_u3613m & js)
   }
 
   s_aws1_ctrl_inst & inst = get_ctrl_inst();
+  inst.tcur = get_cur_time();
   inst.rud_aws = (unsigned char) m_rud_aws_f;
   inst.meng_aws = (unsigned char) m_meng_aws_f;
   inst.seng_aws = (unsigned char) m_seng_aws_f;

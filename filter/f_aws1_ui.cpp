@@ -95,6 +95,7 @@ f_aws1_ui::~f_aws1_ui()
 bool f_aws1_ui::init_run()
 {
   m_inst.ctrl_src = ACS_UI;
+  m_inst.tcur = m_cur_time;
   m_inst.rud_aws = 127;
   m_inst.meng_aws = 127;
   m_inst.seng_aws = 127;
@@ -710,14 +711,8 @@ void drawGlEngineIndicator(const char * title,
 
 void f_aws1_ui::snd_ctrl_inst()
 {
-	s_aws1_ctrl_inst inst;
-
-  inst.ctrl_src = m_inst.ctrl_src;
-  inst.rud_aws = m_inst.rud_aws;
-  inst.meng_aws = m_inst.meng_aws;
-  inst.seng_aws = m_inst.seng_aws;
   if(m_ch_ctrl_inst){
-    m_ch_ctrl_inst->set(inst);
+    m_ch_ctrl_inst->set(m_inst);
   }
 }
 
