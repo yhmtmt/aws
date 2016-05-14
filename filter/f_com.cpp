@@ -924,7 +924,6 @@ bool f_write_ch_log::init_run()
 		}
 	}
 	fjr.close();
-	cout << "done" << endl;
 	return true;
 
 failed:
@@ -980,14 +979,15 @@ bool f_read_ch_log::init_run()
 			return false;
 		long long ts = atol(&buf[3]);
 
-		fjr.getline(buf, 1024);
 		for(och = 0; och < m_chout.size(); och++){
-			m_logs[och] = fopen(buf, "rb");
-			if(m_logs[och]){
-				och--;
-				cerr << "Failed to open file " << buf << "." << endl;
-				goto failed;
-			}
+		  fjr.getline(buf, 1024);
+		  m_logs[och] = fopen(buf, "rb");
+		  cout << "Opening " << buf << " for " << m_chout[och]->get_name() << endl;
+		  if(!m_logs[och]){
+		    och--;
+		    cerr << "Failed to open file " << buf << "." << endl;
+		    goto failed;
+		  }
 		}
 
 		fjr.getline(buf, 1024);
@@ -996,7 +996,7 @@ bool f_read_ch_log::init_run()
 			goto failed;
 		}
 
-		long long te = stol(&buf[3]);
+		long long te = atol(&buf[3]);
 		if(ts <= m_cur_time || te > m_cur_time){
 			seek = true;
 		}else{
@@ -1006,7 +1006,7 @@ bool f_read_ch_log::init_run()
 			}
 		}
 	}
-
+	cout << "done" << endl;
 	return true;
 failed:
 	for(;och >= 0; och--)
@@ -1019,8 +1019,8 @@ void f_read_ch_log::destroy_run()
 {
 	if(m_logs.size())
 	{
-		for(int ich = 0; ich < m_chin.size(); ich++){
-			fclose(m_logs[ich]);
+		for(int och = 0; och < m_chout.size(); och++){
+			fclose(m_logs[och]);
 		}
 		m_logs.clear();
 	}
@@ -1028,7 +1028,10 @@ void f_read_ch_log::destroy_run()
 
 bool f_read_ch_log::proc()
 {
-	for(int ich = 0; ich < m_chin.size(); ich++)
-		m_chin[ich]->read(m_logs[ich], m_cur_time);
-	return true;
+ 
+  for(int och = 0; och < m_chout.size(); och++){
+    m_chout[och]->read(m_logs[och], m_cur_time);
+  }
+  
+  return true;
 }

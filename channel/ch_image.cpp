@@ -61,9 +61,9 @@ int ch_image::write(FILE * pf)
 
 int ch_image::read(FILE * pf, long long tcur)
 {
-	if(!pf)
+  if(!pf)
 		return 0;
-	while(m_tfile <= tcur){
+	while(m_tfile <= tcur && !feof(pf)){
 		long long tsave;
 		int r, c, type, size;
 		size_t res;
@@ -91,8 +91,7 @@ int ch_image::read(FILE * pf, long long tcur)
 		res = fread((void*)&size, sizeof(int), 1, pf);
 		if(!res)
 			goto failed;
-
-		Mat img = m_img[m_back];
+		Mat & img = m_img[m_back];
 		if(img.type() != type || img.rows != r || img.cols != c){
 			img.create(r, c, type);
 		}

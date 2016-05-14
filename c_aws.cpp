@@ -729,6 +729,7 @@ bool c_aws::handle_run(s_cmd & cmd)
 			m_start_time = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
 		else
 			m_start_time = (long long) atol(cmd.args[1]) * (long long) SEC;
+
 	}else{
 		// if no time specified, current time is used as the start time.
 		m_start_time = (long long) time(NULL) * SEC; 

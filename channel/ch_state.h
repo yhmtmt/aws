@@ -213,7 +213,7 @@ class ch_state: public ch_base
 		  return 0;
 
 	  int sz = 0;
-	  if(tdp <= m_tfile && tvel <= m_tfile || tatt <= m_tfile || tpos <= m_tfile){
+	  if(tdp <= tdpf && tvel <= tvelf && tatt <= tattf && tpos <= tposf){
 		  return sz;
 	  }
 
@@ -222,42 +222,34 @@ class ch_state: public ch_base
 	  lock();
 	  fwrite((void*) &tpos, sizeof(long long), 1, pf);
 
-	  if(tposf < tpos){			  
-		  fwrite((void*) &lat, sizeof(float), 1, pf);
-		  fwrite((void*) &lon, sizeof(float), 1, pf);
-		  fwrite((void*) &alt, sizeof(float), 1, pf);
-		  fwrite((void*) &galt, sizeof(float), 1, pf);
-		  tposf = tpos;
-		  m_tfile  = max(m_tfile, tposf);
-		  sz += sizeof(float) * 4;
-	  }
+	  fwrite((void*) &lat, sizeof(float), 1, pf);
+	  fwrite((void*) &lon, sizeof(float), 1, pf);
+	  fwrite((void*) &alt, sizeof(float), 1, pf);
+	  fwrite((void*) &galt, sizeof(float), 1, pf);
+	  tposf = tpos;
+	  m_tfile  = max(m_tfile, tposf);
+	  sz += sizeof(float) * 4;
 
 	  fwrite((void*) &tatt, sizeof(long long), 1, pf);
-	  if(tattf < tatt){
-		  fwrite((void*) &roll, sizeof(float), 1, pf);
-		  fwrite((void*) &pitch, sizeof(float), 1, pf);
-		  fwrite((void*) &yaw, sizeof(float), 1, pf);
-		  tattf = tatt;
-		  m_tfile = max(m_tfile, tattf);
-		  sz += sizeof(float) * 3;
-	  }
-
+	  fwrite((void*) &roll, sizeof(float), 1, pf);
+	  fwrite((void*) &pitch, sizeof(float), 1, pf);
+	  fwrite((void*) &yaw, sizeof(float), 1, pf);
+	  tattf = tatt;
+	  m_tfile = max(m_tfile, tattf);
+	  sz += sizeof(float) * 3;
+	  
 	  fwrite((void*) &tvel, sizeof(long long), 1, pf);
-	  if(tvelf < tvel){
-		  fwrite((void*) &cog, sizeof(float), 1, pf);
-		  fwrite((void*) &sog, sizeof(float), 1, pf);
-		  tvelf = tvel;
-		  m_tfile = max(m_tfile, tvelf);
-		  sz += sizeof(float) * 2;
-	  }
-
+	  fwrite((void*) &cog, sizeof(float), 1, pf);
+	  fwrite((void*) &sog, sizeof(float), 1, pf);
+	  tvelf = tvel;
+	  m_tfile = max(m_tfile, tvelf);
+	  sz += sizeof(float) * 2;
+	  
 	  fwrite((void*) &tdp, sizeof(float), 1, pf);
-	  if(tdpf < tdp){
-		  fwrite((void*) &depth, sizeof(float), 1, pf);
-		  tdpf = tdp;
-		  m_tfile = max(m_tfile, tdpf);
-		  sz += sizeof(float);
-	  }
+	  fwrite((void*) &depth, sizeof(float), 1, pf);
+	  tdpf = tdp;
+	  m_tfile = max(m_tfile, tdpf);
+	  sz += sizeof(float);
 	  unlock();
 	  return sz;
   }
@@ -268,42 +260,34 @@ class ch_state: public ch_base
 		  return 0;
 
 	  int sz = 0;
-	  while(tdp <= tcur && tvel <= tcur && tatt <= tcur && tpos <= tcur){
+	  while(tdp <= tcur && tvel <= tcur && tatt <= tcur && tpos <= tcur && !feof(pf)){
 		  lock();
 		  long long t;
 		  fread((void*) &t, sizeof(long long), 1, pf);
-		  if(t != tposf){
-			  fread((void*) &lat, sizeof(float), 1, pf);
-			  fread((void*) &lon, sizeof(float), 1, pf);
-			  fread((void*) &alt, sizeof(float), 1, pf);
-			  fread((void*) &galt, sizeof(float), 1, pf);			
-			  tposf = tpos = t;
-			  sz += sizeof(float) * 4;
-		  }
+		  fread((void*) &lat, sizeof(float), 1, pf);
+		  fread((void*) &lon, sizeof(float), 1, pf);
+		  fread((void*) &alt, sizeof(float), 1, pf);
+		  fread((void*) &galt, sizeof(float), 1, pf);			
+		  tposf = tpos = t;
+		  sz += sizeof(float) * 4;
 
 		  fread((void*) &t, sizeof(long long), 1, pf);
-		  if(tattf < tatt){
-			  fread((void*) &roll, sizeof(float), 1, pf);
-			  fread((void*) &pitch, sizeof(float), 1, pf);
-			  fread((void*) &yaw, sizeof(float), 1, pf);
-			  tattf = tatt = t;
-			  sz += sizeof(float) * 3;
-		  }
-
+		  fread((void*) &roll, sizeof(float), 1, pf);
+		  fread((void*) &pitch, sizeof(float), 1, pf);
+		  fread((void*) &yaw, sizeof(float), 1, pf);
+		  tattf = tatt = t;
+		  sz += sizeof(float) * 3;
+	  
 		  fread((void*) &t, sizeof(long long), 1, pf);
-		  if(tvelf < tvel){
-			  fread((void*) &cog, sizeof(float), 1, pf);
-			  fread((void*) &sog, sizeof(float), 1, pf);
-			  tvelf = tvel = t;
-			  sz += sizeof(float) * 2;
-		  }
+		  fread((void*) &cog, sizeof(float), 1, pf);
+		  fread((void*) &sog, sizeof(float), 1, pf);
+		  tvelf = tvel = t;
+		  sz += sizeof(float) * 2;
 
 		  fread((void*) &t, sizeof(float), 1, pf);
-		  if(tdpf < tdp){
-			  fread((void*) &depth, sizeof(float), 1, pf);
-			  tdpf = tdp = t;
-			  sz += sizeof(float);
-		  }
+		  fread((void*) &depth, sizeof(float), 1, pf);
+		  tdpf = tdp = t;
+		  sz += sizeof(float);
 
 		  unlock();
 	  }

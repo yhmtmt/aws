@@ -206,11 +206,11 @@ public:
 	// file reader method
 	virtual int read(FILE * pf, long long tcur)
 	{
-		if(!pf)
+	  if(!pf)
 			return 0;
 
 		int sz = 0;
-		while(m_tfile <= tcur){
+		while(m_tfile <= tcur && !feof(pf)){
 			lock();
 			fread((void*)&inst.tcur, sizeof(long long), 1, pf);
 			fread((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
@@ -299,11 +299,11 @@ public:
 	// file reader method
 	virtual int read(FILE * pf, long long tcur)
 	{
-		if(!pf)
-			return 0;
+	  if(!pf)
+	    return 0;
 
 		int sz = 0;
-		while(m_tfile <= tcur){
+		while(m_tfile <= tcur && !feof(pf)){
 			lock();
 			fread((void*)&stat, sizeof(stat), 1, pf);
 			sz = sizeof(stat);

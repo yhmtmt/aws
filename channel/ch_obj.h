@@ -743,7 +743,7 @@ public:
 		int sz = 0;
 		if(pf){
 			lock();
-			while(m_tfile < tcur){
+			while(m_tfile < tcur && !feof(pf)){
 				obj.read(pf);
 				m_tfile = obj.get_time();
 				itr = objs.find(obj.get_mmsi());
