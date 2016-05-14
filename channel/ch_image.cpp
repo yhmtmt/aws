@@ -46,9 +46,11 @@ int ch_image::write(FILE * pf)
 	      fwrite((void*)&c, sizeof(int), 1, pf);
 	      fwrite((void*)&size, sizeof(int), 1, pf);
 	      fwrite((void*)img.data, sizeof(char), size, pf);
+	      unlock_fr();
 	      return sizeof(long long) + 4 * sizeof(int) + size;
 	    }else{
 	      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
+	      unlock_fr();
 	      return sizeof(long long);
 	    }
 	  }

@@ -914,7 +914,7 @@ bool f_write_ch_log::init_run()
 	m_logs.resize(m_chin.size());
 	int ich;
 	for(ich = 0; ich < m_chin.size(); ich++){
-		snprintf(fname, 1024, "%s/%s_%lld.log", m_path, m_name, m_cur_time);
+	  snprintf(fname, 1024, "%s/%s_%lld.log", m_path, m_chin[ich]->get_name(), m_cur_time);
 		m_logs[ich] = fopen(fname, "wb");
 		fjr << fname << endl;
 		if(!m_logs[ich]){
@@ -924,6 +924,7 @@ bool f_write_ch_log::init_run()
 		}
 	}
 	fjr.close();
+	cout << "done" << endl;
 	return true;
 
 failed:
@@ -949,8 +950,9 @@ void f_write_ch_log::destroy_run()
 
 bool f_write_ch_log::proc()
 {
-	for(int ich = 0; ich < m_chin.size(); ich++)
-		m_chin[ich]->write(m_logs[ich]);
+  for(int ich = 0; ich < m_chin.size(); ich++){
+    	m_chin[ich]->write(m_logs[ich]);
+  }
 	return true;
 }
 
