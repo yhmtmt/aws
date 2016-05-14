@@ -324,9 +324,10 @@ void c_aws1_ui_map::draw()
 				draw_coast_line(pmap->cls_cur(), lw);
 			}
 			pmap->unlock();
+			pmap->set_range(m_map_range);
+			pmap->set_center(Porg.x, Porg.y, Porg.z);
+
 		}
-		pmap->set_range(m_map_range);
-		pmap->set_center(Porg.x, Porg.y, Porg.z);
 	}
 
 	// draw circle centered at my own ship 
