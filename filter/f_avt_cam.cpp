@@ -1194,11 +1194,11 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 				flag = (m_ReverseY ? 
 					(m_ReverseX ? -1 : 0) : 1);
 				flip(m_mat_frame[ibuf], tmp, flag);
-				m_mat_frame[ibuf] = tmp;				
+				tmp.copyTo(m_mat_frame[ibuf]);				
 			}
 			if(bundist){
 				remap(m_mat_frame[ibuf], tmp, udmap1, udmap2, INTER_LINEAR);
-				m_mat_frame[ibuf] = tmp;
+				tmp.copyTo(m_mat_frame[ibuf]);
 			}
 			pout->set_img(m_mat_frame[ibuf], m_cur_time, pfrm->FrameCount);
 		}

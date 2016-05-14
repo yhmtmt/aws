@@ -10,12 +10,9 @@ fset cam PixelFormat1 Mono8
 fset cam ReverseY1 yes
 fset cam PixelFormat2 Mono8
 fset cam ReverseY2 yes
+fset cam verb1 yes verb2 yes
 fset cam FrameStartTriggerMode Software
 fset cam Ttrig 2000000
-#fset cam ochlog y
-fset cam ochrep y
-fset cam fochlogpath "/home/ubuntu/images/fpath.txt"
-fset cam fjochlog "/home/ubuntu/images/journal.txt" 
 filter glstvw win -i img1 img2 -o 
 fset win width 640 height 480
 
@@ -24,5 +21,4 @@ fset win width 640 height 480
 #filter glimv win2 -i img2 -o
 #fset win2 width 640 height 480
 cyc 0.1 
-online no
-go 946689890
+go

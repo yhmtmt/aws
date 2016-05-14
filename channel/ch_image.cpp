@@ -30,27 +30,29 @@ using namespace cv;
 int ch_image::write(FILE * pf)
 {
 	if(pf){
-		if(m_tfile < m_time[m_front]){
-			lock_fr();
-			m_tfile = m_time[m_front];
-			Mat & img = m_img[m_front];
-			int r, c, type, size;
-			r = img.rows;
-			c = img.cols;
-			type = img.type();
-			size = (int)(r * c * img.channels() * img.elemSize());
-			fwrite((void*)m_tfile, sizeof(long long), 1, pf);
-			fwrite((void*)&type, sizeof(int), 1, pf);
-			fwrite((void*)&r, sizeof(int), 1, pf);
-			fwrite((void*)&c, sizeof(int), 1, pf);
-			fwrite((void*)&size, sizeof(int), 1, pf);
-			fwrite((void*)img.data, sizeof(char), size, pf);
-			unlock_fr();
-			return sizeof(long long) + 4 * sizeof(int) + size;
-		}else{
-			fwrite((void*)m_tfile, sizeof(long long), 1, pf);
-			return sizeof(long long);
-		}
+	  lock_fr();
+	  if(!m_img[m_front].empty()){
+	    if(m_tfile < m_time[m_front]){
+	      m_tfile = m_time[m_front];
+	      Mat & img = m_img[m_front];
+	      int r, c, type, size;
+	      r = img.rows;
+	      c = img.cols;
+	      type = img.type();
+	      size = (int)(r * c * img.channels() * img.elemSize());
+	      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
+	      fwrite((void*)&type, sizeof(int), 1, pf);
+	      fwrite((void*)&r, sizeof(int), 1, pf);
+	      fwrite((void*)&c, sizeof(int), 1, pf);
+	      fwrite((void*)&size, sizeof(int), 1, pf);
+	      fwrite((void*)img.data, sizeof(char), size, pf);
+	      return sizeof(long long) + 4 * sizeof(int) + size;
+	    }else{
+	      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
+	      return sizeof(long long);
+	    }
+	  }
+	  unlock_fr();
 	}
 	return 0;
 }
