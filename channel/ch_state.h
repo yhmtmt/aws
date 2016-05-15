@@ -263,31 +263,32 @@ class ch_state: public ch_base
 	  while(tdp <= tcur && tvel <= tcur && tatt <= tcur && tpos <= tcur && !feof(pf)){
 		  lock();
 		  long long t;
-		  fread((void*) &t, sizeof(long long), 1, pf);
-		  fread((void*) &lat, sizeof(float), 1, pf);
-		  fread((void*) &lon, sizeof(float), 1, pf);
-		  fread((void*) &alt, sizeof(float), 1, pf);
-		  fread((void*) &galt, sizeof(float), 1, pf);			
+		  size_t res = 0;
+		  res += fread((void*) &t, sizeof(long long), 1, pf);
+		  res += fread((void*) &lat, sizeof(float), 1, pf);
+		  res += fread((void*) &lon, sizeof(float), 1, pf);
+		  res += fread((void*) &alt, sizeof(float), 1, pf);
+		  res += fread((void*) &galt, sizeof(float), 1, pf);			
 		  tposf = tpos = t;
-		  sz += sizeof(float) * 4;
+		  sz += res;
 
-		  fread((void*) &t, sizeof(long long), 1, pf);
-		  fread((void*) &roll, sizeof(float), 1, pf);
-		  fread((void*) &pitch, sizeof(float), 1, pf);
-		  fread((void*) &yaw, sizeof(float), 1, pf);
+		  res += fread((void*) &t, sizeof(long long), 1, pf);
+		  res += fread((void*) &roll, sizeof(float), 1, pf);
+		  res += fread((void*) &pitch, sizeof(float), 1, pf);
+		  res += fread((void*) &yaw, sizeof(float), 1, pf);
 		  tattf = tatt = t;
-		  sz += sizeof(float) * 3;
+		  sz += res;
 	  
-		  fread((void*) &t, sizeof(long long), 1, pf);
-		  fread((void*) &cog, sizeof(float), 1, pf);
-		  fread((void*) &sog, sizeof(float), 1, pf);
+		  res += fread((void*) &t, sizeof(long long), 1, pf);
+		  res += fread((void*) &cog, sizeof(float), 1, pf);
+		  res += fread((void*) &sog, sizeof(float), 1, pf);
 		  tvelf = tvel = t;
-		  sz += sizeof(float) * 2;
+		  sz += res;
 
-		  fread((void*) &t, sizeof(float), 1, pf);
-		  fread((void*) &depth, sizeof(float), 1, pf);
+		  res += fread((void*) &t, sizeof(float), 1, pf);
+		  res += fread((void*) &depth, sizeof(float), 1, pf);
 		  tdpf = tdp = t;
-		  sz += sizeof(float);
+		  sz += res;
 
 		  unlock();
 	  }
