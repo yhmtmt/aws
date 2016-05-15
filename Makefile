@@ -57,7 +57,7 @@ FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj
 
 # listing utility module
-UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib log2txt
+UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib
 
 # for x86 CPU architecture
 ifeq ($(CPU), x86)
@@ -143,6 +143,7 @@ all:
 	touch c_aws.cpp
 	make aws
 	make log2txt
+	make t2str
 
 rcmd: 
 	cd $(RCMD_DIR); make CC="$(CC)"; 
@@ -151,8 +152,11 @@ rcmd:
 aws: $(OBJS) filter channel util 
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) -o $(EXE) $(LIB)
 
-log2txt: factory.o command.o c_aws.o filter channel util
-	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS))  command.o c_aws.o factory.o -o log2txt $(LIB)
+log2txt: util/log2txt.o factory.o command.o c_aws.o filter channel util
+	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS))  command.o c_aws.o factory.o util/log2txt.o -o log2txt $(LIB)
+
+t2str: util/t2str.o util/c_clock.o
+	$(CC) util/t2str.o util/c_clock.o -o t2str
 
 .PHONY: filter
 .PHONY: channel
@@ -179,9 +183,13 @@ clean:
 	cd $(UDIR); make clean
 	cd $(RCMD_DIR); make clean
 	rm -f aws
+	rm -f t2str
+	rm -f log2txt
 
 .PHONY: clean
 install:
 	cp aws $(INST_DIR)/
+	cp t2str $(INST_DIR)/
+	cp log2txt $(INST_DIR)/
 	cd $(RCMD_DIR); make install INST_DIR="$(INST_DIR)"
 	cd $(UDIR); make install INST_DIR="$(INST_DIR)"
