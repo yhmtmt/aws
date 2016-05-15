@@ -190,12 +190,17 @@ class f_write_ch_log: public f_base
 private:
 	char m_path[1024];
 	bool m_verb;
-	vector<FILE * > m_logs;
+	vector<FILE *> m_logs;
+	vector<size_t> m_szs;
+	size_t m_max_size;
+	bool open_log(const int ich);
+	bool close_log(const int ich);
 public:
-	f_write_ch_log(const char * fname): f_base(fname), m_verb(false)
+	f_write_ch_log(const char * fname): f_base(fname), m_verb(false), m_max_size(1024*1024*1024)
 	{
 		m_path[0] = '.';m_path[1] = '\0';
 		register_fpar("path", m_path, 1024, "Storage path for logging");
+		register_fpar("sz_max", &m_max_size, "Maximum size of a log file.");
 	}
 
 	virtual ~f_write_ch_log()
@@ -213,6 +218,8 @@ private:
 	char m_path[1024];
 	bool m_verb;
 	vector<FILE *> m_logs;
+	bool open_log(const int och);
+
 public:
 	f_read_ch_log(const char * fname): f_base(fname), m_verb(false)
 	{

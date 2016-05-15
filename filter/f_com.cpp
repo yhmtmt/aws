@@ -901,76 +901,91 @@ bool f_rcv_img::proc()
 }
 
 //////////////////////////////////////////////////////////////// f_write_ch_log
-bool f_write_ch_log::init_run()
-{
-	char fname[1024];
-	snprintf(fname, 1024, "%s/%s.jr", m_path, m_name);
+bool f_write_ch_log::open_log(const int ich)
+{	char fname[1024];
+	snprintf(fname, 1024, "%s/%s.jr", m_path, m_chin[ich]->get_name());
 	ofstream fjr(fname, ios_base::app);
 	if(!fjr.is_open())
 		return false;
 
-	fjr << "#S " << m_cur_time << endl;
-
-	m_logs.resize(m_chin.size());
-	int ich;
-	for(ich = 0; ich < m_chin.size(); ich++){
-	  snprintf(fname, 1024, "%s/%s_%lld.log", m_path, m_chin[ich]->get_name(), m_cur_time);
-		m_logs[ich] = fopen(fname, "wb");
-		fjr << fname << endl;
-		if(!m_logs[ich]){
-			cerr << "Failed to open " << fname << "." << endl;
-			ich--;
-			goto failed;
-		}
+	snprintf(fname, 1024, "%s/%s_%lld.log", m_path, m_chin[ich]->get_name(), m_cur_time);
+	m_logs[ich] = fopen(fname, "wb");
+	if(!m_logs[ich]){
+		cerr << "Failed to open " << fname << "." << endl;
 	}
+	fjr << "#S " << m_cur_time << endl;
+	fjr << fname << endl;
 	fjr.close();
 	return true;
+}
 
-failed:
-	for(;ich >= 0; ich--){
-		fclose(m_logs[ich]);
-		m_logs[ich] = NULL;
+bool f_write_ch_log::close_log(const int ich)
+{
+	if(!m_logs[ich])
+		return false;
+
+	char fname[1024];
+	snprintf(fname, 1024, "%s/%s.jr", m_path, m_chin[ich]->get_name());
+	ofstream fjr(fname, ios_base::app);
+	if(!fjr.is_open())
+		return false;
+	fjr << "#E " << m_cur_time << endl;
+	fjr.close();
+
+	fclose(m_logs[ich]);
+	m_logs[ich] = NULL;
+	m_szs[ich] = 0;
+
+	return true;
+}
+
+bool f_write_ch_log::init_run()
+{
+	m_logs.resize(m_chin.size(), NULL);
+	m_szs.resize(m_chin.size(), 0);
+
+	int ich;
+	for(ich = 0; ich < m_chin.size(); ich++){
+		if(!open_log(ich)){
+			return false;
+		}
 	}
-	return false;
+	
+	return true;
 }
 
 void f_write_ch_log::destroy_run()
 {
-	char fname[1024];
-	snprintf(fname, 1024, "%s/%s.jr", m_path, m_name);
-	ofstream fjr(fname, ios_base::app);
 	for(int ich = 0; ich < m_chin.size(); ich++){
-		fclose(m_logs[ich]);
+		close_log(ich);
 	}
-	m_logs.clear();
-	fjr << "#E " << m_cur_time << endl;
-	fjr.close();
 }
 
 bool f_write_ch_log::proc()
 {
   for(int ich = 0; ich < m_chin.size(); ich++){
-    	m_chin[ich]->write(m_logs[ich]);
+	  if(m_szs[ich] > m_max_size){
+		  close_log(ich);
+		  open_log(ich);
+	  }
+    	m_szs[ich] += m_chin[ich]->write(m_logs[ich]);
   }
 	return true;
 }
 
 //////////////////////////////////////////////////////////////// f_read_ch_log
-bool f_read_ch_log::init_run()
+bool f_read_ch_log::open_log(const int och)
 {
-	char fname[1024];
-	snprintf(fname, 1024, "%s/%s.jr", m_path, m_name);
-	ifstream fjr(fname);
-	char buf[1024];
-	if(!fjr.is_open()){
-		return false;
-	}
-
-	m_logs.resize(m_chout.size());
-
 	bool seek = false;
-	int och;
-	while(!seek){
+	char fname[1024];
+	snprintf(fname, 1024, "%s/%s.jr", m_path, m_chin[och]->get_name());
+	ifstream fjr(fname);
+
+	while(seek){
+		char buf[1024];
+		if(!fjr.is_open()){
+			return false;
+		}
 		if(fjr.eof()){
 			return false;
 		}
@@ -979,40 +994,39 @@ bool f_read_ch_log::init_run()
 			return false;
 		long long ts = atol(&buf[3]);
 
-		for(och = 0; och < m_chout.size(); och++){
-		  fjr.getline(buf, 1024);
-		  m_logs[och] = fopen(buf, "rb");
-		  cout << "Opening " << buf << " for " << m_chout[och]->get_name() << endl;
-		  if(!m_logs[och]){
-		    och--;
-		    cerr << "Failed to open file " << buf << "." << endl;
-		    goto failed;
-		  }
+		fjr.getline(buf, 1024);
+		m_logs[och] = fopen(buf, "rb");
+		cout << "Opening " << buf << " for " << m_chout[och]->get_name() << endl;
+		if(!m_logs[och]){			
+			cerr << "Failed to open file " << buf << "." << endl;
+			return false;
 		}
 
 		fjr.getline(buf, 1024);
 		if(buf[0] != '#' || buf[1] != 'E'){
 			cerr << "Unknown record \"" << buf << "\".#E expected. " << endl;
-			goto failed;
+			return false;
 		}
 
 		long long te = atol(&buf[3]);
 		if(ts <= m_cur_time || te > m_cur_time){
 			seek = true;
-		}else{
-			for(; och >= 0; och--){
-				fclose(m_logs[och]);
-				m_logs[och] = NULL;
-			}
 		}
 	}
-	cout << "done" << endl;
 	return true;
-failed:
-	for(;och >= 0; och--)
-		fclose(m_logs[och]);
-	m_logs.clear();
-	return false;
+}
+
+bool f_read_ch_log::init_run()
+{
+
+	m_logs.resize(m_chout.size());
+
+	int och;
+	for(och = 0; och < m_chout.size(); och++){
+		if(!open_log(och))
+			return false;
+	}
+	return true;
 }
 
 void f_read_ch_log::destroy_run()
@@ -1030,7 +1044,11 @@ bool f_read_ch_log::proc()
 {
  
   for(int och = 0; och < m_chout.size(); och++){
-    m_chout[och]->read(m_logs[och], m_cur_time);
+    if(m_chout[och]->read(m_logs[och], m_cur_time) == 0){// eof
+		if(!open_log(och)){
+			cout << m_chout[och]->get_name() << "'s log finished at " << m_cur_time << endl;
+		}
+	}
   }
   
   return true;
