@@ -146,7 +146,7 @@ bool ch_image::log2txt(FILE * pbf, FILE * ptf)
 		res = fread((void*)img.data, sizeof(char), size, pbf);
 		if(!res)
 			goto failed;
-		snprintf(fname, "%s_%lld.png", get_name(), tsave);
+		snprintf(fname, 1024, "%s_%lld.png", get_name(), tsave);
 		fprintf(ptf, "%lld, %s\n", tsave, fname);
 		imwrite(fname, img);
 		tprev = tsave;
