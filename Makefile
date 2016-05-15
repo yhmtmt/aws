@@ -170,10 +170,12 @@ util:
 clean:
 	rm -f *.o $(FDIR)/*.o $(CDIR)/*.o $(UDIR)/*.o
 	rm -f *.d $(FDIR)/*.d $(CDIR)/*.d $(UDIR)/*.d	
-	rm -f aws
+	cd $(UDIR); make clean
 	cd $(RCMD_DIR); make clean
+	rm -f aws
 
 .PHONY: clean
 install:
 	cp aws $(INST_DIR)/
 	cd $(RCMD_DIR); make install INST_DIR="$(INST_DIR)"
+	cd $(UDIR); make install INST_DIR="$(INST_DIR)"
