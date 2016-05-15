@@ -150,6 +150,8 @@ public:
 	virtual int write(FILE * pf);
 	// file reader method
 	virtual int read(FILE * pf, long long tcur);
+
+	virtual bool log2txt(FILE * pbf, FILE * ptf);
 };
 
 // ch_image_cln output clone of the image for get_img

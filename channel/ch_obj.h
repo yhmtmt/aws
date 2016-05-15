@@ -778,6 +778,25 @@ public:
 		}
 		return sz;
 	}
+
+	virtual bool log2txt(FILE * pbf, FILE * ptf)
+	{
+		c_ais_obj obj;
+		fprintf(ptf, "t, mmsi, lat, lon, cog, sog, hdg\n");
+		int sz = 0;
+		if(pbf){
+			while(!feof(pbf)){
+				obj.read(pbf);
+				float lat, lon, alt, cog, sog, roll, pitch, yaw;
+				obj.get_pos_bih(lat, lon, alt);
+				obj.get_vel_bih(cog, sog);
+				obj.get_att(roll, pitch, yaw);
+				fprintf(ptf, "%lld, %u, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f\n", 
+					obj.get_time(), obj.get_mmsi(), lat, lon, cog, sog, yaw);
+			}
+		}
+		return true;
+	}
 };
 
 #endif

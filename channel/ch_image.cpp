@@ -111,3 +111,47 @@ failed:
 	unlock_bk();
 	return 0;
 }
+
+bool ch_image::log2txt(FILE * pbf, FILE * ptf)
+{
+	char fname[1024];
+	long long tprev = 0;
+	fprintf(ptf, "t, filename\n");
+	while(!feof(pbf)){
+		long long tsave;
+		int r, c, type, size;
+		size_t res;
+		r = c = type = size = 0;
+		res = fread((void*)&tsave, sizeof(long long), 1, pbf);
+		if(tsave == tprev)
+			continue;
+
+		res = fread((void*)&type, sizeof(int), 1, pbf);
+		if(!res)
+			goto failed;
+		res = fread((void*)&r, sizeof(int), 1, pbf);
+		if(!res)
+			goto failed;
+		res = fread((void*)&c, sizeof(int), 1, pbf);
+		if(!res)
+			goto failed;
+		res = fread((void*)&size, sizeof(int), 1, pbf);
+		if(!res)
+			goto failed;
+
+		Mat & img = m_img[m_back];
+		if(img.type() != type || img.rows != r || img.cols != c){
+			img.create(r, c, type);
+		}
+		res = fread((void*)img.data, sizeof(char), size, pbf);
+		if(!res)
+			goto failed;
+		snprintf(fname, "%s_%lld.png", get_name(), tsave);
+		fprintf(ptf, "%lld, %s\n", tsave, fname);
+		imwrite(fname, img);
+		tprev = tsave;
+	}
+	return true;
+failed:
+	return false;
+}

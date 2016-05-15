@@ -270,29 +270,71 @@ class ch_state: public ch_base
 		  res += fread((void*) &alt, sizeof(float), 1, pf);
 		  res += fread((void*) &galt, sizeof(float), 1, pf);			
 		  tposf = tpos = t;
-		  sz += res;
+		  sz += (int) res;
 
 		  res += fread((void*) &t, sizeof(long long), 1, pf);
 		  res += fread((void*) &roll, sizeof(float), 1, pf);
 		  res += fread((void*) &pitch, sizeof(float), 1, pf);
 		  res += fread((void*) &yaw, sizeof(float), 1, pf);
 		  tattf = tatt = t;
-		  sz += res;
+		  sz += (int) res;
 	  
 		  res += fread((void*) &t, sizeof(long long), 1, pf);
 		  res += fread((void*) &cog, sizeof(float), 1, pf);
 		  res += fread((void*) &sog, sizeof(float), 1, pf);
 		  tvelf = tvel = t;
-		  sz += res;
+		  sz += (int) res;
 
 		  res += fread((void*) &t, sizeof(float), 1, pf);
 		  res += fread((void*) &depth, sizeof(float), 1, pf);
 		  tdpf = tdp = t;
-		  sz += res;
+		  sz += (int) res;
 
 		  unlock();
 	  }
 	  return sz;
+  }
+
+  virtual bool log2txt(FILE * pbf, FILE * ptf)
+  {
+	  size_t sz = 0;
+	  fprintf(ptf, "t, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth\n");
+	  while(!feof(pbf)){
+		  long long t, tmax = 0;
+
+		  size_t res = 0;
+		  res += fread((void*) &t, sizeof(long long), 1, pbf);
+		  res += fread((void*) &lat, sizeof(float), 1, pbf);
+		  res += fread((void*) &lon, sizeof(float), 1, pbf);
+		  res += fread((void*) &alt, sizeof(float), 1, pbf);
+		  res += fread((void*) &galt, sizeof(float), 1, pbf);			
+		  tposf = tpos = t;
+		  sz += (int) res;
+
+		  res += fread((void*) &t, sizeof(long long), 1, pbf);
+		  res += fread((void*) &roll, sizeof(float), 1, pbf);
+		  res += fread((void*) &pitch, sizeof(float), 1, pbf);
+		  res += fread((void*) &yaw, sizeof(float), 1, pbf);
+		  tattf = tatt = t;
+		  sz += (int) res;
+	  
+		  res += fread((void*) &t, sizeof(long long), 1, pbf);
+		  res += fread((void*) &cog, sizeof(float), 1, pbf);
+		  res += fread((void*) &sog, sizeof(float), 1, pbf);
+
+		  tvelf = tvel = t;
+		  sz += (int) res;
+
+		  res += fread((void*) &t, sizeof(float), 1, pbf);
+		  res += fread((void*) &depth, sizeof(float), 1, pbf);
+		  tdpf = tdp = t;
+		  sz += (int) res;
+
+		  tmax = max(max(tpos, tatt), max(tvel, tdp));
+		  fprintf(ptf, "%lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f\n",
+			  tmax, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
+	  }
+	  return true;
   }
 };
 

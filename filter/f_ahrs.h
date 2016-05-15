@@ -142,7 +142,7 @@ protected:
 	void dec_tok_val()
 	{
 		float *px, *py, *pz;
-
+		px = py = pz = NULL;
 		if(m_tbuf[1] == 'Y'){ // YPR
 			px = &m_ypr.y; py = &m_ypr.p; pz = &m_ypr.r;
 		}else{

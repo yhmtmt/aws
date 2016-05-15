@@ -115,6 +115,11 @@ public:
 	{
 		return 0;
 	}
+
+	virtual bool log2txt(FILE * pbf, FILE * ptf)
+	{
+		return false;
+	}
 };
 
 #endif

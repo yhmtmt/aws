@@ -238,6 +238,36 @@ class ch_aws1_ctrl_inst: public ch_base
     unlock();
     return 0;
   }
+
+  virtual bool log2txt(FILE * pbf, FILE * ptf)
+  {
+    int sz = 0;
+	fprintf(ptf, "t, acs, rud, meng, seng\n");
+    while(!feof(pbf)){
+      size_t res;
+      res = fread((void*)&inst.tcur, sizeof(long long), 1, pbf);
+      if(!res)
+	break;
+      res = fread((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pbf);
+      if(!res)
+	break;
+      res = fread((void*)&inst.rud_aws, sizeof(unsigned char), 1, pbf);
+      if(!res)
+	 break;
+      res = fread((void*)&inst.meng_aws, sizeof(unsigned char), 1, pbf);
+      if(!res)
+	break;
+      res = fread((void*)&inst.seng_aws, sizeof(unsigned char), 1, pbf);
+      if(!res)
+	break;
+      sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
+      m_tfile = inst.tcur;
+
+	  fprintf(ptf, "%lld, %d, %d, %d, %d\n", inst.tcur, 
+		  (int)inst.ctrl_src, (int)inst.rud_aws, (int)inst.meng_aws, (int)inst.seng_aws);
+    }
+	  return true;
+  }
 };
 
 class ch_aws1_ctrl_stat: public ch_base
@@ -323,7 +353,7 @@ public:
       size_t res = fread((void*)&stat, sizeof(stat), 1, pf);
       if(!res)
 	goto eof;
-      sz += res;
+      sz += (int)res;
       m_tfile = stat.tcur;
       unlock();
     }
@@ -331,6 +361,24 @@ public:
   eof:
     unlock();
     return sz;
+  }
+
+  virtual bool log2txt(FILE * pbf, FILE * ptf)
+  {
+    int sz = 0;
+	fprintf(ptf, "t, rud, meng, seng, rud_sta\n");
+    while(!feof(pbf)){
+      lock();
+      size_t res = fread((void*)&stat, sizeof(stat), 1, pbf);
+      if(!res)
+		  break;
+
+      sz += (int)res;
+      m_tfile = stat.tcur;
+	  fprintf(ptf, "%lld, %d, %d, %d, %d\n", stat.tcur, (int) stat.rud, (int) stat.meng, (int) stat.seng, (int) stat.rud_sta_out);
+      unlock();
+    }
+    return true;
   }
 };
 #endif
