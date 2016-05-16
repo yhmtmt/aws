@@ -143,6 +143,11 @@ int main(int argc, char ** argv)
 	FILE * ptfile = fopen(fname, "w");
 
 	ch_base * pchan = ch_base::create(argv[1], chname);
+	if(!pchan){
+		cerr << "Channel type " << argv[1] << " cannot be found." << endl;
+		return 1;
+	}
+
 	if(!pchan->log2txt(pbfile, ptfile)){
 		cerr << "Failed to convert " << argv[2] << "." << endl;
 		return 1;

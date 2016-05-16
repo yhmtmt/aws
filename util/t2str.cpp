@@ -6,6 +6,7 @@
 using namespace std;
 
 #include "c_clock.h"
+#include "aws_stdlib.h"
 
 int main(int argc, char ** argv)
 {
@@ -14,7 +15,7 @@ int main(int argc, char ** argv)
     return 0;
   }
 
-  long long t = atol(argv[1]);
+  long long t = atoll(argv[1]);
   t /= MSEC;
   tmex tm;
   gmtimeex(t, tm);
