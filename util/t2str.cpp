@@ -1,6 +1,8 @@
 #include <time.h>
 #include <stdlib.h>
 #include <cstdio>
+#include <cmath>
+#include <cstring>
 #include <iostream>
 
 using namespace std;

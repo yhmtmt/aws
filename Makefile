@@ -148,7 +148,7 @@ all:
 rcmd: 
 	cd $(RCMD_DIR); make CC="$(CC)"; 
 
-	
+
 aws: $(OBJS) filter channel util 
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) -o $(EXE) $(LIB)
 
@@ -192,4 +192,3 @@ install:
 	cp t2str $(INST_DIR)/
 	cp log2txt $(INST_DIR)/
 	cd $(RCMD_DIR); make install INST_DIR="$(INST_DIR)"
-	cd $(UDIR); make install INST_DIR="$(INST_DIR)"
