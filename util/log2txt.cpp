@@ -101,6 +101,8 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
+	cout << "Channel type: " << argv[1] << endl;
+	cout << "Log file:" << argv[2] << endl;
 	char chname[1024];
 	char fname[1024];
 	
@@ -141,6 +143,16 @@ int main(int argc, char ** argv)
 
 	FILE * pbfile = fopen(argv[2], "rb");
 	FILE * ptfile = fopen(fname, "w");
+
+	if(!pbfile){
+		cerr << "Failed to open " << argv[2] << endl;
+		return 1;
+	}
+
+	if(!ptfile){
+		cerr << "Failed to open " << fname << endl;
+		return 1;
+	}
 
 	ch_base * pchan = ch_base::create(argv[1], chname);
 	if(!pchan){
