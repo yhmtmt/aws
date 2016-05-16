@@ -200,7 +200,7 @@ public:
 	{
 		m_path[0] = '.';m_path[1] = '\0';
 		register_fpar("path", m_path, 1024, "Storage path for logging");
-		register_fpar("sz_max", &m_max_size, "Maximum size of a log file.");
+		register_fpar("sz_max", (int*)&m_max_size, "Maximum size of a log file.");
 	}
 
 	virtual ~f_write_ch_log()
