@@ -3172,19 +3172,24 @@ void awsFlip(Mat & img, bool xflip, bool yflip, bool chflip)
 	int chs = img.channels();
 	int dpth = img.depth();
 	int cols = img.cols;
+	int hcols = cols >> 1;
 	int rows = img.rows;
+	int hrows = rows >> 1;
 	int szele = (int) img.step[1];
 	int szrow = (int)img.step[0];
 	int nxrow = szrow - szele * cols;
 	int szch = szele / chs;
 	uchar * ptr0, * ptr1;
 
+	if(cols & 0x1 || rows & 0x1)
+		cerr << "awsFlip assumes that the image has even pixels in both vertical and horizontal direction." << endl;
+
 	if(xflip){
 		if(yflip){
 			ptr0 = img.data;
 			ptr1 = img.data + (rows - 1) * szrow + (cols - 1) * szele;
 			if(chflip){
-				for(int i = 0; i < rows; i++){
+				for(int i = 0; i < hrows; i++){
 					for(int j = 0; j < cols; j++){						
 						swapAndFlipElem(ptr0, ptr1, chs, szch);
 						ptr0 += szele;
@@ -3194,7 +3199,7 @@ void awsFlip(Mat & img, bool xflip, bool yflip, bool chflip)
 					ptr1 -= nxrow;
 				}
 			}else{
-				for(int i = 0; i < rows; i++){
+				for(int i = 0; i < hrows; i++){
 					for(int j = 0; j < cols; j++){
 						swapElem(ptr0, ptr1, szele);
 						ptr0 += szele;
@@ -3209,23 +3214,23 @@ void awsFlip(Mat & img, bool xflip, bool yflip, bool chflip)
 			ptr1 = img.data + (cols - 1) * szele;
 			if(chflip){
 				for(int i = 0; i < rows; i++){
-					for(int j = 0; j < cols; j++){
+					for(int j = 0; j < hcols; j++){
 						swapAndFlipElem(ptr0, ptr1, chs, szch);						
 						ptr0 += szele;
 						ptr1 -= szele;
 					}
-					ptr0 += nxrow;
-					ptr1 += szrow;
+					ptr0 += (szrow >> 1);
+					ptr1 = ptr0 + (cols - 1) * szele; 
 				}
 			}else{
 				for(int i = 0; i < rows; i++){
-					for(int j = 0; j < cols; j++){
+					for(int j = 0; j < hcols; j++){
 						swapElem(ptr0, ptr1, szele);
 						ptr0 += szele;
 						ptr1 -= szele;
 					}
-					ptr0 += nxrow;
-					ptr1 = ptr0 + (cols - 1) * szele;
+					ptr0 += (szrow >> 1);
+					ptr1 = ptr0 + (cols - 1) * szele; 
 				}
 			}
 		}
@@ -3234,7 +3239,7 @@ void awsFlip(Mat & img, bool xflip, bool yflip, bool chflip)
 			ptr0 = img.data;
 			ptr1 = img.data + (rows - 1) * szrow;
 			if(chflip){
-				for(int i = 0; i < rows; i++){
+				for(int i = 0; i < hrows; i++){
 					for(int j = 0; j < cols; j++){
 						swapAndFlipElem(ptr0, ptr1, chs, szch);
 						ptr0 += szele;
@@ -3244,7 +3249,7 @@ void awsFlip(Mat & img, bool xflip, bool yflip, bool chflip)
 					ptr1 -= (szrow << 1);
 				}
 			}else{
-				for(int i = 0; i < rows; i++){
+				for(int i = 0; i < hrows; i++){
 					for(int j = 0; j < cols; j++){
 						swapElem(ptr0, ptr1, szele);
 						ptr0 += szele;

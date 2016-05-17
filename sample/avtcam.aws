@@ -3,8 +3,10 @@
 channel imgr bayer
 channel imgr clr
 filter avtmono cam -i -o bayer
-fset cam host 192.168.1.20
+fset cam host 172.18.1.100
 fset cam PixelFormat Bayer8
+fset cam ReverseX yes
+fset cam ReverseY no
 filter debayer deb -i bayer -o clr
 fset deb bayer GR8
 
