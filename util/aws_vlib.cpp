@@ -2656,7 +2656,6 @@ void cnvBayerBG16ToBGR16(Mat & src, Mat & dst)
 	psrc1 = psrc0 + step_size;
 	psrc2 = psrc1 + step_size;
 	pdst = (unsigned short*) dst.data;
-
 	for(int y = 0; y < dst.rows; y++){
 		for(int x = 0; x < dst.cols; x++){ // even y
 			//even x
@@ -3139,6 +3138,133 @@ void cnvCVBGR8toGLRGB8(Mat & img)
 			tmp = ptr0[2];
 			ptr0[2] = ptr1[0];
 			ptr1[0] = tmp;
+		}
+	}
+}
+
+inline void swapAndFlipElem(uchar * p1, uchar * p2, int chs, int szch)
+{
+	uchar t;
+	p2 += szch * (chs - 1);
+	for(int ich = 0; ich < chs && p1 != p2; ich++){
+		for(int ibyte = 0; ibyte < szch; ibyte++){
+			t = *p1;
+			*p1 = *p2;
+			*p2 = t;
+		}
+		p1 += szch;
+		p2 -= szch;
+	}
+}
+
+inline void swapElem(uchar * p1, uchar * p2, int szele)
+{
+	uchar t;
+	for(int iele = 0; iele < szele; iele++, p1++, p2++){
+		t = *p1;
+		*p1 = *p2;
+		*p2 = t;
+	}
+}
+
+void awsFlip(Mat & img, bool xflip, bool yflip, bool chflip)
+{
+	int chs = img.channels();
+	int dpth = img.depth();
+	int cols = img.cols;
+	int rows = img.rows;
+	int szele = (int) img.step[1];
+	int szrow = (int)img.step[0];
+	int nxrow = szrow - szele * cols;
+	int szch = szele / chs;
+	uchar * ptr0, * ptr1;
+
+	if(xflip){
+		if(yflip){
+			ptr0 = img.data;
+			ptr1 = img.data + (rows - 1) * szrow + (cols - 1) * szele;
+			if(chflip){
+				for(int i = 0; i < rows; i++){
+					for(int j = 0; j < cols; j++){						
+						swapAndFlipElem(ptr0, ptr1, chs, szch);
+						ptr0 += szele;
+						ptr1 -= szele;
+					}
+					ptr0 += nxrow;
+					ptr1 -= nxrow;
+				}
+			}else{
+				for(int i = 0; i < rows; i++){
+					for(int j = 0; j < cols; j++){
+						swapElem(ptr0, ptr1, szele);
+						ptr0 += szele;
+						ptr1 -= szele;
+					}
+					ptr0 += nxrow;
+					ptr1 -= nxrow;
+				}
+			}
+		}else{
+			ptr0 = img.data;
+			ptr1 = img.data + (cols - 1) * szele;
+			if(chflip){
+				for(int i = 0; i < rows; i++){
+					for(int j = 0; j < cols; j++){
+						swapAndFlipElem(ptr0, ptr1, chs, szch);						
+						ptr0 += szele;
+						ptr1 -= szele;
+					}
+					ptr0 += nxrow;
+					ptr1 += szrow;
+				}
+			}else{
+				for(int i = 0; i < rows; i++){
+					for(int j = 0; j < cols; j++){
+						swapElem(ptr0, ptr1, szele);
+						ptr0 += szele;
+						ptr1 -= szele;
+					}
+					ptr0 += nxrow;
+					ptr1 = ptr0 + (cols - 1) * szele;
+				}
+			}
+		}
+	}else{
+		if(yflip){
+			ptr0 = img.data;
+			ptr1 = img.data + (rows - 1) * szrow;
+			if(chflip){
+				for(int i = 0; i < rows; i++){
+					for(int j = 0; j < cols; j++){
+						swapAndFlipElem(ptr0, ptr1, chs, szch);
+						ptr0 += szele;
+						ptr1 += szele;
+					}
+					ptr0 += nxrow;
+					ptr1 -= (szrow << 1);
+				}
+			}else{
+				for(int i = 0; i < rows; i++){
+					for(int j = 0; j < cols; j++){
+						swapElem(ptr0, ptr1, szele);
+						ptr0 += szele;
+						ptr1 += szele;
+					}
+					ptr0 += nxrow;
+					ptr1 -= (szrow << 1);
+				}
+			}
+		}else{
+			ptr0 = img.data;
+			if(chflip){
+				for(int i = 0; i < rows; i++){
+					for(int j = 0; j < cols; j++){
+						swapAndFlipElem(ptr0, ptr0, chs, szch);
+						ptr0 += szele;
+					}
+					ptr0 += nxrow;
+				}
+			}
 		}
 	}
 }

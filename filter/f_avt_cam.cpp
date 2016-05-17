@@ -1190,11 +1190,7 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 		if(!m_mat_frame[ibuf].empty()){
 			Mat tmp;
 			if(m_ReverseSoftware && (m_ReverseX || m_ReverseY)){
-				int flag;
-				flag = (m_ReverseY ? 
-					(m_ReverseX ? -1 : 0) : 1);
-				flip(m_mat_frame[ibuf], tmp, flag);
-				tmp.copyTo(m_mat_frame[ibuf]);				
+				awsFlip(m_mat_frame[ibuf], m_ReverseX, m_ReverseY, false);
 			}
 			if(bundist){
 				remap(m_mat_frame[ibuf], tmp, udmap1, udmap2, INTER_LINEAR);

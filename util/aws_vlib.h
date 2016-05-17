@@ -1113,6 +1113,8 @@ void cnv64FC1to8UC1(const Mat & in, Mat & out);
 void cnvCVBGR8toGLRGB8(Mat & img);
 void cnvCVGRAY8toGLGRAY8(Mat & img);
 
+// flip in x, y axes and channel order, without allocating memory (img is the input and the output)
+void awsFlip(Mat & img, bool xflip, bool yflip, bool chflip);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////// AWSCamPar
 // AWS's camera parameter class. Defines file format and its read/write methods.
