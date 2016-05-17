@@ -192,3 +192,5 @@ install:
 	cp t2str $(INST_DIR)/
 	cp log2txt $(INST_DIR)/
 	cd $(RCMD_DIR); make install INST_DIR="$(INST_DIR)"
+	cp logawstime $(INST_DIR)/
+	cp logtime $(INST_DIR)/
