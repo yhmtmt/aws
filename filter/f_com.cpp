@@ -978,7 +978,7 @@ bool f_read_ch_log::open_log(const int och)
 {
 	bool seek = false;
 	char fname[1024];
-	snprintf(fname, 1024, "%s/%s.jr", m_path, m_chin[och]->get_name());
+	snprintf(fname, 1024, "%s/%s.jr", m_path, m_chout[och]->get_name());
 	ifstream fjr(fname);
 
 	while(seek){
@@ -1018,7 +1018,6 @@ bool f_read_ch_log::open_log(const int och)
 
 bool f_read_ch_log::init_run()
 {
-
 	m_logs.resize(m_chout.size());
 
 	int och;
@@ -1045,6 +1044,8 @@ bool f_read_ch_log::proc()
  
   for(int och = 0; och < m_chout.size(); och++){
     if(m_chout[och]->read(m_logs[och], m_cur_time) == 0){// eof
+		fclose(m_logs[och]);
+		m_logs[och] = NULL;
 		if(!open_log(och)){
 			cout << m_chout[och]->get_name() << "'s log finished at " << m_cur_time << endl;
 		}
