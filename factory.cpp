@@ -165,6 +165,7 @@ void ch_base::register_factory()
 #include "filter/f_time.h"
 #include "filter/f_aws1_ap.h"
 #include "filter/f_obj_manager.h"
+#include "filter/f_wp_manager.h"
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
@@ -304,4 +305,5 @@ void f_base::register_factory()
 	register_factory<f_obj_manager>("obj_manager");
 
 	register_factory<f_map>("map");
+	register_factory<f_wp_manager>("wp_manager");
 }

@@ -103,16 +103,11 @@ bool f_aws1_ap::proc()
 			m_icdiff = m_isdiff = 0.;
 		}else{
 			s_wp & wp = m_wp->get_next_wp();			
-			wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
-			float ctgt = (float) (atan2f(wp.rx, wp.ry) * 180. / PI);
-			float cdiff = (float)(ctgt - cog);		
-			if(abs(cdiff) > 180.){
-				if(cdiff < 0){
-					cdiff += 360.;
-				}else{
-					cdiff -= 360.;
-				}
-			}
+			float d = 0.;
+			float cdiff = 0;		
+
+			m_wp->get_diff(cdiff, d);
+
 			cdiff *= (float)(1./180.); // normalize
 
 			float sdiff = (float)(m_smax - sog);

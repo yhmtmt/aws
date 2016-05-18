@@ -388,7 +388,6 @@ void c_aws1_ui_map::draw()
 			s_wp wp;
 			for(;!pwp->is_end(); pwp->next()){
 				s_wp wp = pwp->cur();
-				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
 				Point2f pos;
 				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
 				pos.y = (float)((wp.ry * ifymeter) + offset.y);
@@ -416,20 +415,6 @@ void c_aws1_ui_map::draw()
 
 			// checking waypoint arrival
 			if(!pwp->is_finished()){
-				s_wp & wp = pwp->get_next_wp();
-				wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
-				float d2 = wp.rx * wp.rx + wp.ry * wp.ry;
-				
-				float d = (float)sqrt(d2);
-				float ctgt = (float)(atan2(wp.rx, wp.ry) * 180. / PI);
-				float cdiff = cog - ctgt;
-				if(abs(cdiff) > 180.){
-				  if(cdiff < 0)
-				    cdiff += 360.;
-				  else
-				    cdiff -= 360.;
-				}
-
 				Point2f pos;
 				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
 				pos.y = (float)((wp.ry * ifymeter) + offset.y);
@@ -438,7 +423,9 @@ void c_aws1_ui_map::draw()
 					  pts[i].x, pts[i].y);
 				}
 			
+				float d, cdiff;
 				char str[32];
+				pwp->get_diff(d, cdiff);
 				snprintf(str, 32, "D%04.1f,C%04.1f", d, cdiff);
 				drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);	
 				drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 1., lw); // own ship triangle				

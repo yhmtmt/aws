@@ -67,6 +67,8 @@ protected:
 	int focus;
 	list<s_wp*>::iterator itr_focus;
 	list<s_wp*>::iterator itr_next;
+	float dist_next;
+	float cdiff_next;
 
 	void find_next(){
 		for(itr = wps.begin(); itr != wps.end() && (*itr)->get_arrival_time() > 0; itr++);
@@ -74,7 +76,7 @@ protected:
 	}
 
 public:
-	ch_wp(const char * name):ch_base(name), focus(0)
+	ch_wp(const char * name):ch_base(name), focus(0), dist_next(0.), cdiff_next(0)
 	{
 		itr_next = itr_focus = itr = wps.begin();
 	}
@@ -86,6 +88,18 @@ public:
 		wps.clear();
 		focus = 0;
 		itr_next = itr_focus = itr = wps.begin();
+	}
+
+	void set_diff(const float dist, const float cdiff)
+	{
+		dist_next = dist;
+		cdiff_next = cdiff;
+	}
+
+	void get_diff(float & dist, float & cdiff)
+	{
+		dist = dist_next;
+		cdiff = cdiff_next;
 	}
 
 	void ins(float lat, float lon, float rarv , float v = 0.){
