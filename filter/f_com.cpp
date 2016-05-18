@@ -907,14 +907,14 @@ bool f_write_ch_log::open_log(const int ich)
 	ofstream fjr(fname, ios_base::app);
 	if(!fjr.is_open())
 		return false;
-
+	int l = (int) strlen(m_path) + 1;
 	snprintf(fname, 1024, "%s/%s_%lld.log", m_path, m_chin[ich]->get_name(), m_cur_time);
 	m_logs[ich] = fopen(fname, "wb");
 	if(!m_logs[ich]){
 		cerr << "Failed to open " << fname << "." << endl;
 	}
 	fjr << "#S " << m_cur_time << endl;
-	fjr << fname << endl;
+	fjr << (&fname[l]) << endl;
 	fjr.close();
 	return true;
 }
