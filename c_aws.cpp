@@ -257,6 +257,7 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 
 			if(total_len == CMD_LEN){
 				ret_stat = false;
+				pthread_mutex_unlock(&m_mtx);
 				return false;
 			}
 
@@ -270,6 +271,7 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 		if(len !=  0){
 			if(total_len == CMD_LEN){
 				ret_stat = false;
+				pthread_mutex_unlock(&m_mtx);
 				return false;
 			}
 

@@ -981,7 +981,7 @@ bool f_read_ch_log::open_log(const int och)
 	snprintf(fname, 1024, "%s/%s.jr", m_path, m_chout[och]->get_name());
 	ifstream fjr(fname);
 
-	while(seek){
+	while(!seek){
 		char buf[1024];
 		if(!fjr.is_open()){
 			return false;
@@ -1033,7 +1033,9 @@ void f_read_ch_log::destroy_run()
 	if(m_logs.size())
 	{
 		for(int och = 0; och < m_chout.size(); och++){
-			fclose(m_logs[och]);
+			if(m_logs[och]){
+				fclose(m_logs[och]);
+			}
 		}
 		m_logs.clear();
 	}
