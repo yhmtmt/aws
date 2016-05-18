@@ -995,7 +995,8 @@ bool f_read_ch_log::open_log(const int och)
 		long long ts = atol(&buf[3]);
 
 		fjr.getline(buf, 1024);
-		m_logs[och] = fopen(buf, "rb");
+		snprintf(fname, 1024, "%s/%s", m_path, buf);
+		m_logs[och] = fopen(fname, "rb");
 		cout << "Opening " << buf << " for " << m_chout[och]->get_name() << endl;
 		if(!m_logs[och]){			
 			cerr << "Failed to open file " << buf << "." << endl;
@@ -1043,7 +1044,6 @@ void f_read_ch_log::destroy_run()
 
 bool f_read_ch_log::proc()
 {
- 
   for(int och = 0; och < m_chout.size(); och++){
     if(m_chout[och]->read(m_logs[och], m_cur_time) == 0){// eof
 		fclose(m_logs[och]);

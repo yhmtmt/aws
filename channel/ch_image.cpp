@@ -48,10 +48,6 @@ int ch_image::write(FILE * pf)
 	      fwrite((void*)img.data, sizeof(char), size, pf);
 	      unlock_fr();
 	      return sizeof(long long) + 4 * sizeof(int) + size;
-	    }else{
-	      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
-	      unlock_fr();
-	      return sizeof(long long);
 	    }
 	  }
 	  unlock_fr();
@@ -71,10 +67,6 @@ int ch_image::read(FILE * pf, long long tcur)
 		res = fread((void*)&tsave, sizeof(long long), 1, pf);
 		if(!res)
 			return 0;
-
-		if(tsave == m_tfile){
-			return sizeof(long long);
-		}
 
 		lock_bk();
 		m_time[m_back] = m_tfile = tsave;
