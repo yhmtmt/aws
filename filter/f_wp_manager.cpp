@@ -62,9 +62,14 @@ bool f_wp_manager::proc()
 	m_state->get_position_ecef(t, Porg.x, Porg.y, Porg.z);
 
 	// updating relative position for all waypoints
+	m_wp->lock();
+	m_wp->begin();
 	for(;!m_wp->is_end(); m_wp->next()){
-		s_wp wp = m_wp->cur();
+		s_wp & wp = m_wp->cur();
 		wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
+		cout <<"after:" << wp.rx << "," << wp.ry << "," <<  wp.rz << endl;
+		wp = m_wp->cur();
+		cout <<"after2:" << wp.rx << "," << wp.ry << "," <<  wp.rz << endl;		
 	}
 
 	// if there is next waypoint, calculate the difference between waypoint and ship state, and checking waypoint arrival
@@ -90,5 +95,6 @@ bool f_wp_manager::proc()
 		}
 	}
 
+	m_wp->unlock();
 	return true;
 }

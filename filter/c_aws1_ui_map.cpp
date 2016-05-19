@@ -385,9 +385,8 @@ void c_aws1_ui_map::draw()
 
 			// drawing waypoint
 			pwp->begin();
-			s_wp wp;
 			for(;!pwp->is_end(); pwp->next()){
-				s_wp wp = pwp->cur();
+				s_wp & wp = pwp->cur();
 				Point2f pos;
 				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
 				pos.y = (float)((wp.ry * ifymeter) + offset.y);
@@ -415,26 +414,27 @@ void c_aws1_ui_map::draw()
 
 			// checking waypoint arrival
 			if(!pwp->is_finished()){
-				Point2f pos;
-				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
-				pos.y = (float)((wp.ry * ifymeter) + offset.y);
-				for(int i = 0; i < 36; i++){
-				  pix2nml((float)(m_circ_pts[i].x * wp.rarv),(float)(m_circ_pts[i].y * wp.rarv),
-					  pts[i].x, pts[i].y);
-				}
-			
-				float d, cdiff;
-				char str[32];
-				pwp->get_diff(d, cdiff);
-				snprintf(str, 32, "D%04.1f,C%04.1f", d, cdiff);
-				drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);	
-				drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 1., lw); // own ship triangle				
-				drawGlLine2Df(pos.x, pos.y, offset.x, offset.y, 0, 1.0, 0., 1., lw);
-
-				if(d < wp.rarv){// arrived
-				  wp.set_arrival_time(get_cur_time());
-					pwp->set_next_wp();
-				}
+			  s_wp & wp = pwp->get_next_wp();
+			  Point2f pos;
+			  pos.x = (float)((wp.rx * ifxmeter) + offset.x);
+			  pos.y = (float)((wp.ry * ifymeter) + offset.y);
+			  for(int i = 0; i < 36; i++){
+			    pix2nml((float)(m_circ_pts[i].x * wp.rarv),(float)(m_circ_pts[i].y * wp.rarv),
+				    pts[i].x, pts[i].y);
+			  }
+			  
+			  float d, cdiff;
+			  char str[32];
+			  pwp->get_diff(d, cdiff);
+			  snprintf(str, 32, "D%04.1f,C%04.1f", d, cdiff);
+			  drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);	
+			  drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 1., lw); // own ship triangle				
+			  drawGlLine2Df(pos.x, pos.y, offset.x, offset.y, 0, 1.0, 0., 1., lw);
+			  
+			  if(d < wp.rarv){// arrived
+			    wp.set_arrival_time(get_cur_time());
+			    pwp->set_next_wp();
+			  }
 			}
 
 			pwp->unlock();
