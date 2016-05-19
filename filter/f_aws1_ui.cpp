@@ -143,34 +143,50 @@ void f_aws1_ui::ui_force_ctrl_stop()
 	}
 }
 
+void f_aws1_ui::cnv_img_to_view(Mat & img, float av, Size & sz)
+{
+	if(!img.empty()){
+		if(sz.width != img.cols || sz.height != img.rows){
+			float ai = (float)((float) img.cols / (float) img.rows);
+			if(av > ai){
+				sz.width = (int)((float)m_sz_win.width * ((float)sz.height / (float)img.rows));
+			}else{
+				sz.height = (int)((float)m_sz_win.height * ((float)sz.width / (float)img.cols));
+			}
+			sz.width &= 0xFFFFFFFE;
+			sz.height &= 0xFFFFFFFE;
+
+			Mat tmp;
+			resize(img, tmp, sz);
+			img = tmp;
+		}
+
+		awsFlip(img, m_img_x_flip, m_img_y_flip, false);
+		if(img.type() == CV_8U){
+			glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
+		}
+		else{
+			glDrawPixels(img.cols, img.rows, GL_BGR, GL_UNSIGNED_BYTE, img.data);
+		}
+	}
+}
+
 void f_aws1_ui::ui_show_img()
 {
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 	long long timg;
 	Mat img, img2;
 	float av = m_xscale * m_iyscale;
-
+	Size sz;
 	switch(m_imv){
 	case IMV_IMG1:
 		if(m_ch_img){
 			img = m_ch_img->get_img(timg);
 			if(!img.empty()){
-				if(m_sz_win.width != img.cols || m_sz_win.height != img.rows){
-					float ai = (float)((float) img.cols / (float) img.rows);
-					Size sz;
-					if(av > ai){
-						sz.height = m_sz_win.height;
-						sz.width = (int)((float)m_sz_win.width * ((float)sz.height / (float)img.rows));
-					}else{
-						sz.width = m_sz_win.width;
-						sz.height = (int)((float)m_sz_win.height * ((float)sz.width / (float)img.cols));
-					}
-				
-					Mat tmp;
-					resize(img, tmp, sz);
-					img = tmp;
-				}
-
-				awsFlip(img, m_img_x_flip, m_img_y_flip, false);
+				glRasterPos2i(-1, -1);
+				sz = m_sz_win;
+				cnv_img_to_view(img, av, sz);
 			}
 		}
 		break;
@@ -178,86 +194,32 @@ void f_aws1_ui::ui_show_img()
 		if(m_ch_img2){
 			img = m_ch_img2->get_img(timg);
 			if(!img.empty()){
-				float ai = (float)((float)img.cols / (float)img.rows);
-				Size sz;
-				if(av > ai){
-					sz.height = m_sz_win.height;
-					sz.width = (int)((float)m_sz_win.width * ((float)sz.height / (float)img.rows));
-				}else{
-					sz.width = m_sz_win.width;
-					sz.height = (int)((float)m_sz_win.height * ((float)sz.width / (float)img.cols));
-				}
-
-				Mat tmp;
-				resize(img, tmp, sz);
-				img = tmp;
-
-				awsFlip(img, m_img2_x_flip, m_img2_y_flip, false);
+				glRasterPos2i(-1, -1);
+				sz = m_sz_win;
+				cnv_img_to_view(img, av, sz);
 			}
 		}
 		break;
 	case IMV_IMG12:
-		if(m_ch_img && m_ch_img2){
+		if(m_ch_img && m_ch_img2){			
 			img = m_ch_img->get_img(timg);
-			if(!img.empty()){
-				float ai = (float)((float)img.cols / (float)img.rows);
-				Size sz;
-				if(av > ai){
-					sz.height = m_sz_win.height >> 1;
-					sz.width = (int)((float)m_sz_win.width * ((float)sz.height / (float)img.rows));
-				}else{
-					sz.width = m_sz_win.width >> 1;
-					sz.height = (int)((float)m_sz_win.height * ((float)sz.width / (float)img.cols));
-				}
-
-				Mat tmp;
-				resize(img, tmp, sz);
-				img = tmp;
-
-				awsFlip(img, m_img2_x_flip, m_img2_y_flip, false);
+			if(!img.empty()){				
+				glRasterPos2i(-1, 0);
+				sz.width = m_sz_win.width >> 1;
+				sz.height = m_sz_win.height >> 1;
+				cnv_img_to_view(img ,av, sz);
 			}
-
 			img2 = m_ch_img2->get_img(timg);
 			if(!img2.empty()){
-				float ai = (float)(img2.cols / img2.rows);
-				Size sz;
-				if(av > ai){
-					sz.height = m_sz_win.height >> 1;
-					sz.width = (int)((float)m_sz_win.width * ((float)sz.height / (float)img2.rows));
-				}else{
-					sz.width = m_sz_win.width >> 1;
-					sz.height = (int)((float)m_sz_win.height * ((float)sz.width / (float)img2.cols));
-				}
-
-				Mat tmp;
-				resize(img2, tmp, sz);
-				img = tmp;
-
-				awsFlip(img2, m_img2_x_flip, m_img2_y_flip, false);
+				glRasterPos2i(0, 0);
+				sz.width = m_sz_win.width >> 1;
+				sz.height = m_sz_win.height >> 1;
+				cnv_img_to_view(img2, av, sz);
 			}
 		}
 		break;
 	default:
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		return;
-	}
-
-	glRasterPos2i(-1, -1);
-	if(img.type() == CV_8U){
-		glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
-	}
-	else{
-		glDrawPixels(img.cols, img.rows, GL_BGR, GL_UNSIGNED_BYTE, img.data);
-	}
-
-	if(m_imv == IMV_IMG12){
-		glRasterPos2i(0, -1);
-		if(img.type() == CV_8U){
-			glDrawPixels(img2.cols, img2.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
-		}
-		else{
-			glDrawPixels(img2.cols, img2.rows, GL_BGR, GL_UNSIGNED_BYTE, img.data);
-		}
 	}
 }
 
