@@ -211,29 +211,29 @@ class ch_aws1_ctrl_inst: public ch_base
       return 0;
     
     int sz = 0;
-    while(m_tfile <= tcur && !feof(pf)){
-      lock();
-      size_t res;
-      res = fread((void*)&inst.tcur, sizeof(long long), 1, pf);
-      if(!res)
-	goto eof;
-      res = fread((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
-      if(!res)
-	goto eof;
-      res = fread((void*)&inst.rud_aws, sizeof(unsigned char), 1, pf);
-      if(!res)
-	goto eof;
-      res = fread((void*)&inst.meng_aws, sizeof(unsigned char), 1, pf);
-      if(!res)
-	goto eof;
-      res = fread((void*)&inst.seng_aws, sizeof(unsigned char), 1, pf);
-      if(!res)
-	goto eof;
-      sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
-      m_tfile = inst.tcur;
-      unlock();			
-    }
-    return 0;
+	while(m_tfile <= tcur && !feof(pf)){
+		lock();
+		size_t res;
+		res = fread((void*)&inst.tcur, sizeof(long long), 1, pf);
+		if(!res)
+			goto eof;
+		res = fread((void*)&inst.ctrl_src, sizeof(e_aws1_ctrl_src), 1, pf);
+		if(!res)
+			goto eof;
+		res = fread((void*)&inst.rud_aws, sizeof(unsigned char), 1, pf);
+		if(!res)
+			goto eof;
+		res = fread((void*)&inst.meng_aws, sizeof(unsigned char), 1, pf);
+		if(!res)
+			goto eof;
+		res = fread((void*)&inst.seng_aws, sizeof(unsigned char), 1, pf);
+		if(!res)
+			goto eof;
+		sz = sizeof(long long) + sizeof(e_aws1_ctrl_src), sizeof(unsigned char) * 3;
+		m_tfile = inst.tcur;
+		unlock();			
+	}
+    return sz;
   eof:
     unlock();
     return 0;
@@ -347,17 +347,17 @@ public:
     if(!pf)
       return 0;
     
-    int sz = 0;
-    while(m_tfile <= tcur && !feof(pf)){
-      lock();
-      size_t res = fread((void*)&stat, sizeof(stat), 1, pf);
-      if(!res)
-	goto eof;
-      sz += (int)res;
-      m_tfile = stat.tcur;
-      unlock();
-    }
-    return sz;
+	int sz = 0;
+	while(m_tfile <= tcur && !feof(pf)){
+		lock();
+		size_t res = fread((void*)&stat, sizeof(stat), 1, pf);
+		if(!res)
+			goto eof;
+		sz += (int)res;
+		m_tfile = stat.tcur;
+		unlock();
+	}
+	return sz;
   eof:
     unlock();
     return sz;

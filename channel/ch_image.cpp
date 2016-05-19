@@ -59,6 +59,7 @@ int ch_image::read(FILE * pf, long long tcur)
 {
   if(!pf)
 		return 0;
+  size_t sz = 0;
 	while(m_tfile <= tcur && !feof(pf)){
 		long long tsave;
 		int r, c, type, size;
@@ -67,22 +68,30 @@ int ch_image::read(FILE * pf, long long tcur)
 		res = fread((void*)&tsave, sizeof(long long), 1, pf);
 		if(!res)
 			return 0;
-
+		sz += res;
 		lock_bk();
 		m_time[m_back] = m_tfile = tsave;
 
 		res = fread((void*)&type, sizeof(int), 1, pf);
 		if(!res)
 			goto failed;
+		sz += res;
+
 		res = fread((void*)&r, sizeof(int), 1, pf);
 		if(!res)
 			goto failed;
+		sz += res;
+
 		res = fread((void*)&c, sizeof(int), 1, pf);
 		if(!res)
 			goto failed;
+		sz += res;
+
 		res = fread((void*)&size, sizeof(int), 1, pf);
 		if(!res)
 			goto failed;
+		sz += res;
+
 		Mat & img = m_img[m_back];
 		if(img.type() != type || img.rows != r || img.cols != c){
 			img.create(r, c, type);
@@ -90,6 +99,7 @@ int ch_image::read(FILE * pf, long long tcur)
 		res = fread((void*)img.data, sizeof(char), size, pf);
 		if(!res)
 			goto failed;
+		sz += res;
 
 		lock_fr();
 		int tmp = m_front;
@@ -99,6 +109,7 @@ int ch_image::read(FILE * pf, long long tcur)
 
 		unlock_bk();
 	}
+	return (int) sz;
 failed:
 	unlock_bk();
 	return 0;

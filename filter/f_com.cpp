@@ -992,16 +992,10 @@ bool f_read_ch_log::open_log(const int och)
 		fjr.getline(buf, 1024);
 		if(buf[0] != '#' || buf[1] != 'S')
 			return false;
-		long long ts = atol(&buf[3]);
+		m_ts[och] = atoll(&buf[3]);
 
 		fjr.getline(buf, 1024);
 		snprintf(fname, 1024, "%s/%s", m_path, buf);
-		m_logs[och] = fopen(fname, "rb");
-		cout << "Opening " << buf << " for " << m_chout[och]->get_name() << endl;
-		if(!m_logs[och]){			
-			cerr << "Failed to open file " << buf << "." << endl;
-			return false;
-		}
 
 		fjr.getline(buf, 1024);
 		if(buf[0] != '#' || buf[1] != 'E'){
@@ -1009,8 +1003,14 @@ bool f_read_ch_log::open_log(const int och)
 			return false;
 		}
 
-		long long te = atol(&buf[3]);
-		if(ts <= m_cur_time || te > m_cur_time){
+		m_te[och] = atoll(&buf[3]);
+		if(m_ts[och] <= m_cur_time && m_te[och] > m_cur_time){
+			m_logs[och] = fopen(fname, "rb");
+			cout << "Opening " << fname << " for " << m_chout[och]->get_name() << endl;
+			if(!m_logs[och]){			
+				cerr << "Failed to open file " << buf << "." << endl;
+				return false;
+			}
 			seek = true;
 		}
 	}
@@ -1020,6 +1020,8 @@ bool f_read_ch_log::open_log(const int och)
 bool f_read_ch_log::init_run()
 {
 	m_logs.resize(m_chout.size());
+	m_ts.resize(m_chout.size());
+	m_te.resize(m_chout.size());
 
 	int och;
 	for(och = 0; och < m_chout.size(); och++){
@@ -1045,13 +1047,16 @@ void f_read_ch_log::destroy_run()
 bool f_read_ch_log::proc()
 {
   for(int och = 0; och < m_chout.size(); och++){
-    if(m_chout[och]->read(m_logs[och], m_cur_time) == 0){// eof
-		fclose(m_logs[och]);
-		m_logs[och] = NULL;
-		if(!open_log(och)){
-			cout << m_chout[och]->get_name() << "'s log finished at " << m_cur_time << endl;
-		}
-	}
+	  if(!m_logs[och])
+		  continue;
+	  m_chout[och]->read(m_logs[och], m_cur_time);
+	  if(feof(m_logs[och]) && m_cur_time > m_te[och]){
+		  fclose(m_logs[och]);
+		  m_logs[och] = NULL;
+		  if(!open_log(och)){
+			  cout << m_chout[och]->get_name() << "'s log finished at " << m_cur_time << endl;
+		  }
+	  }
   }
   
   return true;

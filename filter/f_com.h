@@ -218,6 +218,7 @@ private:
 	char m_path[1024];
 	bool m_verb;
 	vector<FILE *> m_logs;
+	vector<long long> m_ts, m_te;
 	bool open_log(const int och);
 
 public:
