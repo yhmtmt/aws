@@ -223,6 +223,8 @@ class f_aws1_ui: public f_glfw_window
   ch_obj * m_ch_obj;
   ch_ais_obj * m_ch_ais_obj;
   ch_image_ref * m_ch_img;
+  bool m_img_x_flip;
+  bool m_img_y_flip;
  
   char m_path_storage[1024];
   // Main image view related parameters

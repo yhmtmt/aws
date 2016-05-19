@@ -45,6 +45,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					 m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL),
 					 m_ch_map(NULL),
 					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL),
+					 m_img_x_flip(false), m_img_y_flip(false),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
 					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.)
 {
@@ -59,7 +60,8 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("ch_obj", (ch_base**)&m_ch_obj, typeid(ch_obj).name(), "Object channel");
   register_fpar("ch_ais_obj", (ch_base**)&m_ch_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel");
   register_fpar("ch_img", (ch_base**)&m_ch_img, typeid(ch_image_ref).name(), "Image channel");
-
+  register_fpar("flip_img_x", &m_img_x_flip, "Image in ch_img is fliped in x direction.");
+  register_fpar("flip_img_y", &m_img_y_flip, "Image in ch_img is fliped in y direction.");
   register_fpar("storage", m_path_storage, 1024, "Path to the storage device");
 
   register_fpar("acs", (int*) &m_stat.ctrl_src, (int) ACS_NONE, str_aws1_ctrl_src, "Control source.");
@@ -144,12 +146,12 @@ void f_aws1_ui::ui_show_img()
 				img = tmp;
 			}
 
+			awsFlip(img, m_img_x_flip, m_img_y_flip, false);
 			if(img.type() == CV_8U){
 				glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
 			}
 			else{
-				cnvCVBGR8toGLRGB8(img);
-				glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
+				glDrawPixels(img.cols, img.rows, GL_BGR, GL_UNSIGNED_BYTE, img.data);
 			}
 		}
 	}
