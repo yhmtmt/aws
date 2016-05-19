@@ -222,10 +222,15 @@ class f_aws1_ui: public f_glfw_window
   ch_map * m_ch_map;
   ch_obj * m_ch_obj;
   ch_ais_obj * m_ch_ais_obj;
-  ch_image_ref * m_ch_img;
-  bool m_img_x_flip;
-  bool m_img_y_flip;
+  ch_image_ref * m_ch_img, * m_ch_img2;
+  bool m_img_x_flip, m_img_y_flip;
+  bool m_img2_x_flip, m_img2_y_flip;
  
+  enum e_imv{
+	  IMV_IMG1, IMV_IMG2, IMV_IMG12, IMV_UNDEF
+  } m_imv;
+
+  static const char * m_str_imv[IMV_UNDEF];
   char m_path_storage[1024];
   // Main image view related parameters
   // Main image view shows an image from m_ch_img, the focal length and the principal point are defined as follows.

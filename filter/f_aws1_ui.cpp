@@ -40,12 +40,17 @@ const char * f_aws1_ui::m_str_aws1_ui_mode[AUM_UNDEF] = {
 	"normal", "map", "dev"
 };
 
+const char * f_aws1_ui::m_str_imv[IMV_UNDEF] = {
+	"img1", "img2", "img12"
+};
+
 f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
 					m_state(NULL), m_ch_sys(NULL),
 					 m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL),
 					 m_ch_map(NULL),
-					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL),
-					 m_img_x_flip(false), m_img_y_flip(false),
+					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL), m_ch_img2(NULL),
+					 m_imv(IMV_IMG1),
+					 m_img_x_flip(false), m_img_y_flip(false), m_img2_x_flip(false), m_img2_y_flip(false),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
 					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.)
 {
@@ -60,8 +65,14 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("ch_obj", (ch_base**)&m_ch_obj, typeid(ch_obj).name(), "Object channel");
   register_fpar("ch_ais_obj", (ch_base**)&m_ch_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel");
   register_fpar("ch_img", (ch_base**)&m_ch_img, typeid(ch_image_ref).name(), "Image channel");
+  register_fpar("ch_img2", (ch_base**)&m_ch_img2, typeid(ch_image_ref).name(), "Second Image channel.");
+
   register_fpar("flip_img_x", &m_img_x_flip, "Image in ch_img is fliped in x direction.");
   register_fpar("flip_img_y", &m_img_y_flip, "Image in ch_img is fliped in y direction.");
+  register_fpar("flip_img2_x", &m_img2_x_flip, "Image in ch_img is fliped in x direction.");
+  register_fpar("flip_img2_y", &m_img2_y_flip, "Image in ch_img is fliped in y direction.");
+  register_fpar("imv", (int*)&m_imv, IMV_UNDEF, m_str_imv, "Image view mode.");
+
   register_fpar("storage", m_path_storage, 1024, "Path to the storage device");
 
   register_fpar("acs", (int*) &m_stat.ctrl_src, (int) ACS_NONE, str_aws1_ctrl_src, "Control source.");
@@ -134,29 +145,120 @@ void f_aws1_ui::ui_force_ctrl_stop()
 
 void f_aws1_ui::ui_show_img()
 {
-	glRasterPos2i(-1, -1);
-	if(m_ch_img){
-		Mat img;
-		long long timg;
-		img = m_ch_img->get_img(timg);
-		if(!img.empty()){
-			if(m_sz_win.width != img.cols || m_sz_win.height != img.rows){
-				Mat tmp;
-				resize(img, tmp, m_sz_win);
-				img = tmp;
-			}
+	long long timg;
+	Mat img, img2;
+	float av = m_xscale * m_iyscale;
 
-			awsFlip(img, m_img_x_flip, m_img_y_flip, false);
-			if(img.type() == CV_8U){
-				glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
-			}
-			else{
-				glDrawPixels(img.cols, img.rows, GL_BGR, GL_UNSIGNED_BYTE, img.data);
+	switch(m_imv){
+	case IMV_IMG1:
+		if(m_ch_img){
+			img = m_ch_img->get_img(timg);
+			if(!img.empty()){
+				if(m_sz_win.width != img.cols || m_sz_win.height != img.rows){
+					float ai = (float)((float) img.cols / (float) img.rows);
+					Size sz;
+					if(av > ai){
+						sz.height = m_sz_win.height;
+						sz.width = (int)((float)m_sz_win.width * ((float)sz.height / (float)img.rows));
+					}else{
+						sz.width = m_sz_win.width;
+						sz.height = (int)((float)m_sz_win.height * ((float)sz.width / (float)img.cols));
+					}
+				
+					Mat tmp;
+					resize(img, tmp, sz);
+					img = tmp;
+				}
+
+				awsFlip(img, m_img_x_flip, m_img_y_flip, false);
 			}
 		}
-	}
-	else
+		break;
+	case IMV_IMG2:
+		if(m_ch_img2){
+			img = m_ch_img2->get_img(timg);
+			if(!img.empty()){
+				float ai = (float)((float)img.cols / (float)img.rows);
+				Size sz;
+				if(av > ai){
+					sz.height = m_sz_win.height;
+					sz.width = (int)((float)m_sz_win.width * ((float)sz.height / (float)img.rows));
+				}else{
+					sz.width = m_sz_win.width;
+					sz.height = (int)((float)m_sz_win.height * ((float)sz.width / (float)img.cols));
+				}
+
+				Mat tmp;
+				resize(img, tmp, sz);
+				img = tmp;
+
+				awsFlip(img, m_img2_x_flip, m_img2_y_flip, false);
+			}
+		}
+		break;
+	case IMV_IMG12:
+		if(m_ch_img && m_ch_img2){
+			img = m_ch_img->get_img(timg);
+			if(!img.empty()){
+				float ai = (float)((float)img.cols / (float)img.rows);
+				Size sz;
+				if(av > ai){
+					sz.height = m_sz_win.height >> 1;
+					sz.width = (int)((float)m_sz_win.width * ((float)sz.height / (float)img.rows));
+				}else{
+					sz.width = m_sz_win.width >> 1;
+					sz.height = (int)((float)m_sz_win.height * ((float)sz.width / (float)img.cols));
+				}
+
+				Mat tmp;
+				resize(img, tmp, sz);
+				img = tmp;
+
+				awsFlip(img, m_img2_x_flip, m_img2_y_flip, false);
+			}
+
+			img2 = m_ch_img2->get_img(timg);
+			if(!img2.empty()){
+				float ai = (float)(img2.cols / img2.rows);
+				Size sz;
+				if(av > ai){
+					sz.height = m_sz_win.height >> 1;
+					sz.width = (int)((float)m_sz_win.width * ((float)sz.height / (float)img2.rows));
+				}else{
+					sz.width = m_sz_win.width >> 1;
+					sz.height = (int)((float)m_sz_win.height * ((float)sz.width / (float)img2.cols));
+				}
+
+				Mat tmp;
+				resize(img2, tmp, sz);
+				img = tmp;
+
+				awsFlip(img2, m_img2_x_flip, m_img2_y_flip, false);
+			}
+		}
+		break;
+	default:
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		return;
+	}
+
+	glRasterPos2i(-1, -1);
+	if(img.type() == CV_8U){
+		glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
+	}
+	else{
+		glDrawPixels(img.cols, img.rows, GL_BGR, GL_UNSIGNED_BYTE, img.data);
+	}
+
+	if(m_imv == IMV_IMG12){
+		glRasterPos2i(0, -1);
+		if(img.type() == CV_8U){
+			glDrawPixels(img2.cols, img2.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
+		}
+		else{
+			glDrawPixels(img2.cols, img2.rows, GL_BGR, GL_UNSIGNED_BYTE, img.data);
+		}
+	}
 }
 
 void f_aws1_ui::ui_show_rudder()
