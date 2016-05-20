@@ -738,9 +738,10 @@ public:
 		if(pf){
 			lock();
 			long long tnew = m_tfile;
-			
+			//			cout << "cur log time " << m_tfile << endl;
 			for(itr = objs.begin(); itr != objs.end(); itr++){
 				c_ais_obj & obj = *(itr->second);
+				//				cout << "t " << obj.get_time() << " mmsi "<< obj.get_mmsi() << endl;
 				if(obj.get_time() > m_tfile){
 					tnew = max(tnew, obj.get_time());
 					sz += obj.write(pf);
