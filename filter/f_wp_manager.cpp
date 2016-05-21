@@ -66,10 +66,8 @@ bool f_wp_manager::proc()
 	m_wp->begin();
 	for(;!m_wp->is_end(); m_wp->next()){
 		s_wp & wp = m_wp->cur();
-		wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
-		cout <<"after:" << wp.rx << "," << wp.ry << "," <<  wp.rz << endl;
+		wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);	 
 		wp = m_wp->cur();
-		cout <<"after2:" << wp.rx << "," << wp.ry << "," <<  wp.rz << endl;		
 	}
 
 	// if there is next waypoint, calculate the difference between waypoint and ship state, and checking waypoint arrival
@@ -90,6 +88,7 @@ bool f_wp_manager::proc()
 
 		m_wp->set_diff(d, cdiff);
 		if(d < wp.rarv){// arrived
+		  cout << "d " << d << " rarv " << wp.rarv << " t " << m_cur_time << endl;
 			wp.set_arrival_time(m_cur_time);
 			m_wp->set_next_wp();
 		}

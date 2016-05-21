@@ -21,13 +21,13 @@
 struct s_wp
 {
 	float lat, lon; // longitude lattitude
-	float x, y, z;	// corresponding ECEF to lat, lon
+  float x, y, z;	// corresponding ECEF to lat, lon
 	float rx, ry, rz; // Relative position in my own ship coordinate
 	float rarv;		// Arrival threashold radius
 	float v;		// velocity to go
 	long long t;	// arrival time
 
-	s_wp():lat(0.), lon(0.), x(0.), y(0.), z(0.), rarv(0.), v(0.), t(-1)
+s_wp():lat(0.), lon(0.), x(0.), y(0.), z(0.), rarv(0.), v(0.), t(-1)
 	{
 	}
 

@@ -431,10 +431,6 @@ void c_aws1_ui_map::draw()
 			  drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 1., lw); // own ship triangle				
 			  drawGlLine2Df(pos.x, pos.y, offset.x, offset.y, 0, 1.0, 0., 1., lw);
 			  
-			  if(d < wp.rarv){// arrived
-			    wp.set_arrival_time(get_cur_time());
-			    pwp->set_next_wp();
-			  }
 			}
 
 			pwp->unlock();

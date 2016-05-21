@@ -106,8 +106,8 @@ bool f_aws1_ap::proc()
 			float d = 0.;
 			float cdiff = 0;		
 
-			m_wp->get_diff(cdiff, d);
-
+			m_wp->get_diff(d, cdiff);
+			cout << "cdiff" << cdiff << " ";
 			cdiff *= (float)(1./180.); // normalize
 
 			float sdiff = (float)(m_smax - sog);
@@ -119,7 +119,7 @@ bool f_aws1_ap::proc()
 			m_isdiff += sdiff;
 			m_cdiff = cdiff;
 			m_sdiff = sdiff;
-			
+			cout << " " << m_cdiff << " " << m_dcdiff << " " <<  m_icdiff << endl;
 			m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
 			m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
 			m_rud = (float) min(m_rud, 255.f);
