@@ -17,11 +17,6 @@
 #ifndef _F_COM_H_
 #define _F_COM_H_
 
-#include "../util/aws_thread.h"
-#include "../util/aws_sock.h"
-#include "../util/aws_serial.h"
-#include "../util/c_clock.h"
-
 #include "../channel/ch_image.h"
 #include "../channel/ch_vector.h"
 

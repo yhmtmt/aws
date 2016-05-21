@@ -25,6 +25,10 @@
 #include <cmath>
 #include <list>
 
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
+
 using namespace std;
 
 #include <opencv2/opencv.hpp>
@@ -1222,7 +1226,7 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 	for(ibuf = 0; ibuf < (unsigned int) m_num_buf; ibuf++){
 #endif
 		if(m_frm_done[ibuf]){
-			if(*m_mat_frame[ibuf].refcount == 1){
+			if(m_mat_frame[ibuf].u->refcount == 1){
 		//	if(!pout->is_buf_in_use((const unsigned char*) m_frame[ibuf].ImageBuffer)){
 				PvErr = PvCaptureQueueFrame(m_hcam, &m_frame[ibuf], proc_frame);
 				if(PvErr == ePvErrSuccess){

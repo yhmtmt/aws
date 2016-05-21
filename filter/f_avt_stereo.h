@@ -17,10 +17,6 @@
 #ifndef _F_AVT_STEREO_H_
 #define _F_AVT_STEREO_H_
 
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-#include "../util/c_clock.h"
-
 #include "f_avt_cam.h"
 
 class f_avt_stereo: public f_avt_cam

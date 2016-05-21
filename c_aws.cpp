@@ -27,16 +27,16 @@ using namespace std;
 #include <direct.h>
 #endif
 
-#include <opencv2/opencv.hpp>
-using namespace cv;
-
+#include "util/aws_stdlib.h"
 #include "util/aws_sock.h"
 #include "util/aws_thread.h"
 
 #include "util/c_clock.h"
+
+#include <opencv2/opencv.hpp>
+using namespace cv;
 #include "channel/ch_base.h"
 #include "filter/f_base.h"
-#include "util/c_ship.h"
 #include "command.h"
 #include "c_aws.h"
 
@@ -186,15 +186,11 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 	if(FAILED(hr))
 		return;
 #endif
-
-	c_ship::init();
-
 	srand((unsigned int) time(NULL));
 }
 
 c_aws::~c_aws()
 {
-	c_ship::destroy();
 	f_base::uninit();
 	ch_base::uninit();
 	clear();

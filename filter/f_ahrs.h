@@ -16,10 +16,9 @@
 #ifndef _F_AHRS_H_
 #define _F_AHRS_H_
 
-#include "../util/aws_serial.h"
 #include "f_base.h"
-
 #include "../channel/ch_state.h"
+
 
 #define AHRS_BUF 1024
 

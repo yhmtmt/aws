@@ -16,9 +16,6 @@
 // You should have received a copy of the GNU General Public License
 // along with f_fep01.h.  If not, see <http://www.gnu.org/licenses/>. 
 
-#include "../util/aws_thread.h"
-#include "../util/aws_serial.h"
-
 #include "../channel/ch_vector.h"
 #include "f_base.h"
 

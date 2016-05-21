@@ -18,11 +18,6 @@
 #define _F_NMEA_H_
 
 #define SIZE_NMEA_BUF 166 // for two NMEA
-#include "../util/aws_serial.h"
-#include "../util/aws_sock.h"
-#include "../util/aws_thread.h"
-#include "../util/c_clock.h"
-#include "../util/c_ship.h"
 #include "../channel/ch_base.h"
 #include "../channel/ch_ais.h"
 #include "../channel/ch_vector.h"
@@ -135,54 +130,6 @@ public:
 	}
 	
 	virtual bool seek(long long seek_time);
-	virtual bool init_run();
-	virtual bool proc();
-	virtual void destroy_run();
-};
-
-
-// f_nmea_proc decodes nmea 0183 sentences 
-// This class accesses global ship list. 
-class f_nmea_proc: public f_base
-{
-protected:
-	ch_nmea * m_chin;
-	ch_nmea * m_chout;
-	c_nmea_dec m_nmeadec;
-	int m_bm_ver;
-	char m_buf[84];
-	bool m_btime_rmc;
-
-	///////////// for AIS Binary message
-	char m_toker[3];
-	s_binary_message m_aibm; // AIS binary message
-	char m_str_aibm[1024]; // string to be sent as AIS binary message
-	enum e_str_aibm_type{
-		AIBM_TEXT, AIBM_C6, AIBM_C8, AIBM_BIN, AIBM_HEX
-	} m_aibm_type;
-	static const char * str_aibm_type[AIBM_HEX + 1];
-
-public:
-	f_nmea_proc(const char * name): f_base(name), m_chin(NULL), m_chout(NULL), m_bm_ver(1), m_btime_rmc(false)
-	{
-		register_fpar("bm_ver", &m_bm_ver, "Version of the binary message");
-		register_fpar("trmc", &m_btime_rmc, "Time is collected by RMC sentence.");
-
-		// for AIS binary message
-		register_fpar("aibm_str_type", (int*)&m_aibm_type, AIBM_HEX + 1, str_aibm_type, "Type of AIS binary message {C6, C8, BIN, HEX}.");
-		m_str_aibm[0] = '\0';
-		register_fpar("aibm_str", m_str_aibm, 1023, "String to be sent as AIS Binary message.");
-		register_fpar("aibm_ch", &m_aibm.ch, "AIS Channel selection. 0: Auto  1: A, 2: B, 3: A and B.");
-		register_fpar("aibm_sq", &m_aibm.sq, "Sequential ID. for ABM 0 to 3, for BBM 0 to 9.");
-		register_fpar("aibm_mmsi", &m_aibm.mmsi, "Destination MMSI for sending ABM.");
-		register_fpar("aibm_type", &m_aibm.type, "Binary message type. 6 and 12 is ABM, 8 and 14 is BBM");
-		m_toker[0] = 'A';
-		m_toker[1] = 'W';
-		register_fpar("toker", m_toker, 3, "Toker string. (2 characters)");
-	}
-
-	~f_nmea_proc(){
-	}	
 	virtual bool init_run();
 	virtual bool proc();
 	virtual void destroy_run();

@@ -20,7 +20,6 @@
 #define _F_SHIP_DETECTOR_H
 
 #include "../util/aws_sock.h"
-#include "../util/c_clock.h"
 
 #include "../channel/ch_image.h"
 #include "../channel/ch_vector.h"

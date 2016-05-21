@@ -24,6 +24,12 @@
 #include <cmath>
 using namespace std;
 
+#include "../util/aws_stdlib.h"
+#include "../util/aws_serial.h"
+#include "../util/aws_sock.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
+
 #define XMD_H
 
 #ifdef SANYO_HD5400

@@ -18,12 +18,11 @@
 
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
-#include "../util/c_clock.h"
-#include "../util/c_ship.h"
-#include "../channel/ch_base.h"
-#include "../channel/ch_ais.h"
-#include "../channel/ch_vector.h"
-#include "../channel/ch_nmea.h"
+//#include "../util/c_ship.h"
+//#include "../channel/ch_base.h"
+//#include "../channel/ch_ais.h"
+//#include "../channel/ch_vector.h"
+//#include "../channel/ch_nmea.h"
 
 #include "f_base.h"
 enum e_evt_type

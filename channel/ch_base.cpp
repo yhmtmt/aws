@@ -24,6 +24,10 @@
 #include <list>
 using namespace std;
 
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
+
 #ifndef _WIN32
 #include <linux/videodev2.h>
 #endif
@@ -38,13 +42,6 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
-#include "../util/aws_sock.h"
-
-#include "../util/aws_thread.h"
-#include "../util/c_clock.h"
-
-#include "../util/c_ship.h"
-#include "../util/c_imgalign.h"
 #include "ch_base.h"
 
 CHMap ch_base::m_chmap;

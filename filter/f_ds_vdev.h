@@ -17,7 +17,6 @@
 // along with f_ds_video.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "../util/aws_thread.h"
-#include "../util/c_clock.h"
 
 #include "../channel/ch_image.h"
 #include "../channel/ch_campar.h"

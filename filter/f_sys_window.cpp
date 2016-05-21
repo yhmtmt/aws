@@ -17,6 +17,60 @@
 // along with f_sys_window.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include <WindowsX.h>
+#ifdef _WIN32
+#include <DShow.h>
+#include <uuids.h>
+
+//#define DS_DEBUG
+
+//#include <Qedit.h>
+
+// From http://msdn2.microsoft.com/en-us/library/ms786691.aspx:
+
+// Include Qedit.h. This header file is not compatible with Microsoft Direct3D headers later than version 7.
+
+// Since we are using DX9, we cannot include this header. Necessary API elements, copied below.
+
+EXTERN_C const CLSID CLSID_SampleGrabber;
+
+EXTERN_C const CLSID CLSID_NullRenderer;
+
+EXTERN_C const IID IID_ISampleGrabberCB;
+
+MIDL_INTERFACE("0579154A-2B53-4994-B0D0-E773148EFF85")
+
+ISampleGrabberCB : public IUnknown {
+public:
+	virtual HRESULT STDMETHODCALLTYPE SampleCB( double SampleTime,IMediaSample *pSample) = 0;
+	virtual HRESULT STDMETHODCALLTYPE BufferCB( double SampleTime,BYTE *pBuffer,long BufferLen) = 0;
+};
+
+EXTERN_C const IID IID_ISampleGrabber;
+
+MIDL_INTERFACE("6B652FFF-11FE-4fce-92AD-0266B5D7C78F")
+
+ISampleGrabber : public IUnknown {
+public:
+	virtual HRESULT STDMETHODCALLTYPE SetOneShot( BOOL OneShot) = 0;
+	virtual HRESULT STDMETHODCALLTYPE SetMediaType( const AM_MEDIA_TYPE *pType) = 0;
+	virtual HRESULT STDMETHODCALLTYPE GetConnectedMediaType( AM_MEDIA_TYPE *pType) = 0;
+	virtual HRESULT STDMETHODCALLTYPE SetBufferSamples( BOOL BufferThem) = 0;
+	virtual HRESULT STDMETHODCALLTYPE GetCurrentBuffer( /* [out][in] */ long *pBufferSize,/* [out] */ long *pBuffer) = 0;
+	virtual HRESULT STDMETHODCALLTYPE GetCurrentSample( /* [retval][out] */ IMediaSample **ppSample) = 0;
+	virtual HRESULT STDMETHODCALLTYPE SetCallback( ISampleGrabberCB *pCallback,long WhichMethodToCallback) = 0;
+};
+
+
+#if WINVER != 0x603 && WINVER != 0x602
+// if not windows 8, the direct 3d is not included in the windows sdk.
+//#include <d2d1.h>
+//#include <dwrite.h>
+#include <d3d9.h>
+#endif
+
+#include <d3dx9.h>
+
+#endif
 #include <cstdio>
 
 #include <iostream>
@@ -24,6 +78,10 @@
 #include <vector>
 #include <list>
 using namespace std;
+
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
 
 #include <opencv2/opencv.hpp>
 using namespace cv;

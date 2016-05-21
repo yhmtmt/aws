@@ -18,9 +18,6 @@
 #define _F_IMGS_H_
 // Alert: This module is written only for Windows. 
 #ifdef _WIN32
-
-#include "../util/c_clock.h"
-
 #include "../channel/ch_image.h"
 #include "../channel/ch_campar.h"
 

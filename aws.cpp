@@ -20,15 +20,19 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
-using namespace std;
+#include <list>
+#include <map>
 
-#include <opencv2/opencv.hpp>
-using namespace cv;
+using namespace std;
 #include "CmdAppBase/CmdAppBase.h"
+#include "util/aws_stdlib.h"
 #include "util/aws_sock.h"
 #include "util/aws_thread.h"
 
 #include "util/c_clock.h"
+
+#include <opencv2/opencv.hpp>
+using namespace cv;
 #include "channel/ch_base.h"
 #include "filter/f_base.h"
 

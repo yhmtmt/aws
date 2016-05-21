@@ -16,15 +16,20 @@
 
 #include <iostream>
 #include <fstream>
+#include <list>
 #include <map>
 using namespace std;
 
-#include <opencv2/opencv.hpp>
-using namespace cv;
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
 
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+
+#include <opencv2/opencv.hpp>
+using namespace cv;
 
 #include <GL/glew.h>
 
