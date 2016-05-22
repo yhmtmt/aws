@@ -13,6 +13,9 @@
 // You should have received a copy of the GNU General Public License
 // along with c_aws1_ui_normal.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 #include "stdafx.h"
+#include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>

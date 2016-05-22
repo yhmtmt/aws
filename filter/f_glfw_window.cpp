@@ -15,6 +15,8 @@
 // along with f_glfw_window.  If not, see <http://www.gnu.org/licenses/>. 
 #include "stdafx.h"
 #ifdef GLFW_WINDOW
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>

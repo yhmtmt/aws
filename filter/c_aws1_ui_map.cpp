@@ -14,8 +14,9 @@
 // along with c_aws1_ui_map.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "stdafx.h"
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>

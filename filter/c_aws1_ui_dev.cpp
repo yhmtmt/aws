@@ -14,6 +14,9 @@
 // along with c_aws1_ui_dev.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "stdafx.h"
+#include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>
