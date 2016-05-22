@@ -16,6 +16,7 @@
 // along with factory.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include <cstdio>
+#include <cstring>
 #ifndef _WIN32
 #include <linux/videodev2.h>
 #endif

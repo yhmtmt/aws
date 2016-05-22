@@ -16,7 +16,7 @@
 // along with f_base.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include <cstdio>
-
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <vector>

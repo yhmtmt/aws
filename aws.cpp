@@ -17,6 +17,7 @@
 // along with aws.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "stdafx.h"
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <vector>

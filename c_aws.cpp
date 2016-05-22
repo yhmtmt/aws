@@ -16,6 +16,9 @@
 // You should have received a copy of the GNU General Public License
 // along with c_aws.  If not, see <http://www.gnu.org/licenses/>. 
 
+#include <cstdio>
+#include <cmath>
+#include <cstring>
 #include <iostream>
 #include <fstream>
 #include <vector>

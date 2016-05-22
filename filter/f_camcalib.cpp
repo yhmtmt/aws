@@ -17,6 +17,7 @@
 // along with f_camcalib.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include <cstdio>
+#include <cstring>
 
 #include <iostream>
 #include <fstream>

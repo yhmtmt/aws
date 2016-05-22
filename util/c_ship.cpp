@@ -16,6 +16,7 @@
 // You should have received a copy of the GNU General Public License
 // along with c_ship.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
+#ifdef _WIN32
 #if WINVER != 0x603 && WINVER != 0x602
 // if not windows 8, the direct 3d is not included in the windows sdk.
 //#include <d2d1.h>
@@ -24,6 +25,7 @@
 #endif
 
 #include <d3dx9.h>
+#endif
 
 #include <iostream>
 #include <fstream>

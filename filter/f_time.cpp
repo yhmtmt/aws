@@ -17,6 +17,9 @@
 
 #include "stdafx.h"
 
+#include <cstring>
+#include <cmath>
+
 #include <errno.h>
 #include <iostream>
 #include <fstream>

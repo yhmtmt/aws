@@ -17,6 +17,8 @@
 // along with f_nmea.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>

@@ -58,12 +58,14 @@ public:
 
 #endif
 
+#include <cstring>
+#include <cmath>
+
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <list>
 #include <map>
-#include <cmath>
 using namespace std;
 #include "../util/aws_stdlib.h"
 #include "../util/aws_sock.h"

@@ -17,11 +17,13 @@
 #include "stdafx.h"
 
 #include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>
 #include <vector>
-#include <cmath>
+
 using namespace std;
 
 #include "../util/aws_stdlib.h"
