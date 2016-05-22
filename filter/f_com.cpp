@@ -1013,7 +1013,7 @@ bool f_read_ch_log::open_log(const int och)
 		}
 
 		m_te[och] = atoll(&buf[3]);
-		if(m_ts[och] <= m_cur_time && m_te[och] > m_cur_time){
+		if(m_te[och] > m_cur_time){
 			m_logs[och] = fopen(fname, "rb");
 			cout << "Opening " << fname << " for " << m_chout[och]->get_name() << endl;
 			if(!m_logs[och]){			
@@ -1059,7 +1059,7 @@ bool f_read_ch_log::proc()
 	  if(!m_logs[och])
 		  continue;
 	  m_chout[och]->read(m_logs[och], m_cur_time);
-	  if(feof(m_logs[och]) && m_cur_time > m_te[och]){
+	  if(m_cur_time > m_te[och]){
 		  fclose(m_logs[och]);
 		  m_logs[och] = NULL;
 		  if(!open_log(och)){

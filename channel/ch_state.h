@@ -31,6 +31,12 @@ class ch_state: public ch_base
   float cog, sog; // Course over ground(deg), Speed over ground (kts)
   float depth; // water depth
   long long m_tfile;
+  float rollf, pitchf, yawf; // roll(deg), pitch(deg), yaw(deg)
+  float lonf, latf, altf, galtf; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
+  float xf, yf, zf; // ecef coordinate
+  float cogf, sogf; // Course over ground(deg), Speed over ground (kts)
+  float depthf; // water depth
+
  public:
  ch_state(const char * name): ch_base(name), 
 	 m_tfile(0),
@@ -260,34 +266,62 @@ class ch_state: public ch_base
 		  return 0;
 
 	  int sz = 0;
-	  while(tdp <= tcur && tvel <= tcur && tatt <= tcur && tpos <= tcur && !feof(pf)){
+	  if(tposf < tcur && tposf != tpos){
+		  lat = latf;
+		  lon = lonf;
+		  alt = altf;
+		  galt = galtf;
+		  float lat_rad = (float)(lat * (PI / 180.)), lon_rad = (float)(lon * (PI / 180.));
+		  getwrldrot(lat_rad, lon_rad, R);
+		  bihtoecef(lat_rad, lon_rad, alt, x, y, z);
+		  tpos = tposf;
+	  }
+
+	  if(tattf < tcur && tattf != tatt){
+		  roll = rollf;
+		  pitch = pitchf;
+		  yaw = yawf;
+		  tatt = tattf;
+	  }
+
+	  if(tvelf < tcur && tvelf != tvel){
+		  cog = cogf;
+		  sog = sogf;
+		  tvel = tvelf;
+	  }
+
+	  if(tdpf < tcur && tdpf != tdp){
+		  depth = depthf;
+		  tdp = tdpf;
+	  }
+
+	  while(!feof(pf)){
+		  if((tdpf > tcur || tvelf > tcur || tattf > tcur || tposf > tcur)
+			  && (tdpf != tdp || tattf != tatt || tvelf != tvel || tposf != tpos)){
+				  break;
+		  }
 		  lock();
-		  long long t;
 		  size_t res = 0;
-		  res += fread((void*) &t, sizeof(long long), 1, pf);
-		  res += fread((void*) &lat, sizeof(float), 1, pf);
-		  res += fread((void*) &lon, sizeof(float), 1, pf);
-		  res += fread((void*) &alt, sizeof(float), 1, pf);
-		  res += fread((void*) &galt, sizeof(float), 1, pf);			
-		  tposf = tpos = t;
+		  res += fread((void*) &tposf, sizeof(long long), 1, pf);
+		  res += fread((void*) &latf, sizeof(float), 1, pf);
+		  res += fread((void*) &lonf, sizeof(float), 1, pf);
+		  res += fread((void*) &altf, sizeof(float), 1, pf);
+		  res += fread((void*) &galtf, sizeof(float), 1, pf);			
 		  sz += (int) res;
 
-		  res += fread((void*) &t, sizeof(long long), 1, pf);
-		  res += fread((void*) &roll, sizeof(float), 1, pf);
-		  res += fread((void*) &pitch, sizeof(float), 1, pf);
-		  res += fread((void*) &yaw, sizeof(float), 1, pf);
-		  tattf = tatt = t;
+		  res += fread((void*) &tattf, sizeof(long long), 1, pf);
+		  res += fread((void*) &rollf, sizeof(float), 1, pf);
+		  res += fread((void*) &pitchf, sizeof(float), 1, pf);
+		  res += fread((void*) &yawf, sizeof(float), 1, pf);
 		  sz += (int) res;
 	  
-		  res += fread((void*) &t, sizeof(long long), 1, pf);
-		  res += fread((void*) &cog, sizeof(float), 1, pf);
-		  res += fread((void*) &sog, sizeof(float), 1, pf);
-		  tvelf = tvel = t;
+		  res += fread((void*) &tvelf, sizeof(long long), 1, pf);
+		  res += fread((void*) &cogf, sizeof(float), 1, pf);
+		  res += fread((void*) &sogf, sizeof(float), 1, pf);
 		  sz += (int) res;
 
-		  res += fread((void*) &t, sizeof(float), 1, pf);
-		  res += fread((void*) &depth, sizeof(float), 1, pf);
-		  tdpf = tdp = t;
+		  res += fread((void*) &tdpf, sizeof(float), 1, pf);
+		  res += fread((void*) &depthf, sizeof(float), 1, pf);
 		  sz += (int) res;
 
 		  unlock();
@@ -298,7 +332,7 @@ class ch_state: public ch_base
   virtual bool log2txt(FILE * pbf, FILE * ptf)
   {
 	  size_t sz = 0;
-	  fprintf(ptf, "t, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth\n");
+	  fprintf(ptf, "tmax, tpos, tatt, tvel, tdp, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth\n");
 	  while(!feof(pbf)){
 		  long long t, tmax = 0;
 
@@ -331,8 +365,8 @@ class ch_state: public ch_base
 		  sz += (int) res;
 
 		  tmax = max(max(tpos, tatt), max(tvel, tdp));
-		  fprintf(ptf, "%lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f\n",
-			  tmax, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
+		  fprintf(ptf, "%lld, %lld, %lld, %lld, %lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f\n",
+			  tmax, tpos, tatt, tvel, tdp, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
 	  }
 	  return true;
   }

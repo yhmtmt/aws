@@ -40,7 +40,8 @@
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Strmiids.lib")
 #pragma comment(lib, "Quartz.lib")
-#pragma comment(lib, "d3d9.lib")
+#pragma comment(lib, "d3d9.lib")cd
+
 #pragma comment(lib, "d3dx9d.lib")
 #pragma comment(lib, "dwrite.lib")
 #pragma comment(lib, "d2d1.lib")
@@ -66,7 +67,7 @@
 #pragma comment(lib, "opencv_highgui310.lib")
 #pragma comment(lib, "opencv_imgproc310.lib")
 #pragma comment(lib, "opencv_calib3d310.lib")
-#pragma comment(lib, "opencv_imgcodecs310d.lib")
+#pragma comment(lib, "opencv_imgcodecs310.lib")
 
 #ifdef SANYO_HD5400
 #pragma comment(lib, "libcurl_imp.lib")
