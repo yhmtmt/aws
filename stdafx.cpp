@@ -7,6 +7,8 @@
 // TODO: このファイルではなく、STDAFX.H で必要な
 // 追加ヘッダーを参照してください。
 
+//#pragma comment(lib, "opencv_ffmpeg310_64.lib")
+
 #ifdef _DEBUG
 
 /*
@@ -31,6 +33,9 @@
 #pragma comment(lib, "opencv_imgproc310d.lib")
 #pragma comment(lib, "opencv_calib3d310d.lib")
 #pragma comment(lib, "opencv_imgcodecs310d.lib")
+#pragma comment(lib, "opencv_video310d.lib")
+#pragma comment(lib, "opencv_videoio310d.lib")
+
 
 #ifdef SANYO_HD5400
 #pragma comment(lib, "libjpegd.lib")
@@ -68,6 +73,8 @@
 #pragma comment(lib, "opencv_imgproc310.lib")
 #pragma comment(lib, "opencv_calib3d310.lib")
 #pragma comment(lib, "opencv_imgcodecs310.lib")
+#pragma comment(lib, "opencv_video310.lib")
+#pragma comment(lib, "opencv_videoio310.lib")
 
 #ifdef SANYO_HD5400
 #pragma comment(lib, "libcurl_imp.lib")

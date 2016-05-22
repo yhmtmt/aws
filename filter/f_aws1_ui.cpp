@@ -59,7 +59,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					 m_imv(IMV_IMG1),
 					 m_img_x_flip(false), m_img_y_flip(false), m_img2_x_flip(false), m_img2_y_flip(false),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
-					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.)
+					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.), m_bsvw(false), m_bss(false)
 {
 	m_path_storage[0] = '.';m_path_storage[1] = '\0';
 
@@ -98,6 +98,9 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("fy", &m_fy, "Focal length in y direction.");
   register_fpar("cx", &m_cx, "Principal point in x direction.");
   register_fpar("cy", &m_cy, "Principal point in y direction.");
+
+  register_fpar("ss", &m_bss, "Screen shot now.");
+  register_fpar("svw", &m_bsvw, "Screen video write.");
 }
 
 
@@ -637,6 +640,44 @@ void f_aws1_ui::ui_handle_menu()
 	}
 }
 
+void f_aws1_ui::write_screen()
+{
+	if(m_bsvw || m_bss){
+		if(m_simg.cols != m_sz_win.width || m_simg.rows != m_sz_win.height)
+			m_simg.create(m_sz_win.height, m_sz_win.width, CV_8UC3);
+
+		glReadPixels(0, 0, m_sz_win.width, m_sz_win.height, GL_BGR, GL_UNSIGNED_BYTE, m_simg.data);
+		awsFlip(m_simg, false, true, false);
+
+		if(m_bsvw){
+			if(!m_vw.isOpened()){
+				char fname[1024];
+				double fps = (double) SEC / (double) get_period();
+				int fourcc = CV_FOURCC('D', 'I', 'V', 'X');
+				snprintf(fname, 1024, "%s/%s_%lld.avi", m_path_storage, m_name, m_cur_time);
+
+				m_vw.open(fname, fourcc, fps, m_sz_win, true);
+				if(!m_vw.isOpened()){
+					cerr << "Failed to create " << fname << endl;
+					m_bsvw = false;
+				}
+			}else{
+				m_vw.write(m_simg);
+			}
+		}else{
+			if(m_vw.isOpened()){
+				m_vw.release();
+			}
+		}
+
+		if(m_bss){
+			char fname[1024];
+			snprintf(fname, 1024, "%s/%s_%lld.png");
+			imwrite(fname, m_simg);
+		}
+	}
+}
+
 bool f_aws1_ui::proc()
 {
 	if(m_ch_img){
@@ -723,6 +764,8 @@ bool f_aws1_ui::proc()
 
 	// show rendering surface.
 	glfwSwapBuffers(pwin());
+
+	write_screen();
 
 	// UI polling.
 	glfwPollEvents();
