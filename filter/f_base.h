@@ -44,7 +44,6 @@
 #include "../util/aws_stdlib.h"
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
-#include "../util/c_clock.h"
 #include "../command.h"
 #include "../channel/ch_base.h"
 
@@ -491,6 +490,10 @@ public:
 	  return m_cur_time;
 	}
 	
+	static const unsigned get_period(){
+		return m_clk.get_period();
+	}
+
 	void get_info(s_cmd & cmd, int ifilter){
 		// currentlly returning filter name, id, number of parameters, number of input channels and output channels.
 	  snprintf(cmd.get_ret_str(), RET_LEN, "%s %d %d %d %d", m_name, ifilter, (int) m_pars.size(), (int) m_chin.size(), (int) m_chout.size());

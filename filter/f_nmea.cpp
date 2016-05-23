@@ -17,12 +17,19 @@
 // along with f_nmea.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <list>
 using namespace std;
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/aws_sock.h"
+#include "../util/aws_serial.h"
+#include "../util/c_clock.h"
 
 #include <opencv2/opencv.hpp>
 using namespace cv;
@@ -392,134 +399,4 @@ void f_nmea::destroy_run(){
 	}
 	if(m_flog.is_open())
 		m_flog.close();
-}
-
-///////////////////////////////////////////////////////////// f_nmea_proc
-const char * f_nmea_proc::str_aibm_type[AIBM_HEX + 1] = {
-	"TEXT", "C6", "C8", "BIN", "HEX"
-};
-
-bool f_nmea_proc::init_run()
-{
-	for(int ich = 0; ich < f_base::m_chin.size(); ich++){
-		m_chin = dynamic_cast<ch_nmea*>(f_base::m_chin[ich]);
-		if(m_chin)
-			break;
-	}
-
-	for(int ich = 0; ich < f_base::m_chout.size(); ich++){
-		m_chout = dynamic_cast<ch_nmea*>(f_base::m_chout[ich]);
-		if(m_chout)
-			break;
-	}
-
-	return true;
-}
-
-void f_nmea_proc::destroy_run()
-{
-	m_chin = NULL;
-}
-
-bool f_nmea_proc::proc()
-{
-	if(!m_chin)
-		return false;
-
-	// sending phase
-	if(strlen(m_str_aibm)){
-		bool ret;
-		switch(m_aibm_type){
-		case AIBM_TEXT:
-			ret = m_aibm.set_msg_text(m_str_aibm);
-			break;
-		case AIBM_C6:
-			ret = m_aibm.set_msg_c6(m_str_aibm);
-			break;
-		case AIBM_C8:
-			ret = m_aibm.set_msg_c8(m_str_aibm);
-			break;
-		case AIBM_BIN:
-			ret = m_aibm.set_msg_bin(m_str_aibm);
-			break;
-		case AIBM_HEX:
-			ret = m_aibm.set_msg_hex(m_str_aibm);
-			break;
-		}
-		vector<string> nmeas;
-		if(ret){
-			ret = m_aibm.gen_nmea(m_toker, nmeas);
-		}
-
-		if(ret){
-			for(int i = 0; i < nmeas.size(); i++){
-				m_chout->push(nmeas[i].c_str());
-			}
-			m_str_aibm[0] = '\0';
-		}
-	}
-
-	c_ship::list_lock();
-	while(m_chin->pop(m_buf)){
-		const c_nmea_dat * pnd = m_nmeadec.decode(m_buf);
-		if(pnd == NULL)
-			continue;
-
-		// VDM1, 18, 19, 5, 24, TTM, GPS own ship should be registered
-		switch(pnd->get_type()){
-			case ENDT_VDM1:
-				c_ship::register_ship_by_vdm1((c_vdm_msg1*)pnd, m_cur_time);
-				break;
-			case ENDT_VDM18:
-				c_ship::register_ship_by_vdm18((c_vdm_msg18*)pnd, m_cur_time);
-				break;
-			case ENDT_VDM19:
-				c_ship::register_ship_by_vdm19((c_vdm_msg19*)pnd, m_cur_time);
-				break;
-			case ENDT_VDM5:
-				c_ship::register_ship_by_vdm5((c_vdm_msg5*)pnd);
-				break;
-			case ENDT_VDM8:
-				c_ship::register_ship_by_vdm8((c_vdm_msg8*)pnd, m_cur_time, m_bm_ver);
-				break;
-			case ENDT_VDM24:
-				c_ship::register_ship_by_vdm24((c_vdm_msg24*)pnd);
-				break;
-			case ENDT_TTM:
-				c_ship::register_ship_by_ttm((c_ttm*) pnd, m_cur_time);
-			case ENDT_GGA:
-				break;
-			case ENDT_RMC:
-				{
-					c_rmc * prmc = (c_rmc*) pnd;
-					if(!prmc->m_v)
-						break;
-
-					c_ship::set_own_rmc(prmc, m_cur_time);
-					if(m_btime_rmc){
-
-						tmex tm;
-						tm.tm_year = prmc->m_yr + (m_tm.tm_year / 100) * 100;
-						tm.tm_mon = prmc->m_mn - 1;
-						tm.tm_mday = prmc->m_dy;
-						tm.tm_hour = prmc->m_h;
-						tm.tm_min = prmc->m_m;
-						tm.tm_sec = (int) prmc->m_s;
-						tm.tm_msec = (int)((prmc->m_s - tm.tm_sec) * 100);
-						tm.tm_isdst = -1;
-						f_base::set_time(tm);
-					}
-				}
-				break;
-			case ENDT_ABK:
-				pnd->show(cout);
-				break;
-		}
-
-		delete pnd;
-	}
-	c_ship::delete_timeout_ship(m_cur_time);
-	c_ship::list_unlock();
-
-	return true;
 }

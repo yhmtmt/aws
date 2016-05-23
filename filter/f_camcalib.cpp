@@ -17,6 +17,7 @@
 // along with f_camcalib.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include <cstdio>
+#include <cstring>
 
 #include <iostream>
 #include <fstream>
@@ -30,6 +31,10 @@ using namespace std;
 #include <jpeglib.h>
 #include <curl/curl.h>
 #endif
+
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
 
 #include <opencv2/opencv.hpp>
 using namespace cv;

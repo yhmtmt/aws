@@ -15,50 +15,6 @@
 
 #include "f_cam.h"
 
-// You should have received a copy of the GNU General Public License
-// along with f_ds_video.h.  If not, see <http://www.gnu.org/licenses/>. 
-#include <DShow.h>
-#include <uuids.h>
-
-//#define DS_DEBUG
-
-//#include <Qedit.h>
-
-// From http://msdn2.microsoft.com/en-us/library/ms786691.aspx:
-
-// Include Qedit.h. This header file is not compatible with Microsoft Direct3D headers later than version 7.
-
-// Since we are using DX9, we cannot include this header. Necessary API elements, copied below.
-
-EXTERN_C const CLSID CLSID_SampleGrabber;
-
-EXTERN_C const CLSID CLSID_NullRenderer;
-
-EXTERN_C const IID IID_ISampleGrabberCB;
-
-MIDL_INTERFACE("0579154A-2B53-4994-B0D0-E773148EFF85")
-
-ISampleGrabberCB : public IUnknown {
-public:
-	virtual HRESULT STDMETHODCALLTYPE SampleCB( double SampleTime,IMediaSample *pSample) = 0;
-	virtual HRESULT STDMETHODCALLTYPE BufferCB( double SampleTime,BYTE *pBuffer,long BufferLen) = 0;
-};
-
-EXTERN_C const IID IID_ISampleGrabber;
-
-MIDL_INTERFACE("6B652FFF-11FE-4fce-92AD-0266B5D7C78F")
-
-ISampleGrabber : public IUnknown {
-public:
-	virtual HRESULT STDMETHODCALLTYPE SetOneShot( BOOL OneShot) = 0;
-	virtual HRESULT STDMETHODCALLTYPE SetMediaType( const AM_MEDIA_TYPE *pType) = 0;
-	virtual HRESULT STDMETHODCALLTYPE GetConnectedMediaType( AM_MEDIA_TYPE *pType) = 0;
-	virtual HRESULT STDMETHODCALLTYPE SetBufferSamples( BOOL BufferThem) = 0;
-	virtual HRESULT STDMETHODCALLTYPE GetCurrentBuffer( /* [out][in] */ long *pBufferSize,/* [out] */ long *pBuffer) = 0;
-	virtual HRESULT STDMETHODCALLTYPE GetCurrentSample( /* [retval][out] */ IMediaSample **ppSample) = 0;
-	virtual HRESULT STDMETHODCALLTYPE SetCallback( ISampleGrabberCB *pCallback,long WhichMethodToCallback) = 0;
-};
-
 class f_ds_video: public f_cam
 {
 protected:

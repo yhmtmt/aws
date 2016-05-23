@@ -19,7 +19,6 @@
 
 #include "../util/aws_sock.h"
 #include "../util/aws_stdlib.h"
-#include "../util/c_clock.h"
 
 #include "../util/c_imgalign.h"
 

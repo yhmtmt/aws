@@ -17,6 +17,16 @@
 // along with f_ds_window.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include <WindowsX.h>
+
+#if WINVER != 0x603 && WINVER != 0x602
+// if not windows 8, the direct 3d is not included in the windows sdk.
+//#include <d2d1.h>
+//#include <dwrite.h>
+#include <d3d9.h>
+#endif
+
+#include <d3dx9.h>
+
 #include <cstdio>
 
 #include <iostream>
@@ -24,6 +34,10 @@
 #include <vector>
 #include <list>
 using namespace std;
+
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
 
 #include <opencv2/opencv.hpp>
 using namespace cv;

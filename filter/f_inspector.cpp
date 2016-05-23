@@ -16,6 +16,15 @@
 // You should have received a copy of the GNU General Public License
 // along with f_inspector.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 #include <Windowsx.h>
+#if WINVER != 0x603 && WINVER != 0x602
+// if not windows 8, the direct 3d is not included in the windows sdk.
+//#include <d2d1.h>
+//#include <dwrite.h>
+#include <d3d9.h>
+#endif
+
+#include <d3dx9.h>
+
 #include <cstdio>
 
 #include <iostream>
@@ -24,6 +33,10 @@
 #include <list>
 #include <cmath>
 using namespace std;
+
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
 
 #include <opencv2/opencv.hpp>
 using namespace cv;
@@ -2070,9 +2083,9 @@ void f_inspector::estimate_rt_levmarq(s_frame * pfrm)
 		}
 
 		if(updateJ){
-			Mat JtJ(_JtJ);
-			Mat JtErr(_JtErr);
-
+			Mat JtJ(_JtJ->rows, _JtJ->cols, CV_64FC1, _JtJ->data.db);
+			Mat JtErr(_JtErr->rows, _JtErr->cols, CV_64FC1, _JtErr->data.db);
+			
 			// Calculating Psuedo Hessian JtJ and JtErr
 			for(int iobj = 0, i = 0; iobj < objs.size(); iobj++, i+=6){
 				s_obj & obj = *objs[iobj];
@@ -2433,8 +2446,8 @@ void f_inspector::estimate_levmarq()
 #endif
 		}
 		if(updateJ){
-			Mat JtJ(_JtJ);
-			Mat JtErr(_JtErr);
+			Mat JtJ(_JtJ->rows, _JtJ->cols, CV_64FC1, _JtJ->data.db);
+			Mat JtErr(_JtErr->rows, _JtErr->cols, CV_64FC1, _JtErr->data.db);
 
 			// Calculating Psuedo Hessian JtJ and JtErr
 			int i = 12;

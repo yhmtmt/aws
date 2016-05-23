@@ -15,11 +15,17 @@
 // along with f_glfw_window.  If not, see <http://www.gnu.org/licenses/>. 
 #include "stdafx.h"
 #ifdef GLFW_WINDOW
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>
 #include <map>
 using namespace std;
+
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
 
 #include <opencv2/opencv.hpp>
 using namespace cv;

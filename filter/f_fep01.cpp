@@ -14,13 +14,20 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_fep01.h.  If not, see <http://www.gnu.org/licenses/>. 
+#include <cstring>
+#include <cmath>
+
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <list>
 #include <map>
-#include <cmath>
 using namespace std;
+
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/aws_serial.h"
+#include "../util/c_clock.h"
 
 #include <opencv2/opencv.hpp>
 using namespace cv;

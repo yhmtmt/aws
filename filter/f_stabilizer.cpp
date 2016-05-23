@@ -17,12 +17,18 @@
 // along with f_stabilizer.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>
 #include <vector>
 #include <list>
 using namespace std;
+
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
 
 #include <opencv2/opencv.hpp>
 using namespace cv;
@@ -404,81 +410,6 @@ bool f_stabilizer::proc(){
 			m_core.get_rjct_blk(ilv));
 		cv::putText(clrout, m_str, Point(10, 100 + ilv * 20 ),
 			FONT_HERSHEY_SIMPLEX, 0.5, CV_RGB(0, 200, 100));
-	}
-
-	return true;
-}
-
-
-/////////////////////////////////////////////////////// f_tracker
-f_tracker::f_tracker(const char * name):f_base(name),
-	m_pobjin(NULL), m_pgryin(NULL),
-	m_num_pyr_levels(0)
-{
-	m_core.set_interpol_type(EIT_BIL);
-	//		m_core.set_wt(EWT_SIM);
-	m_core.set_wt(EWT_TRN);
-
-	m_core.set_num_itrs(30);
-}
-
-f_tracker::~f_tracker()
-{
-}
-
-bool f_tracker::cmd_proc(s_cmd & cmd)
-{
-	return true;
-}
-
-bool f_tracker:: proc()
-{	
-	ch_image * pgryin = dynamic_cast<ch_image*>(m_chin[0]);
-	if(pgryin == NULL)
-		return false;
-
-	ch_vector<c_track_obj> * pobjin = dynamic_cast<ch_vector<c_track_obj> *>(m_chin[1]);
-	if(pobjin == NULL)
-		return false;
-
-	ch_vector<c_track_obj> * pobjout = dynamic_cast<ch_vector<c_track_obj> *>(m_chout[0]);
-	if(pobjout == NULL)
-		return false;
-	long long timg;
-	Mat gimg = pgryin->get_img(timg);
-	if(gimg.empty())
-		return true;
-
-	buildPyramid(gimg, m_pyrimg, m_num_pyr_levels);
-
-	c_track_obj * pobj;
-	Mat Mnew;
-
-	while((pobj = pobjin->pop()) != NULL){
-
-		if(!pobj->is_apyr_set()){ // apearance has not been set yet
-			Mat apimg  = gimg(pobj->get_rc());
-			pobj->set_apimg(apimg, m_num_pyr_levels);
-			pobjout->push(pobj);
-			continue;
-		}
-
-		// track 
-		Mnew = m_core.calc_warp(pobj->get_apyr(), 
-			m_pyrimg, pobj->get_rc(), pobj->get_motion());
-
-		// if tracking failed delete the object
-		if(!m_core.is_conv()){
-			pobj->set_lost();
-			pobjout->push(pobj);
-			cerr << "tracking failed." << endl;
-			continue;
-		}
-
-		pobj->set_motion(Mnew);
-
-		// if tracking succeeded push
-		pobjout->push(pobj);
 	}
 
 	return true;

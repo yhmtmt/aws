@@ -22,9 +22,8 @@
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
 #include "../util/aws_vlib.h"
-#include "../util/c_clock.h"
 #include "../util/c_imgalign.h"
-#include "../util/c_ship.h"
+//#include "../util/c_ship.h"
 
 #include "../channel/ch_image.h"
 #include "../channel/ch_vector.h"
@@ -162,38 +161,6 @@ public:
 	virtual bool cmd_proc(s_cmd & cmd);
 
 	virtual bool proc();
-};
-
-
-class f_tracker: public f_base
-{
-protected:
-	ch_vector<c_track_obj> * m_pobjin;
-	ch_vector<c_track_obj> * m_pobjout;
-
-	ch_image * m_pgryin;
-	vector<Mat> m_pyrimg;
-	int m_num_pyr_levels;
-
-	vector<c_track_obj> m_obj;
-
-	c_imgalign m_core;
-public:
-	f_tracker(const char * name);
-	virtual ~f_tracker();
-
-	virtual size_t get_num_in_chans(){return 2;}
-	virtual size_t get_num_out_chans(){return 1;}
-
-	virtual bool check()
-	{
-		return m_chin[0] != NULL && m_chin[1] != NULL 
-			&& m_chout[0] != NULL;
-	}
-
-	virtual bool cmd_proc(s_cmd & cmd);
-	virtual bool proc();
-
 };
 
 #endif

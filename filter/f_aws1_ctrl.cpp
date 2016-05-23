@@ -22,6 +22,10 @@
 #include <map>
 
 using namespace std;
+
+#include "../util/aws_stdlib.h"
+#include "../util/c_clock.h"
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>

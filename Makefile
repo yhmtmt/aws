@@ -119,7 +119,7 @@ ifeq ($(UVC_CAM),y)
 endif
 
 INC += -I$(INC_CV_DIR) 
-LIB += -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_core -lopencv_nonfree -lopencv_contrib -lopencv_features2d -lopencv_imgproc -lopencv_imgproc -lopencv_calib3d -lopencv_ml  -lopencv_flann -lopencv_video -lopencv_legacy -lopencv_objdetect -lopencv_highgui -lopencv_photo -lopencv_gpu
+LIB += -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_world
 
 FOBJS = $(addsuffix .o,$(FILTER))
 COBJS = $(addsuffix .o,$(CHANNEL))

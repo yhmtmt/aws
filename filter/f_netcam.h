@@ -19,7 +19,6 @@
 #include <curl/curl.h>
 #include "../util/aws_sock.h"
 #include "../util/aws_thread.h"
-#include "../util/c_clock.h"
 #include "../channel/ch_scalar.h"
 #include "f_cam.h"
 #include "../util/my_jsrc_mgr.h"

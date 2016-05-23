@@ -13,18 +13,26 @@
 // You should have received a copy of the GNU General Public License
 // along with c_aws1_ui_normal.cpp.  If not, see <http://www.gnu.org/licenses/>. 
 #include "stdafx.h"
+#include <cstdio>
+#include <cstring>
+#include <cmath>
 
 #include <iostream>
 #include <fstream>
+#include <list>
 #include <map>
 using namespace std;
 
-#include <opencv2/opencv.hpp>
-using namespace cv;
+#include "../util/aws_stdlib.h"
+#include "../util/aws_thread.h"
+#include "../util/c_clock.h"
 
 #ifdef _WIN32
 #include <Windows.h>
 #endif
+
+#include <opencv2/opencv.hpp>
+using namespace cv;
 
 #include <GL/glew.h>
 

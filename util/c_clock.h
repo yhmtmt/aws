@@ -84,6 +84,11 @@ public:
 	bool step(int cycle);
 	bool step(long long tabs);
 
+	const unsigned get_period()
+	{
+		return m_period;
+	}
+
 	bool is_run(){
 		return m_state == RUN;
 	}

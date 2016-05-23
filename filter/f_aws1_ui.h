@@ -272,6 +272,14 @@ class f_aws1_ui: public f_glfw_window
   static const  char * m_str_aws1_ui_mode[AUM_UNDEF];
   c_aws1_ui_core * m_ui[AUM_UNDEF];
 
+
+  VideoWriter m_vw;
+  bool m_bsvw; // screen video write
+  bool m_bss; // screen shot
+  Mat m_simg;	// screen img
+
+  void write_screen();
+
  public:
   f_aws1_ui(const char * name);
   virtual ~f_aws1_ui();
