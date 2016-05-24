@@ -415,26 +415,36 @@ bool f_glfw_stereo_view::proc()
   m_timg = timg1;
   
   Mat wimg1, wimg2;
-  resize(img1, wimg1, Size(m_sz_win.width >> 1, m_sz_win.height >> 1));
-  resize(img2, wimg2, Size(m_sz_win.width >> 1, m_sz_win.height >> 1));
+  
+  double rx1, rx2, ry1, ry2;
+  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
+  rx1 = (double)w / (double)img1.cols; 
+  rx2 = (double)w / (double)img2.cols;
+  ry1 = (double)h / (double)img1.rows;
+  ry2 = (double)h / (double)img2.rows;
+  double r1 = min(rx1, ry1), r2 = min(rx2, ry2);
+
+  Size sz1((int)(r1 * img1.cols), (int)(r1 * img1.rows)), sz2((int)(r2 * img2.cols), (int)(r2 * img2.rows));
+  resize(img1, wimg1, sz1);
+  resize(img2, wimg2, sz2);
   
   glRasterPos2i(-1, 0);
   
+  awsFlip(img1, false, true, false);
   if(wimg1.type() == CV_8U){
-    glDrawPixels(wimg1.cols, wimg1.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg1.data);
+	  glDrawPixels(wimg1.cols, wimg1.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg1.data);
   }
   else{
-    cnvCVBGR8toGLRGB8(wimg1);
-    glDrawPixels(wimg1.cols, wimg1.rows, GL_RGB, GL_UNSIGNED_BYTE, wimg1.data);
+	  glDrawPixels(wimg1.cols, wimg1.rows, GL_BGR, GL_UNSIGNED_BYTE, wimg1.data);
   }
 
   glRasterPos2i(0, 0);
+  awsFlip(img1, false, true, false);
   if(wimg2.type() == CV_8U){
-    glDrawPixels(wimg2.cols, wimg2.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg2.data);
+	  glDrawPixels(wimg2.cols, wimg2.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg2.data);
   }
   else{
-    cnvCVBGR8toGLRGB8(wimg2);
-    glDrawPixels(wimg2.cols, wimg2.rows, GL_RGB, GL_UNSIGNED_BYTE, wimg2.data);
+	  glDrawPixels(wimg2.cols, wimg2.rows, GL_BGR, GL_UNSIGNED_BYTE, wimg2.data);
   }
   
   glfwSwapBuffers(pwin());
@@ -445,23 +455,6 @@ bool f_glfw_stereo_view::proc()
 
 bool f_glfw_stereo_view::init_run()
 {
-  if(m_chin.size() != 2){
-    cerr << m_name << " requires at least two input channels." << endl;
-    return false;
-  }		
-
-  m_pin1 = dynamic_cast<ch_image*>(m_chin[0]);
-  if(m_pin1 == NULL){
-    cerr << m_name << "'s first input channel should be image channel." << endl;
-    return false;
-  }
-
-  m_pin2 = dynamic_cast<ch_image*>(m_chin[1]);
-  if(m_pin2 == NULL){
-    cerr << m_name << "'s second input channel should be image channel." << endl;
-    return false;   
-  }
-
   if(!f_glfw_window::init_run())
     return false;
   

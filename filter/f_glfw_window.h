@@ -242,7 +242,7 @@ public:
 class f_glfw_stereo_view: public f_glfw_window
 {
 protected:
-  ch_image * m_pin1, *m_pin2;
+  ch_image_ref * m_pin1, *m_pin2;
 	long long m_timg;
 
 	virtual bool init_run();
@@ -250,6 +250,9 @@ protected:
 public:
  f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL), m_timg(-1)
 	{
+		register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
+		register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
+
 	}
 	virtual ~f_glfw_stereo_view()
 	{
