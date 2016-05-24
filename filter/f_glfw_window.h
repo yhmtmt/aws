@@ -245,15 +245,20 @@ protected:
   ch_image_ref * m_pin1, *m_pin2;
 	long long m_timg;
 
+	bool m_bchsbd;
+	s_model m_chsbd;
+	bool m_bcpl, m_bcpr;
+	char m_fcpl[1024], m_fcpr[1024];
+	AWSCamPar m_camparl, m_camparr;
+	int m_num_chsbdl, m_num_chsbdr;
+	vector<long long> m_t_chsbdl;
+	vector<vector<Point2f>> m_pts_chsbdl;
+	vector<long long> m_t_chsbdr;
+	vector<vector<Point2f>> m_pts_chsbdr;
+
 	virtual bool init_run();
-
 public:
- f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL), m_timg(-1)
-	{
-		register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
-		register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
-
-	}
+ f_glfw_stereo_view(const char * name);
 	virtual ~f_glfw_stereo_view()
 	{
 	}

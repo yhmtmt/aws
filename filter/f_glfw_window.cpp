@@ -30,6 +30,9 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
+#include "../util/aws_vobj.h"
+#include "../util/aws_vlib.h"
+
 #ifdef _WIN32
 #include <Windows.h>
 #endif
@@ -384,6 +387,21 @@ bool f_glfw_imview::init_run()
 }
 
 ////////////////////////////////////////////////////////////////////////////////f_glfw_stereo_view members
+f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL), m_timg(-1), 
+	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_bcpl(false), m_bcpr(false)
+{
+	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
+	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
+	register_fpar("fcpl", m_fcpl, 1024, "Camera parameter file of left camera.");
+	register_fpar("fcpr", m_fcpr, 1024, "Camera parameter file of right camera.");
+	register_fpar("fchsbd", m_chsbd.fname, 1024, "Chessboard file");
+	register_fpar("chsbd", &m_bchsbd, "Chessboard detection.");
+	
+	m_pts_chsbdl.resize(100);
+	m_t_chsbdl.resize(100);
+	m_pts_chsbdr.resize(100);
+	m_t_chsbdr.resize(100);
+}
 
 bool f_glfw_stereo_view::proc()
 {
@@ -458,6 +476,22 @@ bool f_glfw_stereo_view::init_run()
   if(!f_glfw_window::init_run())
     return false;
   
+  if(m_bchsbd = m_chsbd.load())
+  {
+	  if(m_chsbd.type == s_model::EMT_CHSBD){
+		  cout << "Chessboard is loaded." << endl;
+		  cout << m_chsbd.par_chsbd.w << "x" <<  m_chsbd.par_chsbd.h << " " << m_chsbd.par_chsbd.p << "m pitch" << endl;
+	  }
+  }
+
+  if(m_bcpl = m_camparl.read(m_fcpl)){
+	  cout << "Camera paraemter for left camera was loaded." << endl;
+  }
+
+  if(m_bcpr = m_camparr.read(m_fcpr)){
+	  cout << "Camera parameter for right camera was loaded." << endl;
+  }
+
   return true;
 }
 
