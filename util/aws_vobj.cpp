@@ -45,6 +45,9 @@ bool s_model::load(const char * afname)
 
 bool s_model::load()
 {
+	if(fname[0] == '\0')
+		return false;
+
 	FileStorage fs;
 	fs.open(fname, FileStorage::READ);
 	if(!fs.isOpened()){
