@@ -134,7 +134,7 @@ bool f_imread::proc()
 	else
 		img = imread(buf);
 
-	long long timg = m_cur_time;
+	long long timg = get_time();
 	if(u != NULL){
 		*d = '\0';
 		timg = atoll(u + 1);

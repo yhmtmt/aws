@@ -135,7 +135,7 @@ bool f_nmea::rcv_file()
 			rec_time = mkgmtimeex_tz(tm, m_time_zone_minute) * MSEC;
 		}
 
-		if(rec_time > m_cur_time){
+		if(rec_time > get_time()){
 			m_file.seekg(anchor);
 			break;
 		}
@@ -158,7 +158,7 @@ bool f_nmea::rcv_file()
 			m_flog << get_time_str() << &m_buf[31] << endl;
 		}
 
-	}while(rec_time <= m_cur_time);
+	}while(rec_time <= get_time());
 	return true;
 }
 
@@ -246,7 +246,7 @@ void f_nmea::extract_nmea_from_buffer()
 				if(m_flog.is_open())
 					m_flog << get_time_str() << m_nmea << endl;
 				else{
-					sprintf(m_fname_log, "%s_%lld.nmea", m_name, m_cur_time);
+					sprintf(m_fname_log, "%s_%lld.nmea", m_name, get_time());
 					m_flog.open(m_fname_log);
 				}
 			}

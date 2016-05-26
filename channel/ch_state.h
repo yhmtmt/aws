@@ -213,7 +213,7 @@ class ch_state: public ch_base
 	<< " pos= " << lat << "," << lon << "," << alt << endl;
   }
 
-  virtual int write(FILE * pf)
+  virtual int write(FILE * pf, long long tcur)
   {
 	  if(!pf)
 		  return 0;
@@ -226,6 +226,8 @@ class ch_state: public ch_base
 	  sz = sizeof(long long) * 4;
 
 	  lock();
+	  fwrite((void*) &tcur, sizeof(long long), 1, pf);
+
 	  fwrite((void*) &tpos, sizeof(long long), 1, pf);
 
 	  fwrite((void*) &lat, sizeof(float), 1, pf);
@@ -233,7 +235,6 @@ class ch_state: public ch_base
 	  fwrite((void*) &alt, sizeof(float), 1, pf);
 	  fwrite((void*) &galt, sizeof(float), 1, pf);
 	  tposf = tpos;
-	  m_tfile  = max(m_tfile, tposf);
 	  sz += sizeof(float) * 4;
 
 	  fwrite((void*) &tatt, sizeof(long long), 1, pf);
@@ -241,21 +242,19 @@ class ch_state: public ch_base
 	  fwrite((void*) &pitch, sizeof(float), 1, pf);
 	  fwrite((void*) &yaw, sizeof(float), 1, pf);
 	  tattf = tatt;
-	  m_tfile = max(m_tfile, tattf);
 	  sz += sizeof(float) * 3;
 	  
 	  fwrite((void*) &tvel, sizeof(long long), 1, pf);
 	  fwrite((void*) &cog, sizeof(float), 1, pf);
 	  fwrite((void*) &sog, sizeof(float), 1, pf);
 	  tvelf = tvel;
-	  m_tfile = max(m_tfile, tvelf);
 	  sz += sizeof(float) * 2;
 	  
 	  fwrite((void*) &tdp, sizeof(float), 1, pf);
 	  fwrite((void*) &depth, sizeof(float), 1, pf);
 	  tdpf = tdp;
-	  m_tfile = max(m_tfile, tdpf);
 	  sz += sizeof(float);
+	  m_tfile = tcur;
 	  unlock();
 	  return sz;
   }
@@ -296,12 +295,14 @@ class ch_state: public ch_base
 	  }
 
 	  while(!feof(pf)){
-		  if((tdpf > tcur || tvelf > tcur || tattf > tcur || tposf > tcur)
-			  && (tdpf != tdp || tattf != tatt || tvelf != tvel || tposf != tpos)){
-				  break;
+		  if(m_tfile > tcur){
+			  break;
 		  }
+
 		  lock();
 		  size_t res = 0;
+		  res += fread((void*) &m_tfile, sizeof(long long), 1, pf);
+
 		  res += fread((void*) &tposf, sizeof(long long), 1, pf);
 		  res += fread((void*) &latf, sizeof(float), 1, pf);
 		  res += fread((void*) &lonf, sizeof(float), 1, pf);
@@ -332,11 +333,14 @@ class ch_state: public ch_base
   virtual bool log2txt(FILE * pbf, FILE * ptf)
   {
 	  size_t sz = 0;
-	  fprintf(ptf, "tmax, tpos, tatt, tvel, tdp, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth\n");
+	  fprintf(ptf, "t, tpos, tatt, tvel, tdp, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth\n");
 	  while(!feof(pbf)){
 		  long long t, tmax = 0;
 
 		  size_t res = 0;
+		  res += fread((void*) &m_tfile, sizeof(long long), 1, pbf);
+		  sz += (int) res;
+
 		  res += fread((void*) &t, sizeof(long long), 1, pbf);
 		  res += fread((void*) &lat, sizeof(float), 1, pbf);
 		  res += fread((void*) &lon, sizeof(float), 1, pbf);
@@ -364,9 +368,8 @@ class ch_state: public ch_base
 		  tdpf = tdp = t;
 		  sz += (int) res;
 
-		  tmax = max(max(tpos, tatt), max(tvel, tdp));
 		  fprintf(ptf, "%lld, %lld, %lld, %lld, %lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f\n",
-			  tmax, tpos, tatt, tvel, tdp, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
+			  m_tfile, tpos, tatt, tvel, tdp, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
 	  }
 	  return true;
   }

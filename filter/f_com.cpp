@@ -58,7 +58,7 @@ bool f_dummy_data::init_run()
 		return false;
 	m_pout = dynamic_cast<ch_ring<char>*>(m_chout[0]);
 
-	m_len_pkt = max(m_len_pkt, (unsigned int)sizeof(m_cur_time));
+	m_len_pkt = max(m_len_pkt, (unsigned int)sizeof(get_time()));
 	m_buf = new unsigned char[m_len_pkt];
 	if(m_buf == NULL){
 		return false;
@@ -75,6 +75,7 @@ void f_dummy_data::destroy_run()
 bool f_dummy_data::proc(){
 	if(m_pout != NULL){
 		if(m_tail_buf == 0){// no data
+			long long tcur = get_time();
 			switch(m_dtype){
 			case EDT_RAND:
 				for(unsigned int i = 0; i < m_len_pkt; m_tail_buf++, i++, m_total++)
@@ -82,8 +83,8 @@ bool f_dummy_data::proc(){
 				break;
 			case EDT_TIME:
 				memset(m_buf, 0, m_len_pkt);
-				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
-				m_tail_buf = sizeof(m_cur_time);
+				memcpy(m_buf, (void*)&tcur, sizeof(tcur));
+				m_tail_buf = sizeof(tcur);
 				m_total += m_tail_buf;
 				break;
 			case EDT_BYTE_SEQ:
@@ -97,9 +98,9 @@ bool f_dummy_data::proc(){
 				}
 				break;
 			case EDT_TIME_RAND:
-				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
-				m_tail_buf = sizeof(m_cur_time);
-				for(unsigned int i = sizeof(m_cur_time); i < m_len_pkt; m_tail_buf++, i++){
+				memcpy(m_buf, (void*)&tcur, sizeof(tcur));
+				m_tail_buf = sizeof(tcur);
+				for(unsigned int i = sizeof(tcur); i < m_len_pkt; m_tail_buf++, i++){
 					m_buf[i] = (unsigned char) (rand() & 0x00FF);
 				}
 				m_total += m_tail_buf;
@@ -110,9 +111,9 @@ bool f_dummy_data::proc(){
 				m_total += m_tail_buf;
 				break;
 			case EDT_TIME_FILE:
-				memcpy(m_buf, (void*)&m_cur_time, sizeof(m_cur_time));
-				m_fdata.read((char*)(m_buf + sizeof(m_cur_time)), m_len_pkt);
-				m_tail_buf = (int) m_fdata.gcount() + sizeof(m_cur_time);
+				memcpy(m_buf, (void*)&tcur, sizeof(tcur));
+				m_fdata.read((char*)(m_buf + sizeof(tcur)), m_len_pkt);
+				m_tail_buf = (int) m_fdata.gcount() + sizeof(tcur);
 				m_total += m_tail_buf;
 				break;
 			}
@@ -905,7 +906,7 @@ bool f_rcv_img::proc()
 		img = data;
 	}
 
-	m_pimgout->set_img(img, m_cur_time);
+	m_pimgout->set_img(img, get_time());
 	return true;
 }
 
@@ -917,12 +918,12 @@ bool f_write_ch_log::open_log(const int ich)
 	if(!fjr.is_open())
 		return false;
 	int l = (int) strlen(m_path) + 1;
-	snprintf(fname, 1024, "%s/%s_%lld.log", m_path, m_chin[ich]->get_name(), m_cur_time);
+	snprintf(fname, 1024, "%s/%s_%lld.log", m_path, m_chin[ich]->get_name(), get_time());
 	m_logs[ich] = fopen(fname, "wb");
 	if(!m_logs[ich]){
 		cerr << "Failed to open " << fname << "." << endl;
 	}
-	fjr << "#S " << m_cur_time << endl;
+	fjr << "#S " << get_time() << endl;
 	fjr << (&fname[l]) << endl;
 	fjr.close();
 	return true;
@@ -938,7 +939,7 @@ bool f_write_ch_log::close_log(const int ich)
 	ofstream fjr(fname, ios_base::app);
 	if(!fjr.is_open())
 		return false;
-	fjr << "#E " << m_cur_time << endl;
+	fjr << "#E " << get_time() << endl;
 	fjr.close();
 
 	fclose(m_logs[ich]);
@@ -977,7 +978,7 @@ bool f_write_ch_log::proc()
 		  close_log(ich);
 		  open_log(ich);
 	  }
-    	m_szs[ich] += m_chin[ich]->write(m_logs[ich]);
+    	m_szs[ich] += m_chin[ich]->write(m_logs[ich], get_time());
   }
 	return true;
 }
@@ -1013,7 +1014,7 @@ bool f_read_ch_log::open_log(const int och)
 		}
 
 		m_te[och] = atoll(&buf[3]);
-		if(m_te[och] > m_cur_time){
+		if(m_te[och] > get_time()){
 			m_logs[och] = fopen(fname, "rb");
 			cout << "Opening " << fname << " for " << m_chout[och]->get_name() << endl;
 			if(!m_logs[och]){			
@@ -1058,12 +1059,12 @@ bool f_read_ch_log::proc()
   for(int och = 0; och < m_chout.size(); och++){
 	  if(!m_logs[och])
 		  continue;
-	  m_chout[och]->read(m_logs[och], m_cur_time);
-	  if(m_cur_time > m_te[och]){
+	  m_chout[och]->read(m_logs[och], get_time());
+	  if(get_time() > m_te[och]){
 		  fclose(m_logs[och]);
 		  m_logs[och] = NULL;
 		  if(!open_log(och)){
-			  cout << m_chout[och]->get_name() << "'s log finished at " << m_cur_time << endl;
+			  cout << m_chout[och]->get_name() << "'s log finished at " << get_time() << endl;
 		  }
 	  }
   }

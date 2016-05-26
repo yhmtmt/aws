@@ -88,8 +88,7 @@ bool f_wp_manager::proc()
 
 		m_wp->set_diff(d, cdiff);
 		if(d < wp.rarv){// arrived
-		  cout << "d " << d << " rarv " << wp.rarv << " t " << m_cur_time << endl;
-			wp.set_arrival_time(m_cur_time);
+			wp.set_arrival_time(get_time());
 			m_wp->set_next_wp();
 		}
 	}

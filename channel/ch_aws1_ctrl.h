@@ -182,7 +182,7 @@ class ch_aws1_ctrl_inst: public ch_base
   
   
   // file writer method
-  virtual int write(FILE * pf)
+  virtual int write(FILE * pf, long long tcur)
   {
     if(m_tfile == inst.tcur){
       return 0;
@@ -323,7 +323,7 @@ public:
   }
   
   // file writer method
-  virtual int write(FILE * pf)
+  virtual int write(FILE * pf, long long tcur)
   {
     if(m_tfile == stat.tcur){
       return 0;

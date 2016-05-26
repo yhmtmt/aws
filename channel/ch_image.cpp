@@ -32,7 +32,7 @@ using namespace cv;
 #include "../util/aws_thread.h"
 #include "ch_image.h"
 
-int ch_image::write(FILE * pf)
+int ch_image::write(FILE * pf, long long tcur)
 {
 	if(pf){
 	  lock_fr();
@@ -46,6 +46,7 @@ int ch_image::write(FILE * pf)
 	      type = img.type();
 	      size = (int)(r * c * img.channels() * img.elemSize());
 	      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
+		  fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);
 	      fwrite((void*)&type, sizeof(int), 1, pf);
 	      fwrite((void*)&r, sizeof(int), 1, pf);
 	      fwrite((void*)&c, sizeof(int), 1, pf);
@@ -66,7 +67,7 @@ int ch_image::read(FILE * pf, long long tcur)
 		return 0;
   size_t sz = 0;
 	while(m_tfile <= tcur && !feof(pf)){
-		long long tsave;
+		long long tsave, ifrm;
 		int r, c, type, size;
 		size_t res;
 		r = c = type = size = 0;
@@ -74,7 +75,14 @@ int ch_image::read(FILE * pf, long long tcur)
 		if(!res)
 			return 0;
 		sz += res;
+
 		lock_bk();
+		res = fread((void*)&ifrm, sizeof(long long), 1, pf);
+		if(!res)
+			goto failed;
+		sz += res;
+
+		m_ifrm[m_back] = ifrm;
 		m_time[m_back] = m_tfile = tsave;
 
 		res = fread((void*)&type, sizeof(int), 1, pf);
@@ -126,23 +134,31 @@ bool ch_image::log2txt(FILE * pbf, FILE * ptf)
 	long long tprev = 0;
 	fprintf(ptf, "t, filename\n");
 	while(!feof(pbf)){
-		long long tsave;
+		long long tsave, ifrm;
 		int r, c, type, size;
 		size_t res;
 		r = c = type = size = 0;
+
 		res = fread((void*)&tsave, sizeof(long long), 1, pbf);
 		if(tsave == tprev)
 			continue;
 
+		res = fread((void*)&ifrm, sizeof(long long), 1, pbf);
+		if(!res)
+			goto failed;
+
 		res = fread((void*)&type, sizeof(int), 1, pbf);
 		if(!res)
 			goto failed;
+
 		res = fread((void*)&r, sizeof(int), 1, pbf);
 		if(!res)
 			goto failed;
+
 		res = fread((void*)&c, sizeof(int), 1, pbf);
 		if(!res)
 			goto failed;
+
 		res = fread((void*)&size, sizeof(int), 1, pbf);
 		if(!res)
 			goto failed;

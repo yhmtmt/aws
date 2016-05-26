@@ -73,7 +73,7 @@ bool f_obj_manager::proc()
 		// update enu coordinate
 		if(!Renu.empty()){
 			m_ais_obj->update_rel_pos_and_vel(Renu, x, y, z);
-			m_ais_obj->remove_old(m_cur_time - m_dtold);
+			m_ais_obj->remove_old(get_time() - m_dtold);
 			m_ais_obj->remove_out(m_range);
 		}
 		m_ais_obj->reset_updates();

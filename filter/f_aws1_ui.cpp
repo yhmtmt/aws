@@ -118,7 +118,7 @@ f_aws1_ui::~f_aws1_ui()
 bool f_aws1_ui::init_run()
 {
   m_inst.ctrl_src = ACS_UI;
-  m_inst.tcur = m_cur_time;
+  m_inst.tcur = get_time();
   m_inst.rud_aws = 127;
   m_inst.meng_aws = 127;
   m_inst.seng_aws = 127;
@@ -666,7 +666,7 @@ void f_aws1_ui::write_screen()
 				char fname[1024];
 				double fps = (double) SEC / (double) get_period();
 				int fourcc = CV_FOURCC('D', 'I', 'V', 'X');
-				snprintf(fname, 1024, "%s/%s_%lld.avi", m_path_storage, m_name, m_cur_time);
+				snprintf(fname, 1024, "%s/%s_%lld.avi", m_path_storage, m_name, get_time());
 
 				m_vw.open(fname, fourcc, fps, m_sz_win, true);
 				if(!m_vw.isOpened()){

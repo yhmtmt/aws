@@ -145,7 +145,7 @@ bool f_aws1_ap::proc()
 	}
 
 	if(m_ctrl_inst){
-	  m_inst.tcur = m_cur_time;
+	  m_inst.tcur = get_time();
 	  m_inst.meng_aws = saturate_cast<unsigned char>(m_meng);
 	  m_inst.seng_aws = saturate_cast<unsigned char>(m_seng);
 	  m_inst.rud_aws = saturate_cast<unsigned char>(m_rud);

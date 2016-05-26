@@ -731,7 +731,7 @@ public:
 		return get_dsize();
 	}
 
-	virtual int write(FILE * pf)
+	virtual int write(FILE * pf, long long tcur)
 	{
 		int sz = 0;
 

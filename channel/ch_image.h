@@ -147,7 +147,7 @@ public:
 	virtual void set_img(Mat & img, long long t, long long ifrm) = 0;
 
 	// file writer method
-	virtual int write(FILE * pf);
+	virtual int write(FILE * pf, long long tcur);
 	// file reader method
 	virtual int read(FILE * pf, long long tcur);
 

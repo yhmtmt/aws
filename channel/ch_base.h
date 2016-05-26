@@ -103,7 +103,7 @@ public:
 	}
 
 	// file writer method
-	virtual int write(FILE * pf)
+	virtual int write(FILE * pf, long long tcur)
 	{
 		return 0;
 	}

@@ -140,7 +140,7 @@ void f_aws1_nmea_sw::gff_to_out()
 		if(m_state && type == ENDT_DBT){
 			const c_dbt * pdbt = dynamic_cast<const c_dbt*>(m_nmea_dec.decode(m_nmea));
 			if(pdbt){
-				m_state->set_depth(m_cur_time, pdbt->dm);
+				m_state->set_depth(get_time(), pdbt->dm);
 			}
 		}
 
@@ -201,28 +201,28 @@ void f_aws1_nmea_sw::ais_to_out()
 				case ENDT_VDM1:
 					{
 						const c_vdm_msg1 * pvdm1 = dynamic_cast<const c_vdm_msg1*>(pnd);
-						m_ais_obj->push(m_cur_time, pvdm1->m_mmsi, pvdm1->m_lat, pvdm1->m_lon,
+						m_ais_obj->push(get_time(), pvdm1->m_mmsi, pvdm1->m_lat, pvdm1->m_lon,
 							pvdm1->m_course, pvdm1->m_speed, pvdm1->m_heading);
 					}
 					break;
 				case ENDT_VDM18:
 					{
 						const c_vdm_msg18 * pvdm18 = dynamic_cast<const c_vdm_msg18*>(pnd);
-						m_ais_obj->push(m_cur_time, pvdm18->m_mmsi, pvdm18->m_lat, pvdm18->m_lon, 
+						m_ais_obj->push(get_time(), pvdm18->m_mmsi, pvdm18->m_lat, pvdm18->m_lon, 
 							pvdm18->m_course, pvdm18->m_speed, pvdm18->m_heading);
 					}
 					break;
 				case ENDT_VDM19:
 					{
 						const c_vdm_msg19 * pvdm19 = dynamic_cast<const c_vdm_msg19*>(pnd);
-						m_ais_obj->push(m_cur_time, pvdm19->m_mmsi, pvdm19->m_lat, pvdm19->m_lon, 
+						m_ais_obj->push(get_time(), pvdm19->m_mmsi, pvdm19->m_lat, pvdm19->m_lon, 
 							pvdm19->m_course, pvdm19->m_speed, pvdm19->m_heading);
 					}
 					break;
 				}
 
 				// clean up ais objects older than 5 minutes
-				m_ais_obj->remove_old(m_cur_time - (long long) 300 * (long long) SEC);
+				m_ais_obj->remove_old(get_time() - (long long) 300 * (long long) SEC);
 			}
 		}
 	}
@@ -239,7 +239,7 @@ void f_aws1_nmea_sw::gps_to_out()
 	{
 	  const c_gga * pgga = dynamic_cast<const c_gga*>(m_nmea_dec.decode(m_nmea));
 	  if(pgga){
-	    m_state->set_position(m_cur_time, 
+	    m_state->set_position(get_time(), 
 				  (float) (pgga->m_lat_dir == EGP_N ? pgga->m_lat_deg : -pgga->m_lat_deg),
 				  (float) (pgga->m_lon_dir == EGP_E ? pgga->m_lon_deg : -pgga->m_lon_deg),
 				  pgga->m_alt, pgga->m_geos);
@@ -250,7 +250,7 @@ void f_aws1_nmea_sw::gps_to_out()
 	{
 	  const c_vtg * pvtg = dynamic_cast<const c_vtg*>(m_nmea_dec.decode(m_nmea));
 	  if(pvtg){
-	    m_state->set_velocity(m_cur_time, pvtg->crs_t, pvtg->v_n);
+	    m_state->set_velocity(get_time(), pvtg->crs_t, pvtg->v_n);
 	  }
 	}
       case ENDT_RMC: // time

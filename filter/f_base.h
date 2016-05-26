@@ -392,8 +392,9 @@ public:
 	}
 
 	void calc_time_diff(){
-		m_time_diff = m_cur_time - m_prev_time;
-		m_prev_time = m_cur_time;
+		long long tcur = get_time();
+		m_time_diff = tcur - m_prev_time;
+		m_prev_time = tcur;
 	}
 
 	bool is_pause(){
@@ -469,8 +470,9 @@ public:
 		SetLocalTime(&st);
 #else
 		timespec ts;
-		ts.tv_sec = m_cur_time / SEC;
-		ts.tv_nsec = (m_cur_time - SEC * ts.tv_sec) * 100;
+		long long tcur = get_time();
+		ts.tv_sec = tcur / SEC;
+		ts.tv_nsec = (tcur - SEC * ts.tv_sec) * 100;
 		clock_settime(CLOCK_REALTIME, &ts);
 #endif
 	}
@@ -487,7 +489,11 @@ public:
 	}
 
 	static long long get_time(){
-	  return m_cur_time;
+		long long t;
+		pthread_mutex_lock(&m_mutex);
+		t = m_cur_time;
+		pthread_mutex_unlock(&m_mutex);
+	  return t;
 	}
 	
 	static const unsigned get_period(){

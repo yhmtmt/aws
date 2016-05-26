@@ -70,9 +70,9 @@ bool f_avt_mono::proc()
 	}
 
 	if(m_cam.m_FrameStartTriggerMode == efstmSoftware && 
-		m_ttrig_prev + m_ttrig_int > m_cur_time){
+		m_ttrig_prev + m_ttrig_int > get_time()){
 		PvCommandRun(m_cam.m_hcam, "FrameStartTriggerSoftware");
-		m_ttrig_prev = m_cur_time;
+		m_ttrig_prev = get_time();
 	}
 
 	return true;
