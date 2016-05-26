@@ -387,13 +387,24 @@ bool f_glfw_imview::init_run()
 }
 
 ////////////////////////////////////////////////////////////////////////////////f_glfw_stereo_view members
-f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL), m_timg(-1), 
-	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_bcpl(false), m_bcpr(false)
+f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL),
+	m_timg1(-1), m_timg2(-1),
+	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_bflipx(false), m_bflipy(false),
+	m_bcpl(false), m_bcpr(false), m_budl(false), m_budr(false), m_bcbl(false), m_bcbr(false)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
+	
 	register_fpar("fcpl", m_fcpl, 1024, "Camera parameter file of left camera.");
 	register_fpar("fcpr", m_fcpr, 1024, "Camera parameter file of right camera.");
+	register_fpar("udl", &m_budl, "Undistort left camera");
+	register_fpar("udr", &m_budr, "Undistort right camera");
+	register_fpar("cbl", &m_bcbl, "Calibrate left camera");
+	register_fpar("cbr", &m_bcbr, "Calibrate right camera");
+
+	register_fpar("flipx", &m_bflipx, "Flip image in x");
+	register_fpar("flipy", &m_bflipy, "Flip image in y");
+
 	register_fpar("fchsbd", m_chsbd.fname, 1024, "Chessboard file");
 	register_fpar("chsbd", &m_bchsbd, "Chessboard detection.");
 	
@@ -423,15 +434,19 @@ bool f_glfw_stereo_view::proc()
     return true;
   }
 
-  if(m_timg == timg1)
+  if(m_timg1 == timg1 && m_timg2 == timg2) // no frame change
     return true;
  
   if(ifrm1 != ifrm2){
     return true;
   }
 
-  m_timg = timg1;
-  
+  m_timg1 = timg1;
+  m_timg2 = timg2;
+
+  awsFlip(img1, m_bflipx, m_bflipy, false);
+  awsFlip(img2, m_bflipx, m_bflipy, false);
+
   Mat wimg1, wimg2;
   
   double rx1, rx2, ry1, ry2;
@@ -441,6 +456,22 @@ bool f_glfw_stereo_view::proc()
   ry1 = (double)h / (double)img1.rows;
   ry2 = (double)h / (double)img2.rows;
   double r1 = min(rx1, ry1), r2 = min(rx2, ry2);
+
+  if(m_bcbl){
+	  calibrate(0);
+  }
+
+  if(m_bcbr){
+	  calibrate(1);
+  }
+
+  if(m_bchsbd){
+	  s_obj obj;
+	  m_chsbd.detect(img1, &obj);
+	  m_pts_chsbdl.push_back(obj.pt2d);
+	  m_chsbd.detect(img2, &obj);
+	  m_pts_chsbdr.push_back(obj.pt2d);
+  }
 
   Size sz1((int)(r1 * img1.cols), (int)(r1 * img1.rows)), sz2((int)(r2 * img2.cols), (int)(r2 * img2.rows));
   resize(img1, wimg1, sz1);
@@ -493,6 +524,18 @@ bool f_glfw_stereo_view::init_run()
   }
 
   return true;
+}
+
+void f_glfw_stereo_view::save_chsbd(int icam)
+{
+}
+
+void f_glfw_stereo_view::load_chsbd(int icam)
+{
+}
+
+void f_glfw_stereo_view::calibrate(int icam)
+{
 }
 
 //////////////////////////////////////////////////////////////////////////////// f_glfw_claib members

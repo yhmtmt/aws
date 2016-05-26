@@ -243,11 +243,16 @@ class f_glfw_stereo_view: public f_glfw_window
 {
 protected:
   ch_image_ref * m_pin1, *m_pin2;
-	long long m_timg;
+	long long m_timg1, m_timg2;
 
-	bool m_bchsbd;
-	s_model m_chsbd;
-	bool m_bcpl, m_bcpr;
+	bool m_bchsbd;		 // chessboard model validity flag
+	s_model m_chsbd;	 // chessboard model
+	bool m_bcpl, m_bcpr; // camera parameter validity flag
+	bool m_bcbl, m_bcbr; // calibration flag
+	bool m_budl, m_budr; // undistort flag
+
+	bool m_bflipx, m_bflipy; // image flipping option 
+
 	char m_fcpl[1024], m_fcpr[1024];
 	AWSCamPar m_camparl, m_camparr;
 	int m_num_chsbdl, m_num_chsbdr;
@@ -255,6 +260,10 @@ protected:
 	vector<vector<Point2f>> m_pts_chsbdl;
 	vector<long long> m_t_chsbdr;
 	vector<vector<Point2f>> m_pts_chsbdr;
+
+	void save_chsbd(int icam /* 0 or 1 */);
+	void load_chsbd(int icam /* 0 or 1 */);
+	void calibrate(int icam /* 0 or 1 */);
 
 	virtual bool init_run();
 public:

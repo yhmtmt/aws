@@ -172,12 +172,24 @@ void f_aws1_ui::cnv_img_to_view(Mat & img, float av, Size & sz)
 		}
 
 		awsFlip(img, m_img_x_flip, m_img_y_flip, false);
-		if(img.type() == CV_8U){
-			glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
+		GLenum fmt = GL_LUMINANCE;
+		GLenum clr = GL_UNSIGNED_BYTE;
+		switch(img.type()){
+		case CV_8U:
+			break;
+		case CV_16U:
+			clr = GL_UNSIGNED_SHORT;
+			break;
+		case CV_8UC3:
+			fmt = GL_BGR;
+			clr = GL_UNSIGNED_BYTE;
+			break;
+		case CV_16UC3:
+			fmt = GL_BGR;
+			clr = GL_UNSIGNED_SHORT;
+			break;
 		}
-		else{
-			glDrawPixels(img.cols, img.rows, GL_BGR, GL_UNSIGNED_BYTE, img.data);
-		}
+		glDrawPixels(img.cols, img.rows, fmt, clr, img.data);
 	}
 }
 
