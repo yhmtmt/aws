@@ -46,7 +46,7 @@ int ch_image::write(FILE * pf, long long tcur)
 	      type = img.type();
 	      size = (int)(r * c * img.channels() * img.elemSize());
 	      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
-		  fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);
+	      fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);
 	      fwrite((void*)&type, sizeof(int), 1, pf);
 	      fwrite((void*)&r, sizeof(int), 1, pf);
 	      fwrite((void*)&c, sizeof(int), 1, pf);
