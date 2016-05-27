@@ -684,7 +684,7 @@ void f_aws1_ui::write_screen()
 
 		if(m_bss){
 			char fname[1024];
-			snprintf(fname, 1024, "%s/%s_%lld.png");
+			snprintf(fname, 1024, "%s/%s_%lld.png", m_path_storage, m_name, get_time());
 			imwrite(fname, m_simg);
 		}
 	}
