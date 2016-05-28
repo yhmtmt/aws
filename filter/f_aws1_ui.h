@@ -226,11 +226,12 @@ class f_aws1_ui: public f_glfw_window
   bool m_img_x_flip, m_img_y_flip;
   bool m_img2_x_flip, m_img2_y_flip;
  void cnv_img_to_view(Mat & img, float av, Size & sz);
+
   enum e_imv{
 	  IMV_IMG1, IMV_IMG2, IMV_IMG12, IMV_UNDEF
   } m_imv;
-
   static const char * m_str_imv[IMV_UNDEF];
+
   char m_path_storage[1024];
   // Main image view related parameters
   // Main image view shows an image from m_ch_img, the focal length and the principal point are defined as follows.
@@ -272,7 +273,6 @@ class f_aws1_ui: public f_glfw_window
   static const  char * m_str_aws1_ui_mode[AUM_UNDEF];
   c_aws1_ui_core * m_ui[AUM_UNDEF];
 
-
   VideoWriter m_vw;
   bool m_bsvw; // screen video write
   bool m_bss; // screen shot
@@ -299,9 +299,7 @@ class f_aws1_ui: public f_glfw_window
   void ui_show_seng();
   void ui_show_state();
   void ui_show_sys_state();
-
   void ui_show_attitude();
-
 
   bool m_ui_menu;
   

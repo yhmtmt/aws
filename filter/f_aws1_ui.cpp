@@ -504,6 +504,7 @@ void f_aws1_ui::ui_show_menu()
 	//     System MENU       //
 	//-----------------------//
 	//  <Control> | <Value>  //
+	//  <IM view> | <value>  //
 	//  <UI     > | <Value>  //
 	//  <Exit   > | <Value>  //
 	//-----------------------//
@@ -513,8 +514,8 @@ void f_aws1_ui::ui_show_menu()
 	float hfont = (float)(13. * m_iyscale);
 	const char * title = "System Menu"; /* 11 characters */
 
-	const char * items[3] = { /* 7characters the longest.*/
-		"Control", "UI", "Quit"
+	const char * items[4] = { /* 7 characters the longest.*/
+		"Control", "Cam", "UI", "Quit"
 	};
 
 	float alpha_bg = 0.5;
@@ -523,7 +524,7 @@ void f_aws1_ui::ui_show_menu()
 	float wcol_l = 12 * wfont;
 	float wcol_r = 12 * wfont;
 	float wm = wcol_l + wcol_r + 2 * wfont;
-	float hm = (float)(6.5 * hfont); 
+	float hm = (float)(7.5 * hfont); 
 	float lw = (float)(1.0 / m_sz_win.width);
 
 	float xorg = (float)(- 0.5 * wm);
@@ -560,22 +561,31 @@ void f_aws1_ui::ui_show_menu()
 	drawGlText(x, y, items[0], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, str_aws1_ctrl_src[m_menu_acs], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
-	// UI
+	// Cam
 	y -= (float)(hfont);
 	if(m_menu_focus == 1)
 		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
 			0, 1, 0, alpha_bg);
 	g = m_menu_focus == 1 ? 0.f : 1.f;
 	drawGlText(x, y, items[1], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
-	drawGlText(xv, y, m_str_aws1_ui_mode[m_menu_mode], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	drawGlText(xv, y, m_str_imv[m_imv], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
-	// Exit
+	// UI
 	y -= (float)(hfont);
 	if(m_menu_focus == 2)
 		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
 			0, 1, 0, alpha_bg);
 	g = m_menu_focus == 2 ? 0.f : 1.f;
 	drawGlText(x, y, items[2], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	drawGlText(xv, y, m_str_aws1_ui_mode[m_menu_mode], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+
+	// Exit
+	y -= (float)(hfont);
+	if(m_menu_focus == 3)
+		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
+			0, 1, 0, alpha_bg);
+	g = m_menu_focus == 3 ? 0.f : 1.f;
+	drawGlText(x, y, items[3], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, m_quit ? "yes":"no", 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
 	// OK/Cancel
@@ -629,13 +639,17 @@ void f_aws1_ui::ui_handle_menu()
 			m_menu_acs = (e_aws1_ctrl_src) ((m_menu_acs + ACS_NONE - 1) % ACS_NONE);
 			break;
 		case 1:
-			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + AUM_UNDEF - 1) % AUM_UNDEF);
+			m_imv = (e_imv) ((m_imv + IMV_UNDEF - 1) % IMV_UNDEF);
 			break;
 		case 2:
+			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + AUM_UNDEF - 1) % AUM_UNDEF);
+			break;
+		case 3:
 			m_quit = !m_quit;
 			break;
 		}
 	}
+
 	if(m_js.erx & s_jc_u3613m::EB_EVDOWN || m_js.trx > 60){
 		m_js.trx = 0;
 		switch(m_menu_focus){
@@ -643,9 +657,12 @@ void f_aws1_ui::ui_handle_menu()
 			m_menu_acs = (e_aws1_ctrl_src) ((m_menu_acs + 1) % ACS_NONE);
 			break;
 		case 1:
-			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + 1) % AUM_UNDEF);
+			m_imv = (e_imv)((m_imv + 1) % IMV_UNDEF);
 			break;
 		case 2:
+			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + 1) % AUM_UNDEF);
+			break;
+		case 3:
 			m_quit = !m_quit;
 			break;
 		}
