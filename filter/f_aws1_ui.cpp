@@ -624,12 +624,12 @@ void f_aws1_ui::ui_handle_menu()
 
 	if(m_js.edx & s_jc_u3613m::EB_EVDOWN || m_js.tdx > 60){
 		m_js.tdx = 0;
-		m_menu_focus = (m_menu_focus + 1 ) % 3;
+		m_menu_focus = (m_menu_focus + 1 ) % 4;
 	}
 
 	if(m_js.eux & s_jc_u3613m::EB_EVDOWN || m_js.tux > 60){
 		m_js.tux = 0;
-		m_menu_focus = (m_menu_focus + 2 ) % 3;
+		m_menu_focus = (m_menu_focus + 3 ) % 4;
 	}
 
 	if(m_js.elx & s_jc_u3613m::EB_EVDOWN || m_js.tlx > 60){

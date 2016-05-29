@@ -193,10 +193,10 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 					i++;
 				}
 				pwp->unlock();
+				fclose(pf);
 			}else{
 				cerr << "Failed to save route file " << fname << "." << endl;
-			}
-			fclose(pf);
+			}			
 		}
 		break;
 	case EMO_LD_RT:
@@ -247,10 +247,10 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 				}else{
 					cerr << "The file " << fname << " does not match the current waypoint file version." << endl;
 				}
+				fclose(pf);
 			}else{
 				cerr << "Failed to save route file " << fname << "." << endl;
-			}
-			fclose(pf);
+			}			
 		}
 		break;
 	case EMO_RNG:
