@@ -369,8 +369,8 @@ void c_aws1_ui_map::draw()
 		c = (float)cos(theta);
 		s = (float)sin(theta);
 		float v = (float)(sog * KNOT * 180.); // vector is 180 sec length
-		float vy = v * c * ifxmeter; 
-		float vx = v * s * ifymeter;
+		float vy = v * c * ifymeter; 
+		float vx = v * s * ifxmeter;
 		drawGlLine2Df(offset.x, offset.y, (float)(offset.x + vx), (float)(offset.y + vy), 0., 1., 0., 0., lw);
 	}
 

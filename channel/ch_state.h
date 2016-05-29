@@ -266,6 +266,7 @@ class ch_state: public ch_base
 
 	  int sz = 0;
 	  if(tposf < tcur && tposf != tpos){
+		  lock();
 		  lat = latf;
 		  lon = lonf;
 		  alt = altf;
@@ -273,25 +274,32 @@ class ch_state: public ch_base
 		  float lat_rad = (float)(lat * (PI / 180.)), lon_rad = (float)(lon * (PI / 180.));
 		  getwrldrot(lat_rad, lon_rad, R);
 		  bihtoecef(lat_rad, lon_rad, alt, x, y, z);
+		  unlock();
 		  tpos = tposf;
 	  }
 
 	  if(tattf < tcur && tattf != tatt){
+		  lock();
 		  roll = rollf;
 		  pitch = pitchf;
 		  yaw = yawf;
 		  tatt = tattf;
+		  unlock();
 	  }
 
 	  if(tvelf < tcur && tvelf != tvel){
+		  lock();
 		  cog = cogf;
 		  sog = sogf;
 		  tvel = tvelf;
+		  unlock();
 	  }
 
 	  if(tdpf < tcur && tdpf != tdp){
+		  lock();
 		  depth = depthf;
 		  tdp = tdpf;
+		  unlock();
 	  }
 
 	  while(!feof(pf)){
