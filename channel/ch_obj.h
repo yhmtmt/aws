@@ -404,7 +404,7 @@ public:
 		fwrite((void*)&m_cog, sizeof(float), 1, pf);
 		fwrite((void*)&m_sog, sizeof(float), 1, pf);
 		fwrite((void*)&m_yaw, sizeof(float), 1, pf);
-		return sizeof(long long) + sizeof(float) * 5;
+		return sizeof(long long) + sizeof(unsigned int) + sizeof(float) * 5;
 	}
 
 	int read(FILE * pf)

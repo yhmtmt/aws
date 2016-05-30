@@ -75,7 +75,7 @@ int ch_image::read(FILE * pf, long long tcur)
 		if(!res)
 			return 0;
 		sz += res;
-
+		
 		lock_bk();
 		res = fread((void*)&ifrm, sizeof(long long), 1, pf);
 		if(!res)
@@ -114,7 +114,10 @@ int ch_image::read(FILE * pf, long long tcur)
 			goto failed;
 		sz += res;
 
+		cout << m_name << " time " << m_time[m_back] << " loaded." << endl;
+
 		lock_fr();
+		
 		int tmp = m_front;
 		m_front = m_back;
 		m_back = tmp;

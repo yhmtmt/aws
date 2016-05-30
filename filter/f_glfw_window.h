@@ -37,6 +37,14 @@ inline void cnvCvPoint2GlPoint(const double fac_x, const double fac_y, const Poi
 	ptgl.y = -(float)(ptcv.y * fac_y - 1.0);
 }
 
+inline void cnvCvPoint2GlPoint(const float r, const float xorg, const float yorg, 
+							   const float w, const float h, const Point2f & ptcv, Point2f & ptgl)
+{
+	ptgl.x = (float)(ptcv.x * r + xorg);
+	ptgl.y = (float)(h - ptcv.y * r + yorg);
+}
+
+
 void drawGlText(float x, float y, const char * str, 
 		float r, float g, float b , float alpha,
 		void* font);
@@ -265,6 +273,9 @@ protected:
 	void load_chsbd(int icam /* 0 or 1 */);
 	void calibrate(int icam /* 0 or 1 */);
 
+	void draw_chsbd(const int icam /* 0 or 1 */, const float xorg, const float yorg,
+		const float w, const float h, const float s, 
+		vector<vector<Point2f>> & chsbds, const int num_chsbds);
 	virtual bool init_run();
 public:
  f_glfw_stereo_view(const char * name);

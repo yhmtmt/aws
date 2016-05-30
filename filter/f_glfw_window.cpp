@@ -67,6 +67,27 @@ void drawCvPoints(const Size & vp, vector<Point2f> & pts,
 	glEnd();
 }
 
+void drawCvPoints(const float rat, const float xorg, const float yorg, const float w, const float h, 
+				  vector<Point2f> & pts, 
+				  const float r, const float g, const float b, const float alpha, 
+				  const float l /*point size*/)
+{
+
+	Point2f pt;
+	// drawing Points
+	glPointSize(l);
+	glBegin(GL_POINTS);
+	{
+		glColor4f(r, g, b, alpha);
+		for(int ipt = 0; ipt < pts.size(); ipt++){
+			cnvCvPoint2GlPoint(rat, xorg, yorg, w, h, pts[ipt], pt);
+			glVertex2f(pt.x, pt.y);
+		}
+	}
+	glEnd();
+
+}
+
 void drawCvChessboard(const Size & vp, vector<Point2f> & pts, 
 					  const float r, const float g, const float b, const float alpha, 
 					 const float l /* point size */, const float w /* line width */)
@@ -88,6 +109,29 @@ void drawCvChessboard(const Size & vp, vector<Point2f> & pts,
 	}
 	glEnd();
 }
+
+void drawCvChessboard(const float rat, const float xorg, const float yorg, 
+					  const float w, const float h, vector<Point2f> & pts, 
+					  const float r, const float g, const float b, const float alpha, 
+					 const float p /* point size */, const float l /* line width */)
+{
+	drawCvPoints(rat, xorg, yorg, w, h, pts, r, g, b, alpha, p);
+	glLineWidth(l);
+
+	glBegin(GL_LINES);
+	{
+		Point2f pt;
+		cnvCvPoint2GlPoint(rat, xorg, yorg, w, h, pts[0], pt);
+		glVertex2f(pt.x, pt.y);
+		for(int ipt = 1; ipt < pts.size(); ipt++){
+			cnvCvPoint2GlPoint(rat, xorg, yorg, w, h, pts[ipt], pt);
+			glVertex2f(pt.x, pt.y);
+		}
+	}
+	glEnd();
+
+}
+
 
 void drawCvPointDensity(Mat hist, const int hist_max, const Size grid,  
 				 const float r, const float g, const float b, const float alpha, 
@@ -416,6 +460,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 
 bool f_glfw_stereo_view::proc()
 {
+
   glfwMakeContextCurrent(pwin());
 
   if(glfwWindowShouldClose(pwin()))
@@ -441,8 +486,28 @@ bool f_glfw_stereo_view::proc()
     return true;
   }
 
+  if(m_bcbl){
+	  calibrate(0);
+  }
+
+  if(m_bcbr){
+	  calibrate(1);
+  }
+
   m_timg1 = timg1;
   m_timg2 = timg2;
+
+  if(m_bchsbd){
+	  s_obj obj;
+	  if(m_chsbd.detect(img1, &obj) && m_num_chsbdl != m_pts_chsbdl.size()){
+		  m_pts_chsbdl[m_num_chsbdl] = obj.pt2d;
+		  m_num_chsbdl++;
+	  }
+	  if(m_chsbd.detect(img2, &obj) && m_num_chsbdl != m_pts_chsbdr.size()){
+		  m_pts_chsbdr[m_num_chsbdr] = obj.pt2d;
+		  m_num_chsbdr++;
+	  }
+  }
 
   awsFlip(img1, m_bflipx, m_bflipy, false);
   awsFlip(img2, m_bflipx, m_bflipy, false);
@@ -457,21 +522,7 @@ bool f_glfw_stereo_view::proc()
   ry2 = (double)h / (double)img2.rows;
   double r1 = min(rx1, ry1), r2 = min(rx2, ry2);
 
-  if(m_bcbl){
-	  calibrate(0);
-  }
 
-  if(m_bcbr){
-	  calibrate(1);
-  }
-
-  if(m_bchsbd){
-	  s_obj obj;
-	  m_chsbd.detect(img1, &obj);
-	  m_pts_chsbdl.push_back(obj.pt2d);
-	  m_chsbd.detect(img2, &obj);
-	  m_pts_chsbdr.push_back(obj.pt2d);
-  }
 
   Size sz1((int)(r1 * img1.cols), (int)(r1 * img1.rows)), sz2((int)(r2 * img2.cols), (int)(r2 * img2.rows));
   resize(img1, wimg1, sz1);
@@ -491,9 +542,10 @@ bool f_glfw_stereo_view::proc()
 	  glDrawPixels(wimg1.cols, wimg1.rows, GL_BGR, GL_UNSIGNED_BYTE, wimg1.data);
 	  break;
   }
+  
 
   glRasterPos2i(0, 0);
-  awsFlip(img1, false, true, false);
+  awsFlip(img2, false, true, false);
   switch(wimg2.type()){
   case CV_8U:
 	  glDrawPixels(wimg2.cols, wimg2.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg2.data);
@@ -505,7 +557,15 @@ bool f_glfw_stereo_view::proc()
 	  glDrawPixels(wimg2.cols, wimg2.rows, GL_BGR, GL_UNSIGNED_BYTE, wimg2.data);
 	  break;
   }
-  
+
+  if(m_num_chsbdl){
+	  draw_chsbd(0, -1, 0, (float)(sz1.width * r1), (float)(sz1.height * r1), (float) r1, m_pts_chsbdl, m_num_chsbdl);
+  } 
+
+  if(m_num_chsbdr){
+	  draw_chsbd(0, 0, 0, (float)(sz2.width * r2), (float)(sz2.height * r2), (float) r2, m_pts_chsbdr, m_num_chsbdr);
+  }
+
   glfwSwapBuffers(pwin());
   glfwPollEvents();
   
@@ -546,6 +606,15 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 
 void f_glfw_stereo_view::calibrate(int icam)
 {
+}
+
+void f_glfw_stereo_view::draw_chsbd(const int icam, const float xorg, const float yorg, 
+									const float w, const float h, const float s, 
+									vector<vector<Point2f>> & chsbds, const int num_chsbds)
+{
+	for(int ichsbd = 0; ichsbd < num_chsbds; ichsbd++){
+		drawCvChessboard(s, xorg, yorg, w, h, chsbds[ichsbd], 1.f, 0, 0, 1., 1, 1);
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////////// f_glfw_claib members

@@ -219,8 +219,12 @@ void s_model::calc_bounds()
 s_obj * s_model::detect(Mat & img, s_obj * pobj)
 {
 	if(type == EMT_CHSBD){
-		if(!pobj)
+		bool balloc = false;
+		if(!pobj){
 			pobj = new s_obj;
+			balloc = true;
+		}
+
 		pobj->pmdl = this;
 
 		if(par_chsbd.detect(img, pobj->pt2d)){
@@ -235,7 +239,10 @@ s_obj * s_model::detect(Mat & img, s_obj * pobj)
 			pobj->visible.resize(pobj->pt2d.size(), true);
 			return pobj;
 		}
-		delete pobj;
+
+		if(balloc){
+			delete pobj;
+		}
 	}
 	return NULL;
 }
