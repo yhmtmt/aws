@@ -67,7 +67,7 @@ void drawCvPoints(const Size & vp, vector<Point2f> & pts,
 	glEnd();
 }
 
-void drawCvPoints(const float rat, const float xorg, const float yorg, const float w, const float h, 
+void drawCvPoints(const float fac_x, const float fac_y, const float xorg, const float yorg, const float w, const float h, 
 				  vector<Point2f> & pts, 
 				  const float r, const float g, const float b, const float alpha, 
 				  const float l /*point size*/)
@@ -80,7 +80,7 @@ void drawCvPoints(const float rat, const float xorg, const float yorg, const flo
 	{
 		glColor4f(r, g, b, alpha);
 		for(int ipt = 0; ipt < pts.size(); ipt++){
-			cnvCvPoint2GlPoint(rat, xorg, yorg, w, h, pts[ipt], pt);
+			cnvCvPoint2GlPoint(fac_x, fac_y, xorg, yorg, w, h, pts[ipt], pt);
 			glVertex2f(pt.x, pt.y);
 		}
 	}
@@ -110,21 +110,21 @@ void drawCvChessboard(const Size & vp, vector<Point2f> & pts,
 	glEnd();
 }
 
-void drawCvChessboard(const float rat, const float xorg, const float yorg, 
+void drawCvChessboard(const float fac_x, const float fac_y, const float xorg, const float yorg, 
 					  const float w, const float h, vector<Point2f> & pts, 
 					  const float r, const float g, const float b, const float alpha, 
 					 const float p /* point size */, const float l /* line width */)
 {
-	drawCvPoints(rat, xorg, yorg, w, h, pts, r, g, b, alpha, p);
+	drawCvPoints(fac_x, fac_y, xorg, yorg, w, h, pts, r, g, b, alpha, p);
 	glLineWidth(l);
 
 	glBegin(GL_LINES);
 	{
 		Point2f pt;
-		cnvCvPoint2GlPoint(rat, xorg, yorg, w, h, pts[0], pt);
+		cnvCvPoint2GlPoint(fac_x, fac_y, xorg, yorg, w, h, pts[0], pt);
 		glVertex2f(pt.x, pt.y);
 		for(int ipt = 1; ipt < pts.size(); ipt++){
-			cnvCvPoint2GlPoint(rat, xorg, yorg, w, h, pts[ipt], pt);
+			cnvCvPoint2GlPoint(fac_x, fac_y, xorg, yorg, w, h, pts[ipt], pt);
 			glVertex2f(pt.x, pt.y);
 		}
 	}
@@ -433,8 +433,9 @@ bool f_glfw_imview::init_run()
 ////////////////////////////////////////////////////////////////////////////////f_glfw_stereo_view members
 f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL),
 	m_timg1(-1), m_timg2(-1),
-	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_bflipx(false), m_bflipy(false),
-	m_bcpl(false), m_bcpr(false), m_budl(false), m_budr(false), m_bcbl(false), m_bcbr(false)
+	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_num_chsbd_com(0), m_bflipx(false), m_bflipy(false),
+	m_bcpl(false), m_bcpr(false), m_budl(false), m_budr(false), m_bcbl(false), m_bcbr(false), m_bcbst(false), 
+	m_brct(false)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -445,6 +446,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("udr", &m_budr, "Undistort right camera");
 	register_fpar("cbl", &m_bcbl, "Calibrate left camera");
 	register_fpar("cbr", &m_bcbr, "Calibrate right camera");
+	register_fpar("rct", &m_bcbst, "Calibrate stereo images.");
 
 	register_fpar("flipx", &m_bflipx, "Flip image in x");
 	register_fpar("flipy", &m_bflipy, "Flip image in y");
@@ -452,10 +454,17 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("fchsbd", m_chsbd.fname, 1024, "Chessboard file");
 	register_fpar("chsbd", &m_bchsbd, "Chessboard detection.");
 	
-	m_pts_chsbdl.resize(100);
-	m_t_chsbdl.resize(100);
-	m_pts_chsbdr.resize(100);
-	m_t_chsbdr.resize(100);
+
+	m_Rl = Mat::eye(3, 3, CV_64FC1);
+	m_Rr = Mat::eye(3, 3, CV_64FC1);
+
+	m_pts_chsbdr.reserve(200);
+	m_pts_chsbdl.reserve(200);
+	m_ifrm_chsbdr.reserve(200);
+	m_ifrm_chsbdl.reserve(200);
+	m_pts_chsbdr_com.reserve(200);
+	m_pts_chsbdl_com.reserve(200);
+	m_ifrm_chsbd_com.reserve(200);
 }
 
 bool f_glfw_stereo_view::proc()
@@ -467,46 +476,104 @@ bool f_glfw_stereo_view::proc()
     return false;
   
   long long timg1, timg2, ifrm1, ifrm2;
-  Mat img1 = m_pin1->get_img(timg1, ifrm1);
-  Mat img2 = m_pin2->get_img(timg2, ifrm2);
-  if(img1.type() != img2.type()){
+  m_img1 = m_pin1->get_img(timg1, ifrm1);
+  m_img2 = m_pin2->get_img(timg2, ifrm2);
+
+  if(m_img1.type() != m_img2.type()){
     cerr << "Two image channels in " << m_name << " have different image type." << endl;
      return false;
   }
 
-  if(img1.empty() || img2.empty()){
+  if(m_img1.empty() || m_img2.empty()){
     cerr << "One of the image channels are empty." << endl;
     return true;
   }
 
   if(m_timg1 == timg1 && m_timg2 == timg2) // no frame change
-    return true;
- 
+	  m_bnew = false;
+  else
+	  m_bnew = true;
+
   if(ifrm1 != ifrm2){
-    return true;
+	  m_bsync = false;
+  }else{
+	  m_bsync = true;
   }
 
-  if(m_bcbl){
+  if(m_bnew && m_bsync){
+	  m_bdet_chsbd = false;
+  }
+
+  if(m_num_chsbdl && m_bcbl){
 	  calibrate(0);
+	  m_bcbl = false;
   }
 
-  if(m_bcbr){
+  if(m_num_chsbdr && m_bcbr){
 	  calibrate(1);
+	  m_bcbr = false;
+  }
+
+  if(m_bcpl && m_bcpr && m_bcbst){ // stereo calibrate
+	  Size sz(m_img1.cols, m_img1.rows);
+	  vector<vector<Point3f>> pt3ds;
+	  pt3ds.resize(m_num_chsbd_com);
+	  for(int i = 0; i < m_num_chsbd_com; i++)
+		  pt3ds[i] = m_chsbd.pts;
+	  if(m_camparl.isFishEye()){
+		  fisheye::stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
+			  m_camparl.getCvPrjMat(), m_camparl.getCvDistFishEyeMat(), 
+			  m_camparr.getCvPrjMat(), m_camparr.getCvDistFishEyeMat(),
+			  sz, m_Rlr, m_Tlr);
+	  }else{
+		  stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
+			  m_camparl.getCvPrjMat(), m_camparl.getCvDistMat(), 
+			  m_camparr.getCvPrjMat(), m_camparr.getCvDistMat(),
+			  sz, m_Rlr, m_Tlr, m_E, m_F);
+	  }
+	  m_bcbst = false;
+	  m_brct = true;
   }
 
   m_timg1 = timg1;
   m_timg2 = timg2;
 
-  if(m_bchsbd){
+  if(m_bchsbd && !m_bdet_chsbd && m_bsync){
 	  s_obj obj;
-	  if(m_chsbd.detect(img1, &obj) && m_num_chsbdl != m_pts_chsbdl.size()){
-		  m_pts_chsbdl[m_num_chsbdl] = obj.pt2d;
+	  bool left = false, right = false;
+	  if(m_chsbd.detect(m_img1, &obj) && m_num_chsbdl != m_pts_chsbdl.size()){
+		  m_pts_chsbdl.push_back(obj.pt2d);
+		  m_ifrm_chsbdl.push_back(ifrm1);
 		  m_num_chsbdl++;
+		  left = true;
 	  }
-	  if(m_chsbd.detect(img2, &obj) && m_num_chsbdl != m_pts_chsbdr.size()){
-		  m_pts_chsbdr[m_num_chsbdr] = obj.pt2d;
+	  if(m_chsbd.detect(m_img2, &obj) && m_num_chsbdl != m_pts_chsbdr.size()){
+		  m_pts_chsbdr.push_back(obj.pt2d);
+		  m_ifrm_chsbdr.push_back(ifrm2);
 		  m_num_chsbdr++;
+		  right = true;
 	  }
+
+	  if(left && right){ // common chessboard		  
+		  m_pts_chsbdr_com.push_back(m_pts_chsbdr[m_num_chsbdr - 1]);
+		  m_pts_chsbdl_com.push_back(m_pts_chsbdl[m_num_chsbdl - 1]);
+		  m_ifrm_chsbd_com.push_back(ifrm1);
+		  m_num_chsbd_com++;
+	  }
+	  m_bdet_chsbd = true;
+  }
+
+  Mat img1, img2;
+  if(m_budl && m_bcpl){ 
+	  remap(m_img1, img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+  }else{
+	  img1 = m_img1.clone();
+  }
+
+  if(m_budr && m_bcpl){
+	  remap(m_img2, img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+  }else{
+	  img2 = m_img2.clone();
   }
 
   awsFlip(img1, m_bflipx, m_bflipy, false);
@@ -516,13 +583,11 @@ bool f_glfw_stereo_view::proc()
   
   double rx1, rx2, ry1, ry2;
   int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
-  rx1 = (double)w / (double)img1.cols; 
-  rx2 = (double)w / (double)img2.cols;
-  ry1 = (double)h / (double)img1.rows;
-  ry2 = (double)h / (double)img2.rows;
+  rx1 = (double)w / (double)m_img1.cols; 
+  rx2 = (double)w / (double)m_img2.cols;
+  ry1 = (double)h / (double)m_img1.rows;
+  ry2 = (double)h / (double)m_img2.rows;
   double r1 = min(rx1, ry1), r2 = min(rx2, ry2);
-
-
 
   Size sz1((int)(r1 * img1.cols), (int)(r1 * img1.rows)), sz2((int)(r2 * img2.cols), (int)(r2 * img2.rows));
   resize(img1, wimg1, sz1);
@@ -530,7 +595,7 @@ bool f_glfw_stereo_view::proc()
   
   glRasterPos2i(-1, 0);
   
-  awsFlip(img1, false, true, false);
+  awsFlip(wimg1, false, true, false);
   switch(wimg1.type()){
   case CV_8U:
 	  glDrawPixels(wimg1.cols, wimg1.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg1.data);
@@ -545,7 +610,7 @@ bool f_glfw_stereo_view::proc()
   
 
   glRasterPos2i(0, 0);
-  awsFlip(img2, false, true, false);
+  awsFlip(wimg2, false, true, false);
   switch(wimg2.type()){
   case CV_8U:
 	  glDrawPixels(wimg2.cols, wimg2.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg2.data);
@@ -558,12 +623,17 @@ bool f_glfw_stereo_view::proc()
 	  break;
   }
 
+  float xscale1, yscale1, xscale2, yscale2;
+  xscale1 = (float)(r1 / (float) w);
+  yscale1 = (float)(r1 / (float) h);
+  xscale2 = (float)(r2 / (float) w);
+  yscale2 = (float)(r2 / (float) h);
   if(m_num_chsbdl){
-	  draw_chsbd(0, -1, 0, (float)(sz1.width * r1), (float)(sz1.height * r1), (float) r1, m_pts_chsbdl, m_num_chsbdl);
+	  draw_chsbd(0, xscale1, yscale1, -1, 0, (float)(sz1.width * r1), (float)(sz1.height * r1), m_pts_chsbdl, m_num_chsbdl);
   } 
 
   if(m_num_chsbdr){
-	  draw_chsbd(0, 0, 0, (float)(sz2.width * r2), (float)(sz2.height * r2), (float) r2, m_pts_chsbdr, m_num_chsbdr);
+	  draw_chsbd(0, xscale2, yscale2, 0, 0, (float)(sz2.width * r2), (float)(sz2.height * r2), m_pts_chsbdr, m_num_chsbdr);
   }
 
   glfwSwapBuffers(pwin());
@@ -606,14 +676,51 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 
 void f_glfw_stereo_view::calibrate(int icam)
 {
+	AWSCamPar * pcp = NULL;
+	vector<vector<Point2f>> * ppts = NULL;
+	vector<Mat> tvecs;
+	vector<Mat> rvecs;
+	Mat * pimg = NULL, * R = NULL, * P = NULL, * map1 = NULL, * map2 = NULL;
+	if(icam == 0){
+		pcp = &m_camparl;
+		ppts = &m_pts_chsbdl;
+		pimg = &m_img1;
+	}else{
+		pcp = &m_camparr;
+		ppts = &m_pts_chsbdr;
+		pimg = &m_img2;
+	}
+
+	Size sz(pimg->cols, pimg->rows);
+	if(pcp->isFishEye()){
+		fisheye::calibrate(m_chsbd.pts, *ppts, sz, pcp->getCvPrjMat(), 
+			pcp->getCvDistFishEyeMat(), rvecs, tvecs);
+	}else{
+		calibrateCamera(m_chsbd.pts, *ppts, sz, pcp->getCvPrjMat(), 
+			pcp->getCvDistMat(), rvecs, tvecs);
+	}
+		
+	if(pcp->isFishEye()){		
+		fisheye::estimateNewCameraMatrixForUndistortRectify(pcp->getCvPrjMat(),
+			pcp->getCvDistFishEyeMat(), sz, *R, *P);
+		fisheye::initUndistortRectifyMap(pcp->getCvPrjMat(), pcp->getCvDistFishEyeMat(), 
+			*R, *P, sz, CV_16SC2, *map1, *map2);
+	}else{
+		*P = getOptimalNewCameraMatrix(pcp->getCvPrjMat(), pcp->getCvDistMat(), 
+			sz, 1.);
+		initUndistortRectifyMap(pcp->getCvPrjMat(), pcp->getCvDistMat(), 
+			*R, *P, sz, CV_16SC2, *map1, *map2);
+	}
 }
 
-void f_glfw_stereo_view::draw_chsbd(const int icam, const float xorg, const float yorg, 
-									const float w, const float h, const float s, 
+void f_glfw_stereo_view::draw_chsbd(const int icam,
+									const float xscale, const float yscale,
+									const float xorg, const float yorg, 
+									const float w, const float h, 
 									vector<vector<Point2f>> & chsbds, const int num_chsbds)
 {
 	for(int ichsbd = 0; ichsbd < num_chsbds; ichsbd++){
-		drawCvChessboard(s, xorg, yorg, w, h, chsbds[ichsbd], 1.f, 0, 0, 1., 1, 1);
+		drawCvChessboard(xscale, yscale, xorg, yorg, w, h, chsbds[ichsbd], 1.f, 0, 0, 1., 1, 1);
 	}
 }
 

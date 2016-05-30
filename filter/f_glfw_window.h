@@ -37,11 +37,11 @@ inline void cnvCvPoint2GlPoint(const double fac_x, const double fac_y, const Poi
 	ptgl.y = -(float)(ptcv.y * fac_y - 1.0);
 }
 
-inline void cnvCvPoint2GlPoint(const float r, const float xorg, const float yorg, 
+inline void cnvCvPoint2GlPoint(const float fac_x, const float fac_y, const float xorg, const float yorg, 
 							   const float w, const float h, const Point2f & ptcv, Point2f & ptgl)
 {
-	ptgl.x = (float)(ptcv.x * r + xorg);
-	ptgl.y = (float)(h - ptcv.y * r + yorg);
+	ptgl.x = (float)(ptcv.x * fac_x + xorg);
+	ptgl.y = (float)(h - ptcv.y * fac_y + yorg);
 }
 
 
@@ -247,34 +247,58 @@ public:
 	virtual bool proc();
 };
 
+// 1. find and save chessboard
+// 2. calibrate both cameras and undistort independently
+// 3. calibrate stereo camera.
+// 4. calculate disparity image
 class f_glfw_stereo_view: public f_glfw_window
 {
 protected:
   ch_image_ref * m_pin1, *m_pin2;
+  Mat m_img1, m_img2;
+
 	long long m_timg1, m_timg2;
+	long long m_ifrm1, m_ifrm2;
+	bool m_bnew;
+	bool m_bsync;
+
+	bool m_bdet_chsbd;
 
 	bool m_bchsbd;		 // chessboard model validity flag
 	s_model m_chsbd;	 // chessboard model
 	bool m_bcpl, m_bcpr; // camera parameter validity flag
-	bool m_bcbl, m_bcbr; // calibration flag
+	bool m_bcbl, m_bcbr, m_bcbst; // calibration flag
 	bool m_budl, m_budr; // undistort flag
-
+	bool m_brct;		 // rectify
 	bool m_bflipx, m_bflipy; // image flipping option 
 
 	char m_fcpl[1024], m_fcpr[1024];
 	AWSCamPar m_camparl, m_camparr;
+	Mat m_Rl, m_Rr;
+	Mat m_Pl, m_Pr;
+	Mat m_mapl1, m_mapl2, m_mapr1, m_mapr2;
+	Mat m_Rlr, m_Tlr;
+	Mat m_E, m_F;
+
 	int m_num_chsbdl, m_num_chsbdr;
-	vector<long long> m_t_chsbdl;
+	vector<long long> m_ifrm_chsbdl;
 	vector<vector<Point2f>> m_pts_chsbdl;
-	vector<long long> m_t_chsbdr;
+	vector<long long> m_ifrm_chsbdr;
 	vector<vector<Point2f>> m_pts_chsbdr;
+
+	int m_num_chsbd_com;
+	vector<long long> m_ifrm_chsbd_com;
+	vector<vector<Point2f>> m_pts_chsbdl_com;
+	vector<vector<Point2f>> m_pts_chsbdr_com;
 
 	void save_chsbd(int icam /* 0 or 1 */);
 	void load_chsbd(int icam /* 0 or 1 */);
 	void calibrate(int icam /* 0 or 1 */);
 
-	void draw_chsbd(const int icam /* 0 or 1 */, const float xorg, const float yorg,
-		const float w, const float h, const float s, 
+	void draw_chsbd(const int icam /* 0 or 1 */, 
+		const float xscale, const float yscale,
+		const float xorg, const float yorg,
+		const float w, const float h, 
 		vector<vector<Point2f>> & chsbds, const int num_chsbds);
 	virtual bool init_run();
 public:
