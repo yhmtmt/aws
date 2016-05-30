@@ -480,20 +480,30 @@ bool f_glfw_stereo_view::proc()
   glRasterPos2i(-1, 0);
   
   awsFlip(img1, false, true, false);
-  if(wimg1.type() == CV_8U){
+  switch(wimg1.type()){
+  case CV_8U:
 	  glDrawPixels(wimg1.cols, wimg1.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg1.data);
-  }
-  else{
+	  break;
+  case CV_16U:
+	  glDrawPixels(wimg1.cols, wimg1.rows, GL_LUMINANCE, GL_UNSIGNED_SHORT, wimg1.data);
+	  break;
+  case CV_8UC3:
 	  glDrawPixels(wimg1.cols, wimg1.rows, GL_BGR, GL_UNSIGNED_BYTE, wimg1.data);
+	  break;
   }
 
   glRasterPos2i(0, 0);
   awsFlip(img1, false, true, false);
-  if(wimg2.type() == CV_8U){
+  switch(wimg2.type()){
+  case CV_8U:
 	  glDrawPixels(wimg2.cols, wimg2.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg2.data);
-  }
-  else{
+	  break;
+  case CV_16U:
+	  glDrawPixels(wimg2.cols, wimg2.rows, GL_LUMINANCE, GL_UNSIGNED_SHORT, wimg2.data);
+	  break;
+  case CV_8UC3:
 	  glDrawPixels(wimg2.cols, wimg2.rows, GL_BGR, GL_UNSIGNED_BYTE, wimg2.data);
+	  break;
   }
   
   glfwSwapBuffers(pwin());
