@@ -566,12 +566,17 @@ public:
 
 	void push(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
 	{
+	  if(mmsi == 0 || mmsi > 999999999){
+	    //cout << "irregal mmsi detected: mmsi " << mmsi <<  endl;
+	    return ;
+	  }
 		lock();
 		itr = objs.find(mmsi);
 		if(itr != objs.end()){
 			c_ais_obj & obj = *(itr->second);
 			obj.update(t, lat, lon, cog, sog, hdg);
 			obj.set_ecef_from_bih();
+			updates.push_back(&obj);
 		}else{
 			c_ais_obj * pobj = new c_ais_obj(t, mmsi, lat, lon, cog, sog, hdg);
 			objs.insert(map<unsigned int, c_ais_obj *>::value_type(mmsi, pobj));
@@ -611,8 +616,9 @@ public:
 			pobj->get_pos_rel(x, y, z);
 			float d = (float)(x * x + y * y + z * z);
 			if(d > r2){
-				delete itr->second;
-				itr = objs.erase(itr);
+			  updates.remove(pobj);
+			  delete itr->second;			
+			  itr = objs.erase(itr);
 			}else{
 				itr++;
 			}
@@ -625,8 +631,9 @@ public:
 		for(itr = objs.begin(); itr != objs.end();){
 			c_ais_obj * pobj = itr->second;
 			if(pobj->get_time() < told){
-				delete itr->second;
-				itr = objs.erase(itr);
+			  updates.remove(pobj);
+			  delete itr->second;
+			  itr = objs.erase(itr);
 			}else{
 				itr++;
 			}
@@ -724,8 +731,6 @@ public:
 		  pobj->read_buf(buf);
 		}else{
 		  c_ais_obj::read_buf_null(buf);
-		  unlock();
-		  return 0;
 		}
 		unlock();
 		return get_dsize();
