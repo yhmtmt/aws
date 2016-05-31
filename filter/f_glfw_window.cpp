@@ -435,7 +435,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_timg1(-1), m_timg2(-1),
 	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_num_chsbd_com(0), m_bflipx(false), m_bflipy(false),
 	m_bcpl(false), m_bcpr(false), m_budl(false), m_budr(false), m_bcbl(false), m_bcbr(false), m_bcbst(false), 
-	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false)
+	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -449,6 +449,9 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("cbl", &m_bcbl, "Calibrate left camera");
 	register_fpar("cbr", &m_bcbr, "Calibrate right camera");
 	register_fpar("rct", &m_bcbst, "Calibrate stereo images.");
+	register_fpar("sv_chsbd", &m_bsv_chsbd, "Save chessboard.");
+	register_fpar("ld_chsbd", &m_bld_chsbd, "Load chessboard.");
+	register_fpar("det_chsbd", &m_bdet_chsbd, "Detect chessboard.");
 
 	register_fpar("flipx", &m_bflipx, "Flip image in x");
 	register_fpar("flipy", &m_bflipy, "Flip image in y");
@@ -456,8 +459,6 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("fchsbd", m_chsbd.fname, 1024, "Chessboard model file");
 	m_fchsbdl[0] = m_fchsbdr[0] = m_fchsbdc[0] = '\0';
 	
-	register_fpar("sv_chsbd", &m_bsv_chsbd, "Save chessboard.");
-	register_fpar("ld_chsbd", &m_bld_chsbd, "Load chessboard.");
 	register_fpar("fchsbdl", m_fchsbdl, 1024, "Detected chessboard file for left camera.");
 	register_fpar("fchsbdr", m_fchsbdr, 1024, "Detected chessboard file for righ camera.");
 	register_fpar("fchsbdc", m_fchsbdc, 1024, "Detected common chessboard file for left and right camera.");
@@ -476,7 +477,6 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 
 bool f_glfw_stereo_view::proc()
 {
-
   glfwMakeContextCurrent(pwin());
 
   if(glfwWindowShouldClose(pwin()))
@@ -511,12 +511,12 @@ bool f_glfw_stereo_view::proc()
 	  m_bdet_chsbd = false;
   }
 
-  if(m_num_chsbdl && m_bcbl){
+  if(m_num_chsbdl && m_bcbl){ //calibrate left camera
 	  calibrate(0);
 	  m_bcbl = false;
   }
 
-  if(m_num_chsbdr && m_bcbr){
+  if(m_num_chsbdr && m_bcbr){ // calibrate right camera
 	  calibrate(1);
 	  m_bcbr = false;
   }
@@ -545,7 +545,7 @@ bool f_glfw_stereo_view::proc()
   m_timg1 = timg1;
   m_timg2 = timg2;
 
-  if(m_bchsbd && !m_bdet_chsbd && m_bsync){
+  if(m_bchsbd && m_bdet_chsbd && m_bsync){
 	  s_obj obj;
 	  bool left = false, right = false;
 	  if(m_chsbd.detect(m_img1, &obj) && m_num_chsbdl != m_pts_chsbdl.size()){
@@ -567,7 +567,7 @@ bool f_glfw_stereo_view::proc()
 		  m_ifrm_chsbd_com.push_back(ifrm1);
 		  m_num_chsbd_com++;
 	  }
-	  m_bdet_chsbd = true;
+	  m_bdet_chsbd = false;
   }
 
   Mat img1, img2;
@@ -577,7 +577,7 @@ bool f_glfw_stereo_view::proc()
 	  img1 = m_img1.clone();
   }
 
-  if(m_budr && m_bcpl){
+  if(m_budr && m_bcpr){
 	  remap(m_img2, img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
   }else{
 	  img2 = m_img2.clone();
@@ -614,7 +614,6 @@ bool f_glfw_stereo_view::proc()
 	  glDrawPixels(wimg1.cols, wimg1.rows, GL_BGR, GL_UNSIGNED_BYTE, wimg1.data);
 	  break;
   }
-  
 
   glRasterPos2i(0, 0);
   awsFlip(wimg2, false, true, false);
@@ -647,11 +646,14 @@ bool f_glfw_stereo_view::proc()
 	  save_chsbd(0);
 	  save_chsbd(1);
 	  save_chsbd(2);
+	  m_bsv_chsbd = false;
   }
+
   if(m_bld_chsbd){
 	  load_chsbd(0);
 	  load_chsbd(1);
 	  load_chsbd(2);
+	  m_bld_chsbd = false;
   }
 
   glfwSwapBuffers(pwin());

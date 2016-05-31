@@ -260,15 +260,20 @@ protected:
 
 	long long m_timg1, m_timg2;
 	long long m_ifrm1, m_ifrm2;
-	bool m_bnew;
-	bool m_bsync;
 
-	bool m_bdet_chsbd;
+	// Frame state flag
+	bool m_bnew; // new frame
+	bool m_bsync; // synchronized frame
+
+	// operation flag
+	bool m_bdet_chsbd; // detect chessboard
+	bool m_bsv_chsbd, m_bld_chsbd; // save and load chessboard
+	bool m_bcbl, m_bcbr, m_bcbst; // calibration flag
+
 
 	bool m_bchsbd;		 // chessboard model validity flag
 	s_model m_chsbd;	 // chessboard model
 	bool m_bcpl, m_bcpr; // camera parameter validity flag
-	bool m_bcbl, m_bcbr, m_bcbst; // calibration flag
 	bool m_budl, m_budr; // undistort flag
 	bool m_brct;		 // rectify
 	bool m_bflipx, m_bflipy; // image flipping option 
@@ -281,7 +286,6 @@ protected:
 	Mat m_Rlr, m_Tlr;
 	Mat m_E, m_F;
 
-	bool m_bsv_chsbd, m_bld_chsbd;
 	char m_fchsbdl[1024], m_fchsbdr[1024], m_fchsbdc[1024];
 	int m_num_chsbdl, m_num_chsbdr;
 	vector<long long> m_ifrm_chsbdl;
