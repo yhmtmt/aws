@@ -435,13 +435,15 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_timg1(-1), m_timg2(-1),
 	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_num_chsbd_com(0), m_bflipx(false), m_bflipy(false),
 	m_bcpl(false), m_bcpr(false), m_budl(false), m_budr(false), m_bcbl(false), m_bcbr(false), m_bcbst(false), 
-	m_brct(false)
+	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
 	
+	m_fcpl[0] = m_fcpr[0] = '\0';
 	register_fpar("fcpl", m_fcpl, 1024, "Camera parameter file of left camera.");
 	register_fpar("fcpr", m_fcpr, 1024, "Camera parameter file of right camera.");
+
 	register_fpar("udl", &m_budl, "Undistort left camera");
 	register_fpar("udr", &m_budr, "Undistort right camera");
 	register_fpar("cbl", &m_bcbl, "Calibrate left camera");
@@ -451,9 +453,14 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("flipx", &m_bflipx, "Flip image in x");
 	register_fpar("flipy", &m_bflipy, "Flip image in y");
 
-	register_fpar("fchsbd", m_chsbd.fname, 1024, "Chessboard file");
-	register_fpar("chsbd", &m_bchsbd, "Chessboard detection.");
+	register_fpar("fchsbd", m_chsbd.fname, 1024, "Chessboard model file");
+	m_fchsbdl[0] = m_fchsbdr[0] = m_fchsbdc[0] = '\0';
 	
+	register_fpar("sv_chsbd", &m_bsv_chsbd, "Save chessboard.");
+	register_fpar("ld_chsbd", &m_bld_chsbd, "Load chessboard.");
+	register_fpar("fchsbdl", m_fchsbdl, 1024, "Detected chessboard file for left camera.");
+	register_fpar("fchsbdr", m_fchsbdr, 1024, "Detected chessboard file for righ camera.");
+	register_fpar("fchsbdc", m_fchsbdc, 1024, "Detected common chessboard file for left and right camera.");
 
 	m_Rl = Mat::eye(3, 3, CV_64FC1);
 	m_Rr = Mat::eye(3, 3, CV_64FC1);
@@ -636,6 +643,17 @@ bool f_glfw_stereo_view::proc()
 	  draw_chsbd(0, xscale2, yscale2, 0, 0, (float)(sz2.width * r2), (float)(sz2.height * r2), m_pts_chsbdr, m_num_chsbdr);
   }
 
+  if(m_bsv_chsbd){
+	  save_chsbd(0);
+	  save_chsbd(1);
+	  save_chsbd(2);
+  }
+  if(m_bld_chsbd){
+	  load_chsbd(0);
+	  load_chsbd(1);
+	  load_chsbd(2);
+  }
+
   glfwSwapBuffers(pwin());
   glfwPollEvents();
   
@@ -668,10 +686,196 @@ bool f_glfw_stereo_view::init_run()
 
 void f_glfw_stereo_view::save_chsbd(int icam)
 {
+	int num_chsbd = 0;
+	int num_chsbd_per_frm = 0;
+	const char * fname = NULL;
+	vector<long long> *ifrm = NULL;
+	vector<vector<Point2f>> *pts[2] = {NULL, NULL};
+
+	switch(icam){
+	case 0:
+		num_chsbd = m_num_chsbdl;
+		num_chsbd_per_frm = 1;
+		fname = m_fchsbdl;
+		ifrm = &m_ifrm_chsbdl;
+		pts[0] = &m_pts_chsbdl;
+		break;
+	case 1:
+		num_chsbd = m_num_chsbdr;
+		num_chsbd_per_frm = 1;
+		ifrm = &m_ifrm_chsbdl;
+		fname = m_fchsbdr;
+		pts[0] = &m_pts_chsbdr;
+		break;
+	case 2:
+		num_chsbd = m_num_chsbd_com;
+		num_chsbd_per_frm = 2;
+		fname = m_fchsbdc;
+		ifrm = &m_ifrm_chsbd_com;
+		pts[0] = &m_pts_chsbdl_com;
+		pts[1] = &m_pts_chsbdr_com;
+		break;
+	default:
+		return;
+	}
+
+	FileStorage fs;
+	fs.open(fname, FileStorage::WRITE);
+	if(!fs.isOpened()){
+		cerr << "Failed to open file " << fname << "." << endl;
+		return;
+	}
+
+	fs << "NumChsbd" << num_chsbd;
+	fs << "NumChsbdPerFrm" << num_chsbd_per_frm;
+	fs << "ChsbdName" << m_chsbd.name;
+	int chsbd_pts = (int) m_chsbd.pts.size();
+	char item[1024];
+	for(int i = 0; i < num_chsbd; i++){
+		snprintf(item, 1024, "frm%d", i);
+		fs << item << "[";
+		long long val = (*ifrm)[i];
+		fs << "FrmIdL" << *((int *) &val);
+		fs << "FrmIdH" << *((int *) &val + 1);
+		for(int j = 0; j < num_chsbd_per_frm; j++){
+			snprintf(item, 1024, "chsbd%d", j);
+			fs << item << "[";
+			for(int k = 0; k < (*pts[j])[i].size(); k++){
+				fs << (*pts[j])[i][k];
+			}
+			fs << "]";
+		}
+		fs << "]";
+	}
 }
 
 void f_glfw_stereo_view::load_chsbd(int icam)
 {
+	int num_chsbd = 0;
+	int num_chsbd_per_frm = 0;
+	const char * fname = NULL;
+	vector<long long> *ifrm = NULL;
+	vector<vector<Point2f>> *pts[2] = {NULL, NULL};
+	switch(icam){
+	case 0:
+		fname = m_fchsbdl;
+		ifrm = &m_ifrm_chsbdl;
+		pts[0] = &m_pts_chsbdl;
+		break;
+	case 1:
+		ifrm = &m_ifrm_chsbdl;
+		fname = m_fchsbdr;
+		pts[0] = &m_pts_chsbdr;
+		break;
+	case 2:
+		fname = m_fchsbdc;
+		ifrm = &m_ifrm_chsbd_com;
+		pts[0] = &m_pts_chsbdl_com;
+		pts[1] = &m_pts_chsbdr_com;
+		break;
+	default:
+		return;
+	}
+
+	string str;
+	FileStorage fs(fname, FileStorage::READ);
+	FileNode fn;
+
+	fn = fs["NumChsbd"];
+	if(fn.empty()){
+		cerr << "Item \"NumChsbd\" cannot be found." << endl;
+		return;
+	}
+	fn >> num_chsbd;
+
+	fn = fs["NumChsbdPerFrm"];
+	if(fn.empty()){
+		cerr << "Item \"NumChsbdPerFrm\" cannot be found." << endl;
+		return;
+	}
+	fn >> num_chsbd_per_frm;
+
+	if(icam == 2 && num_chsbd_per_frm != 2){
+		cerr << "File " << fname  << " is not ready for stereo calibration." << endl;
+		return;
+	}
+
+	fn = fs["ChsbdName"];
+	if(fn.empty()){
+		cerr << "Item \"ChsbdName\" cannot be found." << endl;
+		return;
+	}
+	fn >> str;
+
+	if(str != m_chsbd.name){
+		cerr << "Miss match in chessboard model." << endl;
+		return;
+	}
+	(*pts[0]).resize(num_chsbd);
+	if(pts[1]){
+		(*pts[1]).resize(num_chsbd);
+	}
+
+	int chsbd_pts = (int) m_chsbd.pts.size();
+	char item[1024];
+	for(int i = 0; i < num_chsbd; i++){
+		snprintf(item, 1024, "frm%d", i);
+		FileNode frm = fn[item];
+		if(!frm.empty()){
+			cerr << item << " cannot be found." << endl;
+			return;
+		}
+
+		int valL, valH;
+		long long val;
+		FileNode frm_id = frm["FrmIdL"];		
+		if(frm_id.empty()){
+			cerr << "\"FrmIdL\" is expected." << endl;
+			return;
+		}
+		
+		frm_id >> valL;
+
+		frm_id = frm["FrmIdH"];
+		if(frm_id.empty()){
+			cerr << "\"FrmIdH\" is expected." << endl;
+		}
+		frm_id >> valH;
+				
+		*((int *) &val) = valL;
+		*((int *) &val + 1) = valH;
+		(*ifrm)[i] = val;
+
+		for(int j = 0; j < num_chsbd_per_frm; j++){
+			(*pts[j])[i].resize(chsbd_pts);
+			snprintf(item, 1024, "chsbd%d", j);
+			FileNode chsbd = frm[item];
+			if(chsbd.empty()){
+				cerr << item << " cannot be found." << endl;
+				return;
+			}
+
+			FileNodeIterator itr = chsbd.begin();
+			for(int k = 0;itr != chsbd.end(); itr++, k++){
+				*itr >> (*pts[j])[i][k];
+			}
+		}
+	}
+
+	switch(icam){
+	case 0:
+		m_num_chsbdl = num_chsbd;
+		break;
+	case 1:
+		m_num_chsbdr = num_chsbd;
+		break;
+	case 2:
+		m_num_chsbd_com = num_chsbd;
+		break;
+	default:
+		return;
+	}
+
 }
 
 void f_glfw_stereo_view::calibrate(int icam)

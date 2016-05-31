@@ -247,6 +247,7 @@ public:
 	virtual bool proc();
 };
 
+// four path filter
 // 1. find and save chessboard
 // 2. calibrate both cameras and undistort independently
 // 3. calibrate stereo camera.
@@ -254,8 +255,8 @@ public:
 class f_glfw_stereo_view: public f_glfw_window
 {
 protected:
-  ch_image_ref * m_pin1, *m_pin2;
-  Mat m_img1, m_img2;
+	ch_image_ref * m_pin1, *m_pin2;
+	Mat m_img1, m_img2;
 
 	long long m_timg1, m_timg2;
 	long long m_ifrm1, m_ifrm2;
@@ -280,6 +281,8 @@ protected:
 	Mat m_Rlr, m_Tlr;
 	Mat m_E, m_F;
 
+	bool m_bsv_chsbd, m_bld_chsbd;
+	char m_fchsbdl[1024], m_fchsbdr[1024], m_fchsbdc[1024];
 	int m_num_chsbdl, m_num_chsbdr;
 	vector<long long> m_ifrm_chsbdl;
 	vector<vector<Point2f>> m_pts_chsbdl;
@@ -291,8 +294,8 @@ protected:
 	vector<vector<Point2f>> m_pts_chsbdl_com;
 	vector<vector<Point2f>> m_pts_chsbdr_com;
 
-	void save_chsbd(int icam /* 0 or 1 */);
-	void load_chsbd(int icam /* 0 or 1 */);
+	void save_chsbd(int icam /* 0 or 1 or 2*/);
+	void load_chsbd(int icam /* 0 or 1 or 2*/);
 	void calibrate(int icam /* 0 or 1 */);
 
 	void draw_chsbd(const int icam /* 0 or 1 */, 
@@ -302,7 +305,7 @@ protected:
 		vector<vector<Point2f>> & chsbds, const int num_chsbds);
 	virtual bool init_run();
 public:
- f_glfw_stereo_view(const char * name);
+	f_glfw_stereo_view(const char * name);
 	virtual ~f_glfw_stereo_view()
 	{
 	}
