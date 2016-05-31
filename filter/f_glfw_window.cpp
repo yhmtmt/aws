@@ -548,13 +548,13 @@ bool f_glfw_stereo_view::proc()
   if(m_bchsbd && m_bdet_chsbd && m_bsync){
 	  s_obj obj;
 	  bool left = false, right = false;
-	  if(m_chsbd.detect(m_img1, &obj) && m_num_chsbdl != m_pts_chsbdl.size()){
+	  if(m_chsbd.detect(m_img1, &obj)){
 		  m_pts_chsbdl.push_back(obj.pt2d);
 		  m_ifrm_chsbdl.push_back(ifrm1);
 		  m_num_chsbdl++;
 		  left = true;
 	  }
-	  if(m_chsbd.detect(m_img2, &obj) && m_num_chsbdl != m_pts_chsbdr.size()){
+	  if(m_chsbd.detect(m_img2, &obj)){
 		  m_pts_chsbdr.push_back(obj.pt2d);
 		  m_ifrm_chsbdr.push_back(ifrm2);
 		  m_num_chsbdr++;
