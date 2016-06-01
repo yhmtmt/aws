@@ -159,15 +159,19 @@ void f_aws1_ui::cnv_img_to_view(Mat & img, float av, Size & sz)
 		if(sz.width != img.cols || sz.height != img.rows){
 			float ai = (float)((float) img.cols / (float) img.rows);
 			if(av > ai){
-				sz.height = (int)((float)img.rows * ((float)sz.width / (float)img.cols));
-			}else{
 				sz.width = (int)((float)img.cols * ((float)sz.height / (float)img.rows));
+			}else{
+				sz.height = (int)((float)img.rows * ((float)sz.width / (float)img.cols));				
 			}
 			sz.width &= 0xFFFFFFFE;
 			sz.height &= 0xFFFFFFFE;
 
 			Mat tmp;
 			resize(img, tmp, sz);
+			img = tmp;
+		}else{
+			Mat tmp;
+			tmp = img.clone();
 			img = tmp;
 		}
 
