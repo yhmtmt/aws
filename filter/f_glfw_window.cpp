@@ -557,10 +557,6 @@ bool f_glfw_stereo_view::proc()
 	  m_bsync = true;
   }
 
-  if(m_bnew && m_bsync){
-	  m_bdet_chsbd = false;
-  }
-
   if(m_num_chsbdl && m_bcbl){ //calibrate left camera
 	  calibrate(0);
 	  m_bcbl = false;
@@ -595,7 +591,7 @@ bool f_glfw_stereo_view::proc()
   m_timg1 = timg1;
   m_timg2 = timg2;
 
-  if(m_bchsbd && m_bdet_chsbd && m_bsync){
+  if(m_bchsbd && m_bdet_chsbd && m_bsync && m_bnew){
 	  s_obj obj;
 	  bool left = false, right = false;
 	  if(m_chsbd.detect(m_img1, &obj)){
