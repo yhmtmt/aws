@@ -278,6 +278,13 @@ protected:
 	bool m_brct;		 // rectify
 	bool m_bflipx, m_bflipy; // image flipping option 
 
+	// calibration flags
+	bool m_bfisheye, /* true if fisheye model is used */
+		m_bfix_int, m_bfix_k1, m_bfix_k2, m_bfix_k3, m_bfix_k4, /* common for both fisheye and rational models */
+ 		m_bguess_int, /* Intrinsic guess is enabled */
+		m_bfix_ar, m_bfix_pp, m_bzr_tng,
+		m_brat_mdl, m_bfix_k5, m_bfix_k6; /* rational model's high order terms are enabled. */
+
 	char m_fcpl[1024], m_fcpr[1024];
 	AWSCamPar m_camparl, m_camparr;
 	Mat m_Rl, m_Rr;

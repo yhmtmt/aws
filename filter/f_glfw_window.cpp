@@ -435,7 +435,10 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_timg1(-1), m_timg2(-1),
 	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_num_chsbd_com(0), m_bflipx(false), m_bflipy(false),
 	m_bcpl(false), m_bcpr(false), m_budl(false), m_budr(false), m_bcbl(false), m_bcbr(false), m_bcbst(false), 
-	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false)
+	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false),
+	m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix_k3(false),
+	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
+	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -443,7 +446,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_fcpl[0] = m_fcpr[0] = '\0';
 	register_fpar("fcpl", m_fcpl, 1024, "Camera parameter file of left camera.");
 	register_fpar("fcpr", m_fcpr, 1024, "Camera parameter file of right camera.");
-
+	
 	register_fpar("udl", &m_budl, "Undistort left camera");
 	register_fpar("udr", &m_budr, "Undistort right camera");
 	register_fpar("cbl", &m_bcbl, "Calibrate left camera");
@@ -462,6 +465,53 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("fchsbdl", m_fchsbdl, 1024, "Detected chessboard file for left camera.");
 	register_fpar("fchsbdr", m_fchsbdr, 1024, "Detected chessboard file for righ camera.");
 	register_fpar("fchsbdc", m_fchsbdc, 1024, "Detected common chessboard file for left and right camera.");
+
+	register_fpar("guess_int", &m_bguess_int, "Use intrinsic guess.");
+	register_fpar("fisheye", &m_bfisheye, "Fisheye model is used.");
+	register_fpar("fix_int", &m_bfix_int, "Fix intrinsic parameters");
+	register_fpar("fix_pp", &m_bfix_pp, "Fix camera center as specified (cx, cy)");
+	register_fpar("fix_aspect_ratio", &m_bfix_ar, "Fix aspect ratio as specified fx/fy. Only fy is optimized.");
+	register_fpar("zero_tangent_dist", &m_bzr_tng, "Zeroify tangential distortion (px, py)");
+	register_fpar("fix_k1", &m_bfix_k1, "Fix k1 as specified.");
+	register_fpar("fix_k2", &m_bfix_k2, "Fix k2 as specified.");
+	register_fpar("fix_k3", &m_bfix_k3, "Fix k3 as specified.");
+	register_fpar("fix_k4", &m_bfix_k4, "Fix k4 as specified.");
+	register_fpar("fix_k5", &m_bfix_k5, "Fix k5 as specified.");
+	register_fpar("fix_k6", &m_bfix_k6, "Fix k6 as specified.");
+	register_fpar("rat_mdl", &m_brat_mdl, "Enable rational model (k4, k5, k6)");
+	register_fpar("fxl", (m_camparl.getCvPrj() + 0), "Focal length in x");
+	register_fpar("fyl", (m_camparl.getCvPrj() + 1), "Focal length in y");
+	register_fpar("cxl", (m_camparl.getCvPrj() + 2), "Principal point in x");
+	register_fpar("cyl", (m_camparl.getCvPrj() + 3), "Principal point in y");
+	register_fpar("k1l", (m_camparl.getCvDist() + 0), "k1 for left camera");
+	register_fpar("k2l", (m_camparl.getCvDist() + 1), "k2 for left camera");
+	register_fpar("p1l", (m_camparl.getCvDist() + 2), "p1 for left camera");
+	register_fpar("p2l", (m_camparl.getCvDist() + 3), "p2 for left camera");
+	register_fpar("k3l", (m_camparl.getCvDist() + 4), "k3 for left camera");
+	register_fpar("k4l", (m_camparl.getCvDist() + 5), "k4 for left camera");
+	register_fpar("k5l", (m_camparl.getCvDist() + 6), "k5 for left camera");
+	register_fpar("k6l", (m_camparl.getCvDist() + 7), "k6 for left camera");
+	register_fpar("k1fl", (m_camparl.getCvDistFishEye() + 0), "k1 for left camera with fisheye");
+	register_fpar("k2fl", (m_camparl.getCvDistFishEye() + 1), "k2 for left camera with fisheye");
+	register_fpar("k3fl", (m_camparl.getCvDistFishEye() + 2), "k3 for left camera with fisheye");
+	register_fpar("k4fl", (m_camparl.getCvDistFishEye() + 3), "k4 for left camera with fisheye");
+
+	register_fpar("fxr", (m_camparr.getCvPrj() + 0), "Focal length in x");
+	register_fpar("fyr", (m_camparr.getCvPrj() + 1), "Focal length in y");
+	register_fpar("cxr", (m_camparr.getCvPrj() + 2), "Principal point in x");
+	register_fpar("cyr", (m_camparr.getCvPrj() + 3), "Principal point in y");
+	register_fpar("k1r", (m_camparr.getCvDist() + 0), "k1 for right camera");
+	register_fpar("k2r", (m_camparr.getCvDist() + 1), "k2 for right camera");
+	register_fpar("p1r", (m_camparr.getCvDist() + 2), "p1 for right camera");
+	register_fpar("p2r", (m_camparr.getCvDist() + 3), "p2 for right camera");
+	register_fpar("k3r", (m_camparr.getCvDist() + 4), "k3 for right camera");
+	register_fpar("k4r", (m_camparr.getCvDist() + 5), "k4 for right camera");
+	register_fpar("k5r", (m_camparr.getCvDist() + 6), "k5 for right camera");
+	register_fpar("k6r", (m_camparr.getCvDist() + 7), "k6 for right camera");
+	register_fpar("k1fr", (m_camparr.getCvDistFishEye() + 0), "k1 for right camera with fisheye");
+	register_fpar("k2fr", (m_camparr.getCvDistFishEye() + 1), "k2 for right camera with fisheye");
+	register_fpar("k3fr", (m_camparr.getCvDistFishEye() + 2), "k3 for right camera with fisheye");
+	register_fpar("k4fr", (m_camparr.getCvDistFishEye() + 3), "k4 for right camera with fisheye");
 
 	m_Rl = Mat::eye(3, 3, CV_64FC1);
 	m_Rr = Mat::eye(3, 3, CV_64FC1);
@@ -527,7 +577,7 @@ bool f_glfw_stereo_view::proc()
 	  pt3ds.resize(m_num_chsbd_com);
 	  for(int i = 0; i < m_num_chsbd_com; i++)
 		  pt3ds[i] = m_chsbd.pts;
-	  if(m_camparl.isFishEye()){
+	  if(m_bfisheye){
 		  fisheye::stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
 			  m_camparl.getCvPrjMat(), m_camparl.getCvDistFishEyeMat(), 
 			  m_camparr.getCvPrjMat(), m_camparr.getCvDistFishEyeMat(),
@@ -898,12 +948,57 @@ void f_glfw_stereo_view::calibrate(int icam)
 	}
 
 	Size sz(pimg->cols, pimg->rows);
-	if(pcp->isFishEye()){
-		fisheye::calibrate(m_chsbd.pts, *ppts, sz, pcp->getCvPrjMat(), 
-			pcp->getCvDistFishEyeMat(), rvecs, tvecs);
+	vector<vector<Point3f>> pt3ds;
+	pt3ds.resize(ppts->size());
+	for(int i = 0; i < ppts->size(); i++)
+		pt3ds[i] = m_chsbd.pts;
+
+	if(m_bfisheye){
+		pcp->setFishEye(true);
+		int flag = 0;
+		if(m_bfix_int)
+			flag |= fisheye::CALIB_FIX_INTRINSIC;
+		if(m_bguess_int)
+			flag |= fisheye::CALIB_USE_INTRINSIC_GUESS;
+		if(m_bfix_k1)
+			flag |= fisheye::CALIB_FIX_K1;
+		if(m_bfix_k2)
+			flag |= fisheye::CALIB_FIX_K2;
+		if(m_bfix_k3)
+			flag |= fisheye::CALIB_FIX_K3;
+		if(m_bfix_k4)
+			flag |= fisheye::CALIB_FIX_K4;
+
+		fisheye::calibrate(pt3ds, *ppts, sz, pcp->getCvPrjMat(), 
+			pcp->getCvDistFishEyeMat(), rvecs, tvecs, flag);
+
 	}else{
-		calibrateCamera(m_chsbd.pts, *ppts, sz, pcp->getCvPrjMat(), 
-			pcp->getCvDistMat(), rvecs, tvecs);
+		int flag = 0;
+		if(m_bfix_k1)
+			flag |= CV_CALIB_FIX_K1;
+		if(m_bfix_k2)
+			flag |= CV_CALIB_FIX_K2;
+		if(m_bfix_k3)
+			flag |= CV_CALIB_FIX_K3;
+		if(m_bfix_k4)
+			flag |= CV_CALIB_FIX_K4;
+		if(m_bfix_k5)
+			flag |= CV_CALIB_FIX_K5;
+		if(m_bfix_k6)
+			flag |= CV_CALIB_FIX_K6;
+		if(m_bfix_pp)
+			flag |= CV_CALIB_FIX_PRINCIPAL_POINT;
+		if(m_brat_mdl)
+			flag |= CV_CALIB_RATIONAL_MODEL;
+		if(m_bzr_tng)
+			flag |= CV_CALIB_ZERO_TANGENT_DIST;
+		if(m_bguess_int)
+			flag |= CV_CALIB_USE_INTRINSIC_GUESS;
+		if(m_bfix_ar)
+			flag |= CV_CALIB_FIX_ASPECT_RATIO;
+
+		calibrateCamera(pt3ds, *ppts, sz, pcp->getCvPrjMat(), 
+			pcp->getCvDistMat(), rvecs, tvecs, flag);
 	}
 		
 	if(pcp->isFishEye()){		
