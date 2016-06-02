@@ -438,7 +438,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false),
 	m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix_k3(false),
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
-	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false)
+	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_num_calib_chsbd(50)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -466,6 +466,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("fchsbdr", m_fchsbdr, 1024, "Detected chessboard file for righ camera.");
 	register_fpar("fchsbdc", m_fchsbdc, 1024, "Detected common chessboard file for left and right camera.");
 
+	register_fpar("calib_chsbds", &m_num_calib_chsbd, "Number of chessboards used for calibration.");
 	register_fpar("guess_int", &m_bguess_int, "Use intrinsic guess.");
 	register_fpar("fisheye", &m_bfisheye, "Fisheye model is used.");
 	register_fpar("fix_int", &m_bfix_int, "Fix intrinsic parameters");
@@ -607,31 +608,56 @@ bool f_glfw_stereo_view::proc()
   awsFlip(img1, m_bflipx, m_bflipy, false);
   awsFlip(img2, m_bflipx, m_bflipy, false);
 
-  if(m_bchsbd && m_bdet_chsbd && m_bsync && m_bnew){
+  if(m_bchsbd && m_bdet_chsbd && m_bsync){
 	  s_obj obj;
 	  bool left = false, right = false;
-	  if(m_chsbd.detect(img1, &obj)){
-		  m_pts_chsbdl.push_back(obj.pt2d);
-		  m_ifrm_chsbdl.push_back(ifrm1);
-		  m_num_chsbdl++;
-		  left = true;
+	  // seraching chessboard detected in the frame
+	  for(int i = 0; i < m_ifrm_chsbdl.size(); i++){
+		  if(m_ifrm_chsbdl[i] == ifrm1){
+			  left = true;
+		  }
 	  }
-	  if(m_chsbd.detect(img2, &obj)){
-		  m_pts_chsbdr.push_back(obj.pt2d);
-		  m_ifrm_chsbdr.push_back(ifrm2);
-		  m_num_chsbdr++;
-		  right = true;
+	  for(int i = 0; i < m_ifrm_chsbdr.size(); i++){
+		  if(m_ifrm_chsbdr[i] == ifrm2){
+			  right = true;
+		  }
 	  }
+	  
+	  if(!left || !right){
+		  if(!left && m_chsbd.detect(img1, &obj)){
+			  m_pts_chsbdl.push_back(obj.pt2d);		  
+			  m_ifrm_chsbdl.push_back(ifrm1);
+			  m_num_chsbdl++;
+			  cout << "frm[" << ifrm1 << "] chsbd[" << m_num_chsbdl << "] found." << endl;
+			  left = true;
+		  }
+		  if(!right && m_chsbd.detect(img2, &obj)){
+			  m_pts_chsbdr.push_back(obj.pt2d);
+			  m_ifrm_chsbdr.push_back(ifrm2);
+			  cout << "frm[" << ifrm2 << "] chsbd[" << m_num_chsbdr << "] found." << endl;
+			  if(m_ifrm_chsbdr.size() != m_ifrm_chsbdr.size()){
+				  cerr << "error found." << endl;
+			  }
+			  m_num_chsbdr++;
+			  right = true;
+		  }
 
-	  if(left && right){ // common chessboard		  
-		  m_pts_chsbdr_com.push_back(m_pts_chsbdr[m_num_chsbdr - 1]);
-		  m_pts_chsbdl_com.push_back(m_pts_chsbdl[m_num_chsbdl - 1]);
-		  m_ifrm_chsbd_com.push_back(ifrm1);
-		  m_num_chsbd_com++;
+		  if(left && right){ // common chessboard		  
+			  cout << "frm[" << ifrm1 << "] common chsbd[" << m_num_chsbd_com << "] found." << endl;
+			  m_pts_chsbdr_com.push_back(m_pts_chsbdr[m_num_chsbdr - 1]);
+			  m_pts_chsbdl_com.push_back(m_pts_chsbdl[m_num_chsbdl - 1]);
+			  m_ifrm_chsbd_com.push_back(ifrm1);
+			  m_num_chsbd_com++;
+		  }
+		  m_bdet_chsbd = false;
 	  }
-	  m_bdet_chsbd = false;
   }
 
+  if(m_bred_chsbd){ // reduce chessboard less than m_num_calib_chsbd
+	  reduce_chsbd(0);
+	  reduce_chsbd(1);
+	  reduce_chsbd(2);
+  }
 
   Mat wimg1, wimg2;
   
@@ -756,8 +782,8 @@ void f_glfw_stereo_view::save_chsbd(int icam)
 	case 1:
 		num_chsbd = m_num_chsbdr;
 		num_chsbd_per_frm = 1;
-		ifrm = &m_ifrm_chsbdl;
 		fname = m_fchsbdr;
+		ifrm = &m_ifrm_chsbdr;
 		pts[0] = &m_pts_chsbdr;
 		break;
 	case 2:
@@ -786,7 +812,7 @@ void f_glfw_stereo_view::save_chsbd(int icam)
 	char item[1024];
 	for(int i = 0; i < num_chsbd; i++){
 		snprintf(item, 1024, "frm%d", i);
-		fs << item << "[";
+		fs << item << "{";
 		long long val = (*ifrm)[i];
 		fs << "FrmIdL" << *((int *) &val);
 		fs << "FrmIdH" << *((int *) &val + 1);
@@ -798,7 +824,7 @@ void f_glfw_stereo_view::save_chsbd(int icam)
 			}
 			fs << "]";
 		}
-		fs << "]";
+		fs << "}";
 	}
 }
 
@@ -864,6 +890,8 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 		cerr << "Miss match in chessboard model." << endl;
 		return;
 	}
+
+	(*ifrm).resize(num_chsbd);
 	(*pts[0]).resize(num_chsbd);
 	if(pts[1]){
 		(*pts[1]).resize(num_chsbd);
@@ -873,8 +901,8 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 	char item[1024];
 	for(int i = 0; i < num_chsbd; i++){
 		snprintf(item, 1024, "frm%d", i);
-		FileNode frm = fn[item];
-		if(!frm.empty()){
+		FileNode frm = fs[item];
+		if(frm.empty()){
 			cerr << item << " cannot be found." << endl;
 			return;
 		}
@@ -929,6 +957,153 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 		return;
 	}
 
+}
+
+void f_glfw_stereo_view::reduce_chsbd(int icam)
+{
+	int num_chsbd = 0;
+	int num_chsbd_per_frm = 0;
+	const char * fname = NULL;
+	vector<long long> *ifrm = NULL;
+	vector<vector<Point2f>> *pts[2] = {NULL, NULL};
+	int w, h;
+	switch(icam){
+	case 0:
+		num_chsbd = m_num_chsbdl;
+		num_chsbd_per_frm = 1;
+		fname = m_fchsbdl;
+		ifrm = &m_ifrm_chsbdl;
+		pts[0] = &m_pts_chsbdl;
+		w = m_img1.cols;
+		h = m_img1.rows;
+		break;
+	case 1:
+		num_chsbd = m_num_chsbdr;
+		num_chsbd_per_frm = 1;
+		fname = m_fchsbdr;
+		ifrm = &m_ifrm_chsbdr;
+		pts[0] = &m_pts_chsbdr;
+		w = m_img2.cols;
+		h = m_img2.rows;
+		break;
+	case 2:
+		num_chsbd = m_num_chsbd_com;
+		num_chsbd_per_frm = 2;
+		fname = m_fchsbdc;
+		ifrm = &m_ifrm_chsbd_com;
+		pts[0] = &m_pts_chsbdl_com;
+		pts[1] = &m_pts_chsbdr_com;
+		w = m_img1.cols;
+		h = m_img1.rows;
+		break;
+	default:
+		return;
+	}
+
+	
+	// dividing image into 8x8 grid, and count the chessboard points found in each grid
+	float iws = (float)(1.0 / (double)(w >> 3)), ihs = (float)(1.0  / (double)(h >> 3));
+	vector<vector<int>> hist[2];
+	vector<s_chsbd_score> cs;
+	hist[0].resize(8);
+	cs.resize(pts[0]->size());
+	for(int i = 0; i < num_chsbd; i++){
+		cs[i].idx = i;
+		cs[i].score = 0;
+	}
+
+	if(num_chsbd_per_frm == 2){
+		hist[1].resize(8);
+	}
+
+	for(int i = 0; i < 8; i++){
+		hist[0][i].resize(8, 0);
+		if(num_chsbd_per_frm == 2){
+			hist[1][i].resize(8, 0);
+		}
+	}
+
+	// voting phase
+	for(int j = 0; j < num_chsbd_per_frm; j++){
+		vector<vector<int>> & _hist = hist[j];
+		vector<vector<Point2f>> & _pts = *pts[j];
+		for(int k = 0; k < _pts.size(); k++){
+			vector<Point2f> & _chsbd = _pts[k];
+			for(int l = 0; l < _chsbd.size(); l++){
+				Point2f & pt = _chsbd[l];
+				int x = (int) (pt.x * iws);
+				int y = (int) (pt.y * ihs);
+				_hist[x][y]++;
+			}
+		}
+	}
+
+	// remove the number 
+	int num_removes  = num_chsbd - m_num_calib_chsbd;
+	while(num_removes > 0){
+		// scoring and find max score chsbd
+		s_chsbd_score cs_max;
+
+		cs_max.idx = -1;
+		cs_max.score = 0;
+		for(int j = 0; j < num_chsbd; j++){
+			s_chsbd_score & _cs = cs[j];
+			_cs.score = 0.;
+			if(_cs.idx == -1)
+				continue;
+
+			for(int i = 0; i < num_chsbd_per_frm; i++){
+				vector<vector<int>> & _hist = hist[i];
+				vector<vector<Point2f>> & _pts = *pts[i];
+				vector<Point2f> & _chsbd = _pts[j];
+				for(int k = 0; k < _chsbd.size(); k++){
+					Point2f & pt = _chsbd[k];
+					int x = (int) (pt.x * iws);
+					int y = (int) (pt.y * ihs);
+					_cs.score += (float)_hist[x][y];					
+				}
+			}
+			if(cs_max.score < _cs.score)
+				cs_max = _cs;
+		}
+
+		// removing and revoting phase		
+		for(int i = 0; i < num_chsbd_per_frm; i++){
+			vector<vector<int>> & _hist = hist[i];
+			vector<vector<Point2f>> & _pts = *pts[i];
+
+			int j = cs_max.idx;
+			vector<Point2f> & _chsbd = _pts[j];
+			s_chsbd_score & _cs = cs[j];
+			_cs.idx = -1;
+
+			// reducing hist count
+			for(int k = 0; k < _chsbd.size(); k++){
+				Point2f & pt = _chsbd[k];
+				int x = (int) (pt.x * iws);
+				int y = (int) (pt.y * ihs);
+				_hist[x][y]--;					
+			}
+
+			// clear chessboard
+			_chsbd.clear();
+		}
+
+		num_removes--;
+	}
+
+	// remove chessboard entry removed
+	for(int i = 0; i < num_chsbd_per_frm; i++){
+		vector<vector<Point2f>> & _pts = *pts[i];
+		for(vector<vector<Point2f>>::iterator itr = _pts.begin(); 
+			itr != _pts.end();)
+		{
+			if((*itr).size() == 0)
+				itr = _pts.erase(itr);
+			else
+				itr++;
+		}
+	}
 }
 
 void f_glfw_stereo_view::calibrate(int icam)

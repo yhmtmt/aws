@@ -269,7 +269,7 @@ protected:
 	bool m_bdet_chsbd; // detect chessboard
 	bool m_bsv_chsbd, m_bld_chsbd; // save and load chessboard
 	bool m_bcbl, m_bcbr, m_bcbst; // calibration flag
-
+	bool m_bred_chsbd; // reduce chessboard less than m_num_calib_chsbd
 
 	bool m_bchsbd;		 // chessboard model validity flag
 	s_model m_chsbd;	 // chessboard model
@@ -284,7 +284,7 @@ protected:
  		m_bguess_int, /* Intrinsic guess is enabled */
 		m_bfix_ar, m_bfix_pp, m_bzr_tng,
 		m_brat_mdl, m_bfix_k5, m_bfix_k6; /* rational model's high order terms are enabled. */
-
+	int m_num_calib_chsbd;
 	char m_fcpl[1024], m_fcpr[1024];
 	AWSCamPar m_camparl, m_camparr;
 	Mat m_Rl, m_Rr;
@@ -304,9 +304,14 @@ protected:
 	vector<long long> m_ifrm_chsbd_com;
 	vector<vector<Point2f>> m_pts_chsbdl_com;
 	vector<vector<Point2f>> m_pts_chsbdr_com;
+	struct s_chsbd_score{
+		int idx;
+		float score;
+	};
 
 	void save_chsbd(int icam /* 0 or 1 or 2*/);
 	void load_chsbd(int icam /* 0 or 1 or 2*/);
+	void reduce_chsbd(int icam /* 0 or 1 or 2*/);
 	void calibrate(int icam /* 0 or 1 */);
 
 	void draw_chsbd(const int icam /* 0 or 1 */, 
