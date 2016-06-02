@@ -270,6 +270,7 @@ protected:
 	bool m_bsv_chsbd, m_bld_chsbd; // save and load chessboard
 	bool m_bcbl, m_bcbr, m_bcbst; // calibration flag
 	bool m_bred_chsbd; // reduce chessboard less than m_num_calib_chsbd
+	bool m_bsvcp, m_bldcp;
 
 	bool m_bchsbd;		 // chessboard model validity flag
 	s_model m_chsbd;	 // chessboard model
@@ -313,7 +314,7 @@ protected:
 	void load_chsbd(int icam /* 0 or 1 or 2*/);
 	void reduce_chsbd(int icam /* 0 or 1 or 2*/);
 	void calibrate(int icam /* 0 or 1 */);
-
+	void init_undistort(AWSCamPar & par, Size & sz, Mat & R, Mat & P, Mat & map1, Mat & map2, bool & bcp);
 	void draw_chsbd(const int icam /* 0 or 1 */, 
 		const float xscale, const float yscale,
 		const float xorg, const float yorg,

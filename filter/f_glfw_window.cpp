@@ -434,7 +434,7 @@ bool f_glfw_imview::init_run()
 f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL),
 	m_timg1(-1), m_timg2(-1),
 	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_num_chsbd_com(0), m_bflipx(false), m_bflipy(false),
-	m_bcpl(false), m_bcpr(false), m_budl(false), m_budr(false), m_bcbl(false), m_bcbr(false), m_bcbst(false), 
+	m_bcpl(false), m_bcpr(false),m_bsvcp(false), m_bldcp(false), m_budl(false), m_budr(false), m_bcbl(false), m_bcbr(false), m_bcbst(false), 
 	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false),
 	m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix_k3(false),
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
@@ -456,6 +456,8 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("ld_chsbd", &m_bld_chsbd, "Load chessboard.");
 	register_fpar("det_chsbd", &m_bdet_chsbd, "Detect chessboard.");
 	register_fpar("red_chsbd", &m_bred_chsbd, "Reduce chessboard to calib_chsbds");
+	register_fpar("svcp", &m_bsvcp, "Save camera parameter.");
+	register_fpar("ldcp", &m_bldcp, "Load camera parameter.");
 
 	register_fpar("flipx", &m_bflipx, "Flip image in x");
 	register_fpar("flipy", &m_bflipy, "Flip image in y");
@@ -606,6 +608,23 @@ bool f_glfw_stereo_view::proc()
 	  img2 = m_img2.clone();
   }
 
+  if(m_bldcp){
+	  m_bcpl = m_camparl.read(m_fcpl);
+	  Size sz(m_img1.cols, m_img1.rows);
+	  init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2, m_bcpl);
+	  m_bcpr = m_camparr.read(m_fcpr);
+	  sz.width = m_img2.cols;
+	  sz.height = m_img2.rows;
+	  init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2, m_bcpr);
+	  m_bldcp = false;
+  }
+
+  if(m_bsvcp){
+	  m_bcpr = m_camparl.write(m_fcpl);
+	  m_bcpr = m_camparr.write(m_fcpr);
+	  m_bsvcp = false;
+  }
+
   awsFlip(img1, m_bflipx, m_bflipy, false);
   awsFlip(img2, m_bflipx, m_bflipy, false);
 
@@ -748,14 +767,6 @@ bool f_glfw_stereo_view::init_run()
 		  cout << "Chessboard is loaded." << endl;
 		  cout << m_chsbd.par_chsbd.w << "x" <<  m_chsbd.par_chsbd.h << " " << m_chsbd.par_chsbd.p << "m pitch" << endl;
 	  }
-  }
-
-  if(m_bcpl = m_camparl.read(m_fcpl)){
-	  cout << "Camera paraemter for left camera was loaded." << endl;
-  }
-
-  if(m_bcpr = m_camparr.read(m_fcpr)){
-	  cout << "Camera parameter for right camera was loaded." << endl;
   }
 
   return true;
@@ -1205,28 +1216,32 @@ void f_glfw_stereo_view::calibrate(int icam)
 		pcp->setCvDist(D);
 		pcp->setCvPrj(K);
 	}
-		
-	if(pcp->isFishEye()){		
+	init_undistort(*pcp, sz, *R, *P, *map1, *map2, *pbcp);
+}
+
+void f_glfw_stereo_view::init_undistort(AWSCamPar & par, Size & sz, 
+										Mat & R, Mat & P, Mat & map1, Mat & map2, bool & bcp)
+{
+	if(par.isFishEye()){		
 		Mat K, D;
-		K = pcp->getCvPrjMat().clone();
-		D = pcp->getCvDistFishEyeMat().clone();
-		cout << "cam[" << icam << "]" << endl;
+		K = par.getCvPrjMat().clone();
+		D = par.getCvDistFishEyeMat().clone();
 		cout << "K" << K << endl;
 		cout << "D" << D << endl;
-		fisheye::estimateNewCameraMatrixForUndistortRectify(K, D, sz, *R, *P);
-		fisheye::initUndistortRectifyMap(K, D, *R, *P, sz, CV_16SC2, *map1, *map2);
-		*pbcp = true;
+		fisheye::estimateNewCameraMatrixForUndistortRectify(K, D, sz, R, P);
+		fisheye::initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
+		bcp = true;
 	}else{
 		Mat K, D;
-		K = pcp->getCvPrjMat().clone();
-		D = pcp->getCvDistMat().clone();
-		cout << "cam[" << icam << "]" << endl;
+		K = par.getCvPrjMat().clone();
+		D = par.getCvDistMat().clone();
 		cout << "K" << K << endl;
 		cout << "D" << D << endl;
-		*P = getOptimalNewCameraMatrix(K, D, sz, 1.);
-		initUndistortRectifyMap(K, D, *R, *P, sz, CV_16SC2, *map1, *map2);
-		*pbcp = true;
+		P = getOptimalNewCameraMatrix(K, D, sz, 1.);
+		initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
+		bcp = true;
 	}
+
 }
 
 void f_glfw_stereo_view::draw_chsbd(const int icam,
