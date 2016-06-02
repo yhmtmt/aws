@@ -591,31 +591,6 @@ bool f_glfw_stereo_view::proc()
   m_timg1 = timg1;
   m_timg2 = timg2;
 
-  if(m_bchsbd && m_bdet_chsbd && m_bsync && m_bnew){
-	  s_obj obj;
-	  bool left = false, right = false;
-	  if(m_chsbd.detect(m_img1, &obj)){
-		  m_pts_chsbdl.push_back(obj.pt2d);
-		  m_ifrm_chsbdl.push_back(ifrm1);
-		  m_num_chsbdl++;
-		  left = true;
-	  }
-	  if(m_chsbd.detect(m_img2, &obj)){
-		  m_pts_chsbdr.push_back(obj.pt2d);
-		  m_ifrm_chsbdr.push_back(ifrm2);
-		  m_num_chsbdr++;
-		  right = true;
-	  }
-
-	  if(left && right){ // common chessboard		  
-		  m_pts_chsbdr_com.push_back(m_pts_chsbdr[m_num_chsbdr - 1]);
-		  m_pts_chsbdl_com.push_back(m_pts_chsbdl[m_num_chsbdl - 1]);
-		  m_ifrm_chsbd_com.push_back(ifrm1);
-		  m_num_chsbd_com++;
-	  }
-	  m_bdet_chsbd = false;
-  }
-
   Mat img1, img2;
   if(m_budl && m_bcpl){ 
 	  remap(m_img1, img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
@@ -631,6 +606,32 @@ bool f_glfw_stereo_view::proc()
 
   awsFlip(img1, m_bflipx, m_bflipy, false);
   awsFlip(img2, m_bflipx, m_bflipy, false);
+
+  if(m_bchsbd && m_bdet_chsbd && m_bsync && m_bnew){
+	  s_obj obj;
+	  bool left = false, right = false;
+	  if(m_chsbd.detect(img1, &obj)){
+		  m_pts_chsbdl.push_back(obj.pt2d);
+		  m_ifrm_chsbdl.push_back(ifrm1);
+		  m_num_chsbdl++;
+		  left = true;
+	  }
+	  if(m_chsbd.detect(img2, &obj)){
+		  m_pts_chsbdr.push_back(obj.pt2d);
+		  m_ifrm_chsbdr.push_back(ifrm2);
+		  m_num_chsbdr++;
+		  right = true;
+	  }
+
+	  if(left && right){ // common chessboard		  
+		  m_pts_chsbdr_com.push_back(m_pts_chsbdr[m_num_chsbdr - 1]);
+		  m_pts_chsbdl_com.push_back(m_pts_chsbdl[m_num_chsbdl - 1]);
+		  m_ifrm_chsbd_com.push_back(ifrm1);
+		  m_num_chsbd_com++;
+	  }
+	  m_bdet_chsbd = false;
+  }
+
 
   Mat wimg1, wimg2;
   
@@ -681,11 +682,15 @@ bool f_glfw_stereo_view::proc()
   xscale2 = (float)(r2 / (float) w);
   yscale2 = (float)(r2 / (float) h);
   if(m_num_chsbdl){
-	  draw_chsbd(0, xscale1, yscale1, -1, 0, (float)(sz1.width * r1), (float)(sz1.height * r1), m_pts_chsbdl, m_num_chsbdl);
+	  draw_chsbd(0, xscale1, yscale1, -1, 0, 
+		  (float)((double) sz1.width / (double) w), (float)((double) sz1.height / (double) h), 
+		  m_pts_chsbdl, m_num_chsbdl);
   } 
 
   if(m_num_chsbdr){
-	  draw_chsbd(0, xscale2, yscale2, 0, 0, (float)(sz2.width * r2), (float)(sz2.height * r2), m_pts_chsbdr, m_num_chsbdr);
+	  draw_chsbd(0, xscale2, yscale2, 0, 0, 
+		  (float)((double) sz2.width / (double) w), (float)((double) sz2.height / (double) h), 
+		  m_pts_chsbdr, m_num_chsbdr);
   }
 
   if(m_bsv_chsbd){
