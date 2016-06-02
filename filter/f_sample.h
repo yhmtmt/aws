@@ -54,7 +54,7 @@ private:
     return true;
   }
   
-  virtual void detroy_run(){
+  virtual void destroy_run(){
     // override this function if you need to do something in stopping filter thread
   }
   
