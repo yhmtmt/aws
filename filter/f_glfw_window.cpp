@@ -438,7 +438,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false),
 	m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix_k3(false),
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
-	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_num_calib_chsbd(50)
+	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -455,6 +455,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("sv_chsbd", &m_bsv_chsbd, "Save chessboard.");
 	register_fpar("ld_chsbd", &m_bld_chsbd, "Load chessboard.");
 	register_fpar("det_chsbd", &m_bdet_chsbd, "Detect chessboard.");
+	register_fpar("red_chsbd", &m_bred_chsbd, "Reduce chessboard to calib_chsbds");
 
 	register_fpar("flipx", &m_bflipx, "Flip image in x");
 	register_fpar("flipy", &m_bflipy, "Flip image in y");
@@ -628,16 +629,13 @@ bool f_glfw_stereo_view::proc()
 			  m_pts_chsbdl.push_back(obj.pt2d);		  
 			  m_ifrm_chsbdl.push_back(ifrm1);
 			  m_num_chsbdl++;
-			  cout << "frm[" << ifrm1 << "] chsbd[" << m_num_chsbdl << "] found." << endl;
+			  cout << "CamL frm[" << ifrm1 << "] chsbd[" << m_num_chsbdl << "] found." << endl;
 			  left = true;
 		  }
 		  if(!right && m_chsbd.detect(img2, &obj)){
 			  m_pts_chsbdr.push_back(obj.pt2d);
 			  m_ifrm_chsbdr.push_back(ifrm2);
-			  cout << "frm[" << ifrm2 << "] chsbd[" << m_num_chsbdr << "] found." << endl;
-			  if(m_ifrm_chsbdr.size() != m_ifrm_chsbdr.size()){
-				  cerr << "error found." << endl;
-			  }
+			  cout << "CamR frm[" << ifrm2 << "] chsbd[" << m_num_chsbdr << "] found." << endl;
 			  m_num_chsbdr++;
 			  right = true;
 		  }
@@ -1104,6 +1102,21 @@ void f_glfw_stereo_view::reduce_chsbd(int icam)
 				itr++;
 		}
 	}
+
+	switch(icam){
+	case 0:
+		m_num_chsbdl = min(m_num_calib_chsbd, m_num_chsbdl);
+		break;
+	case 1:
+		m_num_chsbdr = min(m_num_calib_chsbd, m_num_chsbdr);
+		break;
+	case 2:
+		m_num_chsbd_com = min(m_num_calib_chsbd, m_num_chsbd_com);
+		break;
+	default:
+		return;
+	}
+
 }
 
 void f_glfw_stereo_view::calibrate(int icam)
@@ -1112,15 +1125,26 @@ void f_glfw_stereo_view::calibrate(int icam)
 	vector<vector<Point2f>> * ppts = NULL;
 	vector<Mat> tvecs;
 	vector<Mat> rvecs;
+	bool * pbcp;
 	Mat * pimg = NULL, * R = NULL, * P = NULL, * map1 = NULL, * map2 = NULL;
 	if(icam == 0){
+		pbcp = &m_bcpl;
 		pcp = &m_camparl;
 		ppts = &m_pts_chsbdl;
 		pimg = &m_img1;
+		P = &m_Pl;
+		R = &m_Rl;
+		map1 = &m_mapl1;
+		map2 = &m_mapl2;
 	}else{
+		pbcp = &m_bcpr;
 		pcp = &m_camparr;
 		ppts = &m_pts_chsbdr;
 		pimg = &m_img2;
+		P = &m_Pr;
+		R = &m_Rr;
+		map1 = &m_mapr1;
+		map2 = &m_mapr2;
 	}
 
 	Size sz(pimg->cols, pimg->rows);
@@ -1132,6 +1156,7 @@ void f_glfw_stereo_view::calibrate(int icam)
 	if(m_bfisheye){
 		pcp->setFishEye(true);
 		int flag = 0;
+		Mat K, D;
 		if(m_bfix_int)
 			flag |= fisheye::CALIB_FIX_INTRINSIC;
 		if(m_bguess_int)
@@ -1145,11 +1170,13 @@ void f_glfw_stereo_view::calibrate(int icam)
 		if(m_bfix_k4)
 			flag |= fisheye::CALIB_FIX_K4;
 
-		fisheye::calibrate(pt3ds, *ppts, sz, pcp->getCvPrjMat(), 
-			pcp->getCvDistFishEyeMat(), rvecs, tvecs, flag);
-
+		fisheye::calibrate(pt3ds, *ppts, sz, K, D, rvecs, tvecs, flag);
+		pcp->setCvDist(D);
+		pcp->setCvPrj(K);
 	}else{
+		Mat K, D;
 		int flag = 0;
+		pcp->setFishEye(false);
 		if(m_bfix_k1)
 			flag |= CV_CALIB_FIX_K1;
 		if(m_bfix_k2)
@@ -1173,20 +1200,32 @@ void f_glfw_stereo_view::calibrate(int icam)
 		if(m_bfix_ar)
 			flag |= CV_CALIB_FIX_ASPECT_RATIO;
 
-		calibrateCamera(pt3ds, *ppts, sz, pcp->getCvPrjMat(), 
-			pcp->getCvDistMat(), rvecs, tvecs, flag);
+		calibrateCamera(pt3ds, *ppts, sz, K, 
+			D, rvecs, tvecs, flag);
+		pcp->setCvDist(D);
+		pcp->setCvPrj(K);
 	}
 		
 	if(pcp->isFishEye()){		
-		fisheye::estimateNewCameraMatrixForUndistortRectify(pcp->getCvPrjMat(),
-			pcp->getCvDistFishEyeMat(), sz, *R, *P);
-		fisheye::initUndistortRectifyMap(pcp->getCvPrjMat(), pcp->getCvDistFishEyeMat(), 
-			*R, *P, sz, CV_16SC2, *map1, *map2);
+		Mat K, D;
+		K = pcp->getCvPrjMat().clone();
+		D = pcp->getCvDistFishEyeMat().clone();
+		cout << "cam[" << icam << "]" << endl;
+		cout << "K" << K << endl;
+		cout << "D" << D << endl;
+		fisheye::estimateNewCameraMatrixForUndistortRectify(K, D, sz, *R, *P);
+		fisheye::initUndistortRectifyMap(K, D, *R, *P, sz, CV_16SC2, *map1, *map2);
+		*pbcp = true;
 	}else{
-		*P = getOptimalNewCameraMatrix(pcp->getCvPrjMat(), pcp->getCvDistMat(), 
-			sz, 1.);
-		initUndistortRectifyMap(pcp->getCvPrjMat(), pcp->getCvDistMat(), 
-			*R, *P, sz, CV_16SC2, *map1, *map2);
+		Mat K, D;
+		K = pcp->getCvPrjMat().clone();
+		D = pcp->getCvDistMat().clone();
+		cout << "cam[" << icam << "]" << endl;
+		cout << "K" << K << endl;
+		cout << "D" << D << endl;
+		*P = getOptimalNewCameraMatrix(K, D, sz, 1.);
+		initUndistortRectifyMap(K, D, *R, *P, sz, CV_16SC2, *map1, *map2);
+		*pbcp = true;
 	}
 }
 

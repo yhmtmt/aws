@@ -1156,7 +1156,7 @@ public:
 	}
 
 	Mat getCvPrjMat(){
-		P = Mat::zeros(3, 3, CV_64FC1);
+		P = Mat::eye(3, 3, CV_64FC1);
 		double * p = P.ptr<double>();
 		p[0] = par[0];
 		p[2] = par[2];
@@ -1174,11 +1174,13 @@ public:
 	}
 
 	Mat getCvDistMat(){
-		return Mat(1, 8, CV_64FC1, &par[epk1]);
+		D = Mat(1, 8, CV_64FC1, &par[epk1]);
+		return D;
 	}
 	
 	Mat getCvDistFishEyeMat(){
-		return Mat(1, 4, CV_64FC1, &par[efpk1]);
+		D = Mat(1, 4, CV_64FC1, &par[efpk1]);
+		return D;
 	}
 
 	void setCvPrj(const Mat & P)
