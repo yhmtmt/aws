@@ -315,7 +315,7 @@ protected:
 	void reduce_chsbd(int icam /* 0 or 1 or 2*/);
 	void calibrate(int icam /* 0 or 1 */);
 	void init_undistort(AWSCamPar & par, Size & sz, Mat & R, Mat & P, Mat & map1, Mat & map2, bool & bcp);
-	void draw_chsbd(const int icam /* 0 or 1 */, 
+	void draw_chsbd(const float r, const float g, const float b,
 		const float xscale, const float yscale,
 		const float xorg, const float yorg,
 		const float w, const float h, 

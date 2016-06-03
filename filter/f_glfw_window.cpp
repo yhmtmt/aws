@@ -92,7 +92,7 @@ void drawCvChessboard(const Size & vp, vector<Point2f> & pts,
 					  const float r, const float g, const float b, const float alpha, 
 					 const float l /* point size */, const float w /* line width */)
 {
-	drawCvPoints(vp, pts, r, g, b, alpha, l);
+	glColor4f(r, g, b, alpha);
 	glLineWidth(w);
 
 	double fac_x = 2.0 / (double) vp.width, fac_y = 2.0 / (double) vp.height;
@@ -578,15 +578,21 @@ bool f_glfw_stereo_view::proc()
 	  for(int i = 0; i < m_num_chsbd_com; i++)
 		  pt3ds[i] = m_chsbd.pts;
 	  if(m_bfisheye){
+		  Mat Kl, Dl, Kr, Dr;
+		  Kl = m_camparl.getCvPrjMat().clone();
+		  Dl = m_camparl.getCvDistFishEyeMat().clone();
+		  Kr = m_camparr.getCvPrjMat().clone();
+		  Dr = m_camparr.getCvDistFishEyeMat().clone();
 		  fisheye::stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
-			  m_camparl.getCvPrjMat(), m_camparl.getCvDistFishEyeMat(), 
-			  m_camparr.getCvPrjMat(), m_camparr.getCvDistFishEyeMat(),
-			  sz, m_Rlr, m_Tlr);
+			  Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr);
 	  }else{
+		  Mat Kl, Dl, Kr, Dr;
+		  Kl = m_camparl.getCvPrjMat().clone();
+		  Dl = m_camparl.getCvDistMat().clone();
+		  Kr = m_camparr.getCvPrjMat().clone();
+		  Dr = m_camparr.getCvDistMat().clone();
 		  stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
-			  m_camparl.getCvPrjMat(), m_camparl.getCvDistMat(), 
-			  m_camparr.getCvPrjMat(), m_camparr.getCvDistMat(),
-			  sz, m_Rlr, m_Tlr, m_E, m_F);
+			  Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_E, m_F);
 	  }
 	  m_bcbst = false;
 	  m_brct = true;
@@ -725,15 +731,24 @@ bool f_glfw_stereo_view::proc()
   xscale2 = (float)(r2 / (float) w);
   yscale2 = (float)(r2 / (float) h);
   if(m_num_chsbdl){
-	  draw_chsbd(0, xscale1, yscale1, -1, 0, 
+	  draw_chsbd(1., 0, 0, xscale1, yscale1, -1, 0, 
 		  (float)((double) sz1.width / (double) w), (float)((double) sz1.height / (double) h), 
 		  m_pts_chsbdl, m_num_chsbdl);
   } 
 
   if(m_num_chsbdr){
-	  draw_chsbd(0, xscale2, yscale2, 0, 0, 
+	  draw_chsbd(1., 0, 0, xscale2, yscale2, 0, 0, 
 		  (float)((double) sz2.width / (double) w), (float)((double) sz2.height / (double) h), 
 		  m_pts_chsbdr, m_num_chsbdr);
+  }
+
+  if(m_num_chsbd_com){
+	  draw_chsbd(0, 0, 1, xscale1, yscale1, -1, 0, 
+		  (float)((double) sz1.width / (double) w), (float)((double) sz1.height / (double) h), 
+		  m_pts_chsbdl_com, m_num_chsbd_com);
+	  draw_chsbd(0, 0, 1, xscale2, yscale2, 0, 0, 
+		  (float)((double) sz2.width / (double) w), (float)((double) sz2.height / (double) h), 
+		  m_pts_chsbdr_com, m_num_chsbd_com);
   }
 
   if(m_bsv_chsbd){
@@ -1244,14 +1259,14 @@ void f_glfw_stereo_view::init_undistort(AWSCamPar & par, Size & sz,
 
 }
 
-void f_glfw_stereo_view::draw_chsbd(const int icam,
+void f_glfw_stereo_view::draw_chsbd(const float r, const float g, const float b,
 									const float xscale, const float yscale,
 									const float xorg, const float yorg, 
 									const float w, const float h, 
 									vector<vector<Point2f>> & chsbds, const int num_chsbds)
 {
 	for(int ichsbd = 0; ichsbd < num_chsbds; ichsbd++){
-		drawCvChessboard(xscale, yscale, xorg, yorg, w, h, chsbds[ichsbd], 1.f, 0, 0, 1., 1, 1);
+		drawCvChessboard(xscale, yscale, xorg, yorg, w, h, chsbds[ichsbd], r, g, b, 1., 1, 1);
 	}
 }
 
