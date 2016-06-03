@@ -585,6 +585,7 @@ bool f_glfw_stereo_view::proc()
 		  Dr = m_camparr.getCvDistFishEyeMat().clone();
 		  fisheye::stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
 			  Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr);
+		  fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
 	  }else{
 		  Mat Kl, Dl, Kr, Dr;
 		  Kl = m_camparl.getCvPrjMat().clone();
@@ -593,7 +594,14 @@ bool f_glfw_stereo_view::proc()
 		  Dr = m_camparr.getCvDistMat().clone();
 		  stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
 			  Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_E, m_F);
+		  stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
 	  }
+	  init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2, m_bcpl);
+	  init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2, m_bcpr);
+	  cout << "Rl" << m_Rl << endl;
+	  cout << "Pl" << m_Pl << endl;
+	  cout << "Rr" << m_Rr << endl;
+	  cout << "Pr" << m_Pr << endl;
 	  m_bcbst = false;
 	  m_brct = true;
   }
@@ -1256,7 +1264,8 @@ void f_glfw_stereo_view::init_undistort(AWSCamPar & par, Size & sz,
 		initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
 		bcp = true;
 	}
-
+	cout << "R" << R << endl;
+	cout << "P" << P << endl;
 }
 
 void f_glfw_stereo_view::draw_chsbd(const float r, const float g, const float b,

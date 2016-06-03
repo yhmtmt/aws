@@ -292,7 +292,7 @@ protected:
 	Mat m_Pl, m_Pr;
 	Mat m_mapl1, m_mapl2, m_mapr1, m_mapr2;
 	Mat m_Rlr, m_Tlr;
-	Mat m_E, m_F;
+	Mat m_E, m_F, m_Q;
 
 	char m_fchsbdl[1024], m_fchsbdr[1024], m_fchsbdc[1024];
 	int m_num_chsbdl, m_num_chsbdr;
