@@ -450,6 +450,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("fstp", m_fstp, 1024, "Stereo parameter file.");
 	register_fpar("udl", &m_budl, "Undistort left camera");
 	register_fpar("udr", &m_budr, "Undistort right camera");
+	register_fpar("disp", &m_bdisp, "Show disparity map.");
 	register_fpar("cbl", &m_bcbl, "Calibrate left camera");
 	register_fpar("cbr", &m_bcbr, "Calibrate right camera");
 	register_fpar("cbst", &m_bcbst, "Calibrate stereo images.");
@@ -520,6 +521,21 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("k3fr", (m_camparr.getCvDistFishEye() + 2), "k3 for right camera with fisheye");
 	register_fpar("k4fr", (m_camparr.getCvDistFishEye() + 3), "k4 for right camera with fisheye");
 
+
+	// parameter for stereoSGBM
+	register_fpar("update_sgbm", &m_sgbm_par.m_update, "Update SGBM parameter.");
+	register_fpar("minDisparity", &m_sgbm_par.minDisparity, "minDisparity for cv::StereoSGBM");
+	register_fpar("numDisparities", &m_sgbm_par.numDisparities, "numDisparities for cv::StereoSGBM");
+	register_fpar("blockSize", &m_sgbm_par.blockSize, "blockSize for cv::StereoSGBM");
+	register_fpar("P1", &m_sgbm_par.P1, "P1 for cv::StereoSGBM");
+	register_fpar("P2", &m_sgbm_par.P2, "P2 for cv::StereoSGBM");
+	register_fpar("disp12MaxDiff", &m_sgbm_par.disp12MaxDiff, "disp12maxDiff for cv::StereoSGBM");
+	register_fpar("preFilterCap", &m_sgbm_par.preFilterCap, "preFilterCap for cv::StereoSGBM");
+	register_fpar("uniquenessRatio", &m_sgbm_par.uniquenessRatio, "uniquenessRatio for cv::StereoSGBM");
+	register_fpar("speckleWindowSize", &m_sgbm_par.speckleWindowSize, "speckleWindowSize for cv::StereoSGBM");
+	register_fpar("speckleRange", &m_sgbm_par.speckleRange, "speckleWindowSize for cv::StereoSGBM");
+	register_fpar("mode", &m_sgbm_par.mode, "mode for cv::StereoSGBM");
+
 	m_Rl = Mat::eye(3, 3, CV_64FC1);
 	m_Rr = Mat::eye(3, 3, CV_64FC1);
 
@@ -588,7 +604,8 @@ bool f_glfw_stereo_view::proc()
 		  Dr = m_camparr.getCvDistFishEyeMat().clone();
 		  fisheye::stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
 			  Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr);
-		  fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
+		  fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
+			  m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CV_CALIB_ZERO_DISPARITY);
 	  }else{
 		  Mat Kl, Dl, Kr, Dr;
 		  Kl = m_camparl.getCvPrjMat().clone();
@@ -597,10 +614,13 @@ bool f_glfw_stereo_view::proc()
 		  Dr = m_camparr.getCvDistMat().clone();
 		  stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
 			  Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_E, m_F);
-		  stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
+		  stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
+			  m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CV_CALIB_ZERO_DISPARITY, 0);
 	  }
 	  init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2, m_bcpl);
 	  init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2, m_bcpr);
+	  cout << "Rlr" << m_Rlr << endl;
+	  cout << "Tlr" << m_Tlr << endl;
 	  cout << "Rl" << m_Rl << endl;
 	  cout << "Pl" << m_Pl << endl;
 	  cout << "Rr" << m_Rr << endl;
@@ -707,6 +727,39 @@ bool f_glfw_stereo_view::proc()
   resize(img1, wimg1, sz1);
   resize(img2, wimg2, sz2);
   
+  if(m_bdisp && m_brct){ // show disparity map
+	  Mat disps16;
+	  if(m_sgbm_par.m_update){
+		  m_sgbm->setBlockSize(m_sgbm_par.blockSize);
+		  m_sgbm->setDisp12MaxDiff(m_sgbm_par.disp12MaxDiff);
+		  m_sgbm->setMinDisparity(m_sgbm_par.minDisparity);
+		  m_sgbm->setMode(m_sgbm_par.mode);
+		  m_sgbm->setNumDisparities(m_sgbm_par.numDisparities);
+		  m_sgbm->setP1(m_sgbm_par.P1);
+		  m_sgbm->setP2(m_sgbm_par.P2);
+		  m_sgbm->setPreFilterCap(m_sgbm_par.preFilterCap);
+		  m_sgbm->setSpeckleRange(m_sgbm_par.speckleRange);
+		  m_sgbm->setSpeckleWindowSize(m_sgbm_par.speckleWindowSize);
+		  m_sgbm->setUniquenessRatio(m_sgbm_par.uniquenessRatio);
+		  m_sgbm_par.m_update = false;
+	  }
+
+	  m_sgbm->compute(img1, img2, disps16);
+	  disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
+	  Mat wdisp;
+	  double rxd, ryd, rd;
+	  rxd = (double) w / (double) m_disp.cols;
+	  ryd = (double) h / (double) m_disp.rows;
+	  rd = min(rxd, ryd);
+	  Size sz((int)(m_disp.cols * rd), (int) (m_disp.rows * rd));
+
+	  resize(m_disp, wdisp, sz);
+	  awsFlip(wdisp, false, true, false);
+
+	  glRasterPos2i(-1, -1);
+	  glDrawPixels(wdisp.cols, wdisp.rows,  GL_LUMINANCE, GL_UNSIGNED_BYTE, wdisp.data);
+  }
+
   glRasterPos2i(-1, 0);
   
   awsFlip(wimg1, false, true, false);
@@ -786,9 +839,6 @@ bool f_glfw_stereo_view::proc()
 	  m_bldstp = false;
   }
 
-  if(m_bdisp && m_brct){ // show disparity map
-
-  }
 
   glfwSwapBuffers(pwin());
   glfwPollEvents();
@@ -808,8 +858,16 @@ bool f_glfw_stereo_view::init_run()
 		  cout << m_chsbd.par_chsbd.w << "x" <<  m_chsbd.par_chsbd.h << " " << m_chsbd.par_chsbd.p << "m pitch" << endl;
 	  }
   }
-
+ 
+  m_sgbm = StereoSGBM::create(m_sgbm_par.minDisparity, m_sgbm_par.numDisparities,
+	  m_sgbm_par.blockSize, m_sgbm_par.P1, m_sgbm_par.P2, m_sgbm_par.disp12MaxDiff, 
+	  m_sgbm_par.preFilterCap, m_sgbm_par.uniquenessRatio, m_sgbm_par.speckleWindowSize,
+	  m_sgbm_par.speckleRange, m_sgbm_par.mode);
   return true;
+}
+
+void f_glfw_stereo_view::destroy_run()
+{
 }
 
 void f_glfw_stereo_view::save_chsbd(int icam)

@@ -257,6 +257,7 @@ class f_glfw_stereo_view: public f_glfw_window
 protected:
 	ch_image_ref * m_pin1, *m_pin2;
 	Mat m_img1, m_img2;
+	Mat m_disp;
 
 	long long m_timg1, m_timg2;
 	long long m_ifrm1, m_ifrm2;
@@ -325,7 +326,30 @@ protected:
 	void save_stereo_pars();
 	void load_stereo_pars();
 
+	Ptr<StereoSGBM> m_sgbm;
+	struct s_sgbm_par{
+		bool m_update;
+		int minDisparity; /* normally zero. it depends on rectification algorithm. */
+		int numDisparities; /* maximum disparity - minimum disparity. it must be the divisible number by 16*/
+		int blockSize; /* 3 to 11 */
+		int P1, P2;
+		int disp12MaxDiff;
+		int preFilterCap;
+		int uniquenessRatio;
+		int speckleWindowSize;
+		int speckleRange;
+		int mode;
+		s_sgbm_par():m_update(false), minDisparity(0), numDisparities(64), blockSize(3),
+			disp12MaxDiff(1), preFilterCap(0), uniquenessRatio(10), speckleWindowSize(100),
+			speckleRange(32), mode(StereoSGBM::MODE_SGBM)
+		{
+			P1 = 8 * blockSize * blockSize;
+			P2 = P1 * 4;
+		}
+	} m_sgbm_par;
+
 	virtual bool init_run();
+	virtual void destroy_run();
 public:
 	f_glfw_stereo_view(const char * name);
 	virtual ~f_glfw_stereo_view()
