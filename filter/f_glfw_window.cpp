@@ -434,8 +434,9 @@ bool f_glfw_imview::init_run()
 f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL),
 	m_timg1(-1), m_timg2(-1),
 	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_num_chsbd_com(0), m_bflipx(false), m_bflipy(false),
-	m_bcpl(false), m_bcpr(false),m_bsvcp(false), m_bldcp(false), m_budl(false), m_budr(false), m_bcbl(false), m_bcbr(false), m_bcbst(false), 
-	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false),
+	m_bcpl(false), m_bcpr(false),m_bsvcp(false), m_bldcp(false), m_budl(false), m_budr(false), m_bdisp(false),
+	m_bcbl(false), m_bcbr(false), m_bcbst(false), 
+	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false), m_bsvstp(false), m_bldstp(false),
 	m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix_k3(false),
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
 	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50)
@@ -443,21 +444,23 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
 	
-	m_fcpl[0] = m_fcpr[0] = '\0';
+	m_fcpl[0] = m_fcpr[0] = m_fstp[0] = '\0';
 	register_fpar("fcpl", m_fcpl, 1024, "Camera parameter file of left camera.");
 	register_fpar("fcpr", m_fcpr, 1024, "Camera parameter file of right camera.");
-	
+	register_fpar("fstp", m_fstp, 1024, "Stereo parameter file.");
 	register_fpar("udl", &m_budl, "Undistort left camera");
 	register_fpar("udr", &m_budr, "Undistort right camera");
 	register_fpar("cbl", &m_bcbl, "Calibrate left camera");
 	register_fpar("cbr", &m_bcbr, "Calibrate right camera");
-	register_fpar("rct", &m_bcbst, "Calibrate stereo images.");
+	register_fpar("cbst", &m_bcbst, "Calibrate stereo images.");
 	register_fpar("sv_chsbd", &m_bsv_chsbd, "Save chessboard.");
 	register_fpar("ld_chsbd", &m_bld_chsbd, "Load chessboard.");
 	register_fpar("det_chsbd", &m_bdet_chsbd, "Detect chessboard.");
 	register_fpar("red_chsbd", &m_bred_chsbd, "Reduce chessboard to calib_chsbds");
 	register_fpar("svcp", &m_bsvcp, "Save camera parameter.");
 	register_fpar("ldcp", &m_bldcp, "Load camera parameter.");
+	register_fpar("svstp", &m_bsvstp, "Save stereo parameter.");
+	register_fpar("ldstp", &m_bldstp, "Load stereo parameter.");
 
 	register_fpar("flipx", &m_bflipx, "Flip image in x");
 	register_fpar("flipy", &m_bflipy, "Flip image in y");
@@ -773,6 +776,20 @@ bool f_glfw_stereo_view::proc()
 	  m_bld_chsbd = false;
   }
 
+  if(m_bsvstp && m_brct){
+	  save_stereo_pars();
+	  m_bsvstp = false;
+  }
+
+  if(m_bldstp){
+	  load_stereo_pars();
+	  m_bldstp = false;
+  }
+
+  if(m_bdisp && m_brct){ // show disparity map
+
+  }
+
   glfwSwapBuffers(pwin());
   glfwPollEvents();
   
@@ -990,6 +1007,111 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 	}
 
 }
+
+void f_glfw_stereo_view::save_stereo_pars()
+{
+	if(!m_fstp[0]){
+		return;
+	}
+	FileStorage fs(m_fstp, FileStorage::WRITE);
+	if(!fs.isOpened()){
+		return;
+	}
+	fs << "Rlr" << m_Rlr;
+	fs << "Tlr" << m_Tlr;
+	fs << "Pl" << m_Pl;
+	fs << "Pr" << m_Pr;
+	fs << "Rl" << m_Rl;
+	fs << "Rr" << m_Rr;
+	fs << "E" << m_E;
+	fs << "F" << m_F;
+	fs << "Q" << m_Q;
+	fs << "mapl1" << m_mapl1;
+	fs << "mapl2" << m_mapl2;
+	fs << "mapr1" << m_mapr1;
+	fs << "mapr2" << m_mapr2;
+}
+
+void f_glfw_stereo_view::load_stereo_pars()
+{
+	if(!m_fstp[0]){
+		return;
+	}
+	FileStorage fs(m_fstp, FileStorage::READ);
+	if(!fs.isOpened()){
+		return;
+	}
+
+	FileNode fn;
+
+	fn = fs["Rlr"];
+	if(fn.empty())
+		return;
+	fn >> m_Rlr;
+
+	fn = fs["Tlr"];
+	if(fn.empty())
+		return;
+	fn >> m_Tlr;
+
+	fn = fs["Pl"];
+	if(fn.empty())
+		return;
+	fn >> m_Pl;
+
+	fn = fs["Pr"];
+	if(fn.empty())
+		return;
+	fn >> m_Pr;
+
+	fn = fs["Rl"];
+	if(fn.empty())
+		return;
+	fn >> m_Rl;
+
+	fn = fs["Rr"];
+	if(fn.empty())
+		return;
+	fn >> m_Rr;
+
+	fn = fs["E"];
+	if(fn.empty())
+		return;
+	fn >> m_E;
+
+	fn = fs["F"];
+	if(fn.empty())
+		return;
+	fn >> m_F;
+
+	fn = fs["Q"];
+	if(fn.empty())
+		return;
+	fn >> m_Q;
+
+	fn = fs["mapl1"];
+	if(fn.empty())
+		return;
+	fn >> m_mapl1;
+
+	fn = fs["mapl2"];
+	if(fn.empty())
+		return;
+	fn >> m_mapl2;
+
+	fn = fs["mapr1"];
+	if(fn.empty())
+		return;
+	fn >> m_mapr1;
+
+	fn = fs["mapr2"];
+	if(fn.empty())
+		return;
+	fn >> m_mapr2;
+
+	m_brct = true;
+}
+
 
 void f_glfw_stereo_view::reduce_chsbd(int icam)
 {

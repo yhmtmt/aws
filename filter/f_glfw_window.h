@@ -271,12 +271,14 @@ protected:
 	bool m_bcbl, m_bcbr, m_bcbst; // calibration flag
 	bool m_bred_chsbd; // reduce chessboard less than m_num_calib_chsbd
 	bool m_bsvcp, m_bldcp;
+	bool m_bsvstp, m_bldstp;
 
 	bool m_bchsbd;		 // chessboard model validity flag
 	s_model m_chsbd;	 // chessboard model
 	bool m_bcpl, m_bcpr; // camera parameter validity flag
 	bool m_budl, m_budr; // undistort flag
 	bool m_brct;		 // rectify
+	bool m_bdisp;		 // disparity map
 	bool m_bflipx, m_bflipy; // image flipping option 
 
 	// calibration flags
@@ -286,7 +288,7 @@ protected:
 		m_bfix_ar, m_bfix_pp, m_bzr_tng,
 		m_brat_mdl, m_bfix_k5, m_bfix_k6; /* rational model's high order terms are enabled. */
 	int m_num_calib_chsbd;
-	char m_fcpl[1024], m_fcpr[1024];
+	char m_fcpl[1024], m_fcpr[1024], m_fstp[1024];
 	AWSCamPar m_camparl, m_camparr;
 	Mat m_Rl, m_Rr;
 	Mat m_Pl, m_Pr;
@@ -320,6 +322,9 @@ protected:
 		const float xorg, const float yorg,
 		const float w, const float h, 
 		vector<vector<Point2f>> & chsbds, const int num_chsbds);
+	void save_stereo_pars();
+	void load_stereo_pars();
+
 	virtual bool init_run();
 public:
 	f_glfw_stereo_view(const char * name);
