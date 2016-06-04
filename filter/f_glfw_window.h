@@ -275,12 +275,11 @@ protected:
 	bool m_bsvstp, m_bldstp;
 
 	bool m_bchsbd;		 // chessboard model validity flag
-	s_model m_chsbd;	 // chessboard model
-	bool m_bcpl, m_bcpr; // camera parameter validity flag
-	bool m_budl, m_budr; // undistort flag
-	bool m_brct;		 // rectify
-	bool m_bdisp;		 // disparity map
 	bool m_bflipx, m_bflipy; // image flipping option 
+	bool m_bcpl, m_bcpr, m_bstp, m_brct; // camera parameter validity flag
+	bool m_budl, m_budr; // undistort flag
+	bool m_brctst;		 // rectify
+	bool m_bdisp;		 // disparity map
 
 	// calibration flags
 	bool m_bfisheye, /* true if fisheye model is used */
@@ -297,7 +296,9 @@ protected:
 	Mat m_Rlr, m_Tlr;
 	Mat m_E, m_F, m_Q;
 
+	// chess board related parameters
 	char m_fchsbdl[1024], m_fchsbdr[1024], m_fchsbdc[1024];
+	s_model m_chsbd;	 // chessboard model
 	int m_num_chsbdl, m_num_chsbdr;
 	vector<long long> m_ifrm_chsbdl;
 	vector<vector<Point2f>> m_pts_chsbdl;
@@ -318,13 +319,17 @@ protected:
 	void reduce_chsbd(int icam /* 0 or 1 or 2*/);
 	void calibrate(int icam /* 0 or 1 */);
 	void init_undistort(AWSCamPar & par, Size & sz, Mat & R, Mat & P, Mat & map1, Mat & map2);
-	void draw_chsbd(const float r, const float g, const float b,
+
+	void draw_pixels(Mat & img);
+	void draw_chsbd(AWSCamPar & cp, const float r, const float g, const float b,
 		const float xscale, const float yscale,
 		const float xorg, const float yorg,
 		const float w, const float h, 
 		vector<vector<Point2f>> & chsbds, const int num_chsbds);
+
 	void calibrate_stereo();
 	void rectify_stereo();
+	void calc_and_draw_disparity_map(Mat & img1, Mat & img2);
 	void save_stereo_pars();
 	void load_stereo_pars();
 
@@ -349,7 +354,7 @@ protected:
 			P2 = P1 * 4;
 		}
 	} m_sgbm_par;
-
+	
 	virtual bool init_run();
 	virtual void destroy_run();
 public:

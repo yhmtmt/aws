@@ -88,6 +88,7 @@ void drawCvPoints(const float fac_x, const float fac_y, const float xorg, const 
 
 }
 
+
 void drawCvChessboard(const Size & vp, vector<Point2f> & pts, 
 					  const float r, const float g, const float b, const float alpha, 
 					 const float l /* point size */, const float w /* line width */)
@@ -109,29 +110,6 @@ void drawCvChessboard(const Size & vp, vector<Point2f> & pts,
 	}
 	glEnd();
 }
-
-void drawCvChessboard(const float fac_x, const float fac_y, const float xorg, const float yorg, 
-					  const float w, const float h, vector<Point2f> & pts, 
-					  const float r, const float g, const float b, const float alpha, 
-					 const float p /* point size */, const float l /* line width */)
-{
-	drawCvPoints(fac_x, fac_y, xorg, yorg, w, h, pts, r, g, b, alpha, p);
-	glLineWidth(l);
-
-	glBegin(GL_LINES);
-	{
-		Point2f pt;
-		cnvCvPoint2GlPoint(fac_x, fac_y, xorg, yorg, w, h, pts[0], pt);
-		glVertex2f(pt.x, pt.y);
-		for(int ipt = 1; ipt < pts.size(); ipt++){
-			cnvCvPoint2GlPoint(fac_x, fac_y, xorg, yorg, w, h, pts[ipt], pt);
-			glVertex2f(pt.x, pt.y);
-		}
-	}
-	glEnd();
-
-}
-
 
 void drawCvPointDensity(Mat hist, const int hist_max, const Size grid,  
 				 const float r, const float g, const float b, const float alpha, 
@@ -434,9 +412,11 @@ bool f_glfw_imview::init_run()
 f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL),
 	m_timg1(-1), m_timg2(-1),
 	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_num_chsbd_com(0), m_bflipx(false), m_bflipy(false),
-	m_bcpl(false), m_bcpr(false),m_bsvcp(false), m_bldcp(false), m_budl(false), m_budr(false), m_bdisp(false),
+	m_bcpl(false), m_bcpr(false), m_bstp(false), m_brct(false), 
+	m_bsvcp(false), m_bldcp(false), m_budl(false), m_budr(false), m_bdisp(false), 
 	m_bcbl(false), m_bcbr(false), m_bcbst(false), 
-	m_brct(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false), m_bsvstp(false), m_bldstp(false),
+	m_brctst(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false), 
+	m_bsvstp(false), m_bldstp(false),
 	m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix_k3(false),
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
 	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50)
@@ -450,7 +430,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("fstp", m_fstp, 1024, "Stereo parameter file.");
 	register_fpar("udl", &m_budl, "Undistort left camera");
 	register_fpar("udr", &m_budr, "Undistort right camera");
-	register_fpar("rct", &m_brct, "Stereo Rectify");
+	register_fpar("rctst", &m_brctst, "Stereo Rectify");
 	register_fpar("disp", &m_bdisp, "Show disparity map.");
 	register_fpar("cbl", &m_bcbl, "Calibrate left camera");
 	register_fpar("cbr", &m_bcbr, "Calibrate right camera");
@@ -593,7 +573,7 @@ bool f_glfw_stereo_view::proc()
 	  calibrate_stereo();
   }
 
-  if(m_brct){
+  if(m_brctst){
 	  rectify_stereo();
   }
 
@@ -681,106 +661,63 @@ bool f_glfw_stereo_view::proc()
 	  reduce_chsbd(2);
   }
 
-  Mat wimg1, wimg2;
-  
-  double rx1, rx2, ry1, ry2;
-  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
-  rx1 = (double)w / (double)m_img1.cols; 
-  rx2 = (double)w / (double)m_img2.cols;
-  ry1 = (double)h / (double)m_img1.rows;
-  ry2 = (double)h / (double)m_img2.rows;
-  double r1 = min(rx1, ry1), r2 = min(rx2, ry2);
+  { // draw images
+	  Mat wimg1, wimg2;
 
-  Size sz1((int)(r1 * img1.cols), (int)(r1 * img1.rows)), sz2((int)(r2 * img2.cols), (int)(r2 * img2.rows));
-  resize(img1, wimg1, sz1);
-  resize(img2, wimg2, sz2);
-  
-  if(m_bdisp){ // show disparity map
-	  Mat disps16;
-	  if(m_sgbm_par.m_update){
-		  m_sgbm->setBlockSize(m_sgbm_par.blockSize);
-		  m_sgbm->setDisp12MaxDiff(m_sgbm_par.disp12MaxDiff);
-		  m_sgbm->setMinDisparity(m_sgbm_par.minDisparity);
-		  m_sgbm->setMode(m_sgbm_par.mode);
-		  m_sgbm->setNumDisparities(m_sgbm_par.numDisparities);
-		  m_sgbm->setP1(m_sgbm_par.P1);
-		  m_sgbm->setP2(m_sgbm_par.P2);
-		  m_sgbm->setPreFilterCap(m_sgbm_par.preFilterCap);
-		  m_sgbm->setSpeckleRange(m_sgbm_par.speckleRange);
-		  m_sgbm->setSpeckleWindowSize(m_sgbm_par.speckleWindowSize);
-		  m_sgbm->setUniquenessRatio(m_sgbm_par.uniquenessRatio);
-		  m_sgbm_par.m_update = false;
+	  double rx1, rx2, ry1, ry2;
+	  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
+	  rx1 = (double)w / (double)m_img1.cols; 
+	  rx2 = (double)w / (double)m_img2.cols;
+	  ry1 = (double)h / (double)m_img1.rows;
+	  ry2 = (double)h / (double)m_img2.rows;
+	  double r1 = min(rx1, ry1), r2 = min(rx2, ry2);
+
+	  Size sz1((int)(r1 * img1.cols), (int)(r1 * img1.rows)), 
+		  sz2((int)(r2 * img2.cols), (int)(r2 * img2.rows));
+
+	  float wn1, hn1, wn2, hn2;
+	  wn1 = (float)((double) sz1.width / (double) w);
+	  hn1 = (float)((double) sz1.height / (double) h);
+	  wn2 = (float)((double) sz2.width / (double) w);
+	  hn2 = (float)((double) sz2.height / (double) h);
+
+	  resize(img1, wimg1, sz1);
+	  resize(img2, wimg2, sz2);
+
+	  glRasterPos2i(-1, 0);
+	  draw_pixels(wimg1);
+
+	  glRasterPos2i(0, 0);
+	  draw_pixels(wimg2);
+
+	  float xscale1, yscale1, xscale2, yscale2;
+	  xscale1 = (float)(r1 / (float) w);
+	  yscale1 = (float)(r1 / (float) h);
+	  xscale2 = (float)(r2 / (float) w);
+	  yscale2 = (float)(r2 / (float) h);
+
+	  if(m_num_chsbdl){
+		  draw_chsbd(m_camparl, 1., 0, 0, xscale1, yscale1, -1, 0, 
+			  wn1, hn1, m_pts_chsbdl, m_num_chsbdl);
+	  } 
+
+	  if(m_num_chsbdr){
+		  draw_chsbd(m_camparr, 1., 0, 0, xscale2, yscale2, 0, 0, 
+			  wn2, hn2, m_pts_chsbdr, m_num_chsbdr);
 	  }
 
-	  m_sgbm->compute(img1, img2, disps16);
-	  disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
-	  Mat wdisp;
-	  double rxd, ryd, rd;
-	  rxd = (double) w / (double) m_disp.cols;
-	  ryd = (double) h / (double) m_disp.rows;
-	  rd = min(rxd, ryd);
-	  Size sz((int)(m_disp.cols * rd), (int) (m_disp.rows * rd));
-
-	  resize(m_disp, wdisp, sz);
-	  awsFlip(wdisp, false, true, false);
-
-	  glRasterPos2i(-1, -1);
-	  glDrawPixels(wdisp.cols, wdisp.rows,  GL_LUMINANCE, GL_UNSIGNED_BYTE, wdisp.data);
+	  if(m_num_chsbd_com){
+		  draw_chsbd(m_camparl, 0, 0, 1, xscale1, yscale1, -1, 0, 
+			  wn1, hn1,
+			  m_pts_chsbdl_com, m_num_chsbd_com);
+		  draw_chsbd(m_camparr, 0, 0, 1, xscale2, yscale2, 0, 0, 
+			  wn2, hn2,
+			  m_pts_chsbdr_com, m_num_chsbd_com);
+	  }
   }
 
-  glRasterPos2i(-1, 0);
-  
-  awsFlip(wimg1, false, true, false);
-  switch(wimg1.type()){
-  case CV_8U:
-	  glDrawPixels(wimg1.cols, wimg1.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg1.data);
-	  break;
-  case CV_16U:
-	  glDrawPixels(wimg1.cols, wimg1.rows, GL_LUMINANCE, GL_UNSIGNED_SHORT, wimg1.data);
-	  break;
-  case CV_8UC3:
-	  glDrawPixels(wimg1.cols, wimg1.rows, GL_BGR, GL_UNSIGNED_BYTE, wimg1.data);
-	  break;
-  }
-
-  glRasterPos2i(0, 0);
-  awsFlip(wimg2, false, true, false);
-  switch(wimg2.type()){
-  case CV_8U:
-	  glDrawPixels(wimg2.cols, wimg2.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, wimg2.data);
-	  break;
-  case CV_16U:
-	  glDrawPixels(wimg2.cols, wimg2.rows, GL_LUMINANCE, GL_UNSIGNED_SHORT, wimg2.data);
-	  break;
-  case CV_8UC3:
-	  glDrawPixels(wimg2.cols, wimg2.rows, GL_BGR, GL_UNSIGNED_BYTE, wimg2.data);
-	  break;
-  }
-
-  float xscale1, yscale1, xscale2, yscale2;
-  xscale1 = (float)(r1 / (float) w);
-  yscale1 = (float)(r1 / (float) h);
-  xscale2 = (float)(r2 / (float) w);
-  yscale2 = (float)(r2 / (float) h);
-  if(m_num_chsbdl){
-	  draw_chsbd(1., 0, 0, xscale1, yscale1, -1, 0, 
-		  (float)((double) sz1.width / (double) w), (float)((double) sz1.height / (double) h), 
-		  m_pts_chsbdl, m_num_chsbdl);
-  } 
-
-  if(m_num_chsbdr){
-	  draw_chsbd(1., 0, 0, xscale2, yscale2, 0, 0, 
-		  (float)((double) sz2.width / (double) w), (float)((double) sz2.height / (double) h), 
-		  m_pts_chsbdr, m_num_chsbdr);
-  }
-
-  if(m_num_chsbd_com){
-	  draw_chsbd(0, 0, 1, xscale1, yscale1, -1, 0, 
-		  (float)((double) sz1.width / (double) w), (float)((double) sz1.height / (double) h), 
-		  m_pts_chsbdl_com, m_num_chsbd_com);
-	  draw_chsbd(0, 0, 1, xscale2, yscale2, 0, 0, 
-		  (float)((double) sz2.width / (double) w), (float)((double) sz2.height / (double) h), 
-		  m_pts_chsbdr_com, m_num_chsbd_com);
+ if(m_bdisp){ // show disparity map
+	  calc_and_draw_disparity_map(img1, img2);
   }
 
   if(m_bsv_chsbd){
@@ -797,7 +734,7 @@ bool f_glfw_stereo_view::proc()
 	  m_bld_chsbd = false;
   }
 
-  if(m_bsvstp && m_brct){
+  if(m_bsvstp && m_bstp){
 	  save_stereo_pars();
 	  m_bsvstp = false;
   }
@@ -929,6 +866,12 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 		break;
 	default:
 		return;
+	}
+
+	ifrm->clear();
+	for(int i = 0; i < 2; i++){
+		if(pts[i])
+			pts[i]->clear();
 	}
 
 	string str;
@@ -1064,6 +1007,7 @@ void f_glfw_stereo_view::calibrate_stereo()
 	cout << "Rlr" << m_Rlr << endl;
 	cout << "Tlr" << m_Tlr << endl;
 	m_bcbst = false;
+	m_bstp = true;
 }
 
 
@@ -1095,7 +1039,7 @@ void f_glfw_stereo_view::rectify_stereo()
 	cout << "Pl" << m_Pl << endl;
 	cout << "Rr" << m_Rr << endl;
 	cout << "Pr" << m_Pr << endl;
-	m_brct = false;
+	m_brct = true;
 }
 
 void f_glfw_stereo_view::save_stereo_pars()
@@ -1119,6 +1063,7 @@ void f_glfw_stereo_view::load_stereo_pars()
 	if(!m_fstp[0]){
 		return;
 	}
+
 	FileStorage fs(m_fstp, FileStorage::READ);
 	if(!fs.isOpened()){
 		return;
@@ -1151,8 +1096,7 @@ void f_glfw_stereo_view::load_stereo_pars()
 		return;
 	fn >> m_Q;
 
-
-	m_brct = true;
+	m_bstp = true;
 }
 
 
@@ -1433,14 +1377,97 @@ void f_glfw_stereo_view::init_undistort(AWSCamPar & par, Size & sz,
 	cout << "P" << P << endl;
 }
 
-void f_glfw_stereo_view::draw_chsbd(const float r, const float g, const float b,
-									const float xscale, const float yscale,
-									const float xorg, const float yorg, 
-									const float w, const float h, 
-									vector<vector<Point2f>> & chsbds, const int num_chsbds)
+
+void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 {
+	int w, h;
+	w = m_sz_win.width >> 1;
+	h = m_sz_win.height >> 1;
+
+	Mat disps16;
+	if(m_sgbm_par.m_update){ // updating sgbm parameters
+		m_sgbm->setBlockSize(m_sgbm_par.blockSize);
+		m_sgbm->setDisp12MaxDiff(m_sgbm_par.disp12MaxDiff);
+		m_sgbm->setMinDisparity(m_sgbm_par.minDisparity);
+		m_sgbm->setMode(m_sgbm_par.mode);
+		m_sgbm->setNumDisparities(m_sgbm_par.numDisparities);
+		m_sgbm->setP1(m_sgbm_par.P1);
+		m_sgbm->setP2(m_sgbm_par.P2);
+		m_sgbm->setPreFilterCap(m_sgbm_par.preFilterCap);
+		m_sgbm->setSpeckleRange(m_sgbm_par.speckleRange);
+		m_sgbm->setSpeckleWindowSize(m_sgbm_par.speckleWindowSize);
+		m_sgbm->setUniquenessRatio(m_sgbm_par.uniquenessRatio);
+		m_sgbm_par.m_update = false;
+	}
+
+	m_sgbm->compute(img1, img2, disps16);
+	disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
+	Mat wdisp;
+	double rxd, ryd, rd;
+	rxd = (double) w / (double) m_disp.cols;
+	ryd = (double) h / (double) m_disp.rows;
+	rd = min(rxd, ryd);
+	Size sz((int)(m_disp.cols * rd), (int) (m_disp.rows * rd));
+
+	resize(m_disp, wdisp, sz);
+	awsFlip(wdisp, false, true, false);
+
+	glRasterPos2i(-1, -1);
+	glDrawPixels(wdisp.cols, wdisp.rows,  GL_LUMINANCE, GL_UNSIGNED_BYTE, wdisp.data);
+}
+
+void f_glfw_stereo_view::draw_pixels(Mat & img)
+{
+  awsFlip(img, false, true, false);
+  switch(img.type()){
+  case CV_8U:
+	  glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, img.data);
+	  break;
+  case CV_16U:
+	  glDrawPixels(img.cols, img.rows, GL_LUMINANCE, GL_UNSIGNED_SHORT, img.data);
+	  break;
+  case CV_8UC3:
+	  glDrawPixels(img.cols, img.rows, GL_BGR, GL_UNSIGNED_BYTE, img.data);
+	  break;
+  }
+}
+
+
+void f_glfw_stereo_view::draw_chsbd(
+	AWSCamPar & cp, const float r, const float g, const float b,
+	const float xscale, const float yscale,
+	const float xorg, const float yorg, 
+	const float w, const float h, 
+	vector<vector<Point2f>> & chsbds, const int num_chsbds)
+{
+	glColor4f(r, g, b, 1);
+	glLineWidth(1);
+	Size sz_chsbd(m_chsbd.par_chsbd.w, m_chsbd.par_chsbd.h);
+	int i = 0, 
+		j = sz_chsbd.width - 1,
+		k = sz_chsbd.height * sz_chsbd.width - 1, 
+		l = (sz_chsbd.height - 1) * sz_chsbd.width;
+
 	for(int ichsbd = 0; ichsbd < num_chsbds; ichsbd++){
-		drawCvChessboard(xscale, yscale, xorg, yorg, w, h, chsbds[ichsbd], r, g, b, 1., 1, 1);
+		vector<Point2f> & pts = chsbds[ichsbd];
+
+		glBegin(GL_LINE_LOOP);
+		{
+			Point2f pt;
+
+			cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pts[i], pt);
+			glVertex2f(pt.x, pt.y);
+
+			cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pts[j], pt);
+			glVertex2f(pt.x, pt.y);
+
+			cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pts[k], pt);
+			glVertex2f(pt.x, pt.y);
+
+			cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pts[l], pt);
+			glVertex2f(pt.x, pt.y);
+		}
+		glEnd();
 	}
 }
 
