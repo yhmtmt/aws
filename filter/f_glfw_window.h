@@ -317,12 +317,14 @@ protected:
 	void load_chsbd(int icam /* 0 or 1 or 2*/);
 	void reduce_chsbd(int icam /* 0 or 1 or 2*/);
 	void calibrate(int icam /* 0 or 1 */);
-	void init_undistort(AWSCamPar & par, Size & sz, Mat & R, Mat & P, Mat & map1, Mat & map2, bool & bcp);
+	void init_undistort(AWSCamPar & par, Size & sz, Mat & R, Mat & P, Mat & map1, Mat & map2);
 	void draw_chsbd(const float r, const float g, const float b,
 		const float xscale, const float yscale,
 		const float xorg, const float yorg,
 		const float w, const float h, 
 		vector<vector<Point2f>> & chsbds, const int num_chsbds);
+	void calibrate_stereo();
+	void rectify_stereo();
 	void save_stereo_pars();
 	void load_stereo_pars();
 

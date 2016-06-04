@@ -450,6 +450,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("fstp", m_fstp, 1024, "Stereo parameter file.");
 	register_fpar("udl", &m_budl, "Undistort left camera");
 	register_fpar("udr", &m_budr, "Undistort right camera");
+	register_fpar("rct", &m_brct, "Stereo Rectify");
 	register_fpar("disp", &m_bdisp, "Show disparity map.");
 	register_fpar("cbl", &m_bcbl, "Calibrate left camera");
 	register_fpar("cbr", &m_bcbr, "Calibrate right camera");
@@ -521,7 +522,6 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("k3fr", (m_camparr.getCvDistFishEye() + 2), "k3 for right camera with fisheye");
 	register_fpar("k4fr", (m_camparr.getCvDistFishEye() + 3), "k4 for right camera with fisheye");
 
-
 	// parameter for stereoSGBM
 	register_fpar("update_sgbm", &m_sgbm_par.m_update, "Update SGBM parameter.");
 	register_fpar("minDisparity", &m_sgbm_par.minDisparity, "minDisparity for cv::StereoSGBM");
@@ -589,44 +589,12 @@ bool f_glfw_stereo_view::proc()
 	  calibrate(1);
 	  m_bcbr = false;
   }
-
   if(m_bcpl && m_bcpr && m_bcbst){ // stereo calibrate
-	  Size sz(m_img1.cols, m_img1.rows);
-	  vector<vector<Point3f>> pt3ds;
-	  pt3ds.resize(m_num_chsbd_com);
-	  for(int i = 0; i < m_num_chsbd_com; i++)
-		  pt3ds[i] = m_chsbd.pts;
-	  if(m_bfisheye){
-		  Mat Kl, Dl, Kr, Dr;
-		  Kl = m_camparl.getCvPrjMat().clone();
-		  Dl = m_camparl.getCvDistFishEyeMat().clone();
-		  Kr = m_camparr.getCvPrjMat().clone();
-		  Dr = m_camparr.getCvDistFishEyeMat().clone();
-		  fisheye::stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
-			  Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr);
-		  fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
-			  m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CV_CALIB_ZERO_DISPARITY);
-	  }else{
-		  Mat Kl, Dl, Kr, Dr;
-		  Kl = m_camparl.getCvPrjMat().clone();
-		  Dl = m_camparl.getCvDistMat().clone();
-		  Kr = m_camparr.getCvPrjMat().clone();
-		  Dr = m_camparr.getCvDistMat().clone();
-		  stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
-			  Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_E, m_F);
-		  stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
-			  m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CV_CALIB_ZERO_DISPARITY, 0);
-	  }
-	  init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2, m_bcpl);
-	  init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2, m_bcpr);
-	  cout << "Rlr" << m_Rlr << endl;
-	  cout << "Tlr" << m_Tlr << endl;
-	  cout << "Rl" << m_Rl << endl;
-	  cout << "Pl" << m_Pl << endl;
-	  cout << "Rr" << m_Rr << endl;
-	  cout << "Pr" << m_Pr << endl;
-	  m_bcbst = false;
-	  m_brct = true;
+	  calibrate_stereo();
+  }
+
+  if(m_brct){
+	  rectify_stereo();
   }
 
   m_timg1 = timg1;
@@ -648,11 +616,11 @@ bool f_glfw_stereo_view::proc()
   if(m_bldcp){
 	  m_bcpl = m_camparl.read(m_fcpl);
 	  Size sz(m_img1.cols, m_img1.rows);
-	  init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2, m_bcpl);
+	  init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2);
 	  m_bcpr = m_camparr.read(m_fcpr);
 	  sz.width = m_img2.cols;
 	  sz.height = m_img2.rows;
-	  init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2, m_bcpr);
+	  init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2);
 	  m_bldcp = false;
   }
 
@@ -727,7 +695,7 @@ bool f_glfw_stereo_view::proc()
   resize(img1, wimg1, sz1);
   resize(img2, wimg2, sz2);
   
-  if(m_bdisp && m_brct){ // show disparity map
+  if(m_bdisp){ // show disparity map
 	  Mat disps16;
 	  if(m_sgbm_par.m_update){
 		  m_sgbm->setBlockSize(m_sgbm_par.blockSize);
@@ -1066,6 +1034,70 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 
 }
 
+void f_glfw_stereo_view::calibrate_stereo()
+{	  
+	Size sz(m_img1.cols, m_img1.rows);
+	vector<vector<Point3f>> pt3ds;
+	pt3ds.resize(m_num_chsbd_com);
+	for(int i = 0; i < m_num_chsbd_com; i++)
+		pt3ds[i] = m_chsbd.pts;
+
+	double err;
+	if(m_bfisheye){
+		Mat Kl, Dl, Kr, Dr;
+		Kl = m_camparl.getCvPrjMat().clone();
+		Dl = m_camparl.getCvDistFishEyeMat().clone();
+		Kr = m_camparr.getCvPrjMat().clone();
+		Dr = m_camparr.getCvDistFishEyeMat().clone();
+		err = fisheye::stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
+			Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr);
+	}else{
+		Mat Kl, Dl, Kr, Dr;
+		Kl = m_camparl.getCvPrjMat().clone();
+		Dl = m_camparl.getCvDistMat().clone();
+		Kr = m_camparr.getCvPrjMat().clone();
+		Dr = m_camparr.getCvDistMat().clone();
+		err = stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
+			Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_E, m_F);
+	}
+	cout << "Stereo Calibrate done with err=" << err << endl;
+	cout << "Rlr" << m_Rlr << endl;
+	cout << "Tlr" << m_Tlr << endl;
+	m_bcbst = false;
+}
+
+
+void f_glfw_stereo_view::rectify_stereo()
+{
+	Size sz(m_img1.cols, m_img1.rows);
+	if(m_bfisheye){
+		Mat Kl, Dl, Kr, Dr;
+		Kl = m_camparl.getCvPrjMat().clone();
+		Dl = m_camparl.getCvDistFishEyeMat().clone();
+		Kr = m_camparr.getCvPrjMat().clone();
+		Dr = m_camparr.getCvDistFishEyeMat().clone();
+		fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
+			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
+	}else{
+		Mat Kl, Dl, Kr, Dr;
+		Kl = m_camparl.getCvPrjMat().clone();
+		Dl = m_camparl.getCvDistMat().clone();
+		Kr = m_camparr.getCvPrjMat().clone();
+		Dr = m_camparr.getCvDistMat().clone();
+		stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
+			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0, 1);
+	}
+	init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2);
+	init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2);
+	cout << "Rlr" << m_Rlr << endl;
+	cout << "Tlr" << m_Tlr << endl;
+	cout << "Rl" << m_Rl << endl;
+	cout << "Pl" << m_Pl << endl;
+	cout << "Rr" << m_Rr << endl;
+	cout << "Pr" << m_Pr << endl;
+	m_brct = false;
+}
+
 void f_glfw_stereo_view::save_stereo_pars()
 {
 	if(!m_fstp[0]){
@@ -1077,17 +1109,9 @@ void f_glfw_stereo_view::save_stereo_pars()
 	}
 	fs << "Rlr" << m_Rlr;
 	fs << "Tlr" << m_Tlr;
-	fs << "Pl" << m_Pl;
-	fs << "Pr" << m_Pr;
-	fs << "Rl" << m_Rl;
-	fs << "Rr" << m_Rr;
 	fs << "E" << m_E;
 	fs << "F" << m_F;
 	fs << "Q" << m_Q;
-	fs << "mapl1" << m_mapl1;
-	fs << "mapl2" << m_mapl2;
-	fs << "mapr1" << m_mapr1;
-	fs << "mapr2" << m_mapr2;
 }
 
 void f_glfw_stereo_view::load_stereo_pars()
@@ -1112,26 +1136,6 @@ void f_glfw_stereo_view::load_stereo_pars()
 		return;
 	fn >> m_Tlr;
 
-	fn = fs["Pl"];
-	if(fn.empty())
-		return;
-	fn >> m_Pl;
-
-	fn = fs["Pr"];
-	if(fn.empty())
-		return;
-	fn >> m_Pr;
-
-	fn = fs["Rl"];
-	if(fn.empty())
-		return;
-	fn >> m_Rl;
-
-	fn = fs["Rr"];
-	if(fn.empty())
-		return;
-	fn >> m_Rr;
-
 	fn = fs["E"];
 	if(fn.empty())
 		return;
@@ -1147,25 +1151,6 @@ void f_glfw_stereo_view::load_stereo_pars()
 		return;
 	fn >> m_Q;
 
-	fn = fs["mapl1"];
-	if(fn.empty())
-		return;
-	fn >> m_mapl1;
-
-	fn = fs["mapl2"];
-	if(fn.empty())
-		return;
-	fn >> m_mapl2;
-
-	fn = fs["mapr1"];
-	if(fn.empty())
-		return;
-	fn >> m_mapr1;
-
-	fn = fs["mapr2"];
-	if(fn.empty())
-		return;
-	fn >> m_mapr2;
 
 	m_brct = true;
 }
@@ -1367,10 +1352,12 @@ void f_glfw_stereo_view::calibrate(int icam)
 	for(int i = 0; i < ppts->size(); i++)
 		pt3ds[i] = m_chsbd.pts;
 
+	double err;
+	Mat K, D;
+
 	if(m_bfisheye){
 		pcp->setFishEye(true);
 		int flag = 0;
-		Mat K, D;
 		if(m_bfix_int)
 			flag |= fisheye::CALIB_FIX_INTRINSIC;
 		if(m_bguess_int)
@@ -1384,11 +1371,10 @@ void f_glfw_stereo_view::calibrate(int icam)
 		if(m_bfix_k4)
 			flag |= fisheye::CALIB_FIX_K4;
 
-		fisheye::calibrate(pt3ds, *ppts, sz, K, D, rvecs, tvecs, flag);
+		err = fisheye::calibrate(pt3ds, *ppts, sz, K, D, rvecs, tvecs, flag);
 		pcp->setCvDist(D);
 		pcp->setCvPrj(K);
 	}else{
-		Mat K, D;
 		int flag = 0;
 		pcp->setFishEye(false);
 		if(m_bfix_k1)
@@ -1414,35 +1400,34 @@ void f_glfw_stereo_view::calibrate(int icam)
 		if(m_bfix_ar)
 			flag |= CV_CALIB_FIX_ASPECT_RATIO;
 
-		calibrateCamera(pt3ds, *ppts, sz, K, 
+		err = calibrateCamera(pt3ds, *ppts, sz, K, 
 			D, rvecs, tvecs, flag);
 		pcp->setCvDist(D);
 		pcp->setCvPrj(K);
 	}
-	init_undistort(*pcp, sz, *R, *P, *map1, *map2, *pbcp);
+	cout << "Calibration camera " << icam << " done with err = " << err << endl;
+	cout << "K" << K << endl;
+	cout << "D" << D << endl;
+
+	init_undistort(*pcp, sz, *R, *P, *map1, *map2);
+	*pbcp = true;
 }
 
 void f_glfw_stereo_view::init_undistort(AWSCamPar & par, Size & sz, 
-										Mat & R, Mat & P, Mat & map1, Mat & map2, bool & bcp)
+										Mat & R, Mat & P, Mat & map1, Mat & map2)
 {
 	if(par.isFishEye()){		
 		Mat K, D;
 		K = par.getCvPrjMat().clone();
 		D = par.getCvDistFishEyeMat().clone();
-		cout << "K" << K << endl;
-		cout << "D" << D << endl;
 		fisheye::estimateNewCameraMatrixForUndistortRectify(K, D, sz, R, P);
 		fisheye::initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
-		bcp = true;
 	}else{
 		Mat K, D;
 		K = par.getCvPrjMat().clone();
 		D = par.getCvDistMat().clone();
-		cout << "K" << K << endl;
-		cout << "D" << D << endl;
 		P = getOptimalNewCameraMatrix(K, D, sz, 1.);
 		initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
-		bcp = true;
 	}
 	cout << "R" << R << endl;
 	cout << "P" << P << endl;
