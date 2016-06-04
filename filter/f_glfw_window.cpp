@@ -560,6 +560,8 @@ bool f_glfw_stereo_view::proc()
 	  m_bsync = true;
   }
 
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
   if(m_num_chsbdl && m_bcbl){ //calibrate left camera
 	  calibrate(0);
 	  m_bcbl = false;
@@ -596,10 +598,14 @@ bool f_glfw_stereo_view::proc()
   if(m_bldcp){
 	  m_bcpl = m_camparl.read(m_fcpl);
 	  Size sz(m_img1.cols, m_img1.rows);
+	  m_Rl = Mat::eye(3, 3, CV_64FC1);
+	  m_Pl = m_camparl.getCvPrjMat().clone();
 	  init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2);
 	  m_bcpr = m_camparr.read(m_fcpr);
 	  sz.width = m_img2.cols;
 	  sz.height = m_img2.rows;
+	  m_Rr = Mat::eye(3, 3, CV_64FC1);
+	  m_Pr = m_camparr.getCvPrjMat().clone();
 	  init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2);
 	  m_bldcp = false;
   }
@@ -659,7 +665,7 @@ bool f_glfw_stereo_view::proc()
 	  reduce_chsbd(0);
 	  reduce_chsbd(1);
 	  reduce_chsbd(2);
-	  m_bred_chsbd = true;
+	  m_bred_chsbd = false;
   }
 
   { // draw images
@@ -982,8 +988,8 @@ void f_glfw_stereo_view::calibrate_stereo()
 		pt3ds[i] = m_chsbd.pts;
 
 	double err;
+	Mat Kl, Dl, Kr, Dr;
 	if(m_bfisheye){
-		Mat Kl, Dl, Kr, Dr;
 		Kl = m_camparl.getCvPrjMat().clone();
 		Dl = m_camparl.getCvDistFishEyeMat().clone();
 		Kr = m_camparr.getCvPrjMat().clone();
@@ -991,7 +997,6 @@ void f_glfw_stereo_view::calibrate_stereo()
 		err = fisheye::stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
 			Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr);
 	}else{
-		Mat Kl, Dl, Kr, Dr;
 		Kl = m_camparl.getCvPrjMat().clone();
 		Dl = m_camparl.getCvDistMat().clone();
 		Kr = m_camparr.getCvPrjMat().clone();
@@ -999,7 +1004,37 @@ void f_glfw_stereo_view::calibrate_stereo()
 		err = stereoCalibrate(pt3ds, m_pts_chsbdl_com, m_pts_chsbdr_com, 
 			Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, m_E, m_F);
 	}
-	cout << "Stereo Calibrate done with err=" << err << endl;
+
+	double serr = 0;
+	int num_pts = 0;
+	{ // check epipoler error
+		double err;
+		vector<Point2f> ptsl, ptsr;
+		vector<Vec3f> ll, lr;
+		
+		for(int ichsbd = 0; ichsbd < m_num_chsbd_com; ichsbd++){
+			if(m_bfisheye){
+				fisheye::undistortPoints(m_pts_chsbdl_com[ichsbd], ptsl, Kl, Dl, m_Rl, m_Pl);
+				fisheye::undistortPoints(m_pts_chsbdr_com[ichsbd], ptsr, Kr, Dr, m_Rr, m_Pr);
+			}else{
+				undistortPoints(m_pts_chsbdl_com[ichsbd], ptsl, Kl, Dl, m_Rl, Kl);
+				undistortPoints(m_pts_chsbdr_com[ichsbd], ptsr, Kr, Dr, m_Rr, Kr);
+			}
+			computeCorrespondEpilines(ptsl, 1, m_F, ll);
+			computeCorrespondEpilines(ptsr, 2, m_F, lr);
+			for(int il = 0; il < ptsl.size(); il++){
+				err = ptsl[il].x * lr[il][0] + ptsl[il].y * lr[il][1] + lr[il][2];
+				serr += err;
+				num_pts++;
+			}
+			for(int il = 0; il < ptsr.size(); il++){
+				err = ptsr[il].x * ll[il][0] + ptsr[il].y * ll[il][1] + ll[il][2];
+				serr += err;
+				num_pts++;
+			}
+		}
+	}
+	cout << "Stereo Calibrate done with calibration err=" << err << " epi err = " << serr / (double) num_pts << endl;
 	cout << "Rlr" << m_Rlr << endl;
 	cout << "Tlr" << m_Tlr << endl;
 	m_bcbst = false;
@@ -1348,7 +1383,8 @@ void f_glfw_stereo_view::calibrate(int icam)
 	cout << "Calibration camera " << icam << " done with err = " << err << endl;
 	cout << "K" << K << endl;
 	cout << "D" << D << endl;
-
+	*R = Mat::eye(3, 3, CV_64FC1);
+	*P = pcp->getCvPrjMat().clone();
 	init_undistort(*pcp, sz, *R, *P, *map1, *map2);
 	*pbcp = true;
 }
@@ -1360,13 +1396,13 @@ void f_glfw_stereo_view::init_undistort(AWSCamPar & par, Size & sz,
 		Mat K, D;
 		K = par.getCvPrjMat().clone();
 		D = par.getCvDistFishEyeMat().clone();
-		fisheye::estimateNewCameraMatrixForUndistortRectify(K, D, sz, R, P);
+		//fisheye::estimateNewCameraMatrixForUndistortRectify(K, D, sz, R, P);
 		fisheye::initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
 	}else{
 		Mat K, D;
 		K = par.getCvPrjMat().clone();
 		D = par.getCvDistMat().clone();
-		P = getOptimalNewCameraMatrix(K, D, sz, 1.);
+		//P = getOptimalNewCameraMatrix(K, D, sz, 1.);
 		initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
 	}
 	cout << "R" << R << endl;
@@ -1437,7 +1473,6 @@ void f_glfw_stereo_view::draw_com_chsbd(const float r, const float g, const floa
 		const float xorgr, const float yorgr,
 		const float wr, const float hr)
 {
-	glColor4f(r, g, b, 1);
 	glLineWidth(1);
 
 	Mat Kl, Kr, Dl, Dr;
@@ -1462,7 +1497,8 @@ void f_glfw_stereo_view::draw_com_chsbd(const float r, const float g, const floa
 		k = sz_chsbd.height * sz_chsbd.width - 1, 
 		l = (sz_chsbd.height - 1) * sz_chsbd.width;
 
-	vector<Point2f> pt4l,pt4r, ptu4;
+	vector<Point2f> pt4l,pt4r, ptu4l, ptu4r;
+	vector<Vec3f> line4l, line4r;
 	pt4l.resize(4);
 	pt4r.resize(4);
 
@@ -1475,12 +1511,12 @@ void f_glfw_stereo_view::draw_com_chsbd(const float r, const float g, const floa
 
 		if(m_budl && m_bcpl){
 			if(m_camparl.isFishEye()){
-				fisheye::undistortPoints(pt4l, ptu4, Kl, Dl, m_Rl, m_Pl);
+				fisheye::undistortPoints(pt4l, ptu4l, Kl, Dl, m_Rl, m_Pl);
 			}else{
-				undistortPoints(pt4l, ptu4, Kl, Dl, m_Rl, m_Pl);
+				undistortPoints(pt4l, ptu4l, Kl, Dl, m_Rl, m_Pl);
 			}
 			for(int ipt = 0; ipt < 4; ipt++){
-				cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, ptu4[ipt], pt4l[ipt]);
+				cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, ptu4l[ipt], pt4l[ipt]);
 			}
 		}else{
 			for(int ipt = 0; ipt < 4; ipt++){
@@ -1494,18 +1530,21 @@ void f_glfw_stereo_view::draw_com_chsbd(const float r, const float g, const floa
 		pt4r[3] = ptsr[l];
 		if(m_budr && m_bcpr){
 			if(m_camparr.isFishEye()){
-				fisheye::undistortPoints(pt4r, ptu4, Kl, Dl, m_Rl, m_Pl);
+				fisheye::undistortPoints(pt4r, ptu4r, Kr, Dr, m_Rr, m_Pr);
 			}else{
-				undistortPoints(pt4r, ptu4, Kl, Dl, m_Rl, m_Pl);
+				undistortPoints(pt4r, ptu4r, Kr, Dr, m_Rr, m_Pr);
 			}
 			for(int ipt = 0; ipt < 4; ipt++){
-				cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, ptu4[ipt], pt4r[ipt]);
+				cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, ptu4r[ipt], pt4r[ipt]);
 			}
 		}else{
 			for(int ipt = 0; ipt < 4; ipt++){
 				cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, pt4r[ipt], pt4r[ipt]);
 			}
 		}
+
+		glColor4f(r, g, b, 1);
+
 		glBegin(GL_LINE_LOOP);
 		for(int ipt = 0; ipt < 4; ipt++)
 			glVertex2f(pt4l[ipt].x, pt4l[ipt].y);
@@ -1514,9 +1553,52 @@ void f_glfw_stereo_view::draw_com_chsbd(const float r, const float g, const floa
 		for(int ipt = 0; ipt < 4; ipt++)
 			glVertex2f(pt4r[ipt].x, pt4r[ipt].y);
 		glEnd();
+
+		if(m_bstp && m_budl && m_budr){// draw epiline
+			computeCorrespondEpilines(ptu4l, 1, m_F, line4l);
+			computeCorrespondEpilines(ptu4r, 2, m_F, line4r);
+			/*
+			double err, serr = 0;
+			for(int il = 0; il < 4; il++){
+				err = ptu4l[il].x * line4r[il][0] + ptu4l[il].y * line4r[il][1] + line4r[il][2];
+				serr += err;
+			}
+			serr = 0;
+			for(int il = 0; il < 4; il++){
+				err = ptu4r[il].x * line4l[il][0] + ptu4r[il].y * line4l[il][1] + line4l[il][2];
+				serr += err;
+			}
+			*/
+
+			for(int ipt = 0; ipt < 4; ipt++){
+				Point2f pt1, pt2;
+				double div = 1.0 / line4l[ipt][1];
+				pt1.x = 0; 
+				pt1.y = -(float)(line4l[ipt][2] * div);
+				pt2.x = (float) m_img2.cols;
+				pt2.y = -(float)((pt2.x * line4l[ipt][0] + line4l[ipt][2]) * div);
+				cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, pt1, pt1);
+				cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, pt2, pt2);
+				glColor4f(0, 1, 0, 1);
+				glBegin(GL_LINES);
+				glVertex2f(pt1.x, pt1.y);
+				glVertex2f(pt2.x, pt2.y);
+				glEnd();
+
+				div = 1.0 / line4r[ipt][1];
+				pt1.x = 0; 
+				pt1.y = -(float)(line4r[ipt][2] * div);
+				pt2.x = (float) m_img1.cols; 
+				pt2.y = -(float)((pt2.x * line4r[ipt][0] + line4r[ipt][2]) * div);
+				cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, pt1, pt1);
+				cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, pt2, pt2);
+				glBegin(GL_LINES);
+				glVertex2f(pt1.x, pt1.y);
+				glVertex2f(pt2.x, pt2.y);
+				glEnd();
+			}
+		}
 	}
-
-
 }
 
 void f_glfw_stereo_view::draw_chsbd(bool ud,
