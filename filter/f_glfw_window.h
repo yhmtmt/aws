@@ -327,6 +327,16 @@ protected:
 		const float w, const float h, 
 		vector<vector<Point2f>> & chsbds, const int num_chsbds);
 
+	void draw_com_chsbd(const float r, const float g, const float b,
+		const float xscalel, const float yscalel,
+		const float xorgl, const float yorgl,
+		const float wl, const float hl,
+		const float xscaler, const float yscaler,
+		const float xorgr, const float yorgr,
+		const float wr, const float hr
+		); 
+
+
 	void calibrate_stereo();
 	void rectify_stereo();
 	void calc_and_draw_disparity_map(Mat & img1, Mat & img2);

@@ -659,6 +659,7 @@ bool f_glfw_stereo_view::proc()
 	  reduce_chsbd(0);
 	  reduce_chsbd(1);
 	  reduce_chsbd(2);
+	  m_bred_chsbd = true;
   }
 
   { // draw images
@@ -707,10 +708,7 @@ bool f_glfw_stereo_view::proc()
 	  }
 
 	  if(m_num_chsbd_com){
-		  draw_chsbd(m_budl && m_bcpl, m_camparl, m_Rl, m_Pl, 0, 0, 1, xscale1, yscale1, -1, 0, 
-			  wn1, hn1,  m_pts_chsbdl_com, m_num_chsbd_com);
-		  draw_chsbd(m_budr && m_bcpr, m_camparr, m_Rr, m_Pr, 0, 0, 1, xscale2, yscale2, 0, 0, 
-			  wn2, hn2, m_pts_chsbdr_com, m_num_chsbd_com);
+		  draw_com_chsbd(0, 0, 1, xscale1, yscale1, -1, 0, wn1, hn1, xscale2, yscale2, 0, 0, wn2, hn2);
 	  }
   }
 
@@ -1431,6 +1429,96 @@ void f_glfw_stereo_view::draw_pixels(Mat & img)
 }
 
 
+void f_glfw_stereo_view::draw_com_chsbd(const float r, const float g, const float b,
+		const float xscalel, const float yscalel,
+		const float xorgl, const float yorgl,
+		const float wl, const float hl,
+		const float xscaler, const float yscaler,
+		const float xorgr, const float yorgr,
+		const float wr, const float hr)
+{
+	glColor4f(r, g, b, 1);
+	glLineWidth(1);
+
+	Mat Kl, Kr, Dl, Dr;
+	if(m_camparl.isFishEye()){
+		Kl = m_camparl.getCvPrjMat();
+		Dl = m_camparl.getCvDistFishEyeMat();
+	}else{
+		Kl = m_camparl.getCvPrjMat();
+		Dl = m_camparl.getCvDistMat();
+	}
+	if(m_camparr.isFishEye()){
+		Kr = m_camparr.getCvPrjMat();
+		Dr = m_camparr.getCvDistFishEyeMat();
+	}else{
+		Kr = m_camparr.getCvPrjMat();
+		Dr = m_camparr.getCvDistMat();
+	}
+
+	Size sz_chsbd(m_chsbd.par_chsbd.w, m_chsbd.par_chsbd.h);
+	int i = 0, 
+		j = sz_chsbd.width - 1,
+		k = sz_chsbd.height * sz_chsbd.width - 1, 
+		l = (sz_chsbd.height - 1) * sz_chsbd.width;
+
+	vector<Point2f> pt4l,pt4r, ptu4;
+	pt4l.resize(4);
+	pt4r.resize(4);
+
+	for(int ichsbd = 0; ichsbd < m_num_chsbd_com; ichsbd++){
+		vector<Point2f> & ptsl = m_pts_chsbdl_com[ichsbd], & ptsr = m_pts_chsbdr_com[ichsbd];
+		pt4l[0] = ptsl[i];
+		pt4l[1] = ptsl[j];
+		pt4l[2] = ptsl[k];
+		pt4l[3] = ptsl[l];
+
+		if(m_budl && m_bcpl){
+			if(m_camparl.isFishEye()){
+				fisheye::undistortPoints(pt4l, ptu4, Kl, Dl, m_Rl, m_Pl);
+			}else{
+				undistortPoints(pt4l, ptu4, Kl, Dl, m_Rl, m_Pl);
+			}
+			for(int ipt = 0; ipt < 4; ipt++){
+				cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, ptu4[ipt], pt4l[ipt]);
+			}
+		}else{
+			for(int ipt = 0; ipt < 4; ipt++){
+				cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, pt4l[ipt], pt4l[ipt]);
+			}
+		}
+
+		pt4r[0] = ptsr[i];
+		pt4r[1] = ptsr[j];
+		pt4r[2] = ptsr[k];
+		pt4r[3] = ptsr[l];
+		if(m_budr && m_bcpr){
+			if(m_camparr.isFishEye()){
+				fisheye::undistortPoints(pt4r, ptu4, Kl, Dl, m_Rl, m_Pl);
+			}else{
+				undistortPoints(pt4r, ptu4, Kl, Dl, m_Rl, m_Pl);
+			}
+			for(int ipt = 0; ipt < 4; ipt++){
+				cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, ptu4[ipt], pt4r[ipt]);
+			}
+		}else{
+			for(int ipt = 0; ipt < 4; ipt++){
+				cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, pt4r[ipt], pt4r[ipt]);
+			}
+		}
+		glBegin(GL_LINE_LOOP);
+		for(int ipt = 0; ipt < 4; ipt++)
+			glVertex2f(pt4l[ipt].x, pt4l[ipt].y);
+		glEnd();
+		glBegin(GL_LINE_LOOP);
+		for(int ipt = 0; ipt < 4; ipt++)
+			glVertex2f(pt4r[ipt].x, pt4r[ipt].y);
+		glEnd();
+	}
+
+
+}
+
 void f_glfw_stereo_view::draw_chsbd(bool ud,
 	AWSCamPar & cp, Mat & R, Mat & P, const float r, const float g, const float b,
 	const float xscale, const float yscale,
@@ -1468,14 +1556,17 @@ void f_glfw_stereo_view::draw_chsbd(bool ud,
 			pt4[2] = pts[k];
 			pt4[3] = pts[l];
 			if(ud){
-				undistortPoints(pt4, ptu4, K, D, R, P);
-				for(int i = 0; i < 4; i++){
-					cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, ptu4[i], pt);
+				if(cp.isFishEye())
+					fisheye::undistortPoints(pt4, ptu4, K, D, R, P);
+				else
+					undistortPoints(pt4, ptu4, K, D, R, P);
+				for(int ipt = 0; ipt < 4; ipt++){
+					cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, ptu4[ipt], pt);
 					glVertex2f(pt.x, pt.y);
 				}
 			}else{
-				for(int i = 0; i < 4; i++){
-					cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pt4[i], pt);
+				for(int ipt = 0; ipt < 4; ipt++){
+					cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pt4[ipt], pt);
 					glVertex2f(pt.x, pt.y);
 				}
 			}
