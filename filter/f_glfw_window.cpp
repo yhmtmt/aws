@@ -1060,7 +1060,7 @@ void f_glfw_stereo_view::rectify_stereo()
 		Kr = m_camparr.getCvPrjMat().clone();
 		Dr = m_camparr.getCvDistMat().clone();
 		stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
-			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0, 1);
+			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CALIB_ZERO_DISPARITY, -1);
 	}
 	init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2);
 	init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2);
@@ -1071,6 +1071,7 @@ void f_glfw_stereo_view::rectify_stereo()
 	cout << "Rr" << m_Rr << endl;
 	cout << "Pr" << m_Pr << endl;
 	m_brct = true;
+	m_brctst = false;
 }
 
 void f_glfw_stereo_view::save_stereo_pars()
