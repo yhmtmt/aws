@@ -321,7 +321,7 @@ protected:
 	void init_undistort(AWSCamPar & par, Size & sz, Mat & R, Mat & P, Mat & map1, Mat & map2);
 
 	void draw_pixels(Mat & img);
-	void draw_chsbd(AWSCamPar & cp, const float r, const float g, const float b,
+	void draw_chsbd(bool ud, AWSCamPar & cp, Mat & R, Mat & P, const float r, const float g, const float b,
 		const float xscale, const float yscale,
 		const float xorg, const float yorg,
 		const float w, const float h, 

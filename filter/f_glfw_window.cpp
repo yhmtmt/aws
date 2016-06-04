@@ -697,22 +697,20 @@ bool f_glfw_stereo_view::proc()
 	  yscale2 = (float)(r2 / (float) h);
 
 	  if(m_num_chsbdl){
-		  draw_chsbd(m_camparl, 1., 0, 0, xscale1, yscale1, -1, 0, 
+		  draw_chsbd(m_budl && m_bcpl, m_camparl, m_Rl, m_Pl, 1., 0, 0, xscale1, yscale1, -1, 0, 
 			  wn1, hn1, m_pts_chsbdl, m_num_chsbdl);
 	  } 
 
 	  if(m_num_chsbdr){
-		  draw_chsbd(m_camparr, 1., 0, 0, xscale2, yscale2, 0, 0, 
+		  draw_chsbd(m_budr && m_bcpr, m_camparr, m_Rr, m_Pr, 1., 0, 0, xscale2, yscale2, 0, 0, 
 			  wn2, hn2, m_pts_chsbdr, m_num_chsbdr);
 	  }
 
 	  if(m_num_chsbd_com){
-		  draw_chsbd(m_camparl, 0, 0, 1, xscale1, yscale1, -1, 0, 
-			  wn1, hn1,
-			  m_pts_chsbdl_com, m_num_chsbd_com);
-		  draw_chsbd(m_camparr, 0, 0, 1, xscale2, yscale2, 0, 0, 
-			  wn2, hn2,
-			  m_pts_chsbdr_com, m_num_chsbd_com);
+		  draw_chsbd(m_budl && m_bcpl, m_camparl, m_Rl, m_Pl, 0, 0, 1, xscale1, yscale1, -1, 0, 
+			  wn1, hn1,  m_pts_chsbdl_com, m_num_chsbd_com);
+		  draw_chsbd(m_budr && m_bcpr, m_camparr, m_Rr, m_Pr, 0, 0, 1, xscale2, yscale2, 0, 0, 
+			  wn2, hn2, m_pts_chsbdr_com, m_num_chsbd_com);
 	  }
   }
 
@@ -1433,8 +1431,8 @@ void f_glfw_stereo_view::draw_pixels(Mat & img)
 }
 
 
-void f_glfw_stereo_view::draw_chsbd(
-	AWSCamPar & cp, const float r, const float g, const float b,
+void f_glfw_stereo_view::draw_chsbd(bool ud,
+	AWSCamPar & cp, Mat & R, Mat & P, const float r, const float g, const float b,
 	const float xscale, const float yscale,
 	const float xorg, const float yorg, 
 	const float w, const float h, 
@@ -1448,6 +1446,16 @@ void f_glfw_stereo_view::draw_chsbd(
 		k = sz_chsbd.height * sz_chsbd.width - 1, 
 		l = (sz_chsbd.height - 1) * sz_chsbd.width;
 
+	Mat K, D;
+	if(cp.isFishEye()){
+		K = cp.getCvPrjMat();
+		D = cp.getCvDistFishEyeMat();
+	}else{
+		K = cp.getCvPrjMat();
+		D = cp.getCvDistMat();
+	}
+	vector<Point2f> pt4, ptu4;
+	pt4.resize(4);
 	for(int ichsbd = 0; ichsbd < num_chsbds; ichsbd++){
 		vector<Point2f> & pts = chsbds[ichsbd];
 
@@ -1455,17 +1463,22 @@ void f_glfw_stereo_view::draw_chsbd(
 		{
 			Point2f pt;
 
-			cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pts[i], pt);
-			glVertex2f(pt.x, pt.y);
-
-			cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pts[j], pt);
-			glVertex2f(pt.x, pt.y);
-
-			cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pts[k], pt);
-			glVertex2f(pt.x, pt.y);
-
-			cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pts[l], pt);
-			glVertex2f(pt.x, pt.y);
+			pt4[0] = pts[i];
+			pt4[1] = pts[j];
+			pt4[2] = pts[k];
+			pt4[3] = pts[l];
+			if(ud){
+				undistortPoints(pt4, ptu4, K, D, R, P);
+				for(int i = 0; i < 4; i++){
+					cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, ptu4[i], pt);
+					glVertex2f(pt.x, pt.y);
+				}
+			}else{
+				for(int i = 0; i < 4; i++){
+					cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pt4[i], pt);
+					glVertex2f(pt.x, pt.y);
+				}
+			}
 		}
 		glEnd();
 	}
