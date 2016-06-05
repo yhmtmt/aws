@@ -590,7 +590,7 @@ bool f_glfw_stereo_view::proc()
   }
 
   if(m_budr && m_bcpr){
-	  remap(m_img2, img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+	remap(m_img2, img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
   }else{
 	  img2 = m_img2.clone();
   }
@@ -1045,25 +1045,30 @@ void f_glfw_stereo_view::calibrate_stereo()
 void f_glfw_stereo_view::rectify_stereo()
 {
 	Size sz(m_img1.cols, m_img1.rows);
+	Mat Kl, Dl, Kr, Dr;
 	if(m_bfisheye){
-		Mat Kl, Dl, Kr, Dr;
 		Kl = m_camparl.getCvPrjMat().clone();
 		Dl = m_camparl.getCvDistFishEyeMat().clone();
 		Kr = m_camparr.getCvPrjMat().clone();
 		Dr = m_camparr.getCvDistFishEyeMat().clone();
 		fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
 			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
+		fisheye::initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_16SC2, m_mapl1, m_mapl2);
+		fisheye::initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_16SC2, m_mapr1, m_mapr2);
+
 	}else{
-		Mat Kl, Dl, Kr, Dr;
 		Kl = m_camparl.getCvPrjMat().clone();
 		Dl = m_camparl.getCvDistMat().clone();
 		Kr = m_camparr.getCvPrjMat().clone();
 		Dr = m_camparr.getCvDistMat().clone();
 		stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
 			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CALIB_ZERO_DISPARITY, -1);
+		initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_16SC2, m_mapl1, m_mapl2);
+		initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_16SC2, m_mapr1, m_mapr2);
 	}
-	init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2);
-	init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2);
+	
+//	init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2);
+//	init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2);
 	cout << "Rlr" << m_Rlr << endl;
 	cout << "Tlr" << m_Tlr << endl;
 	cout << "Rl" << m_Rl << endl;
@@ -1406,8 +1411,6 @@ void f_glfw_stereo_view::init_undistort(AWSCamPar & par, Size & sz,
 		//P = getOptimalNewCameraMatrix(K, D, sz, 1.);
 		initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
 	}
-	cout << "R" << R << endl;
-	cout << "P" << P << endl;
 }
 
 
