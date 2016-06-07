@@ -674,8 +674,8 @@ bool f_glfw_stereo_view::proc()
 	  double rx1, rx2, ry1, ry2;
 	  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
 	  rx1 = (double)w / (double)m_img1.cols; 
-	  rx2 = (double)w / (double)m_img2.cols;
 	  ry1 = (double)h / (double)m_img1.rows;
+	  rx2 = (double)w / (double)m_img2.cols;
 	  ry2 = (double)h / (double)m_img2.rows;
 	  double r1 = min(rx1, ry1), r2 = min(rx2, ry2);
 

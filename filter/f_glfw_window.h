@@ -37,6 +37,13 @@ inline void cnvCvPoint2GlPoint(const double fac_x, const double fac_y, const Poi
 	ptgl.y = -(float)(ptcv.y * fac_y - 1.0);
 }
 
+inline void cnvGlPoint2CvPoint(const float fac_x, const float fac_y, const float xorg, const float yorg, 
+							   const float w, const float h, const Point2f & ptgl, Point2f & ptcv)
+{
+	ptcv.x = (float)((ptgl.x - xorg) / fac_x);
+	ptcv.y = (float)(-(ptgl.y - yorg - h) / fac_y);
+}
+
 inline void cnvCvPoint2GlPoint(const float fac_x, const float fac_y, const float xorg, const float yorg, 
 							   const float w, const float h, const Point2f & ptcv, Point2f & ptgl)
 {
@@ -185,7 +192,6 @@ protected:
   
   static void mouse_button_callback(GLFWwindow* pwindow, int button, int action, int mods)
   {
-    cout << "Mouse button" << endl;
     MapGLFWin::iterator itr = m_map_glfwin.find(pwindow);
     f_glfw_window * ptr = itr->second;
     ptr->_mouse_button_callback(button, action, mods);
@@ -367,6 +373,96 @@ protected:
 	
 	virtual bool init_run();
 	virtual void destroy_run();
+
+	Point2f m_pos_mouse;
+	int m_num_com_pts;
+	vector<Point2f> m_ptsl, m_ptsr;  // clicked point
+	vector<Point2f> m_ptsul, m_ptsur; // undistort point
+	Point2f m_ptl, m_ptr;
+	bool m_bptl, m_bptr;
+  virtual void _mouse_button_callback(int button, int action, int mods)
+  {
+	  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS){
+		  if(m_pos_mouse.x > -1 && m_pos_mouse.x < 0 && m_pos_mouse.y > 0 && m_pos_mouse.y < 1 && !m_bptl && !m_budl){
+			  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
+			  double rx1 = (double)w / (double)m_img1.cols; 
+			  double ry1 = (double)h / (double)m_img1.rows;
+			  double r1 = min(rx1, ry1);
+			  Size sz1((int)(r1 * m_img1.cols), (int)(r1 * m_img1.rows));
+			  float wn1 = (float)((double) sz1.width / (double) w);
+			  float hn1 = (float)((double) sz1.height / (double) h);
+			  float xscale1 = (float)(r1 / (float) w);
+			  float yscale1 = (float)(r1 / (float) h);
+			  cnvGlPoint2CvPoint(xscale1, yscale1, -1, 0, wn1, hn1, m_pos_mouse, m_ptl);
+			  m_bptl = true;
+		  }
+		  if(m_pos_mouse.x > 0 && m_pos_mouse.x < 1 && m_pos_mouse.y > 0 && m_pos_mouse.y < 1 && !m_bptr && !m_budr){
+			  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
+			  double rx2 = (double)w / (double)m_img2.cols; 
+			  double ry2 = (double)h / (double)m_img2.rows;
+			  double r2 = min(rx2, ry2);
+			  Size sz2((int)(r2 * m_img2.cols), (int)(r2 * m_img2.rows));
+			  float wn2 = (float)((double) sz2.width / (double) w);
+			  float hn2 = (float)((double) sz2.height / (double) h);
+			  float xscale2 = (float)(r2 / (float) w);
+			  float yscale2 = (float)(r2 / (float) h);
+			  cnvGlPoint2CvPoint(xscale2, yscale2, 0, 1, wn2, hn2, m_pos_mouse, m_ptr);
+			  m_bptl = true;
+		  }
+	  }
+
+	  if(m_bptl && m_bptr){
+		  m_ptsl.push_back(m_ptl);
+		  m_ptsr.push_back(m_ptr);
+		  m_num_com_pts++;
+		  m_bptl = m_bptr = false;
+	  }
+
+  }
+
+  virtual void _cursor_position_callback(double xpos, double ypos)
+  {
+	  m_pos_mouse.x = (float)(2.0 * xpos / (double)m_sz_win.width - 1.0);
+	  m_pos_mouse.y = (float)(1.0 - 2.0 * ypos / (double)m_sz_win.height);
+	  if(m_bptl || m_bptr){
+		  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
+		  Point2f pt0;
+		  float rx, ry, r, wn, hn, xscale, yscale, xorg, yorg;
+		  Size sz;
+		  if(m_bptl){
+			  pt0 = m_ptl;
+			  rx = (float)((double)w / (double)m_img1.cols); 
+			  ry = (float)((double)h / (double)m_img1.rows);
+			  r = min(rx, ry);
+			  sz = Size((int)(r * m_img1.cols), (int)(r * m_img1.rows));
+			  wn = (float)((double) sz.width / (double) w);
+			  hn = (float)((double) sz.height / (double) h);
+			  xscale = (float)(r / (float) w);
+			  yscale = (float)(r / (float) h);
+			  xorg = -1.;
+			  yorg = 0.;
+		  }
+		  if(m_bptr){
+			  pt0 = m_ptr;
+			  rx = (float)((double)w / (double)m_img2.cols); 
+			  ry = (float)((double)h / (double)m_img2.rows);
+			  r = min(rx, ry);
+			  sz = Size((int)(r * m_img2.cols), (int)(r * m_img2.rows));
+			  wn = (float)((double) sz.width / (double) w);
+			  hn = (float)((double) sz.height / (double) h);
+			  xscale = (float)(r / (float) w);
+			  yscale = (float)(r / (float) h);
+			  xorg = 0.;
+			  yorg = 1.;
+		  }
+		  cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, wn, hn, pt0, pt0);
+		  glBegin(GL_LINES);
+		  glVertex2f(pt0.x, pt0.y);
+		  glVertex2f(m_pos_mouse.x, m_pos_mouse.y);
+		  glEnd();
+	  }
+  }
+
 public:
 	f_glfw_stereo_view(const char * name);
 	virtual ~f_glfw_stereo_view()
