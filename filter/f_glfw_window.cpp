@@ -419,7 +419,8 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_bsvstp(false), m_bldstp(false),
 	m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix_k3(false),
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
-	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50)
+	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50),
+	m_bptl(false), m_bptr(false), m_num_com_pts(0)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -746,6 +747,49 @@ bool f_glfw_stereo_view::proc()
 	  m_bldstp = false;
   }
 
+  if(m_bptl || m_bptr){
+	  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
+	  Point2f pt0;
+	  float rx, ry, r, wn, hn, xscale, yscale, xorg, yorg;
+	  Size sz;
+	  if(m_bptl){
+		  pt0 = m_ptl;
+		  rx = (float)((double)w / (double)m_img1.cols); 
+		  ry = (float)((double)h / (double)m_img1.rows);
+		  r = min(rx, ry);
+		  sz = Size((int)(r * m_img1.cols), (int)(r * m_img1.rows));
+		  wn = (float)((double) sz.width / (double) w);
+		  hn = (float)((double) sz.height / (double) h);
+		  xscale = (float)(r / (float) w);
+		  yscale = (float)(r / (float) h);
+		  xorg = -1.;
+		  yorg = 0.;
+	  }
+	  if(m_bptr){
+		  pt0 = m_ptr;
+		  rx = (float)((double)w / (double)m_img2.cols); 
+		  ry = (float)((double)h / (double)m_img2.rows);
+		  r = min(rx, ry);
+		  sz = Size((int)(r * m_img2.cols), (int)(r * m_img2.rows));
+		  wn = (float)((double) sz.width / (double) w);
+		  hn = (float)((double) sz.height / (double) h);
+		  xscale = (float)(r / (float) w);
+		  yscale = (float)(r / (float) h);
+		  xorg = 0.;
+		  yorg = 0.;
+	  }
+	  cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, wn, hn, pt0, pt0);
+
+	  glColor4f(1., 0, 0, 1);
+	  glBegin(GL_LINES);
+	  glVertex2f(pt0.x, pt0.y);
+	  glVertex2f(m_pos_mouse.x, m_pos_mouse.y);
+	  glEnd();
+  }
+
+  if(m_num_com_pts){
+
+  }
 
   glfwSwapBuffers(pwin());
   glfwPollEvents();
