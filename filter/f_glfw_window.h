@@ -326,6 +326,10 @@ protected:
 	void calibrate(int icam /* 0 or 1 */);
 	void init_undistort(AWSCamPar & par, Size & sz, Mat & R, Mat & P, Mat & map1, Mat & map2);
 
+	int m_w, m_h;
+	float m_r1, m_r2, m_rx1, m_ry1, m_rx2, m_ry2, m_wn1, m_hn1, m_wn2, m_hn2, m_xscale1, m_yscale1, m_xscale2, m_yscale2;
+	Size m_sz1, m_sz2;
+
 	void draw_pixels(Mat & img);
 	void draw_chsbd(bool ud, AWSCamPar & cp, Mat & R, Mat & P, const float r, const float g, const float b,
 		const float xscale, const float yscale,
@@ -378,46 +382,22 @@ protected:
 	int m_num_com_pts;
 	vector<Point2f> m_ptsl, m_ptsr;  // clicked point
 	vector<Point2f> m_ptsul, m_ptsur; // undistort point
-	Point2f m_ptl, m_ptr;
+	Point2f m_ptl, m_ptr, m_glptl, m_glptr;
 	bool m_bptl, m_bptr;
   virtual void _mouse_button_callback(int button, int action, int mods)
   {
 	  if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS){
 		  if(m_pos_mouse.x > -1 && m_pos_mouse.x < 0 && m_pos_mouse.y > 0 && m_pos_mouse.y < 1 && !m_bptl && !m_budl){
-			  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
-			  double rx1 = (double)w / (double)m_img1.cols; 
-			  double ry1 = (double)h / (double)m_img1.rows;
-			  double r1 = min(rx1, ry1);
-			  Size sz1((int)(r1 * m_img1.cols), (int)(r1 * m_img1.rows));
-			  float wn1 = (float)((double) sz1.width / (double) w);
-			  float hn1 = (float)((double) sz1.height / (double) h);
-			  float xscale1 = (float)(r1 / (float) w);
-			  float yscale1 = (float)(r1 / (float) h);
-			  cnvGlPoint2CvPoint(xscale1, yscale1, -1, 0, wn1, hn1, m_pos_mouse, m_ptl);
+			  m_ptl = m_pos_mouse;
+			  cnvGlPoint2CvPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, m_pos_mouse, m_glptl);
 			  m_bptl = true;
 		  }
 		  if(m_pos_mouse.x > 0 && m_pos_mouse.x < 1 && m_pos_mouse.y > 0 && m_pos_mouse.y < 1 && !m_bptr && !m_budr){
-			  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
-			  double rx2 = (double)w / (double)m_img2.cols; 
-			  double ry2 = (double)h / (double)m_img2.rows;
-			  double r2 = min(rx2, ry2);
-			  Size sz2((int)(r2 * m_img2.cols), (int)(r2 * m_img2.rows));
-			  float wn2 = (float)((double) sz2.width / (double) w);
-			  float hn2 = (float)((double) sz2.height / (double) h);
-			  float xscale2 = (float)(r2 / (float) w);
-			  float yscale2 = (float)(r2 / (float) h);
-			  cnvGlPoint2CvPoint(xscale2, yscale2, 0, 0, wn2, hn2, m_pos_mouse, m_ptr);
+			  m_ptr = m_pos_mouse;
+			  cnvGlPoint2CvPoint(m_xscale2, m_yscale2, 0, 0, m_wn2, m_hn2, m_pos_mouse, m_glptr);
 			  m_bptr = true;
 		  }
 	  }
-
-	  if(m_bptl && m_bptr){
-		  m_ptsl.push_back(m_ptl);
-		  m_ptsr.push_back(m_ptr);
-		  m_num_com_pts++;
-		  m_bptl = m_bptr = false;
-	  }
-
   }
 
   virtual void _cursor_position_callback(double xpos, double ypos)

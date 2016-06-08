@@ -561,8 +561,6 @@ bool f_glfw_stereo_view::proc()
 	  m_bsync = true;
   }
 
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
   if(m_num_chsbdl && m_bcbl){ //calibrate left camera
 	  calibrate(0);
 	  m_bcbl = false;
@@ -576,7 +574,7 @@ bool f_glfw_stereo_view::proc()
 	  calibrate_stereo();
   }
 
-  if(m_brctst){
+  if(m_bcpl && m_bcpr && m_bstp && m_brctst){
 	  rectify_stereo();
   }
 
@@ -672,25 +670,32 @@ bool f_glfw_stereo_view::proc()
   { // draw images
 	  Mat wimg1, wimg2;
 
-	  double rx1, rx2, ry1, ry2;
-	  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
-	  rx1 = (double)w / (double)m_img1.cols; 
-	  ry1 = (double)h / (double)m_img1.rows;
-	  rx2 = (double)w / (double)m_img2.cols;
-	  ry2 = (double)h / (double)m_img2.rows;
-	  double r1 = min(rx1, ry1), r2 = min(rx2, ry2);
+	  m_w = m_sz_win.width >> 1;
+      m_h = m_sz_win.height >> 1;
+	  m_rx1 = (float)((double)m_w / (double)m_img1.cols); 
+	  m_ry1 = (float)((double)m_h / (double)m_img1.rows);
+	  m_rx2 = (float)((double)m_w / (double)m_img2.cols);
+	  m_ry2 = (float)((double)m_h / (double)m_img2.rows);
+	  m_r1 = min(m_rx1, m_ry1);
+	  m_r2 = min(m_rx2, m_ry2);
+	  m_sz1.width = (int)(m_r1 * img1.cols);
+	  m_sz1.height = (int)(m_r1 * img1.rows);
+	  m_sz2.width = (int)(m_r2 * img2.cols);
+	  m_sz2.height = (int)(m_r2 * img2.rows);
+	  m_wn1 = (float)((double) m_sz1.width / (double) m_w);
+	  m_hn1 = (float)((double) m_sz1.height / (double) m_h);
+	  m_wn2 = (float)((double) m_sz2.width / (double) m_w);
+	  m_hn2 = (float)((double) m_sz2.height / (double) m_h);
+	  m_xscale1 = (float)(m_r1 / (float) m_w);
+	  m_yscale1 = (float)(m_r1 / (float) m_h);
+	  m_xscale2 = (float)(m_r2 / (float) m_w);
+	  m_yscale2 = (float)(m_r2 / (float) m_h);
 
-	  Size sz1((int)(r1 * img1.cols), (int)(r1 * img1.rows)), 
-		  sz2((int)(r2 * img2.cols), (int)(r2 * img2.rows));
+	  resize(img1, wimg1, m_sz1);
+	  resize(img2, wimg2, m_sz2);
 
-	  float wn1, hn1, wn2, hn2;
-	  wn1 = (float)((double) sz1.width / (double) w);
-	  hn1 = (float)((double) sz1.height / (double) h);
-	  wn2 = (float)((double) sz2.width / (double) w);
-	  hn2 = (float)((double) sz2.height / (double) h);
-
-	  resize(img1, wimg1, sz1);
-	  resize(img2, wimg2, sz2);
+	  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	  glRasterPos2i(-1, 0);
 	  draw_pixels(wimg1);
@@ -698,24 +703,20 @@ bool f_glfw_stereo_view::proc()
 	  glRasterPos2i(0, 0);
 	  draw_pixels(wimg2);
 
-	  float xscale1, yscale1, xscale2, yscale2;
-	  xscale1 = (float)(r1 / (float) w);
-	  yscale1 = (float)(r1 / (float) h);
-	  xscale2 = (float)(r2 / (float) w);
-	  yscale2 = (float)(r2 / (float) h);
-
 	  if(m_num_chsbdl){
-		  draw_chsbd(m_budl && m_bcpl, m_camparl, m_Rl, m_Pl, 1., 0, 0, xscale1, yscale1, -1, 0, 
-			  wn1, hn1, m_pts_chsbdl, m_num_chsbdl);
+		  draw_chsbd(m_budl && m_bcpl, m_camparl, m_Rl, m_Pl, 1., 0, 0, m_xscale1, m_yscale1, -1, 0, 
+			  m_wn1, m_hn1, m_pts_chsbdl, m_num_chsbdl);
 	  } 
 
 	  if(m_num_chsbdr){
-		  draw_chsbd(m_budr && m_bcpr, m_camparr, m_Rr, m_Pr, 1., 0, 0, xscale2, yscale2, 0, 0, 
-			  wn2, hn2, m_pts_chsbdr, m_num_chsbdr);
+		  draw_chsbd(m_budr && m_bcpr, m_camparr, m_Rr, m_Pr, 1., 0, 0, m_xscale2, m_yscale2, 0, 0, 
+			  m_wn2, m_hn2, m_pts_chsbdr, m_num_chsbdr);
 	  }
 
 	  if(m_num_chsbd_com){
-		  draw_com_chsbd(0, 0, 1, xscale1, yscale1, -1, 0, wn1, hn1, xscale2, yscale2, 0, 0, wn2, hn2);
+		  draw_com_chsbd(0, 0, 1, 
+			  m_xscale1, m_yscale1, -1, 0, m_wn1,m_hn1, 
+			  m_xscale2, m_yscale2, 0, 0, m_wn2, m_hn2);
 	  }
   }
 
@@ -748,33 +749,27 @@ bool f_glfw_stereo_view::proc()
   }
 
   if(m_bptl || m_bptr){
-	  int w = m_sz_win.width >> 1, h = m_sz_win.height >> 1;
 	  Point2f pt0;
-	  float rx, ry, r, wn, hn, xscale, yscale, xorg, yorg;
+	  float wn, hn, xscale, yscale, xorg, yorg;
 	  Size sz;
+
 	  if(m_bptl){
-		  pt0 = m_ptl;
-		  rx = (float)((double)w / (double)m_img1.cols); 
-		  ry = (float)((double)h / (double)m_img1.rows);
-		  r = min(rx, ry);
-		  sz = Size((int)(r * m_img1.cols), (int)(r * m_img1.rows));
-		  wn = (float)((double) sz.width / (double) w);
-		  hn = (float)((double) sz.height / (double) h);
-		  xscale = (float)(r / (float) w);
-		  yscale = (float)(r / (float) h);
+		  pt0 = m_glptl;
+		  sz = m_sz1;
+		  wn = m_wn1;
+		  hn = m_hn1;
+		  xscale = m_xscale1;
+		  yscale = m_yscale1;
 		  xorg = -1.;
 		  yorg = 0.;
 	  }
 	  if(m_bptr){
-		  pt0 = m_ptr;
-		  rx = (float)((double)w / (double)m_img2.cols); 
-		  ry = (float)((double)h / (double)m_img2.rows);
-		  r = min(rx, ry);
-		  sz = Size((int)(r * m_img2.cols), (int)(r * m_img2.rows));
-		  wn = (float)((double) sz.width / (double) w);
-		  hn = (float)((double) sz.height / (double) h);
-		  xscale = (float)(r / (float) w);
-		  yscale = (float)(r / (float) h);
+		  pt0 = m_glptr;
+		  sz = m_sz2;
+		  wn = m_wn2;
+		  hn = m_hn2;
+		  xscale = m_xscale2;
+		  yscale = m_yscale2;
 		  xorg = 0.;
 		  yorg = 0.;
 	  }
@@ -787,8 +782,61 @@ bool f_glfw_stereo_view::proc()
 	  glEnd();
   }
 
-  if(m_num_com_pts){
+  if(m_bptl && m_bptr){
+	  m_ptsl.push_back(m_glptl);
+	  m_ptsr.push_back(m_glptr);
+	  m_num_com_pts++;
+	  m_bptl = m_bptr = false;
+  }
 
+  if(m_num_com_pts){
+	  if(m_budl){
+		  if(m_camparl.isFishEye()){
+			  fisheye::undistortPoints(m_ptsl, m_ptsul, 
+				  m_camparl.getCvPrjMat(), m_camparl.getCvDistFishEyeMat(), 
+				  m_Rl, m_Pl);
+		  }else{
+			  undistortPoints(m_ptsl, m_ptsul, 
+				  m_camparl.getCvPrjMat(), m_camparl.getCvDistMat(), 
+				  m_Rl, m_Pl);			 
+			  /*
+			  for(int ipt = 0; ipt < m_num_com_pts; ipt++){
+				  // check undistort points and remap correspondance
+
+			  }
+			  */
+		  }
+	  }
+	  if(m_budr){
+		  if(m_camparr.isFishEye()){
+			  fisheye::undistortPoints(m_ptsr, m_ptsur, 
+				  m_camparr.getCvPrjMat(), m_camparl.getCvDistFishEyeMat(), 
+				  m_Rr, m_Pr);
+		  }else{
+			  undistortPoints(m_ptsr, m_ptsur, 
+				  m_camparr.getCvPrjMat(), m_camparr.getCvDistMat(), 
+				  m_Rr, m_Pr);
+		  }
+	  }
+
+	  for(int ipt = 0; ipt < m_num_com_pts; ipt++){
+		  Point2f ptl = m_budl ? m_ptsul[ipt] : m_ptsl[ipt];
+		  cnvCvPoint2GlPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, ptl, ptl);
+		  Point2f ptr = m_budr ? m_ptsur[ipt] : m_ptsr[ipt];
+		  cnvCvPoint2GlPoint(m_xscale2, m_yscale2, 0, 0, m_wn2, m_hn2, ptr, ptr);
+		  glColor4f(1, 1, 0, 1);
+
+		  glPointSize(3.f);
+		  glBegin(GL_POINTS);
+		  glVertex2f(ptl.x, ptl.y);
+		  glVertex2f(ptr.x, ptr.y);
+		  glEnd();
+
+		  glBegin(GL_LINES);
+		  glVertex2f(ptl.x, ptl.y);
+		  glVertex2f(ptr.x, ptr.y);
+		  glEnd();		  
+	  }
   }
 
   glfwSwapBuffers(pwin());
@@ -1097,8 +1145,8 @@ void f_glfw_stereo_view::rectify_stereo()
 		Dr = m_camparr.getCvDistFishEyeMat().clone();
 		fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
 			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
-		fisheye::initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_16SC2, m_mapl1, m_mapl2);
-		fisheye::initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_16SC2, m_mapr1, m_mapr2);
+		fisheye::initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_32FC1, m_mapl1, m_mapl2);
+		fisheye::initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_32FC1, m_mapr1, m_mapr2);
 
 	}else{
 		Kl = m_camparl.getCvPrjMat().clone();
@@ -1107,8 +1155,8 @@ void f_glfw_stereo_view::rectify_stereo()
 		Dr = m_camparr.getCvDistMat().clone();
 		stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
 			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CALIB_ZERO_DISPARITY, -1);
-		initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_16SC2, m_mapl1, m_mapl2);
-		initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_16SC2, m_mapr1, m_mapr2);
+		initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_32FC1, m_mapl1, m_mapl2);
+		initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_32FC1, m_mapr1, m_mapr2);		
 	}
 	
 //	init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2);
@@ -1447,13 +1495,13 @@ void f_glfw_stereo_view::init_undistort(AWSCamPar & par, Size & sz,
 		K = par.getCvPrjMat().clone();
 		D = par.getCvDistFishEyeMat().clone();
 		//fisheye::estimateNewCameraMatrixForUndistortRectify(K, D, sz, R, P);
-		fisheye::initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
+		fisheye::initUndistortRectifyMap(K, D, R, P, sz, CV_32FC1, map1, map2);
 	}else{
 		Mat K, D;
 		K = par.getCvPrjMat().clone();
 		D = par.getCvDistMat().clone();
 		//P = getOptimalNewCameraMatrix(K, D, sz, 1.);
-		initUndistortRectifyMap(K, D, R, P, sz, CV_16SC2, map1, map2);
+		initUndistortRectifyMap(K, D, R, P, sz, CV_32FC1, map1, map2);
 	}
 }
 
