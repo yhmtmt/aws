@@ -51,6 +51,11 @@ protected:
 	ch_image_ref * m_ch_img1, * m_ch_img2;
 	ch_image_ref * m_ch_disp;
 
+	enum s_out{
+		DISP, IMG1, IMG2
+	} m_out;
+	static const char * m_str_out[IMG2 + 1];
+
 	Mat m_img1, m_img2, m_disp;
 	long long m_timg1, m_timg2;
 	long long m_ifrm1, m_ifrm2;
@@ -102,8 +107,6 @@ protected:
 	} m_sgbm_par;
 
 	Ptr<StereoBM> m_bm;
-
-
 public:
 	f_stereo_disp(const char * name);
 	virtual ~f_stereo_disp();

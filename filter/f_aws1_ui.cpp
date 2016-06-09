@@ -48,7 +48,7 @@ const char * f_aws1_ui::m_str_aws1_ui_mode[AUM_UNDEF] = {
 };
 
 const char * f_aws1_ui::m_str_imv[IMV_UNDEF] = {
-	"img1", "img2", "img12"
+	"img1", "img2", "disp", "img12", "img12d"
 };
 
 f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
@@ -154,7 +154,7 @@ void f_aws1_ui::ui_force_ctrl_stop()
 	}
 }
 
-void f_aws1_ui::cnv_img_to_view(Mat & img, float av, Size & sz)
+void f_aws1_ui::cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy)
 {
 	if(!img.empty()){
 		if(sz.width != img.cols || sz.height != img.rows){
@@ -176,7 +176,7 @@ void f_aws1_ui::cnv_img_to_view(Mat & img, float av, Size & sz)
 			img = tmp;
 		}
 
-		awsFlip(img, m_img_x_flip, m_img_y_flip, false);
+		awsFlip(img, flipx, flipy, false);
 		GLenum fmt = GL_LUMINANCE;
 		GLenum clr = GL_UNSIGNED_BYTE;
 		switch(img.type()){
@@ -213,7 +213,7 @@ void f_aws1_ui::ui_show_img()
 			if(!img.empty()){
 				glRasterPos2i(-1, -1);
 				sz = m_sz_win;
-				cnv_img_to_view(img, av, sz);
+				cnv_img_to_view(img, av, sz, m_img_x_flip, m_img_y_flip);
 			}
 		}
 		break;
@@ -223,7 +223,7 @@ void f_aws1_ui::ui_show_img()
 			if(!img.empty()){
 				glRasterPos2i(-1, -1);
 				sz = m_sz_win;
-				cnv_img_to_view(img, av, sz);
+				cnv_img_to_view(img, av, sz, m_img2_x_flip, m_img2_y_flip);
 			}
 		}
 		break;
@@ -233,9 +233,10 @@ void f_aws1_ui::ui_show_img()
 			if(!img.empty()){
 				glRasterPos2i(-1, -1);
 				sz = m_sz_win;
-				cnv_img_to_view(img, av, sz);
+				cnv_img_to_view(img, av, sz, false, true);
 			}
 		}
+		break;
 	case IMV_IMG12:
 		if(m_ch_img && m_ch_img2){			
 			img = m_ch_img->get_img(timg);
@@ -243,14 +244,14 @@ void f_aws1_ui::ui_show_img()
 				glRasterPos2i(-1, 0);
 				sz.width = m_sz_win.width >> 1;
 				sz.height = m_sz_win.height >> 1;
-				cnv_img_to_view(img ,av, sz);
+				cnv_img_to_view(img ,av, sz, m_img_x_flip, m_img_y_flip);
 			}
 			img2 = m_ch_img2->get_img(timg);
 			if(!img2.empty()){
 				glRasterPos2i(0, 0);
 				sz.width = m_sz_win.width >> 1;
 				sz.height = m_sz_win.height >> 1;
-				cnv_img_to_view(img2, av, sz);
+				cnv_img_to_view(img2, av, sz, m_img2_x_flip, m_img2_y_flip);
 			}
 		}
 		break;
@@ -261,21 +262,21 @@ void f_aws1_ui::ui_show_img()
 				glRasterPos2i(-1, 0);
 				sz.width = m_sz_win.width >> 1;
 				sz.height = m_sz_win.height >> 1;
-				cnv_img_to_view(img ,av, sz);
+				cnv_img_to_view(img ,av, sz, m_img_x_flip, m_img_y_flip);
 			}
 			img2 = m_ch_img2->get_img(timg);
 			if(!img2.empty()){
 				glRasterPos2i(0, 0);
 				sz.width = m_sz_win.width >> 1;
 				sz.height = m_sz_win.height >> 1;
-				cnv_img_to_view(img2, av, sz);
+				cnv_img_to_view(img2, av, sz, m_img2_x_flip, m_img2_y_flip);
 			}
 			disp = m_ch_disp->get_img(timg);
 			if(!disp.empty()){
 				glRasterPos2f(-0.5, -1.);
 				sz.width = m_sz_win.width >> 1;
 				sz.height = m_sz_win.height >> 1;
-				cnv_img_to_view(disp, av, sz);
+				cnv_img_to_view(disp, av, sz, false, true);
 			}
 		}
 	default:

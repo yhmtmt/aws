@@ -40,14 +40,21 @@ using namespace cv;
 #include "f_misc.h"
 
 ////////////////////////////////////////////////////////// f_stereo_disp members
+const char * f_stereo_disp::m_str_out[IMG2 + 1] = {
+	"disp", "img1", "img2"
+};
+
 f_stereo_disp::f_stereo_disp(const char * name): f_misc(name), m_ch_img1(NULL), m_ch_img2(NULL),
 	m_ch_disp(NULL), m_bflipx(false), m_bflipy(false), m_bnew(false), m_bsync(false),
-	m_bpl(false), m_bpr(false), m_bstp(false), m_brct(false)
+	m_bpl(false), m_bpr(false), m_bstp(false), m_brct(false),
+	m_timg1(-1), m_timg2(-1), m_ifrm1(-1), m_ifrm2(-1), m_out(DISP)
 {
 	// channels
 	register_fpar("ch_caml", (ch_base**)&m_ch_img1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("ch_camr", (ch_base**)&m_ch_img2, typeid(ch_image_ref).name(), "Right camera channel");
 	register_fpar("ch_disp", (ch_base**)&m_ch_disp, typeid(ch_image_ref).name(), "Disparity image channel."); 
+
+	register_fpar("out", (int*)&m_out, IMG2 + 1, m_str_out, "Output image type (for debug)");
 
 	// file path for camera parameters
 	register_fpar("fcpl", m_fcpl, 1024, "Camera parameter file of left camera.");
@@ -134,6 +141,9 @@ bool f_stereo_disp::proc()
 	Mat img1 = m_ch_img1->get_img(timg1, ifrm1);
 	Mat img2 = m_ch_img2->get_img(timg2, ifrm2);
 
+	if(img1.empty() || img2.empty())
+		return true;
+
 	if(m_timg1 != timg1){
 		m_img1 = img1.clone();
 		m_timg1 = timg1;
@@ -151,11 +161,11 @@ bool f_stereo_disp::proc()
 	if(m_ifrm1 == m_ifrm2)
 		m_bsync =  true;
 
-	if(!m_bsync)
+	if(!m_bsync || !m_bnew)
 		return true;
 
 	if(m_bpl && m_bpr && m_bstp && !m_brct){
-		if(m_brct = rectify_stereo()){
+		if(!(m_brct = rectify_stereo())){
 			cerr << "Failed to rectify stereo images." << endl;
 			return false;
 		}
@@ -182,12 +192,25 @@ bool f_stereo_disp::proc()
 	remap(m_img1, m_img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
 	remap(m_img2, m_img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
 
+	Mat disps16;
 	if(m_sgbm_par.m_bsg)
-		m_sgbm->compute(m_img1, m_img2, m_disp);
+		m_sgbm->compute(m_img1, m_img2, disps16);
 	else
-		m_bm->compute(m_img1, m_img2, m_disp);
+		m_bm->compute(m_img1, m_img2, disps16);
 
-	m_ch_disp->set_img(m_disp, m_timg1, m_ifrm1);
+	disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
+
+	switch(m_out){
+	case DISP:
+		m_ch_disp->set_img(m_disp, m_timg1, m_ifrm1);
+		break;
+	case IMG1:
+		m_ch_disp->set_img(m_img1, m_timg1, m_ifrm1);
+		break;
+	case IMG2:
+		m_ch_disp->set_img(m_img2, m_timg2, m_ifrm2);
+		break;
+	}
 
 	m_bsync = false;
 	m_bnew = false;
