@@ -222,13 +222,13 @@ class f_aws1_ui: public f_glfw_window
   ch_map * m_ch_map;
   ch_obj * m_ch_obj;
   ch_ais_obj * m_ch_ais_obj;
-  ch_image_ref * m_ch_img, * m_ch_img2;
+  ch_image_ref * m_ch_img, * m_ch_img2, * m_ch_disp;
   bool m_img_x_flip, m_img_y_flip;
   bool m_img2_x_flip, m_img2_y_flip;
  void cnv_img_to_view(Mat & img, float av, Size & sz);
 
   enum e_imv{
-	  IMV_IMG1, IMV_IMG2, IMV_IMG12, IMV_UNDEF
+	  IMV_IMG1, IMV_IMG2, IMV_DISP, IMV_IMG12, IMV_IMG12D, IMV_UNDEF
   } m_imv;
   static const char * m_str_imv[IMV_UNDEF];
 

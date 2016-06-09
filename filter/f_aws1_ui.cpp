@@ -55,7 +55,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					m_state(NULL), m_ch_sys(NULL),
 					 m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL),
 					 m_ch_map(NULL),
-					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL), m_ch_img2(NULL),
+					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL), m_ch_img2(NULL), m_ch_disp(NULL),
 					 m_imv(IMV_IMG1),
 					 m_img_x_flip(false), m_img_y_flip(false), m_img2_x_flip(false), m_img2_y_flip(false),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
@@ -73,6 +73,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("ch_ais_obj", (ch_base**)&m_ch_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel");
   register_fpar("ch_img", (ch_base**)&m_ch_img, typeid(ch_image_ref).name(), "Image channel");
   register_fpar("ch_img2", (ch_base**)&m_ch_img2, typeid(ch_image_ref).name(), "Second Image channel.");
+  register_fpar("ch_disp", (ch_base**)&m_ch_disp, typeid(ch_image_ref).name(), "Disparity image between ch_img and ch_img2");
 
   register_fpar("flip_img_x", &m_img_x_flip, "Image in ch_img is fliped in x direction.");
   register_fpar("flip_img_y", &m_img_y_flip, "Image in ch_img is fliped in y direction.");
@@ -202,7 +203,7 @@ void f_aws1_ui::ui_show_img()
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	long long timg;
-	Mat img, img2;
+	Mat img, img2, disp;
 	float av = m_xscale * m_iyscale;
 	Size sz;
 	switch(m_imv){
@@ -226,6 +227,15 @@ void f_aws1_ui::ui_show_img()
 			}
 		}
 		break;
+	case IMV_DISP:
+		if(m_ch_disp){
+			img = m_ch_disp->get_img(timg);
+			if(!img.empty()){
+				glRasterPos2i(-1, -1);
+				sz = m_sz_win;
+				cnv_img_to_view(img, av, sz);
+			}
+		}
 	case IMV_IMG12:
 		if(m_ch_img && m_ch_img2){			
 			img = m_ch_img->get_img(timg);
@@ -244,6 +254,30 @@ void f_aws1_ui::ui_show_img()
 			}
 		}
 		break;
+	case IMV_IMG12D:
+		if(m_ch_img && m_ch_img2 && m_ch_disp){
+			img = m_ch_img->get_img(timg);
+			if(!img.empty()){				
+				glRasterPos2i(-1, 0);
+				sz.width = m_sz_win.width >> 1;
+				sz.height = m_sz_win.height >> 1;
+				cnv_img_to_view(img ,av, sz);
+			}
+			img2 = m_ch_img2->get_img(timg);
+			if(!img2.empty()){
+				glRasterPos2i(0, 0);
+				sz.width = m_sz_win.width >> 1;
+				sz.height = m_sz_win.height >> 1;
+				cnv_img_to_view(img2, av, sz);
+			}
+			disp = m_ch_disp->get_img(timg);
+			if(!disp.empty()){
+				glRasterPos2f(-0.5, -1.);
+				sz.width = m_sz_win.width >> 1;
+				sz.height = m_sz_win.height >> 1;
+				cnv_img_to_view(disp, av, sz);
+			}
+		}
 	default:
 		return;
 	}
