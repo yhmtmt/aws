@@ -582,17 +582,8 @@ bool f_glfw_stereo_view::proc()
   m_timg2 = timg2;
 
   Mat img1, img2;
-  if(m_budl && m_bcpl){ 
-	  remap(m_img1, img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
-  }else{
-	  img1 = m_img1.clone();
-  }
-
-  if(m_budr && m_bcpr){
-	remap(m_img2, img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
-  }else{
-	  img2 = m_img2.clone();
-  }
+  img1 = m_img1.clone();
+  img2 = m_img2.clone();
 
   if(m_bldcp){
 	  m_bcpl = m_camparl.read(m_fcpl);
@@ -617,6 +608,14 @@ bool f_glfw_stereo_view::proc()
 
   awsFlip(img1, m_bflipx, m_bflipy, false);
   awsFlip(img2, m_bflipx, m_bflipy, false);
+
+  if(m_budl && m_bcpl){ 
+	  remap(img1, img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+  }
+
+  if(m_budr && m_bcpr){
+	  remap(img2, img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+  }
 
   if(m_bchsbd && m_bdet_chsbd && m_bsync){
 	  s_obj obj;
@@ -800,11 +799,9 @@ bool f_glfw_stereo_view::proc()
 				  m_camparl.getCvPrjMat(), m_camparl.getCvDistMat(), 
 				  m_Rl, m_Pl);			 
 			  /*
-			  for(int ipt = 0; ipt < m_num_com_pts; ipt++){
-				  // check undistort points and remap correspondance
-
-			  }
-			  */
+			  check_undistort(m_ptsl, m_ptsul, 
+				  m_camparl.getCvPrjMat(), m_camparl.getCvDistMat(), m_Rl, m_Pl, m_mapl1, m_mapl2);
+				  */
 		  }
 	  }
 	  if(m_budr){
@@ -1147,7 +1144,6 @@ void f_glfw_stereo_view::rectify_stereo()
 			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
 		fisheye::initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_32FC1, m_mapl1, m_mapl2);
 		fisheye::initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_32FC1, m_mapr1, m_mapr2);
-
 	}else{
 		Kl = m_camparl.getCvPrjMat().clone();
 		Dl = m_camparl.getCvDistMat().clone();
@@ -1750,6 +1746,41 @@ void f_glfw_stereo_view::draw_chsbd(bool ud,
 			}
 		}
 		glEnd();
+	}
+}
+
+void f_glfw_stereo_view::check_undistort(vector<Point2f> & pts, vector<Point2f> & ptsu, 
+										 Mat & K, Mat & D, Mat & R, Mat & P, Mat & map1, Mat & map2)
+{
+	Mat PR = P.colRange(0, 3) * R;
+	cout << "PR = " << PR;
+	Mat iPR = PR.inv();
+	cout << "iPR = " << iPR;
+	double * _iPR = iPR.ptr<double>(0);
+
+	vector<Point3f> ptsn;
+	vector<Point2f> ptsr;
+	ptsn.resize(pts.size());
+
+	// back projection to the normalized camera coordinate
+	for(int ipt = 0; ipt < pts.size(); ipt++){
+		Point2f & ptu = ptsu[ipt];
+		Point3f & ptn = ptsn[ipt];
+		double iw = 1.0 / ( _iPR[6] + _iPR[7] + _iPR[8]);
+		ptn.x = (float)((_iPR[0] * ptu.x + _iPR[1] * ptu.y + _iPR[2]) * iw);
+		ptn.y = (float)((_iPR[3] * ptu.x + _iPR[4] * ptu.y + _iPR[5]) * iw);
+		ptn.z = 1.0;
+	}
+
+	projectPoints(ptsn, Mat::zeros(3, 1, CV_64FC1), Mat::zeros(3, 1, CV_64FC1), K, D, ptsr);
+
+	for(int ipt = 0; ipt < pts.size(); ipt++){
+		Point2f & ptu = ptsu[ipt];
+		Point3f & ptn = ptsn[ipt];
+		Point2f & ptr = ptsr[ipt];
+		Point2f & pt = pts[ipt];
+		Point2f ptm(map1.at<float>((int)ptu.y, (int)ptu.x), map2.at<float>((int)ptu.y, (int)ptu.x));
+		cout << ptu << "->" << ptn << "->"  << ptr << "=" << pt << "=" << ptm << endl;
 	}
 }
 

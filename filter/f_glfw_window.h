@@ -406,6 +406,8 @@ protected:
 	  m_pos_mouse.y = (float)(1.0 - 2.0 * ypos / (double)m_sz_win.height);
   }
 
+  void check_undistort(vector<Point2f> & pts, vector<Point2f> & ptsu, 
+	  Mat & K, Mat & D, Mat & R, Mat & P, Mat & map1, Mat & map2);
 public:
 	f_glfw_stereo_view(const char * name);
 	virtual ~f_glfw_stereo_view()
