@@ -296,7 +296,7 @@ void f_base::register_factory()
 	register_factory<f_stabilizer>("stab");
 	register_factory<f_ship_detector>("shipdet");
 	register_factory<f_camcalib>("camcalib");
-
+	register_factory<f_stereo_disp>("stereod");
 	register_factory<f_imwrite>("imwrite");
 	register_factory<f_imread>("imread");
 	// windows

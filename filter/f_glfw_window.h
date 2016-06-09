@@ -271,6 +271,7 @@ protected:
 	// Frame state flag
 	bool m_bnew; // new frame
 	bool m_bsync; // synchronized frame
+	bool m_bupdate_img;
 
 	// operation flag
 	bool m_bdet_chsbd; // detect chessboard

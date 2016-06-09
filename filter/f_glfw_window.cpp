@@ -417,6 +417,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_bcbl(false), m_bcbr(false), m_bcbst(false), 
 	m_brctst(false), m_bsv_chsbd(false), m_bld_chsbd(false), m_bdet_chsbd(false), 
 	m_bsvstp(false), m_bldstp(false),
+	m_bupdate_img(false),
 	m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix_k3(false),
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
 	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50),
@@ -448,6 +449,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("flipx", &m_bflipx, "Flip image in x");
 	register_fpar("flipy", &m_bflipy, "Flip image in y");
 
+	register_fpar("update_img", &m_bupdate_img, "Update image flag.");
 	register_fpar("fchsbd", m_chsbd.fname, 1024, "Chessboard model file");
 	m_fchsbdl[0] = m_fchsbdr[0] = m_fchsbdc[0] = '\0';
 	
@@ -537,15 +539,17 @@ bool f_glfw_stereo_view::proc()
     return false;
   
   long long timg1, timg2, ifrm1, ifrm2;
-  m_img1 = m_pin1->get_img(timg1, ifrm1);
-  m_img2 = m_pin2->get_img(timg2, ifrm2);
 
-  if(m_img1.type() != m_img2.type()){
+  Mat img1, img2;
+  img1 = m_pin1->get_img(timg1, ifrm1);
+  img2 = m_pin2->get_img(timg2, ifrm2);
+
+  if(img1.type() != img2.type()){
     cerr << "Two image channels in " << m_name << " have different image type." << endl;
      return false;
   }
 
-  if(m_img1.empty() || m_img2.empty()){
+  if(img1.empty() || img2.empty()){
     cerr << "One of the image channels are empty." << endl;
     return true;
   }
@@ -560,6 +564,9 @@ bool f_glfw_stereo_view::proc()
   }else{
 	  m_bsync = true;
   }
+
+  if(m_bnew && m_bsync)
+	  m_bupdate_img = true;
 
   if(m_num_chsbdl && m_bcbl){ //calibrate left camera
 	  calibrate(0);
@@ -577,13 +584,6 @@ bool f_glfw_stereo_view::proc()
   if(m_bcpl && m_bcpr && m_bstp && m_brctst){
 	  rectify_stereo();
   }
-
-  m_timg1 = timg1;
-  m_timg2 = timg2;
-
-  Mat img1, img2;
-  img1 = m_img1.clone();
-  img2 = m_img2.clone();
 
   if(m_bldcp){
 	  m_bcpl = m_camparl.read(m_fcpl);
@@ -606,18 +606,33 @@ bool f_glfw_stereo_view::proc()
 	  m_bsvcp = false;
   }
 
-  awsFlip(img1, m_bflipx, m_bflipy, false);
-  awsFlip(img2, m_bflipx, m_bflipy, false);
-
-  if(m_budl && m_bcpl){ 
-	  remap(img1, img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+  if(m_bred_chsbd){ // reduce chessboard less than m_num_calib_chsbd
+	  reduce_chsbd(0);
+	  reduce_chsbd(1);
+	  reduce_chsbd(2);
+	  m_bred_chsbd = false;
   }
 
-  if(m_budr && m_bcpr){
-	  remap(img2, img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+  if(m_bupdate_img){
+	  m_timg1 = timg1;
+	  m_timg2 = timg2;
+
+	  m_img1 = img1.clone();
+	  m_img2 = img2.clone();
+	  awsFlip(m_img1, m_bflipx, m_bflipy, false);
+	  awsFlip(m_img2, m_bflipx, m_bflipy, false);
   }
 
-  if(m_bchsbd && m_bdet_chsbd && m_bsync){
+
+  if(m_budl && m_bcpl && m_bupdate_img){ 
+	  remap(m_img1, m_img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+  }
+
+  if(m_budr && m_bcpr && m_bupdate_img){
+	  remap(m_img2, m_img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+  }
+
+  if(m_bchsbd && m_bdet_chsbd && m_bsync && m_bupdate_img){
 	  s_obj obj;
 	  bool left = false, right = false;
 	  // seraching chessboard detected in the frame
@@ -659,14 +674,13 @@ bool f_glfw_stereo_view::proc()
 	  }
   }
 
-  if(m_bred_chsbd){ // reduce chessboard less than m_num_calib_chsbd
-	  reduce_chsbd(0);
-	  reduce_chsbd(1);
-	  reduce_chsbd(2);
-	  m_bred_chsbd = false;
-  }
 
-  { // draw images
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  if(!m_img1.empty() && !m_img2.empty())
+  { 
+	  // draw images
 	  Mat wimg1, wimg2;
 
 	  m_w = m_sz_win.width >> 1;
@@ -690,11 +704,8 @@ bool f_glfw_stereo_view::proc()
 	  m_xscale2 = (float)(m_r2 / (float) m_w);
 	  m_yscale2 = (float)(m_r2 / (float) m_h);
 
-	  resize(img1, wimg1, m_sz1);
-	  resize(img2, wimg2, m_sz2);
-
-	  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-	  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	  resize(m_img1, wimg1, m_sz1);
+	  resize(m_img2, wimg2, m_sz2);
 
 	  glRasterPos2i(-1, 0);
 	  draw_pixels(wimg1);
@@ -717,11 +728,12 @@ bool f_glfw_stereo_view::proc()
 			  m_xscale1, m_yscale1, -1, 0, m_wn1,m_hn1, 
 			  m_xscale2, m_yscale2, 0, 0, m_wn2, m_hn2);
 	  }
+
+	  if(m_bdisp){ // show disparity map
+		  calc_and_draw_disparity_map(m_img1, m_img2);
+	  }
   }
 
- if(m_bdisp){ // show disparity map
-	  calc_and_draw_disparity_map(img1, img2);
-  }
 
   if(m_bsv_chsbd){
 	  save_chsbd(0);
@@ -839,6 +851,7 @@ bool f_glfw_stereo_view::proc()
   glfwSwapBuffers(pwin());
   glfwPollEvents();
   
+  m_bupdate_img = false;
   return true;
 }
 
@@ -1133,27 +1146,27 @@ void f_glfw_stereo_view::calibrate_stereo()
 
 void f_glfw_stereo_view::rectify_stereo()
 {
-	Size sz(m_img1.cols, m_img1.rows);
-	Mat Kl, Dl, Kr, Dr;
-	if(m_bfisheye){
-		Kl = m_camparl.getCvPrjMat().clone();
-		Dl = m_camparl.getCvDistFishEyeMat().clone();
-		Kr = m_camparr.getCvPrjMat().clone();
-		Dr = m_camparr.getCvDistFishEyeMat().clone();
-		fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
-			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
-		fisheye::initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_32FC1, m_mapl1, m_mapl2);
-		fisheye::initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_32FC1, m_mapr1, m_mapr2);
-	}else{
-		Kl = m_camparl.getCvPrjMat().clone();
-		Dl = m_camparl.getCvDistMat().clone();
-		Kr = m_camparr.getCvPrjMat().clone();
-		Dr = m_camparr.getCvDistMat().clone();
-		stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
-			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CALIB_ZERO_DISPARITY, -1);
-		initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_32FC1, m_mapl1, m_mapl2);
-		initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_32FC1, m_mapr1, m_mapr2);		
-	}
+		Size sz(m_img1.cols, m_img1.rows);
+		Mat Kl, Dl, Kr, Dr;
+		if(m_bfisheye){
+			Kl = m_camparl.getCvPrjMat().clone();
+			Dl = m_camparl.getCvDistFishEyeMat().clone();
+			Kr = m_camparr.getCvPrjMat().clone();
+			Dr = m_camparr.getCvDistFishEyeMat().clone();
+			fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
+				m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
+			fisheye::initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_32FC1, m_mapl1, m_mapl2);
+			fisheye::initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_32FC1, m_mapr1, m_mapr2);
+		}else{
+			Kl = m_camparl.getCvPrjMat().clone();
+			Dl = m_camparl.getCvDistMat().clone();
+			Kr = m_camparr.getCvPrjMat().clone();
+			Dr = m_camparr.getCvDistMat().clone();
+			stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
+				m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CALIB_ZERO_DISPARITY, -1);
+			initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_32FC1, m_mapl1, m_mapl2);
+			initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_32FC1, m_mapr1, m_mapr2);		
+		}
 	
 //	init_undistort(m_camparl, sz, m_Rl, m_Pl, m_mapl1, m_mapl2);
 //	init_undistort(m_camparr, sz, m_Rr, m_Pr, m_mapr1, m_mapr2);
@@ -1507,25 +1520,28 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 	int w, h;
 	w = m_sz_win.width >> 1;
 	h = m_sz_win.height >> 1;
+	if(m_bupdate_img){
+		Mat disps16;
+		if(m_sgbm_par.m_update){ // updating sgbm parameters
+			m_sgbm->setBlockSize(m_sgbm_par.blockSize);
+			m_sgbm->setDisp12MaxDiff(m_sgbm_par.disp12MaxDiff);
+			m_sgbm->setMinDisparity(m_sgbm_par.minDisparity);
+			m_sgbm->setMode(m_sgbm_par.mode);
+			m_sgbm->setNumDisparities(m_sgbm_par.numDisparities);
+			m_sgbm->setP1(m_sgbm_par.P1);
+			m_sgbm->setP2(m_sgbm_par.P2);
+			m_sgbm->setPreFilterCap(m_sgbm_par.preFilterCap);
+			m_sgbm->setSpeckleRange(m_sgbm_par.speckleRange);
+			m_sgbm->setSpeckleWindowSize(m_sgbm_par.speckleWindowSize);
+			m_sgbm->setUniquenessRatio(m_sgbm_par.uniquenessRatio);
+			m_sgbm_par.m_update = false;
+		}
 
-	Mat disps16;
-	if(m_sgbm_par.m_update){ // updating sgbm parameters
-		m_sgbm->setBlockSize(m_sgbm_par.blockSize);
-		m_sgbm->setDisp12MaxDiff(m_sgbm_par.disp12MaxDiff);
-		m_sgbm->setMinDisparity(m_sgbm_par.minDisparity);
-		m_sgbm->setMode(m_sgbm_par.mode);
-		m_sgbm->setNumDisparities(m_sgbm_par.numDisparities);
-		m_sgbm->setP1(m_sgbm_par.P1);
-		m_sgbm->setP2(m_sgbm_par.P2);
-		m_sgbm->setPreFilterCap(m_sgbm_par.preFilterCap);
-		m_sgbm->setSpeckleRange(m_sgbm_par.speckleRange);
-		m_sgbm->setSpeckleWindowSize(m_sgbm_par.speckleWindowSize);
-		m_sgbm->setUniquenessRatio(m_sgbm_par.uniquenessRatio);
-		m_sgbm_par.m_update = false;
+		m_sgbm->compute(img1, img2, disps16);
+		disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
 	}
-
-	m_sgbm->compute(img1, img2, disps16);
-	disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
+	if(m_disp.empty())
+		return;
 	Mat wdisp;
 	double rxd, ryd, rd;
 	rxd = (double) w / (double) m_disp.cols;
