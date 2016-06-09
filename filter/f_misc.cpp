@@ -252,8 +252,8 @@ bool f_stereo_disp::rectify_stereo()
 		Dr = m_camparr.getCvDistFishEyeMat().clone();
 		fisheye::stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
 			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, 0);
-		fisheye::initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_32FC1, m_mapl1, m_mapl2);
-		fisheye::initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_32FC1, m_mapr1, m_mapr2);
+		fisheye::initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_16SC2, m_mapl1, m_mapl2);
+		fisheye::initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_16SC2, m_mapr1, m_mapr2);
 	}else{
 		Kl = m_camparl.getCvPrjMat().clone();
 		Dl = m_camparl.getCvDistMat().clone();
@@ -261,8 +261,8 @@ bool f_stereo_disp::rectify_stereo()
 		Dr = m_camparr.getCvDistMat().clone();
 		stereoRectify(Kl, Dl, Kr, Dr, sz, m_Rlr, m_Tlr, 
 			m_Rl, m_Rr, m_Pl, m_Pr, m_Q, CALIB_ZERO_DISPARITY, -1);
-		initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_32FC1, m_mapl1, m_mapl2);
-		initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_32FC1, m_mapr1, m_mapr2);		
+		initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_16SC2, m_mapl1, m_mapl2);
+		initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_16SC2, m_mapr1, m_mapr2);		
 	}
 	return true;
 }

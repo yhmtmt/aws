@@ -439,7 +439,7 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 			fcp[0] = '\0';
 			bundist = false;
 		}
-
+		
 		if(bundist){
 			R = Mat::eye(3, 3, CV_64FC1);
 			if(cp.isFishEye()){
@@ -468,6 +468,31 @@ bool f_avt_cam::s_cam_params::init(f_avt_cam * pcam, ch_base * pch)
 		return false;
 	}
 
+	if(pout){
+		double * ptr = cp.getCvPrj();
+		pout->set_int_campar(ECP_FX, ptr[0]);
+		pout->set_int_campar(ECP_FY, ptr[1]);
+		pout->set_int_campar(ECP_CX, ptr[2]);
+		pout->set_int_campar(ECP_CY, ptr[3]);
+
+		if(cp.isFishEye()){
+			pout->set_fisheye(true);
+			pout->set_int_campar(ECPF_K1, ptr[4]);
+			pout->set_int_campar(ECPF_K2, ptr[5]);
+			pout->set_int_campar(ECPF_K3, ptr[6]);
+			pout->set_int_campar(ECPF_K4, ptr[7]);
+		}else{
+			pout->set_fisheye(false);
+			pout->set_int_campar(ECP_K1, ptr[4]);
+			pout->set_int_campar(ECP_K2, ptr[5]);
+			pout->set_int_campar(ECP_P1, ptr[6]);
+			pout->set_int_campar(ECP_P2, ptr[7]);
+			pout->set_int_campar(ECP_K3, ptr[8]);
+			pout->set_int_campar(ECP_K4, ptr[9]);
+			pout->set_int_campar(ECP_K5, ptr[10]);
+			pout->set_int_campar(ECP_K6, ptr[11]);
+		}
+	}
 	tPvErr err;
 
 	// init_interface shoudl be called before running pcam filter

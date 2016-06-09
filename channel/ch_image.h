@@ -22,6 +22,11 @@ enum e_campar{
 	ECP_FX = 0, ECP_FY, ECP_CX, ECP_CY, ECP_K1, ECP_K2, ECP_P1, ECP_P2, ECP_K3, ECP_K4, ECP_K5, ECP_K6
 };
 
+enum e_campar_fish
+{
+	ECPF_FX = 0, ECPF_FY, ECPF_CX, ECPF_CY, ECPF_K1, ECPF_K2, ECPF_K3, ECPF_K4
+};
+
 class ch_image: public ch_base
 {
 protected:
@@ -33,6 +38,7 @@ protected:
 	long long m_tfile;	 // time fwrite called
 
 	pthread_mutex_t m_mtx_bk, m_mtx_fr;
+	bool m_bfisheye;
 	bool m_bparam[ECP_K6+1];
 	double m_param[ECP_K6+1];
 	bool m_brvec;
@@ -44,7 +50,7 @@ protected:
 	double tvec[3];
 	
 public:
-	ch_image(const char * name):ch_base(name), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0)
+	ch_image(const char * name):ch_base(name), m_bfisheye(false), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0)
 	{
 		m_time[0] = m_time[1] = 0;
 		m_ifrm[0] = m_ifrm[1] = -1;
@@ -69,7 +75,20 @@ public:
 		m_brvec = m_bR = false;
 	}
 
+	void set_fisheye(bool bfisheye)
+	{
+		m_bfisheye = bfisheye;
+	}
+
 	void set_int_campar(const e_campar & epar, const double val)
+	{
+		lock();
+		m_bparam[epar] = true;
+		m_param[epar] = val;
+		unlock();
+	}
+
+	void set_int_campar(const e_campar_fish & epar, const double val)
 	{
 		lock();
 		m_bparam[epar] = true;
