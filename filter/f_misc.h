@@ -45,6 +45,45 @@ public:
 
 };
 
+class f_lcc: public f_misc
+{
+protected:
+	ch_image_ref * m_ch_img_in, * m_ch_img_out;
+	double m_alpha, m_range;
+	Mat m_amap, m_vmap, m_dmap;
+	Mat m_map;
+
+	bool m_update_map; 
+	char m_fmap[1024]; // map file name
+
+	// min = avg - range dev
+	// max = avg + range dev
+	// scale = 255 / (max - min)
+	// v' = (v - min) * 255 / (max - min)
+	// v' = v scale - min scale
+	
+	void calc_avg_and_var_16uc1(Mat & img);
+	void calc_avg_and_var_8uc1(Mat & img);
+	void calc_avg_and_var_16uc3(Mat & img);
+	void calc_avg_and_var_8uc3(Mat & img);
+
+	void filter_16uc1(Mat & in, Mat & out);
+	void filter_8uc1(Mat & in, Mat & out);
+	void filter_16uc3(Mat & in, Mat & out);
+	void filter_8uc3(Mat & in, Mat & out);
+
+public:
+	f_lcc(const char * name);
+
+	virtual ~f_lcc()
+	{
+	}
+
+	virtual bool init_run();
+	virtual void destroy_run();
+	virtual bool proc();
+};
+
 class f_stereo_disp: public f_misc
 {
 protected:

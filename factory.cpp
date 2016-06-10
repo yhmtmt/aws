@@ -299,6 +299,8 @@ void f_base::register_factory()
 	register_factory<f_stereo_disp>("stereod");
 	register_factory<f_imwrite>("imwrite");
 	register_factory<f_imread>("imread");
+	register_factory<f_lcc>("lcc");
+
 	// windows
 #ifdef FWINDOW
 	register_factory<f_window>("window");
