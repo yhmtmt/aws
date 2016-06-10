@@ -48,6 +48,9 @@ f_lcc::f_lcc(const char * name): f_misc(name), m_ch_img_in(NULL), m_ch_img_out(N
 	register_fpar("ch_in", (ch_base**)&m_ch_img_in, typeid(ch_image_ref).name(), "Input image channel");
 	register_fpar("ch_out", (ch_base**)&m_ch_img_out, typeid(ch_image_ref).name(), "Output image channel");
 	
+	register_fpar("flipx", &m_flipx, "Flip in x.");
+	register_fpar("flipy", &m_flipy, "Flip in y.");
+
 	register_fpar("alpha", &m_alpha, "Averaging coeffecient.");
 	register_fpar("range", &m_range, "Clipping range.");
 
@@ -61,12 +64,12 @@ bool f_lcc::init_run()
 		FileStorage fs(m_fmap, FileStorage::READ);
 		if(!fs.isOpened()){
 			cerr << "Failed to open " << m_fmap << endl;
-			return false;
-		}
-
-		FileNode fn = fs["LCCMap"];
-		if(!fn.empty()){
-			fn >> m_map;
+			m_update_map = true;			
+		}else{
+			FileNode fn = fs["LCCMap"];
+			if(!fn.empty()){
+				fn >> m_map;
+			}
 		}
 	}else{
 		m_update_map = true;
@@ -91,17 +94,47 @@ bool f_lcc::proc()
 	if(img.empty())
 		return true;
 
-	if(m_amap.empty() || m_vmap.empty() 
-		|| m_amap.size() != img.size() 
-		|| m_vmap.size() != img.size()
-		|| m_dmap.size() != img.size()){
-		if(m_update_map){
-			m_amap = Mat::zeros(img.rows, img.cols, CV_32FC1);
-			m_vmap = Mat::zeros(img.rows, img.cols, CV_32FC1);
-			m_dmap = Mat::zeros(img.rows, img.cols, CV_32FC1);
-		}
-		m_map = Mat::zeros(img.rows, img.cols, CV_32FC2);
+	if(m_t >= t){
+		return true;
 	}
+
+	m_t = t;
+	m_ifrm = i;
+	if(m_map.empty() || m_map.size() != img.size()){
+		m_map = Mat::zeros(img.rows, img.cols, CV_32FC2);
+		m_update_map = true;
+	}
+
+	if(m_update_map){
+		if(m_amap.empty() || m_vmap.empty() || m_dmap.empty() 
+			|| m_amap.size() != img.size() 
+			|| m_vmap.size() != img.size()
+			|| m_dmap.size() != img.size()){
+				if(m_update_map){
+					m_amap.create(img.rows, img.cols, CV_32FC1);
+					m_vmap.create(img.rows, img.cols, CV_32FC1);
+					m_dmap.create(img.rows, img.cols, CV_32FC1);
+					int num_pix = m_amap.cols * m_amap.rows;
+					float * pa = m_amap.ptr<float>();
+					float * pv = m_vmap.ptr<float>();
+					float * pd = m_dmap.ptr<float>();
+					float d = (float)(127. / m_range);
+					float v = (float)(d * d);
+
+					for(int i = 0; i < num_pix; i++){
+						*pa = 127;
+						*pv = v;
+						*pd = d;
+						pa++;
+						pv++;
+						pd++;
+					}
+				}
+		}
+	}
+
+	if(m_flipx || m_flipy)
+		awsFlip(img, m_flipx, m_flipy, false);
 
 	// calcurate average and variance
 	Mat img_out;

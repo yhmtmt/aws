@@ -48,11 +48,12 @@ public:
 class f_lcc: public f_misc
 {
 protected:
+	long long m_t, m_ifrm;
 	ch_image_ref * m_ch_img_in, * m_ch_img_out;
 	double m_alpha, m_range;
 	Mat m_amap, m_vmap, m_dmap;
 	Mat m_map;
-
+	bool m_flipx, m_flipy;
 	bool m_update_map; 
 	char m_fmap[1024]; // map file name
 
