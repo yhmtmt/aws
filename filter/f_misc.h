@@ -49,10 +49,19 @@ class f_lcc: public f_misc
 {
 protected:
 	long long m_t, m_ifrm;
+	Mat m_img, m_aimg, m_vimg;
 	ch_image_ref * m_ch_img_in, * m_ch_img_out;
 	double m_alpha, m_range;
-	Mat m_amap, m_vmap, m_dmap;
+	char m_fcp[1024];
+	AWSCamPar m_campar;
+	vector<float> m_amap, m_vmap;
+	int m_cx, m_cy, m_cx2, m_cy2;
 	Mat m_map;
+	enum e_alg {
+		RAD, FULL
+	} m_alg;
+	static const char * m_str_alg[FULL+1];
+
 	bool m_flipx, m_flipy;
 	bool m_update_map; 
 	char m_fmap[1024]; // map file name
@@ -62,11 +71,15 @@ protected:
 	// scale = 255 / (max - min)
 	// v' = (v - min) * 255 / (max - min)
 	// v' = v scale - min scale
-	
 	void calc_avg_and_var_16uc1(Mat & img);
 	void calc_avg_and_var_8uc1(Mat & img);
 	void calc_avg_and_var_16uc3(Mat & img);
 	void calc_avg_and_var_8uc3(Mat & img);
+	
+	void calc_avg_and_var_16uc1_rad(Mat & img);
+	void calc_avg_and_var_8uc1_rad(Mat & img);
+	void calc_avg_and_var_16uc3_rad(Mat & img);
+	void calc_avg_and_var_8uc3_rad(Mat & img);
 
 	void filter_16uc1(Mat & in, Mat & out);
 	void filter_8uc1(Mat & in, Mat & out);

@@ -1106,6 +1106,7 @@ inline void calcAtV(const double * A, const double * V, int rows, int cols, doub
 
 void layoutPyramid(const vector<Mat> & IPyr, Mat & out);
 void cnv64FC1to8UC1(const Mat & in, Mat & out);
+void cnv32FC1to8UC1(const Mat & in, Mat & out);
 
 // cnvCVBGR8toGLRGB8 converts OpenCV's 8bit BGR image to OpenGL's 8bit RGB format.
 // OpenCV uses a coordinate positive in right and bottom direction, and OpenGL does that in positive in right and top direction.
@@ -1375,5 +1376,4 @@ struct AWSAttitude{
 
 bool write_raw_img(const Mat & img, const char * fname);
 bool read_raw_img(Mat & img, const char * fname);
-
 #endif

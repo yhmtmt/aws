@@ -40,7 +40,12 @@ using namespace cv;
 #include "f_misc.h"
 
 ////////////////////////////////////////////////////////// f_lcc members
-f_lcc::f_lcc(const char * name): f_misc(name), m_ch_img_in(NULL), m_ch_img_out(NULL), 
+const char * f_lcc::m_str_alg[FULL+1] =
+{
+	"rad", "full"
+};
+
+f_lcc::f_lcc(const char * name): f_misc(name), m_ch_img_in(NULL), m_ch_img_out(NULL), m_alg(FULL),
 	m_alpha(0.01), m_range(3.0), m_update_map(true)
 {
 	m_fmap[0] = '\0';
@@ -48,8 +53,11 @@ f_lcc::f_lcc(const char * name): f_misc(name), m_ch_img_in(NULL), m_ch_img_out(N
 	register_fpar("ch_in", (ch_base**)&m_ch_img_in, typeid(ch_image_ref).name(), "Input image channel");
 	register_fpar("ch_out", (ch_base**)&m_ch_img_out, typeid(ch_image_ref).name(), "Output image channel");
 	
+	register_fpar("fcp", m_fcp, 1024, "File of camera parameter.");
+
 	register_fpar("flipx", &m_flipx, "Flip in x.");
 	register_fpar("flipy", &m_flipy, "Flip in y.");
+	register_fpar("alg", (int*)&m_alg, FULL+1, m_str_alg, "Algorithm.");
 
 	register_fpar("alpha", &m_alpha, "Averaging coeffecient.");
 	register_fpar("range", &m_range, "Clipping range.");
@@ -61,18 +69,56 @@ f_lcc::f_lcc(const char * name): f_misc(name), m_ch_img_in(NULL), m_ch_img_out(N
 bool f_lcc::init_run()
 {
 	if(m_fmap[0]){
-		FileStorage fs(m_fmap, FileStorage::READ);
-		if(!fs.isOpened()){
-			cerr << "Failed to open " << m_fmap << endl;
-			m_update_map = true;			
-		}else{
-			FileNode fn = fs["LCCMap"];
-			if(!fn.empty()){
-				fn >> m_map;
+		switch(m_alg){
+		case RAD:
+			{
+				FileStorage fs(m_fmap, FileStorage::READ);
+				if(!fs.isOpened()){
+					cerr << "Failed to open " << m_fmap << endl;
+					m_update_map = true;			
+				}else{
+					FileNode fn = fs["LCCR"];
+					int size;
+					if(!fn.empty()){
+						fn >> size; 
+					}
+					fn = fs["LCCAMap"];
+					if(!fn.empty()){
+						fn >> m_amap;
+					}
+
+					fn = fs["LCCVMap"];
+					if(!fn.empty()){
+						fn >> m_vmap;
+					}
+				}
 			}
+			break;
+		case FULL:
+			{
+				char buf[1024];
+				snprintf(buf, 1024, "%s_v.raw", m_fmap);
+				read_raw_img(m_vimg, buf);
+				snprintf(buf, 1024, "%s_a.raw", m_fmap);
+				read_raw_img(m_aimg, buf);
+			}
+			break;
 		}
 	}else{
 		m_update_map = true;
+	}
+
+	if(!m_fcp[0] || !m_campar.read(m_fcp)){
+		cerr << "Failed to load camear parameter." << endl;
+		return false;
+	}else{
+		double cx, cy;
+		cx = m_campar.getCvPrj()[2];
+		cy = m_campar.getCvPrj()[3];
+		m_cx = (int)(cx + 0.5);
+		m_cy = (int)(cy + 0.5);
+		m_cx2 = m_cx << 1;
+		m_cy2 = m_cy << 1;
 	}
 
 	return true;
@@ -81,214 +127,453 @@ bool f_lcc::init_run()
 void f_lcc::destroy_run()
 {
 	if(m_update_map && m_fmap[0]){
-		FileStorage fs(m_fmap, FileStorage::WRITE);
-		fs << "LCCMap" << m_map;
+		switch(m_alg){
+		case RAD:
+			{
+				FileStorage fs(m_fmap, FileStorage::WRITE);
+				fs << "LCCR" << (int) m_amap.size();
+				fs << "LCCAMap" << m_amap;
+				fs << "LCCVMap" << m_vmap;
+				char buf[1024];
+				snprintf(buf, 1024, "%s.csv", m_fmap);
+				ofstream ofile(buf);
+				if(ofile.is_open()){
+					for(int i = 0; i < m_amap.size(); i++){
+						ofile << i << "," << m_amap[i] << "," << m_vmap[i] << endl;
+					}
+				}
+			}
+			break;
+		case FULL:
+			{
+				char buf[1024];
+				snprintf(buf, 1024, "%s_v.raw", m_fmap);
+				write_raw_img(m_vimg, buf);				
+				snprintf(buf, 1024, "%s_a.raw", m_fmap);
+				write_raw_img(m_aimg, buf);
+
+				Mat img;
+				snprintf(buf, 1024, "%s_v.png", m_fmap);
+				MatIterator_<float> itr = m_vimg.begin<float>();
+				for(;itr != m_vimg.end<float>(); itr++){
+					*itr = (float) sqrt(*itr);
+				}
+				cnv32FC1to8UC1(m_vimg, img);
+				imwrite(buf, img);
+				snprintf(buf, 1024, "%s_a.png", m_fmap);
+				cnv32FC1to8UC1(m_aimg, img);
+				imwrite(buf, img);
+			}
+			break;
+		}
 	}
 }
 
 bool f_lcc::proc()
 {
-	long long t, i;
-	Mat img = m_ch_img_in->get_img(t, i);
+	{
+		long long t, i;
+		Mat img = m_ch_img_in->get_img(t, i);
 
-	if(img.empty())
-		return true;
+		if(img.empty())
+			return true;
 
-	if(m_t >= t){
-		return true;
-	}
+		if(m_t >= t){
+			return true;
+		}
 
-	m_t = t;
-	m_ifrm = i;
-	if(m_map.empty() || m_map.size() != img.size()){
-		m_map = Mat::zeros(img.rows, img.cols, CV_32FC2);
-		m_update_map = true;
+		m_img = img.clone();
+		m_t = t;
+		m_ifrm = i;
 	}
 
 	if(m_update_map){
-		if(m_amap.empty() || m_vmap.empty() || m_dmap.empty() 
-			|| m_amap.size() != img.size() 
-			|| m_vmap.size() != img.size()
-			|| m_dmap.size() != img.size()){
-				if(m_update_map){
-					m_amap.create(img.rows, img.cols, CV_32FC1);
-					m_vmap.create(img.rows, img.cols, CV_32FC1);
-					m_dmap.create(img.rows, img.cols, CV_32FC1);
-					int num_pix = m_amap.cols * m_amap.rows;
-					float * pa = m_amap.ptr<float>();
-					float * pv = m_vmap.ptr<float>();
-					float * pd = m_dmap.ptr<float>();
+		if(m_update_map){
+			switch(m_alg){
+			case RAD:
+				if(!m_amap.size() || !m_vmap.size()){
+					int rmax = 0;
+					{
+						double ry_max = max(m_img.rows - m_cy, m_cy);
+						double rx_max = max(m_img.cols - m_cx, m_cx);
+						rmax = (int)(sqrt(ry_max * ry_max + rx_max * rx_max) + 1.);
+					}
+
 					float d = (float)(127. / m_range);
 					float v = (float)(d * d);
-
-					for(int i = 0; i < num_pix; i++){
-						*pa = 127;
-						*pv = v;
-						*pd = d;
-						pa++;
-						pv++;
-						pd++;
-					}
+					m_amap.resize(rmax, 127.f);
+					m_vmap.resize(rmax, v);
 				}
+				break;
+			case FULL:
+				if(m_aimg.size() != m_img.size() || m_vimg.size() != m_img.size()){
+					m_aimg.create(m_img.rows, m_img.cols, CV_32FC1);
+					m_vimg.create(m_img.rows, m_img.cols, CV_32FC1);
+					float d = (float)(127. / m_range);
+					float v = (float)(d * d);
+					m_aimg = 127.;
+					m_vimg = v;
+				}
+				break;
+			}
 		}
 	}
 
-	if(m_flipx || m_flipy)
-		awsFlip(img, m_flipx, m_flipy, false);
+	if(m_map.empty() || m_map.size() != m_img.size()){
+		m_map.create(m_img.rows, m_img.cols, CV_32FC2);
+		float * pm = m_map.ptr<float>();
+		// (x - cx)^2  = x^2 + cx^2 - 2cx x
+		// (x - cx + 1)^2= x^2 + cx^2 +1-2cx x -2cx + 2x
+		// -2cx + 2x + 1
+		switch(m_alg){
+		case RAD:
+			{
+				int y2 = m_cy * m_cy;
+				for(int y = 0; y < m_map.rows; y++){
+					int x2 = m_cx * m_cx;
+					for(int x = 0; x < m_map.cols; x++){
+						int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
+
+						double a, b;
+						double d = sqrt(m_vmap[r]);
+						double rd = m_range * d;
+						a = m_amap[r] - rd;
+						b = m_amap[r] + rd;
+						pm[0] = (float)(255.0 / (2 * rd));
+						pm[1] = (float)(- pm[0] * a);
+
+						x2 += (x << 1) - m_cx2 + 1;
+						pm += 2;
+					}
+					y2 += (y << 1) - m_cy2 + 1;
+				}
+			}
+			break;
+		case FULL:
+			{
+				float * paimg = m_aimg.ptr<float>();
+				float * pvimg = m_vimg.ptr<float>();
+				for(int y = 0; y < m_map.rows; y++){
+					for(int x = 0; x < m_map.cols; x++){
+						double a, b;
+						double d = sqrt(*pvimg);
+						double rd = m_range * d;
+						a = *paimg - rd;
+						b = *paimg + rd;
+						pm[0] = (float)(255.0 / (2 * rd));
+						pm[1] = (float)(- pm[0] * a);
+						pvimg++;
+						paimg++;
+					}
+				}
+			}
+			break;
+		}
+	}
+
+	if(m_flipx || m_flipy){
+		awsFlip(m_img, m_flipx, m_flipy, false);
+	}
 
 	// calcurate average and variance
 	Mat img_out;
-	switch(img.type()){
-	case CV_16UC1:
-		if(m_update_map)
-			calc_avg_and_var_16uc1(img);
-		img_out.create(img.rows, img.cols, CV_8UC1);
-		filter_16uc1(img, img_out);
+	switch(m_alg){
+	case RAD:
+		switch(m_img.type()){
+		case CV_16UC1:
+			if(m_update_map)
+				calc_avg_and_var_16uc1_rad(m_img);
+			img_out.create(m_img.rows, m_img.cols, CV_8UC1);
+			filter_16uc1(m_img, img_out);
+			break;
+		case CV_8UC1:
+			if(m_update_map)
+				calc_avg_and_var_8uc1_rad(m_img);
+			img_out.create(m_img.rows, m_img.cols, CV_8UC1);
+			filter_8uc1(m_img, img_out);
+			break;
+		case CV_8UC3:
+			if(m_update_map)
+				calc_avg_and_var_16uc3_rad(m_img);
+			img_out.create(m_img.rows, m_img.cols, CV_8UC3);
+			filter_8uc3(m_img, img_out);
+			break;
+		case CV_16UC3:
+			if(m_update_map)
+				calc_avg_and_var_8uc3_rad(m_img);
+			img_out.create(m_img.rows, m_img.cols, CV_8UC3);
+			filter_16uc3(m_img, img_out);
+			break;
+		}
 		break;
-	case CV_8UC1:
-		if(m_update_map)
-			calc_avg_and_var_8uc1(img);
-		img_out.create(img.rows, img.cols, CV_8UC1);
-		filter_8uc1(img, img_out);
-		break;
-	case CV_8UC3:
-		if(m_update_map)
-			calc_avg_and_var_16uc3(img);
-		img_out.create(img.rows, img.cols, CV_8UC3);
-		filter_8uc3(img, img_out);
-		break;
-	case CV_16UC3:
-		if(m_update_map)
-			calc_avg_and_var_8uc3(img);
-		img_out.create(img.rows, img.cols, CV_8UC3);
-		filter_16uc3(img, img_out);
-		break;
+	case FULL:
+		switch(m_img.type()){
+		case CV_16UC1:
+			if(m_update_map)
+				calc_avg_and_var_16uc1(m_img);
+			img_out.create(m_img.rows, m_img.cols, CV_8UC1);
+			filter_16uc1(m_img, img_out);
+			break;
+		case CV_8UC1:
+			if(m_update_map)
+				calc_avg_and_var_8uc1(m_img);
+			img_out.create(m_img.rows, m_img.cols, CV_8UC1);
+			filter_8uc1(m_img, img_out);
+			break;
+		case CV_8UC3:
+			if(m_update_map)
+				calc_avg_and_var_16uc3(m_img);
+			img_out.create(m_img.rows, m_img.cols, CV_8UC3);
+			filter_8uc3(m_img, img_out);
+			break;
+		case CV_16UC3:
+			if(m_update_map)
+				calc_avg_and_var_8uc3(m_img);
+			img_out.create(m_img.rows, m_img.cols, CV_8UC3);
+			filter_16uc3(m_img, img_out);
+			break;
+		}
 	}
-
-	m_ch_img_out->set_img(img_out, t, i);
+	m_ch_img_out->set_img(img_out, m_t, m_ifrm);
 
 	return true;
 }
 
 void f_lcc::calc_avg_and_var_16uc1(Mat & img)
 {
-	unsigned short * pimg = img.ptr<unsigned short>();
-	float * pavg = m_amap.ptr<float>();
-	float * pvar = m_vmap.ptr<float>();
-	float * pdev = m_dmap.ptr<float>();
+	float * paimg = m_aimg.ptr<float>();
+	float * pvimg = m_vimg.ptr<float>();
+	ushort * pimg = img.ptr<ushort>();
 	float * pm = m_map.ptr<float>();
-	int num_pix = img.cols * img.rows;
+
 	double ialpha = 1.0 - m_alpha;
-	for(int i = 0; i < num_pix; i++){
-		*pavg = (float)(m_alpha * *pimg +  ialpha * *pavg);
-		double d = *pimg - *pavg;
-		*pvar = (float)(m_alpha * d * d + ialpha * *pvar);
-		*pdev = (float)sqrt(*pvar);
+	for(int y = 0; y < img.rows; y++){
+		for(int x = 0; x < img.cols; x++, pm+=2, pimg++, paimg++, pvimg++){
+			*paimg = (float)(m_alpha * *pimg +  ialpha * *paimg);
+			double d = *pimg - *paimg;
+			*pvimg = (float)(m_alpha * d * d + ialpha * *pvimg);
 
-		double a, b;
-		double rd = m_range * *pdev;
-		a = *pavg - rd;
-		b = *pavg + rd;
-		pm[0] = (float)(255.0 / (2 * rd));
-		pm[1] = (float)(- pm[0] * a);
+			d = sqrt(*pvimg);
 
-		pavg++;
-		pvar++;
-		pdev++;
-		pimg++;
-		pm+=2;
+			double a, b;
+			double rd = m_range * d;
+			a = *paimg - rd;
+			b = *paimg + rd;
+			pm[0] = (float)(255.0 / (2 * rd));
+			pm[1] = (float)(- pm[0] * a);
+		}
 	}
 }
 
 void f_lcc::calc_avg_and_var_8uc1(Mat & img)
 {
-	unsigned char * pimg = img.ptr<uchar>();
-	float * pavg = m_amap.ptr<float>();
-	float * pvar = m_vmap.ptr<float>();
-	float * pdev = m_dmap.ptr<float>();
+	float * paimg = m_aimg.ptr<float>();
+	float * pvimg = m_vimg.ptr<float>();
+	uchar * pimg = img.ptr<uchar>();
 	float * pm = m_map.ptr<float>();
-	int num_pix = img.cols * img.rows;
+
 	double ialpha = 1.0 - m_alpha;
-	for(int i = 0; i < num_pix; i++){
-		*pavg = (float)(m_alpha * *pimg +  ialpha * *pavg);
-		double d = *pimg - *pavg;
-		*pvar = (float)(m_alpha * d * d + ialpha * *pvar);
-		*pdev = (float)sqrt(*pvar);	
+	for(int y = 0; y < img.rows; y++){
+		for(int x = 0; x < img.cols; x++, pm+=2, pimg++, paimg++, pvimg++){
+			*paimg = (float)(m_alpha * *pimg +  ialpha * *paimg);
+			double d = *pimg - *paimg;
+			*pvimg = (float)(m_alpha * d * d + ialpha * *pvimg);
 
-		double a, b;
-		double rd = m_range * *pdev;
-		a = *pavg - rd;
-		b = *pavg + rd;
-		pm[0] = (float)(255.0 / (2 * rd));
-		pm[1] = (float)(- pm[0] * a);
+			d = sqrt(*pvimg);
 
-		pavg++;
-		pvar++;
-		pdev++;
-		pimg++;
-		pm+=2;
+			double a, b;
+			double rd = m_range * d;
+			a = *paimg - rd;
+			b = *paimg + rd;
+			pm[0] = (float)(255.0 / (2 * rd));
+			pm[1] = (float)(- pm[0] * a);
+		}
 	}
 }
 
 void f_lcc::calc_avg_and_var_16uc3(Mat & img)
 {
-	unsigned short * pimg = img.ptr<unsigned short>();
-	float * pavg = m_amap.ptr<float>();
-	float * pvar = m_vmap.ptr<float>();
-	float * pdev = m_dmap.ptr<float>();
+	float * paimg = m_aimg.ptr<float>();
+	float * pvimg = m_vimg.ptr<float>();
+	ushort * pimg = img.ptr<ushort>();
 	float * pm = m_map.ptr<float>();
-	int num_pix = img.cols * img.rows;
+
 	double ialpha = 1.0 - m_alpha;
-	for(int i = 0; i < num_pix; i++){
-		double p = (double) (pimg[0] + pimg[1] + pimg[2]) * 0.333;
-		*pavg = (float)(m_alpha * p +  ialpha * *pavg);
-		double d = *pimg - *pavg;
-		*pvar = (float)(m_alpha * d * d + ialpha * *pvar);
-		*pdev = (float)sqrt(*pvar);
+	for(int y = 0; y < img.rows; y++){
+		for(int x = 0; x < img.cols; x++, pm+=2, pimg+=3, paimg++, pvimg++){
+			double p = (double) (pimg[0] + pimg[1] + pimg[2]) * 0.333;
+			*paimg = (float)(m_alpha * p +  ialpha * *paimg);
+			double d = *pimg - *paimg;
+			*pvimg = (float)(m_alpha * d * d + ialpha * *pvimg);
 
-		double a, b;
-		double rd = m_range * *pdev;
-		a = *pavg - rd;
-		b = *pavg + rd;
-		pm[0] = (float)(255.0 / (2 * rd));
-		pm[1] = (float)(- pm[0] * a);
+			d = sqrt(*pvimg);
 
-		pavg++;
-		pvar++;
-		pdev++;
-		pimg+=3;
-		pm+=2;
+			double a, b;
+			double rd = m_range * d;
+			a = *paimg - rd;
+			b = *paimg + rd;
+			pm[0] = (float)(255.0 / (2 * rd));
+			pm[1] = (float)(- pm[0] * a);
+		}
 	}
 }
 
 void f_lcc::calc_avg_and_var_8uc3(Mat & img)
 {
-	unsigned char * pimg = img.ptr<uchar>();
-	float * pavg = m_amap.ptr<float>();
-	float * pvar = m_vmap.ptr<float>();
-	float * pdev = m_dmap.ptr<float>();
+	float * paimg = m_aimg.ptr<float>();
+	float * pvimg = m_vimg.ptr<float>();
+	uchar * pimg = img.ptr<uchar>();
 	float * pm = m_map.ptr<float>();
-	int num_pix = img.cols * img.rows;
+
 	double ialpha = 1.0 - m_alpha;
-	for(int i = 0; i < num_pix; i++){
-		double p = (double) (pimg[0] + pimg[1] + pimg[2]) * 0.333;
-		*pavg = (float)(m_alpha * p +  ialpha * *pavg);
-		double d = *pimg - *pavg;
-		*pvar = (float)(m_alpha * d * d + ialpha * *pvar);
-		*pdev = (float)sqrt(*pvar);
+	for(int y = 0; y < img.rows; y++){
+		for(int x = 0; x < img.cols; x++, pm+=2, pimg+=3, paimg++, pvimg++){
+			double p = (double) (pimg[0] + pimg[1] + pimg[2]) * 0.333;
 
-		double a, b;
-		double rd = m_range * *pdev;
-		a = *pavg - rd;
-		b = *pavg + rd;
-		pm[0] = (float)(255.0 / (2 * rd));
-		pm[1] = (float)(- pm[0] * a);
+			*paimg = (float)(m_alpha * p +  ialpha * *paimg);
+			double d = *pimg - *paimg;
+			*pvimg = (float)(m_alpha * d * d + ialpha * *pvimg);
 
-		pavg++;
-		pvar++;
-		pdev++;
-		pimg+=3;
-		pm+=2;
+			d = sqrt(*pvimg);
+
+			double a, b;
+			double rd = m_range * d;
+			a = *paimg - rd;
+			b = *paimg + rd;
+			pm[0] = (float)(255.0 / (2 * rd));
+			pm[1] = (float)(- pm[0] * a);
+		}
+	}
+}
+
+void f_lcc::calc_avg_and_var_16uc1_rad(Mat & img)
+{
+	unsigned short * pimg = img.ptr<unsigned short>();
+
+	float * pm = m_map.ptr<float>();
+	int w = img.cols, h = img.rows;
+	double ialpha = 1.0 - m_alpha;
+	int y2 = m_cy * m_cy;
+	for(int y = 0; y < h; y++){			
+		int x2 = m_cx * m_cx;
+		for(int x = 0; x < w; x++){
+			int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
+			
+			m_amap[r] = (float)(m_alpha * *pimg +  ialpha * m_amap[r]);
+			double d = *pimg - m_amap[r];
+			m_vmap[r] = (float)(m_alpha * d * d + ialpha * m_vmap[r]);
+
+			d = sqrt(m_vmap[r]);
+
+			double a, b;
+			double rd = m_range * d;
+			a = m_amap[r] - rd;
+			b = m_amap[r] + rd;
+			pm[0] = (float)(255.0 / (2 * rd));
+			pm[1] = (float)(- pm[0] * a);
+			x2 += (x << 1) - m_cx2 + 1;
+			pimg++;
+			pm += 2;
+		}
+		y2 += (y << 1) - m_cy2 + 1;
+	}
+}
+
+void f_lcc::calc_avg_and_var_8uc1_rad(Mat & img)
+{
+	unsigned char * pimg = img.ptr<uchar>();
+	float * pm = m_map.ptr<float>();
+	int w = img.cols, h = img.rows;
+	double ialpha = 1.0 - m_alpha;
+	int y2 = m_cy * m_cy;
+	for(int y = 0; y < h; y++){
+		int x2 = m_cx * m_cx;
+		for(int x = 0; x < w; x++){
+			int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
+
+			m_amap[r] = (float)(m_alpha * *pimg +  ialpha * m_amap[r]);
+			double d = *pimg - m_amap[r];
+			m_vmap[r] = (float)(m_alpha * d * d + ialpha * m_vmap[r]);
+
+			d = sqrt(m_vmap[r]);
+
+			double a, b;
+			double rd = m_range * d;
+			a = m_amap[r] - rd;
+			b = m_amap[r] + rd;
+			pm[0] = (float)(255.0 / (2 * rd));
+			pm[1] = (float)(- pm[0] * a);
+			x2 += (x << 1) - m_cx2 + 1;
+			pimg++;
+			pm += 2;
+		}
+		y2 += (y << 1) - m_cy2 + 1;
+	}
+}
+
+void f_lcc::calc_avg_and_var_16uc3_rad(Mat & img)
+{
+	unsigned short * pimg = img.ptr<unsigned short>();
+	float * pm = m_map.ptr<float>();
+	int w = img.cols, h = img.rows;
+	double ialpha = 1.0 - m_alpha;
+	int y2 = m_cy * m_cy;
+	for(int y = 0; y < h; y++){
+		int x2 = m_cx * m_cx;
+		for(int x = 0; x < w; x++){
+			double p = (double) (pimg[0] + pimg[1] + pimg[2]) * 0.333;
+			int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
+
+			m_amap[r] = (float)(m_alpha * p +  ialpha * m_amap[r]);
+			double d = *pimg - m_amap[r];
+			m_vmap[r] = (float)(m_alpha * d * d + ialpha * m_vmap[r]);
+
+			d = sqrt(m_vmap[r]);
+
+			double a, b;
+			double rd = m_range * d;
+			a = m_amap[r] - rd;
+			b = m_amap[r] + rd;
+			pm[0] = (float)(255.0 / (2 * rd));
+			pm[1] = (float)(- pm[0] * a);
+			x2 += (x << 1) - m_cx2 + 1;
+			pimg+=3;
+			pm += 2;
+		}
+		y2 += (y << 1) - m_cy2 + 1;
+	}
+}
+
+void f_lcc::calc_avg_and_var_8uc3_rad(Mat & img)
+{
+	unsigned char * pimg = img.ptr<uchar>();
+	float * pm = m_map.ptr<float>();
+	int w = img.cols, h = img.rows;
+	double ialpha = 1.0 - m_alpha;
+	int y2 = m_cy * m_cy;
+	for(int y = 0; y < h; y++){
+		int x2 = m_cx * m_cx;
+		for(int x = 0; x < w; x++){
+			double p = (double) (pimg[0] + pimg[1] + pimg[2]) * 0.333;
+			int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
+
+			m_amap[r] = (float)(m_alpha * p +  ialpha * m_amap[r]);
+			double d = *pimg - m_amap[r];
+			m_vmap[r] = (float)(m_alpha * d * d + ialpha * m_vmap[r]);
+
+			d = sqrt(m_vmap[r]);
+
+			double a, b;
+			double rd = m_range * d;
+			a = m_amap[r] - rd;
+			b = m_amap[r] + rd;
+			pm[0] = (float)(255.0 / (2 * rd));
+			pm[1] = (float)(- pm[0] * a);
+			x2 += (x << 1) - m_cx2 + 1;
+			pimg+=3;
+			pm += 2;
+		}
+		y2 += (y << 1) - m_cy2 + 1;
 	}
 }
 

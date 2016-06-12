@@ -3103,7 +3103,7 @@ void cnv64FC1to8UC1(const Mat & in, Mat & out)
 		vmax = max(*itr, vmax);
 	}
 
-	double ivabs = 1.0 / (vmax - vmin);
+	double ivabs = 255.0 / (vmax - vmin);
 
 	out = Mat::zeros(in.rows, in.cols, CV_8UC1);
 
@@ -3114,6 +3114,34 @@ void cnv64FC1to8UC1(const Mat & in, Mat & out)
 	}
 }
 
+void cnv32FC1to8UC1(const Mat & in, Mat & out)
+{
+	if(in.type() != CV_32FC1){
+		out = Mat();
+		return;
+	}
+
+	MatConstIterator_<float> itr = in.begin<float>();
+	MatConstIterator_<float> itr_end = in.end<float>();
+
+	float vmin = FLT_MAX, vmax = 0;
+
+	for(;itr != itr_end; itr++){
+		vmin = min(*itr, vmin);
+		vmax = max(*itr, vmax);
+	}
+
+	float ivabs = (float)(255.0 / (vmax - vmin));
+
+	out = Mat::zeros(in.rows, in.cols, CV_8UC1);
+
+	MatIterator_<uchar> itru = out.begin<uchar>();
+	itr = in.begin<float>();
+	for(;itr != itr_end; itr++, itru++){
+		float v = (float)(ivabs* (*itr - vmin));
+		*itru = saturate_cast<uchar>(v);
+	}
+}
 
 void cnvCVBGR8toGLRGB8(Mat & img)
 {
