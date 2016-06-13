@@ -48,38 +48,69 @@ public:
 class f_lcc: public f_misc
 {
 protected:
-	long long m_t, m_ifrm;
-	Mat m_img, m_aimg, m_vimg;
 	ch_image_ref * m_ch_img_in, * m_ch_img_out;
+
+	long long m_t, m_ifrm;
+	Mat m_img;
+	bool m_flipx, m_flipy;
+	bool m_bpass;
+
+	enum e_alg {
+		RAD, FULL, MM, UNDEF
+	} m_alg;
+	static const char * m_str_alg[UNDEF];
 	double m_alpha, m_range;
+	Mat m_map;
+
+	bool m_update_map; 
+	char m_fmap[1024]; // map file name
+
+	// rad algorithm
 	char m_fcp[1024];
 	AWSCamPar m_campar;
 	vector<float> m_amap, m_vmap;
 	int m_cx, m_cy, m_cx2, m_cy2;
-	Mat m_map;
-	enum e_alg {
-		RAD, FULL
-	} m_alg;
-	static const char * m_str_alg[FULL+1];
+	bool load_rad_data();
+	void save_rad_data();
+	void init_rad_data();
+	void calc_rad_map();
+	void calc_avg_and_var_16uc1_rad(Mat & img);
+	void calc_avg_and_var_8uc1_rad(Mat & img);
+	void calc_avg_and_var_16uc3_rad(Mat & img);
+	void calc_avg_and_var_8uc3_rad(Mat & img);
 
-	bool m_flipx, m_flipy;
-	bool m_update_map; 
-	char m_fmap[1024]; // map file name
+	// full algorithm
+	Mat m_aimg, m_vimg;
+	bool load_full_data();
+	void save_full_data();
+	void init_full_data();
+	void calc_full_map();
+	void calc_avg_and_var_16uc1(Mat & img);
+	void calc_avg_and_var_8uc1(Mat & img);
+	void calc_avg_and_var_16uc3(Mat & img);
+	void calc_avg_and_var_8uc3(Mat & img);
+
+
+	// mini max algorithm
+	Mat m_min, m_max;
+	bool load_mm_data();
+	void save_mm_data();
+	void init_mm_data();
+	void calc_mm_map();
+	void calc_mm_map_16u();
+	void calc_mm_map_8u();
+
+	void calc_mm_16uc1(Mat & img);
+	void calc_mm_8uc1(Mat & img);
+	void calc_mm_16uc3(Mat & img);
+	void calc_mm_8uc3(Mat & img);
 
 	// min = avg - range dev
 	// max = avg + range dev
 	// scale = 255 / (max - min)
 	// v' = (v - min) * 255 / (max - min)
 	// v' = v scale - min scale
-	void calc_avg_and_var_16uc1(Mat & img);
-	void calc_avg_and_var_8uc1(Mat & img);
-	void calc_avg_and_var_16uc3(Mat & img);
-	void calc_avg_and_var_8uc3(Mat & img);
 	
-	void calc_avg_and_var_16uc1_rad(Mat & img);
-	void calc_avg_and_var_8uc1_rad(Mat & img);
-	void calc_avg_and_var_16uc3_rad(Mat & img);
-	void calc_avg_and_var_8uc3_rad(Mat & img);
 
 	void filter_16uc1(Mat & in, Mat & out);
 	void filter_8uc1(Mat & in, Mat & out);

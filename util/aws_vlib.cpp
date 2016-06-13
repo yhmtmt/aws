@@ -3143,6 +3143,78 @@ void cnv32FC1to8UC1(const Mat & in, Mat & out)
 	}
 }
 
+void cnv16UC1to8UC1(const Mat & in, Mat & out)
+{
+	if(in.type() != CV_16UC1){
+		out = Mat();
+		return;
+	}
+
+	MatConstIterator_<ushort> itr = in.begin<ushort>();
+	MatConstIterator_<ushort> itr_end = in.end<ushort>();
+
+	ushort vmin = USHRT_MAX, vmax = 0;
+
+	for(;itr != itr_end; itr++){
+		vmin = min(*itr, vmin);
+		vmax = max(*itr, vmax);
+	}
+
+	float ivabs = (float)(255.0 / (float) (vmax - vmin));
+
+	out = Mat::zeros(in.rows, in.cols, CV_8UC1);
+
+	MatIterator_<uchar> itru = out.begin<uchar>();
+	itr = in.begin<ushort>();
+	for(;itr != itr_end; itr++, itru++){
+		float v = (float)(ivabs* (*itr - vmin));
+		*itru = saturate_cast<uchar>(v);
+	}
+}
+
+void cnv16UC3to8UC3(const Mat & in, Mat & out)
+{	
+	if(in.type() != CV_16UC3){
+		out = Mat();
+		return;
+	}
+
+	MatConstIterator_<Vec3w> itr = in.begin<Vec3w>();
+	MatConstIterator_<Vec3w> itr_end = in.end<Vec3w>();
+
+	ushort vmin[3] = {USHRT_MAX, USHRT_MAX, USHRT_MAX},
+		vmax[3] = {0, 0, 0};
+
+	for(;itr != itr_end; itr++){
+		vmin[0] = min((*itr)[0], vmin[0]);
+		vmax[0] = max((*itr)[0], vmax[0]);
+		vmin[1] = min((*itr)[1], vmin[1]);
+		vmax[1] = max((*itr)[1], vmax[1]);
+		vmin[2] = min((*itr)[2], vmin[2]);
+		vmax[2] = max((*itr)[2], vmax[2]);
+	}
+
+	float ivabs[3] = {
+		(float)(255.0 / (float) (vmax[0] - vmin[0])),
+		(float)(255.0 / (float) (vmax[1] - vmin[1])),
+		(float)(255.0 / (float) (vmax[2] - vmin[2]))
+	};
+
+	out = Mat::zeros(in.rows, in.cols, CV_8UC3);
+
+	MatIterator_<Vec3b> itru = out.begin<Vec3b>();
+	itr = in.begin<Vec3w>();
+	for(;itr != itr_end; itr++, itru++){
+		float v;
+		v = (float)(ivabs[0]* ((*itr)[0] - vmin[0]));
+		(*itru)[0] = saturate_cast<uchar>(v);
+		v = (float)(ivabs[1]* ((*itr)[1] - vmin[1]));
+		(*itru)[1] = saturate_cast<uchar>(v);
+		v = (float)(ivabs[2]* ((*itr)[2] - vmin[2]));
+		(*itru)[2] = saturate_cast<uchar>(v);
+	}
+}
+
 void cnvCVBGR8toGLRGB8(Mat & img)
 {
 	uchar * ptr0, * ptr1;
