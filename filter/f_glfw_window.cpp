@@ -446,6 +446,10 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("svstp", &m_bsvstp, "Save stereo parameter.");
 	register_fpar("ldstp", &m_bldstp, "Load stereo parameter.");
 
+	m_fcapture[0] = '\0';
+	register_fpar("capture", &m_bcapture, "Capture the screen");
+	register_fpar("fcapture", m_fcapture, 1024, "Capture file name");
+
 	register_fpar("flipx", &m_bflipx, "Flip image in x");
 	register_fpar("flipy", &m_bflipy, "Flip image in y");
 
@@ -846,6 +850,25 @@ bool f_glfw_stereo_view::proc()
 		  glVertex2f(ptr.x, ptr.y);
 		  glEnd();		  
 	  }
+  }
+
+  if(m_bcapture && m_fcapture[0]){
+	char buf[1024];
+	if(!m_img1.empty()){
+		snprintf(buf, 1024, "%sl%lld_%lld.png", m_fcapture, m_timg1, m_ifrm1);
+		imwrite(buf, m_img1);
+	}
+
+	if(!m_img2.empty()){
+		snprintf(buf, 1024, "%sr%lld_%lld.png", m_fcapture, m_timg2, m_ifrm2);
+		imwrite(buf, m_img2);
+	}
+
+	if(!m_disp.empty()){
+		snprintf(buf, 1024, "%sd%lld_%lld.png", m_fcapture, m_timg1, m_ifrm1);
+		imwrite(buf, m_disp);
+	}
+	m_bcapture = false;
   }
 
   glfwSwapBuffers(pwin());

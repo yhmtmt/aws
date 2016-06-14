@@ -59,7 +59,8 @@ protected:
 		RAD, FULL, MM, UNDEF
 	} m_alg;
 	static const char * m_str_alg[UNDEF];
-	double m_alpha, m_range;
+	double m_alpha, m_range, m_bias;
+	double m_sigma;
 	Mat m_map;
 
 	bool m_update_map; 

@@ -280,6 +280,7 @@ protected:
 	bool m_bred_chsbd; // reduce chessboard less than m_num_calib_chsbd
 	bool m_bsvcp, m_bldcp;
 	bool m_bsvstp, m_bldstp;
+	bool m_bcapture;
 
 	bool m_bchsbd;		 // chessboard model validity flag
 	bool m_bflipx, m_bflipy; // image flipping option 
@@ -288,6 +289,7 @@ protected:
 	bool m_brctst;		 // rectify
 	bool m_bdisp;		 // disparity map
 
+	char m_fcapture[1024];
 	// calibration flags
 	bool m_bfisheye, /* true if fisheye model is used */
 		m_bfix_int, m_bfix_k1, m_bfix_k2, m_bfix_k3, m_bfix_k4, /* common for both fisheye and rational models */
@@ -405,6 +407,17 @@ protected:
   {
 	  m_pos_mouse.x = (float)(2.0 * xpos / (double)m_sz_win.width - 1.0);
 	  m_pos_mouse.y = (float)(1.0 - 2.0 * ypos / (double)m_sz_win.height);
+  }
+  
+  virtual void _key_callback(int key, int scancode, int action, int mods)
+  {
+	  switch(key){
+	  case GLFW_KEY_S:
+		  if(GLFW_MOD_CONTROL & mods){
+			m_bcapture = true;
+		  }
+		  break;
+	  }
   }
 
   void check_undistort(vector<Point2f> & pts, vector<Point2f> & ptsu, 
