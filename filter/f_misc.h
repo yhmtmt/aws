@@ -56,7 +56,7 @@ protected:
 	bool m_bpass;
 
 	enum e_alg {
-		RAD, FULL, MM, UNDEF
+		RAD, FULL, MM, QUAD, UNDEF
 	} m_alg;
 	static const char * m_str_alg[UNDEF];
 	double m_alpha, m_range, m_bias;
@@ -91,7 +91,6 @@ protected:
 	void calc_avg_and_var_16uc3(Mat & img);
 	void calc_avg_and_var_8uc3(Mat & img);
 
-
 	// mini max algorithm
 	Mat m_min, m_max;
 	bool load_mm_data();
@@ -112,6 +111,12 @@ protected:
 	// v' = (v - min) * 255 / (max - min)
 	// v' = v scale - min scale
 	
+	// quadratic curve algorithm
+	int m_depth;
+	double m_qs, m_qb;
+	// (qs r^2 + 1) color + qb r^2
+	void calc_qmap_16u();
+	void calc_qmap_8u();
 
 	void filter_16uc1(Mat & in, Mat & out);
 	void filter_8uc1(Mat & in, Mat & out);

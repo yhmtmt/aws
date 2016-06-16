@@ -42,11 +42,12 @@ using namespace cv;
 ////////////////////////////////////////////////////////// f_lcc members
 const char * f_lcc::m_str_alg[UNDEF] =
 {
-	"rad", "full", "mm"
+	"rad", "full", "mm", "quad"
 };
 
 f_lcc::f_lcc(const char * name): f_misc(name), m_ch_img_in(NULL), m_ch_img_out(NULL), m_alg(FULL),
-	m_alpha(0.01), m_range(3.0), m_bias(1.0), m_sigma(0), m_update_map(true), m_bpass(false)
+	m_alpha(0.01), m_range(3.0), m_bias(1.0), m_sigma(0),m_qs(0.00001), m_qb(0.00001), m_depth(14),
+	m_update_map(true), m_bpass(false)
 {
 	m_fmap[0] = '\0';
 
@@ -58,12 +59,13 @@ f_lcc::f_lcc(const char * name): f_misc(name), m_ch_img_in(NULL), m_ch_img_out(N
 	register_fpar("flipx", &m_flipx, "Flip in x.");
 	register_fpar("flipy", &m_flipy, "Flip in y.");
 	register_fpar("alg", (int*)&m_alg, UNDEF, m_str_alg, "Algorithm.");
-
+	register_fpar("depth", &m_depth, "Color depth. Only for 16bit image.");
 	register_fpar("alpha", &m_alpha, "Averaging coeffecient.");
 	register_fpar("range", &m_range, "Clipping range.");
 	register_fpar("bias", &m_bias, "Bias of the color range.");
 	register_fpar("sigma", &m_sigma, "Sigma for gaussian blur.");
-
+	register_fpar("qs", &m_qs, "Scale coefficient for quadratic algorithm.");
+	register_fpar("qb", &m_qb, "Bias coefficient for quadratic algorith.");
 	register_fpar("fmap", m_fmap, 1024, "File path for map.");
 	register_fpar("update", &m_update_map, "Update map.");
 }
@@ -75,7 +77,7 @@ bool f_lcc::init_run()
 		case RAD:
 			if(!load_rad_data())
 				m_update_map = true;
-
+		case QUAD:
 			if(!m_fcp[0] || !m_campar.read(m_fcp)){
 				cerr << "Failed to load camear parameter." << endl;
 				return false;
@@ -368,6 +370,17 @@ bool f_lcc::proc()
 				break;
 			case CV_16UC3:
 				calc_mm_8uc3(img_calc);
+				break;
+			}
+		case QUAD:
+			switch(m_img.type()){
+			case CV_16UC1:
+			case CV_16UC3:
+				calc_qmap_16u();
+				break;
+			case CV_8UC1:
+			case CV_8UC3:
+				calc_qmap_8u();
 				break;
 			}
 		}
@@ -863,6 +876,41 @@ void f_lcc::calc_mm_8uc3(Mat & img)
 	calc_mm_map_8u();
 }
 
+void f_lcc::calc_qmap_16u()
+{
+	float * pm = m_map.ptr<float>();
+	int y2 = m_cy * m_cy;
+	double sn = (double)UCHAR_MAX / (double) ((1 << m_depth) - 1);
+	double qs = m_qs * sn;
+	for(int y = 0; y < m_img.rows; y++){
+		int x2 = m_cx * m_cx;
+		for(int x = 0; x < m_img.cols; x++){
+			int r2 = x2 + y2;
+			pm[0] = (float) (r2 * qs + sn);
+			pm[1] = (float) (r2 * m_qb);
+			x2 += (x << 1) - m_cx2 + 1;
+			pm += 2;
+		}
+		y2 += (y << 1) - m_cy2 + 1;
+	}
+}
+
+void f_lcc::calc_qmap_8u()
+{
+	float * pm = m_map.ptr<float>();
+	int y2 = m_cy * m_cy;
+	for(int y = 0; y < m_img.rows; y++){
+		int x2 = m_cx * m_cx;
+		for(int x = 0; x < m_img.cols; x++){
+			int r2 = x2 + y2;
+			pm[0] = (float) (r2 * m_qs + 1.);
+			pm[1] = (float) (r2 * m_qb);
+			x2 += (x << 1) - m_cx2 + 1;
+			pm += 2;
+		}
+		y2 += (y << 1) - m_cy2 + 1;
+	}
+}
 
 void f_lcc::filter_16uc1(Mat & in, Mat & out)
 {
