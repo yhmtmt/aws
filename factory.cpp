@@ -300,6 +300,7 @@ void f_base::register_factory()
 	register_factory<f_imwrite>("imwrite");
 	register_factory<f_imread>("imread");
 	register_factory<f_lcc>("lcc");
+	register_factory<f_bkg_mask>("bkgmsk");
 
 	// windows
 #ifdef FWINDOW

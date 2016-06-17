@@ -45,6 +45,36 @@ public:
 
 };
 
+class f_bkg_mask: public f_misc
+{
+protected:
+	ch_image_ref * m_ch_img_in, * m_ch_img_out, *m_ch_mask_out;
+	Mat m_img, m_img_prev, m_mavg, m_mask;
+	bool m_bupdate;
+	int m_mth;
+	double m_alpha, m_mbkgth;
+	long long m_t, m_ifrm;
+	char m_fmask[1024];
+
+	void calc_mask_8uc1();
+	void calc_mask_8uc3();
+	void calc_mask_16uc1();
+	void calc_mask_16uc3();
+
+	void aply_mask_8uc1(Mat & img);
+	void aply_mask_8uc3(Mat & img);
+	void aply_mask_16uc1(Mat & img);
+	void aply_mask_16uc3(Mat & img);
+
+public:
+	f_bkg_mask(const char * name);
+	virtual ~f_bkg_mask();
+
+	virtual bool init_run();
+	virtual void destroy_run();
+	virtual bool proc();
+};
+
 class f_lcc: public f_misc
 {
 protected:

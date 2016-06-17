@@ -39,6 +39,257 @@ using namespace cv;
 
 #include "f_misc.h"
 
+////////////////////////////////////////////////////////// f_bkg_mask members
+f_bkg_mask::f_bkg_mask(const char * name): f_misc(name), 
+	m_ch_img_in(NULL), m_ch_img_out(NULL), m_ch_mask_out(NULL), m_t(-1), m_ifrm(-1),
+	m_alpha(0.0001), m_mth(10), m_mbkgth(0.5)
+{
+	register_fpar("ch_in", (ch_base**)&m_ch_img_in, typeid(ch_image_ref).name(), "Input image channel");
+	register_fpar("ch_out", (ch_base**)&m_ch_img_out, typeid(ch_image_ref).name(), "Output image channel");
+	register_fpar("ch_mask_out", (ch_base**)&m_ch_mask_out, typeid(ch_image_ref).name(), "Output image channel");
+	register_fpar("fmask", m_fmask, 1024, "File name for saving mask image.");
+	register_fpar("alpha", &m_alpha, "Moving average constant.");
+	register_fpar("mth", &m_mth, "Motion threashold.");
+	register_fpar("bkgth", &m_mbkgth, "Background threashold.");
+	register_fpar("update", &m_bupdate, "Update mask.");
+}
+
+f_bkg_mask::~f_bkg_mask()
+{
+}
+
+bool f_bkg_mask::init_run()
+{
+	if(m_fmask[0]){
+		if(!read_raw_img(m_mask, m_fmask)){
+			m_bupdate = true;
+		}
+	}
+	return true;
+}
+
+void f_bkg_mask::destroy_run()
+{
+	if(m_fmask[0]){
+		char buf[1024];
+		snprintf(buf, 1024, "%s.msk", m_fmask);
+		write_raw_img(m_mask, m_fmask);
+		snprintf(buf, 1024, "%s.png", m_fmask);
+		imwrite(buf, m_mask);
+	}
+}
+
+bool f_bkg_mask::proc()
+{
+	if(m_ch_img_in){
+		long long t = 0, ifrm = 0;
+		Mat img = m_ch_img_in->get_img(t, ifrm);
+
+		if(m_t == t || img.empty()){
+			return true;
+		}
+
+		m_t = t;
+		m_ifrm = ifrm;
+
+		m_img = img.clone();
+
+		if(m_bupdate){
+			if(m_mask.empty()){
+				m_mask = Mat::zeros(m_img.rows, m_img.cols, CV_8UC1);
+			}
+			if(m_mavg.empty()){
+				m_mavg = Mat::zeros(m_img.rows, m_img.cols, CV_32FC1);
+			}
+
+			if(!m_img_prev.empty()){
+				switch(m_img.type()){
+				case CV_16UC1:
+					calc_mask_16uc1();
+					break;
+				case CV_16UC3:
+					calc_mask_16uc3();
+					break;
+				case CV_8UC1:
+					calc_mask_8uc1();
+					break;
+				case CV_8UC3:
+					calc_mask_8uc3();
+					break;
+				}
+			}
+
+			if(!m_img.empty()){
+				m_img_prev = m_img;
+			}
+		}
+	}
+
+	if(m_ch_mask_out){
+		if(!m_mask.empty()){
+			m_ch_img_out->set_img(m_mask, get_time());
+		}
+	}
+
+	if(m_ch_img_out){
+		if(!m_img.empty() && !m_mask.empty()){
+			Mat img_m(m_img.cols, m_img.rows, m_img.type());
+			switch(m_img.type()){
+			case CV_16UC1:
+				calc_mask_16uc1();
+				break;
+			case CV_16UC3:
+				calc_mask_16uc3();
+				break;
+			case CV_8UC1:
+				calc_mask_8uc1();
+				break;
+			case CV_8UC3:
+				calc_mask_8uc3();
+				break;
+			}
+
+			m_ch_img_out->set_img(img_m, m_t);
+		}
+	}
+
+	return true;
+}
+
+void f_bkg_mask::calc_mask_16uc1()
+{
+	MatIterator_<ushort> itr = m_img.begin<ushort>();
+	MatIterator_<ushort> itr_prev = m_img_prev.begin<ushort>();
+	MatIterator_<float> itr_ma = m_mavg.begin<float>();
+	MatIterator_<uchar> mitr = m_mask.begin<uchar>();
+	double ialpha = 1.0 - m_alpha;
+	for(;itr != m_img.end<ushort>(); itr++, itr_prev++, itr_ma++, mitr++){
+		int diff = abs((int)*itr - (int)*itr_prev);
+		if(diff > m_mth){
+			*itr_ma = (float)(ialpha * *itr_ma + m_alpha);
+		}
+		if(*itr_ma > m_mbkgth){
+			*mitr = 255;
+		}else{
+			*mitr = 0;
+		}
+	}
+}
+
+void f_bkg_mask::calc_mask_16uc3()
+{
+	MatIterator_<Vec3w> itr = m_img.begin<Vec3w>();
+	MatIterator_<Vec3w> itr_prev = m_img_prev.begin<Vec3w>();
+	MatIterator_<float> itr_ma = m_mavg.begin<float>();
+	MatIterator_<Vec3w> mitr = m_mask.begin<Vec3w>();
+	double ialpha = 1.0 - m_alpha;
+	for(;itr != m_img.end<Vec3w>(); itr++, itr_prev++, itr_ma++, mitr++){
+		int diff = 
+			abs((int)(*itr)[0] - (int)(*itr_prev)[0]) + 
+			abs((int)(*itr)[1] - (int)(*itr_prev)[1]) +
+			abs((int)(*itr)[2] - (int)(*itr_prev)[2]);
+		if(diff > m_mth){
+			*itr_ma = (float)(ialpha * *itr_ma + m_alpha);
+		}
+		if(*itr_ma > m_mbkgth){
+			*mitr = 255;
+		}else{
+			*mitr = 0;
+		}
+	}
+}
+
+void f_bkg_mask::calc_mask_8uc1()
+{
+	MatIterator_<uchar> itr = m_img.begin<uchar>();
+	MatIterator_<uchar> itr_prev = m_img_prev.begin<uchar>();
+	MatIterator_<float> itr_ma = m_mavg.begin<float>();
+	MatIterator_<uchar> mitr = m_mask.begin<uchar>();
+	double ialpha = 1.0 - m_alpha;
+	for(;itr != m_img.end<uchar>(); itr++, itr_prev++, itr_ma++, mitr++){
+		int diff = abs((int)*itr - (int)*itr_prev);
+		if(diff > m_mth){
+			*itr_ma = (float)(ialpha * *itr_ma + m_alpha);
+		}
+		if(*itr_ma > m_mbkgth){
+			*mitr = 255;
+		}else{
+			*mitr = 0;
+		}
+	}
+}
+
+void f_bkg_mask::calc_mask_8uc3()
+{
+	MatIterator_<Vec3b> itr = m_img.begin<Vec3b>();
+	MatIterator_<Vec3b> itr_prev = m_img_prev.begin<Vec3b>();
+	MatIterator_<float> itr_ma = m_mavg.begin<float>();
+	MatIterator_<Vec3b> mitr = m_mask.begin<Vec3b>();
+	double ialpha = 1.0 - m_alpha;
+	for(;itr != m_img.end<Vec3b>(); itr++, itr_prev++, itr_ma++, mitr++){
+		int diff = 
+			abs((int)(*itr)[0] - (int)(*itr_prev)[0]) + 
+			abs((int)(*itr)[1] - (int)(*itr_prev)[1]) +
+			abs((int)(*itr)[2] - (int)(*itr_prev)[2]);
+		if(diff > m_mth){
+			*itr_ma = (float)(ialpha * *itr_ma + m_alpha);
+		}
+		if(*itr_ma > m_mbkgth){
+			*mitr = 255;
+		}else{
+			*mitr = 0;
+		}
+	}
+}
+
+void f_bkg_mask::aply_mask_8uc1(Mat & img)
+{
+	MatIterator_<uchar> itr_org = m_img.begin<uchar>();
+	MatIterator_<uchar> itr = img.begin<uchar>();
+	MatIterator_<uchar> mitr = m_mask.begin<uchar>();
+	for(; itr != img.end<uchar>(); itr++, mitr++, itr_org++){
+		*itr = *itr_org & *mitr;
+	}
+}
+
+void f_bkg_mask::aply_mask_8uc3(Mat & img)
+{
+	MatIterator_<Vec3b> itr_org = m_img.begin<Vec3b>();
+	MatIterator_<Vec3b> itr = img.begin<Vec3b>();
+	MatIterator_<uchar> mitr = m_mask.begin<uchar>();
+	for(; itr != img.end<Vec3b>(); itr++, mitr++, itr_org++){
+		(*itr)[0] = (*itr_org)[0] & *mitr;
+		(*itr)[1] = (*itr_org)[1] & *mitr;
+		(*itr)[2] = (*itr_org)[2] & *mitr;
+	}
+}
+
+void f_bkg_mask::aply_mask_16uc1(Mat & img)
+{
+	MatIterator_<ushort> itr_org = m_img.begin<ushort>();
+	MatIterator_<ushort> itr = img.begin<ushort>();
+	MatIterator_<uchar> mitr = m_mask.begin<uchar>();
+	for(; itr != img.end<ushort>(); itr++, mitr++, itr_org++){
+		ushort mask = *mitr;
+		mask = (mask << 16) + *mitr;
+		*itr = *itr_org & mask;
+	}
+}
+
+void f_bkg_mask::aply_mask_16uc3(Mat & img)
+{
+	MatIterator_<Vec3w> itr_org = m_img.begin<Vec3w>();
+	MatIterator_<Vec3w> itr = img.begin<Vec3w>();
+	MatIterator_<uchar> mitr = m_mask.begin<uchar>();
+	for(; itr != img.end<Vec3w>(); itr++, mitr++, itr_org++){
+		ushort mask = *mitr;
+		mask = (mask << 16) + *mitr;
+		(*itr)[0] = (*itr_org)[0] & mask;
+		(*itr)[1] = (*itr_org)[1] & mask;
+		(*itr)[2] = (*itr_org)[2] & mask;
+	}
+}
+
 ////////////////////////////////////////////////////////// f_lcc members
 const char * f_lcc::m_str_alg[UNDEF] =
 {
@@ -310,6 +561,18 @@ bool f_lcc::proc()
 			break;
 		case MM:
 			calc_mm_map();
+			break;
+		case QUAD:
+			switch(m_img.type()){
+			case CV_16UC1:
+			case CV_16UC3:
+				calc_qmap_16u();
+				break;
+			case CV_8UC1:
+			case CV_8UC3:
+				calc_qmap_8u();
+				break;
+			}
 			break;
 		}
 	}
