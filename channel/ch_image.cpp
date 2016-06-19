@@ -31,7 +31,8 @@ using namespace std;
 using namespace cv;
 #include "../util/aws_thread.h"
 #include "ch_image.h"
-
+#define TIME_VERSION_1_00 14663001811536897L
+ 
 int ch_image::write(FILE * pf, long long tcur)
 {
 	if(pf){
@@ -46,8 +47,9 @@ int ch_image::write(FILE * pf, long long tcur)
 	      type = img.type();
 	      size = (int)(r * c * img.channels() * img.elemSize());
 	      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
-	      fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);
+	      fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);		  
 	      fwrite((void*)&type, sizeof(int), 1, pf);
+		  fwrite((void*)&m_offset, sizeof(m_offset), 1, pf); // from ver.1.00
 	      fwrite((void*)&r, sizeof(int), 1, pf);
 	      fwrite((void*)&c, sizeof(int), 1, pf);
 	      fwrite((void*)&size, sizeof(int), 1, pf);
@@ -84,11 +86,18 @@ int ch_image::read(FILE * pf, long long tcur)
 
 		m_ifrm[m_back] = ifrm;
 		m_time[m_back] = m_tfile = tsave;
-
+		
 		res = fread((void*)&type, sizeof(int), 1, pf);
 		if(!res)
 			goto failed;
 		sz += res;
+
+		if(tsave > TIME_VERSION_1_00){
+			res = fread((void*)&m_offset, sizeof(m_offset), 1, pf);
+			if(!res)
+				goto failed;
+			sz += res;
+		}
 
 		res = fread((void*)&r, sizeof(int), 1, pf);
 		if(!res)

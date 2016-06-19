@@ -1228,6 +1228,7 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 				tmp.copyTo(m_mat_frame[ibuf]);
 			}
 			pout->set_img(m_mat_frame[ibuf], m_cur_time, pfrm->FrameCount);
+			pout->set_offset(m_RegionX, m_RegionY);
 		}
 	}else if(bemsg){
 		switch(pfrm->Status){

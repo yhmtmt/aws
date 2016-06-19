@@ -32,6 +32,8 @@ class ch_image: public ch_base
 protected:
 	int m_back, m_front;
 	
+	Point2i m_offset;
+
 	Mat m_img[2];
 	long long m_time[2]; // frame time (aws time)
 	long long m_ifrm[2]; // frame index (if available.)
@@ -50,7 +52,7 @@ protected:
 	double tvec[3];
 	
 public:
-	ch_image(const char * name):ch_base(name), m_bfisheye(false), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0)
+	ch_image(const char * name):ch_base(name), m_bfisheye(false), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0), m_offset(0, 0)
 	{
 		m_time[0] = m_time[1] = 0;
 		m_ifrm[0] = m_ifrm[1] = -1;
@@ -65,6 +67,16 @@ public:
 	{
 		pthread_mutex_destroy(&m_mtx_bk);
 		pthread_mutex_destroy(&m_mtx_fr);
+	}
+
+	void set_offset(int ox, int oy){
+		m_offset.x = ox;
+		m_offset.y = oy;
+	}
+
+	void get_offset(int & ox, int & oy){
+		ox = m_offset.x;
+		oy = m_offset.y;
 	}
 
 	void reset_campar()

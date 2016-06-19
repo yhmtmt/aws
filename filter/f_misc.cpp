@@ -42,7 +42,7 @@ using namespace cv;
 ////////////////////////////////////////////////////////// f_bkg_mask members
 f_bkg_mask::f_bkg_mask(const char * name): f_misc(name), 
 	m_ch_img_in(NULL), m_ch_img_out(NULL), m_ch_mask_out(NULL), m_t(-1), m_ifrm(-1),
-	m_alpha(0.0001), m_mth(10), m_mbkgth(0.5)
+	m_alpha(0.0001), m_mth(10), m_mbkgth(0.5), m_bupdate(true)
 {
 	register_fpar("ch_in", (ch_base**)&m_ch_img_in, typeid(ch_image_ref).name(), "Input image channel");
 	register_fpar("ch_out", (ch_base**)&m_ch_img_out, typeid(ch_image_ref).name(), "Output image channel");
@@ -61,8 +61,14 @@ f_bkg_mask::~f_bkg_mask()
 bool f_bkg_mask::init_run()
 {
 	if(m_fmask[0]){
-		if(!read_raw_img(m_mask, m_fmask)){
+		char buf[1024];
+		snprintf(buf, 1024, "%s.msk", m_fmask);
+		if(!read_raw_img(m_mask, buf)){
 			m_bupdate = true;
+		}
+		if(m_bupdate){
+			snprintf(buf, 1024, "%s.ma", m_fmask);
+			read_raw_img(m_mavg, buf);
 		}
 	}
 	return true;
@@ -73,9 +79,17 @@ void f_bkg_mask::destroy_run()
 	if(m_fmask[0]){
 		char buf[1024];
 		snprintf(buf, 1024, "%s.msk", m_fmask);
-		write_raw_img(m_mask, m_fmask);
+		write_raw_img(m_mask, buf);
 		snprintf(buf, 1024, "%s.png", m_fmask);
 		imwrite(buf, m_mask);
+		if(m_bupdate){
+			snprintf(buf, 1024, "%s.ma", m_fmask);
+			write_raw_img(m_mavg, buf);
+		}
+		Mat img;
+		cnv32FC1to8UC1(m_mavg, img);
+		snprintf(buf, 1024, "%s_ma.png", m_fmask);
+		imwrite(buf, img);
 	}
 }
 
@@ -97,9 +111,11 @@ bool f_bkg_mask::proc()
 		if(m_bupdate){
 			if(m_mask.empty()){
 				m_mask = Mat::zeros(m_img.rows, m_img.cols, CV_8UC1);
+				m_mask = 255;
 			}
 			if(m_mavg.empty()){
 				m_mavg = Mat::zeros(m_img.rows, m_img.cols, CV_32FC1);
+				m_mavg = 1.0;
 			}
 
 			if(!m_img_prev.empty()){
@@ -133,19 +149,19 @@ bool f_bkg_mask::proc()
 
 	if(m_ch_img_out){
 		if(!m_img.empty() && !m_mask.empty()){
-			Mat img_m(m_img.cols, m_img.rows, m_img.type());
+			Mat img_m(m_img.rows, m_img.cols, m_img.type());
 			switch(m_img.type()){
 			case CV_16UC1:
-				calc_mask_16uc1();
+				aply_mask_16uc1(img_m);
 				break;
 			case CV_16UC3:
-				calc_mask_16uc3();
+				aply_mask_16uc3(img_m);
 				break;
 			case CV_8UC1:
-				calc_mask_8uc1();
+				aply_mask_8uc1(img_m);
 				break;
 			case CV_8UC3:
-				calc_mask_8uc3();
+				aply_mask_8uc3(img_m);
 				break;
 			}
 
@@ -167,6 +183,8 @@ void f_bkg_mask::calc_mask_16uc1()
 		int diff = abs((int)*itr - (int)*itr_prev);
 		if(diff > m_mth){
 			*itr_ma = (float)(ialpha * *itr_ma + m_alpha);
+		}else{
+			*itr_ma = (float)(ialpha * *itr_ma);
 		}
 		if(*itr_ma > m_mbkgth){
 			*mitr = 255;
@@ -190,6 +208,8 @@ void f_bkg_mask::calc_mask_16uc3()
 			abs((int)(*itr)[2] - (int)(*itr_prev)[2]);
 		if(diff > m_mth){
 			*itr_ma = (float)(ialpha * *itr_ma + m_alpha);
+		}else{
+			*itr_ma = (float)(ialpha * *itr_ma);
 		}
 		if(*itr_ma > m_mbkgth){
 			*mitr = 255;
@@ -208,14 +228,18 @@ void f_bkg_mask::calc_mask_8uc1()
 	double ialpha = 1.0 - m_alpha;
 	for(;itr != m_img.end<uchar>(); itr++, itr_prev++, itr_ma++, mitr++){
 		int diff = abs((int)*itr - (int)*itr_prev);
+		float ma = *itr_ma;
 		if(diff > m_mth){
-			*itr_ma = (float)(ialpha * *itr_ma + m_alpha);
+			ma = (float)(ialpha * ma + m_alpha);
+		}else{
+			ma = (float)(ialpha * ma);
 		}
-		if(*itr_ma > m_mbkgth){
+		if(ma > m_mbkgth){
 			*mitr = 255;
 		}else{
 			*mitr = 0;
 		}
+		*itr_ma = ma;
 	}
 }
 
@@ -233,6 +257,8 @@ void f_bkg_mask::calc_mask_8uc3()
 			abs((int)(*itr)[2] - (int)(*itr_prev)[2]);
 		if(diff > m_mth){
 			*itr_ma = (float)(ialpha * *itr_ma + m_alpha);
+		}else{
+			*itr_ma = (float)(ialpha * *itr_ma);
 		}
 		if(*itr_ma > m_mbkgth){
 			*mitr = 255;
