@@ -207,7 +207,7 @@ protected:
 
 		// static parameters. these parameters should not be modified during running state
 		eFrameStartTriggerMode m_FrameStartTriggerMode;
-		
+	  unsigned int m_sHeight, m_sWidth;
 		unsigned int m_Height;
 		unsigned int m_RegionX;
 		unsigned int m_RegionY;

@@ -305,6 +305,18 @@ bool f_avt_cam::s_cam_params::config_param()
 		}
 	}
 
+	err = PvAttrUint32Get(m_hcam, "SensorWidth", (tPvUint32*)&m_sWidth);
+	if(err != ePvErrSuccess){
+	  cerr << "Failed to get SensorWidth" << endl;
+	  return false;
+	}
+
+	err = PvAttrUint32Get(m_hcam, "SensorHeight", (tPvUint32*)&m_sHeight);
+	if(err != ePvErrSuccess){
+	  cerr << "Failed to get SensorHeight" << endl;
+	  return false;
+	}
+
 	if(m_Height == UINT_MAX){
 		err = PvAttrUint32Get(m_hcam, "Height", (tPvUint32*)&m_Height);
 		if(err != ePvErrSuccess){
@@ -1229,6 +1241,7 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 			}
 			pout->set_img(m_mat_frame[ibuf], m_cur_time, pfrm->FrameCount);
 			pout->set_offset(m_RegionX, m_RegionY);
+			pout->set_sz_sensor(m_sWidth, m_sHeight);
 		}
 	}else if(bemsg){
 		switch(pfrm->Status){

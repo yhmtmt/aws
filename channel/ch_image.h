@@ -33,6 +33,7 @@ protected:
 	int m_back, m_front;
 	
 	Point2i m_offset;
+	Size m_sz_sensor;
 
 	Mat m_img[2];
 	long long m_time[2]; // frame time (aws time)
@@ -52,7 +53,7 @@ protected:
 	double tvec[3];
 	
 public:
-	ch_image(const char * name):ch_base(name), m_bfisheye(false), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0), m_offset(0, 0)
+ ch_image(const char * name):ch_base(name), m_bfisheye(false), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0), m_offset(0, 0), m_sz_sensor(0, 0)
 	{
 		m_time[0] = m_time[1] = 0;
 		m_ifrm[0] = m_ifrm[1] = -1;
@@ -69,7 +70,7 @@ public:
 		pthread_mutex_destroy(&m_mtx_fr);
 	}
 
-	void set_offset(int ox, int oy){
+	void set_offset(const int ox, const int oy){
 		m_offset.x = ox;
 		m_offset.y = oy;
 	}
@@ -77,6 +78,16 @@ public:
 	void get_offset(int & ox, int & oy){
 		ox = m_offset.x;
 		oy = m_offset.y;
+	}
+
+	void set_sz_sensor(const int sw, const int sh){
+	  m_sz_sensor.width = sw;
+	  m_sz_sensor.height = sh;
+	}
+
+	void get_sz_sensor(int & sw, int & sh){
+	  sw = m_sz_sensor.width;
+	  sh = m_sz_sensor.height;
 	}
 
 	void reset_campar()

@@ -750,6 +750,14 @@ void f_lcc::calc_rad_map()
 	float * pm = m_map.ptr<float>();
 	int cx = 0, cy = 0;
 	m_ch_img_in->get_offset(cx, cy);
+	int sx = 0, sy = 0;
+	m_ch_img_in->get_sz_sensor(sx, sy);
+	if(m_flipx){
+	  cx = sx - (m_img.cols + cx); 
+	}
+	if(m_flipy){
+	  cy = sy - (m_img.rows + cy);
+	}
 	cx = m_cx - cx;
 	cy = m_cy - cy;
 	int cx2 = cx << 1;
@@ -960,6 +968,14 @@ void f_lcc::calc_avg_and_var_16uc1_rad(Mat & img)
 	double ialpha = 1.0 - m_alpha;
 	int cx = 0, cy = 0;
 	m_ch_img_in->get_offset(cx, cy);
+	int sx = 0, sy = 0;
+	m_ch_img_in->get_sz_sensor(sx, sy);
+	if(m_flipx){
+	  cx = sx - (m_img.cols + cx); 
+	}
+	if(m_flipy){
+	  cy = sy - (m_img.rows + cy);
+	}
 	cx = m_cx - cx;
 	cy = m_cy - cy;
 	int cx2 = cx << 1;
@@ -999,6 +1015,15 @@ void f_lcc::calc_avg_and_var_8uc1_rad(Mat & img)
 	double ialpha = 1.0 - m_alpha;
 	int cx = 0, cy = 0;
 	m_ch_img_in->get_offset(cx, cy);
+	int sx = 0, sy = 0;
+	m_ch_img_in->get_sz_sensor(sx, sy);
+	if(m_flipx){
+	  cx = sx - (m_img.cols + cx); 
+	}
+	if(m_flipy){
+	  cy = sy - (m_img.rows + cy);
+	}
+
 	cx = m_cx - cx;
 	cy = m_cy - cy;
 	int cx2 = cx << 1;
@@ -1038,6 +1063,14 @@ void f_lcc::calc_avg_and_var_16uc3_rad(Mat & img)
 	double ialpha = 1.0 - m_alpha;
 	int cx = 0, cy = 0;
 	m_ch_img_in->get_offset(cx, cy);
+	int sx = 0, sy = 0;
+	m_ch_img_in->get_sz_sensor(sx, sy);
+	if(m_flipx){
+	  cx = sx - (m_img.cols + cx); 
+	}
+	if(m_flipy){
+	  cy = sy - (m_img.rows + cy);
+	}
 	cx = m_cx - cx;
 	cy = m_cy - cy;
 	int cx2 = cx << 1;
@@ -1078,6 +1111,14 @@ void f_lcc::calc_avg_and_var_8uc3_rad(Mat & img)
 	double ialpha = 1.0 - m_alpha;
 	int cx = 0, cy = 0;
 	m_ch_img_in->get_offset(cx, cy);
+	int sx = 0, sy = 0;
+	m_ch_img_in->get_sz_sensor(sx, sy);
+	if(m_flipx){
+	  cx = sx - (m_img.cols + cx); 
+	}
+	if(m_flipy){
+	  cy = sy - (m_img.rows + cy);
+	}
 	cx = m_cx - cx;
 	cy = m_cy - cy;
 	int cx2 = cx << 1;
@@ -1198,6 +1239,14 @@ void f_lcc::calc_qmap_16u()
 	float * pm = m_map.ptr<float>();
 	int cx = 0, cy = 0;
 	m_ch_img_in->get_offset(cx, cy);
+	int sx = 0, sy = 0;
+	m_ch_img_in->get_sz_sensor(sx, sy);
+	if(m_flipx){
+	  cx = sx - (m_img.cols + cx); 
+	}
+	if(m_flipy){
+	  cy = sy - (m_img.rows + cy);
+	}
 	cx = m_cx - cx;
 	cy = m_cy - cy;
 	int cx2 = cx << 1;
@@ -1222,6 +1271,14 @@ void f_lcc::calc_qmap_8u()
 {
 	int cx = 0, cy = 0;
 	m_ch_img_in->get_offset(cx, cy);
+	int sx = 0, sy = 0;
+	m_ch_img_in->get_sz_sensor(sx, sy);
+	if(m_flipx){
+	  cx = sx - (m_img.cols + cx); 
+	}
+	if(m_flipy){
+	  cy = sy - (m_img.rows + cy);
+	}
 	cx = m_cx - cx;
 	cy = m_cy - cy;
 	int cx2 = cx << 1;

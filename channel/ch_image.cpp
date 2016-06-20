@@ -49,7 +49,8 @@ int ch_image::write(FILE * pf, long long tcur)
 	      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
 	      fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);		  
 	      fwrite((void*)&type, sizeof(int), 1, pf);
-		  fwrite((void*)&m_offset, sizeof(m_offset), 1, pf); // from ver.1.00
+	      fwrite((void*)&m_offset, sizeof(m_offset), 1, pf); // from ver.1.00	      
+	      fwrite((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pf); // from ver.1.00	      
 	      fwrite((void*)&r, sizeof(int), 1, pf);
 	      fwrite((void*)&c, sizeof(int), 1, pf);
 	      fwrite((void*)&size, sizeof(int), 1, pf);
@@ -94,6 +95,10 @@ int ch_image::read(FILE * pf, long long tcur)
 
 		if(tsave > TIME_VERSION_1_00){
 			res = fread((void*)&m_offset, sizeof(m_offset), 1, pf);
+			if(!res)
+				goto failed;
+			sz += res;
+			res = fread((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pf);
 			if(!res)
 				goto failed;
 			sz += res;
@@ -162,6 +167,16 @@ bool ch_image::log2txt(FILE * pbf, FILE * ptf)
 		res = fread((void*)&type, sizeof(int), 1, pbf);
 		if(!res)
 			goto failed;
+
+		if(tsave > TIME_VERSION_1_00){
+			res = fread((void*)&m_offset, sizeof(m_offset), 1, pbf);
+			if(!res)
+				goto failed;
+		     
+			res = fread((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pbf);
+			if(!res)
+				goto failed;
+		}
 
 		res = fread((void*)&r, sizeof(int), 1, pbf);
 		if(!res)
