@@ -748,10 +748,16 @@ void f_lcc::init_mm_data()
 void f_lcc::calc_rad_map()
 {
 	float * pm = m_map.ptr<float>();
-	int y2 = m_cy * m_cy;
+	int cx = 0, cy = 0;
+	m_ch_img_in->get_offset(cx, cy);
+	cx = m_cx - cx;
+	cy = m_cy - cy;
+	int cx2 = cx << 1;
+	int cy2 = cy << 1;
+	int y2 = cy * cy;
 	double ibias = 2.0 - m_bias;
 	for(int y = 0; y < m_map.rows; y++){
-		int x2 = m_cx * m_cx;
+		int x2 = cx * cx;
 		for(int x = 0; x < m_map.cols; x++){
 			int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
 
@@ -763,10 +769,10 @@ void f_lcc::calc_rad_map()
 			pm[0] = (float)(255.0 / (2 * rd));
 			pm[1] = (float)(- pm[0] * a);
 
-			x2 += (x << 1) - m_cx2 + 1;
+			x2 += (x << 1) - cx2 + 1;
 			pm += 2;
 		}
-		y2 += (y << 1) - m_cy2 + 1;
+		y2 += (y << 1) - cy2 + 1;
 	}
 }
 
@@ -791,7 +797,6 @@ void f_lcc::calc_full_map()
 		}
 	}
 }
-
 
 void f_lcc::calc_mm_map()
 {
@@ -820,7 +825,6 @@ void f_lcc::calc_mm_map_16u()
 		}
 	}
 }
-
 
 void f_lcc::calc_mm_map_8u()
 {
@@ -954,9 +958,15 @@ void f_lcc::calc_avg_and_var_16uc1_rad(Mat & img)
 	int w = img.cols, h = img.rows;
 	double ibias = 2.0 - m_bias;
 	double ialpha = 1.0 - m_alpha;
-	int y2 = m_cy * m_cy;
+	int cx = 0, cy = 0;
+	m_ch_img_in->get_offset(cx, cy);
+	cx = m_cx - cx;
+	cy = m_cy - cy;
+	int cx2 = cx << 1;
+	int cy2 = cy << 1;
+	int y2 = cy * cy;
 	for(int y = 0; y < h; y++){			
-		int x2 = m_cx * m_cx;
+		int x2 = cx * cx;
 		for(int x = 0; x < w; x++){
 			int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
 			
@@ -976,7 +986,7 @@ void f_lcc::calc_avg_and_var_16uc1_rad(Mat & img)
 			pimg++;
 			pm += 2;
 		}
-		y2 += (y << 1) - m_cy2 + 1;
+		y2 += (y << 1) - cy2 + 1;
 	}
 }
 
@@ -987,9 +997,15 @@ void f_lcc::calc_avg_and_var_8uc1_rad(Mat & img)
 	int w = img.cols, h = img.rows;
 	double ibias = 2.0 - m_bias;
 	double ialpha = 1.0 - m_alpha;
-	int y2 = m_cy * m_cy;
+	int cx = 0, cy = 0;
+	m_ch_img_in->get_offset(cx, cy);
+	cx = m_cx - cx;
+	cy = m_cy - cy;
+	int cx2 = cx << 1;
+	int cy2 = cy << 1;
+	int y2 = cy * cy;
 	for(int y = 0; y < h; y++){
-		int x2 = m_cx * m_cx;
+		int x2 = cx * cx;
 		for(int x = 0; x < w; x++){
 			int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
 
@@ -1005,11 +1021,11 @@ void f_lcc::calc_avg_and_var_8uc1_rad(Mat & img)
 			b = m_amap[r] + ibias * rd;
 			pm[0] = (float)(255.0 / (2 * rd));
 			pm[1] = (float)(- pm[0] * a);
-			x2 += (x << 1) - m_cx2 + 1;
+			x2 += (x << 1) - cx2 + 1;
 			pimg++;
 			pm += 2;
 		}
-		y2 += (y << 1) - m_cy2 + 1;
+		y2 += (y << 1) - cy2 + 1;
 	}
 }
 
@@ -1020,9 +1036,15 @@ void f_lcc::calc_avg_and_var_16uc3_rad(Mat & img)
 	int w = img.cols, h = img.rows;
 	double ibias = 2.0 - m_bias;
 	double ialpha = 1.0 - m_alpha;
-	int y2 = m_cy * m_cy;
+	int cx = 0, cy = 0;
+	m_ch_img_in->get_offset(cx, cy);
+	cx = m_cx - cx;
+	cy = m_cy - cy;
+	int cx2 = cx << 1;
+	int cy2 = cy << 1;
+	int y2 = cy * cy;
 	for(int y = 0; y < h; y++){
-		int x2 = m_cx * m_cx;
+		int x2 = cx * cx;
 		for(int x = 0; x < w; x++){
 			double p = (double) (pimg[0] + pimg[1] + pimg[2]) * 0.333;
 			int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
@@ -1039,11 +1061,11 @@ void f_lcc::calc_avg_and_var_16uc3_rad(Mat & img)
 			b = m_amap[r] + ibias * rd;
 			pm[0] = (float)(255.0 / (2 * rd));
 			pm[1] = (float)(- pm[0] * a);
-			x2 += (x << 1) - m_cx2 + 1;
+			x2 += (x << 1) - cx2 + 1;
 			pimg+=3;
 			pm += 2;
 		}
-		y2 += (y << 1) - m_cy2 + 1;
+		y2 += (y << 1) - cy2 + 1;
 	}
 }
 
@@ -1054,9 +1076,15 @@ void f_lcc::calc_avg_and_var_8uc3_rad(Mat & img)
 	int w = img.cols, h = img.rows;
 	double ibias = 2.0 - m_bias;
 	double ialpha = 1.0 - m_alpha;
-	int y2 = m_cy * m_cy;
+	int cx = 0, cy = 0;
+	m_ch_img_in->get_offset(cx, cy);
+	cx = m_cx - cx;
+	cy = m_cy - cy;
+	int cx2 = cx << 1;
+	int cy2 = cy << 1;
+	int y2 = cy * cy;
 	for(int y = 0; y < h; y++){
-		int x2 = m_cx * m_cx;
+		int x2 = cx * cx;
 		for(int x = 0; x < w; x++){
 			double p = (double) (pimg[0] + pimg[1] + pimg[2]) * 0.333;
 			int r = (int) (sqrt((double)(x2 + y2)) + 0.5);
@@ -1073,11 +1101,11 @@ void f_lcc::calc_avg_and_var_8uc3_rad(Mat & img)
 			b = m_amap[r] + ibias * rd;
 			pm[0] = (float)(255.0 / (2 * rd));
 			pm[1] = (float)(- pm[0] * a);
-			x2 += (x << 1) - m_cx2 + 1;
+			x2 += (x << 1) - cx2 + 1;
 			pimg+=3;
 			pm += 2;
 		}
-		y2 += (y << 1) - m_cy2 + 1;
+		y2 += (y << 1) - cy2 + 1;
 	}
 }
 
@@ -1168,36 +1196,49 @@ void f_lcc::calc_mm_8uc3(Mat & img)
 void f_lcc::calc_qmap_16u()
 {
 	float * pm = m_map.ptr<float>();
-	int y2 = m_cy * m_cy;
+	int cx = 0, cy = 0;
+	m_ch_img_in->get_offset(cx, cy);
+	cx = m_cx - cx;
+	cy = m_cy - cy;
+	int cx2 = cx << 1;
+	int cy2 = cy << 1;
+	int y2 = cy * cy;
 	double sn = (double)UCHAR_MAX / (double) ((1 << m_depth) - 1);
 	double qs = m_qs * sn;
 	for(int y = 0; y < m_img.rows; y++){
-		int x2 = m_cx * m_cx;
+		int x2 = cx * cx;
 		for(int x = 0; x < m_img.cols; x++){
 			int r2 = x2 + y2;
 			pm[0] = (float) (r2 * qs + sn);
 			pm[1] = (float) (r2 * m_qb);
-			x2 += (x << 1) - m_cx2 + 1;
+			x2 += (x << 1) - cx2 + 1;
 			pm += 2;
 		}
-		y2 += (y << 1) - m_cy2 + 1;
+		y2 += (y << 1) - cy2 + 1;
 	}
 }
 
 void f_lcc::calc_qmap_8u()
 {
+	int cx = 0, cy = 0;
+	m_ch_img_in->get_offset(cx, cy);
+	cx = m_cx - cx;
+	cy = m_cy - cy;
+	int cx2 = cx << 1;
+	int cy2 = cy << 1;
+	int y2 = cy * cy;
+
 	float * pm = m_map.ptr<float>();
-	int y2 = m_cy * m_cy;
 	for(int y = 0; y < m_img.rows; y++){
-		int x2 = m_cx * m_cx;
+		int x2 = cx * cx;
 		for(int x = 0; x < m_img.cols; x++){
 			int r2 = x2 + y2;
 			pm[0] = (float) (r2 * m_qs + 1.);
 			pm[1] = (float) (r2 * m_qb);
-			x2 += (x << 1) - m_cx2 + 1;
+			x2 += (x << 1) - cx2 + 1;
 			pm += 2;
 		}
-		y2 += (y << 1) - m_cy2 + 1;
+		y2 += (y << 1) - cy2 + 1;
 	}
 }
 
