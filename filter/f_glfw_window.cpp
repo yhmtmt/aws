@@ -410,7 +410,8 @@ bool f_glfw_imview::init_run()
 
 ////////////////////////////////////////////////////////////////////////////////f_glfw_stereo_view members
 f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL),
-	m_timg1(-1), m_timg2(-1),
+	m_timg1(-1), m_timg2(-1), m_ifrm_diff(0), m_fm_max_count(300), m_fm_count(0), m_fm_time_min_dfrm(0), 
+	m_fm_time_min(INT_MAX),
 	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_num_chsbd_com(0), m_bflipx(false), m_bflipy(false),
 	m_bcpl(false), m_bcpr(false), m_bstp(false), m_brct(false), 
 	m_bsvcp(false), m_bldcp(false), m_budl(false), m_budr(false), m_bdisp(false), 
@@ -563,10 +564,29 @@ bool f_glfw_stereo_view::proc()
   else
 	  m_bnew = true;
 
-  if(ifrm1 != ifrm2){
+  if(ifrm1 != ifrm2 + m_ifrm_diff){
 	  m_bsync = false;
+	  int fdiff = ifrm1 - ifrm2;
+	  int tdiff = abs(timg1 - timg2);
+	  if(tdiff < m_fm_time_min){
+		  m_fm_time_min = tdiff;
+		  m_fm_time_min_dfrm = fdiff;
+	  }
+	  m_fm_count++;
+	  
   }else{
 	  m_bsync = true;
+	  m_fm_count = 0;
+	  m_fm_time_min_dfrm = 0;
+	  m_fm_time_min = INT_MAX;
+  }
+
+  if(m_fm_count > m_fm_max_count){
+	  m_ifrm_diff = m_fm_time_min_dfrm;
+	  cout << "Frame mismatch is fixed. fdiff = " << m_ifrm_diff << " tdiff = " << m_fm_time_min << endl;
+	  m_fm_count = 0;
+	  m_fm_time_min_dfrm = 0;
+	  m_fm_time_min = INT_MAX;
   }
 
   if(m_bnew && m_bsync)

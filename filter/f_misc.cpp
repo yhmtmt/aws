@@ -529,7 +529,6 @@ bool f_lcc::proc()
 		m_t = t;
 		m_ifrm = i;
 	}
-	
 	// flip the image if required.
 	if(m_flipx || m_flipy){
 		awsFlip(m_img, m_flipx, m_flipy, false);
@@ -966,18 +965,8 @@ void f_lcc::calc_avg_and_var_16uc1_rad(Mat & img)
 	int w = img.cols, h = img.rows;
 	double ibias = 2.0 - m_bias;
 	double ialpha = 1.0 - m_alpha;
-	int cx = 0, cy = 0;
-	m_ch_img_in->get_offset(cx, cy);
-	int sx = 0, sy = 0;
-	m_ch_img_in->get_sz_sensor(sx, sy);
-	if(m_flipx){
-	  cx = sx - (m_img.cols + cx); 
-	}
-	if(m_flipy){
-	  cy = sy - (m_img.rows + cy);
-	}
-	cx = m_cx - cx;
-	cy = m_cy - cy;
+	int cx = m_cx;
+	int cy = m_cy;
 	int cx2 = cx << 1;
 	int cy2 = cy << 1;
 	int y2 = cy * cy;
@@ -1013,19 +1002,8 @@ void f_lcc::calc_avg_and_var_8uc1_rad(Mat & img)
 	int w = img.cols, h = img.rows;
 	double ibias = 2.0 - m_bias;
 	double ialpha = 1.0 - m_alpha;
-	int cx = 0, cy = 0;
-	m_ch_img_in->get_offset(cx, cy);
-	int sx = 0, sy = 0;
-	m_ch_img_in->get_sz_sensor(sx, sy);
-	if(m_flipx){
-	  cx = sx - (m_img.cols + cx); 
-	}
-	if(m_flipy){
-	  cy = sy - (m_img.rows + cy);
-	}
-
-	cx = m_cx - cx;
-	cy = m_cy - cy;
+	int cx = m_cx;
+	int cy = m_cy;
 	int cx2 = cx << 1;
 	int cy2 = cy << 1;
 	int y2 = cy * cy;
@@ -1061,18 +1039,8 @@ void f_lcc::calc_avg_and_var_16uc3_rad(Mat & img)
 	int w = img.cols, h = img.rows;
 	double ibias = 2.0 - m_bias;
 	double ialpha = 1.0 - m_alpha;
-	int cx = 0, cy = 0;
-	m_ch_img_in->get_offset(cx, cy);
-	int sx = 0, sy = 0;
-	m_ch_img_in->get_sz_sensor(sx, sy);
-	if(m_flipx){
-	  cx = sx - (m_img.cols + cx); 
-	}
-	if(m_flipy){
-	  cy = sy - (m_img.rows + cy);
-	}
-	cx = m_cx - cx;
-	cy = m_cy - cy;
+	int cx = m_cx;
+	int cy = m_cy;
 	int cx2 = cx << 1;
 	int cy2 = cy << 1;
 	int y2 = cy * cy;
@@ -1109,18 +1077,8 @@ void f_lcc::calc_avg_and_var_8uc3_rad(Mat & img)
 	int w = img.cols, h = img.rows;
 	double ibias = 2.0 - m_bias;
 	double ialpha = 1.0 - m_alpha;
-	int cx = 0, cy = 0;
-	m_ch_img_in->get_offset(cx, cy);
-	int sx = 0, sy = 0;
-	m_ch_img_in->get_sz_sensor(sx, sy);
-	if(m_flipx){
-	  cx = sx - (m_img.cols + cx); 
-	}
-	if(m_flipy){
-	  cy = sy - (m_img.rows + cy);
-	}
-	cx = m_cx - cx;
-	cy = m_cy - cy;
+	int cx = m_cx;
+	int cy = m_cy;
 	int cx2 = cx << 1;
 	int cy2 = cy << 1;
 	int y2 = cy * cy;
@@ -1237,18 +1195,8 @@ void f_lcc::calc_mm_8uc3(Mat & img)
 void f_lcc::calc_qmap_16u()
 {
 	float * pm = m_map.ptr<float>();
-	int cx = 0, cy = 0;
-	m_ch_img_in->get_offset(cx, cy);
-	int sx = 0, sy = 0;
-	m_ch_img_in->get_sz_sensor(sx, sy);
-	if(m_flipx){
-	  cx = sx - (m_img.cols + cx); 
-	}
-	if(m_flipy){
-	  cy = sy - (m_img.rows + cy);
-	}
-	cx = m_cx - cx;
-	cy = m_cy - cy;
+	int cx = m_cx;
+	int cy = m_cy;
 	int cx2 = cx << 1;
 	int cy2 = cy << 1;
 	int y2 = cy * cy;
@@ -1269,18 +1217,8 @@ void f_lcc::calc_qmap_16u()
 
 void f_lcc::calc_qmap_8u()
 {
-	int cx = 0, cy = 0;
-	m_ch_img_in->get_offset(cx, cy);
-	int sx = 0, sy = 0;
-	m_ch_img_in->get_sz_sensor(sx, sy);
-	if(m_flipx){
-	  cx = sx - (m_img.cols + cx); 
-	}
-	if(m_flipy){
-	  cy = sy - (m_img.rows + cy);
-	}
-	cx = m_cx - cx;
-	cy = m_cy - cy;
+	int cx = m_cx;
+	int cy = m_cy;
 	int cx2 = cx << 1;
 	int cy2 = cy << 1;
 	int y2 = cy * cy;

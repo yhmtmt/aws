@@ -3276,13 +3276,13 @@ void awsFlip(Mat & img, bool xflip, bool yflip, bool chflip)
 	int rows = img.rows;
 	int hrows = rows >> 1;
 	int szele = (int) img.step[1];
-	int szrow = (int)img.step[0];
+	int szrow = (int) img.step[0];
 	int nxrow = szrow - szele * cols;
 	int szch = szele / chs;
 	uchar * ptr0, * ptr1;
 
-	if(cols & 0x1 || rows & 0x1)
-		cerr << "awsFlip assumes that the image has even pixels in both vertical and horizontal direction." << endl;
+//	if(cols & 0x1 || rows & 0x1)
+//		cerr << "awsFlip assumes that the image has even pixels in both vertical and horizontal direction." << endl;
 
 	if(xflip){
 		if(yflip){

@@ -128,7 +128,7 @@ int ch_image::read(FILE * pf, long long tcur)
 			goto failed;
 		sz += res;
 
-		cout << m_name << " time " << m_time[m_back] << " loaded." << endl;
+		cout << m_name << " time " << m_time[m_back] << " frm " << m_ifrm[m_back] << " loaded." << endl;
 
 		lock_fr();
 		
