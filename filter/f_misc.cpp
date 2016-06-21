@@ -1305,7 +1305,8 @@ const char * f_stereo_disp::m_str_out[IMG2 + 1] = {
 f_stereo_disp::f_stereo_disp(const char * name): f_misc(name), m_ch_img1(NULL), m_ch_img2(NULL),
 	m_ch_disp(NULL), m_bflipx(false), m_bflipy(false), m_bnew(false), m_bsync(false),
 	m_bpl(false), m_bpr(false), m_bstp(false), m_brct(false),
-	m_timg1(-1), m_timg2(-1), m_ifrm1(-1), m_ifrm2(-1), m_out(DISP)
+	m_timg1(-1), m_timg2(-1), m_ifrm1(-1), m_ifrm2(-1), m_ifrm_diff(0), m_fm_max_count(300), m_fm_count(0), 
+	m_fm_time_min_dfrm(0), m_fm_time_min(INT_MAX), m_out(DISP)
 {
 	// channels
 	register_fpar("ch_caml", (ch_base**)&m_ch_img1, typeid(ch_image_ref).name(), "Left camera channel");
@@ -1417,8 +1418,29 @@ bool f_stereo_disp::proc()
 		m_bnew = true;
 	}
 
-	if(m_ifrm1 == m_ifrm2)
-		m_bsync =  true;
+  if(ifrm1 != ifrm2 + m_ifrm_diff){
+	  m_bsync = false;
+	  int fdiff = (int)(ifrm1 - ifrm2);
+	  int tdiff = (int) abs(timg1 - timg2);
+	  if(tdiff < m_fm_time_min){
+		  m_fm_time_min = tdiff;
+		  m_fm_time_min_dfrm = fdiff;
+	  }
+	  m_fm_count++;	  
+  }else{
+	  m_bsync = true;
+	  m_fm_count = 0;
+	  m_fm_time_min_dfrm = 0;
+	  m_fm_time_min = INT_MAX;
+  }
+
+  if(m_fm_count > m_fm_max_count){
+	  m_ifrm_diff = m_fm_time_min_dfrm;
+	  cout << "Frame mismatch is fixed. fdiff = " << m_ifrm_diff << " tdiff = " << m_fm_time_min << endl;
+	  m_fm_count = 0;
+	  m_fm_time_min_dfrm = 0;
+	  m_fm_time_min = INT_MAX;
+  }
 
 	if(!m_bsync || !m_bnew)
 		return true;

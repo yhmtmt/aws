@@ -268,7 +268,6 @@ protected:
 	long long m_timg1, m_timg2;
 	long long m_ifrm1, m_ifrm2;
 	long long m_ifrm_diff;
-	bool m_bfm;
 	int m_fm_count;
 	int m_fm_max_count;
 	int m_fm_time_min_dfrm;

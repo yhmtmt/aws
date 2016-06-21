@@ -566,14 +566,13 @@ bool f_glfw_stereo_view::proc()
 
   if(ifrm1 != ifrm2 + m_ifrm_diff){
 	  m_bsync = false;
-	  int fdiff = ifrm1 - ifrm2;
-	  int tdiff = abs(timg1 - timg2);
+	  int fdiff = (int)(ifrm1 - ifrm2);
+	  int tdiff = (int) abs(timg1 - timg2);
 	  if(tdiff < m_fm_time_min){
 		  m_fm_time_min = tdiff;
 		  m_fm_time_min_dfrm = fdiff;
 	  }
 	  m_fm_count++;
-	  
   }else{
 	  m_bsync = true;
 	  m_fm_count = 0;

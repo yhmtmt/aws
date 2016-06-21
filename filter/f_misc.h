@@ -179,6 +179,11 @@ protected:
 	Mat m_img1, m_img2, m_disp;
 	long long m_timg1, m_timg2;
 	long long m_ifrm1, m_ifrm2;
+	long long m_ifrm_diff;
+	int m_fm_count;
+	int m_fm_max_count;
+	int m_fm_time_min_dfrm;
+	int m_fm_time_min;
 
 	bool m_bflipx, m_bflipy; // image flipping option 
 
