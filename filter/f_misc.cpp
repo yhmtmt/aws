@@ -324,7 +324,7 @@ const char * f_lcc::m_str_alg[UNDEF] =
 
 f_lcc::f_lcc(const char * name): f_misc(name), m_ch_img_in(NULL), m_ch_img_out(NULL), m_alg(FULL),
 	m_alpha(0.01), m_range(3.0), m_bias(1.0), m_sigma(0),m_qs(0.00001), m_qb(0.00001), m_depth(14),
-	m_update_map(true), m_bpass(false)
+	m_lb(0.), m_update_map(true), m_bpass(false)
 {
 	m_fmap[0] = '\0';
 
@@ -343,6 +343,7 @@ f_lcc::f_lcc(const char * name): f_misc(name), m_ch_img_in(NULL), m_ch_img_out(N
 	register_fpar("sigma", &m_sigma, "Sigma for gaussian blur.");
 	register_fpar("qs", &m_qs, "Scale coefficient for quadratic algorithm.");
 	register_fpar("qb", &m_qb, "Bias coefficient for quadratic algorith.");
+	register_fpar("lb", &m_lb, "Linear bias for quadratic algorithm.");
 	register_fpar("fmap", m_fmap, 1024, "File path for map.");
 	register_fpar("update", &m_update_map, "Update map.");
 }
@@ -1207,7 +1208,7 @@ void f_lcc::calc_qmap_16u()
 		for(int x = 0; x < m_img.cols; x++){
 			int r2 = x2 + y2;
 			pm[0] = (float) (r2 * qs + sn);
-			pm[1] = (float) (r2 * m_qb);
+			pm[1] = (float) (r2 * m_qb + m_lb);
 			x2 += (x << 1) - cx2 + 1;
 			pm += 2;
 		}
@@ -1229,7 +1230,7 @@ void f_lcc::calc_qmap_8u()
 		for(int x = 0; x < m_img.cols; x++){
 			int r2 = x2 + y2;
 			pm[0] = (float) (r2 * m_qs + 1.);
-			pm[1] = (float) (r2 * m_qb);
+			pm[1] = (float) (r2 * m_qb + m_lb);
 			x2 += (x << 1) - cx2 + 1;
 			pm += 2;
 		}

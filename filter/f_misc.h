@@ -143,7 +143,7 @@ protected:
 	
 	// quadratic curve algorithm
 	int m_depth;
-	double m_qs, m_qb;
+	double m_qs, m_qb, m_lb;
 	// (qs r^2 + 1) color + qb r^2
 	void calc_qmap_16u();
 	void calc_qmap_8u();
