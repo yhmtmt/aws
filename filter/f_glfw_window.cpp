@@ -527,13 +527,13 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_Rl = Mat::eye(3, 3, CV_64FC1);
 	m_Rr = Mat::eye(3, 3, CV_64FC1);
 
-	m_pts_chsbdr.reserve(200);
-	m_pts_chsbdl.reserve(200);
-	m_ifrm_chsbdr.reserve(200);
-	m_ifrm_chsbdl.reserve(200);
-	m_pts_chsbdr_com.reserve(200);
-	m_pts_chsbdl_com.reserve(200);
-	m_ifrm_chsbd_com.reserve(200);
+	m_pts_chsbdr.reserve(1000);
+	m_pts_chsbdl.reserve(1000);
+	m_ifrm_chsbdr.reserve(1000);
+	m_ifrm_chsbdl.reserve(1000);
+	m_pts_chsbdr_com.reserve(1000);
+	m_pts_chsbdl_com.reserve(1000);
+	m_ifrm_chsbd_com.reserve(1000);
 }
 
 bool f_glfw_stereo_view::proc()
@@ -559,20 +559,34 @@ bool f_glfw_stereo_view::proc()
     return true;
   }
 
-  if(m_timg1 == timg1 && m_timg2 == timg2) // no frame change
-	  m_bnew = false;
-  else
+  m_bnew = false;
+  if(m_timg1 != timg1){
+	  m_timg1 = timg1;
+	  m_ifrm1 = ifrm1;
+	  m_img1 = img1.clone();
+	  awsFlip(m_img1, m_bflipx, m_bflipy, false);
 	  m_bnew = true;
+  }
 
-  if(ifrm1 != ifrm2 + m_ifrm_diff){
+  if(m_timg2 != timg2){
+	  m_timg2 = timg2;
+	  m_ifrm2 = ifrm2;
+	  m_img2 = img2.clone();
+	  awsFlip(m_img2, m_bflipx, m_bflipy, false);
+	  m_bnew = true;
+  }
+
+  if(m_ifrm1 != m_ifrm2 + m_ifrm_diff){
 	  m_bsync = false;
-	  int fdiff = (int)(ifrm1 - ifrm2);
-	  int tdiff = (int) abs(timg1 - timg2);
-	  if(tdiff < m_fm_time_min){
-		  m_fm_time_min = tdiff;
-		  m_fm_time_min_dfrm = fdiff;
+	  if(m_bnew){
+		  int fdiff = (int)(m_ifrm1 - m_ifrm2);
+		  int tdiff = (int) abs(timg1 - timg2);
+		  if(tdiff < m_fm_time_min){
+			  m_fm_time_min = tdiff;
+			  m_fm_time_min_dfrm = fdiff;
+		  }
+		  m_fm_count++;
 	  }
-	  m_fm_count++;
   }else{
 	  m_bsync = true;
 	  m_fm_count = 0;
@@ -600,6 +614,7 @@ bool f_glfw_stereo_view::proc()
 	  calibrate(1);
 	  m_bcbr = false;
   }
+
   if(m_bcpl && m_bcpr && m_bcbst){ // stereo calibrate
 	  calibrate_stereo();
   }
@@ -636,17 +651,6 @@ bool f_glfw_stereo_view::proc()
 	  m_bred_chsbd = false;
   }
 
-  if(m_bupdate_img){
-	  m_timg1 = timg1;
-	  m_timg2 = timg2;
-
-	  m_img1 = img1.clone();
-	  m_img2 = img2.clone();
-	  awsFlip(m_img1, m_bflipx, m_bflipy, false);
-	  awsFlip(m_img2, m_bflipx, m_bflipy, false);
-  }
-
-
   if(m_budl && m_bcpl && m_bupdate_img){ 
 	  remap(m_img1, m_img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
   }
@@ -660,25 +664,26 @@ bool f_glfw_stereo_view::proc()
 	  bool left = false, right = false;
 	  // seraching chessboard detected in the frame
 	  for(int i = 0; i < m_ifrm_chsbdl.size(); i++){
-		  if(m_ifrm_chsbdl[i] == ifrm1){
+		  if(m_ifrm_chsbdl[i] == m_ifrm1){
 			  left = true;
 		  }
 	  }
 	  for(int i = 0; i < m_ifrm_chsbdr.size(); i++){
-		  if(m_ifrm_chsbdr[i] == ifrm2){
+		  if(m_ifrm_chsbdr[i] == m_ifrm2){
 			  right = true;
 		  }
 	  }
 	  
 	  if(!left || !right){
-		  if(!left && m_chsbd.detect(img1, &obj)){
+		  if(!left && m_chsbd.detect(m_img1, &obj)){
 			  m_pts_chsbdl.push_back(obj.pt2d);		  
 			  m_ifrm_chsbdl.push_back(ifrm1);
 			  m_num_chsbdl++;
 			  cout << "CamL frm[" << ifrm1 << "] chsbd[" << m_num_chsbdl << "] found." << endl;
 			  left = true;
 		  }
-		  if(!right && m_chsbd.detect(img2, &obj)){
+
+		  if(!right && m_chsbd.detect(m_img2, &obj)){
 			  m_pts_chsbdr.push_back(obj.pt2d);
 			  m_ifrm_chsbdr.push_back(ifrm2);
 			  cout << "CamR frm[" << ifrm2 << "] chsbd[" << m_num_chsbdr << "] found." << endl;
@@ -696,7 +701,6 @@ bool f_glfw_stereo_view::proc()
 		  m_bdet_chsbd = false;
 	  }
   }
-
 
   glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -756,7 +760,6 @@ bool f_glfw_stereo_view::proc()
 		  calc_and_draw_disparity_map(m_img1, m_img2);
 	  }
   }
-
 
   if(m_bsv_chsbd){
 	  save_chsbd(0);
