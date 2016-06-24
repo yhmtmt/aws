@@ -426,7 +426,8 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
-	
+	register_fpar("state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
+
 	m_fcpl[0] = m_fcpr[0] = m_fstp[0] = '\0';
 	register_fpar("fcpl", m_fcpl, 1024, "Camera parameter file of left camera.");
 	register_fpar("fcpr", m_fcpr, 1024, "Camera parameter file of right camera.");
@@ -565,14 +566,22 @@ bool f_glfw_stereo_view::proc()
 	  m_ifrm1 = ifrm1;
 	  m_img1 = img1.clone();
 	  awsFlip(m_img1, m_bflipx, m_bflipy, false);
+	  if(m_budl && m_bcpl){ 
+		  remap(m_img1, m_img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+	  }
+
 	  m_bnew = true;
   }
+
 
   if(m_timg2 != timg2){
 	  m_timg2 = timg2;
 	  m_ifrm2 = ifrm2;
 	  m_img2 = img2.clone();
 	  awsFlip(m_img2, m_bflipx, m_bflipy, false);
+	  if(m_budr && m_bcpr){
+		  remap(m_img2, m_img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+	  }
 	  m_bnew = true;
   }
 
@@ -649,14 +658,6 @@ bool f_glfw_stereo_view::proc()
 	  reduce_chsbd(1);
 	  reduce_chsbd(2);
 	  m_bred_chsbd = false;
-  }
-
-  if(m_budl && m_bcpl && m_bupdate_img){ 
-	  remap(m_img1, m_img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
-  }
-
-  if(m_budr && m_bcpr && m_bupdate_img){
-	  remap(m_img2, m_img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
   }
 
   if(m_bchsbd && m_bdet_chsbd && m_bsync && m_bupdate_img){
@@ -758,6 +759,12 @@ bool f_glfw_stereo_view::proc()
 
 	  if(m_bdisp){ // show disparity map
 		  calc_and_draw_disparity_map(m_img1, m_img2);
+	  }
+
+	  // draw horizon 
+	  if(m_state){
+		  m_state->get_attitude(m_tatt, m_roll, m_pitch, m_yaw);
+		  cout << "ypr=" << m_yaw << "," << m_pitch << "," << m_roll << endl;
 	  }
   }
 

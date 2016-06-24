@@ -19,6 +19,7 @@
 #include "../util/aws_vlib.h"
 #include "../util/aws_vobj.h"
 #include "../channel/ch_image.h"
+#include "../channel/ch_state.h"
 
 #include "f_base.h"
 
@@ -262,6 +263,8 @@ class f_glfw_stereo_view: public f_glfw_window
 {
 protected:
 	ch_image_ref * m_pin1, *m_pin2;
+	ch_state * m_state;
+
 	Mat m_img1, m_img2;
 	Mat m_disp;
 
@@ -295,6 +298,7 @@ protected:
 	bool m_bdisp;		 // disparity map
 
 	char m_fcapture[1024];
+
 	// calibration flags
 	bool m_bfisheye, /* true if fisheye model is used */
 		m_bfix_int, m_bfix_k1, m_bfix_k2, m_bfix_k3, m_bfix_k4, /* common for both fisheye and rational models */
@@ -383,6 +387,11 @@ protected:
 		}
 	} m_sgbm_par;
 	
+
+	// draw horizon
+	long long m_tatt;
+	float m_roll, m_pitch, m_yaw;
+
 	virtual bool init_run();
 	virtual void destroy_run();
 
