@@ -323,6 +323,79 @@ void getwrldrot(const s_bihpos & Xbih, Mat & Rwrld)
 	Rwrld *= tmp;
 }
 
+void getmatrotRPY(float r, float p, float y, Mat & R)
+{
+	double c, s;
+
+	// rolling (z)
+	R = Mat::eye(3, 3, CV_64FC1);
+	c = cos(r);
+	s = sin(r);
+	R.at<double>(0, 0) = c;
+	R.at<double>(1, 1) = c;
+	R.at<double>(0, 1) = -s;
+	R.at<double>(1, 0) = s;
+
+	Mat tmp;
+	// pitching (x)
+	c = cos(p);
+	s = sin(p);
+	tmp = Mat::eye(3, 3, CV_64FC1);
+
+	tmp.at<double>(1, 1) = c;
+	tmp.at<double>(2, 2) = c;
+	tmp.at<double>(1, 2) = -s;
+	tmp.at<double>(2, 1) = s;
+	R *= tmp;
+
+	// yawing (y)
+	tmp = Mat::eye(3, 3, CV_64FC1);
+	c = cos(y);
+	s = sin(y);
+	tmp.at<double>(0, 0) = c;
+	tmp.at<double>(2, 2) = c;
+	tmp.at<double>(0, 2) = -s;
+	tmp.at<double>(2, 0) = s;
+	R *= tmp;
+}
+
+void getmatrotYPR(float y, float p, float r, Mat & R)
+{
+	double c, s;
+
+	// yawing (y)
+	R = Mat::eye(3, 3, CV_64FC1);
+	c = cos(y);
+	s = sin(y);
+	R.at<double>(0, 0) = c;
+	R.at<double>(2, 2) = c;
+	R.at<double>(0, 2) = -s;
+	R.at<double>(2, 0) = s;
+
+	Mat tmp;
+	// pitching (x)
+	c = cos(p);
+	s = sin(p);
+	tmp = Mat::eye(3, 3, CV_64FC1);
+
+	tmp.at<double>(1, 1) = c;
+	tmp.at<double>(2, 2) = c;
+	tmp.at<double>(1, 2) = -s;
+	tmp.at<double>(2, 1) = s;
+	R *= tmp;
+
+	// rolling (z)
+	tmp = Mat::eye(3, 3, CV_64FC1);
+	c = cos(r);
+	s = sin(r);
+	tmp.at<double>(0, 0) = c;
+	tmp.at<double>(1, 1) = c;
+	tmp.at<double>(0, 1) = -s;
+	tmp.at<double>(1, 0) = s;
+	R *= tmp;
+}
+
+
 void getmatrotRPY(s_rotpar par, Mat & R)
 {
 	double c, s;

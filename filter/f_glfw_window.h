@@ -391,6 +391,7 @@ protected:
 	// draw horizon
 	long long m_tatt;
 	float m_roll, m_pitch, m_yaw;
+	float m_roll0, m_pitch0, m_yaw0;
 
 	virtual bool init_run();
 	virtual void destroy_run();

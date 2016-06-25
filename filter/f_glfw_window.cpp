@@ -422,7 +422,8 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix_k3(false),
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
 	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50),
-	m_bptl(false), m_bptr(false), m_num_com_pts(0)
+	m_bptl(false), m_bptr(false), m_num_com_pts(0),
+	m_roll(0), m_pitch(0), m_yaw(0), m_roll0(0), m_pitch0(0), m_yaw0(0)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -524,6 +525,10 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("speckleWindowSize", &m_sgbm_par.speckleWindowSize, "speckleWindowSize for cv::StereoSGBM");
 	register_fpar("speckleRange", &m_sgbm_par.speckleRange, "speckleWindowSize for cv::StereoSGBM");
 	register_fpar("mode", &m_sgbm_par.mode, "mode for cv::StereoSGBM");
+
+	register_fpar("roll0", &m_roll0, "Static roll value.");
+	register_fpar("pitch0", &m_pitch0, "Static pitch value.");
+	register_fpar("yaw0", &m_yaw0, "Static yaw value.");
 
 	m_Rl = Mat::eye(3, 3, CV_64FC1);
 	m_Rr = Mat::eye(3, 3, CV_64FC1);
@@ -764,7 +769,65 @@ bool f_glfw_stereo_view::proc()
 	  // draw horizon 
 	  if(m_state){
 		  m_state->get_attitude(m_tatt, m_roll, m_pitch, m_yaw);
-		  cout << "ypr=" << m_yaw << "," << m_pitch << "," << m_roll << endl;
+		  Mat R0, R;
+		  getmatrotRPY((float)(m_roll0 * (CV_PI / 180.)), 
+			  (float)(m_pitch0 * (CV_PI / 180.)), 0, R0);
+
+		  getmatrotRPY((float)(m_roll * (CV_PI / 180.)),
+			  (float)(m_pitch * (CV_PI / 180.)), 0, R);
+		  R0 *= R;
+		  R = R0;
+		  float ifx, ify, fx, fy;
+		  Point2f pc;
+		  if(m_brct){
+			  double * pP = m_Pl.ptr<double>();
+			  fx = (float)(pP[0]);
+			  fy = (float)(pP[5]);
+			  ifx = (float)(1.0 / pP[0]);
+			  ify = (float)(1.0 / pP[5]);
+			  pc = Point2f((float)pP[2], (float)pP[6]);
+		  }else{
+			  fx = (float)(m_camparl.getCvPrj()[0]);
+			  fy = (float)(m_camparl.getCvPrj()[1]);
+			  ifx = (float) (1.0 / m_camparl.getCvPrj()[0]);
+			  ify = (float) (1.0 / m_camparl.getCvPrj()[1]);
+			  pc = Point2f((float) m_camparl.getCvPrj()[2], (float) m_camparl.getCvPrj()[3]);
+		  }
+		  Point2f p0, p1;
+
+		  // static horizon line
+		  p0.x = pc.x - 100;
+		  p0.y = pc.y;
+		  p1.x = pc.x + 100;
+		  p1.y = pc.y;
+
+		  p0 -= pc;
+		  p1 -= pc;
+		  p0.x *= ifx;
+		  p0.y *= ify;
+		  p1.x *= ifx;
+		  p1.y *= ify;
+
+		  double * pR = R.ptr<double>();
+		  Point2f p0h, p1h; // homography with R0 and R
+		  float iw;
+		  iw = (float)(1.0 / (pR[6] * p0.x + pR[7] * p0.y + pR[8]));
+		  p0h.x = (float) (iw * fx * (pR[0] * p0.x + pR[1] * p0.y + pR[2]) + pc.x);
+		  p0h.y = (float) (iw * fy * (pR[3] * p0.x + pR[4] * p0.y + pR[5]) + pc.y);
+		  
+		 iw = (float)(1.0 / (pR[6] * p1.x + pR[7] * p1.y + pR[8]));
+		  p1h.x = (float)(iw * fx * (pR[0] * p1.x + pR[1] * p1.y + pR[2]) + pc.x);
+		  p1h.y = (float)(iw * fy * (pR[3] * p1.x + pR[4] * p1.y + pR[5]) + pc.y);
+
+		  // draw line on p0h and p1h
+		  cnvCvPoint2GlPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, p0h, p0h);
+		  cnvCvPoint2GlPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, p1h, p1h);
+		  glColor4f(1, 1, 0, 1);
+
+		  glBegin(GL_LINES);
+		  glVertex2f(p0h.x, p0h.y);
+		  glVertex2f(p1h.x, p1h.y);
+		  glEnd();		  
 	  }
   }
 

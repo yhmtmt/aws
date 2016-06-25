@@ -58,6 +58,8 @@ void getwrldrotf(const float lat, const float lon, Mat & Rwrld);
 void getwrldrot(const s_bihpos & Xbih, Mat & Rwrld);
 void getmatrotRPY(s_rotpar par, Mat & R);
 void getmatrotYPR(s_rotpar par, Mat & R);
+void getmatrotRPY(float r, float p, float y, Mat & R);
+void getmatrotYPR(float y, float p, float r, Mat & R);
 void swpYZ(Mat & R);
 void trans(Mat & Mtrn, Point3d & Xwrld, Point2d & Xview);
 
