@@ -389,8 +389,11 @@ protected:
 	
 
 	// draw horizon
-	long long m_tatt;
-	float m_roll, m_pitch, m_yaw;
+#define SZ_ATT_BUF 100
+	int m_iatt;
+	int m_dtatt;
+	long long m_tatt[SZ_ATT_BUF];
+	float m_roll[SZ_ATT_BUF], m_pitch[SZ_ATT_BUF], m_yaw[SZ_ATT_BUF];
 	float m_roll0, m_pitch0, m_yaw0;
 
 	virtual bool init_run();

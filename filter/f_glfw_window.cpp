@@ -423,7 +423,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
 	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50),
 	m_bptl(false), m_bptr(false), m_num_com_pts(0),
-	m_roll(0), m_pitch(0), m_yaw(0), m_roll0(0), m_pitch0(0), m_yaw0(0)
+	m_roll0(0), m_pitch0(0), m_yaw0(0), m_dtatt(0), m_iatt(0)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -526,6 +526,7 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("speckleRange", &m_sgbm_par.speckleRange, "speckleWindowSize for cv::StereoSGBM");
 	register_fpar("mode", &m_sgbm_par.mode, "mode for cv::StereoSGBM");
 
+	register_fpar("dtatt", &m_dtatt, "Attitude Time difference against image.");
 	register_fpar("roll0", &m_roll0, "Static roll value.");
 	register_fpar("pitch0", &m_pitch0, "Static pitch value.");
 	register_fpar("yaw0", &m_yaw0, "Static yaw value.");
@@ -540,6 +541,11 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_pts_chsbdr_com.reserve(1000);
 	m_pts_chsbdl_com.reserve(1000);
 	m_ifrm_chsbd_com.reserve(1000);
+
+	for(int iatt = 0; iatt < 0; iatt++){
+		m_tatt[iatt] = -1;
+		m_roll[iatt] = m_pitch[iatt] = m_yaw[iatt] = 0.0;
+	}
 }
 
 bool f_glfw_stereo_view::proc()
@@ -768,15 +774,41 @@ bool f_glfw_stereo_view::proc()
 
 	  // draw horizon 
 	  if(m_state){
-		  m_state->get_attitude(m_tatt, m_roll, m_pitch, m_yaw);
+		  long long tatt;
+		  float roll, pitch, yaw;
+		  m_state->get_attitude(tatt, roll, pitch, yaw);
+		  if(tatt != m_tatt[m_iatt]){
+			  m_iatt++;
+			  if(m_iatt == SZ_ATT_BUF)
+				  m_iatt = 0;
+			  m_tatt[m_iatt] = tatt;
+			  m_roll[m_iatt] = roll;
+			  m_pitch[m_iatt] = pitch;
+			  m_yaw[m_iatt] = yaw;
+		  }
+
+		  tatt = m_timg1 + m_dtatt;
+			int tdiff, tdiff_min = INT_MAX;
+			int iatt;
+		  for(int i = 0; i < SZ_ATT_BUF; i++){
+			  tdiff = (int) abs(tatt - m_tatt[i]);
+			  if(tdiff < tdiff_min){
+				  tdiff_min = tdiff;
+				  iatt = i;
+			  }
+		  }
+		  tatt = m_tatt[iatt];
+		  roll = m_roll[iatt];
+		  pitch = m_pitch[iatt];
+		  yaw = m_yaw[iatt];
 		  Mat R0, R;
 		  getmatrotRPY((float)(m_roll0 * (CV_PI / 180.)), 
 			  (float)(m_pitch0 * (CV_PI / 180.)), 0, R0);
 
-		  getmatrotRPY((float)(m_roll * (CV_PI / 180.)),
-			  (float)(m_pitch * (CV_PI / 180.)), 0, R);
-		  R0 *= R;
-		  R = R0;
+		  getmatrotRPY((float)(roll * (CV_PI / 180.)),
+			  (float)(pitch * (CV_PI / 180.)), 0, R);
+
+		  R *= R0;
 		  float ifx, ify, fx, fy;
 		  Point2f pc;
 		  if(m_brct){
@@ -796,9 +828,9 @@ bool f_glfw_stereo_view::proc()
 		  Point2f p0, p1;
 
 		  // static horizon line
-		  p0.x = pc.x - 100;
+		  p0.x = pc.x - 400;
 		  p0.y = pc.y;
-		  p1.x = pc.x + 100;
+		  p1.x = pc.x + 400;
 		  p1.y = pc.y;
 
 		  p0 -= pc;
@@ -822,12 +854,26 @@ bool f_glfw_stereo_view::proc()
 		  // draw line on p0h and p1h
 		  cnvCvPoint2GlPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, p0h, p0h);
 		  cnvCvPoint2GlPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, p1h, p1h);
-		  glColor4f(1, 1, 0, 1);
+
+		  glColor4f(0, 0.5, 0, 1);
+		  glBegin(GL_LINES);
+		  glVertex2f(p0h.x, p0h.y);
+		  glVertex2f(p1h.x, p1h.y);
+		  glEnd();
+		  char buf[128];
+		  snprintf(buf, 128, "p=%3.1f r=%3.1f", pitch, roll);
+		  drawGlText(p1h.x, p1h.y, buf, 0, 0.5, 0, 1., GLUT_BITMAP_8_BY_13);
+		  
+		  p0h.y += -1.0;
+		  p1h.y += -1.0;
+
+		  snprintf(buf, 128, "timg=%lld tstt=%lld timg-tstt=%lld", m_timg1, m_tatt, m_timg1 - tatt);
+		  drawGlText(-1, 0.5, buf, 0, 0.5, 0, 1., GLUT_BITMAP_8_BY_13);
 
 		  glBegin(GL_LINES);
 		  glVertex2f(p0h.x, p0h.y);
 		  glVertex2f(p1h.x, p1h.y);
-		  glEnd();		  
+		  glEnd();
 	  }
   }
 
