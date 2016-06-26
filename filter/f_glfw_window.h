@@ -266,7 +266,7 @@ protected:
 	ch_state * m_state;
 
 	Mat m_img1, m_img2;
-	Mat m_disp;
+	Mat m_disp, m_dist;
 
 	long long m_timg1, m_timg2;
 	long long m_ifrm1, m_ifrm2;
@@ -395,6 +395,8 @@ protected:
 	long long m_tatt[SZ_ATT_BUF];
 	float m_roll[SZ_ATT_BUF], m_pitch[SZ_ATT_BUF], m_yaw[SZ_ATT_BUF];
 	float m_roll0, m_pitch0, m_yaw0;
+	void draw_horizon();
+
 
 	virtual bool init_run();
 	virtual void destroy_run();

@@ -774,106 +774,7 @@ bool f_glfw_stereo_view::proc()
 
 	  // draw horizon 
 	  if(m_state){
-		  long long tatt;
-		  float roll, pitch, yaw;
-		  m_state->get_attitude(tatt, roll, pitch, yaw);
-		  if(tatt != m_tatt[m_iatt]){
-			  m_iatt++;
-			  if(m_iatt == SZ_ATT_BUF)
-				  m_iatt = 0;
-			  m_tatt[m_iatt] = tatt;
-			  m_roll[m_iatt] = roll;
-			  m_pitch[m_iatt] = pitch;
-			  m_yaw[m_iatt] = yaw;
-		  }
-
-		  tatt = m_timg1 + m_dtatt;
-			int tdiff, tdiff_min = INT_MAX;
-			int iatt;
-		  for(int i = 0; i < SZ_ATT_BUF; i++){
-			  tdiff = (int) abs(tatt - m_tatt[i]);
-			  if(tdiff < tdiff_min){
-				  tdiff_min = tdiff;
-				  iatt = i;
-			  }
-		  }
-		  tatt = m_tatt[iatt];
-		  roll = m_roll[iatt];
-		  pitch = m_pitch[iatt];
-		  yaw = m_yaw[iatt];
-		  Mat R0, R;
-		  getmatrotRPY((float)(m_roll0 * (CV_PI / 180.)), 
-			  (float)(m_pitch0 * (CV_PI / 180.)), 0, R0);
-
-		  getmatrotRPY((float)(roll * (CV_PI / 180.)),
-			  (float)(pitch * (CV_PI / 180.)), 0, R);
-
-		  R *= R0;
-		  float ifx, ify, fx, fy;
-		  Point2f pc;
-		  if(m_brct){
-			  double * pP = m_Pl.ptr<double>();
-			  fx = (float)(pP[0]);
-			  fy = (float)(pP[5]);
-			  ifx = (float)(1.0 / pP[0]);
-			  ify = (float)(1.0 / pP[5]);
-			  pc = Point2f((float)pP[2], (float)pP[6]);
-		  }else{
-			  fx = (float)(m_camparl.getCvPrj()[0]);
-			  fy = (float)(m_camparl.getCvPrj()[1]);
-			  ifx = (float) (1.0 / m_camparl.getCvPrj()[0]);
-			  ify = (float) (1.0 / m_camparl.getCvPrj()[1]);
-			  pc = Point2f((float) m_camparl.getCvPrj()[2], (float) m_camparl.getCvPrj()[3]);
-		  }
-		  Point2f p0, p1;
-
-		  // static horizon line
-		  p0.x = pc.x - 400;
-		  p0.y = pc.y;
-		  p1.x = pc.x + 400;
-		  p1.y = pc.y;
-
-		  p0 -= pc;
-		  p1 -= pc;
-		  p0.x *= ifx;
-		  p0.y *= ify;
-		  p1.x *= ifx;
-		  p1.y *= ify;
-
-		  double * pR = R.ptr<double>();
-		  Point2f p0h, p1h; // homography with R0 and R
-		  float iw;
-		  iw = (float)(1.0 / (pR[6] * p0.x + pR[7] * p0.y + pR[8]));
-		  p0h.x = (float) (iw * fx * (pR[0] * p0.x + pR[1] * p0.y + pR[2]) + pc.x);
-		  p0h.y = (float) (iw * fy * (pR[3] * p0.x + pR[4] * p0.y + pR[5]) + pc.y);
-		  
-		 iw = (float)(1.0 / (pR[6] * p1.x + pR[7] * p1.y + pR[8]));
-		  p1h.x = (float)(iw * fx * (pR[0] * p1.x + pR[1] * p1.y + pR[2]) + pc.x);
-		  p1h.y = (float)(iw * fy * (pR[3] * p1.x + pR[4] * p1.y + pR[5]) + pc.y);
-
-		  // draw line on p0h and p1h
-		  cnvCvPoint2GlPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, p0h, p0h);
-		  cnvCvPoint2GlPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, p1h, p1h);
-
-		  glColor4f(0, 0.5, 0, 1);
-		  glBegin(GL_LINES);
-		  glVertex2f(p0h.x, p0h.y);
-		  glVertex2f(p1h.x, p1h.y);
-		  glEnd();
-		  char buf[128];
-		  snprintf(buf, 128, "p=%3.1f r=%3.1f", pitch, roll);
-		  drawGlText(p1h.x, p1h.y, buf, 0, 0.5, 0, 1., GLUT_BITMAP_8_BY_13);
-		  
-		  p0h.y += -1.0;
-		  p1h.y += -1.0;
-
-		  snprintf(buf, 128, "timg=%lld tstt=%lld timg-tstt=%lld", m_timg1, m_tatt, m_timg1 - tatt);
-		  drawGlText(-1, 0.5, buf, 0, 0.5, 0, 1., GLUT_BITMAP_8_BY_13);
-
-		  glBegin(GL_LINES);
-		  glVertex2f(p0h.x, p0h.y);
-		  glVertex2f(p1h.x, p1h.y);
-		  glEnd();
+		  draw_horizon();
 	  }
   }
 
@@ -1675,6 +1576,110 @@ void f_glfw_stereo_view::init_undistort(AWSCamPar & par, Size & sz,
 	}
 }
 
+void f_glfw_stereo_view::draw_horizon()
+{
+	long long tatt;
+	float roll, pitch, yaw;
+	m_state->get_attitude(tatt, roll, pitch, yaw);
+	if(tatt != m_tatt[m_iatt]){
+		m_iatt++;
+		if(m_iatt == SZ_ATT_BUF)
+			m_iatt = 0;
+		m_tatt[m_iatt] = tatt;
+		m_roll[m_iatt] = roll;
+		m_pitch[m_iatt] = pitch;
+		m_yaw[m_iatt] = yaw;
+	}
+
+	tatt = m_timg1 + m_dtatt;
+	int tdiff, tdiff_min = INT_MAX;
+	int iatt;
+	for(int i = 0; i < SZ_ATT_BUF; i++){
+		tdiff = (int) abs(tatt - m_tatt[i]);
+		if(tdiff < tdiff_min){
+			tdiff_min = tdiff;
+			iatt = i;
+		}
+	}
+	tatt = m_tatt[iatt];
+	roll = m_roll[iatt];
+	pitch = m_pitch[iatt];
+	yaw = m_yaw[iatt];
+	Mat R0, R;
+	getmatrotRPY((float)(m_roll0 * (CV_PI / 180.)), 
+		(float)(m_pitch0 * (CV_PI / 180.)), 0, R0);
+
+	getmatrotRPY((float)(roll * (CV_PI / 180.)),
+		(float)(pitch * (CV_PI / 180.)), 0, R);
+
+	R *= R0;
+	float ifx, ify, fx, fy;
+	Point2f pc;
+	if(m_brct){
+		double * pP = m_Pl.ptr<double>();
+		fx = (float)(pP[0]);
+		fy = (float)(pP[5]);
+		ifx = (float)(1.0 / pP[0]);
+		ify = (float)(1.0 / pP[5]);
+		pc = Point2f((float)pP[2], (float)pP[6]);
+	}else{
+		fx = (float)(m_camparl.getCvPrj()[0]);
+		fy = (float)(m_camparl.getCvPrj()[1]);
+		ifx = (float) (1.0 / m_camparl.getCvPrj()[0]);
+		ify = (float) (1.0 / m_camparl.getCvPrj()[1]);
+		pc = Point2f((float) m_camparl.getCvPrj()[2], (float) m_camparl.getCvPrj()[3]);
+	}
+	Point2f p0, p1;
+
+	// static horizon line
+	p0.x = pc.x - 400;
+	p0.y = pc.y;
+	p1.x = pc.x + 400;
+	p1.y = pc.y;
+
+	p0 -= pc;
+	p1 -= pc;
+	p0.x *= ifx;
+	p0.y *= ify;
+	p1.x *= ifx;
+	p1.y *= ify;
+
+	double * pR = R.ptr<double>();
+	Point2f p0h, p1h; // homography with R0 and R
+	float iw;
+	iw = (float)(1.0 / (pR[6] * p0.x + pR[7] * p0.y + pR[8]));
+	p0h.x = (float) (iw * fx * (pR[0] * p0.x + pR[1] * p0.y + pR[2]) + pc.x);
+	p0h.y = (float) (iw * fy * (pR[3] * p0.x + pR[4] * p0.y + pR[5]) + pc.y);
+
+	iw = (float)(1.0 / (pR[6] * p1.x + pR[7] * p1.y + pR[8]));
+	p1h.x = (float)(iw * fx * (pR[0] * p1.x + pR[1] * p1.y + pR[2]) + pc.x);
+	p1h.y = (float)(iw * fy * (pR[3] * p1.x + pR[4] * p1.y + pR[5]) + pc.y);
+
+	// draw line on p0h and p1h
+	cnvCvPoint2GlPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, p0h, p0h);
+	cnvCvPoint2GlPoint(m_xscale1, m_yscale1, -1, 0, m_wn1, m_hn1, p1h, p1h);
+
+	glColor4f(0, 0.5, 0, 1);
+	glBegin(GL_LINES);
+	glVertex2f(p0h.x, p0h.y);
+	glVertex2f(p1h.x, p1h.y);
+	glEnd();
+	char buf[128];
+	snprintf(buf, 128, "p=%3.1f r=%3.1f", pitch, roll);
+	drawGlText(p1h.x, p1h.y, buf, 0, 0.5, 0, 1., GLUT_BITMAP_8_BY_13);
+
+	p0h.y += -1.0;
+	p1h.y += -1.0;
+
+	snprintf(buf, 128, "timg=%lld tstt=%lld timg-tstt=%lld", m_timg1, m_tatt, m_timg1 - tatt);
+	drawGlText(-1, 0.5, buf, 0, 0.5, 0, 1., GLUT_BITMAP_8_BY_13);
+
+	glBegin(GL_LINES);
+	glVertex2f(p0h.x, p0h.y);
+	glVertex2f(p1h.x, p1h.y);
+	glEnd();
+}
+
 
 void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 {
@@ -1699,10 +1704,41 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 		}
 
 		m_sgbm->compute(img1, img2, disps16);
+		m_dist = Mat::zeros(m_sz_win.height << 1, m_sz_win.width << 1, CV_8UC1);
+		double * pPl = m_Pl.ptr<double>();
+		double fx = pPl[0], fy = pPl[5];
+		double ifx = 1.0 / fx, ify = 1.0 / fy;
+		double cx = pPl[2], cy = pPl[6];
+		double L = norm(m_Tlr, CV_L2);
+		double Dmax = L * fx;
+		double s = (double)((m_dist.rows - 1) / Dmax);
+
+		ushort * pdisp = m_disp.ptr<ushort>();
+		uchar * pdist = m_dist.ptr<uchar>();
+		for(int y = 0; y < m_disp.rows; y++){
+			for(int x = 0; x < m_disp.cols; x++){
+				if(*pdisp){
+					double X, Y, Z;
+					Z = 16.0 * L * fx  / *pdisp;
+					X = ((double)x - cx) * ifx * Z;
+					Y = ((double)y - cy) * ify * Z;
+					int x = (int)(X * s + 0.5 + cx);
+					int y = (int)(Y * s + 0.5 + cy); 
+					x = max(min(x, m_dist.cols - 1), 0);
+					y = max(min(y, m_dist.rows - 1), 0);
+					int idx = x + y * m_dist.cols;
+					if(pdist[idx] != 255)
+						pdist[idx]++;
+				}
+				pdisp++;				
+			}
+		}
 		disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
 	}
+
 	if(m_disp.empty())
 		return;
+
 	Mat wdisp;
 	double rxd, ryd, rd;
 	rxd = (double) w / (double) m_disp.cols;
@@ -1715,6 +1751,13 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 
 	glRasterPos2i(-1, -1);
 	glDrawPixels(wdisp.cols, wdisp.rows,  GL_LUMINANCE, GL_UNSIGNED_BYTE, wdisp.data);
+
+	if(m_dist.empty())
+		return;
+
+	Mat wdist;
+	glRasterPos2i(0, -1);
+	glDrawPixels(m_dist.cols, m_dist.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, m_dist.data);
 }
 
 void f_glfw_stereo_view::draw_pixels(Mat & img)
