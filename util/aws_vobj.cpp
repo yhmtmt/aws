@@ -228,10 +228,13 @@ s_obj * s_model::detect(Mat & img, s_obj * pobj)
 		pobj->pmdl = this;
 
 		if(par_chsbd.detect(img, pobj->pt2d)){
-			int len_name = (int) strlen(name.c_str()) + 4 + 1;
+			int len_name = (int) strlen(name.c_str()) + 6 + 1;
+			if (pobj->name)
+				delete [] pobj->name;
 			pobj->name = new char[len_name];
 			if(pobj->name == NULL){
-				delete pobj;
+				if(balloc)
+					delete pobj;
 				return NULL;
 			}
 			snprintf(pobj->name, len_name, "%s_%03d", name.c_str(), ref);

@@ -410,6 +410,7 @@ bool f_glfw_imview::init_run()
 
 ////////////////////////////////////////////////////////////////////////////////f_glfw_stereo_view members
 f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL),
+	m_state(NULL),
 	m_timg1(-1), m_timg2(-1), m_ifrm_diff(0), m_fm_max_count(300), m_fm_count(0), m_fm_time_min_dfrm(0), 
 	m_fm_time_min(INT_MAX),
 	m_bchsbd(false), m_num_chsbdl(0), m_num_chsbdr(0), m_num_chsbd_com(0), m_bflipx(false), m_bflipy(false),
