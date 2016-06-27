@@ -479,6 +479,10 @@ public:
 
 	// clock signal issued by c_aws's main loop
 	static void clock(long long cur_time);
+	static void send_clock_signal()
+	{
+		pthread_cond_broadcast(&m_cond);
+	}
 
 	static void init_run_all(){
 		m_count_clock = 0;
