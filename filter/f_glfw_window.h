@@ -320,13 +320,17 @@ protected:
 	int m_num_chsbdl, m_num_chsbdr;
 	vector<long long> m_ifrm_chsbdl;
 	vector<vector<Point2f>> m_pts_chsbdl;
+	vector<double> m_erepl; // reprojection error in left camera
 	vector<long long> m_ifrm_chsbdr;
 	vector<vector<Point2f>> m_pts_chsbdr;
+	vector<double> m_erepr; // reprojection error in right camera
 
 	int m_num_chsbd_com;
 	vector<long long> m_ifrm_chsbd_com;
 	vector<vector<Point2f>> m_pts_chsbdl_com;
 	vector<vector<Point2f>> m_pts_chsbdr_com;
+	vector<double> m_ereps; // reprojection error in stereo camera
+
 	struct s_chsbd_score{
 		int idx;
 		float score;
@@ -342,12 +346,28 @@ protected:
 	float m_r1, m_r2, m_rx1, m_ry1, m_rx2, m_ry2, m_wn1, m_hn1, m_wn2, m_hn2, m_xscale1, m_yscale1, m_xscale2, m_yscale2;
 	Size m_sz1, m_sz2;
 
+	enum e_show_chsbd{
+		ESC_NONE, ESC_MNL, ESC_MNR, ESC_ST, ESC_MN_ALL, ESC_ST_ALL, ESC_ALL, ESC_NULL
+	} m_show_chsbd;
+	static const char * m_str_show_chsbd[ESC_NULL];
+
+	int m_cur_chsbdl, m_cur_chsbdr, m_cur_chsbdst;
+
+	void calc_window_scale();
+
 	void draw_pixels(Mat & img);
+	void draw_chsbds();
+
 	void draw_chsbd(bool ud, AWSCamPar & cp, Mat & R, Mat & P, const float r, const float g, const float b,
 		const float xscale, const float yscale,
 		const float xorg, const float yorg,
 		const float w, const float h, 
 		vector<vector<Point2f>> & chsbds, const int num_chsbds);
+	void draw_a_chsbd(bool ud, AWSCamPar & cp, Mat & R, Mat & P, const float r, const float g, const float b,
+		const float xscale, const float yscale,
+		const float xorg, const float yorg,
+		const float w, const float h, 
+		vector<vector<Point2f>> & chsbds, vector<double> & erep, const int num_chsbds, const int ichsbd);
 
 	void draw_com_chsbd(const float r, const float g, const float b,
 		const float xscalel, const float yscalel,
@@ -358,6 +378,14 @@ protected:
 		const float wr, const float hr
 		); 
 
+	void draw_a_com_chsbd(const float r, const float g, const float b,
+		const float xscalel, const float yscalel,
+		const float xorgl, const float yorgl,
+		const float wl, const float hl,
+		const float xscaler, const float yscaler,
+		const float xorgr, const float yorgr,
+		const float wr, const float hr
+		); 
 
 	void calibrate_stereo();
 	void rectify_stereo();
@@ -386,7 +414,6 @@ protected:
 			P2 = P1 * 4;
 		}
 	} m_sgbm_par;
-	
 
 	// draw horizon
 #define SZ_ATT_BUF 100
@@ -396,7 +423,6 @@ protected:
 	float m_roll[SZ_ATT_BUF], m_pitch[SZ_ATT_BUF], m_yaw[SZ_ATT_BUF];
 	float m_roll0, m_pitch0, m_yaw0;
 	void draw_horizon();
-
 
 	virtual bool init_run();
 	virtual void destroy_run();
@@ -429,8 +455,19 @@ protected:
 	  m_pos_mouse.y = (float)(1.0 - 2.0 * ypos / (double)m_sz_win.height);
   }
   
+  bool m_bevt_key;
+  int m_key;
+  int m_scancode;
+  int m_mods;
+  int m_action;
+  void handle_key();
+
   virtual void _key_callback(int key, int scancode, int action, int mods)
   {
+	  m_key = key;
+	  m_mods = mods;
+	  m_scancode = scancode;
+	  m_action = action;
 	  switch(key){
 	  case GLFW_KEY_S:
 		  if(GLFW_MOD_CONTROL & mods){

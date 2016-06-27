@@ -409,6 +409,11 @@ bool f_glfw_imview::init_run()
 }
 
 ////////////////////////////////////////////////////////////////////////////////f_glfw_stereo_view members
+
+const char * f_glfw_stereo_view::m_str_show_chsbd[ESC_NULL] = {
+	"none", "monol", "monor", "stereo", "amono", "astereo", "all"
+};
+
 f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), m_pin1(NULL), m_pin2(NULL),
 	m_timg1(-1), m_timg2(-1), m_ifrm_diff(0), m_fm_max_count(300), m_fm_count(0), m_fm_time_min_dfrm(0), 
 	m_fm_time_min(INT_MAX),
@@ -423,7 +428,9 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
 	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50),
 	m_bptl(false), m_bptr(false), m_num_com_pts(0),
-	m_roll0(0), m_pitch0(0), m_yaw0(0), m_dtatt(0), m_iatt(0)
+	m_show_chsbd(ESC_NONE), m_cur_chsbdl(0), m_cur_chsbdr(0), m_cur_chsbdst(0),
+	m_roll0(0), m_pitch0(0), m_yaw0(0), m_dtatt(0), m_iatt(0),
+	m_bevt_key(false), m_key(-1), m_scancode(-1), m_mods(-1)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -443,6 +450,8 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("sv_chsbd", &m_bsv_chsbd, "Save chessboard.");
 	register_fpar("ld_chsbd", &m_bld_chsbd, "Load chessboard.");
 	register_fpar("det_chsbd", &m_bdet_chsbd, "Detect chessboard.");
+	register_fpar("show_chsbd", (int*)&m_show_chsbd, ESC_NULL, m_str_show_chsbd, "View chessboard");
+
 	register_fpar("red_chsbd", &m_bred_chsbd, "Reduce chessboard to calib_chsbds");
 	register_fpar("svcp", &m_bsvcp, "Save camera parameter.");
 	register_fpar("ldcp", &m_bldcp, "Load camera parameter.");
@@ -548,8 +557,196 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	}
 }
 
+void f_glfw_stereo_view::handle_key()
+{
+	if(m_action == GLFW_PRESS){
+		switch(m_key){
+		case GLFW_KEY_LEFT:
+			switch(m_show_chsbd){
+			case ESC_MNL:
+				m_cur_chsbdl--;
+				if(m_cur_chsbdl < 0){
+					m_cur_chsbdl = m_num_chsbdl - 1;
+				}
+				break;
+			case ESC_MNR:
+				m_cur_chsbdr--;
+				if(m_cur_chsbdr < 0){
+					m_cur_chsbdr = m_num_chsbdr - 1;
+				}
+				break;
+			case ESC_ST:
+				m_cur_chsbdst--;
+				if(m_cur_chsbdst < m_num_chsbd_com)
+					m_cur_chsbdst = m_num_chsbd_com - 1;
+				break;
+			}
+			break;
+		case GLFW_KEY_RIGHT:
+			switch(m_show_chsbd){
+			case ESC_MNL:
+				m_cur_chsbdl++;
+				if(m_cur_chsbdl == m_num_chsbdl){
+					m_cur_chsbdl = 0;
+				}
+				break;
+			case ESC_MNR:
+				m_cur_chsbdr++;
+				if(m_cur_chsbdr == m_num_chsbdr){
+					m_cur_chsbdr = 0;
+				}
+				break;
+			case ESC_ST:
+				m_cur_chsbdst++;
+				if(m_cur_chsbdst == m_num_chsbd_com){
+					m_cur_chsbdst = 0;
+				}
+				break;
+			}
+			break;
+		case GLFW_KEY_DELETE:
+			switch(m_show_chsbd){
+			case ESC_MNL:
+				if(m_cur_chsbdl < m_num_chsbdl){
+					m_pts_chsbdl.erase(m_pts_chsbdl.begin() + m_cur_chsbdl);
+					m_ifrm_chsbdl.erase(m_ifrm_chsbdl.begin() + m_cur_chsbdl);
+					if(m_erepl.size() == m_num_chsbdl){
+						m_erepl.erase(m_erepl.begin() + m_cur_chsbdl);
+					}
+					m_num_chsbdl--;
+					if(m_cur_chsbdl == m_num_chsbdl){
+						m_cur_chsbdl = m_num_chsbdl - 1;
+					}
+				}
+				break;
+			case ESC_MNR:
+				if(m_cur_chsbdr < m_num_chsbdr){
+					m_pts_chsbdr.erase(m_pts_chsbdr.begin() + m_cur_chsbdr);
+					m_ifrm_chsbdr.erase(m_ifrm_chsbdr.begin() + m_cur_chsbdr);
+					if(m_erepr.size() == m_num_chsbdr){
+						m_erepr.erase(m_erepr.begin() + m_cur_chsbdr);
+					}
+					m_num_chsbdr--;
+					if(m_cur_chsbdr == m_num_chsbdr){
+						m_cur_chsbdr = m_num_chsbdr- 1;
+					}
+				}
+				break;
+			case ESC_ST:
+				if(m_cur_chsbdst < m_num_chsbd_com){
+					m_pts_chsbdl_com.erase(m_pts_chsbdl_com.begin() + m_cur_chsbdst);
+					m_pts_chsbdr_com.erase(m_pts_chsbdr_com.begin() + m_cur_chsbdst);
+					m_ifrm_chsbd_com.erase(m_ifrm_chsbd_com.begin() + m_cur_chsbdst);
+					if(m_ereps.size() == m_num_chsbd_com){
+						m_ereps.erase(m_ereps.begin() + m_cur_chsbdst);
+					}
+					m_num_chsbd_com--;
+					if(m_cur_chsbdst == m_num_chsbd_com){
+						m_cur_chsbdst = m_num_chsbd_com - 1;
+					}
+				}
+				break;
+			case ESC_MN_ALL:
+				m_pts_chsbdl.clear();
+				m_ifrm_chsbdl.clear();
+				m_num_chsbdl = 0;
+				m_pts_chsbdr.clear();
+				m_ifrm_chsbdr.clear();
+				m_erepr.clear();
+				m_num_chsbdr = 0;
+				break;
+			case ESC_ST_ALL:
+				m_pts_chsbdl_com.clear();
+				m_pts_chsbdr_com.clear();
+				m_ifrm_chsbd_com.clear();
+				m_ereps.clear();
+				m_num_chsbd_com = 0;
+				break;
+			case ESC_ALL:
+				m_pts_chsbdl.clear();
+				m_ifrm_chsbdl.clear();
+				m_erepl.clear();
+				m_num_chsbdl = 0;
+				m_pts_chsbdr.clear();
+				m_ifrm_chsbdr.clear();
+				m_erepr.clear();
+				m_num_chsbdr = 0;
+				m_pts_chsbdl_com.clear();
+				m_pts_chsbdr_com.clear();
+				m_num_chsbd_com = 0;
+				m_ifrm_chsbd_com.clear();
+				break;
+			}
+			break;
+		case GLFW_KEY_UP:
+			m_show_chsbd = (e_show_chsbd)(((int) m_show_chsbd + 1) % ESC_NULL);
+			break;
+		case GLFW_KEY_DOWN:
+			m_show_chsbd = (e_show_chsbd)(((int) m_show_chsbd + (int) ESC_NULL - 1) % ESC_NULL);
+			break;
+		case GLFW_KEY_M:
+			{
+				if(m_mods & GLFW_MOD_SHIFT){
+					double erep_max = 0;
+					for(int cur_chsbdl = 0; cur_chsbdl < m_erepl.size(); cur_chsbdl++){
+						if(erep_max < m_erepl[cur_chsbdl]){
+							erep_max = m_erepl[cur_chsbdl];
+							m_cur_chsbdl = cur_chsbdl;
+						}
+					}
+					erep_max = 0;
+
+					for(int cur_chsbdr = 0; cur_chsbdr < m_erepr.size(); cur_chsbdr++){
+						if(erep_max < m_erepr[cur_chsbdr]){
+							erep_max = m_erepr[cur_chsbdr];
+							m_cur_chsbdr = cur_chsbdr;
+						}
+					}
+					erep_max = 0;
+					for(int cur_chsbdst = 0; cur_chsbdst < m_ereps.size(); cur_chsbdst++){
+						if(erep_max < m_ereps[cur_chsbdst]){
+							erep_max = m_ereps[cur_chsbdst];
+							m_cur_chsbdst = cur_chsbdst;
+						}
+					}
+
+				}else{
+					double erep_min = DBL_MAX;
+					for(int cur_chsbdl = 0; cur_chsbdl < m_erepl.size(); cur_chsbdl++){
+						if(erep_min > m_erepl[cur_chsbdl]){
+							erep_min = m_erepl[cur_chsbdl];
+							m_cur_chsbdl = cur_chsbdl;
+						}
+					}
+					erep_min = DBL_MAX;
+
+					for(int cur_chsbdr = 0; cur_chsbdr < m_erepr.size(); cur_chsbdr++){
+						if(erep_min > m_erepr[cur_chsbdr]){
+							erep_min = m_erepr[cur_chsbdr];
+							m_cur_chsbdr = cur_chsbdr;
+						}
+					}
+					erep_min = DBL_MAX;
+
+					for(int cur_chsbdst = 0; cur_chsbdst < m_ereps.size(); cur_chsbdst++){
+						if(erep_min > m_ereps[cur_chsbdst]){
+							erep_min = m_ereps[cur_chsbdst];
+							m_cur_chsbdst = cur_chsbdst;
+						}
+					}
+				}
+			}
+		}
+	}
+	m_bevt_key = false;
+}
+
 bool f_glfw_stereo_view::proc()
 {
+
+	if(m_bevt_key){
+		handle_key();
+	}
   glfwMakeContextCurrent(pwin());
 
   if(glfwWindowShouldClose(pwin()))
@@ -722,27 +919,7 @@ bool f_glfw_stereo_view::proc()
 	  // draw images
 	  Mat wimg1, wimg2;
 
-	  m_w = m_sz_win.width >> 1;
-      m_h = m_sz_win.height >> 1;
-	  m_rx1 = (float)((double)m_w / (double)m_img1.cols); 
-	  m_ry1 = (float)((double)m_h / (double)m_img1.rows);
-	  m_rx2 = (float)((double)m_w / (double)m_img2.cols);
-	  m_ry2 = (float)((double)m_h / (double)m_img2.rows);
-	  m_r1 = min(m_rx1, m_ry1);
-	  m_r2 = min(m_rx2, m_ry2);
-	  m_sz1.width = (int)(m_r1 * img1.cols);
-	  m_sz1.height = (int)(m_r1 * img1.rows);
-	  m_sz2.width = (int)(m_r2 * img2.cols);
-	  m_sz2.height = (int)(m_r2 * img2.rows);
-	  m_wn1 = (float)((double) m_sz1.width / (double) m_w);
-	  m_hn1 = (float)((double) m_sz1.height / (double) m_h);
-	  m_wn2 = (float)((double) m_sz2.width / (double) m_w);
-	  m_hn2 = (float)((double) m_sz2.height / (double) m_h);
-	  m_xscale1 = (float)(m_r1 / (float) m_w);
-	  m_yscale1 = (float)(m_r1 / (float) m_h);
-	  m_xscale2 = (float)(m_r2 / (float) m_w);
-	  m_yscale2 = (float)(m_r2 / (float) m_h);
-
+	  calc_window_scale();
 	  resize(m_img1, wimg1, m_sz1);
 	  resize(m_img2, wimg2, m_sz2);
 
@@ -752,26 +929,12 @@ bool f_glfw_stereo_view::proc()
 	  glRasterPos2i(0, 0);
 	  draw_pixels(wimg2);
 
-	  if(m_num_chsbdl){
-		  draw_chsbd(m_budl && m_bcpl, m_camparl, m_Rl, m_Pl, 1., 0, 0, m_xscale1, m_yscale1, -1, 0, 
-			  m_wn1, m_hn1, m_pts_chsbdl, m_num_chsbdl);
-	  } 
-
-	  if(m_num_chsbdr){
-		  draw_chsbd(m_budr && m_bcpr, m_camparr, m_Rr, m_Pr, 1., 0, 0, m_xscale2, m_yscale2, 0, 0, 
-			  m_wn2, m_hn2, m_pts_chsbdr, m_num_chsbdr);
-	  }
-
-	  if(m_num_chsbd_com){
-		  draw_com_chsbd(0, 0, 1, 
-			  m_xscale1, m_yscale1, -1, 0, m_wn1,m_hn1, 
-			  m_xscale2, m_yscale2, 0, 0, m_wn2, m_hn2);
-	  }
+	  draw_chsbds();
 
 	  if(m_bdisp){ // show disparity map
 		  calc_and_draw_disparity_map(m_img1, m_img2);
 	  }
-
+	 
 	  // draw horizon 
 	  if(m_state){
 		  draw_horizon();
@@ -1175,7 +1338,7 @@ void f_glfw_stereo_view::calibrate_stereo()
 		double err;
 		vector<Point2f> ptsl, ptsr;
 		vector<Vec3f> ll, lr;
-		
+		m_ereps.resize(m_num_chsbd_com, 0);
 		for(int ichsbd = 0; ichsbd < m_num_chsbd_com; ichsbd++){
 			if(m_bfisheye){
 				fisheye::undistortPoints(m_pts_chsbdl_com[ichsbd], ptsl, Kl, Dl, m_Rl, m_Pl);
@@ -1188,14 +1351,18 @@ void f_glfw_stereo_view::calibrate_stereo()
 			computeCorrespondEpilines(ptsr, 2, m_F, lr);
 			for(int il = 0; il < ptsl.size(); il++){
 				err = ptsl[il].x * lr[il][0] + ptsl[il].y * lr[il][1] + lr[il][2];
-				serr += err;
+				serr += err * err;
 				num_pts++;
 			}
 			for(int il = 0; il < ptsr.size(); il++){
 				err = ptsr[il].x * ll[il][0] + ptsr[il].y * ll[il][1] + ll[il][2];
-				serr += err;
+				serr += err * err;
 				num_pts++;
 			}
+
+			err *= 0.5 / (double) ptsr.size();
+			err = sqrt(err);
+			m_ereps[ichsbd] = err;
 		}
 	}
 	cout << "Stereo Calibrate done with calibration err=" << err << " epi err = " << serr / (double) num_pts << endl;
@@ -1468,6 +1635,7 @@ void f_glfw_stereo_view::calibrate(int icam)
 	vector<vector<Point2f>> * ppts = NULL;
 	vector<Mat> tvecs;
 	vector<Mat> rvecs;
+	vector<double> * erep = NULL;
 	bool * pbcp;
 	Mat * pimg = NULL, * R = NULL, * P = NULL, * map1 = NULL, * map2 = NULL;
 	if(icam == 0){
@@ -1479,6 +1647,7 @@ void f_glfw_stereo_view::calibrate(int icam)
 		R = &m_Rl;
 		map1 = &m_mapl1;
 		map2 = &m_mapl2;
+		erep = &m_erepl;
 	}else{
 		pbcp = &m_bcpr;
 		pcp = &m_camparr;
@@ -1488,6 +1657,7 @@ void f_glfw_stereo_view::calibrate(int icam)
 		R = &m_Rr;
 		map1 = &m_mapr1;
 		map2 = &m_mapr2;
+		erep = &m_erepr;
 	}
 
 	Size sz(pimg->cols, pimg->rows);
@@ -1518,6 +1688,19 @@ void f_glfw_stereo_view::calibrate(int icam)
 		err = fisheye::calibrate(pt3ds, *ppts, sz, K, D, rvecs, tvecs, flag);
 		pcp->setCvDist(D);
 		pcp->setCvPrj(K);
+
+		// calculating error
+		erep->resize(pt3ds.size(), 0);
+		for(int i = 0; i < pt3ds.size(); i++){
+			vector<Point2f> prep;
+			fisheye::projectPoints(pt3ds[i], prep, rvecs[i], tvecs[i], K, D);
+			for(int j = 0; j < pt3ds[i].size(); j++){
+				Point2f diff = prep[i] - (*ppts)[i][j];
+				(*erep)[i] += norm(diff);
+			}
+			(*erep)[i] *= 1.0 / (double)pt3ds[i].size();
+			(*erep)[i] = sqrt((*erep)[i]);
+		}
 	}else{
 		int flag = 0;
 		pcp->setFishEye(false);
@@ -1548,6 +1731,19 @@ void f_glfw_stereo_view::calibrate(int icam)
 			D, rvecs, tvecs, flag);
 		pcp->setCvDist(D);
 		pcp->setCvPrj(K);
+
+		// calculating error
+		erep->resize(pt3ds.size(), 0);
+		for(int i = 0; i < pt3ds.size(); i++){
+			vector<Point2f> prep;
+			projectPoints(pt3ds[i], prep, rvecs[i], tvecs[i], K, D);
+			for(int j = 0; j < pt3ds[i].size(); j++){
+				Point2f diff = prep[i] - (*ppts)[i][j];
+				(*erep)[i] += norm(diff);
+			}
+			(*erep)[i] *= 1.0 / (double)pt3ds[i].size();
+			(*erep)[i] = sqrt((*erep)[i]);
+		}
 	}
 	cout << "Calibration camera " << icam << " done with err = " << err << endl;
 	cout << "K" << K << endl;
@@ -1777,6 +1973,95 @@ void f_glfw_stereo_view::draw_pixels(Mat & img)
 }
 
 
+void f_glfw_stereo_view::calc_window_scale()
+{
+	m_w = m_sz_win.width >> 1;
+	m_h = m_sz_win.height >> 1;
+	m_rx1 = (float)((double)m_w / (double)m_img1.cols); 
+	m_ry1 = (float)((double)m_h / (double)m_img1.rows);
+	m_rx2 = (float)((double)m_w / (double)m_img2.cols);
+	m_ry2 = (float)((double)m_h / (double)m_img2.rows);
+	m_r1 = min(m_rx1, m_ry1);
+	m_r2 = min(m_rx2, m_ry2);
+	m_sz1.width = (int)(m_r1 * m_img1.cols);
+	m_sz1.height = (int)(m_r1 * m_img1.rows);
+	m_sz2.width = (int)(m_r2 * m_img2.cols);
+	m_sz2.height = (int)(m_r2 * m_img2.rows);
+	m_wn1 = (float)((double) m_sz1.width / (double) m_w);
+	m_hn1 = (float)((double) m_sz1.height / (double) m_h);
+	m_wn2 = (float)((double) m_sz2.width / (double) m_w);
+	m_hn2 = (float)((double) m_sz2.height / (double) m_h);
+	m_xscale1 = (float)(m_r1 / (float) m_w);
+	m_yscale1 = (float)(m_r1 / (float) m_h);
+	m_xscale2 = (float)(m_r2 / (float) m_w);
+	m_yscale2 = (float)(m_r2 / (float) m_h);
+}
+
+void f_glfw_stereo_view::draw_chsbds()
+{
+	switch(m_show_chsbd){
+	case ESC_MNL:
+	  if(m_num_chsbdl){
+		  m_cur_chsbdl = min(m_cur_chsbdl, m_num_chsbdl - 1);
+		  m_cur_chsbdl = max(0, m_cur_chsbdl);
+		  draw_a_chsbd(m_budl && m_bcpl, m_camparl, m_Rl, m_Pl, 1., 0, 0, m_xscale1, m_yscale1, -1, 0, 
+			  m_wn1, m_hn1, m_pts_chsbdl, m_erepl, m_num_chsbdl, m_cur_chsbdl);
+	  } 
+	  break;
+	case ESC_MNR:
+	  if(m_num_chsbdr){
+		  m_cur_chsbdr= min(m_cur_chsbdr, m_num_chsbdr - 1);
+		  m_cur_chsbdr = max(0, m_cur_chsbdr);
+		  draw_a_chsbd(m_budr && m_bcpr, m_camparr, m_Rr, m_Pr, 1., 0, 0, m_xscale2, m_yscale2, 0, 0, 
+			  m_wn2, m_hn2, m_pts_chsbdr, m_erepr, m_num_chsbdr, m_cur_chsbdr);
+	  }
+	  break;
+	case ESC_ST:
+	  if(m_num_chsbd_com){
+		  m_cur_chsbdst = min(m_cur_chsbdst, m_num_chsbd_com - 1);
+		  m_cur_chsbdst = max(0, m_cur_chsbdst);
+		  draw_a_com_chsbd(0, 0, 1, 
+			  m_xscale1, m_yscale1, -1, 0, m_wn1,m_hn1, 
+			  m_xscale2, m_yscale2, 0, 0, m_wn2, m_hn2);
+	  }
+	  break;
+	case ESC_MN_ALL:
+	  if(m_num_chsbdl){
+		  draw_chsbd(m_budl && m_bcpl, m_camparl, m_Rl, m_Pl, 1., 0, 0, m_xscale1, m_yscale1, -1, 0, 
+			  m_wn1, m_hn1, m_pts_chsbdl, m_num_chsbdl);
+	  } 
+	  if(m_num_chsbdr){
+		  draw_chsbd(m_budr && m_bcpr, m_camparr, m_Rr, m_Pr, 1., 0, 0, m_xscale2, m_yscale2, 0, 0, 
+			  m_wn2, m_hn2, m_pts_chsbdr, m_num_chsbdr);
+	  }
+	  break;
+	case ESC_ST_ALL:
+	  if(m_num_chsbd_com){
+		  draw_com_chsbd(0, 0, 1, 
+			  m_xscale1, m_yscale1, -1, 0, m_wn1,m_hn1, 
+			  m_xscale2, m_yscale2, 0, 0, m_wn2, m_hn2);
+	  }
+	  break;
+	case ESC_ALL:
+		if(m_num_chsbdl){
+			draw_chsbd(m_budl && m_bcpl, m_camparl, m_Rl, m_Pl, 1., 0, 0, m_xscale1, m_yscale1, -1, 0, 
+				m_wn1, m_hn1, m_pts_chsbdl, m_num_chsbdl);
+		} 
+		if(m_num_chsbdr){
+			draw_chsbd(m_budr && m_bcpr, m_camparr, m_Rr, m_Pr, 1., 0, 0, m_xscale2, m_yscale2, 0, 0, 
+				m_wn2, m_hn2, m_pts_chsbdr, m_num_chsbdr);
+		}
+		if(m_num_chsbd_com){
+			draw_com_chsbd(0, 0, 1, 
+				m_xscale1, m_yscale1, -1, 0, m_wn1,m_hn1, 
+				m_xscale2, m_yscale2, 0, 0, m_wn2, m_hn2);
+		}
+	  break;
+
+	}
+}
+
+
 void f_glfw_stereo_view::draw_com_chsbd(const float r, const float g, const float b,
 		const float xscalel, const float yscalel,
 		const float xorgl, const float yorgl,
@@ -1913,6 +2198,145 @@ void f_glfw_stereo_view::draw_com_chsbd(const float r, const float g, const floa
 	}
 }
 
+void f_glfw_stereo_view::draw_a_com_chsbd(const float r, const float g, const float b,
+		const float xscalel, const float yscalel,
+		const float xorgl, const float yorgl,
+		const float wl, const float hl,
+		const float xscaler, const float yscaler,
+		const float xorgr, const float yorgr,
+		const float wr, const float hr)
+{
+	glLineWidth(1);
+
+	Mat Kl, Kr, Dl, Dr;
+	if(m_camparl.isFishEye()){
+		Kl = m_camparl.getCvPrjMat();
+		Dl = m_camparl.getCvDistFishEyeMat();
+	}else{
+		Kl = m_camparl.getCvPrjMat();
+		Dl = m_camparl.getCvDistMat();
+	}
+	if(m_camparr.isFishEye()){
+		Kr = m_camparr.getCvPrjMat();
+		Dr = m_camparr.getCvDistFishEyeMat();
+	}else{
+		Kr = m_camparr.getCvPrjMat();
+		Dr = m_camparr.getCvDistMat();
+	}
+
+	Size sz_chsbd(m_chsbd.par_chsbd.w, m_chsbd.par_chsbd.h);
+	int i = 0, 
+		j = sz_chsbd.width - 1,
+		k = sz_chsbd.height * sz_chsbd.width - 1, 
+		l = (sz_chsbd.height - 1) * sz_chsbd.width;
+
+	vector<Point2f> pt4l,pt4r, ptu4l, ptu4r;
+	vector<Vec3f> line4l, line4r;
+	pt4l.resize(4);
+	pt4r.resize(4);
+
+	vector<Point2f> & ptsl = m_pts_chsbdl_com[m_cur_chsbdst], & ptsr = m_pts_chsbdr_com[m_cur_chsbdst];
+	pt4l[0] = ptsl[i];
+	pt4l[1] = ptsl[j];
+	pt4l[2] = ptsl[k];
+	pt4l[3] = ptsl[l];
+
+	if(m_budl && m_bcpl){
+		if(m_camparl.isFishEye()){
+			fisheye::undistortPoints(pt4l, ptu4l, Kl, Dl, m_Rl, m_Pl);
+		}else{
+			undistortPoints(pt4l, ptu4l, Kl, Dl, m_Rl, m_Pl);
+		}
+		for(int ipt = 0; ipt < 4; ipt++){
+			cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, ptu4l[ipt], pt4l[ipt]);
+		}
+	}else{
+		for(int ipt = 0; ipt < 4; ipt++){
+			cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, pt4l[ipt], pt4l[ipt]);
+		}
+	}
+
+	pt4r[0] = ptsr[i];
+	pt4r[1] = ptsr[j];
+	pt4r[2] = ptsr[k];
+	pt4r[3] = ptsr[l];
+	if(m_budr && m_bcpr){
+		if(m_camparr.isFishEye()){
+			fisheye::undistortPoints(pt4r, ptu4r, Kr, Dr, m_Rr, m_Pr);
+		}else{
+			undistortPoints(pt4r, ptu4r, Kr, Dr, m_Rr, m_Pr);
+		}
+		for(int ipt = 0; ipt < 4; ipt++){
+			cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, ptu4r[ipt], pt4r[ipt]);
+		}
+	}else{
+		for(int ipt = 0; ipt < 4; ipt++){
+			cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, pt4r[ipt], pt4r[ipt]);
+		}
+	}
+
+	glColor4f(r, g, b, 1);
+	Point2f ptavg1(0, 0), ptavg2(0, 0);
+
+	glBegin(GL_LINE_LOOP);
+	for(int ipt = 0; ipt < 4; ipt++){
+		glVertex2f(pt4l[ipt].x, pt4l[ipt].y);
+		ptavg1 += pt4l[ipt];
+	}
+	glEnd();
+
+	glBegin(GL_LINE_LOOP);
+	for(int ipt = 0; ipt < 4; ipt++){
+		glVertex2f(pt4r[ipt].x, pt4r[ipt].y);
+		ptavg2 += pt4r[ipt];
+	}
+	glEnd();
+
+	if(m_cur_chsbdst < m_ereps.size()){
+		ptavg1 *= 0.25;
+		ptavg2 *= 0.25;
+		char buf[128];
+		snprintf(buf, 128, "e=%3.3f", m_ereps[m_cur_chsbdst]);
+		drawGlText(ptavg1.x, ptavg1.y, buf, 0, 0, 1, 1, GLUT_BITMAP_8_BY_13);
+
+		snprintf(buf, 128, "e=%3.3f", m_ereps[m_cur_chsbdst]);
+		drawGlText(ptavg2.x, ptavg2.y, buf, 0, 0, 1, 1, GLUT_BITMAP_8_BY_13);
+	}
+
+	if(m_bstp && m_budl && m_budr){// draw epiline
+		computeCorrespondEpilines(ptu4l, 1, m_F, line4l);
+		computeCorrespondEpilines(ptu4r, 2, m_F, line4r);
+		for(int ipt = 0; ipt < 4; ipt++){
+			Point2f pt1, pt2;
+			double div = 1.0 / line4l[ipt][1];
+			pt1.x = 0; 
+			pt1.y = -(float)(line4l[ipt][2] * div);
+			pt2.x = (float) m_img2.cols;
+			pt2.y = -(float)((pt2.x * line4l[ipt][0] + line4l[ipt][2]) * div);
+			cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, pt1, pt1);
+			cnvCvPoint2GlPoint(xscaler, yscaler, xorgr, yorgr, wr, hr, pt2, pt2);
+			glColor4f(0, 1, 0, 1);
+			glBegin(GL_LINES);
+			glVertex2f(pt1.x, pt1.y);
+			glVertex2f(pt2.x, pt2.y);
+			glEnd();
+
+			div = 1.0 / line4r[ipt][1];
+			pt1.x = 0; 
+			pt1.y = -(float)(line4r[ipt][2] * div);
+			pt2.x = (float) m_img1.cols; 
+			pt2.y = -(float)((pt2.x * line4r[ipt][0] + line4r[ipt][2]) * div);
+			cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, pt1, pt1);
+			cnvCvPoint2GlPoint(xscalel, yscalel, xorgl, yorgl, wl, hl, pt2, pt2);
+			glBegin(GL_LINES);
+			glVertex2f(pt1.x, pt1.y);
+			glVertex2f(pt2.x, pt2.y);
+			glEnd();
+		}
+	}
+}
+
+
 void f_glfw_stereo_view::draw_chsbd(bool ud,
 	AWSCamPar & cp, Mat & R, Mat & P, const float r, const float g, const float b,
 	const float xscale, const float yscale,
@@ -1967,6 +2391,69 @@ void f_glfw_stereo_view::draw_chsbd(bool ud,
 		}
 		glEnd();
 	}
+}
+
+void f_glfw_stereo_view::draw_a_chsbd(bool ud,
+	AWSCamPar & cp, Mat & R, Mat & P, const float r, const float g, const float b,
+	const float xscale, const float yscale,
+	const float xorg, const float yorg, 
+	const float w, const float h, 
+	vector<vector<Point2f>> & chsbds, vector<double> & erep, const int num_chsbds, const int ichsbd)
+{
+	glColor4f(r, g, b, 1);
+	glLineWidth(1);
+	Size sz_chsbd(m_chsbd.par_chsbd.w, m_chsbd.par_chsbd.h);
+	int i = 0, 
+		j = sz_chsbd.width - 1,
+		k = sz_chsbd.height * sz_chsbd.width - 1, 
+		l = (sz_chsbd.height - 1) * sz_chsbd.width;
+
+	Mat K, D;
+	if(cp.isFishEye()){
+		K = cp.getCvPrjMat();
+		D = cp.getCvDistFishEyeMat();
+	}else{
+		K = cp.getCvPrjMat();
+		D = cp.getCvDistMat();
+	}
+	vector<Point2f> pt4, ptu4;
+	pt4.resize(4);
+	vector<Point2f> & pts = chsbds[ichsbd];
+
+	glBegin(GL_LINE_LOOP);
+	{
+		Point2f pt, ptavg(0,0);
+
+		pt4[0] = pts[i];
+		pt4[1] = pts[j];
+		pt4[2] = pts[k];
+		pt4[3] = pts[l];
+		if(ud){
+			if(cp.isFishEye())
+				fisheye::undistortPoints(pt4, ptu4, K, D, R, P);
+			else
+				undistortPoints(pt4, ptu4, K, D, R, P);
+			for(int ipt = 0; ipt < 4; ipt++){
+				cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, ptu4[ipt], pt);
+				glVertex2f(pt.x, pt.y);
+				ptavg += pt;
+			}
+		}else{
+			for(int ipt = 0; ipt < 4; ipt++){
+				cnvCvPoint2GlPoint(xscale, yscale, xorg, yorg, w, h, pt4[ipt], pt);
+				glVertex2f(pt.x, pt.y);
+				ptavg += pt;
+			}
+		}
+
+		ptavg /= 4.0;
+		if(ichsbd < erep.size()){
+			char buf[128];
+			snprintf(buf, 128, "e=%3.3f", erep[ichsbd]); 
+			drawGlText(ptavg.x, ptavg.y, buf, 1., 0, 0, 1., GLUT_BITMAP_8_BY_13);
+		}
+	}
+	glEnd();
 }
 
 void f_glfw_stereo_view::check_undistort(vector<Point2f> & pts, vector<Point2f> & ptsu, 
