@@ -325,13 +325,14 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 bool c_aws::handle_stop()
 {
 	bool stopped = false;
+
 	while(!stopped){
 		stopped = true;
 		for(vector<f_base*>::iterator fitr = m_filters.begin(); 
 		    fitr != m_filters.end(); fitr++){
 		  stopped = stopped && (*fitr)->stop(); 
 		}
-		f_base::clock(f_base::get_time());
+		f_base::send_clock_signal();
 	}
 
 	for(vector<f_base*>::iterator fitr = m_filters.begin();
