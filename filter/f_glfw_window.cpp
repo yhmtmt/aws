@@ -1672,7 +1672,7 @@ void f_glfw_stereo_view::draw_horizon()
 	p0h.y += -1.0;
 	p1h.y += -1.0;
 
-	snprintf(buf, 128, "timg=%lld tstt=%lld timg-tstt=%lld", m_timg1, m_tatt, m_timg1 - tatt);
+	snprintf(buf, 128, "timg=%lld tstt=%lld timg-tstt=%lld", m_timg1, tatt, m_timg1 - tatt);
 	drawGlText(-1, 0.5, buf, 0, 0.5, 0, 1., GLUT_BITMAP_8_BY_13);
 
 	glBegin(GL_LINES);
@@ -1705,7 +1705,7 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 		}
 
 		m_sgbm->compute(img1, img2, disps16);
-		m_dist = Mat::zeros(m_sz_win.height << 1, m_sz_win.width << 1, CV_8UC1);
+		m_dist = Mat::zeros(m_sz_win.height >> 1, m_sz_win.width >> 1, CV_8UC1);
 		double * pPl = m_Pl.ptr<double>();
 		double fx = pPl[0], fy = pPl[5];
 		double ifx = 1.0 / fx, ify = 1.0 / fy;
@@ -1713,18 +1713,18 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 		double L = norm(m_Tlr, CV_L2);
 		double Dmax = L * fx;
 		double s = (double)((m_dist.rows - 1) / Dmax);
-
-		ushort * pdisp = m_disp.ptr<ushort>();
+		int cx2 = m_sz_win.width >> 2;
+		ushort * pdisp = disps16.ptr<ushort>();
 		uchar * pdist = m_dist.ptr<uchar>();
-		for(int y = 0; y < m_disp.rows; y++){
-			for(int x = 0; x < m_disp.cols; x++){
+		for(int y = 0; y < disps16.rows; y++){
+			for(int x = 0; x < disps16.cols; x++){
 				if(*pdisp){
 					double X, Y, Z;
 					Z = 16.0 * L * fx  / *pdisp;
 					X = ((double)x - cx) * ifx * Z;
 					Y = ((double)y - cy) * ify * Z;
-					int x = (int)(X * s + 0.5 + cx);
-					int y = (int)(Y * s + 0.5 + cy); 
+					int x = (int)(X * s + 0.5 + cx2);
+					int y = (int)(Z * s + 0.5); 
 					x = max(min(x, m_dist.cols - 1), 0);
 					y = max(min(y, m_dist.rows - 1), 0);
 					int idx = x + y * m_dist.cols;
