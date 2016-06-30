@@ -598,7 +598,6 @@ bool f_glfw_stereo_view::proc()
   }
 
   if(m_ifrm1 != m_ifrm2 + m_ifrm_diff){
-	  m_bsync = false;
 	  if(m_bnew){
 		  int fdiff = (int)(m_ifrm1 - m_ifrm2);
 		  int tdiff = (int) abs(timg1 - timg2);
@@ -609,10 +608,16 @@ bool f_glfw_stereo_view::proc()
 		  m_fm_count++;
 	  }
   }else{
-	  m_bsync = true;
 	  m_fm_count = 0;
 	  m_fm_time_min_dfrm = 0;
 	  m_fm_time_min = INT_MAX;
+  }
+
+  if (m_timg1 == m_timg2){
+	  m_bsync = true;
+  }
+  else{
+	  m_bsync = false;
   }
 
   if(m_fm_count > m_fm_max_count){
@@ -1706,6 +1711,14 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 
 		m_sgbm->compute(img1, img2, disps16);
 		m_dist = Mat::zeros(m_sz_win.height >> 1, m_sz_win.width >> 1, CV_8UC1);
+		int cx2 = m_sz_win.width >> 2;
+		ushort disp_max = m_sgbm_par.numDisparities * 16;
+		double sy = m_dist.rows / (double)disp_max;
+		double sx = (double) m_dist.cols / (double)disps16.cols;
+		ushort * pdisp = disps16.ptr<ushort>();
+		uchar * pdist = m_dist.ptr<uchar>();
+
+		/*
 		double * pPl = m_Pl.ptr<double>();
 		double fx = pPl[0], fy = pPl[5];
 		double ifx = 1.0 / fx, ify = 1.0 / fy;
@@ -1713,9 +1726,6 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 		double L = norm(m_Tlr, CV_L2);
 		double Dmax = L * fx;
 		double s = (double)((m_dist.rows - 1) / Dmax);
-		int cx2 = m_sz_win.width >> 2;
-		ushort * pdisp = disps16.ptr<ushort>();
-		uchar * pdist = m_dist.ptr<uchar>();
 		for(int y = 0; y < disps16.rows; y++){
 			for(int x = 0; x < disps16.cols; x++){
 				if(*pdisp){
@@ -1728,12 +1738,32 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 					x = max(min(x, m_dist.cols - 1), 0);
 					y = max(min(y, m_dist.rows - 1), 0);
 					int idx = x + y * m_dist.cols;
-					if(pdist[idx] != 255)
-						pdist[idx]++;
+					ushort val = pdist[idx];
+					val += 32;
+					pdist[idx] = saturate_cast<uchar>(val);
 				}
 				pdisp++;				
 			}
 		}
+		*/
+
+		for (int y = 0; y < disps16.rows; y++){
+			for (int x = 0; x < disps16.cols; x++){
+				if (*pdisp && *pdisp <= disp_max){
+					ushort idisp = disp_max - *pdisp;
+					int y2 = (int)(idisp * sy + 0.5);
+					int idx = (int)(sx * x + 0.5) + y2 * m_dist.cols;
+					ushort val = pdist[idx];
+					val += 16;
+					pdist[idx] = saturate_cast<uchar>(val);
+				}
+				else{
+					*pdisp = 0;
+				}
+				pdisp++;
+			}
+		}
+
 		disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
 	}
 
