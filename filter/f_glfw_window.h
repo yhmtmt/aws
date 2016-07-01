@@ -267,6 +267,7 @@ protected:
 
 	Mat m_img1, m_img2;
 	Mat m_disp, m_dist;
+	vector<float> m_dline;
 
 	long long m_timg1, m_timg2;
 	long long m_ifrm1, m_ifrm2;

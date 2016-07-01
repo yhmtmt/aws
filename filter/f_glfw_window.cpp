@@ -913,6 +913,17 @@ bool f_glfw_stereo_view::proc()
 		snprintf(buf, 1024, "%sd%lld_%lld.png", m_fcapture, m_timg1, m_ifrm1);
 		imwrite(buf, m_disp);
 	}
+
+	if (!m_dist.empty()){
+		snprintf(buf, 1024, "%sD%lld_%lld.png", m_fcapture, m_timg1, m_ifrm1);
+		imwrite(buf, m_dist);
+	}
+	Mat m_simg(m_sz_win.height, m_sz_win.width, CV_8UC3);
+	glReadPixels(0, 0, m_sz_win.width, m_sz_win.height, GL_BGR, GL_UNSIGNED_BYTE, m_simg.data);
+	awsFlip(m_simg, false, true, false);
+	snprintf(buf, 1024, "%sa%lld.png", m_fcapture, m_timg1);
+	imwrite(buf, m_simg);
+
 	m_bcapture = false;
   }
 
@@ -1713,18 +1724,29 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 		m_dist = Mat::zeros(m_sz_win.height >> 1, m_sz_win.width >> 1, CV_8UC1);
 		int cx2 = m_sz_win.width >> 2;
 		ushort disp_max = m_sgbm_par.numDisparities * 16;
-		double sy = m_dist.rows / (double)disp_max;
+		double idisp_max = 1.0 / (double)disp_max;
+		double sy = m_dist.rows * idisp_max;
 		double sx = (double) m_dist.cols / (double)disps16.cols;
 		ushort * pdisp = disps16.ptr<ushort>();
 		uchar * pdist = m_dist.ptr<uchar>();
-
+		if (!m_dline.size()){
+			double * pPl = m_Pl.ptr<double>();
+			double fx = pPl[0], fy = pPl[5];
+			double L = norm(m_Tlr, CV_L2);
+			double Dmax = L * fx;
+			double iDmax = 1.0 / Dmax;
+			int Dmax_int = (int)(Dmax + 0.5);
+			int n100 = Dmax_int / 10;
+			m_dline.resize(n100);
+			m_dline[0] = 0;
+			for (int i = 1; i < n100; i++){
+				m_dline[i] = (float)(
+					((double)disp_max - (double)(1.6 * Dmax / (double)i)) * idisp_max - 1.0);
+			}
+		}
 		/*
-		double * pPl = m_Pl.ptr<double>();
-		double fx = pPl[0], fy = pPl[5];
 		double ifx = 1.0 / fx, ify = 1.0 / fy;
 		double cx = pPl[2], cy = pPl[6];
-		double L = norm(m_Tlr, CV_L2);
-		double Dmax = L * fx;
 		double s = (double)((m_dist.rows - 1) / Dmax);
 		for(int y = 0; y < disps16.rows; y++){
 			for(int x = 0; x < disps16.cols; x++){
@@ -1749,7 +1771,7 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 
 		for (int y = 0; y < disps16.rows; y++){
 			for (int x = 0; x < disps16.cols; x++){
-				if (*pdisp && *pdisp <= disp_max){
+				if (*pdisp && *pdisp <= (disp_max - 64)){
 					ushort idisp = disp_max - *pdisp;
 					int y2 = (int)(idisp * sy + 0.5);
 					int idx = (int)(sx * x + 0.5) + y2 * m_dist.cols;
@@ -1789,6 +1811,25 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 	Mat wdist;
 	glRasterPos2i(0, -1);
 	glDrawPixels(m_dist.cols, m_dist.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, m_dist.data);
+
+	glColor4f(1, 1, 0, 1);
+	for (int il = 0; il < m_dline.size(); il++)
+	{
+		glBegin(GL_LINES);
+		glVertex2f(0.0f, m_dline[il]);
+		glVertex2f(0.05f, m_dline[il]);
+		glVertex2f(0.95f, m_dline[il]);
+		glVertex2f(1.0f, m_dline[il]);
+		/*
+		if (il % 10 == 0){
+			glVertex2f(1.0f, dline[il]);
+		}
+		else{
+			glVertex2f(0.05f, dline[il]);
+		}
+		*/
+		glEnd();
+	}
 }
 
 void f_glfw_stereo_view::draw_pixels(Mat & img)
