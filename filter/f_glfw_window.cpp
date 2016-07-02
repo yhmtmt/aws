@@ -1715,6 +1715,8 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 	int w, h;
 	w = m_sz_win.width >> 1;
 	h = m_sz_win.height >> 1;
+	ushort disp_max = m_sgbm_par.numDisparities * 16;
+
 	if(m_bupdate_img){
 		if(m_sgbm_par.m_update){ // updating sgbm parameters
 			m_sgbm->setBlockSize(m_sgbm_par.blockSize);
@@ -1733,7 +1735,6 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 
 		m_sgbm->compute(img1, img2, m_disp16);
 
-		ushort disp_max = m_sgbm_par.numDisparities * 16;
 		calc_dline(disp_max);
 		calc_dmap(disp_max);
 		calc_obst();
@@ -1765,6 +1766,37 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 	glDrawPixels(m_dist.cols, m_dist.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, m_dist.data);
 
 	draw_dline();
+	draw_obst(disp_max);
+}
+
+void f_glfw_stereo_view::draw_obst(ushort disp_max)
+{
+	double * pPl = m_Pl.ptr<double>();
+	double fx = pPl[0], fy = pPl[5];
+	double L = norm(m_Tlr, CV_L2);
+	double Dmax = L * fx;
+	double iDmax = 1.0 / Dmax;
+	double sd = 1.0 / (double)disp_max;
+	double sx = 1.0 / (double)m_disp16.cols;
+	double sy = (double) m_disp16.rows / (double) m_sz_win.height;
+	for (int iobst = 0; iobst < m_obst.size(); iobst++){
+		s_obst & obst = m_obst[iobst];
+		float x0, x1, y0, y1;
+		y0 = (float)((double) (disp_max - obst.dmin) * sd - 1.0);
+		y1 = (float)((double)(disp_max - obst.dmax) * sd - 1.0);
+		x0 = (float)(sx * (double)obst.xmin);
+		x1 = (float)(sx * (double)obst.xmax);
+		drawGlSquare2Df(x0, y0, x1, y1, 1., 0, 0, 1, 1);
+
+		x0 -= 1.0;
+		x1 -= 1.0;
+		y0 = (float)((double) m_h - obst.ymin * m_yscale1 - 1.);
+		y1 = (float)((double) m_h - obst.ymax * m_yscale1 - 1.);
+		drawGlSquare2Df(x0, y0, x1, y1, 1, 0, 0, 1, 1);
+		
+	}
+	glColor4f(1, 1, 0, 1);
+
 }
 
 void f_glfw_stereo_view::draw_dline()
@@ -1830,25 +1862,21 @@ void f_glfw_stereo_view::calc_dmap(ushort disp_max)
 
 void f_glfw_stereo_view::calc_obst()
 {
-	// blob detector
-	// region extraction.
-	//      * depth ranging
-	//      * region's foot position limitation
-	//      * bounding box limitation (vertical and horizontal)
-	// 
-	// - scan from the bottom.
-	// - labeling continuous regions ( smoothness threashold and depth range limitation)
-	// - labeling do not start with bottom position over the foot limitation
+	// 1. labeling for region with same and continuous disparity.
+	// 2. threasholding for height of the top edge pixels of the regions, and determines (x,d) tuple of the obstacle 
 
 	m_odt_work = Mat::zeros(m_disp16.rows, m_disp16.cols, CV_8UC1);
 	m_rgn_disp.clear();
 	m_rgn_pix.clear();
 	m_rgn_rect.clear();
+	m_rgn_ymax.clear();
 	m_rgn_disp.push_back(0);
 	m_rgn_pix.push_back(0);
+	m_rgn_ymax.push_back(0);
 	uchar * podt, *podt_prev;
 	ushort * pdisp_prev, * pdisp;
 	int nrgn = 0;
+	// labeling phase
 	for (int y = 1; y < m_disp16.rows; y++){
 		podt_prev = m_odt_work.ptr<uchar>(y - 1);
 		podt = m_odt_work.ptr<uchar>(y);
@@ -1914,7 +1942,10 @@ void f_glfw_stereo_view::calc_obst()
 					irgn = (int)m_rgn_disp.size();
 					m_rgn_disp.push_back(*pdisp);
 					m_rgn_pix.push_back(0);
+					m_rgn_ymax.push_back(y);
 				}
+				if (m_rgn_ymax[irgn] < y)
+					m_rgn_ymax[irgn] = y;
 
 				m_rgn_pix[irgn]++;
 				*podt = irgn;
@@ -1927,6 +1958,44 @@ void f_glfw_stereo_view::calc_obst()
 			podt++;
 			pdisp_prev++;
 			pdisp++;
+		}
+	}
+
+	m_obst.clear();
+	m_rgn_obst.resize(m_rgn_disp.size(), -1);
+
+	for (int y = 1; y < m_disp16.rows; y++){
+		podt_prev = m_odt_work.ptr<uchar>(y - 1);
+		podt = m_odt_work.ptr<uchar>(y);
+		pdisp = m_disp16.ptr<ushort>(y);
+		for (int x = 0; x < m_disp16.cols; x++){
+			if (*podt_prev == 0 && *podt != 0){
+				int irgn = *podt;
+				int ymax = m_rgn_ymax[irgn];
+				int height = ymax - y;
+				if (height > m_rgn_bb_min.height && ymax > m_rgn_foot_y){
+					// this is the obstacle
+					if (m_rgn_obst[irgn] < 0){ // new obstacle
+						m_rgn_obst[irgn] = (int) m_obst.size();
+						m_obst.push_back(s_obst());
+						s_obst & obst = m_obst[m_rgn_obst[irgn]];
+						obst.xmin = obst.xmax = x;
+						obst.ymin = y;
+						obst.ymax = ymax;
+						obst.dmin = obst.dmax = *pdisp;
+					}
+					else{
+						s_obst & obst = m_obst[m_rgn_obst[irgn]];
+						obst.xmin = min(obst.xmin, x); obst.xmax = max(obst.xmax, x);
+						obst.dmin = min(*pdisp, obst.dmin);
+						obst.dmax = max(*pdisp, obst.dmax);
+						obst.ymin = min(obst.ymin, y);
+					}
+				}
+			}
+			pdisp++;
+			podt++;
+			podt_prev++;
 		}
 	}
 }

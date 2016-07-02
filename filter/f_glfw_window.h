@@ -397,11 +397,21 @@ protected:
 	int m_rgn_foot_y;
 	vector<ushort> m_rgn_disp;
 	vector<ushort> m_rgn_pix;
+	vector<ushort> m_rgn_ymax;
 	vector<Rect> m_rgn_rect;
+	vector<int> m_rgn_obst;
+	struct s_obst{
+		int xmin, xmax, ymin, ymax;
+		ushort dmin, dmax;
+		s_obst() :xmin(0), xmax(0), ymin(0), ymax(0), dmin(0), dmax(0){}
+	};
+	vector<s_obst> m_obst;
+
 	void calc_obst();
 	void calc_dmap(ushort disp_max);
 	void calc_dline(ushort disp_max);
 	void draw_dline();
+	void draw_obst(ushort disp_max);
 	void calc_and_draw_disparity_map(Mat & img1, Mat & img2);
 
 	void save_stereo_pars();
