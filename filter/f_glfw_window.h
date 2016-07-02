@@ -266,8 +266,6 @@ protected:
 	ch_state * m_state;
 
 	Mat m_img1, m_img2;
-	Mat m_disp, m_dist;
-	vector<float> m_dline;
 
 	long long m_timg1, m_timg2;
 	long long m_ifrm1, m_ifrm2;
@@ -390,7 +388,22 @@ protected:
 
 	void calibrate_stereo();
 	void rectify_stereo();
+
+	Mat m_disp, m_dist, m_disp16;
+	vector<float> m_dline;
+	Mat m_odt_work;
+	int m_rgn_drange;
+	Size m_rgn_bb_min;
+	int m_rgn_foot_y;
+	vector<ushort> m_rgn_disp;
+	vector<ushort> m_rgn_pix;
+	vector<Rect> m_rgn_rect;
+	void calc_obst();
+	void calc_dmap(ushort disp_max);
+	void calc_dline(ushort disp_max);
+	void draw_dline();
 	void calc_and_draw_disparity_map(Mat & img1, Mat & img2);
+
 	void save_stereo_pars();
 	void load_stereo_pars();
 

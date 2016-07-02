@@ -424,7 +424,8 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
 	m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50),
 	m_bptl(false), m_bptr(false), m_num_com_pts(0),
-	m_roll0(0), m_pitch0(0), m_yaw0(0), m_dtatt(0), m_iatt(0)
+	m_roll0(0), m_pitch0(0), m_yaw0(0), m_dtatt(0), m_iatt(0),
+	m_rgn_drange(10), m_rgn_bb_min(5, 5), m_rgn_foot_y(270)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -527,10 +528,16 @@ f_glfw_stereo_view::f_glfw_stereo_view(const char * name): f_glfw_window(name), 
 	register_fpar("speckleRange", &m_sgbm_par.speckleRange, "speckleWindowSize for cv::StereoSGBM");
 	register_fpar("mode", &m_sgbm_par.mode, "mode for cv::StereoSGBM");
 
+	// AHRS related parameter
 	register_fpar("dtatt", &m_dtatt, "Attitude Time difference against image.");
 	register_fpar("roll0", &m_roll0, "Static roll value.");
 	register_fpar("pitch0", &m_pitch0, "Static pitch value.");
 	register_fpar("yaw0", &m_yaw0, "Static yaw value.");
+
+	// Obstacle detection related parameter
+	register_fpar("rgnd", &m_rgn_drange, "Disparity range for obstacle detection.");
+	register_fpar("rbbw", &m_rgn_bb_min.width, "Minimum bounding box width for obstacle detection");
+	register_fpar("rbbh", &m_rgn_bb_min.height, "Minimum bounding box height for obstacle detection");
 
 	m_Rl = Mat::eye(3, 3, CV_64FC1);
 	m_Rr = Mat::eye(3, 3, CV_64FC1);
@@ -912,6 +919,11 @@ bool f_glfw_stereo_view::proc()
 	if(!m_disp.empty()){
 		snprintf(buf, 1024, "%sd%lld_%lld.png", m_fcapture, m_timg1, m_ifrm1);
 		imwrite(buf, m_disp);
+	}
+
+	if (!m_disp16.empty()){
+		snprintf(buf, 1024, "%sd%lld_%lld.raw", m_fcapture, m_timg1, m_ifrm1);
+		write_raw_img(m_disp16, buf);
 	}
 
 	if (!m_dist.empty()){
@@ -1704,7 +1716,6 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 	w = m_sz_win.width >> 1;
 	h = m_sz_win.height >> 1;
 	if(m_bupdate_img){
-		Mat disps16;
 		if(m_sgbm_par.m_update){ // updating sgbm parameters
 			m_sgbm->setBlockSize(m_sgbm_par.blockSize);
 			m_sgbm->setDisp12MaxDiff(m_sgbm_par.disp12MaxDiff);
@@ -1720,73 +1731,14 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 			m_sgbm_par.m_update = false;
 		}
 
-		m_sgbm->compute(img1, img2, disps16);
-		m_dist = Mat::zeros(m_sz_win.height >> 1, m_sz_win.width >> 1, CV_8UC1);
-		int cx2 = m_sz_win.width >> 2;
+		m_sgbm->compute(img1, img2, m_disp16);
+
 		ushort disp_max = m_sgbm_par.numDisparities * 16;
-		double idisp_max = 1.0 / (double)disp_max;
-		double sy = m_dist.rows * idisp_max;
-		double sx = (double) m_dist.cols / (double)disps16.cols;
-		ushort * pdisp = disps16.ptr<ushort>();
-		uchar * pdist = m_dist.ptr<uchar>();
-		if (!m_dline.size()){
-			double * pPl = m_Pl.ptr<double>();
-			double fx = pPl[0], fy = pPl[5];
-			double L = norm(m_Tlr, CV_L2);
-			double Dmax = L * fx;
-			double iDmax = 1.0 / Dmax;
-			int Dmax_int = (int)(Dmax + 0.5);
-			int n100 = Dmax_int / 10;
-			m_dline.resize(n100);
-			m_dline[0] = 0;
-			for (int i = 1; i < n100; i++){
-				m_dline[i] = (float)(
-					((double)disp_max - (double)(1.6 * Dmax / (double)i)) * idisp_max - 1.0);
-			}
-		}
-		/*
-		double ifx = 1.0 / fx, ify = 1.0 / fy;
-		double cx = pPl[2], cy = pPl[6];
-		double s = (double)((m_dist.rows - 1) / Dmax);
-		for(int y = 0; y < disps16.rows; y++){
-			for(int x = 0; x < disps16.cols; x++){
-				if(*pdisp){
-					double X, Y, Z;
-					Z = 16.0 * L * fx  / *pdisp;
-					X = ((double)x - cx) * ifx * Z;
-					Y = ((double)y - cy) * ify * Z;
-					int x = (int)(X * s + 0.5 + cx2);
-					int y = (int)(Z * s + 0.5); 
-					x = max(min(x, m_dist.cols - 1), 0);
-					y = max(min(y, m_dist.rows - 1), 0);
-					int idx = x + y * m_dist.cols;
-					ushort val = pdist[idx];
-					val += 32;
-					pdist[idx] = saturate_cast<uchar>(val);
-				}
-				pdisp++;				
-			}
-		}
-		*/
+		calc_dline(disp_max);
+		calc_dmap(disp_max);
+		calc_obst();
 
-		for (int y = 0; y < disps16.rows; y++){
-			for (int x = 0; x < disps16.cols; x++){
-				if (*pdisp && *pdisp <= (disp_max - 64)){
-					ushort idisp = disp_max - *pdisp;
-					int y2 = (int)(idisp * sy + 0.5);
-					int idx = (int)(sx * x + 0.5) + y2 * m_dist.cols;
-					ushort val = pdist[idx];
-					val += 16;
-					pdist[idx] = saturate_cast<uchar>(val);
-				}
-				else{
-					*pdisp = 0;
-				}
-				pdisp++;
-			}
-		}
-
-		disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
+		m_disp16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
 	}
 
 	if(m_disp.empty())
@@ -1812,6 +1764,11 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 	glRasterPos2i(0, -1);
 	glDrawPixels(m_dist.cols, m_dist.rows, GL_LUMINANCE, GL_UNSIGNED_BYTE, m_dist.data);
 
+	draw_dline();
+}
+
+void f_glfw_stereo_view::draw_dline()
+{
 	glColor4f(1, 1, 0, 1);
 	for (int il = 0; il < m_dline.size(); il++)
 	{
@@ -1820,15 +1777,157 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 		glVertex2f(0.05f, m_dline[il]);
 		glVertex2f(0.95f, m_dline[il]);
 		glVertex2f(1.0f, m_dline[il]);
-		/*
-		if (il % 10 == 0){
-			glVertex2f(1.0f, dline[il]);
-		}
-		else{
-			glVertex2f(0.05f, dline[il]);
-		}
-		*/
 		glEnd();
+	}
+}
+
+void f_glfw_stereo_view::calc_dline(ushort disp_max)
+{
+	if (!m_dline.size()){
+		double idisp_max = 1.0 / (double)disp_max;
+		double * pPl = m_Pl.ptr<double>();
+		double fx = pPl[0], fy = pPl[5];
+		double L = norm(m_Tlr, CV_L2);
+		double Dmax = L * fx;
+		double iDmax = 1.0 / Dmax;
+		int Dmax_int = (int)(Dmax + 0.5);
+		int n100 = Dmax_int / 10;
+		m_dline.resize(n100);
+		m_dline[0] = 0;
+		for (int i = 1; i < n100; i++){
+			m_dline[i] = (float)(
+				((double)disp_max - (double)(1.6 * Dmax / (double)i)) * idisp_max - 1.0);
+		}
+	}
+}
+
+void f_glfw_stereo_view::calc_dmap(ushort disp_max)
+{
+	m_dist = Mat::zeros(m_sz_win.height >> 1, m_sz_win.width >> 1, CV_8UC1);
+
+	double sy = m_dist.rows / (double)disp_max;
+	double sx = (double)m_dist.cols / (double)m_disp16.cols;
+
+	ushort * pdisp = m_disp16.ptr<ushort>();
+	uchar * pdist = m_dist.ptr<uchar>();
+	for (int y = 0; y < m_disp16.rows; y++){
+		for (int x = 0; x < m_disp16.cols; x++){
+			if (*pdisp && *pdisp <= (disp_max - 64)){
+				ushort idisp = disp_max - *pdisp;
+				int y2 = (int)(idisp * sy + 0.5);
+				int idx = (int)(sx * x + 0.5) + y2 * m_dist.cols;
+				ushort val = pdist[idx];
+				val += 16;
+				pdist[idx] = saturate_cast<uchar>(val);
+			}
+			else{
+				*pdisp = 0;
+			}
+			pdisp++;
+		}
+	}
+}
+
+void f_glfw_stereo_view::calc_obst()
+{
+	// blob detector
+	// region extraction.
+	//      * depth ranging
+	//      * region's foot position limitation
+	//      * bounding box limitation (vertical and horizontal)
+	// 
+	// - scan from the bottom.
+	// - labeling continuous regions ( smoothness threashold and depth range limitation)
+	// - labeling do not start with bottom position over the foot limitation
+
+	m_odt_work = Mat::zeros(m_disp16.rows, m_disp16.cols, CV_8UC1);
+	m_rgn_disp.clear();
+	m_rgn_pix.clear();
+	m_rgn_rect.clear();
+	m_rgn_disp.push_back(0);
+	m_rgn_pix.push_back(0);
+	uchar * podt, *podt_prev;
+	ushort * pdisp_prev, * pdisp;
+	int nrgn = 0;
+	for (int y = 1; y < m_disp16.rows; y++){
+		podt_prev = m_odt_work.ptr<uchar>(y - 1);
+		podt = m_odt_work.ptr<uchar>(y);
+		pdisp_prev = m_disp16.ptr<ushort>(y - 1);
+		pdisp = m_disp16.ptr<ushort>(y);
+		for (int x = 0; x < m_disp16.cols - 1; x++){
+			if (*pdisp){
+				int irgn, drgn;
+				{
+					// determine the label of this pixel
+					// XXX
+					// XPY <- P's label is defined by X's label and disparity.
+					// YYY
+
+					// The difference of the disparity between X and P should be
+					// less than m_rgn_drange. If there are many labels satisfy 
+					// the condition, a label with minimum disparity is selected.
+
+					int d, dmin = INT_MAX;
+					int irgn_min = -1;
+
+					irgn = *(podt_prev - 1);
+					if (irgn){
+						d = abs((int)m_rgn_disp[irgn] - (int)*pdisp);
+						if (d < dmin){
+							dmin = d;
+							irgn_min = irgn;
+						}
+					}
+
+					irgn = *(podt_prev);
+					if (irgn){
+						d = abs((int)m_rgn_disp[irgn] - (int)*pdisp);
+						if (d < dmin){
+							dmin = d;
+							irgn_min = irgn;
+						}
+					}
+
+					irgn = *(podt_prev + 1);
+					if (irgn){
+						d = abs((int)m_rgn_disp[irgn] - (int)*pdisp);
+						if (d < dmin){
+							dmin = d;
+							irgn_min = irgn;
+						}
+					}
+
+					irgn = *(podt - 1);
+					if (irgn){
+						d = abs((int)m_rgn_disp[irgn] - (int)*pdisp);
+						if (d < dmin){
+							dmin = d;
+							irgn_min = irgn;
+						}
+					}
+
+					irgn = irgn_min;
+					drgn = dmin;
+				}
+
+				if (irgn == -1 || drgn < m_rgn_drange){
+					irgn = (int)m_rgn_disp.size();
+					m_rgn_disp.push_back(*pdisp);
+					m_rgn_pix.push_back(0);
+				}
+
+				m_rgn_pix[irgn]++;
+				*podt = irgn;
+			}
+			else{
+				m_rgn_pix[0]++;
+			}
+
+			podt_prev++;
+			podt++;
+			pdisp_prev++;
+			pdisp++;
+		}
 	}
 }
 
