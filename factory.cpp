@@ -206,7 +206,9 @@ void ch_base::register_factory()
 
 #ifdef GLFW_WINDOW
 #include <GLFW/glfw3.h>
+#include "util/aws_glib.h"
 #include "filter/f_glfw_window.h"
+#include "filter/f_glfw_stereo_view.h"
 #include "filter/f_aws1_ui.h"
 #endif
 

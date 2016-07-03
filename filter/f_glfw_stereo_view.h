@@ -151,8 +151,10 @@ protected:
 	vector<float> m_dline;
 	Mat m_odt_work;
 	int m_rgn_drange;
-	Size m_rgn_bb_min;
+	Size m_rgn_bb_min_n, m_rgn_bb_min_f;
 	int m_rgn_foot_y;
+	ushort m_dn, m_df;
+
 	vector<ushort> m_rgn_disp;
 	vector<ushort> m_rgn_pix;
 	vector<ushort> m_rgn_ymax;

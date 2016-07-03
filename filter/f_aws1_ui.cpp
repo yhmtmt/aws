@@ -41,6 +41,8 @@ using namespace cv;
 #include <GL/glut.h>
 #include <GL/glu.h>
 
+
+#include "../util/aws_glib.h"
 #include "f_aws1_ui.h"
 
 const char * f_aws1_ui::m_str_aws1_ui_mode[AUM_UNDEF] = {

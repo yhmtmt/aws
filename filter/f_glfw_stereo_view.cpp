@@ -65,7 +65,7 @@ m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfi
 m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50),
 m_bptl(false), m_bptr(false), m_num_com_pts(0),
 m_roll0(0), m_pitch0(0), m_yaw0(0), m_dtatt(0), m_iatt(0),
-m_rgn_drange(10), m_rgn_bb_min(5, 5), m_rgn_foot_y(270)
+m_rgn_drange(32), m_rgn_bb_min_n(5, 75), m_rgn_bb_min_f(5, 25), m_rgn_foot_y(270), m_dn(640), m_df(64)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -176,9 +176,12 @@ m_rgn_drange(10), m_rgn_bb_min(5, 5), m_rgn_foot_y(270)
 
 	// Obstacle detection related parameter
 	register_fpar("rgnd", &m_rgn_drange, "Disparity range for obstacle detection.");
-	register_fpar("rbbw", &m_rgn_bb_min.width, "Minimum bounding box width for obstacle detection");
-	register_fpar("rbbh", &m_rgn_bb_min.height, "Minimum bounding box height for obstacle detection");
-
+	register_fpar("rnw", &m_rgn_bb_min_n.width, "Minimum bounding box width for obstacle detection in near field");
+	register_fpar("rnh", &m_rgn_bb_min_n.height, "Minimum bounding box height for obstacle detection in near field");
+	register_fpar("rfw", &m_rgn_bb_min_f.width, "Minimum bounding box width for obstacle detection in far field");
+	register_fpar("rfh", &m_rgn_bb_min_f.height, "Minimum bounding box height for obstacle detection in far field");
+	register_fpar("rdn", &m_dn, "Nearest disparity for obstacle detection");
+	register_fpar("rdf", &m_df, "Farest disparity for obstacle detection");
 	m_Rl = Mat::eye(3, 3, CV_64FC1);
 	m_Rr = Mat::eye(3, 3, CV_64FC1);
 
@@ -1440,8 +1443,8 @@ void f_glfw_stereo_view::draw_obst(ushort disp_max)
 
 		x0 -= 1.0;
 		x1 -= 1.0;
-		y0 = (float)((double)m_h - obst.ymin * m_yscale1 - 1.);
-		y1 = (float)((double)m_h - obst.ymax * m_yscale1 - 1.);
+		y0 = (float)((double)m_hn1 - obst.ymin * m_yscale1 - 1.);
+		y1 = (float)((double)m_hn1 - obst.ymax * m_yscale1 - 1.);
 		drawGlSquare2Df(x0, y0, x1, y1, 1, 0, 0, 1, 1);
 
 	}
@@ -1494,7 +1497,7 @@ void f_glfw_stereo_view::calc_dmap(ushort disp_max)
 	uchar * pdist = m_dist.ptr<uchar>();
 	for (int y = 0; y < m_disp16.rows; y++){
 		for (int x = 0; x < m_disp16.cols; x++){
-			if (*pdisp && *pdisp <= (disp_max - 64)){
+			if (*pdisp && *pdisp <= m_dn && *pdisp >= m_df){
 				ushort idisp = disp_max - *pdisp;
 				int y2 = (int)(idisp * sy + 0.5);
 				int idx = (int)(sx * x + 0.5) + y2 * m_dist.cols;
@@ -1515,7 +1518,7 @@ void f_glfw_stereo_view::calc_obst()
 	// 1. labeling for region with same and continuous disparity.
 	// 2. threasholding for height of the top edge pixels of the regions, and determines (x,d) tuple of the obstacle 
 
-	m_odt_work = Mat::zeros(m_disp16.rows, m_disp16.cols, CV_8UC1);
+	m_odt_work = Mat::zeros(m_disp16.rows, m_disp16.cols, CV_16UC1);
 	m_rgn_disp.clear();
 	m_rgn_pix.clear();
 	m_rgn_rect.clear();
@@ -1523,13 +1526,13 @@ void f_glfw_stereo_view::calc_obst()
 	m_rgn_disp.push_back(0);
 	m_rgn_pix.push_back(0);
 	m_rgn_ymax.push_back(0);
-	uchar * podt, *podt_prev;
+	ushort * podt, *podt_prev;
 	ushort * pdisp_prev, *pdisp;
 	int nrgn = 0;
 	// labeling phase
 	for (int y = 1; y < m_disp16.rows; y++){
-		podt_prev = m_odt_work.ptr<uchar>(y - 1);
-		podt = m_odt_work.ptr<uchar>(y);
+		podt_prev = m_odt_work.ptr<ushort>(y - 1);
+		podt = m_odt_work.ptr<ushort>(y);
 		pdisp_prev = m_disp16.ptr<ushort>(y - 1);
 		pdisp = m_disp16.ptr<ushort>(y);
 		for (int x = 0; x < m_disp16.cols - 1; x++){
@@ -1588,15 +1591,16 @@ void f_glfw_stereo_view::calc_obst()
 					drgn = dmin;
 				}
 
-				if (irgn == -1 || drgn < m_rgn_drange){
+				if (irgn == -1 || drgn > m_rgn_drange){
 					irgn = (int)m_rgn_disp.size();
 					m_rgn_disp.push_back(*pdisp);
 					m_rgn_pix.push_back(0);
 					m_rgn_ymax.push_back(y);
 				}
-				if (m_rgn_ymax[irgn] < y)
-					m_rgn_ymax[irgn] = y;
-
+				else{
+					if (m_rgn_ymax[irgn] < y)
+						m_rgn_ymax[irgn] = y;
+				}
 				m_rgn_pix[irgn]++;
 				*podt = irgn;
 			}
@@ -1612,18 +1616,23 @@ void f_glfw_stereo_view::calc_obst()
 	}
 
 	m_obst.clear();
+	m_rgn_obst.clear();
 	m_rgn_obst.resize(m_rgn_disp.size(), -1);
 
 	for (int y = 1; y < m_disp16.rows; y++){
-		podt_prev = m_odt_work.ptr<uchar>(y - 1);
-		podt = m_odt_work.ptr<uchar>(y);
+		podt_prev = m_odt_work.ptr<ushort>(y - 1);
+		podt = m_odt_work.ptr<ushort>(y);
 		pdisp = m_disp16.ptr<ushort>(y);
 		for (int x = 0; x < m_disp16.cols; x++){
 			if (*podt_prev == 0 && *podt != 0){
 				int irgn = *podt;
+				int hlim = m_rgn_bb_min_n.height - (int)(
+					((int)(m_rgn_bb_min_n.height - m_rgn_bb_min_f.height) 
+					* (int)(m_dn - *pdisp)) / (double)(m_dn - m_df) + 0.5
+					);
 				int ymax = m_rgn_ymax[irgn];
 				int height = ymax - y;
-				if (height > m_rgn_bb_min.height && ymax > m_rgn_foot_y){
+				if (height > hlim && ymax > m_rgn_foot_y){
 					// this is the obstacle
 					if (m_rgn_obst[irgn] < 0){ // new obstacle
 						m_rgn_obst[irgn] = (int)m_obst.size();
