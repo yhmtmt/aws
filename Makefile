@@ -52,13 +52,13 @@ LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
 FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map f_obj_manager \
-	f_wp_manager
+	f_wp_manager f_glfw_stereo_view
 
 # listing channel module
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj
 
 # listing utility module
-UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib
+UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib aws_glib
 
 # for x86 CPU architecture
 ifeq ($(CPU), x86)
