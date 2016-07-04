@@ -3395,6 +3395,118 @@ void cnvCVGRAY8toGLGRAY8(Mat & img)
 }
 
 
+//////////////////////////////////////////////////////// stereo related 
+void calc_obst(s_odt_par & par, Mat & disp, vector<s_obst> & obst)
+{
+	// 1. labeling for region with same and continuous disparity.
+	// 2. threasholding for height of the top edge pixels of the regions, and determines (x,d) tuple of the obstacle 
+
+	par.lbl = Mat::zeros(disp.rows, disp.cols, CV_16UC1);
+	par.tmp.clear();
+	par.tmp.push_back(-1);
+	obst.clear();
+	obst.push_back(s_obst());
+
+	ushort * plbl, *plbl_prev;
+	ushort * pdisp_prev, *pdisp;
+	int nrgn = 0;
+	// labeling phase
+	for (int y = 1; y < disp.rows; y++){
+		plbl_prev = par.lbl.ptr<ushort>(y - 1);
+		plbl = par.lbl.ptr<ushort>(y);
+		pdisp_prev = disp.ptr<ushort>(y - 1);
+		pdisp = disp.ptr<ushort>(y);
+		for (int x = 0; x < disp.cols - 1; x++){
+			if (*pdisp){
+				int irgn, drgn;
+				{
+					// determine the label of this pixel
+					// XXX
+					// XPY <- P's label is defined by X's label and disparity.
+					// YYY
+
+					// The difference of the disparity between X and P should be
+					// less than m_rgn_drange. If there are many labels satisfy 
+					// the condition, a label with minimum disparity is selected.
+
+					int d, dmin = INT_MAX;
+					int irgn_min = -1;
+
+					irgn = *(plbl_prev - 1);
+					if (irgn){
+						if ((d = obst[irgn].diff(*pdisp)) < dmin){
+							dmin = d;
+							irgn_min = irgn;
+						}
+					}
+
+					irgn = *(plbl_prev);
+					if (irgn){
+						if ((d = obst[irgn].diff(*pdisp)) < dmin){
+							dmin = d;
+							irgn_min = irgn;
+						}
+					}
+
+					irgn = *(plbl_prev + 1);
+					if (irgn){
+						if ((d = obst[irgn].diff(*pdisp)) < dmin){
+							dmin = d;
+							irgn_min = irgn;
+						}
+					}
+
+					irgn = *(plbl - 1);
+					if (irgn){
+						if ((d = obst[irgn].diff(*pdisp)) < dmin){
+							dmin = d;
+							irgn_min = irgn;
+						}
+					}
+
+					irgn = irgn_min;
+					drgn = dmin;
+				}
+
+				if (irgn == -1 || drgn > par.drange){
+					irgn = (int)obst.size();
+					s_obst o;
+					o.dmax = o.dmin = *pdisp;
+					o.xmax = o.xmin = x;
+					o.ymax = o.ymin = y;
+					o.pix = 1;
+					obst.push_back(o);
+					par.tmp.push_back(irgn);
+				}
+				else{
+					obst[irgn].add(x, y, *pdisp);
+				}
+				*plbl = irgn;
+			}
+			else{
+				obst[0].add(x, y, 0);
+			}
+
+			plbl_prev++;
+			plbl++;
+			pdisp_prev++;
+			pdisp++;
+		}
+	}
+
+	par.nullpix = obst[0].pix;
+	int iobst = 0;
+	for (int irgn = 0; irgn < obst.size(); irgn++)
+	{
+		s_obst & o = obst[iobst];
+		if (par.is_valid(o)){
+			obst[iobst] = obst[irgn];
+			iobst++;
+		}
+	}
+	obst.resize(iobst);
+}
+
 //////////////////////////////////////////////////////////////////////////////////////// mat img read/write
 bool write_raw_img(const Mat & img, const char * fname)
 {

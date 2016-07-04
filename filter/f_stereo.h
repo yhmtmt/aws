@@ -21,7 +21,7 @@
 #include "f_base.h"
 
 
-class f_stereo_disp : public f_misc
+class f_stereo : public f_base
 {
 protected:
 	ch_image_ref * m_ch_img1, *m_ch_img2;
@@ -64,33 +64,12 @@ protected:
 	// stereo block matching
 	Rect m_roi;
 	Ptr<StereoSGBM> m_sgbm;
-	struct s_sgbm_par{
-		bool m_update;
-		bool m_bsg;
-
-		int minDisparity; /* normally zero. it depends on rectification algorithm. */
-		int numDisparities; /* maximum disparity - minimum disparity. it must be the divisible number by 16*/
-		int blockSize; /* 3 to 11 */
-		int P1, P2;
-		int disp12MaxDiff;
-		int preFilterCap;
-		int uniquenessRatio;
-		int speckleWindowSize;
-		int speckleRange;
-		int mode;
-		s_sgbm_par() :m_update(false), m_bsg(true), minDisparity(0), numDisparities(64), blockSize(3),
-			disp12MaxDiff(1), preFilterCap(0), uniquenessRatio(10), speckleWindowSize(100),
-			speckleRange(32), mode(StereoSGBM::MODE_SGBM)
-		{
-			P1 = 8 * blockSize * blockSize;
-			P2 = P1 * 4;
-		}
-	} m_sgbm_par;
+s_sgbm_par m_sgbm_par;
 
 	Ptr<StereoBM> m_bm;
 public:
-	f_stereo_disp(const char * name);
-	virtual ~f_stereo_disp();
+	f_stereo(const char * name);
+	virtual ~f_stereo();
 
 	virtual bool init_run();
 	virtual void destroy_run();

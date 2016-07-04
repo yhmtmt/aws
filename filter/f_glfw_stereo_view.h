@@ -149,25 +149,18 @@ protected:
 
 	Mat m_disp, m_dist, m_disp16;
 	vector<float> m_dline;
+
 	Mat m_odt_work;
-	int m_rgn_drange;
-	Size m_rgn_bb_min_n, m_rgn_bb_min_f;
-	int m_rgn_foot_y;
-	ushort m_dn, m_df;
+
+	s_odt_par m_odt_par;
 
 	vector<ushort> m_rgn_disp;
 	vector<ushort> m_rgn_pix;
 	vector<ushort> m_rgn_ymax;
-	vector<Rect> m_rgn_rect;
 	vector<int> m_rgn_obst;
-	struct s_obst{
-		int xmin, xmax, ymin, ymax;
-		ushort dmin, dmax;
-		s_obst() :xmin(0), xmax(0), ymin(0), ymax(0), dmin(0), dmax(0){}
-	};
 	vector<s_obst> m_obst;
 
-	void calc_obst();
+	void calc_obst(s_odt_par & par);
 	void calc_dmap(ushort disp_max);
 	void calc_dline(ushort disp_max);
 	void draw_dline();
@@ -178,26 +171,7 @@ protected:
 	void load_stereo_pars();
 
 	Ptr<StereoSGBM> m_sgbm;
-	struct s_sgbm_par{
-		bool m_update;
-		int minDisparity; /* normally zero. it depends on rectification algorithm. */
-		int numDisparities; /* maximum disparity - minimum disparity. it must be the divisible number by 16*/
-		int blockSize; /* 3 to 11 */
-		int P1, P2;
-		int disp12MaxDiff;
-		int preFilterCap;
-		int uniquenessRatio;
-		int speckleWindowSize;
-		int speckleRange;
-		int mode;
-		s_sgbm_par() :m_update(false), minDisparity(0), numDisparities(64), blockSize(3),
-			disp12MaxDiff(1), preFilterCap(0), uniquenessRatio(10), speckleWindowSize(100),
-			speckleRange(32), mode(StereoSGBM::MODE_SGBM)
-		{
-			P1 = 8 * blockSize * blockSize;
-			P2 = P1 * 4;
-		}
-	} m_sgbm_par;
+	s_sgbm_par m_sgbm_par;
 
 	// draw horizon
 #define SZ_ATT_BUF 100

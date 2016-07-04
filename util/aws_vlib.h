@@ -1374,8 +1374,107 @@ struct AWSAttitude{
 	bool write(const char * fname);
 };
 
+/////////////////////////////////////////////////////////////////////// stereo related 
+struct s_sgbm_par{
+	bool m_update;
+	bool m_bsg;
+
+	int minDisparity; /* normally zero. it depends on rectification algorithm. */
+	int numDisparities; /* maximum disparity - minimum disparity. it must be the divisible number by 16*/
+	int blockSize; /* 3 to 11 */
+	int P1, P2;
+	int disp12MaxDiff;
+	int preFilterCap;
+	int uniquenessRatio;
+	int speckleWindowSize;
+	int speckleRange;
+	int mode;
+	s_sgbm_par() :m_update(false), m_bsg(true), minDisparity(0), numDisparities(64), blockSize(3),
+		disp12MaxDiff(1), preFilterCap(0), uniquenessRatio(10), speckleWindowSize(100),
+		speckleRange(32), mode(StereoSGBM::MODE_SGBM)
+	{
+		P1 = 8 * blockSize * blockSize;
+		P2 = P1 * 4;
+	}
+};
+struct s_obst{
+	int xmin, xmax, ymin, ymax;
+	ushort dmin, dmax;
+	int pix;
+	ushort diff(ushort d)
+	{
+		return (ushort) abs((int)((dmin + dmax) >> 1) - (int)d);
+	}
+
+	ushort d()
+	{ 
+		return (dmin + dmax) >> 1; 
+	
+	}
+	void add(int x, int y, ushort d)
+	{
+		xmin = min(xmin, x);
+		xmax = max(xmax, x);
+		ymin = min(ymin, y);
+		ymax = max(ymax, y);
+		dmin = min(dmin, d);
+		dmax = max(dmax, d);
+		pix++;
+	}
+
+	s_obst() :xmin(0), xmax(0), ymin(0), ymax(0), dmin(0), dmax(0), pix(0){}
+};
+
+
+struct s_odt_par{
+	Mat lbl;
+	vector<int> tmp;
+	int nullpix;
+
+	ushort drange;
+	Size bb_min_n, bb_min_f;
+	int foot_y;
+	ushort dn, df;
+	float f, L, Dmax, iDmax;
+	s_odt_par() :drange(32),
+		bb_min_n(5, 75), bb_min_f(5, 25), dn(640), df(64)
+	{}
+
+	void initD(float _f/*focal length*/, float _L/* base line */){
+		f = _f;
+		L = _L;
+		Dmax = (float)(16. * L * f);
+		iDmax = (float)(1.0 / Dmax);
+	}
+
+	float d2D(float d) // disparity to distance transformation
+	{
+		return (float)(Dmax / d);
+	}
+
+	float D2d(float D)
+	{
+		return (float)(iDmax * D);
+	}
+
+	bool is_valid(s_obst & o){
+		int hlim = bb_min_n.height -
+			(int)(
+			((int)(bb_min_n.height - bb_min_f.height)
+			* (int)(dn - o.d())) / (double)(dn - df)
+			);
+		return (o.ymax > foot_y) && ((o.ymax - o.ymin) > hlim);
+	}
+};
+
+
+void calc_obst(s_odt_par & par, Mat & disp, vector<s_obst> & obst);
+
 //////////////////////////////////////////////////////////////////////// mat img read/write
 
 bool write_raw_img(const Mat & img, const char * fname);
 bool read_raw_img(Mat & img, const char * fname);
+
+
+
 #endif

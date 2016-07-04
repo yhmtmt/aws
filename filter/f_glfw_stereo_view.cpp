@@ -64,8 +64,7 @@ m_bfisheye(false), m_bfix_int(false), m_bfix_k1(false), m_bfix_k2(false), m_bfix
 m_bfix_k4(false), m_bfix_k5(false), m_bfix_k6(false), m_bguess_int(false), m_bfix_ar(false),
 m_bfix_pp(false), m_bzr_tng(false), m_brat_mdl(false), m_bred_chsbd(false), m_num_calib_chsbd(50),
 m_bptl(false), m_bptr(false), m_num_com_pts(0),
-m_roll0(0), m_pitch0(0), m_yaw0(0), m_dtatt(0), m_iatt(0),
-m_rgn_drange(32), m_rgn_bb_min_n(5, 75), m_rgn_bb_min_f(5, 25), m_rgn_foot_y(270), m_dn(640), m_df(64)
+m_roll0(0), m_pitch0(0), m_yaw0(0), m_dtatt(0), m_iatt(0)
 {
 	register_fpar("caml", (ch_base**)&m_pin1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("camr", (ch_base**)&m_pin2, typeid(ch_image_ref).name(), "Right camera channel");
@@ -175,13 +174,13 @@ m_rgn_drange(32), m_rgn_bb_min_n(5, 75), m_rgn_bb_min_f(5, 25), m_rgn_foot_y(270
 	register_fpar("yaw0", &m_yaw0, "Static yaw value.");
 
 	// Obstacle detection related parameter
-	register_fpar("rgnd", &m_rgn_drange, "Disparity range for obstacle detection.");
-	register_fpar("rnw", &m_rgn_bb_min_n.width, "Minimum bounding box width for obstacle detection in near field");
-	register_fpar("rnh", &m_rgn_bb_min_n.height, "Minimum bounding box height for obstacle detection in near field");
-	register_fpar("rfw", &m_rgn_bb_min_f.width, "Minimum bounding box width for obstacle detection in far field");
-	register_fpar("rfh", &m_rgn_bb_min_f.height, "Minimum bounding box height for obstacle detection in far field");
-	register_fpar("rdn", &m_dn, "Nearest disparity for obstacle detection");
-	register_fpar("rdf", &m_df, "Farest disparity for obstacle detection");
+	register_fpar("rgnd", &m_odt_par.drange, "Disparity range for obstacle detection.");
+	register_fpar("rnw", &m_odt_par.bb_min_n.width, "Minimum bounding box width for obstacle detection in near field");
+	register_fpar("rnh", &m_odt_par.bb_min_n.height, "Minimum bounding box height for obstacle detection in near field");
+	register_fpar("rfw", &m_odt_par.bb_min_f.width, "Minimum bounding box width for obstacle detection in far field");
+	register_fpar("rfh", &m_odt_par.bb_min_f.height, "Minimum bounding box height for obstacle detection in far field");
+	register_fpar("rdn", &m_odt_par.dn, "Nearest disparity for obstacle detection");
+	register_fpar("rdf", &m_odt_par.df, "Farest disparity for obstacle detection");
 	m_Rl = Mat::eye(3, 3, CV_64FC1);
 	m_Rr = Mat::eye(3, 3, CV_64FC1);
 
@@ -916,6 +915,9 @@ void f_glfw_stereo_view::rectify_stereo()
 	cout << "Pl" << m_Pl << endl;
 	cout << "Rr" << m_Rr << endl;
 	cout << "Pr" << m_Pr << endl;
+
+	m_odt_par.initD((float)m_Pl.ptr<double>()[5], (float)norm(m_Tlr));
+
 	m_brct = true;
 	m_brctst = false;
 }
@@ -1390,8 +1392,8 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 
 		calc_dline(disp_max);
 		calc_dmap(disp_max);
-		calc_obst();
-
+//		calc_obst(m_odt_par);
+		::calc_obst(m_odt_par, m_disp16, m_obst);
 		m_disp16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
 	}
 
@@ -1424,11 +1426,6 @@ void f_glfw_stereo_view::calc_and_draw_disparity_map(Mat & img1, Mat & img2)
 
 void f_glfw_stereo_view::draw_obst(ushort disp_max)
 {
-	double * pPl = m_Pl.ptr<double>();
-	double fx = pPl[0], fy = pPl[5];
-	double L = norm(m_Tlr, CV_L2);
-	double Dmax = L * fx;
-	double iDmax = 1.0 / Dmax;
 	double sd = 1.0 / (double)disp_max;
 	double sx = 1.0 / (double)m_disp16.cols;
 	double sy = (double)m_disp16.rows / (double)m_sz_win.height;
@@ -1449,7 +1446,6 @@ void f_glfw_stereo_view::draw_obst(ushort disp_max)
 
 	}
 	glColor4f(1, 1, 0, 1);
-
 }
 
 void f_glfw_stereo_view::draw_dline()
@@ -1497,7 +1493,7 @@ void f_glfw_stereo_view::calc_dmap(ushort disp_max)
 	uchar * pdist = m_dist.ptr<uchar>();
 	for (int y = 0; y < m_disp16.rows; y++){
 		for (int x = 0; x < m_disp16.cols; x++){
-			if (*pdisp && *pdisp <= m_dn && *pdisp >= m_df){
+			if (*pdisp && *pdisp <= m_odt_par.dn && *pdisp >= m_odt_par.df){
 				ushort idisp = disp_max - *pdisp;
 				int y2 = (int)(idisp * sy + 0.5);
 				int idx = (int)(sx * x + 0.5) + y2 * m_dist.cols;
@@ -1513,7 +1509,7 @@ void f_glfw_stereo_view::calc_dmap(ushort disp_max)
 	}
 }
 
-void f_glfw_stereo_view::calc_obst()
+void f_glfw_stereo_view::calc_obst(s_odt_par & par)
 {
 	// 1. labeling for region with same and continuous disparity.
 	// 2. threasholding for height of the top edge pixels of the regions, and determines (x,d) tuple of the obstacle 
@@ -1521,7 +1517,6 @@ void f_glfw_stereo_view::calc_obst()
 	m_odt_work = Mat::zeros(m_disp16.rows, m_disp16.cols, CV_16UC1);
 	m_rgn_disp.clear();
 	m_rgn_pix.clear();
-	m_rgn_rect.clear();
 	m_rgn_ymax.clear();
 	m_rgn_disp.push_back(0);
 	m_rgn_pix.push_back(0);
@@ -1591,7 +1586,7 @@ void f_glfw_stereo_view::calc_obst()
 					drgn = dmin;
 				}
 
-				if (irgn == -1 || drgn > m_rgn_drange){
+				if (irgn == -1 || drgn > par.drange){
 					irgn = (int)m_rgn_disp.size();
 					m_rgn_disp.push_back(*pdisp);
 					m_rgn_pix.push_back(0);
@@ -1626,13 +1621,13 @@ void f_glfw_stereo_view::calc_obst()
 		for (int x = 0; x < m_disp16.cols; x++){
 			if (*podt_prev == 0 && *podt != 0){
 				int irgn = *podt;
-				int hlim = m_rgn_bb_min_n.height - (int)(
-					((int)(m_rgn_bb_min_n.height - m_rgn_bb_min_f.height) 
-					* (int)(m_dn - *pdisp)) / (double)(m_dn - m_df) + 0.5
+				int hlim = par.bb_min_n.height - (int)(
+					((int)(par.bb_min_n.height - par.bb_min_f.height) 
+					* (int)(par.dn - *pdisp)) / (double)(par.dn - par.df) + 0.5
 					);
 				int ymax = m_rgn_ymax[irgn];
 				int height = ymax - y;
-				if (height > hlim && ymax > m_rgn_foot_y){
+				if (height > hlim && ymax > par.foot_y){
 					// this is the obstacle
 					if (m_rgn_obst[irgn] < 0){ // new obstacle
 						m_rgn_obst[irgn] = (int)m_obst.size();
