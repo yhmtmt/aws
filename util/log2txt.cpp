@@ -102,6 +102,7 @@ using namespace cv;
 #include "../filter/f_base.h"
 #include "../filter/f_sample.h"
 #include "../filter/f_misc.h"
+#include "../filter/f_stereo.h"
 #include "../filter/f_stabilizer.h"
 #include "../filter/f_cam.h"
 #ifdef AVT_CAM
@@ -131,7 +132,9 @@ using namespace cv;
 
 #ifdef GLFW_WINDOW
 #include <GLFW/glfw3.h>
+#include "../util/aws_glib.h"
 #include "../filter/f_glfw_window.h"
+#include "../filter/f_glfw_stereo_view.h"
 #include "../filter/f_aws1_ui.h"
 #endif
 
