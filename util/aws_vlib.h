@@ -1437,7 +1437,7 @@ struct s_odt_par{
 	ushort dn, df;
 	float f, L, Dmax, iDmax;
 	s_odt_par() :drange(32),
-		bb_min_n(5, 75), bb_min_f(5, 25), dn(640), df(64)
+		bb_min_n(5, 75), bb_min_f(5, 25), dn(640), df(64), foot_y(270)
 	{}
 
 	void initD(float _f/*focal length*/, float _L/* base line */){

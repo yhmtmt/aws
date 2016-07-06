@@ -3496,9 +3496,9 @@ void calc_obst(s_odt_par & par, Mat & disp, vector<s_obst> & obst)
 
 	par.nullpix = obst[0].pix;
 	int iobst = 0;
-	for (int irgn = 0; irgn < obst.size(); irgn++)
+	for (int irgn = 1; irgn < obst.size(); irgn++)
 	{
-		s_obst & o = obst[iobst];
+		s_obst & o = obst[irgn];
 		if (par.is_valid(o)){
 			obst[iobst] = obst[irgn];
 			iobst++;

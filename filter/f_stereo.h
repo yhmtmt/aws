@@ -67,6 +67,11 @@ protected:
 s_sgbm_par m_sgbm_par;
 
 	Ptr<StereoBM> m_bm;
+
+	// for obstacle detection
+	s_odt_par m_odt_par;
+	vector<s_obst> m_obst;
+
 public:
 	f_stereo(const char * name);
 	virtual ~f_stereo();

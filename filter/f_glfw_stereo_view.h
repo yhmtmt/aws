@@ -150,8 +150,6 @@ protected:
 	Mat m_disp, m_dist, m_disp16;
 	vector<float> m_dline;
 
-	Mat m_odt_work;
-
 	s_odt_par m_odt_par;
 
 	vector<ushort> m_rgn_disp;
@@ -160,7 +158,6 @@ protected:
 	vector<int> m_rgn_obst;
 	vector<s_obst> m_obst;
 
-	void calc_obst(s_odt_par & par);
 	void calc_dmap(ushort disp_max);
 	void calc_dline(ushort disp_max);
 	void draw_dline();

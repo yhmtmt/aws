@@ -79,6 +79,16 @@ m_fm_time_min_dfrm(0), m_fm_time_min(INT_MAX), m_out(DISP)
 	register_fpar("speckleWindowSize", &m_sgbm_par.speckleWindowSize, "speckleWindowSize for cv::StereoSGBM");
 	register_fpar("speckleRange", &m_sgbm_par.speckleRange, "speckleWindowSize for cv::StereoSGBM");
 	register_fpar("mode", &m_sgbm_par.mode, "mode for cv::StereoSGBM");
+
+	// Obstacle detection related parameter
+	register_fpar("rgnd", &m_odt_par.drange, "Disparity range for obstacle detection.");
+	register_fpar("rnw", &m_odt_par.bb_min_n.width, "Minimum bounding box width for obstacle detection in near field");
+	register_fpar("rnh", &m_odt_par.bb_min_n.height, "Minimum bounding box height for obstacle detection in near field");
+	register_fpar("rfw", &m_odt_par.bb_min_f.width, "Minimum bounding box width for obstacle detection in far field");
+	register_fpar("rfh", &m_odt_par.bb_min_f.height, "Minimum bounding box height for obstacle detection in far field");
+	register_fpar("rdn", &m_odt_par.dn, "Nearest disparity for obstacle detection");
+	register_fpar("rdf", &m_odt_par.df, "Farest disparity for obstacle detection");
+
 }
 
 f_stereo::~f_stereo()
@@ -221,18 +231,22 @@ bool f_stereo::proc()
 	else
 		m_bm->compute(m_img1, m_img2, disps16);
 
-	disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
+	calc_obst(m_odt_par, disps16, m_obst);
 
-	switch (m_out){
-	case DISP:
-		m_ch_disp->set_img(m_disp, m_timg1, m_ifrm1);
-		break;
-	case IMG1:
-		m_ch_disp->set_img(m_img1, m_timg1, m_ifrm1);
-		break;
-	case IMG2:
-		m_ch_disp->set_img(m_img2, m_timg2, m_ifrm2);
-		break;
+	if (m_ch_disp){
+		disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
+
+		switch (m_out){
+		case DISP:
+			m_ch_disp->set_img(m_disp, m_timg1, m_ifrm1);
+			break;
+		case IMG1:
+			m_ch_disp->set_img(m_img1, m_timg1, m_ifrm1);
+			break;
+		case IMG2:
+			m_ch_disp->set_img(m_img2, m_timg2, m_ifrm2);
+			break;
+		}
 	}
 
 	m_bsync = false;
