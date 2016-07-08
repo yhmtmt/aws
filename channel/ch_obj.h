@@ -130,10 +130,11 @@ public:
 		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_BIH & ~EOD_VEL_BIH);
 	}
 
-	void get_pos_bih(float & lat, float & lon, float & alt){
+	bool get_pos_bih(float & lat, float & lon, float & alt){
 		lat = m_lat;
 		lon = m_lon;
 		alt = m_alt;
+		return (m_dtype & EOD_POS_BIH) != 0;
 	}
 
 	void set_vel_bih(const float cog, const float sog){
@@ -142,9 +143,10 @@ public:
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_BIH);
 	}
 
-	void get_vel_bih(float & cog, float & sog){
+	bool get_vel_bih(float & cog, float & sog){
 		cog = m_cog;
 		sog = m_sog;
+		return (m_dtype & EOD_VEL_BIH) != 0;
 	}
 
 	// Position and velocity in ECEF coordinate.
@@ -173,10 +175,11 @@ public:
 		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_ECEF & ~EOD_VEL_ECEF);
 	}
 
-	void get_pos_ecef(float & x, float & y, float & z){
+	bool get_pos_ecef(float & x, float & y, float & z){
 		x = m_x;
 		y = m_y;
 		z = m_z;
+		return (m_dtype & EOD_POS_ECEF) != 0;
 	}
 
 	void set_vel_ecef(const float vx, const float vy, const float vz){
@@ -204,10 +207,11 @@ public:
 		}
 	}
 
-	void get_vel_ecef(float & vx, float & vy, float & vz){
+	bool get_vel_ecef(float & vx, float & vy, float & vz){
 		vx = m_vx;
 		vy = m_vy;
 		vz = m_vz;
+		return (m_dtype & EOD_VEL_ECEF) != 0;
 	}
 
 	// For position and velocity in relative coordinate to my own ship.
@@ -226,14 +230,15 @@ public:
 		}
 	}
 
-	void reset_pos_rel(){
+	void reset_rel(){
 		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_REL & ~EOD_VEL_REL);
 	}
 
-	void get_pos_rel(float & xr, float & yr, float & zr){
+	bool get_pos_rel(float & xr, float & yr, float & zr){
 		xr = m_xr;
 		yr = m_yr;
 		zr = m_zr;
+		return (m_dtype & EOD_POS_REL) != 0;
 	}
 
 	void set_vel_rel(const float & vxr, const float & vyr, const float & vzr){
@@ -269,10 +274,11 @@ public:
 		}
 	}
 
-	void get_vel_rel(float & vxr, float & vyr, float & vzr){
+	bool get_vel_rel(float & vxr, float & vyr, float & vzr){
 		vxr = m_vxr;
 		vyr = m_vyr;
 		vzr = m_vzr;
+		return (m_dtype & EOD_VEL_REL) != 0;
 	}
 
 	void set_att(const float roll, const float pitch, const float yaw)
@@ -288,11 +294,12 @@ public:
 		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_ATTD);
 	}
 
-	void get_att(float & roll, float & pitch, float & yaw)
+	bool get_att(float & roll, float & pitch, float & yaw)
 	{
 		roll = m_roll;
 		pitch = m_pitch;
 		yaw = m_yaw;
+		return (m_dtype & EOD_ATTD) != 0;
 	}
 };
 
@@ -368,6 +375,8 @@ public:
 		m_mmsi = mmsi;
 		set_pos_bih(lat, lon, 0.);
 		set_vel_bih(cog, sog);
+		reset_ecef();
+		reset_rel();
 	}
 
 	void update(const long long t, float lat, float lon, 
@@ -376,6 +385,8 @@ public:
 		m_yaw = hdg;
 		set_pos_bih(lat, lon, 0.);
 		set_vel_bih(cog, sog);
+		reset_ecef();
+		reset_rel();
 	}
 
 	void set(const c_ais_obj & obj){
@@ -595,12 +606,11 @@ public:
 	void update_rel_pos_and_vel(const Mat & R, const float x, const float y, const float z)
 	{
 		lock();
-		for(itr = objs.begin(); itr != objs.end(); itr++){
-		  c_ais_obj * pobj = itr->second;
-		    
+		for (itr = objs.begin(); itr != objs.end(); itr++){
+			c_ais_obj * pobj = itr->second;
+
 			pobj->set_pos_rel_from_ecef(R, x, y, z);
 			pobj->set_vel_ecef_from_bih(R);
-			//pobj->set_vel_rel_from_ecef(R);
 			pobj->set_vel_rel_from_bih();
 		}
 		unlock();
@@ -645,18 +655,31 @@ public:
 	// get_cur_state, is_end, is_begin, begin, end, next, prev do not lock mutex. 
 	// If you use them, lock/unlock methods should be called by their user.
 
-	void get_cur_state(float & x, float & y, float & z, float & vx, float & vy, float & vz, float & yw){
+	bool get_cur_state(float & x, float & y, float & z, float & vx, float & vy, float & vz, float & yw){
 		c_ais_obj & obj = *(itr->second);
+		bool flag = true;
 		float r, p;
 		if(obj.get_dtype() & EOD_POS_REL){
 			obj.get_pos_rel(x, y, z);
 		}
+		else{
+			flag = false;
+		}
+
 		if(obj.get_dtype() & EOD_VEL_REL){
 			obj.get_vel_rel(vx, vy, vz);
 		}
+		else{
+			flag = false;
+		}
+
 		if(obj.get_dtype() & EOD_ATTD){	
 			obj.get_att(r, p, yw);
-		}	
+		}
+		else{
+			flag = false;
+		}
+		return flag;
 	}
 
 	bool is_end(){

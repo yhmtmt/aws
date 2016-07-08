@@ -21,18 +21,21 @@
 struct s_wp
 {
 	float lat, lon; // longitude lattitude
-  float x, y, z;	// corresponding ECEF to lat, lon
+	float x, y, z;	// corresponding ECEF to lat, lon
 	float rx, ry, rz; // Relative position in my own ship coordinate
 	float rarv;		// Arrival threashold radius
 	float v;		// velocity to go
 	long long t;	// arrival time
+	bool update_rpos;
 
-s_wp():lat(0.), lon(0.), x(0.), y(0.), z(0.), rarv(0.), v(0.), t(-1)
+	s_wp() :lat(0.), lon(0.), x(0.), y(0.), z(0.), rarv(0.), v(0.), t(-1),
+		update_rpos(false)
 	{
 	}
 
-	s_wp(float _lat, float _lon, float _rarv, float _v):
-		lat(_lat), lon(_lon), x(0.), y(0.), z(0.), rarv(_rarv), v(_v), t(-1)
+	s_wp(float _lat, float _lon, float _rarv, float _v) :
+		lat(_lat), lon(_lon), x(0.), y(0.), z(0.), rarv(_rarv), v(_v), t(-1),
+		update_rpos(false)
 	{
 		bihtoecef(lat, lon, 0., x, y, z);
 	}
@@ -44,6 +47,7 @@ s_wp():lat(0.), lon(0.), x(0.), y(0.), z(0.), rarv(0.), v(0.), t(-1)
 	void update_pos_rel(const Mat & Rorg, float xorg, float yorg, float zorg)
 	{
 		eceftowrld(Rorg, xorg, yorg, zorg, x, y, z, rx, ry, rz);
+		update_rpos = true;
 	}
 
 	void set_arrival_time(const long long _t)

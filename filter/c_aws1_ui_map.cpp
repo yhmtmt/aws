@@ -394,6 +394,8 @@ void c_aws1_ui_map::draw()
 			pwp->begin();
 			for(;!pwp->is_end(); pwp->next()){
 				s_wp & wp = pwp->cur();
+				if (!wp.update_rpos)
+					continue;
 				Point2f pos;
 				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
 				pos.y = (float)((wp.ry * ifymeter) + offset.y);
@@ -466,8 +468,8 @@ void c_aws1_ui_map::draw()
 			pobj->lock();
 			for(pobj->begin();!pobj->is_end(); pobj->next()){
 				float x, y, z, vx, vy, vz, yw;
-				pobj->get_cur_state(x, y, z, vx, vy, vz, yw);
-				draw_ship_object(x, y, z, vx, vy, vz, yw);
+				if(pobj->get_cur_state(x, y, z, vx, vy, vz, yw))
+					draw_ship_object(x, y, z, vx, vy, vz, yw);
 			}
 			pobj->unlock();
 		}
