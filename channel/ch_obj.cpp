@@ -35,7 +35,8 @@ using namespace cv;
 c_obj::c_obj():
 	m_type(EOT_UNKNOWN), m_src(EOS_UNDEF), m_tst(EOST_UNDEF), m_dtype(EOD_UNDEF),
 	m_t(0), m_lat(0), m_lon(0), m_alt(0), m_cog(0), m_sog(0), m_x(0), m_y(0), m_z(0),
-	m_vx(0), m_vy(0), m_vz(0), m_xr(0), m_yr(0), m_zr(0), m_vxr(0), m_vyr(0), m_vzr(0)
+	m_vx(0), m_vy(0), m_vz(0), m_xr(0), m_yr(0), m_zr(0), m_vxr(0), m_vyr(0), m_vzr(0),
+	m_bear(0), m_dist(0)
 
 {
 }
@@ -59,6 +60,26 @@ c_vobj::~c_vobj()
 {
 }
 
+
+///////////////////////////////////////////////////// c_obst member
+c_obst::c_obst() :m_r(0), m_update_count(0)
+{
+}
+
+c_obst::c_obst(const long long t, const float bear, const float dist,
+	const float r, const e_obj_src src) :m_r(r), m_update_count(1)
+{
+	m_t = t;
+	m_bear = bear;
+	m_dist = dist;
+	m_src = src;
+	m_type = EOT_OBST;
+	m_dtype = (e_obj_data_type)(EOD_POS_BD | EOD_R);
+}
+
+c_obst::~c_obst()
+{
+}
 
 ///////////////////////////////////////////////////// c_ais_obj member
 c_ais_obj::c_ais_obj():m_mmsi(0)

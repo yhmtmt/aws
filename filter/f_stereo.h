@@ -17,6 +17,8 @@
 #include "../util/aws_vlib.h"
 
 #include "../channel/ch_image.h"
+#include "../channel/ch_obj.h"
+#include "../channel/ch_state.h"
 
 #include "f_base.h"
 
@@ -26,11 +28,16 @@ class f_stereo : public f_base
 protected:
 	ch_image_ref * m_ch_img1, *m_ch_img2;
 	ch_image_ref * m_ch_disp;
+	ch_obst * m_ch_obst;
+	ch_state * m_ch_state;
 
 	enum s_out{
 		DISP, IMG1, IMG2
 	} m_out;
 	static const char * m_str_out[IMG2 + 1];
+
+	int m_tdiff_old_obst;
+	int m_th_update_count;
 
 	Mat m_img1, m_img2, m_disp;
 	long long m_timg1, m_timg2;

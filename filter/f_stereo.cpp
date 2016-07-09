@@ -44,15 +44,17 @@ const char * f_stereo::m_str_out[IMG2 + 1] = {
 };
 
 f_stereo::f_stereo(const char * name) : f_base(name), m_ch_img1(NULL), m_ch_img2(NULL),
-m_ch_disp(NULL), m_bflipx(false), m_bflipy(false), m_bnew(false), m_bsync(false),
+m_ch_disp(NULL),m_ch_obst(NULL), m_ch_state(NULL), m_bflipx(false), m_bflipy(false), m_bnew(false), m_bsync(false),
 m_bpl(false), m_bpr(false), m_bstp(false), m_brct(false),
 m_timg1(-1), m_timg2(-1), m_ifrm1(-1), m_ifrm2(-1), m_ifrm_diff(0), m_fm_max_count(300), m_fm_count(0),
-m_fm_time_min_dfrm(0), m_fm_time_min(INT_MAX), m_out(DISP)
+m_fm_time_min_dfrm(0), m_fm_time_min(INT_MAX), m_out(DISP), m_tdiff_old_obst(300), m_th_update_count(3)
 {
 	// channels
 	register_fpar("ch_caml", (ch_base**)&m_ch_img1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("ch_camr", (ch_base**)&m_ch_img2, typeid(ch_image_ref).name(), "Right camera channel");
 	register_fpar("ch_disp", (ch_base**)&m_ch_disp, typeid(ch_image_ref).name(), "Disparity image channel.");
+	register_fpar("ch_obst", (ch_base**)&m_ch_obst, typeid(ch_obst).name(), "Channel for detected obstacles.");
+	register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_state).name(), "Own ship state channel");
 
 	register_fpar("out", (int*)&m_out, IMG2 + 1, m_str_out, "Output image type (for debug)");
 
@@ -88,6 +90,11 @@ m_fm_time_min_dfrm(0), m_fm_time_min(INT_MAX), m_out(DISP)
 	register_fpar("rfh", &m_odt_par.bb_min_f.height, "Minimum bounding box height for obstacle detection in far field");
 	register_fpar("rdn", &m_odt_par.dn, "Nearest disparity for obstacle detection");
 	register_fpar("rdf", &m_odt_par.df, "Farest disparity for obstacle detection");
+
+	// parameters for obstacle update and remove
+	register_fpar("tdiff_old_obst", &m_tdiff_old_obst, "Time to determine old obstacle.");
+	register_fpar("th_update_count", &m_th_update_count, "Threashold to determine certainty of the obstacle.");
+
 
 }
 
@@ -231,7 +238,27 @@ bool f_stereo::proc()
 	else
 		m_bm->compute(m_img1, m_img2, disps16);
 
-	calc_obst(m_odt_par, disps16, m_obst);
+	if (m_ch_obst && m_ch_state){
+		long long tatt, trot, tpos;
+		float roll, pitch, yaw;
+		m_ch_state->get_attitude(tatt, roll, pitch, yaw);
+		const Mat Rorg = m_ch_state->get_enu_rotation(trot);
+		Point3f porg;
+		m_ch_state->get_position_ecef(tpos, porg.x, porg.y, porg.z);
+		
+		calc_obst(m_odt_par, disps16, m_obst);
+		m_ch_obst->update_pos_rel(Rorg, porg);
+		m_ch_obst->lock();
+		for (int iobst = 0; iobst < m_obst.size(); iobst++){
+			float bear, dist, rad;
+			rad = m_odt_par.rad(m_obst[iobst]);
+			m_odt_par.bd(m_obst[iobst], bear, dist);
+			bear = (float)(bear * (180. / CV_PI) + yaw);
+			m_ch_obst->push(m_timg1, bear, dist, rad, Rorg, porg);
+		}
+		m_ch_obst->unlock();
+		m_ch_obst->remove(m_timg1 - m_tdiff_old_obst * SEC, m_th_update_count);
+	}
 
 	if (m_ch_disp){
 		disps16.convertTo(m_disp, CV_8U, 255 / (m_sgbm_par.numDisparities * 16.));
@@ -325,5 +352,8 @@ bool f_stereo::rectify_stereo()
 		initUndistortRectifyMap(Kl, Dl, m_Rl, m_Pl, sz, CV_16SC2, m_mapl1, m_mapl2);
 		initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_16SC2, m_mapr1, m_mapr2);
 	}
+
+	m_odt_par.initD((float)m_Pl.ptr<double>()[5], (float)norm(m_Tlr));
+
 	return true;
 }

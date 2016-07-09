@@ -1447,6 +1447,21 @@ struct s_odt_par{
 		iDmax = (float)(1.0 / Dmax);
 	}
 
+	float rad(s_obst & o){
+		//double rd = Dmax / (double)o.dmin - Dmax / (double)o.dmax;
+		double rx = (o.xmax - o.xmin) * f 
+			* ((o.dmax + o.dmin) >> 1) 
+			* iDmax;
+		return (float)rx;
+	}
+
+	void bd(s_obst & o, float & bear, float & dist){
+		float D = d2D((float)((o.dmax + o.dmin) >> 1));
+		float X = (float)((float)((o.xmax + o.xmin) >> 1) * D / f);
+		dist = (float)sqrt(D*D + X*X);
+		bear = (float)atan2(X, D);
+	}
+
 	float d2D(float d) // disparity to distance transformation
 	{
 		return (float)(Dmax / d);

@@ -21,7 +21,7 @@
 // Object source (Defines how the object is detected.)
 enum e_obj_src
 {
-	 EOS_UNDEF = 0, EOS_VMAN=0x1, EOS_VAUTO=0x2, EOS_AIS=0x4
+	 EOS_UNDEF = 0, EOS_VMAN=0x1, EOS_VAUTO=0x2, EOS_AIS=0x4, EOS_SV=0x8
 };
 
 // Object state (How the object is treated in the filters observing)
@@ -33,7 +33,7 @@ enum e_obj_trck_state
 // Object type (The type of the object, corresponding to the sub class)
 enum e_obj_type
 {
-	EOT_UNKNOWN = 0, EOT_SHIP
+	EOT_UNKNOWN = 0, EOT_SHIP=0x1, EOT_OBST=0x2
 };
 
 // Data related to the object
@@ -43,7 +43,7 @@ enum e_obj_data_type
 	EOD_POS_BIH=0x8, EOD_VEL_BIH = 0x10, 
 	EOD_POS_ECEF=0x20, EOD_VEL_ECEF = 0x40,
 	EOD_POS_REL=0x80, EOD_VEL_REL = 0x100,
-	EOD_ATTD=0x200, EOD_AIS=0x400
+	EOD_ATTD=0x200, EOD_AIS=0x400, EOD_R = 0x800, EOD_POS_BD = 0x1000
 };
 
 // The base class of the objects in aws
@@ -62,6 +62,7 @@ protected:
 	float m_vx, m_vy, m_vz;		// Velocity in ECEF
 	float m_xr, m_yr, m_zr;		// Relative orthogonal coordinate (centered at my own ship)
 	float m_vxr, m_vyr, m_vzr;	// Reltative velocity in orthogonal coordinate centered at my own ship
+	float m_bear, m_dist;		// bearing and distance
 	float m_roll, m_pitch, m_yaw; // The attitude Roll pitch yaw
 public:
 	c_obj();
@@ -301,6 +302,42 @@ public:
 		yaw = m_yaw;
 		return (m_dtype & EOD_ATTD) != 0;
 	}
+
+	void set_pos_bd(float bear, float dist)
+	{
+		m_bear = bear;
+		m_dist = dist;
+		m_dtype = EOD_POS_BD;
+	}
+
+	void set_pos_rel_from_bd()
+	{
+		double th = (m_bear * (CV_PI / 180.));
+		double c = cos(th), s = sin(th);
+		m_xr = (float) (m_dist * s); 
+		m_yr = (float)(m_dist * c);
+		m_zr = 0;
+		m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_REL);
+	}
+
+	void set_pos_bd_from_rel()
+	{
+		m_bear = atan2(m_xr, m_yr);
+		m_dist = sqrt(m_xr * m_xr + m_yr * m_yr);
+		m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_BD);
+	}
+
+	bool get_pos_bd(float & bear, float & dist)
+	{
+		bear = m_bear;
+		dist = m_dist;
+		return (m_dtype & EOD_POS_BD) != 0;
+	}
+
+	void reset_bd()
+	{
+		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_BD);
+	}
 };
 
 
@@ -340,6 +377,40 @@ public:
 		}else{
 			m_src = EOS_VAUTO;
 		}
+	}
+};
+
+class c_obst : public c_obj
+{
+protected:
+	float m_r;
+	int m_update_count;
+public:
+	c_obst();
+	c_obst(const long long t, const float bear, const float dist,
+		const float r, const e_obj_src src = EOS_SV);
+	virtual ~c_obst();
+
+	void set_rad(const float rad){
+		m_r = rad;
+	}
+
+	const float get_rad(){
+		return m_r;
+	}
+
+	const int get_update_count(){
+		return m_update_count;
+	}
+
+	void update(const long long t, Point3f & Xecef, Point3f & Vecef, float rad)
+	{
+		set_time(t);
+		set_rad(rad);
+		set_pos_ecef(Xecef.x, Xecef.y, Xecef.z);
+		set_vel_ecef(Vecef.x, Vecef.y, Vecef.z);
+		if (m_update_count != INT_MAX)
+			m_update_count++;
 	}
 };
 
@@ -498,6 +569,137 @@ public:
 	}
 };
 
+class ch_obst : public ch_base
+{
+protected:
+	list<c_obst*> objs;
+	list<c_obst*>::iterator itr;
+public:
+	ch_obst(const char * name) : ch_obst(name)
+	{
+		itr = objs.begin();
+	}
+
+	virtual ~ch_obst()
+	{
+		lock();
+		for (; !is_end(); next())
+			delete (*itr);
+		objs.clear();
+		unlock();
+	}
+
+	void push(long long t, float bear, float dist, float r,
+		const Mat & Rorg, const Point3f & Porg, e_obj_src src = EOS_SV)
+	{
+		c_obst * pobst = new c_obst(t, bear, dist, r, src);
+		pobst->set_pos_rel_from_bd();
+		pobst->set_ecef_from_rel(Rorg, Porg.x, Porg.y, Porg.z);
+		Point3f Xecef;
+		pobst->get_pos_ecef(Xecef.x, Xecef.y, Xecef.z);
+
+		bool bnew = true;
+		begin();
+		for (; !is_end(); next()){
+			Point3f X2ecef;
+			(*itr)->get_pos_ecef(X2ecef.x, X2ecef.y, X2ecef.z);
+			Point3f Xdiff = Xecef - X2ecef;
+			double d = norm(Xdiff);
+			double d2 = 0.5 * ((*itr)->get_rad() + pobst->get_rad());
+			double itdiff = (double)SEC / (double)(t - (*itr)->get_time());
+
+			if (d < d2){ // maybe fixed obstacle
+				X2ecef += Xecef;
+				X2ecef *= 0.5;
+				(*itr)->set_pos_ecef(X2ecef.x, X2ecef.y, X2ecef.z);
+				(*itr)->set_rad((float)d2);
+				(*itr)->set_time(t);
+				bnew = false;
+				break;
+			}
+			else if(d < d2 + itdiff * 20){ // maybe moving obstacle
+				Xdiff *= itdiff;
+				(*itr)->set_pos_ecef(Xecef.x, Xecef.y, Xecef.z);
+				(*itr)->set_vel_ecef(Xdiff.x, Xdiff.y, Xdiff.z);
+				(*itr)->set_rad((float)d2);
+				(*itr)->set_time(t);
+				bnew = false;
+				break;
+			}
+		}
+
+		if (bnew)
+			objs.push_back(pobst);
+		else
+			delete pobst;
+	}
+
+	void update_pos_rel(const Mat Rorg, const Point3f Porg){
+		lock();
+		begin();
+		for (; !is_end(); next()){
+			(*itr)->set_pos_rel_from_ecef(Rorg, Porg.x, Porg.y, Porg.z);
+		}
+		unlock();
+	}
+
+	void remove(const long long told, const int update_count)
+	{
+		lock();
+		begin();
+		for (; !is_end(); next()){
+			if ((*itr)->get_time() < told 
+				&& (*itr)->get_update_count() < update_count){
+				ers();
+			}
+		}
+		unlock();
+	}
+
+	void ers(){
+		delete *itr;
+		itr = objs.erase(itr);
+	}
+
+	c_obst * cur(){
+		return *itr;
+	}
+
+	bool is_end(){
+		bool r = itr == objs.end();
+		return r;
+	}
+
+	bool is_begin(){
+		bool r = itr == objs.begin();
+		return r;
+	}
+
+	void begin(){
+		itr = objs.begin();
+	}
+
+	void end(){
+		itr = objs.end();
+	}
+
+	void next(){
+		if (objs.end() != itr)
+			itr++;
+	}
+
+	void prev(){
+		if (objs.begin() != itr)
+			itr--;
+	}
+
+	int get_num_objs(){
+		int r;
+		r = (int)objs.size();
+		return r;
+	}
+};
+
 // contains recent object list, expected object list
 // has insert, delete, and search method
 class ch_obj: public ch_base
@@ -573,6 +775,13 @@ public:
 
 	virtual ~ch_ais_obj()
 	{
+		lock();
+		begin();
+		for (; !is_end(); next())
+			delete (itr->second);
+		objs.clear();
+		updates.clear();
+		unlock();
 	}
 
 	void push(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
