@@ -3499,12 +3499,40 @@ void calc_obst(s_odt_par & par, Mat & disp, vector<s_obst> & obst)
 	for (int irgn = 1; irgn < obst.size(); irgn++)
 	{
 		s_obst & o = obst[irgn];
+		bool merged = false;
+		for (int iobst2 = 0; iobst2 < iobst; iobst2++){
+			s_obst & o2 = obst[iobst2];
+			if (o.dmax < o2.dmin || o.dmin > o2.dmax ||
+				o.xmax < o2.xmin || o.xmin > o2.xmax ||
+				o.ymax < o2.ymin || o.ymin > o2.ymax){
+				continue;
+			}
+
+			ushort dmin = min(o.dmin, o2.dmin);
+			ushort dmax = max(o.dmax, o2.dmax);
+			if ((dmax - dmin) >> 1 > par.drange)
+				continue;
+
+			o2.dmax = dmax;
+			o2.dmin = dmin;
+			o2.xmax = max(o.xmax, o2.xmax);
+			o2.xmin = min(o.xmin, o2.xmin);
+			o2.ymax = max(o.ymax, o2.ymax);
+			o2.ymin = min(o.ymin, o2.ymin);
+			merged = true;
+			break;
+		}
+
+		if (merged){
+			continue;
+		}
 		if (par.is_valid(o)){
 			obst[iobst] = obst[irgn];
 			iobst++;
 		}
 	}
 	obst.resize(iobst);
+
 }
 
 //////////////////////////////////////////////////////////////////////////////////////// mat img read/write
