@@ -190,6 +190,11 @@ ch_map * c_aws1_ui_core::get_ch_map()
 	return pui->m_ch_map;
 }
 
+ch_obst * c_aws1_ui_core::get_ch_obst()
+{
+	return pui->m_ch_obst;
+}
+
 s_aws1_ctrl_inst & c_aws1_ui_core::get_ctrl_inst()
 {
 	return pui->m_inst;

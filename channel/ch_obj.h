@@ -575,7 +575,7 @@ protected:
 	list<c_obst*> objs;
 	list<c_obst*>::iterator itr;
 public:
-	ch_obst(const char * name) : ch_obst(name)
+	ch_obst(const char * name) : ch_base(name)
 	{
 		itr = objs.begin();
 	}

@@ -33,7 +33,7 @@ using namespace cv;
 
 #include "f_aws1_ap.h"
 
-f_aws1_ap::f_aws1_ap(const char * name): f_base(name), m_state(NULL), m_ctrl_inst(NULL), m_ctrl_stat(NULL),
+f_aws1_ap::f_aws1_ap(const char * name) : f_base(name), m_state(NULL), m_ctrl_inst(NULL), m_ctrl_stat(NULL), m_obst(NULL),
 	m_verb(false),
 	m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
 	m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
@@ -43,6 +43,7 @@ f_aws1_ap::f_aws1_ap(const char * name): f_base(name), m_state(NULL), m_ctrl_ins
 	register_fpar("ch_ctrl_inst", (ch_base**)&m_ctrl_inst, typeid(ch_aws1_ctrl_inst).name(), "Ctrl instruction channel");
 	register_fpar("ch_ctrl_stat", (ch_base**)&m_ctrl_stat, typeid(ch_aws1_ctrl_stat).name(), "Ctrl status channel");
 	register_fpar("ch_wp", (ch_base**)&m_wp, typeid(ch_wp).name(), "Waypoint channel");
+	register_fpar("ch_obst", (ch_base**)&m_obst, typeid(ch_obst).name(), "Obstacle channel.");
 
 	register_fpar("verb", &m_verb, "Verbose for debug.");
 	register_fpar("rud", &m_inst.rud_aws, "Rudder value");
@@ -111,7 +112,6 @@ bool f_aws1_ap::proc()
 			float cdiff = 0;		
 
 			m_wp->get_diff(d, cdiff);
-			cout << "cdiff" << cdiff << " ";
 			cdiff *= (float)(1./180.); // normalize
 
 			float sdiff = (float)(m_smax - sog);
@@ -123,7 +123,6 @@ bool f_aws1_ap::proc()
 			m_isdiff += sdiff;
 			m_cdiff = cdiff;
 			m_sdiff = sdiff;
-			cout << " " << m_cdiff << " " << m_dcdiff << " " <<  m_icdiff << endl;
 			m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
 			m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
 			m_rud = (float) min(m_rud, 255.f);

@@ -18,6 +18,7 @@
 #include "f_base.h"
 #include "../channel/ch_aws1_ctrl.h"
 #include "../channel/ch_state.h"
+#include "../channel/ch_obj.h"
 #include "../channel/ch_wp.h"
 
 // automatically controls along with the waypoints
@@ -29,6 +30,8 @@ protected:
 	ch_aws1_ctrl_inst * m_ctrl_inst;
 	ch_aws1_ctrl_stat * m_ctrl_stat;
 	ch_wp * m_wp;
+	ch_obst * m_obst;
+
 	s_aws1_ctrl_inst m_inst;
 
 	bool m_verb;

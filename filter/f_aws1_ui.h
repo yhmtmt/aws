@@ -223,6 +223,8 @@ class f_aws1_ui: public f_glfw_window
   ch_obj * m_ch_obj;
   ch_ais_obj * m_ch_ais_obj;
   ch_image_ref * m_ch_img, * m_ch_img2, * m_ch_disp;
+  ch_obst * m_ch_obst;
+
   bool m_img_x_flip, m_img_y_flip;
   bool m_img2_x_flip, m_img2_y_flip;
  void cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy);

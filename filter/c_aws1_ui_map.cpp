@@ -461,17 +461,45 @@ void c_aws1_ui_map::draw()
 		*/
 	}
 
-	// draw ais objects
+// draw ais objects
 	{
 		ch_ais_obj * pobj = get_ch_ais_obj();
-		if(pobj){
+		if (pobj){
 			pobj->lock();
-			for(pobj->begin();!pobj->is_end(); pobj->next()){
+			for (pobj->begin(); !pobj->is_end(); pobj->next()){
 				float x, y, z, vx, vy, vz, yw;
-				if(pobj->get_cur_state(x, y, z, vx, vy, vz, yw))
+				if (pobj->get_cur_state(x, y, z, vx, vy, vz, yw))
 					draw_ship_object(x, y, z, vx, vy, vz, yw);
+
 			}
 			pobj->unlock();
+		}
+	}
+
+// draw obstacles
+	{
+		ch_obst * pch_obst = get_ch_obst();
+		if (pch_obst){
+			Point2f pts[36]; // scaled points
+			pch_obst->lock();
+			for (pch_obst->begin(); !pch_obst->is_end(); pch_obst->next()){
+				c_obst * pobst = pch_obst->cur();
+				float x, y, z, r;
+				if (!pobst->get_pos_rel(x, y, z))
+					continue;
+
+				r = pobst->get_rad();
+				for (int i = 0; i < 36; i++){
+					pix2nml((float)(m_circ_pts[i].x * r), (float)(m_circ_pts[i].y * r),
+						pts[i].x, pts[i].y);
+				}
+				Point2f pos;
+				pos.x = (float)((x * ifxmeter) + offset.x);
+				pos.y = (float)((y * ifymeter) + offset.y);
+
+				drawGlPolygon2Df(pts, 36, pos, 1, 0, 0, 0, lw);
+			}
+			pch_obst->unlock();
 		}
 	}
 
