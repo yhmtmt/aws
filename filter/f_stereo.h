@@ -26,7 +26,7 @@
 class f_stereo : public f_base
 {
 protected:
-	ch_image_ref * m_ch_img1, *m_ch_img2;
+	ch_image_ref * m_ch_img1, *m_ch_img2, * m_ch_rimg1, * m_ch_rimg2;
 	ch_image_ref * m_ch_disp;
 	ch_obst * m_ch_obst;
 	ch_state * m_ch_state;

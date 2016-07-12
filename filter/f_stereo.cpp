@@ -43,7 +43,7 @@ const char * f_stereo::m_str_out[IMG2 + 1] = {
 	"disp", "img1", "img2"
 };
 
-f_stereo::f_stereo(const char * name) : f_base(name), m_ch_img1(NULL), m_ch_img2(NULL),
+f_stereo::f_stereo(const char * name) : f_base(name), m_ch_img1(NULL), m_ch_img2(NULL), m_ch_rimg1(NULL), m_ch_rimg2(NULL),
 m_ch_disp(NULL),m_ch_obst(NULL), m_ch_state(NULL), m_bflipx(false), m_bflipy(false), m_bnew(false), m_bsync(false),
 m_bpl(false), m_bpr(false), m_bstp(false), m_brct(false),
 m_timg1(-1), m_timg2(-1), m_ifrm1(-1), m_ifrm2(-1), m_ifrm_diff(0), m_fm_max_count(300), m_fm_count(0),
@@ -52,6 +52,8 @@ m_fm_time_min_dfrm(0), m_fm_time_min(INT_MAX), m_out(DISP), m_tdiff_old_obst(300
 	// channels
 	register_fpar("ch_caml", (ch_base**)&m_ch_img1, typeid(ch_image_ref).name(), "Left camera channel");
 	register_fpar("ch_camr", (ch_base**)&m_ch_img2, typeid(ch_image_ref).name(), "Right camera channel");
+	register_fpar("ch_rcam1", (ch_base**)&m_ch_rimg1, typeid(ch_image_ref).name(), "Rectified left camera channel");
+	register_fpar("ch_rcam2", (ch_base**)&m_ch_rimg2, typeid(ch_image_ref).name(), "Rectified right camera channel");
 	register_fpar("ch_disp", (ch_base**)&m_ch_disp, typeid(ch_image_ref).name(), "Disparity image channel.");
 	register_fpar("ch_obst", (ch_base**)&m_ch_obst, typeid(ch_obst).name(), "Channel for detected obstacles.");
 	register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_state).name(), "Own ship state channel");
@@ -231,6 +233,12 @@ bool f_stereo::proc()
 
 	remap(m_img1, m_img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
 	remap(m_img2, m_img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+
+	if (m_ch_rimg1)
+		m_ch_rimg1->set_img(m_img1, m_timg1, m_ifrm1);
+
+	if (m_ch_rimg2)
+		m_ch_rimg2->set_img(m_img2, m_timg2, m_ifrm2);
 
 	Mat disps16;
 	if (m_sgbm_par.m_bsg)
