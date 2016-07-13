@@ -611,18 +611,24 @@ public:
 			if (d < d2){ // maybe fixed obstacle
 				X2ecef += Xecef;
 				X2ecef *= 0.5;
+				/*
 				(*itr)->set_pos_ecef(X2ecef.x, X2ecef.y, X2ecef.z);
 				(*itr)->set_rad((float)d2);
 				(*itr)->set_time(t);
+				*/
+				(*itr)->update(t, X2ecef, Point3f(0, 0, 0), (float)d2);
 				bnew = false;
 				break;
 			}
 			else if(d < d2 + itdiff * 20){ // maybe moving obstacle
 				Xdiff *= itdiff;
+				/*
 				(*itr)->set_pos_ecef(Xecef.x, Xecef.y, Xecef.z);
 				(*itr)->set_vel_ecef(Xdiff.x, Xdiff.y, Xdiff.z);
 				(*itr)->set_rad((float)d2);
 				(*itr)->set_time(t);
+				*/
+				(*itr)->update(t, Xecef, Xdiff, (float)d2);
 				bnew = false;
 				break;
 			}

@@ -265,7 +265,7 @@ bool f_stereo::proc()
 			m_ch_obst->push(m_timg1, bear, dist, rad, Rorg, porg);
 		}
 		m_ch_obst->unlock();
-		m_ch_obst->remove(m_timg1 - m_tdiff_old_obst * SEC, m_th_update_count);
+		m_ch_obst->remove(m_timg1 - (long long) m_tdiff_old_obst * SEC, m_th_update_count);
 	}
 
 	if (m_ch_disp){

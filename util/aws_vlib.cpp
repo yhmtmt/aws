@@ -3417,7 +3417,7 @@ void calc_obst(s_odt_par & par, Mat & disp, vector<s_obst> & obst)
 		pdisp_prev = disp.ptr<ushort>(y - 1);
 		pdisp = disp.ptr<ushort>(y);
 		for (int x = 0; x < disp.cols - 1; x++){
-			if (*pdisp){
+			if (*pdisp && *pdisp <= par.dn && *pdisp >= par.df){
 				int irgn, drgn;
 				{
 					// determine the label of this pixel
@@ -3484,6 +3484,7 @@ void calc_obst(s_odt_par & par, Mat & disp, vector<s_obst> & obst)
 				*plbl = irgn;
 			}
 			else{
+				*pdisp = 0;
 				obst[0].add(x, y, 0);
 			}
 
@@ -3499,6 +3500,7 @@ void calc_obst(s_odt_par & par, Mat & disp, vector<s_obst> & obst)
 	for (int irgn = 1; irgn < obst.size(); irgn++)
 	{
 		s_obst & o = obst[irgn];
+		/*
 		bool merged = false;
 		for (int iobst2 = 0; iobst2 < iobst; iobst2++){
 			s_obst & o2 = obst[iobst2];
@@ -3522,10 +3524,11 @@ void calc_obst(s_odt_par & par, Mat & disp, vector<s_obst> & obst)
 			merged = true;
 			break;
 		}
-
+		
 		if (merged){
 			continue;
 		}
+		*/
 		if (par.is_valid(o)){
 			obst[iobst] = obst[irgn];
 			iobst++;

@@ -1449,9 +1449,7 @@ struct s_odt_par{
 
 	float rad(s_obst & o){
 		//double rd = Dmax / (double)o.dmin - Dmax / (double)o.dmax;
-		double rx = (o.xmax - o.xmin) * f 
-			* ((o.dmax + o.dmin) >> 1) 
-			* iDmax;
+		double rx = d2D((float)((o.dmax + o.dmin) >> 1)) * (double)(o.xmax - o.xmin) / f;
 		return (float)rx;
 	}
 
