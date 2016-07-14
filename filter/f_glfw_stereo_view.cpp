@@ -916,7 +916,8 @@ void f_glfw_stereo_view::rectify_stereo()
 	cout << "Rr" << m_Rr << endl;
 	cout << "Pr" << m_Pr << endl;
 
-	m_odt_par.initD((float)m_Pl.ptr<double>()[5], (float)norm(m_Tlr));
+	double * p = m_Pl.ptr<double>();
+	m_odt_par.initD((float)p[0], (float)p[2], (float)p[6], (float)norm(m_Tlr));
 
 	m_brct = true;
 	m_brctst = false;

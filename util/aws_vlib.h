@@ -1435,13 +1435,17 @@ struct s_odt_par{
 	Size bb_min_n, bb_min_f;
 	int foot_y;
 	ushort dn, df;
-	float f, L, Dmax, iDmax;
+	float f,cx, cy, L, Dmax, iDmax;
 	s_odt_par() :drange(32),
 		bb_min_n(5, 75), bb_min_f(5, 25), dn(640), df(64), foot_y(270)
 	{}
 
-	void initD(float _f/*focal length*/, float _L/* base line */){
+	void initD(float _f/*focal length*/, float _cx /*principal point*/, 
+		float _cy /*principal point*/, float _L/* base line */)
+	{
 		f = _f;
+		cx = _cx;
+		cy = _cy;
 		L = _L;
 		Dmax = (float)(16. * L * f);
 		iDmax = (float)(1.0 / Dmax);
@@ -1455,7 +1459,7 @@ struct s_odt_par{
 
 	void bd(s_obst & o, float & bear, float & dist){
 		float D = d2D((float)((o.dmax + o.dmin) >> 1));
-		float X = (float)((float)((o.xmax + o.xmin) >> 1) * D / f);
+		float X = (float)(((float)((o.xmax + o.xmin) >> 1) - cx) * D / f);
 		dist = (float)sqrt(D*D + X*X);
 		bear = (float)atan2(X, D);
 	}

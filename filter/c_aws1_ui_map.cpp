@@ -496,8 +496,8 @@ void c_aws1_ui_map::draw()
 				Point2f pos;
 				pos.x = (float)((x * ifxmeter) + offset.x);
 				pos.y = (float)((y * ifymeter) + offset.y);
-
-				drawGlPolygon2Df(pts, 36, pos, 1, 0, 0, 0, lw);
+				
+				drawGlPolygon2Df(pts, 36, pos, (float)min(1.0, pobst->get_update_count() * 0.1), 0, 0, 0, lw);
 			}
 			pch_obst->unlock();
 		}

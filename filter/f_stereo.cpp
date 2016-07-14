@@ -206,6 +206,17 @@ bool f_stereo::proc()
 	if (!m_bsync || !m_bnew)
 		return true;
 
+	long long tatt, trot, tpos;
+	float roll, pitch, yaw;
+	Point3f porg;
+	Mat Rorg;
+
+	if (m_ch_state){
+		m_ch_state->get_attitude(tatt, roll, pitch, yaw);
+		Rorg = m_ch_state->get_enu_rotation(trot);
+		m_ch_state->get_position_ecef(tpos, porg.x, porg.y, porg.z);
+	}
+
 	if (m_bpl && m_bpr && m_bstp && !m_brct){
 		if (!(m_brct = rectify_stereo())){
 			cerr << "Failed to rectify stereo images." << endl;
@@ -247,12 +258,6 @@ bool f_stereo::proc()
 		m_bm->compute(m_img1, m_img2, disps16);
 
 	if (m_ch_obst && m_ch_state){
-		long long tatt, trot, tpos;
-		float roll, pitch, yaw;
-		m_ch_state->get_attitude(tatt, roll, pitch, yaw);
-		const Mat Rorg = m_ch_state->get_enu_rotation(trot);
-		Point3f porg;
-		m_ch_state->get_position_ecef(tpos, porg.x, porg.y, porg.z);
 		
 		calc_obst(m_odt_par, disps16, m_obst);
 		m_ch_obst->update_pos_rel(Rorg, porg);
@@ -361,7 +366,8 @@ bool f_stereo::rectify_stereo()
 		initUndistortRectifyMap(Kr, Dr, m_Rr, m_Pr, sz, CV_16SC2, m_mapr1, m_mapr2);
 	}
 
-	m_odt_par.initD((float)m_Pl.ptr<double>()[5], (float)norm(m_Tlr));
+	double * p = m_Pl.ptr<double>();
+	m_odt_par.initD((float)p[0], (float)p[2], (float)p[6], (float)norm(m_Tlr));
 
 	return true;
 }
