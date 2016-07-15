@@ -164,6 +164,7 @@ void ch_base::register_factory()
 	register_factory<ch_ring<char, 4096> >("crbuf4k");
 	register_factory<ch_ring<char, 8192> >("crbuf8k");
 	register_factory<ch_state>("state");
+	register_factory<ch_estate>("estate");
 	register_factory<ch_map>("map");
 	register_factory<ch_obj>("obj");
 	register_factory<ch_obst>("obst");

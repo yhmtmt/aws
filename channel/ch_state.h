@@ -19,23 +19,40 @@
 
 #include "ch_base.h"
 
+
+// estimated state channel contains estimmated sensor data
+class ch_estate : public ch_base
+{
+protected:
+
+public:
+	ch_estate(const char * name) :ch_base(name)
+	{
+	}
+	virtual ~ch_estate()
+	{
+	}
+};
+
+
+// state channel contains row sensor data.
 class ch_state: public ch_base
 {
  protected:
 	 long long tatt, tpos, tvel, tdp;
 	 long long tattf, tposf, tvelf, tdpf;
-  float roll, pitch, yaw; // roll(deg), pitch(deg), yaw(deg)
-  float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
-  float x, y, z; // ecef coordinate
-  Mat R, Rret; // Rotation matrix for ENU transformation
-  float cog, sog; // Course over ground(deg), Speed over ground (kts)
-  float depth; // water depth
-  long long m_tfile;
-  float rollf, pitchf, yawf; // roll(deg), pitch(deg), yaw(deg)
-  float lonf, latf, altf, galtf; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
-  float xf, yf, zf; // ecef coordinate
-  float cogf, sogf; // Course over ground(deg), Speed over ground (kts)
-  float depthf; // water depth
+	 float roll, pitch, yaw; // roll(deg), pitch(deg), yaw(deg)
+	 float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
+	 float x, y, z; // ecef coordinate
+	 Mat R, Rret; // Rotation matrix for ENU transformation
+	 float cog, sog; // Course over ground(deg), Speed over ground (kts)
+	 float depth; // water depth
+	 long long m_tfile;
+	 float rollf, pitchf, yawf; // roll(deg), pitch(deg), yaw(deg)
+	 float lonf, latf, altf, galtf; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
+	 float xf, yf, zf; // ecef coordinate
+	 float cogf, sogf; // Course over ground(deg), Speed over ground (kts)
+	 float depthf; // water depth
 
  public:
  ch_state(const char * name): ch_base(name), 
