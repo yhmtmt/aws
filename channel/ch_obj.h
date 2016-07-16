@@ -616,7 +616,8 @@ public:
 				(*itr)->set_rad((float)d2);
 				(*itr)->set_time(t);
 				*/
-				(*itr)->update(t, X2ecef, Point3f(0, 0, 0), (float)d2);
+				Point3f Vzero(0, 0, 0);
+				(*itr)->update(t, X2ecef, Vzero, (float)d2);
 				bnew = false;
 				break;
 			}
