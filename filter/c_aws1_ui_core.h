@@ -34,6 +34,7 @@ protected:
 	 ch_image * get_ch_img();
 	 ch_map * get_ch_map();
 	 ch_obst * get_ch_obst();
+	 ch_aws1_ap_inst * get_ch_ap_inst();
 
 	 s_aws1_ctrl_inst & get_ctrl_inst();
 	 const Size & get_window_size();

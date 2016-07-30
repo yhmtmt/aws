@@ -224,6 +224,7 @@ class f_aws1_ui: public f_glfw_window
   ch_ais_obj * m_ch_ais_obj;
   ch_image_ref * m_ch_img, * m_ch_img2, * m_ch_disp;
   ch_obst * m_ch_obst;
+  ch_aws1_ap_inst * m_ch_ap_inst;
 
   bool m_img_x_flip, m_img_y_flip;
   bool m_img2_x_flip, m_img2_y_flip;
@@ -308,6 +309,8 @@ class f_aws1_ui: public f_glfw_window
   int m_menu_focus;
   e_aws1_ctrl_src m_menu_acs;
   e_aws1_ui_mode m_menu_mode;
+  e_ap_mode m_menu_ap_mode;
+
   bool m_quit;
   void ui_show_menu();
   void ui_handle_menu();

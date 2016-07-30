@@ -97,6 +97,7 @@ protected:
 	void draw_ship_object(const float x, const float y, const float z, 
 		const float vx, const float vy, const float vz, const float yw);
 
+	void draw_waypoints(const float wfont, const float lw);
 
 	void draw_coast_line(const vector<Point3f> & cl, float lw);
 	int m_cur_wp;

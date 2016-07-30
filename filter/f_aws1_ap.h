@@ -29,6 +29,7 @@ protected:
 	ch_state * m_state;
 	ch_aws1_ctrl_inst * m_ctrl_inst;
 	ch_aws1_ctrl_stat * m_ctrl_stat;
+	ch_aws1_ap_inst * m_ap_inst;
 	ch_wp * m_wp;
 	ch_obst * m_obst;
 
@@ -41,11 +42,24 @@ protected:
 	float m_meng_max, m_meng_min;
 	float m_seng_max, m_seng_min;
 
+	// for wp mode
 	float m_cdiff, m_sdiff; // differences to the target values of course and speed.
 	float m_dcdiff, m_dsdiff; // difference of cdiff and sdiff
 	float m_icdiff, m_isdiff; // integral of cdiff and sdiff
 	float m_pc, m_ic, m_dc;
 	float m_ps, m_is, m_ds;
+
+	// for stay mode
+	float m_ydiff;
+	float m_dydiff;
+	float m_iydiff;
+	float m_ssmax; // maximum speed
+	float m_dssmax; //distance maximum speed allowed
+
+	void wp(const float sog, const float cog);
+	void stay(const float sog, const float cog);
+	void cursor();
+
 public:
 	f_aws1_ap(const char * name);
 	virtual ~f_aws1_ap();

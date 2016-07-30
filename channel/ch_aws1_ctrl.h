@@ -16,6 +16,7 @@
 // along with ch_aws1_ctrl.h.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ch_base.h"
+#include "../util/aws_coord.h"
 
 enum e_aws1_ctrl_src{
   ACS_UI, ACS_RMT, ACS_AP1, ACS_AP2, ACS_FSET, ACS_NONE
@@ -381,4 +382,87 @@ public:
     return true;
   }
 };
+
+
+enum e_ap_mode
+{
+	EAP_CURSOR, EAP_WP, EAP_STAY, EAP_NONE
+};
+
+extern const char * str_aws1_ap_mode[EAP_NONE];
+
+class ch_aws1_ap_inst : public ch_base
+{
+protected:
+	e_ap_mode mode;
+	float smax; // maximum speed
+	float meng_max, meng_min; // main engine max/min value
+	float seng_max, seng_min; // sub engine's max/min value
+
+	float lat_stay, lon_stay;
+	float x_stay, y_stay, z_stay;
+	float rx_stay, ry_stay, rz_stay;
+	float d_stay, dir_stay;
+	bool brpos;
+public:
+	ch_aws1_ap_inst(const char * name) :ch_base(name),
+		mode(EAP_WP), lat_stay(0.f), lon_stay(0.f), brpos(false)
+	{
+	}
+	virtual ~ch_aws1_ap_inst()
+	{
+	}
+
+	const e_ap_mode get_mode()
+	{
+		return mode;
+	}
+
+	void set_mode(const e_ap_mode _mode)
+	{
+		lock();
+		mode = _mode;
+		unlock();
+	}
+
+	void set_stay_pos(const float lat, const float lon)
+	{
+		lock();
+		lat_stay = lat;
+		lon_stay = lon;
+		bihtoecef(lat, lon, 0., x_stay, y_stay, z_stay);
+		brpos = false;
+		unlock();
+	}
+
+	void get_stay_pos(float & lat, float & lon)
+	{
+		lock();
+		lat = lat_stay;
+		lon = lon_stay;
+		unlock();
+	}
+
+	void update_pos_rel(const Mat & Rorg, float & xorg, float & yorg, float & zorg)
+	{
+		lock();
+		eceftowrld(Rorg, xorg, yorg, zorg, x_stay, y_stay, z_stay, rx_stay, ry_stay, rz_stay);
+		d_stay = (float)(sqrt(rx_stay * rx_stay + ry_stay * ry_stay));
+		dir_stay = (float)(atan2(rx_stay, ry_stay) * 180. / PI);
+		brpos = true;
+		unlock();
+	}
+
+	bool get_stay_pos_rel(float & xr, float & yr, float & d, float & dir)
+	{
+		lock();
+		xr = rx_stay;
+		yr = ry_stay;
+		d = d_stay;
+		dir = dir_stay;
+		unlock();
+		return brpos;
+	}
+};
+
 #endif

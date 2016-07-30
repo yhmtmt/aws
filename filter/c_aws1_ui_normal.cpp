@@ -195,11 +195,15 @@ ch_obst * c_aws1_ui_core::get_ch_obst()
 	return pui->m_ch_obst;
 }
 
+ch_aws1_ap_inst * c_aws1_ui_core::get_ch_ap_inst()
+{
+	return pui->m_ch_ap_inst;
+}
+
 s_aws1_ctrl_inst & c_aws1_ui_core::get_ctrl_inst()
 {
 	return pui->m_inst;
 }
-
 
 const Size & c_aws1_ui_core::get_window_size()
 {

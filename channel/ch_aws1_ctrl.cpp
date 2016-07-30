@@ -21,14 +21,24 @@
 #include <map>
 using namespace std;
 
+
 #include "../util/aws_stdlib.h"
 #include "../util/aws_thread.h"
 #include "../util/c_clock.h"
 
+#include <opencv2/opencv.hpp>
+
+using namespace cv;
 
 #include "ch_aws1_ctrl.h"
 
 const char * str_aws1_ctrl_src[ACS_NONE] = 
 {
 	"ui","rmt", "ap1", "ap2", "fset"
+};
+
+
+const char * str_aws1_ap_mode[EAP_NONE] =
+{
+	"cursor", "wp", "stay"
 };

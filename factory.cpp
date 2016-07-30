@@ -154,6 +154,7 @@ void ch_base::register_factory()
 
 	register_factory<ch_aws1_ctrl_inst>("aws1_ctrl_inst");
 	register_factory<ch_aws1_ctrl_stat>("aws1_ctrl_stat");
+	register_factory<ch_aws1_ap_inst>("aws1_ap_inst");
 	register_factory<ch_vector<Rect>>("vrect");
 	register_factory<ch_vector<c_track_obj>>("trck");
 	register_factory<ch_ptz>("ptz");

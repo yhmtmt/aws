@@ -147,22 +147,53 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 			pwp->ers();
 			pwp->unlock();
 		}else if(js.is_event_down(js.ea)){
-			ch_wp * pwp = get_ch_wp();
-			/*
-			s_wp wp;
-			wp.rx = cp_rx; 
-			wp.ry = cp_ry;
-			wp.rz = 0.;
-			wp.x = cp_x;
-			wp.y = cp_y;
-			wp.z = cp_z;
-			wp.lat = cp_lat;
-			wp.lon = cp_lon;
-			wp.rarv = 10.; // 10meter
-			*/
-			pwp->lock();
-			pwp->ins(cp_lat, cp_lon, 10.);
-			pwp->unlock();
+			ch_aws1_ap_inst * ap_inst = get_ch_ap_inst();
+			if (ap_inst){
+				switch (ap_inst->get_mode()){
+				case EAP_CURSOR:
+				case EAP_STAY:
+				{
+								 ap_inst->set_stay_pos(cp_lat, cp_lon);
+								 break;
+				}
+				case EAP_WP:
+				{
+							   ch_wp * pwp = get_ch_wp();
+							   /*
+							   s_wp wp;
+							   wp.rx = cp_rx;
+							   wp.ry = cp_ry;
+							   wp.rz = 0.;
+							   wp.x = cp_x;
+							   wp.y = cp_y;
+							   wp.z = cp_z;
+							   wp.lat = cp_lat;
+							   wp.lon = cp_lon;
+							   wp.rarv = 10.; // 10meter
+							   */
+							   pwp->lock();
+							   pwp->ins(cp_lat, cp_lon, 10.);
+							   pwp->unlock();
+				}
+				}
+			}else{
+				ch_wp * pwp = get_ch_wp();
+				/*
+				s_wp wp;
+				wp.rx = cp_rx;
+				wp.ry = cp_ry;
+				wp.rz = 0.;
+				wp.x = cp_x;
+				wp.y = cp_y;
+				wp.z = cp_z;
+				wp.lat = cp_lat;
+				wp.lon = cp_lon;
+				wp.rarv = 10.; // 10meter
+				*/
+				pwp->lock();
+				pwp->ins(cp_lat, cp_lon, 10.);
+				pwp->unlock();
+			}
 		}
 		break;
 	case EMO_SV_RT:	
@@ -305,6 +336,112 @@ void c_aws1_ui_map::draw_coast_line(const vector<Point3f> & cl, float lw)
 	glEnd();
 }
 
+void c_aws1_ui_map::draw_waypoints(const float wfont, const float lw)
+{
+	bool prev = false;
+	Point2f pos_prev;
+	ch_aws1_ap_inst * ap_inst = get_ch_ap_inst();
+	ch_wp * pwp = get_ch_wp();
+
+	Point2f pts[36]; // scaled points
+	for (int i = 0; i < 36; i++){
+		pix2nml((float)(m_circ_pts[i].x * 10.), (float)(m_circ_pts[i].y * 10.),
+			pts[i].x, pts[i].y);
+	}
+
+	e_ap_mode ap_mode = EAP_WP;
+	if (ap_inst){
+		ap_mode = ap_inst->get_mode();
+	}
+	float clr_wp = 1.0;
+	switch (ap_mode){
+	case EAP_CURSOR:
+	case EAP_STAY:
+	{
+					 float srx, sry, d, dir;
+					 if (ap_inst->get_stay_pos_rel(srx, sry, d, dir)){
+						 Point2f pos((float)((srx * ifxmeter) + offset.x),
+							 (float)((sry * ifymeter) + offset.y));
+						 drawGlPolygon2Df(pts, 36, pos, 0, 1.0, 0, 0, lw);
+						 drawGlLine2Df(pos.x, pos.y, offset.x, offset.y, 0, 1.0, 0., 1., lw);
+						 char str[32];
+						 pwp->get_diff(d, dir);
+						 snprintf(str, 32, "D%04.1f,C%04.1f", d, dir);
+						 drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);
+					 }
+	}
+		clr_wp = 0.5;
+		break;
+	case EAP_WP:
+		clr_wp = 1.0;
+		break;
+	}
+
+	if (pwp){
+		pwp->lock();
+
+		int num_wps = pwp->get_num_wps();
+
+		// drawing waypoint
+		pwp->begin();
+		for (; !pwp->is_end(); pwp->next()){
+			s_wp & wp = pwp->cur();
+			if (!wp.update_rpos)
+				continue;
+			Point2f pos;
+			pos.x = (float)((wp.rx * ifxmeter) + offset.x);
+			pos.y = (float)((wp.ry * ifymeter) + offset.y);
+
+			if (pwp->is_focused()){
+				drawGlPolygon2Df(pts, 36, pos, 0, clr_wp, 0, 0, lw);
+			}
+			else{
+				drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw);
+			}
+
+			if (prev)
+				drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
+
+			long long tarr = wp.get_arrival_time();
+			if (tarr > 0){
+				tarr -= get_cur_time();
+				char str[32];
+				snprintf(str, 32, "%lld", tarr / SEC);
+				drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);
+			}
+
+			prev = true;
+			pos_prev = pos;
+		}
+
+		// checking waypoint arrival
+		if (!pwp->is_finished()){
+			s_wp & wp = pwp->get_next_wp();
+			Point2f pos;
+			pos.x = (float)((wp.rx * ifxmeter) + offset.x);
+			pos.y = (float)((wp.ry * ifymeter) + offset.y);
+			for (int i = 0; i < 36; i++){
+				pix2nml((float)(m_circ_pts[i].x * wp.rarv), (float)(m_circ_pts[i].y * wp.rarv),
+					pts[i].x, pts[i].y);
+			}
+
+			float d, cdiff;
+			char str[32];
+			pwp->get_diff(d, cdiff);
+			snprintf(str, 32, "D%04.1f,C%04.1f", d, cdiff);
+			drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);
+			drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 1., lw); 
+
+			if (ap_mode == EAP_WP)
+				drawGlLine2Df(pos.x, pos.y, offset.x, offset.y, 0, 1.0, 0., 1., lw);
+
+		}
+
+		pwp->unlock();
+	}
+
+}
+
 void c_aws1_ui_map::draw()
 {
   float cog, sog, roll, pitch, yaw;
@@ -376,75 +513,7 @@ void c_aws1_ui_map::draw()
 	}
 
 	// draw waypoints
-	{
-		bool prev = false;
-		Point2f pos_prev;
-		ch_wp * pwp = get_ch_wp();
-		if(pwp){
-			pwp->lock();
-
-			int num_wps = pwp->get_num_wps();
-			Point2f pts[36]; // scaled points
-			for(int i = 0; i < 36; i++){
-				pix2nml((float)(m_circ_pts[i].x * 10.),(float)(m_circ_pts[i].y * 10.),
-					pts[i].x, pts[i].y);
-			}
-
-			// drawing waypoint
-			pwp->begin();
-			for(;!pwp->is_end(); pwp->next()){
-				s_wp & wp = pwp->cur();
-				if (!wp.update_rpos)
-					continue;
-				Point2f pos;
-				pos.x = (float)((wp.rx * ifxmeter) + offset.x);
-				pos.y = (float)((wp.ry * ifymeter) + offset.y);
-
-				if(pwp->is_focused()){
-					drawGlPolygon2Df(pts, 36, pos, 0, 1, 0, 0, lw); 
-				}else{
-					drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 0, lw); 
-				}
-
-				if(prev)
-					drawGlLine2Df(pos_prev.x, pos_prev.y, pos.x, pos.y, 0, 0.5, 0, 0, lw);
-
-				long long tarr = wp.get_arrival_time();
-				if(tarr > 0){
-					tarr -= get_cur_time();
-					char str[32];
-					snprintf(str, 32, "%lld", tarr / SEC);
-					drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);
-				}
-
-				prev = true;
-				pos_prev = pos;
-			}
-
-			// checking waypoint arrival
-			if(!pwp->is_finished()){
-			  s_wp & wp = pwp->get_next_wp();
-			  Point2f pos;
-			  pos.x = (float)((wp.rx * ifxmeter) + offset.x);
-			  pos.y = (float)((wp.ry * ifymeter) + offset.y);
-			  for(int i = 0; i < 36; i++){
-			    pix2nml((float)(m_circ_pts[i].x * wp.rarv),(float)(m_circ_pts[i].y * wp.rarv),
-				    pts[i].x, pts[i].y);
-			  }
-			  
-			  float d, cdiff;
-			  char str[32];
-			  pwp->get_diff(d, cdiff);
-			  snprintf(str, 32, "D%04.1f,C%04.1f", d, cdiff);
-			  drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);	
-			  drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 1., lw); // own ship triangle				
-			  drawGlLine2Df(pos.x, pos.y, offset.x, offset.y, 0, 1.0, 0., 1., lw);
-			  
-			}
-
-			pwp->unlock();
-		}
-	}
+	draw_waypoints(wfont, lw);
 
 	// draw objects
 	{

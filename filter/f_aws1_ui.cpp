@@ -58,7 +58,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					 m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL),
 					 m_ch_map(NULL),
 					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL), m_ch_img2(NULL), m_ch_disp(NULL),
-					 m_ch_obst(NULL),
+					 m_ch_obst(NULL), m_ch_ap_inst(NULL),
 					 m_imv(IMV_IMG1),
 					 m_img_x_flip(false), m_img_y_flip(false), m_img2_x_flip(false), m_img2_y_flip(false),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
@@ -78,6 +78,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("ch_img2", (ch_base**)&m_ch_img2, typeid(ch_image_ref).name(), "Second Image channel.");
   register_fpar("ch_disp", (ch_base**)&m_ch_disp, typeid(ch_image_ref).name(), "Disparity image between ch_img and ch_img2");
   register_fpar("ch_obst", (ch_base**)&m_ch_obst, typeid(ch_obst).name(), "Obstacle channel.");
+  register_fpar("ch_inst", (ch_base**)&m_ch_ap_inst, typeid(ch_aws1_ap_inst).name(), "Autopilot instruction channel");
   register_fpar("flip_img_x", &m_img_x_flip, "Image in ch_img is fliped in x direction.");
   register_fpar("flip_img_y", &m_img_y_flip, "Image in ch_img is fliped in y direction.");
   register_fpar("flip_img2_x", &m_img2_x_flip, "Image in ch_img is fliped in x direction.");
@@ -526,13 +527,19 @@ void f_aws1_ui::ui_show_sys_state()
 	char str[32]; // "XXXX: xxxxxxx"	
 	float w = (float)((15 + 2) * wfont);
 	float h = (float)(4 * hfont);
-	float x = (float)(xorg - w);	
+	float x = (float)(xorg - w);
 	drawGlSquare2Df(xorg, yorg, x, (float)(yorg - h), 0, 1, 0, 1, lw);
 
 	snprintf(str, 32, "CTRL: %8s", str_aws1_ctrl_src[m_stat.ctrl_src]);
 	x += wfont;
 	float y = (float)(yorg - 2 * hfont);
 	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+
+	if (m_ch_ap_inst){
+		snprintf(str, 32, "APMD: %8s", str_aws1_ap_mode[m_ch_ap_inst->get_mode()]);
+		y -= hfont;
+		drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+	}
 
 	snprintf(str, 32, "MODE: %8s", m_str_aws1_ui_mode[m_mode]);
 	y -= hfont;
@@ -546,6 +553,7 @@ void f_aws1_ui::ui_show_menu()
 	//     System MENU       //
 	//-----------------------//
 	//  <Control> | <Value>  //
+	//  <AP mode> | <value>  //
 	//  <IM view> | <value>  //
 	//  <UI     > | <Value>  //
 	//  <Exit   > | <Value>  //
@@ -555,9 +563,9 @@ void f_aws1_ui::ui_show_menu()
 	float wfont = (float)(8. * m_ixscale);
 	float hfont = (float)(13. * m_iyscale);
 	const char * title = "System Menu"; /* 11 characters */
-
-	const char * items[4] = { /* 7 characters the longest.*/
-		"Control", "Cam", "UI", "Quit"
+	const int num_items = 5;
+	const char * items[num_items] = { /* 7 characters the longest.*/
+		"Control", "AP mode", "Cam", "UI", "Quit"
 	};
 
 	float alpha_bg = 0.5;
@@ -566,7 +574,7 @@ void f_aws1_ui::ui_show_menu()
 	float wcol_l = 12 * wfont;
 	float wcol_r = 12 * wfont;
 	float wm = wcol_l + wcol_r + 2 * wfont;
-	float hm = (float)(7.5 * hfont); 
+	float hm = (float)(((float)num_items + 3.5) * hfont); 
 	float lw = (float)(1.0 / m_sz_win.width);
 
 	float xorg = (float)(- 0.5 * wm);
@@ -594,40 +602,58 @@ void f_aws1_ui::ui_show_menu()
 
 	drawGlText(x, y, title, 0, 1, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
+	int ifocus = 0;
 	// Control
 	y -= (float)(1.5 * hfont);
-	if(m_menu_focus == 0)
+	if(m_menu_focus == ifocus)
 		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
 			0, 1, 0, alpha_bg);
-	float g = m_menu_focus == 0 ? 0.f : 1.f;
-	drawGlText(x, y, items[0], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	float g = m_menu_focus == ifocus ? 0.f : 1.f;
+	drawGlText(x, y, items[ifocus], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, str_aws1_ctrl_src[m_menu_acs], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
-	// Cam
+	// AP mode
+	ifocus++;
 	y -= (float)(hfont);
-	if(m_menu_focus == 1)
+	if (m_menu_focus == ifocus)
+		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
+		0, 1, 0, alpha_bg);
+	g = m_menu_focus == ifocus ? 0.f : 1.f;
+	drawGlText(x, y, items[ifocus], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+
+	if (m_ch_ap_inst)
+		drawGlText(xv, y, str_aws1_ap_mode[m_ch_ap_inst->get_mode()], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	else
+		drawGlText(xv, y, str_aws1_ap_mode[EAP_WP], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+
+	// Cam
+	ifocus++;
+	y -= (float)(hfont);
+	if(m_menu_focus == ifocus)
 		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
 			0, 1, 0, alpha_bg);
-	g = m_menu_focus == 1 ? 0.f : 1.f;
-	drawGlText(x, y, items[1], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	g = m_menu_focus == ifocus ? 0.f : 1.f;
+	drawGlText(x, y, items[ifocus], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, m_str_imv[m_imv], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
 	// UI
+	ifocus++;
 	y -= (float)(hfont);
-	if(m_menu_focus == 2)
+	if(m_menu_focus == ifocus)
 		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
 			0, 1, 0, alpha_bg);
-	g = m_menu_focus == 2 ? 0.f : 1.f;
-	drawGlText(x, y, items[2], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	g = m_menu_focus == ifocus ? 0.f : 1.f;
+	drawGlText(x, y, items[ifocus], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, m_str_aws1_ui_mode[m_menu_mode], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
 	// Exit
+	ifocus++;
 	y -= (float)(hfont);
-	if(m_menu_focus == 3)
+	if(m_menu_focus == ifocus)
 		drawGlSquare2Df(xorg, (float)(y + 0.85 * hfont), (float)(xorg + wm), (float)(y - 0.15 * hfont),
 			0, 1, 0, alpha_bg);
-	g = m_menu_focus == 3 ? 0.f : 1.f;
-	drawGlText(x, y, items[3], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+	g = m_menu_focus == ifocus ? 0.f : 1.f;
+	drawGlText(x, y, items[ifocus], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	drawGlText(xv, y, m_quit ? "yes":"no", 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
 	// OK/Cancel
@@ -643,6 +669,14 @@ void f_aws1_ui::ui_handle_menu()
 		m_quit = false;
 		m_menu_acs = m_stat.ctrl_src;
 		m_menu_mode = m_mode;
+		if (m_ch_ap_inst){
+			m_menu_ap_mode = m_ch_ap_inst->get_mode();
+		}
+		else{
+			m_menu_ap_mode = EAP_WP;
+		}
+
+
 		return;
 	}
 
@@ -661,6 +695,18 @@ void f_aws1_ui::ui_handle_menu()
 		}
 		m_inst.ctrl_src = m_menu_acs;
 		m_mode = m_menu_mode;
+
+		if (m_ch_ap_inst){
+			e_ap_mode ap_mode = m_ch_ap_inst->get_mode();
+			if (ap_mode != m_menu_ap_mode){
+				m_ch_ap_inst->set_mode(m_menu_ap_mode);
+				long long t;
+				float lat, lon, alt, galt;
+				m_state->get_position(t, lat, lon, alt, galt);
+				m_ch_ap_inst->set_stay_pos((float)(lat * (PI / 180)), 
+					(float)(lon * (PI / 180)));
+			}
+		}
 		m_ui_menu = false;
 	}
 
@@ -681,12 +727,15 @@ void f_aws1_ui::ui_handle_menu()
 			m_menu_acs = (e_aws1_ctrl_src) ((m_menu_acs + ACS_NONE - 1) % ACS_NONE);
 			break;
 		case 1:
-			m_imv = (e_imv) ((m_imv + IMV_UNDEF - 1) % IMV_UNDEF);
+			m_menu_ap_mode = (e_ap_mode)((m_menu_ap_mode + EAP_NONE - 1) % EAP_NONE);
 			break;
 		case 2:
-			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + AUM_UNDEF - 1) % AUM_UNDEF);
+			m_imv = (e_imv) ((m_imv + IMV_UNDEF - 1) % IMV_UNDEF);
 			break;
 		case 3:
+			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + AUM_UNDEF - 1) % AUM_UNDEF);
+			break;
+		case 4:
 			m_quit = !m_quit;
 			break;
 		}
@@ -699,12 +748,15 @@ void f_aws1_ui::ui_handle_menu()
 			m_menu_acs = (e_aws1_ctrl_src) ((m_menu_acs + 1) % ACS_NONE);
 			break;
 		case 1:
-			m_imv = (e_imv)((m_imv + 1) % IMV_UNDEF);
+			m_menu_ap_mode = (e_ap_mode)((m_menu_ap_mode + 1) % EAP_NONE);
 			break;
 		case 2:
-			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + 1) % AUM_UNDEF);
+			m_imv = (e_imv)((m_imv + 1) % IMV_UNDEF);
 			break;
 		case 3:
+			m_menu_mode = (e_aws1_ui_mode) ((m_menu_mode + 1) % AUM_UNDEF);
+			break;
+		case 4:
 			m_quit = !m_quit;
 			break;
 		}
