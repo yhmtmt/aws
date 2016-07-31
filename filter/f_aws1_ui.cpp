@@ -532,7 +532,7 @@ void f_aws1_ui::ui_show_sys_state()
 
 	snprintf(str, 32, "CTRL: %8s", str_aws1_ctrl_src[m_stat.ctrl_src]);
 	x += wfont;
-	float y = (float)(yorg - 2 * hfont);
+	float y = (float)(yorg - 1.5 * hfont);
 	drawGlText(x, y, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 
 	if (m_ch_ap_inst){
