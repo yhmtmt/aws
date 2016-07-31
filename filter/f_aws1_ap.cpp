@@ -111,7 +111,7 @@ bool f_aws1_ap::proc()
 				cursor();
 				break;
 			case EAP_STAY:
-				cursor();
+			  stay(sog, cog);
 				break;
 			case EAP_WP:
 				wp(sog, cog);
@@ -266,4 +266,9 @@ void f_aws1_ap::stay(const float sog, const float cog)
 	m_meng = (float)min(m_meng, m_meng_max);
 	m_meng = (float)max(m_meng, m_meng_min);
 
+	if(m_verb){
+	  float lat, lon;
+	  m_ap_inst->get_stay_pos(lat, lon);
+	  cout << "ap stay: lat " << lat << " lon " << lon << endl;
+	}
 }

@@ -78,7 +78,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("ch_img2", (ch_base**)&m_ch_img2, typeid(ch_image_ref).name(), "Second Image channel.");
   register_fpar("ch_disp", (ch_base**)&m_ch_disp, typeid(ch_image_ref).name(), "Disparity image between ch_img and ch_img2");
   register_fpar("ch_obst", (ch_base**)&m_ch_obst, typeid(ch_obst).name(), "Obstacle channel.");
-  register_fpar("ch_inst", (ch_base**)&m_ch_ap_inst, typeid(ch_aws1_ap_inst).name(), "Autopilot instruction channel");
+  register_fpar("ch_ap_inst", (ch_base**)&m_ch_ap_inst, typeid(ch_aws1_ap_inst).name(), "Autopilot instruction channel");
   register_fpar("flip_img_x", &m_img_x_flip, "Image in ch_img is fliped in x direction.");
   register_fpar("flip_img_y", &m_img_y_flip, "Image in ch_img is fliped in y direction.");
   register_fpar("flip_img2_x", &m_img2_x_flip, "Image in ch_img is fliped in x direction.");
@@ -622,7 +622,7 @@ void f_aws1_ui::ui_show_menu()
 	drawGlText(x, y, items[ifocus], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
 	if (m_ch_ap_inst)
-		drawGlText(xv, y, str_aws1_ap_mode[m_ch_ap_inst->get_mode()], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
+		drawGlText(xv, y, str_aws1_ap_mode[m_menu_ap_mode], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 	else
 		drawGlText(xv, y, str_aws1_ap_mode[EAP_WP], 0, g, 0, alpha_txt, GLUT_BITMAP_8_BY_13);
 
@@ -712,12 +712,12 @@ void f_aws1_ui::ui_handle_menu()
 
 	if(m_js.edx & s_jc_u3613m::EB_EVDOWN || m_js.tdx > 60){
 		m_js.tdx = 0;
-		m_menu_focus = (m_menu_focus + 1 ) % 4;
+		m_menu_focus = (m_menu_focus + 1 ) % 5;
 	}
 
 	if(m_js.eux & s_jc_u3613m::EB_EVDOWN || m_js.tux > 60){
 		m_js.tux = 0;
-		m_menu_focus = (m_menu_focus + 3 ) % 4;
+		m_menu_focus = (m_menu_focus + 4 ) % 5;
 	}
 
 	if(m_js.elx & s_jc_u3613m::EB_EVDOWN || m_js.tlx > 60){
