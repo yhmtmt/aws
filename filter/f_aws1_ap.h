@@ -38,7 +38,7 @@ protected:
 	bool m_verb;
 
 	float m_meng, m_seng, m_rud;
-	float m_smax;
+	float m_smax, m_smin;
 	float m_meng_max, m_meng_min;
 	float m_seng_max, m_seng_min;
 
@@ -56,8 +56,8 @@ protected:
 	float m_ssmax; // maximum speed
 	float m_dssmax; //distance maximum speed allowed
 
-	void wp(const float sog, const float cog);
-	void stay(const float sog, const float cog);
+	void wp(const float sog, const float cog, const float yaw);
+	void stay(const float sog, const float cog, const float yaw);
 	void cursor();
 
 public:

@@ -35,7 +35,7 @@ using namespace cv;
 
 f_aws1_ap::f_aws1_ap(const char * name) : f_base(name), m_state(NULL), m_ctrl_inst(NULL), m_ctrl_stat(NULL), m_obst(NULL),
 m_ap_inst(NULL), m_verb(false),
-m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
+m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_smin(3), m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
 	m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
 	m_cdiff(0.f), m_sdiff(0.f), m_dcdiff(0.f), m_icdiff(0.f), m_dsdiff(0.f), m_isdiff(0.f),
 	m_ssmax(3), m_dssmax(30)
@@ -52,7 +52,7 @@ m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_meng_max(200)
 	register_fpar("seng", &m_inst.seng_aws, "Sub engine value");
 
 	register_fpar("smax", &m_smax, "Maximum speed in knot");
-
+	register_fpar("smin", &m_smin, "Minimum speed in knot");
 	register_fpar("meng_max", &m_meng_max, "The maximum value for engine control.");
 	register_fpar("meng_min", &m_meng_min, "The minimum value for engine control.");
 	register_fpar("seng_max", &m_seng_max, "The maximum value for engine control.");
@@ -65,6 +65,9 @@ m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_meng_max(200)
 	register_fpar("ps", &m_ps, "Coefficient P in the speed control with PID.");
 	register_fpar("is", &m_is, "Coefficient I in the speed control with PID.");
 	register_fpar("ds", &m_ds, "Coefficient D in the speed control with PID.");
+
+	register_fpar("ssmax", &m_ssmax, "Maximum speed for stay mode.");
+	register_fpar("dssmax", &m_dssmax, "Distance allows maximum speed in stay mode.");
 }
 
 f_aws1_ap::~f_aws1_ap()
@@ -82,7 +85,7 @@ void f_aws1_ap::destroy_run()
 
 bool f_aws1_ap::proc()
 {
-	float cog, sog;
+	float cog, sog, yaw;
 	if(!m_state){
 		return false;
 	}
@@ -97,12 +100,16 @@ bool f_aws1_ap::proc()
 	Point3f Porg;
 	Rorg = m_state->get_enu_rotation(t);
 	m_state->get_position_ecef(t, Porg.x, Porg.y, Porg.z);
+	{
+		float roll, pitch;
+		m_state->get_attitude(t, roll, pitch, yaw);
+	}
 
 	m_ctrl_stat->get(stat);
 	if(stat.ctrl_src == ACS_AP1)
 	{	
 		if (!m_ap_inst){
-			wp(sog, cog);
+			wp(sog, cog, yaw);
 		}
 		else{
 			e_ap_mode mode = m_ap_inst->get_mode();
@@ -111,10 +118,10 @@ bool f_aws1_ap::proc()
 				cursor();
 				break;
 			case EAP_STAY:
-			  stay(sog, cog);
+			  stay(sog, cog, yaw);
 				break;
 			case EAP_WP:
-				wp(sog, cog);
+				wp(sog, cog, yaw);
 				break;
 			}
 		}
@@ -138,7 +145,7 @@ bool f_aws1_ap::proc()
 }
 
 
-void f_aws1_ap::wp(float sog, float cog)
+void f_aws1_ap::wp(const float sog, const float cog, const float yaw)
 {
 	m_wp->lock();
 	if (m_wp->is_finished()){
@@ -148,26 +155,31 @@ void f_aws1_ap::wp(float sog, float cog)
 		m_icdiff = m_isdiff = 0.;
 	}
 	else{
+		float cy = (float)((cog - yaw) * PI / 180);
+
 		s_wp & wp = m_wp->get_next_wp();
 		float d = 0.;
 		float cdiff = 0;
 
 		m_wp->get_diff(d, cdiff);
 		cdiff *= (float)(1. / 180.); // normalize
-
-		float sdiff = (float)(m_smax - sog);
-		sdiff *= (float)(1. / m_smax);
-
 		m_dcdiff = (float)(cdiff - m_cdiff);
-		m_dsdiff = (float)(sdiff - m_sdiff);
 		m_icdiff += cdiff;
-		m_isdiff += sdiff;
 		m_cdiff = cdiff;
-		m_sdiff = sdiff;
+
 		m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
-		m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
 		m_rud = (float)min(m_rud, 255.f);
 		m_rud = (float)max(m_rud, 0.f);
+
+		float stgt = (float)((m_smax - m_smin) *(1.0 - abs(m_rud - 127.) * (1 / 127.)) + m_smin);
+		float sdiff = (float)(stgt - sog);
+		sdiff *= (float)(1. / stgt);
+
+		m_dsdiff = (float)(sdiff - m_sdiff);
+		m_isdiff += sdiff;
+		m_sdiff = sdiff;
+
+		m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
 		m_meng = (float)min(m_meng, m_meng_max);
 		m_meng = (float)max(m_meng, m_meng_min);
 		if (m_verb){
@@ -183,20 +195,18 @@ void f_aws1_ap::cursor()
 {
 }
 
-void f_aws1_ap::stay(const float sog, const float cog)
+void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
 {
-	float myaw; // magnetic yaw
 	{ // updating relative position of the stay point.
 		long long t;
 		Mat Rorg;
-		float xorg, yorg, zorg, roll, pitch;
+		float xorg, yorg, zorg;
 		Rorg = m_state->get_enu_rotation(t);
 		m_state->get_position_ecef(t, xorg, yorg, zorg);
-		m_state->get_attitude(t, roll, pitch, myaw);
 		m_ap_inst->update_pos_rel(Rorg, xorg, yorg, zorg);
 	}
 
-	float cy = (float)((cog - myaw) * PI / 180);
+	float cy = (float)((cog - yaw) * PI / 180);
 	float ysog = cos(cy) * sog; // the speed in yaw direction
 
 	float rx, ry, d, dir;
@@ -211,7 +221,7 @@ void f_aws1_ap::stay(const float sog, const float cog)
 	}
 	cdiff *= (float)(1. / 180.);
 
-	float ydiff = (float)(dir - myaw);
+	float ydiff = (float)(dir - yaw);
 	if (abs(ydiff) > 180.){
 		if (ydiff < 0)
 			ydiff += 360.;
@@ -223,18 +233,9 @@ void f_aws1_ap::stay(const float sog, const float cog)
 	m_iydiff += ydiff;
 	m_ydiff = ydiff;
 
-	float sdiff = (float)(m_ssmax - ysog);
-	sdiff *= (float)(1. / m_ssmax);
-
-	m_dsdiff = (float)(sdiff - m_sdiff);
-	m_isdiff += sdiff;
-	m_sdiff = sdiff;
-	m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
-	m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
-	m_rud = (float)min(m_rud, 255.f);
-	m_rud = (float)max(m_rud, 0.f);
-	m_meng = (float)min(m_meng, m_meng_max);
-	m_meng = (float)max(m_meng, m_meng_min);
+	m_dcdiff = (float)(cdiff - m_cdiff);
+	m_icdiff += cdiff;
+	m_cdiff = cdiff;
 
 	// ssmax is allowed in d is calculated by linear scaling.
 	float ssmax = m_ssmax * (min(d, m_dssmax)) / m_dssmax;
@@ -246,7 +247,7 @@ void f_aws1_ap::stay(const float sog, const float cog)
 		m_isdiff += sdiff;
 		m_sdiff = sdiff;
 
-		m_rud = (float)((m_pc * m_ydiff + m_ic * m_iydiff + m_dc * m_dydiff) * 255. + 127.);
+		m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
 		m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
 		m_rud = (float)min(m_rud, 255.f);
 		m_rud = (float)max(m_rud, 0.f);
@@ -258,7 +259,7 @@ void f_aws1_ap::stay(const float sog, const float cog)
 		m_isdiff += sdiff;
 		m_sdiff = sdiff;
 
-		m_rud = (float)((m_pc * m_ydiff + m_ic * m_iydiff + m_dc * m_dydiff) * 255. + 127.);
+		m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
 		m_meng = (float)(-(m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
 		m_rud = (float)min(m_rud, 255.f);
 		m_rud = (float)max(m_rud, 0.f);
