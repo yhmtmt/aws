@@ -38,7 +38,8 @@ m_ap_inst(NULL), m_verb(false),
 m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_smin(3), m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
 	m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
 	m_cdiff(0.f), m_sdiff(0.f), m_dcdiff(0.f), m_icdiff(0.f), m_dsdiff(0.f), m_isdiff(0.f),
-	m_ssmax(3), m_dssmax(30)
+					  m_ssmax(3), m_dssmax(30), m_meng_max_stay(167), m_meng_min_stay(87), m_rud_max_stay(191), m_rud_min_stay(63),
+m_pc_s(0.1f), m_ic_s(0.1f), m_dc_s(0.1f), m_ps_s(0.1f), m_is_s(0.1f), m_ds_s(0.1f)
 {
 	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
 	register_fpar("ch_ctrl_inst", (ch_base**)&m_ctrl_inst, typeid(ch_aws1_ctrl_inst).name(), "Ctrl instruction channel");
@@ -68,6 +69,19 @@ m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_smin(3), m_me
 
 	register_fpar("ssmax", &m_ssmax, "Maximum speed for stay mode.");
 	register_fpar("dssmax", &m_dssmax, "Distance allows maximum speed in stay mode.");
+	register_fpar("meng_max_stay", &m_meng_max_stay, "Main engine maximum output in stay mode.");
+	register_fpar("meng_min_stay", &m_meng_min_stay, "Main engine minimum output in stay mode.");
+	register_fpar("rud_max_stay", &m_rud_max_stay, "Rudder maximum output in stay mode.");
+	register_fpar("rud_min_stay", &m_rud_min_stay, "Rudder minimum output in stay mode.");
+
+	register_fpar("pc_s", &m_pc, "Coefficient P in the course control with PID in stay mode.");
+	register_fpar("ic_s", &m_ic, "Coefficient I in the course control with PIDD in stay mode..");
+	register_fpar("dc_s", &m_dc, "Coefficient D in the course control with PID D in stay mode..");
+
+	register_fpar("ps_s", &m_ps, "Coefficient P in the speed control with PIDD in stay mode..");
+	register_fpar("is_s", &m_is, "Coefficient I in the speed control with PIDD in stay mode..");
+	register_fpar("ds_s", &m_ds, "Coefficient D in the speed control with PIDD in stay mode..");
+
 }
 
 f_aws1_ap::~f_aws1_ap()
@@ -247,29 +261,32 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
 		m_isdiff += sdiff;
 		m_sdiff = sdiff;
 
-		m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
-		m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
-		m_rud = (float)min(m_rud, 255.f);
-		m_rud = (float)max(m_rud, 0.f);
+		m_rud = (float)((m_pc_s * m_cdiff + m_ic_s * m_icdiff + m_dc_s * m_dcdiff) * 255. + 127.);
+		m_meng = (float)((m_ps_s * m_sdiff + m_is_s * m_isdiff + m_ds_s * m_dsdiff) * 255. + 127.);
+		m_rud = (float)min(m_rud, m_rud_max_stay);
+		m_rud = (float)max(m_rud, m_rud_min_stay);
 	}
 	else{ // backward
 		float sdiff = (float)(ssmax + ysog);
-		sdiff *= (float)(1. / ssmax);
+		sdiff *= (float)(-1. / ssmax);
 		m_dsdiff = (float)(sdiff - m_sdiff);
 		m_isdiff += sdiff;
 		m_sdiff = sdiff;
 
-		m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
-		m_meng = (float)(-(m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
-		m_rud = (float)min(m_rud, 255.f);
-		m_rud = (float)max(m_rud, 0.f);
+		m_rud = (float)((m_pc_s * m_cdiff + m_ic_s * m_icdiff + m_dc_s * m_dcdiff) * 255. + 127.);
+		m_meng = (float)((m_ps_s * m_sdiff + m_is_s * m_isdiff + m_ds_s * m_dsdiff) * 255. + 127.);
+		m_rud = (float)min(m_rud, m_rud_max_stay);
+		m_rud = (float)max(m_rud, m_rud_min_stay);
 	}
-	m_meng = (float)min(m_meng, m_meng_max);
-	m_meng = (float)max(m_meng, m_meng_min);
+	m_meng = (float)min(m_meng, m_meng_max_stay);
+	m_meng = (float)max(m_meng, m_meng_min_stay);
 
 	if(m_verb){
 	  float lat, lon;
 	  m_ap_inst->get_stay_pos(lat, lon);
-	  cout << "ap stay: lat " << lat << " lon " << lon << endl;
+	  cout << "s d " << m_dsdiff << " i " << m_isdiff << " p " << m_sdiff <<endl;
+	  cout << "r d " << m_dcdiff << " i " << m_icdiff << " p " << m_cdiff << endl;
+	  
+	  cout << "ydiff " << ydiff << endl;
 	}
 }

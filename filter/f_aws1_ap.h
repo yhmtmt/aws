@@ -53,9 +53,12 @@ protected:
 	float m_ydiff;
 	float m_dydiff;
 	float m_iydiff;
+	float m_meng_max_stay, m_meng_min_stay;
+	float m_rud_max_stay, m_rud_min_stay;
 	float m_ssmax; // maximum speed
 	float m_dssmax; //distance maximum speed allowed
-
+	float m_pc_s, m_ic_s, m_dc_s;
+	float m_ps_s, m_is_s, m_ds_s;
 	void wp(const float sog, const float cog, const float yaw);
 	void stay(const float sog, const float cog, const float yaw);
 	void cursor();

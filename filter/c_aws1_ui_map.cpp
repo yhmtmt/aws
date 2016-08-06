@@ -365,7 +365,6 @@ void c_aws1_ui_map::draw_waypoints(const float wfont, const float lw)
 						 drawGlPolygon2Df(pts, 36, pos, 0, 1.0, 0, 0, lw);
 						 drawGlLine2Df(pos.x, pos.y, offset.x, offset.y, 0, 1.0, 0., 1., lw);
 						 char str[32];
-						 pwp->get_diff(d, dir);
 						 snprintf(str, 32, "D%04.1f,C%04.1f", d, dir);
 						 drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);
 					 }
