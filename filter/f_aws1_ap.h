@@ -37,17 +37,16 @@ protected:
 
 	bool m_verb;
 
-	float m_meng, m_seng, m_rud;
-	float m_smax, m_smin;
-	float m_meng_max, m_meng_min;
-	float m_seng_max, m_seng_min;
-
 	// for wp mode
 	float m_cdiff, m_sdiff; // differences to the target values of course and speed.
 	float m_dcdiff, m_dsdiff; // difference of cdiff and sdiff
 	float m_icdiff, m_isdiff; // integral of cdiff and sdiff
 	float m_pc, m_ic, m_dc;
 	float m_ps, m_is, m_ds;
+	float m_meng, m_seng, m_rud;
+	float m_smax, m_smin;
+	float m_meng_max, m_meng_min;
+	float m_seng_max, m_seng_min;
 
 	// for stay mode
 	float m_ydiff;
@@ -59,6 +58,7 @@ protected:
 	float m_dssmax; //distance maximum speed allowed
 	float m_pc_s, m_ic_s, m_dc_s;
 	float m_ps_s, m_is_s, m_ds_s;
+
 	void wp(const float sog, const float cog, const float yaw);
 	void stay(const float sog, const float cog, const float yaw);
 	void cursor();

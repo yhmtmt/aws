@@ -33,12 +33,16 @@ using namespace cv;
 
 #include "f_aws1_ap.h"
 
-f_aws1_ap::f_aws1_ap(const char * name) : f_base(name), m_state(NULL), m_ctrl_inst(NULL), m_ctrl_stat(NULL), m_obst(NULL),
+f_aws1_ap::f_aws1_ap(const char * name) : f_base(name), 
+m_state(NULL), m_ctrl_inst(NULL), m_ctrl_stat(NULL), m_obst(NULL),
 m_ap_inst(NULL), m_verb(false),
-m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), m_smax(10), m_smin(3), m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
-	m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
-	m_cdiff(0.f), m_sdiff(0.f), m_dcdiff(0.f), m_icdiff(0.f), m_dsdiff(0.f), m_isdiff(0.f),
-					  m_ssmax(3), m_dssmax(30), m_meng_max_stay(167), m_meng_min_stay(87), m_rud_max_stay(191), m_rud_min_stay(63),
+m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), 
+m_smax(10), m_smin(3), 
+m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
+m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
+m_cdiff(0.f), m_sdiff(0.f), m_dcdiff(0.f), m_icdiff(0.f), m_dsdiff(0.f), m_isdiff(0.f),
+m_ssmax(3), m_dssmax(30), m_meng_max_stay(167), m_meng_min_stay(87), 
+m_rud_max_stay(191), m_rud_min_stay(63),
 m_pc_s(0.1f), m_ic_s(0.1f), m_dc_s(0.1f), m_ps_s(0.1f), m_is_s(0.1f), m_ds_s(0.1f)
 {
 	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
@@ -75,12 +79,12 @@ m_pc_s(0.1f), m_ic_s(0.1f), m_dc_s(0.1f), m_ps_s(0.1f), m_is_s(0.1f), m_ds_s(0.1
 	register_fpar("rud_min_stay", &m_rud_min_stay, "Rudder minimum output in stay mode.");
 
 	register_fpar("pc_s", &m_pc, "Coefficient P in the course control with PID in stay mode.");
-	register_fpar("ic_s", &m_ic, "Coefficient I in the course control with PIDD in stay mode..");
-	register_fpar("dc_s", &m_dc, "Coefficient D in the course control with PID D in stay mode..");
+	register_fpar("ic_s", &m_ic, "Coefficient I in the course control with PID in stay mode..");
+	register_fpar("dc_s", &m_dc, "Coefficient D in the course control with PID in stay mode..");
 
-	register_fpar("ps_s", &m_ps, "Coefficient P in the speed control with PIDD in stay mode..");
-	register_fpar("is_s", &m_is, "Coefficient I in the speed control with PIDD in stay mode..");
-	register_fpar("ds_s", &m_ds, "Coefficient D in the speed control with PIDD in stay mode..");
+	register_fpar("ps_s", &m_ps, "Coefficient P in the speed control with PID in stay mode..");
+	register_fpar("is_s", &m_is, "Coefficient I in the speed control with PID in stay mode..");
+	register_fpar("ds_s", &m_ds, "Coefficient D in the speed control with PID in stay mode..");
 
 }
 
@@ -196,6 +200,7 @@ void f_aws1_ap::wp(const float sog, const float cog, const float yaw)
 		m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
 		m_meng = (float)min(m_meng, m_meng_max);
 		m_meng = (float)max(m_meng, m_meng_min);
+
 		if (m_verb){
 			printf("ap rud=%3.1f c=%2.2f dc=%2.2f ic=%2.2f", m_rud, m_cdiff, m_dcdiff, m_icdiff);
 			printf(" meg=%3.1f s=%2.2f ds=%2.2f is=%2.2f \n", m_meng, m_sdiff, m_dsdiff, m_isdiff);
@@ -233,7 +238,13 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
 		else
 			cdiff -= 360.;
 	}
-	cdiff *= (float)(1. / 180.);
+
+	if (abs(cdiff) > 90.){
+		if (cdiff < 0)
+			cdiff += 180.;
+		else
+			cdiff -= 180.;
+	}
 
 	float ydiff = (float)(dir - yaw);
 	if (abs(ydiff) > 180.){
@@ -247,16 +258,18 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
 	m_iydiff += ydiff;
 	m_ydiff = ydiff;
 
-	m_dcdiff = (float)(cdiff - m_cdiff);
-	m_icdiff += cdiff;
-	m_cdiff = cdiff;
-
 	// ssmax is allowed in d is calculated by linear scaling.
 	float ssmax = m_ssmax * (min(d, m_dssmax)) / m_dssmax;
 
 	if (ydiff < 0.5 && ydiff > -0.5){ // forward			
+		cdiff *= (float)(1. / 90.);
+
+		m_dcdiff = (float)(cdiff - m_cdiff);
+		m_icdiff += cdiff;
+		m_cdiff = cdiff;
+
 		float sdiff = (float)(ssmax - ysog);
-		sdiff *= (float)(1. / ssmax);
+		sdiff *= (float)(1. / m_ssmax);
 		m_dsdiff = (float)(sdiff - m_sdiff);
 		m_isdiff += sdiff;
 		m_sdiff = sdiff;
@@ -267,8 +280,14 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
 		m_rud = (float)max(m_rud, m_rud_min_stay);
 	}
 	else{ // backward
+		cdiff *= (float)(-1. / 90.);
+
+		m_dcdiff = (float)(cdiff - m_cdiff);
+		m_icdiff += cdiff;
+		m_cdiff = cdiff;
+
 		float sdiff = (float)(ssmax + ysog);
-		sdiff *= (float)(-1. / ssmax);
+		sdiff *= (float)(-1. / m_ssmax);
 		m_dsdiff = (float)(sdiff - m_sdiff);
 		m_isdiff += sdiff;
 		m_sdiff = sdiff;
@@ -285,8 +304,7 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
 	  float lat, lon;
 	  m_ap_inst->get_stay_pos(lat, lon);
 	  cout << "s d " << m_dsdiff << " i " << m_isdiff << " p " << m_sdiff <<endl;
-	  cout << "r d " << m_dcdiff << " i " << m_icdiff << " p " << m_cdiff << endl;
-	  
+	  cout << "r d " << m_dcdiff << " i " << m_icdiff << " p " << m_cdiff << endl;	  
 	  cout << "ydiff " << ydiff << endl;
 	}
 }
