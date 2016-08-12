@@ -730,17 +730,13 @@ void f_lcc::init_mm_data()
 	switch(m_img.type()){
 	case CV_8UC1:
 	case CV_8UC3:	
-		m_min.create(m_img.rows, m_img.cols, CV_8UC1);
-		m_max.create(m_img.rows, m_img.cols, CV_8UC1);
-		m_min = 255;
-		m_max = 0;
+	  m_min = Mat(m_img.rows, m_img.cols, CV_8UC1, Scalar(255));
+	  m_max = Mat(m_img.rows, m_img.cols, CV_8UC1, Scalar(0));
 		break;
 	case CV_16UC1:
 	case CV_16UC3:
-		m_min.create(m_img.rows, m_img.cols, CV_16UC1);
-		m_max.create(m_img.rows, m_img.cols, CV_16UC1);
-		m_min = USHRT_MAX;
-		m_max = 0;
+	  m_min = Mat(m_img.rows, m_img.cols, CV_16UC1, Scalar(USHRT_MAX));
+	  m_max = Mat(m_img.rows, m_img.cols, CV_16UC1, Scalar(0));
 		break;
 	}
 }
