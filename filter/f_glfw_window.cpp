@@ -70,26 +70,26 @@ bool f_glfw_window::init_run()
   }
 
   m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, m_name, NULL, NULL);
+  if (!pwin())
+    {
+      cerr << "Failed to create GLFW window." << endl;
+      cerr << "Window name = " << m_name << " " << m_sz_win.width << " x " << m_sz_win.height << endl;
+      glfwTerminate();
+      return false;
+    }
   
   m_map_glfwin.insert(pair<GLFWwindow*, f_glfw_window*>(m_pwin, this));
-
-	if (!pwin())
-	{
-	  cerr << "Failed to create GLFW window." << endl;
-	  glfwTerminate();
-	  return false;
-	}
-
-	glfwMakeContextCurrent(pwin());
-
-	glfwSetKeyCallback(pwin(), key_callback);
-	glfwSetCursorPosCallback(pwin(), cursor_position_callback);
-	glfwSetMouseButtonCallback(pwin(), mouse_button_callback);
-	glfwSetScrollCallback(pwin(), scroll_callback);
-	glfwSetErrorCallback(err_cb);
-
-	glfwSetWindowTitle(pwin(), m_name);
-
+  
+  glfwMakeContextCurrent(pwin());
+  
+  glfwSetKeyCallback(pwin(), key_callback);
+  glfwSetCursorPosCallback(pwin(), cursor_position_callback);
+  glfwSetMouseButtonCallback(pwin(), mouse_button_callback);
+  glfwSetScrollCallback(pwin(), scroll_callback);
+  glfwSetErrorCallback(err_cb);
+  
+  glfwSetWindowTitle(pwin(), m_name);
+  
   GLenum err;
   if((err = glewInit()) != GLEW_OK){
     cerr << "Failed to initialize GLEW." << endl;

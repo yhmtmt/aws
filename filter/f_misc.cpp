@@ -1352,6 +1352,9 @@ bool f_debayer::proc(){
 		break;
 	}
 
+	if(m_verb){
+	  cerr << "Image " << img.cols << "x" << img.rows << " at t=" << timg << " is converted into " << bgr.cols << "x" << bgr.rows << " BGR image." << endl;
+	}
 	m_pout->set_img(bgr, timg);
 	return true;
 }

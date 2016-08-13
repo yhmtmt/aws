@@ -168,6 +168,7 @@ public:
 class f_debayer: public f_misc
 {
 protected:
+  bool m_verb;
 	ch_image * m_pin, * m_pout;
 	long long m_timg;
 	enum e_bayer_type{
@@ -177,11 +178,12 @@ protected:
 
 	char m_type_str[16];
 public:
-	f_debayer(const char * name): f_misc(name), m_pin(NULL), m_pout(NULL), m_type(BG8), m_timg(-1)
+ f_debayer(const char * name): f_misc(name), m_pin(NULL), m_pout(NULL), m_type(BG8), m_timg(-1), m_verb(false)
 	{
 		register_fpar("bayer", (int*)&m_type,
 			(int) UNKNOWN, m_strBayer,
 			"Type of bayer pattern. ");
+		register_fpar("verb", &m_verb, "Verbose for Debug");
 	}
 
 	virtual bool init_run()
