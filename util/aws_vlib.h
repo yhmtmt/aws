@@ -1391,7 +1391,7 @@ struct s_sgbm_par{
 	int mode;
 	s_sgbm_par() :m_update(false), m_bsg(true), minDisparity(0), numDisparities(64), blockSize(3),
 		disp12MaxDiff(1), preFilterCap(0), uniquenessRatio(10), speckleWindowSize(100),
-		speckleRange(32), mode(StereoSGBM::MODE_SGBM)
+	  speckleRange(32), mode(0/*StereoSGBM::MODE_SGBM*/)
 	{
 		P1 = 8 * blockSize * blockSize;
 		P2 = P1 * 4;

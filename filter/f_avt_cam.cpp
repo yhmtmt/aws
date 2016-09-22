@@ -1137,9 +1137,9 @@ bool f_avt_cam::s_cam_params::config_param_dynamic()
 		err = PvAttrEnumGet(m_hcam, "SyncOut4Mode", buf, 64, NULL);
 		if(err != ePvErrSuccess){
 			cerr << "Failed to get SyncOut4Mode" << endl;
-			return false;
+		}else{
+		  m_SyncOut4Mode = getSyncOutMode(buf);
 		}
-		m_SyncOut4Mode = getSyncOutMode(buf);
 	}else{
 		err = PvAttrEnumSet(m_hcam, "SyncOut4Mode", strSyncOutMode[m_SyncOut4Mode]);
 		if(err != ePvErrSuccess){
@@ -1201,9 +1201,9 @@ bool f_avt_cam::s_cam_params::config_param_dynamic()
 		err = PvAttrEnumGet(m_hcam, "SyncOut4Invert", buf, 64, NULL);
 		if(err != ePvErrSuccess){
 			cerr << "Failed to get SyncOut4Invert" << endl;
-			return false;
+		}else {
+		  m_SyncOut4Invert = getSyncOutInvert(buf);
 		}
-		m_SyncOut4Invert = getSyncOutInvert(buf);
 	}else{
 		err = PvAttrEnumSet(m_hcam, "SyncOut4Invert", strSyncOutInvert[m_SyncOut4Invert]);
 		if(err != ePvErrSuccess){
