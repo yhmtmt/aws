@@ -208,14 +208,13 @@ f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name),
 	m_bFishEye(false), m_bcalib_recompute_extrinsic(false), m_bcalib_check_cond(false),
 	m_bcalib_fix_skew(false), m_bcalib_fix_intrinsic(false),
 	m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10), m_rep_avg(1.0),
-	m_vm(VM_CAM), 
 	m_bshow_chsbd_all(true), m_bshow_chsbd_sel(true), m_sel_chsbd(-1), m_bshow_chsbd_density(true),
-	m_bsave(false), m_bload(false), m_bdel(false), m_bdet(true), m_bcalib(true),
-	m_vb_cam(GL_INVALID_VALUE), m_ib_cam(GL_INVALID_VALUE)
+	m_bsave(false), m_bload(false), m_bundist(false), m_bdel(false), m_bdet(true), m_bcalib(true)
 {
-	m_fcampar[0] = '\0';
+	m_fcampar[0] = m_fcbdet[0] = '\0';
 
 	register_fpar("fchsbd", m_model_chsbd.fname, 1024, "File path for the chessboard model.");
+	register_fpar("fcbdet", m_fcbdet, 1024, "File path for detected chessboard.");
 	register_fpar("nchsbd", &m_num_chsbds, "Number of chessboards stocked.");
 	register_fpar("fcampar", m_fcampar, "File path of the camera parameter.");
 	register_fpar("Wgrid", &m_hist_grid.width, "Number of horizontal grid of the chessboard histogram.");
@@ -259,6 +258,14 @@ f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name),
 	register_fpar("fek3", (m_par.getCvDistFishEye() + 2), "k3 for fisheye");
 	register_fpar("fek4", (m_par.getCvDistFishEye() + 3), "k4 for fisheye");
 
+	// command
+	register_fpar("del", &m_bdel, "Delete selected chessboard.");
+	register_fpar("det", &m_bdet, "Detect Chessboard");
+	register_fpar("calib", &m_bcalib, "Calibrate.");
+	register_fpar("save", &m_bsave, "Save parameters.");
+	register_fpar("load", &m_bload, "Load parameters.");
+	register_fpar("undist", &m_bundist, "Undistort.");
+
 	pthread_mutex_init(&m_mtx, NULL);
 }
 
@@ -275,36 +282,25 @@ bool f_glfw_calib::init_run()
 	if(m_pin == NULL)
 		return false;
 
-	if(!f_glfw_window::init_run())
-		return false;
-
 	if(!m_model_chsbd.load()){
 		cerr << "Failed to setup chessboard model with the model file " << m_model_chsbd.fname << endl;
 		return false;
 	}
 
+	if (!f_glfw_window::init_run())
+		return false;
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 	m_objs.resize(m_num_chsbds, NULL);
 	m_score.resize(m_num_chsbds);
+	m_upt2d.resize(m_num_chsbds);
 	m_num_chsbds_det = 0;
 
 	m_dist_chsbd = Mat::zeros(m_hist_grid.height, m_hist_grid.width, CV_32SC1);
 
 	m_par.setFishEye(m_bFishEye);
-
-	// initialize camera model's color as transparent gray
-	for(int i = 0; i < 16; i++){
-		m_cam[i].r = m_cam[i].g = m_cam[i].b = 0.5;
-		m_cam[i].a = 0.25;
-		m_cam[i].nx = m_cam[i].ny = m_cam[i].nz = 0.;
-		m_cam[i].x = m_cam[i].y = m_cam[i].z = 0.;
-	}
-
-	for(int i = 0; i < 15; i++){
-		m_cam_idx[i] = i;
-	}
-	m_cam_idx[15] = 14;
-	m_cam_idx[16] = 15;
-	m_cam_idx[17] = 12;
 
 	return true;
 }
@@ -316,261 +312,195 @@ bool f_glfw_calib::proc()
 
 	long long timg;
 	Mat img = m_pin->get_img(timg);
+
 	if(img.empty())
 		return true;
+
 	if(m_timg == timg)
 		return true;
-	
-	{
-		// debugging code. I doubt that the window size specified in glfwCreateWindow is not 
-		// the same as the size of the frame buffer.
-		int w, h;
-		glfwGetFramebufferSize(pwin(), &w, &h);
-		if(m_sz_win.width != w || m_sz_win.height){
-			cerr << "Frame buffer size is different from given as the filter's parameter." << endl;
-		}
-	}
-	
+		
 	// if the detecting thread is not active, convert the image into a grayscale one, and invoke detection thread.
 	if(!m_bthact){
-		cvtColor(img, m_img_det, CV_RGB2GRAY);
-		pthread_create(&m_thdet, NULL, thdet, (void*) this);
+		m_bthact = true;
+
+		if (img.channels() != 3)
+			cvtColor(img, m_img_det, CV_RGB2GRAY);
+		else
+			m_img_det = img.clone();
+
+		pthread_create(&m_thwork, NULL, thwork, (void*) this);
 	}
 
-	if(!m_bsave){
-		pthread_mutex_lock(&m_mtx);
-		if(m_fcampar[0] == '\0' || !m_par.write(m_fcampar)){
-			cerr << "Failed to save camera parameters into " << m_fcampar << endl;
-		}
-		pthread_mutex_unlock(&m_mtx);
-		m_bsave = false;
+	// calculating contrast
+	calc_contrast(img);
+
+	if(m_bsave){
+		save();
 	}
 
-	if(!m_bload){
-		pthread_mutex_lock(&m_mtx);
-		if(m_fcampar[0] == '\0' || !m_par.read(m_fcampar)){
-			cerr << "Failed to load camera parameters from " << m_fcampar << endl;
-		}
-		pthread_mutex_unlock(&m_mtx);
-		m_bload = false;
+	if(m_bload){
+		load();
 	}
 
 	if(m_bdel){
-		if(m_sel_chsbd >= 0 && m_sel_chsbd < m_objs.size()){
-			pthread_mutex_lock(&m_mtx);
-			delete [] m_objs[m_sel_chsbd];
-			m_score[m_sel_chsbd] = s_chsbd_score();
-			for(;m_sel_chsbd >= 0; m_sel_chsbd--)
-				if(m_objs[m_sel_chsbd])
-					break;
-			m_num_chsbds_det--;
-			pthread_mutex_unlock(&m_mtx);
-		}
+		del();
+	}
+
+	if (m_bundist){
+		pthread_mutex_lock(&m_mtx);
+		remap(img, img, m_map1, m_map2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+		pthread_mutex_unlock(&m_mtx);
 	}
 
 	m_timg = timg;
 
-	if(m_vm == VM_CAM){
-		glRasterPos2i(-1, -1);
+	// the image is completely fitted to the screen
+	if (img.cols != m_sz_win.width || img.rows != m_sz_win.height){
+		Mat tmp;
+		resize(img, tmp, m_sz_win);
+		img = tmp;
+	}
+
+	glRasterPos2i(-1, -1);
+	if (img.channels() == 3){
 		cnvCVBGR8toGLRGB8(img);
 		glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
+	}
+	else{
+		cnvCVGRAY8toGLGRAY8(img);
+		glDrawPixels(img.cols, img.rows, GL_INTENSITY, GL_UNSIGNED_BYTE, img.data);
+	}
 
-		// For 2D rendering mode, the origin is set at left-bottom as (0, 0), clipping rectangle has the 
-		// width and height the same as the frame buffer size.
-		glViewport(0, 0, m_sz_win.width, m_sz_win.height);
-		glMatrixMode(GL_PROJECTION);
-		glLoadIdentity();
-		glOrtho(-1., -1., -1., 1., -1., 1.);		
-
-		// overlay chessboard if needed
-		if(m_bshow_chsbd_all){
-			for(int iobj = 0; iobj < m_objs.size(); iobj++){
-				drawCvChessboard(m_sz_win, m_objs[iobj]->pt2d, 1.0, 0.0, 0.0, 0.5, 3, 1);
-			}
-		}
-
-		if(m_bshow_chsbd_sel){
-			if(m_sel_chsbd < 0 || m_sel_chsbd >= m_objs.size()){
-				m_sel_chsbd = (int) m_objs.size() - 1;
-			}else{
-				drawCvChessboard(m_sz_win, m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
-			}
-		}
-
-		// overlay point density if needed
-		if(m_bshow_chsbd_density){
-			drawCvPointDensity(m_dist_chsbd, m_num_chsbds, m_hist_grid, 1.0, 0., 0., 128, 0);
-		}
-
-		// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
-		float hfont = (float)(24. / (float) img.rows);
-		float wfont = (float)(24. / (float) img.cols);
-		float x = wfont;
-		float y = hfont;
-		char buf[256];
-
-		// calculating chessboard's stats
-		double smax = 0., smin = DBL_MAX, savg = 0.;
-		for(int i = 0; i < m_num_chsbds; i++){
-			if(!m_objs[i])
+	// overlay chessboard if needed
+	if (m_bshow_chsbd_all){
+		for (int iobj = 0; iobj < m_objs.size(); iobj++){
+			if (!m_objs[iobj])
 				continue;
-
-			double s = m_score[i].tot;
-			smax = max(smax, s);
-			smin = min(smin, s);
-			savg += s;
-		}
-
-		savg /= (double) m_num_chsbds_det;
-
-		snprintf(buf, 255, "Nchsbd= %d/%d, Smax=%f Smin=%f Savg=%f Erep=%f ",
-			m_num_chsbds_det, m_num_chsbds_det, smax, smin, savg, m_rep_avg);
-		drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
-		y+= hfont;
-		
-		// indicating infromation about selected chessboard.
-		if(m_bshow_chsbd_sel && m_sel_chsbd >= 0 && m_sel_chsbd < m_num_chsbds && m_objs[m_sel_chsbd]){
-			snprintf(buf, 255, "Chessboard %d", m_sel_chsbd);
-			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
-			y+= hfont;
-
-			snprintf(buf, 255, "Score: %f (Crn: %f Sz %f Angl %f Erep %f)", 
-				m_score[m_sel_chsbd].tot, m_score[m_sel_chsbd].crn, m_score[m_sel_chsbd].sz, 
-				m_score[m_sel_chsbd].angl, m_score[m_sel_chsbd].rep);
-			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
-			y+= hfont;
-		}
-	}else{
-		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-		if(m_bcalib){
-			// setting projection matrix (Basically setting it the same as the camera parameter.)
-			glViewport(0, 0, m_sz_win.width, m_sz_win.height);
-			glMatrixMode(GL_PROJECTION);
-			glLoadIdentity();
-			double * pP = m_par.getCvPrj();
-
-			double fx = pP[0], fy = pP[1], cx = pP[2], cy = pP[3];
-			double w = m_img_det.cols, h = m_img_det.rows;
-			double left = cx / w, right = (1.0 - left);
-			double top = cy / h, bottom = (1.0 - top);
-
-			// the scene depth is set as 0.1 to 100 meter
-			glFrustum(-cx, w - cx, -h + cy, cy, 0.1, 100.);
-
-			GLfloat mobj[16];
-
-			// setting model-view matrix chessboards and camera
-			glMatrixMode(GL_MODELVIEW);
-			glLoadIdentity();
-			glTranslatef(m_trx, 0., m_trz);
-			glRotatef(m_thx, 1.0, 0., 0.);
-			glRotatef(m_thy, 0., 1., 0.);
-			for(int i = 0; i < m_num_chsbds; i++){				
-				if(!m_objs[i])
-					continue;
-
-				glPushMatrix();
-				Mat R = Mat(3, 3, CV_64FC1);
-				// object transformation
-				exp_so3(m_objs[i]->rvec.ptr<double>(), R.ptr<double>());
-				reformRtAsGl4x4(R, m_objs[i]->tvec, mobj);
-				// multiply cg-cam motion 
-				glMultMatrixf(mobj);
-
-				glPointSize(3);
-				glBegin(GL_POINTS);
-				for(int ipt = 0; ipt < m_model_chsbd.pts.size(); ipt++){
-					Point3f & pt = m_model_chsbd.pts[ipt];
-					glColor4f(1.0, 0, 0, 1.0);
-					glVertex3f(pt.x, pt.y, pt.z);
-				}
-				glEnd();
-				glPopMatrix();
-			}
-
-			glEnableClientState(GL_VERTEX_ARRAY);
-			glBindBuffer(GL_ARRAY_BUFFER, m_vb_cam);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ib_cam);
-			glInterleavedArrays(GL_C4F_N3F_V3F, 0, NULL);
-			glDrawElements(GL_TRIANGLES, sizeof(m_cam_idx), GL_UNSIGNED_INT, NULL);
-
-			glBindBuffer(GL_ARRAY_BUFFER, 0);
-			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
-		}else{// camera parameters have not been fixed yet. we cant render the objects.
+			drawCvChessboard(m_sz_win, m_objs[iobj]->pt2d, 0.5, 0.0, 0.0, 0.5, 3, 1);
 		}
 	}
+
+	if (m_bshow_chsbd_sel){
+		pthread_mutex_lock(&m_mtx);
+		if (m_objs[m_sel_chsbd])
+			drawCvChessboard(m_sz_win, m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
+		pthread_mutex_unlock(&m_mtx);
+	}
+
+	// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
+	float hfont = (float)(24. / (float)img.rows);
+	float wfont = (float)(24. / (float)img.cols);
+	float x = wfont;
+	float y = hfont;
+	char buf[256];
+
+	// calculating chessboard's stats
+	double smax = 0., smin = DBL_MAX, savg = 0.;
+	for (int i = 0; i < m_num_chsbds; i++){
+		if (!m_objs[i])
+			continue;
+
+		double s = m_score[i].tot;
+		smax = max(smax, s);
+		smin = min(smin, s);
+		savg += s;
+	}
+
+	savg /= (double)m_num_chsbds_det;
+
+	snprintf(buf, 255, "Nchsbd= %d/%d, Smax=%f Smin=%f Savg=%f Erep=%f Cnt=%f %s %s",
+		m_num_chsbds_det, m_num_chsbds_det, smax, smin, savg, m_rep_avg, m_contrast, 
+		m_bdet ? "det": "nop", m_bcalib ? "cal" : "nop");
+	drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+	y += hfont;
+
+	// indicating infromation about selected chessboard.
+	if (m_bshow_chsbd_sel && m_sel_chsbd >= 0 && m_sel_chsbd < m_num_chsbds && m_objs[m_sel_chsbd]){
+		snprintf(buf, 255, "Chessboard %d", m_sel_chsbd);
+		drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+		y += hfont;
+
+		snprintf(buf, 255, "Score: %f (Crn: %f Sz %f Angl %f Erep %f)",
+			m_score[m_sel_chsbd].tot, m_score[m_sel_chsbd].crn, m_score[m_sel_chsbd].sz,
+			m_score[m_sel_chsbd].angl, m_score[m_sel_chsbd].rep);
+		drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+		y += hfont;
+	}
+
 	glfwSwapBuffers(pwin());
 	glfwPollEvents();
 
 	return true;
 }
 
-void * f_glfw_calib::thdet(void * ptr)
+void * f_glfw_calib::thwork(void * ptr)
 {
 	f_glfw_calib * pclb = (f_glfw_calib*) ptr;
-	return pclb->_thdet();
+	if(pclb->m_bdet)
+		pclb->detect();
+	pclb->m_bdet = false;
+	if (pclb->m_bcalib)
+		pclb->calibrate();
+	pclb->m_bcalib = false;
+	pclb->m_bthact = false;
+
+	return NULL;
 }
 
-void * f_glfw_calib::_thdet()
+void * f_glfw_calib::detect()
 {
 	if(m_hist_grid.width != m_dist_chsbd.cols || 
 		m_hist_grid.height != m_dist_chsbd.rows)
 		refresh_chsbd_dist();
 
 	if(m_bdet){
+		// detect chessboard 
 		s_obj * pobj = m_model_chsbd.detect(m_img_det);
 		if(!pobj) 
 			return NULL;
 
-		// calculating score of the chessboard.
-		s_chsbd_score sc;
-		sc.rep = 1.0;
-		sc.crn = calc_corner_contrast_score(m_img_det, pobj->pt2d);
-		calc_size_and_angle_score(pobj->pt2d, sc.sz, sc.angl);
-
-		calc_tot_score(sc);
-
 		// replacing the chessboard if possible.
 		bool is_changed = false;
-		for(int i = 0; i < m_num_chsbds; i++){
-			if(m_objs[i] == NULL){
+		int iobj_worst = -1;
+		double sc_worst = DBL_MAX;
+		for (int i = 0; i < m_num_chsbds; i++){
+			if (m_objs[i] == NULL){
 				pthread_mutex_lock(&m_mtx);
 				m_objs[i] = pobj;
-				m_score[i] = sc;
-				add_chsbd_dist(pobj->pt2d);
+				m_upt2d[iobj_worst].clear();
 				is_changed = true;
-				m_num_chsbds++;
+				m_num_chsbds_det++;
 				pthread_mutex_unlock(&m_mtx);
 				break;
 			}
-
-			if(m_num_chsbds_det == m_num_chsbds && m_score[i].tot < sc.tot){
-				pthread_mutex_lock(&m_mtx);
-				s_obj * ptmp = pobj;
-				pobj = m_objs[i];
-				m_objs[i] = ptmp;
-				sub_chsbd_dist(pobj->pt2d);
-				add_chsbd_dist(ptmp->pt2d);
-				pthread_mutex_unlock(&m_mtx);
-				delete pobj;
-				is_changed = true;
-				break;
+			if (sc_worst > m_score[i].tot){
+				sc_worst = m_score[i].tot;
+				iobj_worst = i;
 			}
 		}
 
-		if(is_changed)
-			recalc_chsbd_dist_score();
-	}
+		if (!is_changed){// if there is no empty slot
+			pthread_mutex_lock(&m_mtx);
 
-	if(m_bcalib && m_num_chsbds == m_num_chsbds_det){
-		calibrate();
-		// after calibration camera object
-		pthread_mutex_lock(&m_mtx);
-		resetCameraModel();
-		pthread_mutex_unlock(&m_mtx);
+			s_obj * pobj_tmp = m_objs[iobj_worst];
+			double prev_tot_score = m_tot_score;
+			m_objs[iobj_worst] = pobj;
+			calc_chsbd_score();
+
+			if (prev_tot_score > m_tot_score){
+				m_objs[iobj_worst] = pobj_tmp;	
+				calc_chsbd_score();
+				delete pobj;
+			}
+			else {
+				delete pobj_tmp;
+				m_upt2d[iobj_worst].clear();
+			}
+			pthread_mutex_unlock(&m_mtx);
+		}
+		else{
+			calc_chsbd_score();
+		}
 	}
 
 	return NULL;
@@ -653,7 +583,7 @@ double f_glfw_calib::calc_corner_contrast_score(Mat & img, vector<Point2f> & pts
 			}
 			pix += org - 5;
 		}
-		csum += (double)(vmax - vmin) / (double)((int)vmax + (int)vmin);
+		csum += (double)(vmax  - vmin) / (double)((int)vmax + (int)vmin);
 	}
 
 	return csum / (double) pts.size();
@@ -711,7 +641,28 @@ void f_glfw_calib::recalc_chsbd_dist_score()
 	m_dist_chsbd = Mat::zeros(m_hist_grid.height, m_hist_grid.width, CV_32SC1);
 	for(int iobj = 0; iobj < m_objs.size(); iobj++){
 		s_obj * pobj = m_objs[iobj];
-		calc_chsbd_dist_score(pobj->pt2d);
+		m_score[iobj].dist = calc_chsbd_dist_score(pobj->pt2d);
+	}
+}
+
+void f_glfw_calib::calc_chsbd_score()
+{
+	recalc_chsbd_dist_score();
+	double ssz, sangl;
+	for (int iobj = 0; iobj < m_objs.size(); iobj++){
+		if (!m_objs[iobj])
+			continue;
+
+		calc_size_and_angle_score(m_objs[iobj]->pt2d, ssz, sangl);
+		m_score[iobj].sz = ssz;
+		m_score[iobj].angl = sangl;
+		m_score[iobj].crn = calc_corner_contrast_score(m_img_det, m_objs[iobj]->pt2d);
+	}
+
+	m_tot_score = 0;
+	for (int iobj = 0; iobj < m_objs.size(); iobj++){
+		calc_tot_score(m_score[iobj]);
+		m_tot_score += m_score[iobj].tot;
 	}
 }
 
@@ -779,6 +730,7 @@ void f_glfw_calib::calibrate()
 	pthread_mutex_lock(&m_mtx);
 	m_par.setCvPrj(P);
 	m_par.setCvDist(D);
+	init_undistort();
 	pthread_mutex_unlock(&m_mtx);
 
 	m_bcalib_done = true;
@@ -818,113 +770,44 @@ void f_glfw_calib::calibrate()
 	m_rep_avg = rep_tot / (double)(num_pts * m_num_chsbds);
 }
 
-void f_glfw_calib::resetCameraModel(){
+void f_glfw_calib::init_undistort()
+{
+	Size sz = Size(m_img_det.cols, m_img_det.rows);
+	Mat R = Mat::eye(3, 3, CV_64FC1);
+	Mat P = m_par.getCvPrjMat();
+	if (m_par.isFishEye()){
+		Mat K, D;
+		K = m_par.getCvPrjMat().clone();
+		D = m_par.getCvDistFishEyeMat().clone();
 
-	if(m_ib_cam != GL_INVALID_VALUE || m_vb_cam != GL_INVALID_VALUE){
-		// if the buffers have already been made, delete them.
-		glDeleteBuffers(1, &m_ib_cam);
-		glDeleteBuffers(1, &m_vb_cam);
-		m_ib_cam = GL_INVALID_VALUE;
-		m_vb_cam = GL_INVALID_VALUE;
+		//fisheye::estimateNewCameraMatrixForUndistortRectify(K, D, sz, R, P);
+		fisheye::initUndistortRectifyMap(K, D, R, P, sz, CV_32FC1, m_map1, m_map2);
+		for (int iobj = 0; iobj < m_objs.size(); iobj++){
+			if (m_objs[iobj])
+				fisheye::undistortPoints(m_objs[iobj]->pt2d, m_upt2d[iobj], K, D);
+		}
 	}
+	else{
+		Mat K, D;
+		K = m_par.getCvPrjMat().clone();
+		D = m_par.getCvDistMat().clone();
 
-	double * pP = m_par.getCvPrj();
-	double fx = pP[0], fy = pP[1], cx = pP[2], cy = pP[3];
-	double w = m_img_det.cols, h = m_img_det.rows;
-	float sx = 0.1f, sy = (float)(sx * h / w);
-	float left = (float)(cx / w), right = (float)(1.0 - left);
-	float top =(float)(cy / h), bottom = (float)(1.0 - top);
-	left *= sx, right *= sx;
-	top *= sy, bottom *= sy;
-	float z =  (float)(sx * fx / w);
-
-	float nx, ny, nz;
-	// setting cam's focal point.
-	for(int i = 0; i < 12; i += 3){
-		m_cam[i].x = m_cam[i].y = m_cam[i].z = 0.;
+		//P = getOptimalNewCameraMatrix(K, D, sz, 1.);
+		initUndistortRectifyMap(K, D, R, P, sz, CV_32FC1, m_map1, m_map2);
+		
+		for (int iobj = 0; iobj < m_objs.size(); iobj++){
+			if (m_objs[iobj])
+				undistortPoints(m_objs[iobj]->pt2d, m_upt2d[iobj], K, D);
+		}
 	}
-
-	// top surface vertices and normals
-	m_cam[2].x = -left, m_cam[2].y = top, m_cam[2].z = z;
-	m_cam[1].x = right, m_cam[1].y = top, m_cam[1].z = z;
-	crossProduct(m_cam[1].x, m_cam[1].y, m_cam[1].z,
-		m_cam[2].x, m_cam[2].y, m_cam[2].z,
-		nx, ny, nz);
-	for(int i = 0; i < 3; i++){
-		m_cam[i].nx = nx;
-		m_cam[i].ny = ny;
-		m_cam[i].nz = nz;
-	}
-
-	// bottom 
-	m_cam[4].x = -left, m_cam[4].y = -bottom, m_cam[4].z = z;
-	m_cam[5].x = right, m_cam[5].y = -bottom, m_cam[5].z = z;
-	crossProduct(m_cam[4].x, m_cam[4].y, m_cam[4].z,
-		m_cam[5].x, m_cam[5].y, m_cam[5].z,
-		nx, ny, nz);
-	normalize(nx, ny, nz);
-	for(int i = 3; i < 6; i++){
-		m_cam[i].nx = nx;
-		m_cam[i].ny = ny;
-		m_cam[i].nz = nz;
-	}
-
-	// left
-	m_cam[8].x = -left, m_cam[8].y = -bottom, m_cam[8].z = z;
-	m_cam[7].x = -left, m_cam[7].y = top, m_cam[7].z = z;
-	crossProduct(m_cam[7].x, m_cam[7].y, m_cam[7].z,
-		m_cam[8].x, m_cam[8].y, m_cam[8].z,
-		nx, ny, nz);
-	normalize(nx, ny, nz);
-	for(int i = 6; i < 9; i++){
-		m_cam[i].nx = nx;
-		m_cam[i].ny = ny;
-		m_cam[i].nz = nz;
-	}
-
-	// right
-	m_cam[10].x = right, m_cam[10].y = -bottom, m_cam[10].z = z;
-	m_cam[11].x = right, m_cam[11].y = top, m_cam[11].z = z;
-	crossProduct(m_cam[10].x, m_cam[10].y, m_cam[10].z,
-		m_cam[11].x, m_cam[11].y, m_cam[11].z,
-		nx, ny, nz);
-	normalize(nx, ny, nz);
-	for(int i = 9; i < 12; i++){
-		m_cam[i].nx = nx;
-		m_cam[i].ny = ny;
-		m_cam[i].nz = nz;
-	}
-
-	// sensor surface
-	m_cam[12].x = -left, m_cam[12].y = -bottom, m_cam[12].z = z;
-	m_cam[13].x = -left, m_cam[13].y = top, m_cam[13].z = z;
-	m_cam[14].x = right, m_cam[14].y = top, m_cam[14].z = z;
-	m_cam[15].x = right, m_cam[15].y = -bottom, m_cam[15].z = z;
-	nx = ny = 0.;
-	nz = 1.0;
-	for(int i = 12; i < 16; i++){
-		m_cam[i].nx = nx;
-		m_cam[i].ny = ny;
-		m_cam[i].nz = nz;
-	}
-
-	glGenBuffers(1, &m_vb_cam);
-	glBindBuffer(GL_ARRAY_BUFFER, m_vb_cam);
-	glBufferData(GL_ARRAY_BUFFER, 16 * sizeof(AWS_VERTEX), m_cam, GL_STATIC_DRAW);
-
-	glGenBuffers(1, &m_ib_cam);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m_ib_cam);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, 18 * sizeof(GLuint), m_cam_idx, GL_STATIC_DRAW);
-
-	glBindBuffer(GL_ARRAY_BUFFER, 0);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 }
-
 
 void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 {
 	switch(key){
 	case GLFW_KEY_A:
+		m_bshow_chsbd_all = !m_bshow_chsbd_all;
+		break;
 	case GLFW_KEY_B:
 	case GLFW_KEY_C:
 		m_bcalib = !m_bcalib;
@@ -950,13 +833,6 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 	case GLFW_KEY_P:
 	case GLFW_KEY_Q:
 	case GLFW_KEY_R:
-		if(m_vm == VM_CAM){
-			break;
-		}else{
-			m_thx = m_thy = 0.;
-			m_trx = m_trz = 0.;
-		}
-		break;
 	case GLFW_KEY_S:
 		if(mods & GLFW_MOD_CONTROL){
 			m_bsave = true;
@@ -965,70 +841,22 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 	case GLFW_KEY_T:
 	case GLFW_KEY_U:
 	case GLFW_KEY_V:
-		if(m_vm == VM_CAM){
-			m_vm = VM_CG;
-		}else{
-			m_vm = VM_CAM;
-		}
-		break;
 	case GLFW_KEY_W:
 	case GLFW_KEY_X:
 	case GLFW_KEY_Y:
 	case GLFW_KEY_Z:
 	case GLFW_KEY_RIGHT:
-		if(m_vm == VM_CAM)
-			m_sel_chsbd = (m_sel_chsbd + 1) % (int) m_objs.size();
-		else{
-			if(mods & GLFW_MOD_CONTROL){
-				m_thy += 5.0;
-				if(m_thy >= 360.0)
-					m_thy -= 360.;
-			}else if(mods & GLFW_MOD_SHIFT){
-				m_trx += 1.0;
-			}
-		}
+		pthread_mutex_lock(&m_mtx);
+		m_sel_chsbd = (m_sel_chsbd + 1) % m_objs.size();
+		pthread_mutex_unlock(&m_mtx);
 		break;
 	case GLFW_KEY_LEFT:
-		if(m_vm == VM_CAM){
-			m_sel_chsbd = m_sel_chsbd - 1;
-			if(m_sel_chsbd < 0)
-				m_sel_chsbd += (int) m_objs.size();
-		}else{
-			if(mods & GLFW_MOD_CONTROL){
-				m_thy -= 5.0;
-				if(m_thy < 0.)
-					m_thy += 360.;
-			}else if(mods & GLFW_MOD_SHIFT){
-				m_trx -= 1.0;
-			}
-		}
+		pthread_mutex_lock(&m_mtx);
+		m_sel_chsbd = (m_sel_chsbd + m_objs.size() - 1) % m_objs.size();
+		pthread_mutex_unlock(&m_mtx);
 		break;
 	case GLFW_KEY_UP:
-		if(m_vm == VM_CAM){
-			break;
-		}else{
-			if(mods & GLFW_MOD_CONTROL){
-				m_thx += 5.0;
-				if(m_thx >= 360.0)
-					m_thx -= 360.;
-			}else if(mods & GLFW_MOD_SHIFT){
-				m_trz += 1.;
-			}
-		}
-		break;
 	case GLFW_KEY_DOWN:
-		if(m_vm == VM_CAM){
-			break;
-		}else{
-			if(mods & GLFW_MOD_CONTROL){
-				m_thx -= 5.0;
-				if(m_thx < 0.)
-					m_thx += 360.;
-			}else if(mods & GLFW_MOD_SHIFT){
-				m_trz = -1.;
-			}
-		}
-		break;
 	case GLFW_KEY_SPACE:
 	case GLFW_KEY_BACKSPACE:
 	case GLFW_KEY_ENTER:
@@ -1059,6 +887,147 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 	case GLFW_KEY_UNKNOWN:
 		break;
 	}
+}
+
+
+void f_glfw_calib::save()
+{
+	pthread_mutex_lock(&m_mtx);
+	if (m_fcampar[0] == '\0' || !m_par.write(m_fcampar)){
+		cerr << "Failed to save camera parameters into " << m_fcampar << endl;
+	}
+
+	FileStorage fs;
+	fs.open(m_fcbdet, FileStorage::WRITE);
+	if (!fs.isOpened()){
+		cerr << "Failed to open file " << m_fcbdet << endl;
+	}
+	else{
+		fs << "NumChsbd" << m_num_chsbds_det;
+		fs << "ChsbdName" << m_model_chsbd.name;
+		int chsbd_pts = (int)m_model_chsbd.pts.size();
+		char item[1024];
+		int iobj = 0;
+		for (int i = 0; i < m_num_chsbds; i++){
+			if (!m_objs[i])
+				continue;
+			iobj++;
+			snprintf(item, 1024, "chsbd%d", iobj);
+			fs << item << "[";
+			for (int k = 0; k < m_objs[iobj]->pt2d.size(); k++){
+				fs << m_objs[iobj]->pt2d[k];
+			}
+				fs << "]";
+		}
+	}
+	pthread_mutex_unlock(&m_mtx);
+	m_bsave = false;
+
+}
+
+void f_glfw_calib::load()
+{
+	pthread_mutex_lock(&m_mtx);
+	if (m_fcampar[0] == '\0' || !m_par.read(m_fcampar)){
+		cerr << "Failed to load camera parameters from " << m_fcampar << endl;
+	}
+
+	FileStorage fs(m_fcbdet, FileStorage::READ);
+	FileNode fn;
+	string str;
+
+	fn = fs["NumChsbd"];
+	if (fn.empty()){
+		cerr << "Item \"NumChsbd\" was not found." << endl;
+		goto finish;
+	}
+
+	fn >> m_num_chsbds_det;
+
+	fn = fs["ChsbdName"];
+	if (fn.empty()){
+		cerr << "Item \"ChsbdName\" was not found." << endl;
+		goto finish;
+	}
+	fn >> str;
+	if (str != m_model_chsbd.name){
+		cerr << "Miss match in chessboard model." << endl;
+		goto finish;
+	}
+	char item[1024];
+	for (int i = 0; i < m_num_chsbds_det; i++){
+		snprintf(item, 1024, "chsbd%d", i);
+		fn = fs[item];
+		if (fn.empty()){
+			cerr << item << " was not found" << endl;
+			goto finish;
+		}
+		FileNodeIterator itr = fn.begin();
+		s_obj * pobj = new s_obj;
+		pobj->pmdl = &m_model_chsbd;
+		pobj->pt2d.resize(m_model_chsbd.pts.size());
+		for (int k = 0; itr != fn.end(); itr++, k++){
+			*itr >> m_objs[k]->pt2d[k];
+		}
+	}
+finish:
+	init_undistort();
+	pthread_mutex_unlock(&m_mtx);
+	m_bload = false;
+
+}
+
+void f_glfw_calib::del()
+{
+	pthread_mutex_lock(&m_mtx);
+
+	if (m_sel_chsbd >= 0 && m_sel_chsbd < m_objs.size() && m_objs[m_sel_chsbd]){
+		delete[] m_objs[m_sel_chsbd];
+		m_score[m_sel_chsbd] = s_chsbd_score();
+		m_objs[m_sel_chsbd] = NULL;
+		m_upt2d[m_sel_chsbd].clear();
+		m_num_chsbds_det--;
+	}
+	pthread_mutex_unlock(&m_mtx);
+	m_bdel = false;
+}
+
+void f_glfw_calib::calc_contrast(Mat & img)
+{
+	double res;
+	if (img.channels() == 3){
+		int rmax, gmax, bmax;
+		int rmin, gmin, bmin;
+		rmax = gmax = bmax = 0;
+		rmin = gmin = gmax = 255;
+		MatIterator_<Vec3b> itr = img.begin<Vec3b>();
+		MatIterator_<Vec3b> end = img.end<Vec3b>();
+		for (; itr != end; itr++){
+			rmax = max((int)(*itr)[0], rmax);
+			gmax = max((int)(*itr)[1], gmax); 
+			bmax = max((int)(*itr)[2], bmax);
+			rmin = min((int)(*itr)[0], rmin);
+			gmin = min((int)(*itr)[1], gmin);
+			bmin = min((int)(*itr)[2], bmin);
+		}
+
+		res = (double)(rmax + gmax + bmax - rmin - gmin - bmin) /
+			(double)(rmax + gmax + bmax + rmin + gmin + bmin);
+	}
+	else{
+		MatIterator_<uchar> itr = img.begin<uchar>();
+		MatIterator_<uchar> end = img.end<uchar>();
+		int vmax, vmin;
+		vmax = 0;
+		vmin = 255;
+		for (; itr != end; itr++){
+			vmax = max((int)(*itr), vmax);
+			vmin = min((int)(*itr), vmin);
+		}
+		res = (double)(vmax - vmin) / (double)(vmax + vmin);
+	}
+
+	m_contrast = res;
 }
 
 #endif

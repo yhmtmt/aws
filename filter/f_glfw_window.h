@@ -194,6 +194,7 @@ protected:
 	ch_image * m_pin;
 	long long m_timg; // time of the image captured.
 
+	char m_fcbdet[1024];
 	char m_fcampar[1024];
 	AWSCamPar m_par; // Camera intrinsic parameters
 
@@ -228,10 +229,10 @@ protected:
 	s_model m_model_chsbd;
 
 	// detection thread objects.
-	pthread_t m_thdet;
+	pthread_t m_thwork;
 	pthread_mutex_t m_mtx;
-	static void * thdet(void * ptr);
-	void * _thdet();
+	static void * thwork(void * ptr);
+	void * detect();
 	bool m_bthact;
 	
 	// Chessboard distribution holder.
@@ -242,20 +243,23 @@ protected:
 	int m_num_chsbds_det; // number of chessboards found.
 
 	vector<s_obj*> m_objs; // chessboard list.
+	vector<vector<Point2f*> > m_upt2d; // undistort points
 
 	// data structure holding chessboard's score
 	struct s_chsbd_score{
 		// corner score, size score, angle score, reprojection score, and the accumulated score.
-		double crn, sz, angl, rep, tot;
-		s_chsbd_score():crn(1.0), sz(1.0), angl(1.0), rep(1.0), tot(1.0)
+		double crn, sz, angl, rep, tot, dist;
+		s_chsbd_score() :crn(1.0), sz(1.0), angl(1.0), rep(0.0), tot(1.0), dist(1.0)
 		{
 		}
 	};
 	vector<s_chsbd_score> m_score;
+	double m_tot_score;
+
 
 	void calc_tot_score(s_chsbd_score & score)
 	{
-		score.tot = score.crn * score.sz * score.angl / (score.rep + 1e-5);
+		score.tot = score.dist * score.crn * score.sz * score.angl / (score.rep + 1e-5);
 	}
 
 	// Scoring helper functions
@@ -271,23 +275,31 @@ protected:
 	void refresh_chsbd_dist();
 	double calc_chsbd_dist_score(vector<Point2f> & pts);
 	void recalc_chsbd_dist_score();
-
+	void calc_chsbd_score();
 	int gen_calib_flag();
 	void calibrate();
 
+	void draw_chsbd();
+	void init_undistort();
+	Mat m_map1, m_map2;
 	// User interface members
-	enum e_view_mode{
-		VM_CAM, VM_CG
-	} m_vm;
 
 	bool m_bshow_chsbd_all;
 	bool m_bshow_chsbd_sel;
 	int m_sel_chsbd;
 	bool m_bshow_chsbd_density;
 	bool m_bsave, m_bload;
+	void save();
+	void load();
+
 	bool m_bdel;
+	void del();
+
+	void calc_contrast(Mat & img);
+	double m_contrast;
 	bool m_bdet;
 	bool m_bcalib;
+	bool m_bundist;
 
 	virtual void _key_callback(int key, int scancode, int action, int mods);
 
@@ -303,23 +315,6 @@ protected:
 	{
 	}
 
-	// OpenGL's vertex and index buffer. Here we use these buffers only for rendering camera object.
-	// Chessboards are all rendered as the point cloud.
-	GLuint m_vb_cam; // vertex buffer for camera
-	GLuint m_ib_cam; // index buffer for camera
-	struct AWS_VERTEX{ // we need to specify GL_C4F_N3F_V3F for interpretation.
-		float r, g, b, a; // color
-		float nx, ny, nz; // normal vector
-		float x, y, z;    // vertex
-	};
-	
-	AWS_VERTEX m_cam[16]; // camera model
-	GLuint m_cam_idx[18]; // indices for camera model (triangles with CCW order.)
-
-	void resetCameraModel();
-
-	GLfloat m_thx, m_thy; // 3d camera rotation around x and y. (degree)
-	GLfloat m_trx, m_trz; // 3d camera translation toward x and z
 
 	virtual bool init_run();
 public:
