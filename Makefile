@@ -33,13 +33,17 @@ UVC_CAM = y
 FWINDOW = n
 GLFW_WINDOW = y
 
-#directory settings 
+#directory settings
 CUR_DIR = $(shell pwd)
 FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
+ORB_SLAM_DIR = $(CUR_DIR)/orb_slam
+G2O_DIR = $(CUR_DIR)/g2o
+G2O_CORE_DIR = $(G2O_DIR)/core
+G2O_SOLVERS_DIR = $(G2O_DIR)/solvers
+G2O_STUFF_DIR = $(G2O_DIR)/types
 RCMD_DIR = $(CUR_DIR)/rcmd
-
 INC_CV_DIR = $(CUR_DIR)/opencv/include
 LIB_CV_DIR = $(CUR_DIR)/opencv/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
@@ -59,6 +63,17 @@ CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj
 
 # listing utility module
 UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib 
+
+
+ORB_SLAM = Converter Frame Initializer KeyFrame KeyFrameDatabase Map MapPoint Optimizer ORBextractor ORBmatcher PnPsolver Sim3Solver
+
+G2O_CORE = batch_stats optimization_algorithm_factory cache optimization_algorithm_gauss_newton estimate_propagator  optimization_algorithm_levenberg g2o_factory optimization_algorithm_with_hessian hyper_dijkstra parameter hyper_graph parameter_container hyper_graph_action robust_kernel jacobian_workspace robust_kernel_factory marginal_covariance_cholesky robust_kernel_impl matrix_structure solver optimizable_graph sparse_block_matrix_test optimization_algorithm sparse_optimizer optimization_algorithm_dogleg
+G2O_SOLVERS =
+G2O_STUFF = property string_tools timeutil
+G2O_TYPES = types_sba types_seven_dof_expmap types_six_dof_expmap
+G2O = $(addprefix $(G2O_CORE_DIR)/, $(G2O_CORE)) $(addprefix $(G2O_SOLVERS)/, $(G2O_SOLVERS)) $(addprefix $(G2O_STUFF_DIR)/, $(G2O_STUFF)) $(addprefix $(G2O_TYPES_DIR)/, $(G2O_TYPES))
+
+DBOW2 = DBoW2/BowVector DBoW2/FeatureVector DBoW2/FORB DBoW2/ScoringObject DUtils/Random
 
 # for x86 CPU architecture
 ifeq ($(CPU), x86)
@@ -124,6 +139,9 @@ LIB += -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_world
 FOBJS = $(addsuffix .o,$(FILTER))
 COBJS = $(addsuffix .o,$(CHANNEL))
 UOBJS = $(addsuffix .o,$(UTIL))
+ORB_SLAM_OBJS = $(addsuffix .o,$(ORB_SLAM))
+G2O_OBJS = $(addsuffix .o,$(G2O))
+DBOW2_OBJS = $(addsuffix .o,$(DBOW2))
 OBJS = command.o c_aws.o aws.o factory.o
 
 FSRCS = $(addsuffix .cpp,$(FILTER))
@@ -133,6 +151,9 @@ SRCS = command.cpp c_aws.cpp aws.cpp factory.cpp
 FDEPS = $(addsuffix .d,$(FILTER))
 CDEPS = $(addsuffix .d,$(CHANNEL))
 UDEPS = $(addsuffix .d,$(UTIL))
+ORB_SLAM_DEPS = $(addsuffix .d,$(ORB_SLAM))
+G2O_DEPS = $(addsuffix .d,$(G2O))
+DBOW2_DEPS = $(addsuffix .d,$(DBOW2))
 DEPS = command.d c_aws.d aws.d factroy.d
 
 EXE = aws
@@ -150,11 +171,11 @@ rcmd:
 	cd $(RCMD_DIR); make CC="$(CC)"; 
 
 
-aws: $(OBJS) filter channel util 
-	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) -o $(EXE) $(LIB)
+aws: $(OBJS) filter channel util orb_slam gwo DBoW2
+	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(addprefix $(ORB_SLAM)/,$(ORB_SLAM_OBJS)) $(G2O_OBJS) $(DBOW2_OBJS) -o $(EXE) $(LIB)
 
-log2txt: util/log2txt.o factory.o command.o c_aws.o filter channel util
-	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS))  command.o c_aws.o factory.o util/log2txt.o -o log2txt $(LIB)
+log2txt: util/log2txt.o factory.o command.o c_aws.o filter channel util orb_slam gwo DBoW2
+	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(G2O_OBJS) $(DBOW2_OBJS)  command.o c_aws.o factory.o util/log2txt.o -o log2txt $(LIB)
 
 t2str: util/t2str.o util/c_clock.o
 	$(CC) util/t2str.o util/c_clock.o -o t2str
@@ -162,6 +183,9 @@ t2str: util/t2str.o util/c_clock.o
 .PHONY: filter
 .PHONY: channel
 .PHONY: util
+.PHONY: orb_slam
+.PHONY: g2o
+.PHONY: DBoW2
 
 filter: 
 	cd $(FDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(FOBJS)" DEPS="$(FDEPS)"
@@ -171,6 +195,14 @@ channel:
 
 util:
 	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)" DEPS="$(UDEPS)"
+
+orb_slam:
+	cd $(ORB_SLAM_DIR); CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(ORB_SLAM_OBJS)" DEPS="$(ORB_SLAM_DEPS)"
+
+
+g2o: $(G2O_OBJS)
+
+DBoW2: $(DBOW2_OBJS)
 
 -include *.d
 
