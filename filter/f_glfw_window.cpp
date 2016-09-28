@@ -142,10 +142,15 @@ bool f_glfw_imview::proc()
 
 	long long timg;
 	Mat img = m_pin->get_img(timg);
+
+	bool bnew = true;
 	if(img.empty())
 		return true;
-	if(m_timg == timg)
+
+	if (m_timg == timg){
+		bnew = false;
 		return true;
+	}
 
 	m_timg = timg;
 
@@ -203,20 +208,20 @@ bool f_glfw_imview::init_run()
 f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name), 	
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false),
 	m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false), m_bcalib_zero_tangent_dist(true),
-	m_bcalib_fix_k1(true), m_bcalib_fix_k2(true), m_bcalib_fix_k3(true),
+	m_bcalib_fix_k1(false), m_bcalib_fix_k2(false), m_bcalib_fix_k3(false),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false), 
 	m_bFishEye(false), m_bcalib_recompute_extrinsic(false), m_bcalib_check_cond(false),
 	m_bcalib_fix_skew(false), m_bcalib_fix_intrinsic(false),
 	m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10), m_rep_avg(1.0),
 	m_bshow_chsbd_all(true), m_bshow_chsbd_sel(true), m_sel_chsbd(-1), m_bshow_chsbd_density(true),
-	m_bsave(false), m_bload(false), m_bundist(false), m_bdel(false), m_bdet(true), m_bcalib(true)
+	m_bsave(false), m_bload(false), m_bundist(false), m_bdel(false), m_bdet(false), m_bcalib(false)
 {
 	m_fcampar[0] = m_fcbdet[0] = '\0';
 
 	register_fpar("fchsbd", m_model_chsbd.fname, 1024, "File path for the chessboard model.");
 	register_fpar("fcbdet", m_fcbdet, 1024, "File path for detected chessboard.");
 	register_fpar("nchsbd", &m_num_chsbds, "Number of chessboards stocked.");
-	register_fpar("fcampar", m_fcampar, "File path of the camera parameter.");
+	register_fpar("fcampar", m_fcampar, 1024, "File path of the camera parameter.");
 	register_fpar("Wgrid", &m_hist_grid.width, "Number of horizontal grid of the chessboard histogram.");
 	register_fpar("Hgrid", &m_hist_grid.height, "Number of vertical grid of the chessboard histogram.");
 
@@ -296,6 +301,7 @@ bool f_glfw_calib::init_run()
 	m_objs.resize(m_num_chsbds, NULL);
 	m_score.resize(m_num_chsbds);
 	m_upt2d.resize(m_num_chsbds);
+	m_upt2dprj.resize(m_num_chsbds);
 	m_num_chsbds_det = 0;
 
 	m_dist_chsbd = Mat::zeros(m_hist_grid.height, m_hist_grid.width, CV_32SC1);
@@ -316,14 +322,15 @@ bool f_glfw_calib::proc()
 	if(img.empty())
 		return true;
 
+	bool bnew = true;
 	if(m_timg == timg)
 		return true;
 		
 	// if the detecting thread is not active, convert the image into a grayscale one, and invoke detection thread.
-	if(!m_bthact){
+	if(bnew && !m_bthact){
 		m_bthact = true;
 
-		if (img.channels() != 3)
+		if (img.channels() == 3)
 			cvtColor(img, m_img_det, CV_RGB2GRAY);
 		else
 			m_img_det = img.clone();
@@ -346,15 +353,16 @@ bool f_glfw_calib::proc()
 		del();
 	}
 
-	if (m_bundist){
+	if (bnew && m_bundist){
 		pthread_mutex_lock(&m_mtx);
 		remap(img, img, m_map1, m_map2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
 		pthread_mutex_unlock(&m_mtx);
 	}
 
 	m_timg = timg;
-
+	imwrite("test.png", img);
 	// the image is completely fitted to the screen
+	Size sz_img(img.cols, img.rows);
 	if (img.cols != m_sz_win.width || img.rows != m_sz_win.height){
 		Mat tmp;
 		resize(img, tmp, m_sz_win);
@@ -362,6 +370,7 @@ bool f_glfw_calib::proc()
 	}
 
 	glRasterPos2i(-1, -1);
+
 	if (img.channels() == 3){
 		cnvCVBGR8toGLRGB8(img);
 		glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
@@ -376,23 +385,28 @@ bool f_glfw_calib::proc()
 		for (int iobj = 0; iobj < m_objs.size(); iobj++){
 			if (!m_objs[iobj])
 				continue;
-			drawCvChessboard(m_sz_win, m_objs[iobj]->pt2d, 0.5, 0.0, 0.0, 0.5, 3, 1);
+			drawCvChessboard(sz_img, m_objs[iobj]->pt2d, 0.5, 0.0, 0.0, 0.5, 3, 1);
+			if (m_bcalib_done)
+				drawCvChessboard(sz_img, m_objs[iobj]->pt2dprj, 0.0, 0.0, 0.5, 0.5, 3, 1);
 		}
 	}
 
 	if (m_bshow_chsbd_sel){
 		pthread_mutex_lock(&m_mtx);
-		if (m_objs[m_sel_chsbd])
-			drawCvChessboard(m_sz_win, m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
+		if (m_sel_chsbd >= 0 && m_sel_chsbd < m_objs.size() && m_objs[m_sel_chsbd]){
+			drawCvChessboard(sz_img, m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
+			if (m_bcalib_done)
+				drawCvChessboard(sz_img, m_objs[m_sel_chsbd]->pt2dprj, 0.0, 0.0, 1.0, 1.0, 3, 2);
+		}
 		pthread_mutex_unlock(&m_mtx);
 	}
 
 	// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
 	float hfont = (float)(24. / (float)img.rows);
 	float wfont = (float)(24. / (float)img.cols);
-	float x = wfont;
-	float y = hfont;
-	char buf[256];
+	float x = wfont - 1.0;
+	float y = hfont - 1.0;
+	char buf[1024];
 
 	// calculating chessboard's stats
 	double smax = 0., smin = DBL_MAX, savg = 0.;
@@ -408,23 +422,23 @@ bool f_glfw_calib::proc()
 
 	savg /= (double)m_num_chsbds_det;
 
-	snprintf(buf, 255, "Nchsbd= %d/%d, Smax=%f Smin=%f Savg=%f Erep=%f Cnt=%f %s %s",
-		m_num_chsbds_det, m_num_chsbds_det, smax, smin, savg, m_rep_avg, m_contrast, 
+	snprintf(buf, 1024, "Nchsbd= %d/%d, Smax=%2.2e Smin=%2.2e Savg=%2.2f Erep=%2.2f Cnt=%2.2f %s %s",
+		m_num_chsbds_det, m_num_chsbds, smax, smin, savg, m_rep_avg, m_contrast, 
 		m_bdet ? "det": "nop", m_bcalib ? "cal" : "nop");
 	drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
-	y += hfont;
+	y += 2 * hfont;
 
 	// indicating infromation about selected chessboard.
 	if (m_bshow_chsbd_sel && m_sel_chsbd >= 0 && m_sel_chsbd < m_num_chsbds && m_objs[m_sel_chsbd]){
+
+		snprintf(buf, 255, "Score: %f (Crn: %f Sz %f Angl %f Erep %f  dist: %f)",
+			m_score[m_sel_chsbd].tot, m_score[m_sel_chsbd].crn, m_score[m_sel_chsbd].sz,
+			m_score[m_sel_chsbd].angl, m_score[m_sel_chsbd].rep, m_score[m_sel_chsbd].dist);
+		drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
+		y += 2 * hfont;
 		snprintf(buf, 255, "Chessboard %d", m_sel_chsbd);
 		drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
-		y += hfont;
-
-		snprintf(buf, 255, "Score: %f (Crn: %f Sz %f Angl %f Erep %f)",
-			m_score[m_sel_chsbd].tot, m_score[m_sel_chsbd].crn, m_score[m_sel_chsbd].sz,
-			m_score[m_sel_chsbd].angl, m_score[m_sel_chsbd].rep);
-		drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
-		y += hfont;
+		y += 2 * hfont;
 	}
 
 	glfwSwapBuffers(pwin());
@@ -438,7 +452,7 @@ void * f_glfw_calib::thwork(void * ptr)
 	f_glfw_calib * pclb = (f_glfw_calib*) ptr;
 	if(pclb->m_bdet)
 		pclb->detect();
-	pclb->m_bdet = false;
+	//pclb->m_bdet = false;
 	if (pclb->m_bcalib)
 		pclb->calibrate();
 	pclb->m_bcalib = false;
@@ -459,6 +473,8 @@ void * f_glfw_calib::detect()
 		if(!pobj) 
 			return NULL;
 
+		double scrn = calc_corner_contrast_score(m_img_det, pobj->pt2d);
+
 		// replacing the chessboard if possible.
 		bool is_changed = false;
 		int iobj_worst = -1;
@@ -467,7 +483,8 @@ void * f_glfw_calib::detect()
 			if (m_objs[i] == NULL){
 				pthread_mutex_lock(&m_mtx);
 				m_objs[i] = pobj;
-				m_upt2d[iobj_worst].clear();
+				m_score[i].crn = scrn;
+				m_upt2d[i].clear();
 				is_changed = true;
 				m_num_chsbds_det++;
 				pthread_mutex_unlock(&m_mtx);
@@ -481,19 +498,22 @@ void * f_glfw_calib::detect()
 
 		if (!is_changed){// if there is no empty slot
 			pthread_mutex_lock(&m_mtx);
-
+			double scrn_tmp = m_score[iobj_worst].crn;
 			s_obj * pobj_tmp = m_objs[iobj_worst];
+			m_score[iobj_worst].crn = scrn;
 			double prev_tot_score = m_tot_score;
 			m_objs[iobj_worst] = pobj;
 			calc_chsbd_score();
 
 			if (prev_tot_score > m_tot_score){
 				m_objs[iobj_worst] = pobj_tmp;	
+				m_score[iobj_worst].crn = scrn_tmp;
 				calc_chsbd_score();
 				delete pobj;
 			}
 			else {
 				delete pobj_tmp;
+				m_upt2d[iobj_worst].clear();
 				m_upt2d[iobj_worst].clear();
 			}
 			pthread_mutex_unlock(&m_mtx);
@@ -574,7 +594,11 @@ double f_glfw_calib::calc_corner_contrast_score(Mat & img, vector<Point2f> & pts
 	int org = - 2 * img.cols - 2;
 	for(int i = 0; i < pts.size(); i++){
 		Point2f & pt = pts[i];
-		
+
+		if (pt.x < 3 || (pt.x >= img.cols - 3) 
+			|| pt.y < 3 || (pt.y >= img.rows - 3))
+			continue;
+
 		pix = img.data + (int) (img.cols * pt.y + pt.x + 0.5) + org;
 		for(int y = 0; y < 5; y++){
 			for(int x = 0; x < 5; x++, pix++){
@@ -618,7 +642,8 @@ void f_glfw_calib::refresh_chsbd_dist()
 	m_dist_chsbd = Mat::zeros(m_hist_grid.height, m_hist_grid.width, CV_32SC1);
 	for(int iobj = 0; iobj < m_objs.size(); iobj++){
 		s_obj * pobj = m_objs[iobj];
-		add_chsbd_dist(pobj->pt2d);
+		if (pobj)
+			add_chsbd_dist(pobj->pt2d);
 	}
 }
 
@@ -636,10 +661,12 @@ double f_glfw_calib::calc_chsbd_dist_score(vector<Point2f> & pts)
 	return 1.0 / ((double) sum + 0.001);
 }
 
-void f_glfw_calib::recalc_chsbd_dist_score()
+void f_glfw_calib::calc_chsbd_dist_score()
 {
-	m_dist_chsbd = Mat::zeros(m_hist_grid.height, m_hist_grid.width, CV_32SC1);
-	for(int iobj = 0; iobj < m_objs.size(); iobj++){
+	refresh_chsbd_dist();
+	for(int iobj = 0; iobj < m_num_chsbds; iobj++){
+		if (!m_objs[iobj])
+			continue;
 		s_obj * pobj = m_objs[iobj];
 		m_score[iobj].dist = calc_chsbd_dist_score(pobj->pt2d);
 	}
@@ -647,7 +674,7 @@ void f_glfw_calib::recalc_chsbd_dist_score()
 
 void f_glfw_calib::calc_chsbd_score()
 {
-	recalc_chsbd_dist_score();
+	calc_chsbd_dist_score();
 	double ssz, sangl;
 	for (int iobj = 0; iobj < m_objs.size(); iobj++){
 		if (!m_objs[iobj])
@@ -656,7 +683,6 @@ void f_glfw_calib::calc_chsbd_score()
 		calc_size_and_angle_score(m_objs[iobj]->pt2d, ssz, sangl);
 		m_score[iobj].sz = ssz;
 		m_score[iobj].angl = sangl;
-		m_score[iobj].crn = calc_corner_contrast_score(m_img_det, m_objs[iobj]->pt2d);
 	}
 
 	m_tot_score = 0;
@@ -696,13 +722,16 @@ int f_glfw_calib::gen_calib_flag()
 
 void f_glfw_calib::calibrate()
 {
+	if (m_num_chsbds_det != m_num_chsbds)
+		return;
+
 	m_par.setFishEye(m_bFishEye);
 
 	Size sz_chsbd(m_model_chsbd.par_chsbd.w, m_model_chsbd.par_chsbd.h);
 	int num_pts = sz_chsbd.width * sz_chsbd.height;
 
-	vector<Mat> pt2ds;
-	vector<Mat> pt3ds;
+	vector<vector<Point2f>> pt2ds;
+	vector<vector<Point3f>> pt3ds;
 	vector<Mat> rvecs;
 	vector<Mat> tvecs;
 
@@ -710,11 +739,13 @@ void f_glfw_calib::calibrate()
 
 	pt2ds.resize(m_num_chsbds_det);
 	pt3ds.resize(m_num_chsbds_det);
+	int i = 0;
 	for(int iobj = 0; iobj < m_objs.size(); iobj++){
 		if(m_objs[iobj] == NULL)
 			continue;
-		pt2ds[iobj] = Mat(m_objs[iobj]->pt2d, false);
-		pt3ds[iobj] = Mat(m_model_chsbd.pts, false);
+		pt2ds[i] = m_objs[i]->pt2d;
+		pt3ds[i] = m_model_chsbd.pts;
+		i++;
 	}
 	
 	Mat P, D;
@@ -730,33 +761,43 @@ void f_glfw_calib::calibrate()
 	pthread_mutex_lock(&m_mtx);
 	m_par.setCvPrj(P);
 	m_par.setCvDist(D);
-	init_undistort();
-	pthread_mutex_unlock(&m_mtx);
 
 	m_bcalib_done = true;
 
-	// calculating reprojection error 
-	double rep_tot = 0.;
-	
-	for(int iobj = 0, icount = 0; iobj < m_objs.size(); iobj++){
-		if(m_objs[iobj] == NULL)
+	for (int iobj = 0, icount = 0; iobj < m_objs.size(); icount++, iobj++){
+		if (m_objs[iobj] == NULL)
 			continue;
 
 		m_objs[iobj]->rvec = rvecs[icount];
 		m_objs[iobj]->tvec = tvecs[icount];
-		vector<Point2f> & pt2dprj = m_objs[iobj]->pt2dprj;
-		vector<Point2f> & pt2d = m_objs[iobj]->pt2d;
+	}
+	init_undistort();
+	pthread_mutex_unlock(&m_mtx);
+}
 
-		if(m_bFishEye){
-			fisheye::projectPoints(m_model_chsbd.pts, pt2dprj, rvecs[icount], tvecs[icount], 
+void f_glfw_calib::init_undistort()
+{
+	// calculating reprojection error 
+	double rep_tot = 0.;
+	for (int iobj = 0, icount = 0; iobj < m_objs.size(); iobj++){
+		s_obj * pobj = m_objs[iobj];
+		if (!pobj)
+			continue;
+		vector<Point2f> & pt2dprj = pobj->pt2dprj;
+		vector<Point2f> & pt2d = pobj->pt2d;
+		int num_pts = (int) pt2d.size();
+
+		if (m_bFishEye){
+			fisheye::projectPoints(m_model_chsbd.pts, pt2dprj, pobj->rvec, pobj->tvec,
 				m_par.getCvPrjMat(), m_par.getCvDistFishEyeMat());
-		}else{
+		}
+		else{
 			prjPts(m_model_chsbd.pts, pt2dprj,
 				m_par.getCvPrjMat(), m_par.getCvDistMat(),
-				rvecs[icount], tvecs[icount]);
+				pobj->rvec, pobj->tvec);
 		}
 		double sum_rep = 0.;
-		for(int ipt = 0; ipt < pt2d.size(); ipt++){
+		for (int ipt = 0; ipt < pt2d.size(); ipt++){
 			Point2f & ptprj = pt2dprj[ipt];
 			Point2f & pt = pt2d[ipt];
 			Point2f ptdiff = pt - ptprj;
@@ -764,14 +805,11 @@ void f_glfw_calib::calibrate()
 			sum_rep += rep;
 		}
 		rep_tot += sum_rep;
-		m_score[iobj].rep = sqrt(sum_rep / (double) num_pts);
+		m_score[iobj].rep = sqrt(sum_rep / (double)num_pts);
 	}
 
-	m_rep_avg = rep_tot / (double)(num_pts * m_num_chsbds);
-}
+	m_rep_avg = rep_tot / (double)(m_num_chsbds_det);
 
-void f_glfw_calib::init_undistort()
-{
 	Size sz = Size(m_img_det.cols, m_img_det.rows);
 	Mat R = Mat::eye(3, 3, CV_64FC1);
 	Mat P = m_par.getCvPrjMat();
@@ -783,8 +821,12 @@ void f_glfw_calib::init_undistort()
 		//fisheye::estimateNewCameraMatrixForUndistortRectify(K, D, sz, R, P);
 		fisheye::initUndistortRectifyMap(K, D, R, P, sz, CV_32FC1, m_map1, m_map2);
 		for (int iobj = 0; iobj < m_objs.size(); iobj++){
-			if (m_objs[iobj])
+			if (m_objs[iobj]){
+				m_upt2d[iobj].resize(m_objs[iobj]->pt2d.size());
+				m_upt2dprj[iobj].resize(m_objs[iobj]->pt2d.size());
 				fisheye::undistortPoints(m_objs[iobj]->pt2d, m_upt2d[iobj], K, D);
+				fisheye::undistortPoints(m_objs[iobj]->pt2dprj, m_upt2dprj[iobj], K, D);
+			}
 		}
 	}
 	else{
@@ -796,8 +838,13 @@ void f_glfw_calib::init_undistort()
 		initUndistortRectifyMap(K, D, R, P, sz, CV_32FC1, m_map1, m_map2);
 		
 		for (int iobj = 0; iobj < m_objs.size(); iobj++){
-			if (m_objs[iobj])
+			if (m_objs[iobj]){
+				vector<Point2f> upt2d;
+				m_upt2d[iobj].resize(m_objs[iobj]->pt2d.size());
+				m_upt2dprj[iobj].resize(m_objs[iobj]->pt2d.size());
 				undistortPoints(m_objs[iobj]->pt2d, m_upt2d[iobj], K, D);
+				undistortPoints(m_objs[iobj]->pt2dprj, m_upt2dprj[iobj], K, D);
+			}
 		}
 	}
 }
@@ -911,13 +958,22 @@ void f_glfw_calib::save()
 		for (int i = 0; i < m_num_chsbds; i++){
 			if (!m_objs[i])
 				continue;
-			iobj++;
-			snprintf(item, 1024, "chsbd%d", iobj);
+			snprintf(item, 1024, "chsbdpt%d", iobj);
 			fs << item << "[";
 			for (int k = 0; k < m_objs[iobj]->pt2d.size(); k++){
-				fs << m_objs[iobj]->pt2d[k];
+				fs << m_objs[i]->pt2d[k];
 			}
-				fs << "]";
+			fs << "]";
+			snprintf(item, 1024, "chsbdsc%d", iobj);
+			fs << item << "[";
+			fs << m_score[i].tot << m_score[i].sz << m_score[i].angl
+				<< m_score[i].crn << m_score[i].dist << m_score[i].rep;
+			fs << "]";
+			snprintf(item, 1024, "chsbdat%d", i);
+			fs << item << "[";
+			fs << m_objs[i]->tvec << m_objs[i]->rvec;
+			fs << item << "]";
+			iobj++;
 		}
 	}
 	pthread_mutex_unlock(&m_mtx);
@@ -956,7 +1012,7 @@ void f_glfw_calib::load()
 	}
 	char item[1024];
 	for (int i = 0; i < m_num_chsbds_det; i++){
-		snprintf(item, 1024, "chsbd%d", i);
+		snprintf(item, 1024, "chsbdpt%d", i);
 		fn = fs[item];
 		if (fn.empty()){
 			cerr << item << " was not found" << endl;
@@ -964,14 +1020,43 @@ void f_glfw_calib::load()
 		}
 		FileNodeIterator itr = fn.begin();
 		s_obj * pobj = new s_obj;
+		m_objs[i] = pobj;
+
 		pobj->pmdl = &m_model_chsbd;
+
 		pobj->pt2d.resize(m_model_chsbd.pts.size());
 		for (int k = 0; itr != fn.end(); itr++, k++){
-			*itr >> m_objs[k]->pt2d[k];
+			*itr >> pobj->pt2d[k];
 		}
+
+		snprintf(item, 1024, "chsbdsc%d", i);
+		fn = fs[item];
+		if (fn.empty()){
+			cerr << item << " was not found" << endl;
+			goto finish;
+		}
+		itr = fn.begin();
+		*itr >> m_score[i].tot; itr++;
+		*itr >> m_score[i].sz; itr++;
+		*itr >> m_score[i].angl; itr++;
+		*itr >> m_score[i].crn; itr++;
+		*itr >> m_score[i].dist; itr++;
+		*itr >> m_score[i].rep;;
+
+		snprintf(item, 1024, "chsbdat%d", i);
+		fn = fs[item];
+		if (fn.empty()){
+			cerr << item << " was not found" << endl;
+			goto finish;
+		}
+		itr = fn.begin();
+		*itr >> pobj->tvec;
+		*itr >> pobj->rvec;
+
 	}
 finish:
 	init_undistort();
+	calc_chsbd_score();
 	pthread_mutex_unlock(&m_mtx);
 	m_bload = false;
 
@@ -986,6 +1071,7 @@ void f_glfw_calib::del()
 		m_score[m_sel_chsbd] = s_chsbd_score();
 		m_objs[m_sel_chsbd] = NULL;
 		m_upt2d[m_sel_chsbd].clear();
+		m_upt2dprj[m_sel_chsbd].clear();
 		m_num_chsbds_det--;
 	}
 	pthread_mutex_unlock(&m_mtx);

@@ -95,7 +95,7 @@ void drawCvChessboard(const Size & vp, vector<Point2f> & pts,
 
 	double fac_x = 2.0 / (double)vp.width, fac_y = 2.0 / (double)vp.height;
 
-	glBegin(GL_LINES);
+	glBegin(GL_LINE_LOOP);
 	{
 		Point2f pt;
 		cnvCvPoint2GlPoint(fac_x, fac_y, pts[0], pt);

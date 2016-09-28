@@ -243,8 +243,8 @@ protected:
 	int m_num_chsbds_det; // number of chessboards found.
 
 	vector<s_obj*> m_objs; // chessboard list.
-	vector<vector<Point2f*> > m_upt2d; // undistort points
-
+	vector<vector<Point2f> > m_upt2d, m_upt2dprj; // undistort points
+	
 	// data structure holding chessboard's score
 	struct s_chsbd_score{
 		// corner score, size score, angle score, reprojection score, and the accumulated score.
@@ -274,7 +274,7 @@ protected:
 	void sub_chsbd_dist(vector<Point2f> & pts);
 	void refresh_chsbd_dist();
 	double calc_chsbd_dist_score(vector<Point2f> & pts);
-	void recalc_chsbd_dist_score();
+	void calc_chsbd_dist_score();
 	void calc_chsbd_score();
 	int gen_calib_flag();
 	void calibrate();
