@@ -125,7 +125,7 @@ int strPrintf(std::string& str, const char* fmt, ...)
   auxPtr = (char*)malloc(numChars + 1);
   vsprintf(auxPtr, fmt, arg_list);
 #else
-  int numChar = vasprintf(&auxPtr, fmt, arg_list);
+  int numChars = vasprintf(&auxPtr, fmt, arg_list);
 #endif
   va_end(arg_list);
   str = auxPtr;

@@ -401,7 +401,7 @@ namespace g2o {
     // compute the permuted version of the new row/column layout
     size_t n=_rowBlockIndices.size();
     // computed the block sizes
-	vector<int> blockSizes(_rowBlockIndices.size());
+    std::vector<int> blockSizes(_rowBlockIndices.size());
     //int blockSizes[_rowBlockIndices.size()];
     blockSizes[0]=_rowBlockIndices[0];
     for (size_t i=1; i<n; ++i){
