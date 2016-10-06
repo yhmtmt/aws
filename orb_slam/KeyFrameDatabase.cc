@@ -43,6 +43,7 @@ KeyFrameDatabase::KeyFrameDatabase (const ORBVocabulary &voc):
 void KeyFrameDatabase::init(const ORBVocabulary & voc)
 {
 	mpVoc = &voc;
+	mvInvertedFile.resize(voc.size());
 }
 
 void KeyFrameDatabase::add(KeyFrame *pKF)

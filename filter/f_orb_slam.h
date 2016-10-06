@@ -43,6 +43,7 @@ namespace ORB_SLAM2{
 		ch_frm * m_frm;
 
 		AWSCamPar m_cp;
+		Mat m_Kf, m_Df; // m_cp is double precision, here the single precision camera parameters are presented
 		char m_fcp[1024];
 		char m_fvoc[1024];
 		ORBVocabulary * m_pvoc;

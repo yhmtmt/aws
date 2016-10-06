@@ -1301,8 +1301,8 @@ const char * f_debayer::m_strBayer[UNKNOWN] = {
 };
 
 bool f_debayer::proc(){
-	long long timg;
-	Mat img = m_pin->get_img(timg);
+	long long timg, ifrm;
+	Mat img = m_pin->get_img(timg, ifrm);
 	if(m_timg == timg){
 		return true;
 	}
@@ -1355,7 +1355,7 @@ bool f_debayer::proc(){
 	if(m_verb){
 	  cerr << "Image " << img.cols << "x" << img.rows << " at t=" << timg << " is converted into " << bgr.cols << "x" << bgr.rows << " BGR image." << endl;
 	}
-	m_pout->set_img(bgr, timg);
+	m_pout->set_img(bgr, timg, ifrm);
 	return true;
 }
 

@@ -95,38 +95,67 @@ namespace ORB_SLAM2
 			cerr << "Failed to load camera parameter in f_tracker::init_run" << endl;
 			return false;
 		}
+		else{// F32C1 version is created
+			Mat Kd, Dd;
+			if (m_cp.isFishEye()){
+				Kd = m_cp.getCvPrjMat();
+				Dd = m_cp.getCvDistFishEyeMat();
+			}
+			else{
+				Kd = m_cp.getCvPrjMat();
+				Dd = m_cp.getCvDistMat();
+			}
+			m_Kf = Mat(Kd.rows, Kd.cols, CV_32FC1);
+			m_Df = Mat(Dd.rows, Dd.cols, CV_32FC1);
+
+			MatIterator_<double> itr = Kd.begin<double>();
+			MatIterator_<double> itr_end = Kd.end<double>();
+			MatIterator_<float> itrf = m_Kf.begin<float>();
+			for (; itr != itr_end; itr++, itrf++)
+				*itrf = (float)*itr;
+
+			itr = Dd.begin<double>();
+			itr_end = Dd.end<double>();
+			itrf = m_Df.begin<float>();
+			for (; itr != itr_end; itr++, itrf++)
+				*itrf = (float)*itr;
+		}
 
 		m_pORBEx = new ORBextractor(m_num_features, m_scale_factor, m_num_levels, m_th_fast_ini, m_th_fast_min);
-		if (m_pORBEx){
+		if (!m_pORBEx){
 			cerr << "Failed to allocate ORBEx in f_tracker::init_run" << endl;
 			return false;
 		}
 
 		m_pORBExIni = new ORBextractor(2 * m_num_features, m_scale_factor, m_num_levels, m_th_fast_ini, m_th_fast_min);
-		if (m_pORBExIni){
+		if (!m_pORBExIni){
 			cerr << "Failed to allocate ORBExIni in f_tracker::init_run" << endl;
 			return false;
 		}
 
-		if (m_sys){
+		if (!m_sys){
 			cerr << "System channel is not found." << endl;
 			return false;
 		}
 
-		if (m_pvoc)
+		if (!m_pvoc)
 			delete m_pvoc;
 
 		m_pvoc = new ORBVocabulary;
+		cout << "Loading voc file ...";
 		if (!m_pvoc->loadFromTextFile(m_fvoc)){
 			delete m_pvoc;
 			m_pvoc = NULL;
 			return false;
 		}
+		cout << "done" << endl;
 
+		cout << "Setting up Keyframe database ...";
 		if (!m_kfdb || !m_kfdb->load_voc(m_pvoc)){
 			cerr << "Failed to initialize Keyframe Database in f_tracker::ini_run" << endl;
 			return false;
 		}
+		cout << "done" << endl;
 
 		return true;
 	}
@@ -176,6 +205,7 @@ namespace ORB_SLAM2
 			}
 
 			if (m_state != OK){
+				cout << "Initialization faileld in f_tracker::proc()" << endl;
 				return true;
 			}
 	
@@ -311,17 +341,16 @@ namespace ORB_SLAM2
 
 		m_timg = t;
 		m_ifrm = ifrm;
-		if (img.channels() != 3)
+		if (img.channels() == 3)
 			cvtColor(img, m_img, CV_BGR2GRAY);
 		else
 			m_img = img.clone();
 
 		float bf = 0.f, th_depth = 0.f; // these parameters are not used in monocular mode, and should be eliminated later.
 		if (m_state == NOT_INITIALIZED || m_state == NO_IMAGES_YET)
-			m_cur_frm = Frame(m_img, m_timg, m_pORBExIni, m_pvoc, m_cp.getCvPrjMat(), m_cp.getCvDistMat(), bf, th_depth);
+			m_cur_frm = Frame(m_img, m_timg, m_pORBExIni, m_pvoc, m_Kf, m_Df, bf, th_depth);
 		else
-			m_cur_frm = Frame(m_img, m_timg, m_pORBEx, m_pvoc, m_cp.getCvPrjMat(), m_cp.getCvDistMat(), bf, th_depth);
-
+			m_cur_frm = Frame(m_img, m_timg, m_pORBEx, m_pvoc, m_Kf, m_Df, bf, th_depth);
 
 		return true;
 	}
@@ -393,6 +422,7 @@ namespace ORB_SLAM2
 			cv::Mat tcw; // Current Camera Translation
 			vector<bool> vbTriangulated; // Triangulated Correspondences (m_ini_matches)
 
+			cout << "Initializing SLAM. " << endl;
 			if (m_pinit->Initialize(m_cur_frm, m_ini_matches, Rcw, tcw, m_ini_p3d, vbTriangulated))
 			{
 				for (size_t i = 0, iend = m_ini_matches.size(); i<iend; i++)
@@ -411,7 +441,11 @@ namespace ORB_SLAM2
 				tcw.copyTo(Tcw.rowRange(0, 3).col(3));
 				m_cur_frm.SetPose(Tcw);
 
+				cout << "Creating initial map" << endl;
 				create_map();
+			}
+			else{
+				cout << "Failed to initialize SLAM." << endl;
 			}
 		}
 	}
@@ -519,12 +553,16 @@ namespace ORB_SLAM2
 	{
 		// Clear BoW Database
 		if (m_kfdb){
+			m_kfdb->lock();
 			m_kfdb->clear();
+			m_kfdb->unlock();
 		}
 		// Clear Map (this erase MapPoints and KeyFrames)
 
 		if (m_map){
+			m_map->lock();
 			m_map->clear();
+			m_map->unlock();
 		}
 
 		KeyFrame::nNextId = 0;
@@ -537,8 +575,9 @@ namespace ORB_SLAM2
 			m_pinit = static_cast<Initializer*>(NULL);
 		}
 
-		if (m_trj)
+		if (m_trj){
 			m_trj->clear();
+		}
 	}
 
 	bool f_tracker::need_new_kf()
@@ -619,6 +658,8 @@ namespace ORB_SLAM2
 
 		m_last_kf_id = m_cur_frm.mnId;
 		m_plast_kf = pKF;
+		cout << "New Key Frame is created." << endl;
+		cout << "Tcp=" << pKF->mTcp;
 	}
 
 	bool f_tracker::track_rkf()
@@ -963,7 +1004,9 @@ namespace ORB_SLAM2
 
 		// Relocalization is performed when tracking is lost
 		// Track Lost: Query KeyFrame Database for keyframe candidates for relocalisation
+		m_kfdb->lock();
 		vector<KeyFrame*> vpCandidateKFs = m_kfdb->DetectRelocalizationCandidates(&m_cur_frm);
+		m_kfdb->unlock();
 
 		if (vpCandidateKFs.empty())
 			return false;
@@ -1776,7 +1819,9 @@ namespace ORB_SLAM2
 		//If the map contains less than 10 KF or less than 10 KF have passed from last loop detection
 		if (m_cur_kf->mnId<m_last_loop_kf_id + 10)
 		{
+			m_kfdb->lock();
 			m_kfdb->add(m_cur_kf);
+			m_kfdb->unlock();
 			m_cur_kf->SetErase();
 			return false;
 		}
@@ -1794,7 +1839,9 @@ namespace ORB_SLAM2
 				continue;
 			const DBoW2::BowVector &BowVec = pKF->mBowVec;
 
+			m_kfdb->lock();
 			ORBVocabulary * pvoc = m_kfdb->get_orb_voc();
+			m_kfdb->unlock();
 			float score = pvoc->score(CurrentBowVec, BowVec);
 
 			if (score<minScore)
@@ -1802,12 +1849,15 @@ namespace ORB_SLAM2
 		}
 
 		// Query the database imposing the minimum score
+		m_kfdb->lock();
 		vector<KeyFrame*> vpCandidateKFs = m_kfdb->DetectLoopCandidates(m_cur_kf, minScore);
-
+		m_kfdb->unlock();
 		// If there are no loop candidates, just add new keyframe and return false
 		if (vpCandidateKFs.empty())
 		{
+			m_kfdb->lock();
 			m_kfdb->add(m_cur_kf);
+			m_kfdb->unlock();
 			m_consistent_groups.clear();
 			m_cur_kf->SetErase();
 			return false;
@@ -1876,7 +1926,9 @@ namespace ORB_SLAM2
 
 
 		// Add Current Keyframe to database
+		m_kfdb->lock();
 		m_kfdb->add(m_cur_kf);
+		m_kfdb->unlock();
 
 		if (m_enough_consistent_candidates.empty())
 		{
@@ -2398,13 +2450,12 @@ namespace ORB_SLAM2
 		register_fpar("ch_frm", (ch_base**)&m_frm, typeid(ch_frm).name(), "Frame channel.");
 		register_fpar("draw_kf", &m_draw_kf, "Flag drawing key frames.");
 		register_fpar("draw_g", &m_draw_g, "Flag drawing graph.");
-
+		register_fpar("lw_g", &m_lw_g, "Line width of graph");
 		register_fpar("sz_kf", &m_sz_kf, "Size of key frame.");
-		register_fpar("lw_kf", &m_lw_kf, "Line widht of key frame");
+		register_fpar("lw_kf", &m_lw_kf, "Line width of key frame");
 		register_fpar("sz_pt", &m_sz_pt, "Size of point.");
 		register_fpar("sz_cam", &m_sz_cam, "size of camera.");
 		register_fpar("lw_cam", &m_lw_cam, "line width of camera.");
-
 
 		register_fpar("fovy", &m_fovy, "Field of view");
 		register_fpar("eyex", &m_eyex, "x point looking at");
@@ -2457,8 +2508,8 @@ namespace ORB_SLAM2
 
 		if (glfwWindowShouldClose(pwin()))
 			return false;
-
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		//glClear(GL_COLOR_BUFFER_BIT);
 		glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
 		Mat imWithInfo;
@@ -2469,9 +2520,18 @@ namespace ORB_SLAM2
 		long long timg;
 		if (imWithInfo.empty())
 			return true;
-
-
+		/*
+		GLint mm;
+		glGetIntegerv(GL_MATRIX_MODE, &mm);
+		glMatrixMode(GL_PROJECTION);
+		glPushMatrix();
+		glLoadIdentity();
 		glRasterPos2i(-1, -1);
+		glPixelZoom(1, 1);
+		glDisable(GL_TEXTURE_2D);
+		glDisable(GL_LIGHTING);
+		glDisable(GL_DEPTH_TEST);
+		*/
 		if (m_vmode == FRAME){
 			if (m_sz_win.width != imWithInfo.cols || m_sz_win.height != imWithInfo.rows){
 				Mat tmp;
@@ -2488,7 +2548,13 @@ namespace ORB_SLAM2
 			}
 			glDrawPixels(imWithInfo.cols, imWithInfo.rows, GL_RGB, GL_UNSIGNED_BYTE, imWithInfo.data);
 		}
-
+		/*
+		glEnable(GL_DEPTH_TEST);
+		glPopMatrix();
+		glMatrixMode(mm);
+		glClear(GL_DEPTH_BUFFER_BIT);
+		*/
+		
 
 		if (m_vmode != FRAME){
 			GLdouble Twc[16];
@@ -2514,6 +2580,9 @@ namespace ORB_SLAM2
 		vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
 		e_tracking_state state; // Tracking state
 		m_frm->get(im, vMatches, vIniKeys, vCurrentKeys, vbVO, vbMap, state);
+
+		if (im.empty())
+			return;
 
 		if (im.channels() < 3) //this should be always true
 			cvtColor(im, im, CV_GRAY2BGR);
@@ -2564,7 +2633,6 @@ namespace ORB_SLAM2
 			}
 		}
 
-
 		stringstream s;
 		if (state == NO_IMAGES_YET)
 			s << " WAITING FOR IMAGES";
@@ -2600,6 +2668,7 @@ namespace ORB_SLAM2
 
 	void f_viewer::draw_mps()
 	{
+		m_map->lock();
 		const vector<MapPoint*> &vpMPs = m_map->GetAllMapPoints();
 		const vector<MapPoint*> &vpRefMPs = m_map->GetReferenceMapPoints();
 
@@ -2635,6 +2704,7 @@ namespace ORB_SLAM2
 		}
 
 		glEnd();
+		m_map->unlock();
 	}
 
 	void f_viewer::draw_kfs()
