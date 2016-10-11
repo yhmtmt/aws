@@ -29,6 +29,8 @@
 #include "../orb_slam/Initializer.h"
 #include "../orb_slam/Optimizer.h"
 
+#define DEBUG_ORB_SLAM
+
 namespace ORB_SLAM2{
 
 	class f_tracker : public f_base
@@ -44,6 +46,8 @@ namespace ORB_SLAM2{
 
 		AWSCamPar m_cp;
 		Mat m_Kf, m_Df; // m_cp is double precision, here the single precision camera parameters are presented
+		Mat m_map1, m_map2;
+
 		char m_fcp[1024];
 		char m_fvoc[1024];
 		ORBVocabulary * m_pvoc;
@@ -54,6 +58,9 @@ namespace ORB_SLAM2{
 		int m_num_levels;
 		int m_th_fast_ini, m_th_fast_min;
 		int m_max_frms, m_min_frms;
+		bool m_brgb;
+
+		bool m_undist;
 
 		bool load_frm();
 

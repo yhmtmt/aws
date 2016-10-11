@@ -223,8 +223,9 @@ protected:
 	ifstream m_flist;
 	bool m_verb;
 
+	long long m_ifrm;
 public:
-	f_imread(const char * name): f_misc(name), m_verb(false)
+	f_imread(const char * name) : f_misc(name), m_verb(false), m_ifrm(0)
 	{
 		m_fname[0] = '\0';
 		register_fpar("verb", &m_verb, "Verbose for debug");
@@ -254,6 +255,8 @@ public:
 			return false;
 		}
 
+		m_ifrm = 0;
+
 		return true;
 	}
 
@@ -280,7 +283,7 @@ protected:
 	char m_path[1024];
 	long long m_cur_timg;
 public:
-	f_imwrite(const char * name): f_misc(name), m_verb(false), m_pin(NULL), m_type(eitJPG), m_cur_timg(0)
+	f_imwrite(const char * name) : f_misc(name), m_verb(false), m_pin(NULL), m_type(eitJPG), m_cur_timg(0)
 	{
 		m_path[0] = '.';
 		m_path[1] = '\0';

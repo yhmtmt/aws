@@ -61,7 +61,7 @@ namespace ORB_SLAM2
 		m_max_frms(30), m_min_frms(0),
 		m_pvoc(NULL), m_timg(-1), m_ifrm(-1), m_state(NO_IMAGES_YET), m_last_state(NO_IMAGES_YET),
 		m_ifrm_last_reloc(0), m_pref_kf(NULL), m_bvo(false), m_pinit(NULL), m_plast_kf(NULL), m_last_kf_id(-1),
-		m_num_matches_inliers(0)
+		m_num_matches_inliers(0), m_brgb(false), m_undist(true)
 	{
 		register_fpar("ch_sys", (ch_base**)&m_sys, typeid(ch_sys).name(), "System channel.");
 		register_fpar("ch_cam", (ch_base**)&m_cam, typeid(ch_image_ref).name(), "Camera image channel.");
@@ -83,6 +83,8 @@ namespace ORB_SLAM2
 		register_fpar("num_levels", &m_num_levels, "Number of pyramid levels of ORB extractor");
 		register_fpar("th_fast_ini", &m_th_fast_ini, "Ini Threshold for FAST extraction of ORB Extractor");
 		register_fpar("th_fast_min", &m_th_fast_min, "Min Threshold for FAST extraction of ORB Extractor");
+		register_fpar("rgb", &m_brgb, "Color order is RGB.");
+		register_fpar("undist", &m_undist, "Undistort original image.");
 	}
 
 	f_tracker::~f_tracker()
@@ -98,13 +100,17 @@ namespace ORB_SLAM2
 		else{// F32C1 version is created
 			Mat Kd, Dd;
 			if (m_cp.isFishEye()){
+				cout << "Camera model is Fisheye." << endl;
 				Kd = m_cp.getCvPrjMat();
 				Dd = m_cp.getCvDistFishEyeMat();
 			}
 			else{
+				cout << "Camera model is rational." << endl;
 				Kd = m_cp.getCvPrjMat();
 				Dd = m_cp.getCvDistMat();
 			}
+			cout << "K=" << Kd << endl;
+			cout << "D=" << Dd << endl;
 			m_Kf = Mat(Kd.rows, Kd.cols, CV_32FC1);
 			m_Df = Mat(Dd.rows, Dd.cols, CV_32FC1);
 
@@ -121,13 +127,16 @@ namespace ORB_SLAM2
 				*itrf = (float)*itr;
 		}
 
-		m_pORBEx = new ORBextractor(m_num_features, m_scale_factor, m_num_levels, m_th_fast_ini, m_th_fast_min);
+
+		m_pORBEx = new ORBextractor(m_num_features, m_scale_factor, 
+			m_num_levels, m_th_fast_ini, m_th_fast_min);
 		if (!m_pORBEx){
 			cerr << "Failed to allocate ORBEx in f_tracker::init_run" << endl;
 			return false;
 		}
 
-		m_pORBExIni = new ORBextractor(2 * m_num_features, m_scale_factor, m_num_levels, m_th_fast_ini, m_th_fast_min);
+		m_pORBExIni = new ORBextractor(2 * m_num_features, m_scale_factor, 
+			m_num_levels, m_th_fast_ini, m_th_fast_min);
 		if (!m_pORBExIni){
 			cerr << "Failed to allocate ORBExIni in f_tracker::init_run" << endl;
 			return false;
@@ -193,6 +202,22 @@ namespace ORB_SLAM2
 
 		unique_lock<mutex> lock(m_map->mMutexMapUpdate);
 	
+#ifdef DEBUG_ORB_SLAM
+		switch (m_state){
+		case NO_IMAGES_YET:
+			cout << "NO_IMAGES_YET:";
+			break;
+		case NOT_INITIALIZED:
+			cout << "NOT_INITIALIZED:";
+			break;
+		case OK:
+			cout << "OK:";
+			break;
+		case LOST:
+			cout << "LOST:";
+			break;
+		}
+#endif
 		if (m_state == NOT_INITIALIZED)
 		{
 			init_slam();
@@ -208,30 +233,73 @@ namespace ORB_SLAM2
 				cout << "Initialization faileld in f_tracker::proc()" << endl;
 				return true;
 			}
+			else{
+				cout << "Initialization done." << endl;
+			}
 	
 		}
 		else{
 			bool bOK;
 			if (m_state == OK){
+#ifdef DEBUG_ORB_SLAM
+				cout << "update_last_frm_mps ... ";
+#endif
 				update_last_frm_mps();
-
+#ifdef DEBUG_ORB_SLAM
+				cout << "done" << endl;
+#endif
 				if (m_vel.empty() || m_cur_frm.mnId < m_ifrm_last_reloc + 2){
+#ifdef DEBUG_ORB_SLAM
+					cout << "track_rkf ... ";
+#endif
 					bOK = track_rkf();
+#ifdef DEBUG_ORB_SLAM
+					cout << " done with " << (bOK ? "Success" : "Fail") << endl;
+#endif
+
 				}
 				else{
+#ifdef DEBUG_ORB_SLAM
+					cout << "track_mm ... ";
+#endif
 					bOK = track_mm();
-					if (!bOK)
+#ifdef DEBUG_ORB_SLAM
+					cout << " done with " << (bOK ? "Success" : "Fail") << endl;
+#endif
+
+					if (!bOK){
+#ifdef DEBUG_ORB_SLAM
+						cout << "track_rkf ... ";
+#endif
 						bOK = track_rkf();
+#ifdef DEBUG_ORB_SLAM
+						cout << " done with " << (bOK ? "Success" : "Fail") << endl;
+
+#endif
+					}
 				}
 			}
 			else{
+#ifdef DEBUG_ORB_SLAM
+				cout << "reloc ... ";
+#endif
 				bOK = reloc();
+#ifdef DEBUG_ORB_SLAM
+				cout << " done with " << (bOK ? "Success" : "Fail") << endl;
+#endif
 			}
 
 			m_cur_frm.mpReferenceKF = m_pref_kf;
 
-			if (bOK && !m_bvo)
+			if (bOK){
+#ifdef DEBUG_ORB_SLAM
+				cout << "track_local_map ... ";
+#endif
 				bOK = track_local_map();
+#ifdef DEBUG_ORB_SLAM
+				cout << " done with " << (bOK ? "Success" : "Fail") << endl;
+#endif
+			}
 
 			if (bOK){
 				m_state = OK;
@@ -241,7 +309,13 @@ namespace ORB_SLAM2
 			}
 
 			if (m_frm){
+#ifdef DEBUG_ORB_SLAM
+				cout << "m_frm->update ... ";
+#endif
 				m_frm->update(m_img, m_cur_frm.mvpMapPoints, m_cur_frm.mvbOutlier, m_cur_frm.mvKeys, m_state);
+#ifdef DEBUG_ORB_SLAM
+				cout << "done." << endl;
+#endif
 			}
 
 			if (bOK){
@@ -281,7 +355,13 @@ namespace ORB_SLAM2
 				m_tmp_mps.clear();
 
 				if (need_new_kf()){
+#ifdef DEBUG_ORB_SLAM
+					cout << "create_new_kf ... ";
+#endif
 					create_new_kf();
+#ifdef DEBUG_ORB_SLAM
+					cout << " done." << endl;
+#endif
 				}
 
 				// Outliers during tracking maybe used in BA, but now we discard them as tracking targets.
@@ -293,7 +373,7 @@ namespace ORB_SLAM2
 
 			}
 
-			if (m_state = LOST){
+			if (m_state == LOST){
 				if (m_map->KeyFramesInMap() <= 5){
 					cout << "Track lost soon after initialisation, reseting." << endl;
 					m_sys->set_rst();
@@ -316,7 +396,13 @@ namespace ORB_SLAM2
 		}
 
 		if (m_trj){
+#ifdef DEBUG_ORB_SLAM
+			cout << "Recording trajectory ... ";
+#endif
 			m_trj->push(m_Tlr, pkf_trj, tfrm_trj, m_state == LOST);
+#ifdef DEBUG_ORB_SLAM
+			cout << " done" << endl;
+#endif
 		}
 		
 		return true;
@@ -342,16 +428,39 @@ namespace ORB_SLAM2
 		m_timg = t;
 		m_ifrm = ifrm;
 		if (img.channels() == 3)
-			cvtColor(img, m_img, CV_BGR2GRAY);
+			cvtColor(img, m_img, (m_brgb ? CV_RGB2GRAY : CV_BGR2GRAY));
 		else
 			m_img = img.clone();
+
+
+		if (m_undist){
+			if (m_map1.empty() || m_map2.empty()){
+				Mat Kd = m_cp.getCvPrjMat(), Dd = m_cp.getCvDistMat();
+				if (m_cp.isFishEye()){
+					Mat Kd = m_cp.getCvPrjMat(), Dd = m_cp.getCvDistFishEyeMat();
+					Size sz(img.cols, img.rows);
+					fisheye::initUndistortRectifyMap(Kd, Dd, Mat::eye(3, 3, CV_64FC1), Kd, sz, CV_32FC1, m_map1, m_map2);
+				}
+				else{
+					Mat Kd = m_cp.getCvPrjMat(), Dd = m_cp.getCvDistMat();
+					Size sz(img.cols, img.rows);
+					initUndistortRectifyMap(Kd, Dd, Mat::eye(3, 3, CV_64FC1), Kd, sz, CV_32FC1, m_map1, m_map2);
+				}
+				m_Df = Mat::zeros(1, 5, CV_32FC1);
+			}
+
+			remap(m_img, m_img, m_map1, m_map2, CV_INTER_LINEAR);
+		}
+
 
 		float bf = 0.f, th_depth = 0.f; // these parameters are not used in monocular mode, and should be eliminated later.
 		if (m_state == NOT_INITIALIZED || m_state == NO_IMAGES_YET)
 			m_cur_frm = Frame(m_img, m_timg, m_pORBExIni, m_pvoc, m_Kf, m_Df, bf, th_depth);
 		else
 			m_cur_frm = Frame(m_img, m_timg, m_pORBEx, m_pvoc, m_Kf, m_Df, bf, th_depth);
-
+#ifdef DEBUG_ORB_SLAM
+		cout << "New Frame[" << m_ifrm << "]: id = " << m_cur_frm.mnId << " t=" << m_timg << "." << m_cur_frm.mvKeys.size() << " Keypoints are found." << endl;
+#endif
 		return true;
 	}
 
@@ -409,12 +518,15 @@ namespace ORB_SLAM2
 			// Find correspondences
 			ORBmatcher matcher(0.9, true);
 			int nmatches = matcher.SearchForInitialization(m_ini_frm, m_cur_frm, m_prev_matched_p2d, m_ini_matches, 100);
-
+			cout << "matches=" << nmatches;
 			// Check if there are enough correspondences
 			if (nmatches<100)
 			{
 				delete m_pinit;
 				m_pinit = static_cast<Initializer*>(NULL);
+#ifdef DEBUG_ORB_SLAM
+				cout << " < 100 matches." << endl;
+#endif
 				return;
 			}
 
@@ -422,7 +534,6 @@ namespace ORB_SLAM2
 			cv::Mat tcw; // Current Camera Translation
 			vector<bool> vbTriangulated; // Triangulated Correspondences (m_ini_matches)
 
-			cout << "Initializing SLAM. " << endl;
 			if (m_pinit->Initialize(m_cur_frm, m_ini_matches, Rcw, tcw, m_ini_p3d, vbTriangulated))
 			{
 				for (size_t i = 0, iend = m_ini_matches.size(); i<iend; i++)
@@ -433,7 +544,7 @@ namespace ORB_SLAM2
 						nmatches--;
 					}
 				}
-
+				cout << "->" << nmatches;
 				// Set Frame Poses
 				m_ini_frm.SetPose(cv::Mat::eye(4, 4, CV_32F));
 				cv::Mat Tcw = cv::Mat::eye(4, 4, CV_32F);
@@ -506,7 +617,7 @@ namespace ORB_SLAM2
 
 		if (medianDepth<0 || pKFcur->TrackedMapPoints(1)<100)
 		{
-			cout << "Wrong initialization, reseting..." << endl;
+			cout << "Wrong initialization, medianDepth=" << medianDepth << " TrackedMPs=" << pKFcur->TrackedMapPoints(1) << " reseting..." << endl;
 			m_sys->set_rst();
 			return;
 		}
@@ -553,16 +664,20 @@ namespace ORB_SLAM2
 	{
 		// Clear BoW Database
 		if (m_kfdb){
+			cout << "Cleaning Key Frame Database ... ";
 			m_kfdb->lock();
 			m_kfdb->clear();
 			m_kfdb->unlock();
+			cout << "done." << endl;
 		}
 		// Clear Map (this erase MapPoints and KeyFrames)
 
 		if (m_map){
+			cout << "Cleaning Map ... ";
 			m_map->lock();
 			m_map->clear();
 			m_map->unlock();
+			cout << "done." << endl;
 		}
 
 		KeyFrame::nNextId = 0;
@@ -576,8 +691,12 @@ namespace ORB_SLAM2
 		}
 
 		if (m_trj){
+			cout << "Cleaning trajectory record ... ";
 			m_trj->clear();
+			cout << "done." << endl;
 		}
+
+		m_sys->rst_done_tracker();
 	}
 
 	bool f_tracker::need_new_kf()
@@ -794,11 +913,19 @@ namespace ORB_SLAM2
 
 		// Decide if the tracking was succesful
 		// More restrictive if there was a relocalization recently
-		if (m_cur_frm.mnId<m_ifrm_last_reloc + m_max_frms && m_num_matches_inliers < 50)
-			return false;
+		if (m_cur_frm.mnId < m_ifrm_last_reloc + m_max_frms && m_num_matches_inliers < 50){
+#ifdef DEBUG_ORB_SLAM
+			cout << "(num_matches_inliers=" << m_num_matches_inliers << " ifrm_last_reloc=" << m_ifrm_last_reloc << " ifrm=" << m_cur_frm.mnId << ")";
+#endif
+				return false;
+		}
 
-		if (m_num_matches_inliers < 30)
+		if (m_num_matches_inliers < 30){
+#ifdef DEBUG_ORB_SLAM
+			cout << "(num_matches_inliers=" << m_num_matches_inliers << ")";
+#endif
 			return false;
+		}
 		else
 			return true;
 	}
@@ -2520,6 +2647,8 @@ namespace ORB_SLAM2
 		long long timg;
 		if (imWithInfo.empty())
 			return true;
+
+		awsFlip(imWithInfo, false, true, false);
 		/*
 		GLint mm;
 		glGetIntegerv(GL_MATRIX_MODE, &mm);

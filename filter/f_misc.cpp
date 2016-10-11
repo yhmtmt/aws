@@ -1414,7 +1414,8 @@ bool f_imread::proc()
 		cout << timg << "->" << buf << endl;
 	}
 
-	m_pout->set_img(img, timg);
+	m_pout->set_img(img, timg, m_ifrm);
+	m_ifrm++;
 	return true;
 }
 

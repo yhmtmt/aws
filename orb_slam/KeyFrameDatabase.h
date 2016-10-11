@@ -45,7 +45,7 @@ public:
 	KeyFrameDatabase();
 	void init(const ORBVocabulary & voc);
     KeyFrameDatabase(const ORBVocabulary &voc);
-
+	~KeyFrameDatabase();
    void add(KeyFrame* pKF);
 
    void erase(KeyFrame* pKF);
@@ -64,8 +64,8 @@ protected:
   const ORBVocabulary* mpVoc;
 
   // Inverted file
-  std::vector<list<KeyFrame*> > mvInvertedFile;
-
+ // std::vector<list<KeyFrame*> > mvInvertedFile;
+  list<KeyFrame*> * mvInvertedFile;
   // Mutex
   std::mutex mMutex;
 };

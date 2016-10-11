@@ -465,6 +465,7 @@ namespace ORB_SLAM2
 					}
 				}
 			}
+			unlock();
 		}
 
 		void get(Mat & img, vector<int> & matches, vector<KeyPoint> & ini_keys,

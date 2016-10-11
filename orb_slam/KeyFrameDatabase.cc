@@ -30,20 +30,33 @@ using namespace std;
 namespace ORB_SLAM2
 {
 
-	KeyFrameDatabase::KeyFrameDatabase() :mpVoc(NULL)
+	KeyFrameDatabase::KeyFrameDatabase() :mpVoc(NULL), mvInvertedFile(NULL)
 	{
 	}
 
 KeyFrameDatabase::KeyFrameDatabase (const ORBVocabulary &voc):
     mpVoc(&voc)
 {
-    mvInvertedFile.resize(voc.size());
+	mvInvertedFile = new list<KeyFrame*>[voc.size()];
+
+    //mvInvertedFile.resize(voc.size());
+}
+
+KeyFrameDatabase::~KeyFrameDatabase()
+{
+	if (mvInvertedFile)
+		delete[] mvInvertedFile;
+	mvInvertedFile = NULL;
 }
 
 void KeyFrameDatabase::init(const ORBVocabulary & voc)
 {
 	mpVoc = &voc;
-	mvInvertedFile.resize(voc.size());
+	if (mvInvertedFile)
+		delete[] mvInvertedFile;
+
+	mvInvertedFile = new list<KeyFrame*>[voc.size()];
+	//mvInvertedFile.resize(voc.size());
 }
 
 void KeyFrameDatabase::add(KeyFrame *pKF)
@@ -77,8 +90,8 @@ void KeyFrameDatabase::erase(KeyFrame* pKF)
 
 void KeyFrameDatabase::clear()
 {
-    mvInvertedFile.clear();
-    mvInvertedFile.resize(mpVoc->size());
+	for (int i = 0; i < mpVoc->size(); i++)
+		mvInvertedFile[i].clear();
 }
 
 
