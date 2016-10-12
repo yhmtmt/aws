@@ -12,8 +12,12 @@ INST_DIR = ./bin
 #optimization option
 OFLAGS = -O3
 
+
+
 # Platform specification (y: zynq environment is enabled)
-ZYNQ	= n
+BOARD = jtx
+#BOARD = jtk
+#BOARD = zed
 
 # cpu architecture (currently arm, x64, x86, WIN64)
 CPU	= arm
@@ -26,7 +30,7 @@ OS	= LINUX
 # preprocessor constant definition
 DEFS = -D_$(CPU) -D_$(OS) 
 
-# module selection switch
+# module switch setting
 SANYO_HD5400 = n
 AVT_CAM = y
 UVC_CAM = y
@@ -39,12 +43,6 @@ CUR_DIR = $(shell pwd)
 FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
-ORB_SLAM_DIR = $(CUR_DIR)/orb_slam
-G2O_DIR = $(CUR_DIR)/g2o
-G2O_CORE_DIR = $(G2O_DIR)/core
-G2O_SOLVERS_DIR = $(G2O_DIR)/solvers
-G2O_STUFF_DIR = $(G2O_DIR)/stuff
-G2O_TYPES_DIR = $(G2O_DIR)/types
 RCMD_DIR = $(CUR_DIR)/rcmd
 INC_CV_DIR = $(CUR_DIR)/opencv/include
 LIB_CV_DIR = $(CUR_DIR)/opencv/lib
@@ -54,32 +52,22 @@ INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
 LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
 INC_EIGEN_DIR = /usr/local/include/eigen3
 
-# module listing 
-# listing filter module
+# modules
+MODS = filter channel util orb_slam
+
+# listing filters
 FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map f_obj_manager \
 	f_wp_manager f_glfw_stereo_view f_stereo
 
-# listing channel module
+# listing channels
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj
 
-# listing utility module
+# listing utilities
 UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib 
 
-
-ORB_SLAM = Converter Frame Initializer KeyFrame KeyFrameDatabase Map MapPoint Optimizer ORBextractor ORBmatcher PnPsolver Sim3Solver
-
-G2O_CORE = batch_stats optimization_algorithm_factory cache optimization_algorithm_gauss_newton estimate_propagator  optimization_algorithm_levenberg g2o_factory optimization_algorithm_with_hessian hyper_dijkstra parameter hyper_graph parameter_container hyper_graph_action robust_kernel jacobian_workspace robust_kernel_factory marginal_covariance_cholesky robust_kernel_impl matrix_structure solver optimizable_graph  optimization_algorithm sparse_optimizer optimization_algorithm_dogleg
-G2O_SOLVERS =
-G2O_STUFF = property string_tools timeutil
-G2O_TYPES = types_sba types_seven_dof_expmap types_six_dof_expmap
-G2O = $(addprefix $(G2O_CORE_DIR)/, $(G2O_CORE)) $(addprefix $(G2O_SOLVERS)/, $(G2O_SOLVERS)) $(addprefix $(G2O_STUFF_DIR)/, $(G2O_STUFF)) $(addprefix $(G2O_TYPES_DIR)/, $(G2O_TYPES))
-DBOW2 = DBoW2/BowVector DBoW2/FeatureVector DBoW2/FORB DBoW2/ScoringObject DUtils/Random DUtils/Timestamp
-
-
-MODS = filter channel util orb_slam
-
+# f_orb_slam bulid setting
 ifeq ($(F_ORB_SLAM), y)
 	FILTER += f_orb_slam
 	MODS += g2o DBoW2
@@ -91,11 +79,28 @@ ifeq ($(F_ORB_SLAM), y)
 	G2O_DEPS = $(addsuffix .d,$(G2O))
 	DBOW2_DEPS = $(addsuffix .d,$(DBOW2))
 	DEFS += -DORB_SLAM
+
+	ORB_SLAM_DIR = $(CUR_DIR)/orb_slam
+	G2O_DIR = $(CUR_DIR)/g2o
+	G2O_CORE_DIR = $(G2O_DIR)/core
+	G2O_SOLVERS_DIR = $(G2O_DIR)/solvers
+	G2O_STUFF_DIR = $(G2O_DIR)/stuff
+	G2O_TYPES_DIR = $(G2O_DIR)/types
+
+	ORB_SLAM = Converter Frame Initializer KeyFrame KeyFrameDatabase Map MapPoint Optimizer ORBextractor ORBmatcher PnPsolver Sim3Solver
+
+	G2O_CORE = batch_stats optimization_algorithm_factory cache optimization_algorithm_gauss_newton estimate_propagator  optimization_algorithm_levenberg g2o_factory optimization_algorithm_with_hessian hyper_dijkstra parameter hyper_graph parameter_container hyper_graph_action robust_kernel jacobian_workspace robust_kernel_factory marginal_covariance_cholesky robust_kernel_impl matrix_structure solver optimizable_graph  optimization_algorithm sparse_optimizer optimization_algorithm_dogleg
+	G2O_SOLVERS =
+	G2O_STUFF = property string_tools timeutil
+	G2O_TYPES = types_sba types_seven_dof_expmap types_six_dof_expmap
+	G2O = $(addprefix $(G2O_CORE_DIR)/, $(G2O_CORE)) $(addprefix $(G2O_SOLVERS)/, $(G2O_SOLVERS)) $(addprefix $(G2O_STUFF_DIR)/, $(G2O_STUFF)) $(addprefix $(G2O_TYPES_DIR)/, $(G2O_TYPES))
+	DBOW2 = DBoW2/BowVector DBoW2/FeatureVector DBoW2/FORB DBoW2/ScoringObject DUtils/Random DUtils/Timestamp
+
 endif
 
 # for x86 CPU architecture
 ifeq ($(CPU), x86)
-	CC := $(CC) -m32
+	CC = $(CC) -m32
 endif
 
 # for debug mode
@@ -103,8 +108,8 @@ ifeq ($(DEBUG), y)
 	DFLAGS = -g 	
 endif
 
-# for ZYNQ system
-ifeq ($(ZYNQ), y)
+# for Zedboard
+ifeq ($(BOARD), zed)
 	CC	= arm-xilinx-linux-gnueabi-g++
 	CPU 	= arm
 	SANYO_HD5400 = n
@@ -113,32 +118,33 @@ ifeq ($(ZYNQ), y)
 	#OFLAGS += -mfloat-abi=hard
 endif
 
+# f_window 
 ifeq ($(FWINDOW), y)
 	DEFS += -DFWINDOW
 	FILTER += f_window
 endif
 
+# f_glfw_window and the children
 ifeq ($(GLFW_WINDOW), y)
 	INC += -I$(INC_GLFW_DIR)
 	UTIL += aws_glib
-
-# Jetson TX1 doesnot work with the following linker options.
-#ifeq ($(CPU), arm)
-#	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr 
-#else 
-#	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lglut 
-
 ifeq ($(CPU), arm)
+ifeq ($(BOARD), jtx)
 	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor 
+endif # jtx
+ifeq ($(BOARD), jtk)
+	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr
+endif # jtk
 else
 	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lglut 
+endif # cpu is not arm
 
-endif 
 	DEFS += -DGLFW_WINDOW 
 	FILTER += f_glfw_window
 	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev
 endif
 
+# f_net_cam
 ifeq ($(SANYO_HD5400),y)
 	INC += -I$(CUR_DIR)/curl/include  -I$(CUR_DIR)/3rdparty/include 
 	LIB += -lcurl -ljpeg
@@ -147,6 +153,7 @@ ifeq ($(SANYO_HD5400),y)
 	DEFS += -DSANYO_HD5400
 endif
 
+# f_avt_cam
 ifeq ($(AVT_CAM),y)
 	INC += -I$(INC_PVAPI_DIR) 
 	LIB += -L$(LIB_PVAPI_DIR) -lPvAPI
@@ -154,6 +161,7 @@ ifeq ($(AVT_CAM),y)
 	DEFS += -DAVT_CAM
 endif
 
+# f_uvc_cam
 ifeq ($(UVC_CAM),y)
 	DEFS += -DUVC_CAM
 endif
@@ -172,6 +180,7 @@ FSRCS = $(addsuffix .cpp,$(FILTER))
 CSRCS = $(addsuffix .cpp,$(CHANNEL))
 USRCS = $(addsuffix .cpp,$(UTIL))
 SRCS = command.cpp c_aws.cpp aws.cpp factory.cpp
+
 FDEPS = $(addsuffix .d,$(FILTER))
 CDEPS = $(addsuffix .d,$(CHANNEL))
 UDEPS = $(addsuffix .d,$(UTIL))
