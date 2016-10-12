@@ -32,6 +32,7 @@ AVT_CAM = y
 UVC_CAM = y
 FWINDOW = n
 GLFW_WINDOW = y
+F_ORB_SLAM = y
 
 #directory settings
 CUR_DIR = $(shell pwd)
@@ -58,7 +59,7 @@ INC_EIGEN_DIR = /usr/local/include/eigen3
 FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map f_obj_manager \
-	f_wp_manager f_glfw_stereo_view f_stereo f_orb_slam
+	f_wp_manager f_glfw_stereo_view f_stereo
 
 # listing channel module
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj
@@ -74,8 +75,22 @@ G2O_SOLVERS =
 G2O_STUFF = property string_tools timeutil
 G2O_TYPES = types_sba types_seven_dof_expmap types_six_dof_expmap
 G2O = $(addprefix $(G2O_CORE_DIR)/, $(G2O_CORE)) $(addprefix $(G2O_SOLVERS)/, $(G2O_SOLVERS)) $(addprefix $(G2O_STUFF_DIR)/, $(G2O_STUFF)) $(addprefix $(G2O_TYPES_DIR)/, $(G2O_TYPES))
-
 DBOW2 = DBoW2/BowVector DBoW2/FeatureVector DBoW2/FORB DBoW2/ScoringObject DUtils/Random DUtils/Timestamp
+
+
+MODS = filter channel util orb_slam
+
+ifeq ($(F_ORB_SLAM), y)
+	FILTER += f_orb_slam
+	MODS += g2o DBoW2
+	ORB_SLAM_OBJS = $(addprefix $(ORB_SLAM_DIR)/, $(addsuffix .o,$(ORB_SLAM)))
+	G2O_OBJS = $(addsuffix .o,$(G2O))
+	DBOW2_OBJS = $(addsuffix .o,$(DBOW2))
+
+	ORB_SLAM_DEPS = $(addsuffix .d,$(ORB_SLAM))
+	G2O_DEPS = $(addsuffix .d,$(G2O))
+	DBOW2_DEPS = $(addsuffix .d,$(DBOW2))
+endif
 
 # for x86 CPU architecture
 ifeq ($(CPU), x86)
@@ -150,9 +165,6 @@ LIB += -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_calib3d -lopencv_core -lopencv_fe
 FOBJS = $(addsuffix .o,$(FILTER))
 COBJS = $(addsuffix .o,$(CHANNEL))
 UOBJS = $(addsuffix .o,$(UTIL))
-ORB_SLAM_OBJS = $(addprefix $(ORB_SLAM_DIR)/, $(addsuffix .o,$(ORB_SLAM)))
-G2O_OBJS = $(addsuffix .o,$(G2O))
-DBOW2_OBJS = $(addsuffix .o,$(DBOW2))
 OBJS = command.o c_aws.o aws.o factory.o
 
 FSRCS = $(addsuffix .cpp,$(FILTER))
@@ -162,9 +174,6 @@ SRCS = command.cpp c_aws.cpp aws.cpp factory.cpp
 FDEPS = $(addsuffix .d,$(FILTER))
 CDEPS = $(addsuffix .d,$(CHANNEL))
 UDEPS = $(addsuffix .d,$(UTIL))
-ORB_SLAM_DEPS = $(addsuffix .d,$(ORB_SLAM))
-G2O_DEPS = $(addsuffix .d,$(G2O))
-DBOW2_DEPS = $(addsuffix .d,$(DBOW2))
 DEPS = command.d c_aws.d aws.d factroy.d
 
 EXE = aws
@@ -182,7 +191,7 @@ rcmd:
 	cd $(RCMD_DIR); make CC="$(CC)"; 
 
 
-aws: $(OBJS) filter channel util orb_slam g2o DBoW2
+aws: $(OBJS) $(MODS)
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS) -o $(EXE) $(LIB)
 
 log2txt: util/log2txt.o factory.o command.o c_aws.o filter channel util orb_slam g2o DBoW2
