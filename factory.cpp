@@ -119,7 +119,10 @@ using namespace cv;
 #include "channel/ch_map.h"
 #include "channel/ch_obj.h"
 #include "channel/ch_wp.h"
+#ifdef ORB_SLAM
 #include "channel/ch_orb_slam.h"
+#endif
+
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
 // need to initialize global and static data structure related to channel
@@ -173,7 +176,8 @@ void ch_base::register_factory()
 	register_factory<ch_ais_obj>("ais_obj");
 	register_factory<ch_wp>("wp");
 	register_factory<ch_aws1_sys>("aws1_sys");
-	
+
+#ifdef ORB_SLAM	
 	// orb slam2
 	register_factory<ORB_SLAM2::ch_keyframe>("orb_slam_kf");
 	register_factory<ORB_SLAM2::ch_keyframeDB>("orb_slam_kfdb");
@@ -181,6 +185,7 @@ void ch_base::register_factory()
 	register_factory<ORB_SLAM2::ch_sys>("orb_slam_sys");
 	register_factory<ORB_SLAM2::ch_trj>("orb_slam_trj");
 	register_factory<ORB_SLAM2::ch_frm>("orb_slam_frm");
+#endif
 }
 
 ////////////////////////////////////////////////// setting up filter factory
@@ -240,8 +245,9 @@ void ch_base::register_factory()
 #include "filter/f_aws1_ap.h"
 #include "filter/f_obj_manager.h"
 #include "filter/f_wp_manager.h"
+#ifdef ORB_SLAM
 #include "filter/f_orb_slam.h"
-
+#endif
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
 // need to initialize global and static data structure please insert your 
@@ -384,9 +390,11 @@ void f_base::register_factory()
 	register_factory<f_map>("map");
 	register_factory<f_wp_manager>("wp_manager");
 
+#ifdef ORB_SLAM
 	// orb slam
 	register_factory<ORB_SLAM2::f_local_mapper>("orb_slam_local_mapper");
 	register_factory<ORB_SLAM2::f_loop_closer>("orb_slam_loop_closer");
 	register_factory<ORB_SLAM2::f_tracker>("orb_slam_tracker");
 	register_factory<ORB_SLAM2::f_viewer>("orb_slam_viewer");
+#endif
 }

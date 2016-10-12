@@ -90,6 +90,7 @@ ifeq ($(F_ORB_SLAM), y)
 	ORB_SLAM_DEPS = $(addsuffix .d,$(ORB_SLAM))
 	G2O_DEPS = $(addsuffix .d,$(G2O))
 	DBOW2_DEPS = $(addsuffix .d,$(DBOW2))
+	DEFS += -DORB_SLAM
 endif
 
 # for x86 CPU architecture
