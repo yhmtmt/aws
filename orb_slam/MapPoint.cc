@@ -395,7 +395,8 @@ int MapPoint::PredictScale(const float &currentDist, const float &logScaleFactor
         ratio = mfMaxDistance/currentDist;
     }
 
-    return ceil(log(ratio)/logScaleFactor);
+	int res = ceil(log(ratio) / logScaleFactor);
+	return res;
 }
 
 } //namespace ORB_SLAM

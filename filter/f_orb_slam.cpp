@@ -77,6 +77,7 @@ namespace ORB_SLAM2
 
 		register_fpar("max_frms", &m_max_frms, "Maximum frames for new key frame insertion");
 		register_fpar("min_frms", &m_min_frms, "Minimum frames for preventing new key frame insertion");
+
 		// for orb extractor
 		register_fpar("num_features", &m_num_features, "Number of ORB features.");
 		register_fpar("scale_factor", &m_scale_factor, "Scale factor of ORB extractor");
@@ -556,7 +557,7 @@ namespace ORB_SLAM2
 				create_map();
 			}
 			else{
-				cout << "Failed to initialize SLAM." << endl;
+				cout << " Failed to initialize SLAM." << endl;
 			}
 		}
 	}
