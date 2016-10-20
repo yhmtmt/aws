@@ -295,7 +295,9 @@ vector<KeyFrame*> KeyFrameDatabase::DetectRelocalizationCandidates(Frame *F)
             if(pKF2->mnRelocQuery!=F->mnId)
                 continue;
 
-            accScore+=pKF2->mRelocScore;
+			float s2 = mpVoc->score(F->mBowVec, pKF2->mBowVec);
+			pKF2->mRelocScore = s2;
+			accScore += pKF2->mRelocScore;
             if(pKF2->mRelocScore>bestScore)
             {
                 pBestKF=pKF2;
