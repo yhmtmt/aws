@@ -990,7 +990,8 @@ namespace ORB_SLAM2
 
 
 		// Include also some not-already-included keyframes that are neighbors to already-included keyframes
-		for (vector<KeyFrame*>::const_iterator itKF = m_local_kfs.begin(), itEndKF = m_local_kfs.end(); itKF != itEndKF; itKF++)
+		int i = 0, n = (int) m_local_kfs.size();
+		for (vector<KeyFrame*>::const_iterator itKF = m_local_kfs.begin(); i < n; i++,itKF++)
 		{
 			// Limit the number of keyframes
 			if (m_local_kfs.size()>80)
@@ -1967,9 +1968,7 @@ namespace ORB_SLAM2
 				continue;
 			const DBoW2::BowVector &BowVec = pKF->mBowVec;
 
-			m_kfdb->lock();
 			ORBVocabulary * pvoc = m_kfdb->get_orb_voc();
-			m_kfdb->unlock();
 			float score = pvoc->score(CurrentBowVec, BowVec);
 
 			if (score<minScore)
