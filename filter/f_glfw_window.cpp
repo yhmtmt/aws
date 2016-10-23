@@ -210,16 +210,17 @@ f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name),
 	m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false), m_bcalib_zero_tangent_dist(true),
 	m_bcalib_fix_k1(false), m_bcalib_fix_k2(false), m_bcalib_fix_k3(false),
 	m_bcalib_fix_k4(true), m_bcalib_fix_k5(true), m_bcalib_fix_k6(true), m_bcalib_rational_model(false), 
-	m_bFishEye(false), m_bcalib_recompute_extrinsic(false), m_bcalib_check_cond(false),
+	m_bFishEye(false), m_bcalib_recompute_extrinsic(true), m_bcalib_check_cond(true),
 	m_bcalib_fix_skew(false), m_bcalib_fix_intrinsic(false),
 	m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10), m_rep_avg(1.0),
 	m_bshow_chsbd_all(true), m_bshow_chsbd_sel(true), m_sel_chsbd(-1), m_bshow_chsbd_density(true),
 	m_bsave(false), m_bload(false), m_bundist(false), m_bdel(false), m_bdet(false), m_bcalib(false)
 {
-	m_fcampar[0] = m_fcbdet[0] = '\0';
+	m_fcampar[0] = m_fcbdet[0] = m_fsmplimg[0] = '\0';
 
 	register_fpar("fchsbd", m_model_chsbd.fname, 1024, "File path for the chessboard model.");
 	register_fpar("fcbdet", m_fcbdet, 1024, "File path for detected chessboard.");
+	register_fpar("fsmplimg", m_fsmplimg, 1024, "Sample image file.");
 	register_fpar("nchsbd", &m_num_chsbds, "Number of chessboards stocked.");
 	register_fpar("fcampar", m_fcampar, 1024, "File path of the camera parameter.");
 	register_fpar("Wgrid", &m_hist_grid.width, "Number of horizontal grid of the chessboard histogram.");
@@ -227,6 +228,8 @@ f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name),
 
 	// normal camera model
 	register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Use intrinsic guess.");
+	register_fpar("recompute_extrinsic", &m_bcalib_recompute_extrinsic, "Recompute Extrinsic in each iteration. (only FishEye)");
+
 	register_fpar("fix_campar", &m_bcalib_fix_campar, "Fix camera parameters");
 	register_fpar("fix_focus", &m_bcalib_fix_focus, "Fix camera's focal length");
 	register_fpar("fix_principal_point", &m_bcalib_fix_principal_point, "Fix camera center as specified (cx, cy)");
@@ -239,6 +242,7 @@ f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name),
 	register_fpar("fix_k5", &m_bcalib_fix_k5, "Fix k5 as specified.");
 	register_fpar("fix_k6", &m_bcalib_fix_k6, "Fix k6 as specified.");
 	register_fpar("rational_model", &m_bcalib_rational_model, "Enable rational model (k4, k5, k6)");
+	register_fpar("chk_cnd", &m_bcalib_check_cond, "Check condition (only for FishEye)");
 	register_fpar("fx", (m_par.getCvPrj() + 0), "Focal length in x");
 	register_fpar("fy", (m_par.getCvPrj() + 1), "Focal length in y");
 	register_fpar("cx", (m_par.getCvPrj() + 2), "Principal point in x");
@@ -319,15 +323,24 @@ bool f_glfw_calib::proc()
 	long long timg;
 	Mat img = m_pin->get_img(timg);
 
-	if(img.empty())
-		return true;
 
 	bool bnew = true;
-	if(m_timg == timg)
-		return true;
+	if (img.empty()){
+		if (m_fsmplimg[0]){
+			img = imread(m_fsmplimg);
+		}
+		if (img.empty())
+			return true;
+		if (m_img_det.empty())
+			bnew = true;
+		else
+			bnew = false;
+	}
+	if (m_timg == timg)
+		bnew = false;
 		
 	// if the detecting thread is not active, convert the image into a grayscale one, and invoke detection thread.
-	if(bnew && !m_bthact){
+	if((bnew || m_bcalib)&& !m_bthact){
 		m_bthact = true;
 
 		if (img.channels() == 3)
@@ -360,7 +373,7 @@ bool f_glfw_calib::proc()
 	}
 
 	m_timg = timg;
-	imwrite("test.png", img);
+
 	// the image is completely fitted to the screen
 	Size sz_img(img.cols, img.rows);
 	if (img.cols != m_sz_win.width || img.rows != m_sz_win.height){
@@ -595,8 +608,8 @@ double f_glfw_calib::calc_corner_contrast_score(Mat & img, vector<Point2f> & pts
 	for(int i = 0; i < pts.size(); i++){
 		Point2f & pt = pts[i];
 
-		if (pt.x < 3 || (pt.x >= img.cols - 3) 
-			|| pt.y < 3 || (pt.y >= img.rows - 3))
+		if (pt.x < 5 || (pt.x >= img.cols - 5) 
+			|| pt.y < 5 || (pt.y >= img.rows - 5))
 			continue;
 
 		pix = img.data + (int) (img.cols * pt.y + pt.x + 0.5) + org;
@@ -605,7 +618,7 @@ double f_glfw_calib::calc_corner_contrast_score(Mat & img, vector<Point2f> & pts
 				vmax = max(vmax, *pix);
 				vmin = min(vmin, *pix);
 			}
-			pix += org - 5;
+			pix += img.cols - 5;
 		}
 		csum += (double)(vmax  - vmin) / (double)((int)vmax + (int)vmin);
 	}
@@ -750,9 +763,24 @@ void f_glfw_calib::calibrate()
 	
 	Mat P, D;
 	if(m_bFishEye){
+		if (m_bcalib_use_intrinsic_guess){
+			P = m_par.getCvPrjMat().clone();
+			D = m_par.getCvDistFishEyeMat().clone();
+		}
+		rvecs.resize(m_num_chsbds_det);
+		tvecs.resize(m_num_chsbds_det);
+		for (int iobj = 0; iobj < m_objs.size(); iobj++){
+			rvecs[iobj] = Mat(1, 1, CV_64FC3);
+			tvecs[iobj] = Mat(1, 1, CV_64FC3);
+		}
+
 		m_Erep = fisheye::calibrate(pt3ds, pt2ds, sz_chsbd, P, D,
 			rvecs, tvecs, flags);
 	}else{
+		if (m_bcalib_use_intrinsic_guess){
+			P = m_par.getCvPrjMat().clone();
+			D = m_par.getCvDistMat();
+		}
 		m_Erep = calibrateCamera(pt3ds, pt2ds, sz_chsbd,
 			P, D, rvecs, tvecs, flags);
 	}
@@ -783,6 +811,7 @@ void f_glfw_calib::init_undistort()
 		s_obj * pobj = m_objs[iobj];
 		if (!pobj)
 			continue;
+
 		vector<Point2f> & pt2dprj = pobj->pt2dprj;
 		vector<Point2f> & pt2d = pobj->pt2d;
 		int num_pts = (int) pt2d.size();
@@ -1051,6 +1080,7 @@ void f_glfw_calib::load()
 		}
 		itr = fn.begin();
 		*itr >> pobj->tvec;
+		itr++;
 		*itr >> pobj->rvec;
 
 	}
@@ -1059,7 +1089,7 @@ finish:
 	calc_chsbd_score();
 	pthread_mutex_unlock(&m_mtx);
 	m_bload = false;
-
+	m_bcalib_done = true;
 }
 
 void f_glfw_calib::del()

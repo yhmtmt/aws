@@ -820,8 +820,12 @@ void c_aws::proc_command()
 #endif
 	f_base::flush_err_buf();
 
-	if(m_cmd.stat != CS_SET) // no command
+	if (m_cmd.stat != CS_SET){
+		// no command
+		pthread_cond_signal(&m_cnd_ret);
 		return;
+	}
+
 	{
 		pthread_mutex_lock(&m_mtx);
 		//pthread_lock lock(m_mtx);

@@ -193,7 +193,7 @@ class f_glfw_calib: public f_glfw_window
 protected:
 	ch_image * m_pin;
 	long long m_timg; // time of the image captured.
-
+	char m_fsmplimg[1024];
 	char m_fcbdet[1024];
 	char m_fcampar[1024];
 	AWSCamPar m_par; // Camera intrinsic parameters
