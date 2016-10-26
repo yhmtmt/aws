@@ -205,7 +205,7 @@ bool f_glfw_imview::init_run()
 
 
 //////////////////////////////////////////////////////////////////////////////// f_glfw_claib members
-f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name), 	
+f_glfw_calib::f_glfw_calib(const char * name) :f_glfw_window(name), m_b3dview(true),
 	m_bcalib_use_intrinsic_guess(false), m_bcalib_fix_campar(false), m_bcalib_fix_focus(false),
 	m_bcalib_fix_principal_point(false), m_bcalib_fix_aspect_ratio(false), m_bcalib_zero_tangent_dist(true),
 	m_bcalib_fix_k1(false), m_bcalib_fix_k2(false), m_bcalib_fix_k3(false),
@@ -225,6 +225,8 @@ f_glfw_calib::	f_glfw_calib(const char * name):f_glfw_window(name),
 	register_fpar("fcampar", m_fcampar, 1024, "File path of the camera parameter.");
 	register_fpar("Wgrid", &m_hist_grid.width, "Number of horizontal grid of the chessboard histogram.");
 	register_fpar("Hgrid", &m_hist_grid.height, "Number of vertical grid of the chessboard histogram.");
+
+	register_fpar("3dv", &m_b3dview, "3D view enable.");
 
 	// normal camera model
 	register_fpar("use_intrinsic_guess", &m_bcalib_use_intrinsic_guess, "Use intrinsic guess.");
@@ -301,6 +303,15 @@ bool f_glfw_calib::init_run()
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	
+	GLfloat m[16];
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(120, (double)m_sz_win.width / (double)m_sz_win.height, 0.1, 1000);
+
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	gluLookAt(0, 0, -1, 0, 0, 0, 0, -1, 0);
 
 	m_objs.resize(m_num_chsbds, NULL);
 	m_score.resize(m_num_chsbds);
@@ -375,12 +386,28 @@ bool f_glfw_calib::proc()
 	m_timg = timg;
 
 	// the image is completely fitted to the screen
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+
 	Size sz_img(img.cols, img.rows);
-	if (img.cols != m_sz_win.width || img.rows != m_sz_win.height){
+	Size sz_win = m_sz_win;
+	if (m_b3dview){
+		sz_win.width = m_sz_win.width >> 2;
+		sz_win.height = m_sz_win.height >> 2;
+	}
+
+	if (sz_img.width != sz_win.width || sz_img.height != sz_win.height){
 		Mat tmp;
-		resize(img, tmp, m_sz_win);
+		resize(img, tmp, sz_win);
 		img = tmp;
 	}
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
 
 	glRasterPos2i(-1, -1);
 
@@ -392,28 +419,115 @@ bool f_glfw_calib::proc()
 		cnvCVGRAY8toGLGRAY8(img);
 		glDrawPixels(img.cols, img.rows, GL_INTENSITY, GL_UNSIGNED_BYTE, img.data);
 	}
+	if (!m_b3dview && m_bcalib_done){
+		if (m_bshow_chsbd_all){
+			for (int iobj = 0; iobj < m_objs.size(); iobj++){
+				if (!m_objs[iobj])
+					continue;
+				drawCvChessboard(sz_img, m_objs[iobj]->pt2d, 0.5, 0.0, 0.0, 0.5, 3, 1);
+				if (m_bcalib_done)
+					drawCvChessboard(sz_img, m_objs[iobj]->pt2dprj, 0.0, 0.0, 0.5, 0.5, 3, 1);
+			}
+		}
 
+		if (m_bshow_chsbd_sel){
+			pthread_mutex_lock(&m_mtx);
+			if (m_sel_chsbd >= 0 && m_sel_chsbd < m_objs.size() && m_objs[m_sel_chsbd]){
+				drawCvChessboard(sz_img, m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
+				if (m_bcalib_done)
+					drawCvChessboard(sz_img, m_objs[m_sel_chsbd]->pt2dprj, 0.0, 0.0, 1.0, 1.0, 3, 2);
+			}
+			pthread_mutex_unlock(&m_mtx);
+		}
+	}
+
+	glPopMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
 	// overlay chessboard if needed
-	if (m_bshow_chsbd_all){
-		for (int iobj = 0; iobj < m_objs.size(); iobj++){
-			if (!m_objs[iobj])
-				continue;
-			drawCvChessboard(sz_img, m_objs[iobj]->pt2d, 0.5, 0.0, 0.0, 0.5, 3, 1);
-			if (m_bcalib_done)
-				drawCvChessboard(sz_img, m_objs[iobj]->pt2dprj, 0.0, 0.0, 0.5, 0.5, 3, 1);
+	if (m_b3dview && m_bcalib_done){
+		Point3f p0, p1, p2, p3;
+		GLdouble m[16];
+		// render camera
+		Mat P = m_par.getCvPrjMat();
+		double fx = P.at<double>(0, 0), fy = P.at<double>(1, 1);
+		double wc = 0.05 * (double)m_img_det.cols / fx, hc = 0.05 * (double)m_img_det.rows / fy;
+		p0 = Point3f(wc, hc, 0.1);
+		p1 = Point3f(-wc, hc, 0.1);
+		p2 = Point3f(-wc, -hc, 0.1);
+		p3 = Point3f(wc, -hc, 0.1);
+		glColor3f(1., 0., 0.);
+
+		glBegin(GL_LINES);
+		glVertex3f(p0.x, p0.y, p0.z);
+		glVertex3f(0, 0, 0);
+		glVertex3f(p1.x, p1.y, p1.z);
+		glVertex3f(0, 0, 0);
+		glVertex3f(p2.x, p2.y, p2.z);
+		glVertex3f(0, 0, 0);
+		glVertex3f(p3.x, p3.y, p3.z);
+		glVertex3f(0, 0, 0);
+		glVertex3f(p0.x, p0.y, p0.z);
+		glVertex3f(p1.x, p1.y, p1.z);
+		glVertex3f(p1.x, p1.y, p1.z);
+		glVertex3f(p2.x, p2.y, p2.z);
+		glVertex3f(p2.x, p2.y, p2.z);
+		glVertex3f(p3.x, p3.y, p3.z);
+		glVertex3f(p3.x, p3.y, p3.z);
+		glVertex3f(p0.x, p0.y, p0.z);
+		glEnd();
+
+		// render chessboard
+		int wcb = m_model_chsbd.par_chsbd.w;
+		int hcb = m_model_chsbd.par_chsbd.h;
+		p0 = m_model_chsbd.pts[0];
+		p1 = m_model_chsbd.pts[wcb - 1];
+		p2 = m_model_chsbd.pts[(hcb - 1) * wcb];
+		p3 = m_model_chsbd.pts[hcb * wcb - 1];
+		glMatrixMode(GL_MODELVIEW);
+		for (int iobj = 0; iobj < 1; iobj++){
+			glPushMatrix();
+			/*
+			glGetDoublev(GL_PROJECTION_MATRIX, m);
+			cout << "Projection Matrix:" << endl;
+			printGlMatrix(m);
+			glGetDoublev(GL_MODELVIEW_MATRIX, m);
+			cout << "Model Matrix:" << endl;
+			printGlMatrix(m);
+			*/
+			cnvCvRTToGlRT(m_objs[iobj]->rvec, m_objs[iobj]->tvec, m);
+			glMultMatrixd(m);
+			/*
+			glGetDoublev(GL_PROJECTION_MATRIX, m);
+			cout << "Projection Matrix:" << endl;
+			printGlMatrix(m);
+			glGetDoublev(GL_MODELVIEW_MATRIX, m);
+			cout << "Model Matrix:" << endl;
+			printGlMatrix(m);
+			*/
+			glColor3f(0., 0., 1.);
+			glBegin(GL_LINES);
+			glVertex3f(p0.x, p0.y, p0.z);
+			glVertex3f(p1.x, p1.y, p1.z);
+			glVertex3f(p1.x, p1.y, p1.z);
+			glVertex3f(p3.x, p2.y, p2.z);
+			glVertex3f(p3.x, p2.y, p2.z);
+			glVertex3f(p2.x, p3.y, p3.z);
+			glVertex3f(p2.x, p3.y, p3.z);
+			glVertex3f(p0.x, p0.y, p0.z);
+			glEnd();
+			glPopMatrix();
 		}
 	}
-
-	if (m_bshow_chsbd_sel){
-		pthread_mutex_lock(&m_mtx);
-		if (m_sel_chsbd >= 0 && m_sel_chsbd < m_objs.size() && m_objs[m_sel_chsbd]){
-			drawCvChessboard(sz_img, m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
-			if (m_bcalib_done)
-				drawCvChessboard(sz_img, m_objs[m_sel_chsbd]->pt2dprj, 0.0, 0.0, 1.0, 1.0, 3, 2);
-		}
-		pthread_mutex_unlock(&m_mtx);
+	else{
 	}
 
+	glMatrixMode(GL_PROJECTION);
+	glPushMatrix();
+	glLoadIdentity();
+	glMatrixMode(GL_MODELVIEW);
+	glPushMatrix();
+	glLoadIdentity();
 	// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
 	float hfont = (float)(24. / (float)img.rows);
 	float wfont = (float)(24. / (float)img.cols);
@@ -453,6 +567,9 @@ bool f_glfw_calib::proc()
 		drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_TIMES_ROMAN_24);
 		y += 2 * hfont;
 	}
+	glPopMatrix();
+	glMatrixMode(GL_PROJECTION);
+	glPopMatrix();
 
 	glfwSwapBuffers(pwin());
 	glfwPollEvents();

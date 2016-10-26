@@ -87,4 +87,9 @@ void drawCvPointDensity(Mat hist, const int hist_max, const Size grid,
 	const float r, const float g, const float b, const float alpha,
 	const float w /* line width of the grid */);
 
+void cnvCvRTToGlRT(const Mat & r, const Mat & t, GLdouble * m);
+void cnvCvRTToGlRT(const Mat & r, const Mat & t, GLfloat * m);
+void printGlMatrix(const GLfloat * m);
+void printGlMatrix(const GLdouble * m);
+
 #endif

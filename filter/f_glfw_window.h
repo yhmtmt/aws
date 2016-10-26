@@ -196,6 +196,8 @@ protected:
 	char m_fsmplimg[1024];
 	char m_fcbdet[1024];
 	char m_fcampar[1024];
+
+	bool m_b3dview;
 	AWSCamPar m_par; // Camera intrinsic parameters
 
 	// calibration flag. These flags are interpreted into OpenCV's flag of calibrateCamera.

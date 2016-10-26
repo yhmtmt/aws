@@ -253,3 +253,128 @@ void drawGlLine2Df(float x1, float y1, float x2, float y2,
 	glVertex2f(x2, y2);
 	glEnd();
 }
+
+
+void cnvCvRTToGlRT(const Mat & r, const Mat & t, GLdouble * m)
+{
+	// m[0] m[4] m[8]  m[12]
+	// m[1] m[5] m[9]  m[13]
+	// m[2] m[6] m[10] m[14]
+	// m[3] m[7] m[11] m[15]
+	m[3] = m[7] = m[11] = 0.;
+	m[15] = 1.0;
+	{// load rotation matrix
+		Mat R;
+		Rodrigues(r, R);
+
+		if (R.type() == CV_64FC1){ // doulbe precision
+			double * p = R.ptr<double>();
+			m[0] = p[0];
+			m[4] = p[1];
+			m[8] = p[2];
+			m[1] = p[3];
+			m[5] = p[4];
+			m[9] = p[5];
+			m[2] = p[6];
+			m[6] = p[7];
+			m[10] = p[8];
+		}
+		else{ // single precision
+			float * p = R.ptr<float>();
+			m[0] = p[0];
+			m[4] = p[1];
+			m[8] = p[2];
+			m[1] = p[3];
+			m[5] = p[4];
+			m[9] = p[5];
+			m[2] = p[6];
+			m[6] = p[7];
+			m[10] = p[8];
+		}
+	}
+
+	// load translation
+	if(t.type() == CV_64FC1){
+		const double * p = t.ptr<double>();
+		m[12] = p[0];
+		m[13] = p[1];
+		m[14] = p[2];
+	}
+	else{
+		const float * p = t.ptr<float>();
+		m[12] = p[0];
+		m[13] = p[1];
+		m[14] = p[2];
+	}
+}
+
+void cnvCvRTToGlRT(const Mat & r, const Mat & t, GLfloat * m)
+{
+	// m[0] m[4] m[8]  m[12]
+	// m[1] m[5] m[9]  m[13]
+	// m[2] m[6] m[10] m[14]
+	// m[3] m[7] m[11] m[15]
+	m[3] = m[7] = m[11] = 0.;
+	m[15] = 1.0;
+	{// load rotation matrix
+		Mat R;
+		Rodrigues(r, R);
+
+		if (R.type() == CV_64FC1){ // doulbe precision
+			double * p = R.ptr<double>();
+			m[0] = (GLfloat)p[0];
+			m[4] = (GLfloat)p[1];
+			m[8] = (GLfloat)p[2];
+			m[1] = (GLfloat)p[3];
+			m[5] = (GLfloat)p[4];
+			m[9] = (GLfloat)p[5];
+			m[2] = (GLfloat)p[6];
+			m[6] = (GLfloat)p[7];
+			m[10] = (GLfloat)p[8];
+		}
+		else{ // single precision
+			float * p = R.ptr<float>();
+			m[0] = p[0];
+			m[4] = p[1];
+			m[8] = p[2];
+			m[1] = p[3];
+			m[5] = p[4];
+			m[9] = p[5];
+			m[2] = p[6];
+			m[6] = p[7];
+			m[10] = p[8];
+		}
+	}
+
+	// load translation
+	if (t.type() == CV_64FC1){
+		const double * p = t.ptr<double>();
+		m[12] = (GLfloat)p[0];
+		m[13] = (GLfloat)p[1];
+		m[14] = (GLfloat)p[2];
+	}
+	else{
+		const float * p = t.ptr<float>();
+		m[12] = p[0];
+		m[13] = p[1];
+		m[14] = p[2];
+	}
+
+}
+
+
+void printGlMatrix(const float * m)
+{
+	cout << m[0] << " " << m[4] << " " << m[8] << " " << m[12] << endl;
+	cout << m[1] << " " << m[5] << " " << m[9] << " " << m[13] << endl;
+	cout << m[2] << " " << m[6] << " " << m[10] << " " << m[14] << endl;
+	cout << m[3] << " " << m[7] << " " << m[11] << " " << m[15] << endl;
+}
+
+void printGlMatrix(const double * m)
+{
+	cout << m[0] << " " << m[4] << " " << m[8] << " " << m[12] << endl;
+	cout << m[1] << " " << m[5] << " " << m[9] << " " << m[13] << endl;
+	cout << m[2] << " " << m[6] << " " << m[10] << " " << m[14] << endl;
+	cout << m[3] << " " << m[7] << " " << m[11] << " " << m[15] << endl;
+}
