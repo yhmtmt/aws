@@ -2649,18 +2649,13 @@ namespace ORB_SLAM2
 			return true;
 
 		awsFlip(imWithInfo, false, true, false);
-		/*
-		GLint mm;
-		glGetIntegerv(GL_MATRIX_MODE, &mm);
+
 		glMatrixMode(GL_PROJECTION);
 		glPushMatrix();
 		glLoadIdentity();
-		glRasterPos2i(-1, -1);
-		glPixelZoom(1, 1);
-		glDisable(GL_TEXTURE_2D);
-		glDisable(GL_LIGHTING);
-		glDisable(GL_DEPTH_TEST);
-		*/
+		glMatrixMode(GL_MODELVIEW);
+		glPushMatrix();
+		glLoadIdentity();
 		if (m_vmode == FRAME){
 			if (m_sz_win.width != imWithInfo.cols || m_sz_win.height != imWithInfo.rows){
 				Mat tmp;
@@ -2677,13 +2672,10 @@ namespace ORB_SLAM2
 			}
 			glDrawPixels(imWithInfo.cols, imWithInfo.rows, GL_RGB, GL_UNSIGNED_BYTE, imWithInfo.data);
 		}
-		/*
-		glEnable(GL_DEPTH_TEST);
 		glPopMatrix();
-		glMatrixMode(mm);
-		glClear(GL_DEPTH_BUFFER_BIT);
-		*/
-		
+		glMatrixMode(GL_PROJECTION);
+		glPopMatrix();
+		glMatrixMode(GL_MODELVIEW);
 
 		if (m_vmode != FRAME){
 			GLdouble Twc[16];
@@ -2803,8 +2795,10 @@ namespace ORB_SLAM2
 
 		set<MapPoint*> spRefMPs(vpRefMPs.begin(), vpRefMPs.end());
 
-		if (vpMPs.empty())
+		if (vpMPs.empty()){
+			m_map->unlock();
 			return;
+		}
 
 		glPointSize(m_sz_pt);
 		glBegin(GL_POINTS);
@@ -2841,7 +2835,7 @@ namespace ORB_SLAM2
 		const float &w = m_sz_kf;
 		const float h = w*0.75;
 		const float z = w*0.6;
-
+		m_map->lock();
 		const vector<KeyFrame*> vpKFs = m_map->GetAllKeyFrames();
 
 		if (m_draw_kf)
@@ -2930,6 +2924,8 @@ namespace ORB_SLAM2
 
 			glEnd();
 		}
+		m_map->unlock();
+
 	}
 
 	void f_viewer::draw_cam(GLdouble * Twc)
