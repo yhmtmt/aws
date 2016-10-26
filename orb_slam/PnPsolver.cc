@@ -196,7 +196,11 @@ cv::Mat PnPsolver::iterate(int nIterations, bool &bNoMore, vector<bool> &vbInlie
 
             add_correspondence(mvP3Dw[idx].x,mvP3Dw[idx].y,mvP3Dw[idx].z,mvP2D[idx].x,mvP2D[idx].y);
 
-            vAvailableIndices[idx] = vAvailableIndices.back();
+			// In original code, 
+			// vAvailableIndices[idx] = vAvailableIndices.back()
+			// is placed, but it cause segv.
+			// This part should replace the value in the sampled index with that of the end of the array.  
+            vAvailableIndices[randi] = vAvailableIndices.back();
             vAvailableIndices.pop_back();
         }
 
