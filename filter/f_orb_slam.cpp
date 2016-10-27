@@ -326,6 +326,7 @@ namespace ORB_SLAM2
 					Mat LastTwc = Mat::eye(4, 4, CV_32F);
 					m_last_frm.GetRotationInverse().copyTo(LastTwc.rowRange(0, 3).colRange(0, 3));
 					m_last_frm.GetCameraCenter().copyTo(LastTwc.rowRange(0, 3).col(3));
+					m_vel = m_cur_frm.mTcw * LastTwc;
 				}
 				else{
 					m_vel = Mat();
@@ -2678,10 +2679,17 @@ namespace ORB_SLAM2
 		glMatrixMode(GL_MODELVIEW);
 
 		if (m_vmode != FRAME){
+			glLoadIdentity();
+
 			GLdouble Twc[16];
 			load_cam_pose(Twc);
+			GLdouble _eyex = m_eyex, _eyey = m_eyey, _eyez = m_eyez;
+			GLdouble eyex, eyey, eyez;
+			eyex = _eyex * Twc[0] + _eyey * Twc[4] + _eyez * Twc[8] + Twc[12];
+			eyey = _eyex * Twc[1] + _eyey * Twc[5] + _eyez * Twc[9] + Twc[13];
+			eyez = _eyez * Twc[2] + _eyey * Twc[6] + _eyez * Twc[10] + Twc[14];
+			gluLookAt(eyex, eyey, eyez, Twc[12], Twc[13], Twc[14], 0, -1, 0);
 			draw_cam(Twc);
-
 			draw_kfs();
 			draw_mps();
 		}
