@@ -185,6 +185,7 @@ namespace ORB_SLAM2
 
 	bool f_tracker::proc()
 	{
+
 		if (m_sys->is_rst_tracker()){
 			reset();
 		}
@@ -195,7 +196,8 @@ namespace ORB_SLAM2
 
 		if (!load_frm())
 			return true;
-	
+		aws_scope_show sc("f_tracker::proc");
+
 		if (m_state == NO_IMAGES_YET)
 			m_state = NOT_INITIALIZED;
 
@@ -710,7 +712,7 @@ namespace ORB_SLAM2
 		const int nKFs = m_map->KeyFramesInMap();
 
 		// Do not insert keyframes if not enough frames have passed from last relocalisation
-		if (m_cur_frm.mnId< m_last_kf_id + m_max_frms && nKFs > m_max_frms)
+		if (m_cur_frm.mnId < m_ifrm_last_reloc + m_max_frms && nKFs > m_max_frms)
 			return false;
 
 		// Tracked MapPoints in the reference keyframe
@@ -780,7 +782,6 @@ namespace ORB_SLAM2
 		m_last_kf_id = m_cur_frm.mnId;
 		m_plast_kf = pKF;
 		cout << "New Key Frame is created." << endl;
-		cout << "Tcp=" << pKF->mTcp;
 	}
 
 	bool f_tracker::track_rkf()
@@ -1338,12 +1339,14 @@ namespace ORB_SLAM2
 
 	bool f_local_mapper::proc()
 	{
+
 		// Tracking will see that Local Mapping is busy
 		m_sys->set_accept_kf_mapper(false);
 
 		// Check if there are keyframes in the queue
 		if (!m_kf_tracker->empty())
 		{
+			aws_scope_show sc("f_local_mapper::proc");
 			// BoW conversion and insertion in Map
 			proc_new_kf();
 
@@ -1399,6 +1402,8 @@ namespace ORB_SLAM2
 
 	void f_local_mapper::proc_new_kf()
 	{
+
+		aws_scope_show sc("f_local_mapper::proc_new_kf");
 		m_cur_kf = m_kf_tracker->pop();
 
 		// Compute Bags of Words structures
@@ -1438,6 +1443,8 @@ namespace ORB_SLAM2
 
 	void f_local_mapper::cull_mps()
 	{
+
+		aws_scope_show sc("f_local_mapper::cull_mps");
 		// Check Recent Added MapPoints
 		list<MapPoint*>::iterator lit = m_recent_mps.begin();
 		const unsigned long int nCurrentKFid = m_cur_kf->mnId;
@@ -1472,6 +1479,8 @@ namespace ORB_SLAM2
 
 	void f_local_mapper::cull_kfs()
 	{
+
+		aws_scope_show sc("f_local_mapper::cull_kfs");
 		// Check redundant keyframes (only local keyframes)
 		// A keyframe is considered redundant if the 90% of the MapPoints it sees, are seen
 		// in at least other 3 keyframes (in the same or finer scale)
@@ -1535,6 +1544,7 @@ namespace ORB_SLAM2
 
 	void f_local_mapper::create_new_mps()
 	{
+		aws_scope_show sc("f_local_mapper::create_new_mps");
 		// Retrieve neighbor keyframes in covisibility graph
 		int nn = 20;
 		const vector<KeyFrame*> vpNeighKFs = m_cur_kf->GetBestCovisibilityKeyFrames(nn);
@@ -1773,6 +1783,8 @@ namespace ORB_SLAM2
 
 	void f_local_mapper::search_neighbours()
 	{
+
+		aws_scope_show sc("f_local_mapper::search_neighbours");
 		// Retrieve neighbor keyframes
 		int nn = 20;
 
@@ -1920,6 +1932,7 @@ namespace ORB_SLAM2
 		// Check if there are keyframes in the queue
 		if (!m_kf_mapper->empty())
 		{
+			aws_scope_show sc("f_loop_closer::proc");
 			// Detect loop candidates and check covisibility consistency
 			if (detect_loop())
 			{
@@ -2632,6 +2645,7 @@ namespace ORB_SLAM2
 
 	bool f_viewer::proc()
 	{
+		//aws_scope_show sc("f_viewer::proc");
 		glfwMakeContextCurrent(pwin());
 
 		if (glfwWindowShouldClose(pwin()))

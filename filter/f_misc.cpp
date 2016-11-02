@@ -1362,6 +1362,7 @@ bool f_debayer::proc(){
 ////////////////////////////////////////////////////////// f_imread members
 bool f_imread::proc()
 {
+	aws_scope_show("f_imread::proc");
 	char buf[1024];
 	bool raw = false;
 	if(m_flist.eof()){

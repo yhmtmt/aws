@@ -10,6 +10,22 @@
 
 #include "aws_const.h"
 
+class aws_scope_show
+{
+	const char * name;
+public:
+	aws_scope_show(const char * str) :name(str)
+	{
+		std::cout << "Entering " << name << std::endl;
+	}
+
+	~aws_scope_show()
+	{
+		std::cout << "Exiting " << name << std::endl;
+	}
+};
+
+
 // comparison function used in the map 
 struct cmp { 
 	bool operator () (const char *a,const char *b) const 

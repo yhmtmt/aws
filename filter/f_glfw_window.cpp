@@ -351,7 +351,7 @@ bool f_glfw_calib::proc()
 		bnew = false;
 		
 	// if the detecting thread is not active, convert the image into a grayscale one, and invoke detection thread.
-	if((bnew || m_bcalib)&& !m_bthact){
+	if((bnew || m_bcalib || m_bdet) && !m_bthact){
 		m_bthact = true;
 
 		if (img.channels() == 3)
@@ -419,7 +419,7 @@ bool f_glfw_calib::proc()
 		cnvCVGRAY8toGLGRAY8(img);
 		glDrawPixels(img.cols, img.rows, GL_INTENSITY, GL_UNSIGNED_BYTE, img.data);
 	}
-	if (!m_b3dview && m_bcalib_done){
+	if (!m_b3dview){
 		if (m_bshow_chsbd_all){
 			for (int iobj = 0; iobj < m_objs.size(); iobj++){
 				if (!m_objs[iobj])
@@ -485,7 +485,9 @@ bool f_glfw_calib::proc()
 		p2 = m_model_chsbd.pts[(hcb - 1) * wcb];
 		p3 = m_model_chsbd.pts[hcb * wcb - 1];
 		glMatrixMode(GL_MODELVIEW);
-		for (int iobj = 0; iobj < 1; iobj++){
+		for (int iobj = 0; iobj < m_objs.size(); iobj++){
+			if (!m_objs[iobj])
+				continue;
 			glPushMatrix();
 			/*
 			glGetDoublev(GL_PROJECTION_MATRIX, m);
@@ -580,14 +582,16 @@ bool f_glfw_calib::proc()
 void * f_glfw_calib::thwork(void * ptr)
 {
 	f_glfw_calib * pclb = (f_glfw_calib*) ptr;
-	if(pclb->m_bdet)
+	if (pclb->m_bdet){
 		pclb->detect();
+	}
+
 	//pclb->m_bdet = false;
-	if (pclb->m_bcalib)
+	if (pclb->m_bcalib){
 		pclb->calibrate();
+	}
 	pclb->m_bcalib = false;
 	pclb->m_bthact = false;
-
 	return NULL;
 }
 
@@ -1137,6 +1141,12 @@ void f_glfw_calib::load()
 	FileStorage fs(m_fcbdet, FileStorage::READ);
 	FileNode fn;
 	string str;
+	if (!fs.isOpened()){
+		cerr << "Failed to open " << m_fcampar << endl;
+		m_bload = false;
+		pthread_mutex_unlock(&m_mtx);
+		return;
+	}
 
 	fn = fs["NumChsbd"];
 	if (fn.empty()){
