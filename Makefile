@@ -67,6 +67,55 @@ CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj
 # listing utilities
 UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib 
 
+
+# for x86 CPU architecture
+ifeq ($(CPU), x86)
+	CC = $(CC) -m32
+endif
+
+# for debug mode
+ifeq ($(DEBUG), y)
+	DFLAGS = -g 	
+endif
+
+# for Zedboard
+ifeq ($(BOARD), zed)
+	CC	= arm-xilinx-linux-gnueabi-g++
+	CPU 	= arm
+	SANYO_HD5400 = n
+	FWINDOW = n
+	GLFW_WINDOW = n
+	F_ORB_SLAM = n
+	#OFLAGS += -mfloat-abi=hard
+endif
+
+# f_window 
+ifeq ($(FWINDOW), y)
+	DEFS += -DFWINDOW
+	FILTER += f_window
+endif
+
+# f_glfw_window and the children
+ifeq ($(GLFW_WINDOW), y)
+	INC += -I$(INC_GLFW_DIR)
+	UTIL += aws_glib
+ifeq ($(CPU), arm)
+ifeq ($(BOARD), jtx)
+	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor 
+endif # jtx
+ifeq ($(BOARD), jtk)
+	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr
+endif # jtk
+else
+	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lglut 
+endif # cpu is not arm
+
+	DEFS += -DGLFW_WINDOW 
+	FILTER += f_glfw_window
+	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev
+	OFLAGS += -fopenmp
+endif
+
 # f_orb_slam bulid setting
 ifeq ($(F_ORB_SLAM), y)
 	FILTER += f_orb_slam
@@ -98,52 +147,6 @@ ifeq ($(F_ORB_SLAM), y)
 
 endif
 
-# for x86 CPU architecture
-ifeq ($(CPU), x86)
-	CC = $(CC) -m32
-endif
-
-# for debug mode
-ifeq ($(DEBUG), y)
-	DFLAGS = -g 	
-endif
-
-# for Zedboard
-ifeq ($(BOARD), zed)
-	CC	= arm-xilinx-linux-gnueabi-g++
-	CPU 	= arm
-	SANYO_HD5400 = n
-	FWINDOW = n
-	GLFW_WINDOW = n
-	#OFLAGS += -mfloat-abi=hard
-endif
-
-# f_window 
-ifeq ($(FWINDOW), y)
-	DEFS += -DFWINDOW
-	FILTER += f_window
-endif
-
-# f_glfw_window and the children
-ifeq ($(GLFW_WINDOW), y)
-	INC += -I$(INC_GLFW_DIR)
-	UTIL += aws_glib
-ifeq ($(CPU), arm)
-ifeq ($(BOARD), jtx)
-	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor 
-endif # jtx
-ifeq ($(BOARD), jtk)
-	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr
-endif # jtk
-else
-	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lglut 
-endif # cpu is not arm
-
-	DEFS += -DGLFW_WINDOW 
-	FILTER += f_glfw_window
-	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev
-endif
-
 # f_net_cam
 ifeq ($(SANYO_HD5400),y)
 	INC += -I$(CUR_DIR)/curl/include  -I$(CUR_DIR)/3rdparty/include 
@@ -169,7 +172,18 @@ endif
 INC += -I$(INC_CV_DIR)
 INC += -I$(INC_EIGEN_DIR)
 #LIB += -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_world
-LIB += -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
+LIB += -L$(LIB_CV_DIR) -lrt -lpthread
+
+# linking OpenCV libraries
+ifeq ($(BOARD), jtx)
+	LIB +=  -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
+endif
+ifeq ($(BOARD), jtk)
+	LIB +=  -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
+endif
+ifeq ($(BOARD), zed)
+	LIB += -lopencv_world
+endif
 
 FOBJS = $(addsuffix .o,$(FILTER))
 COBJS = $(addsuffix .o,$(CHANNEL))
@@ -187,7 +201,7 @@ UDEPS = $(addsuffix .d,$(UTIL))
 DEPS = command.d c_aws.d aws.d factroy.d
 
 EXE = aws
-FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS) -fopenmp
+FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS) 
 
 .PHONY: rcmd
 all:
