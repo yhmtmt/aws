@@ -15,8 +15,8 @@ OFLAGS = -O3
 
 
 # Platform specification (y: zynq environment is enabled)
-BOARD = jtx
-#BOARD = jtk
+#BOARD = jtx
+BOARD = jtk
 #BOARD = zed
 
 # cpu architecture (currently arm, x64, x86, WIN64)
@@ -87,6 +87,12 @@ ifeq ($(BOARD), zed)
 	GLFW_WINDOW = n
 	F_ORB_SLAM = n
 	#OFLAGS += -mfloat-abi=hard
+endif
+
+ifeq ($(BOARD), jtk)
+	F_ORB_SLAM = n
+	INC_CV_DIR = /usr/local/include
+	LIB_CV_DIR = /usr/local/lib
 endif
 
 # f_window 
