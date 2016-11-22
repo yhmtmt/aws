@@ -31,6 +31,7 @@ private:
 	char * m_buf;
 	ofstream m_flog;
 	bool m_bdump;
+
 public:
 	f_rec_data(const char * name): f_base(name), m_pin(NULL), m_buf_size(1024), m_buf(NULL), m_bdump(true)
 	{
@@ -63,7 +64,6 @@ public:
 		if(m_buf == NULL){
 			return false;
 		}
-
 		return true;
 	}
 
@@ -257,25 +257,28 @@ class f_ch_share: public f_base
   ofstream m_fout;
   char m_fname_in[1024];
   ofstream m_fin;
+
+  long long m_tshare;
  public:
- f_ch_share(const char * fname): f_base(fname), m_verb(false),
-    m_port(20100), m_port_dst(20101), 
-    m_len_pkt_snd(1024), m_len_pkt_rcv(1024), m_sock(-1), 
-    m_svr(false),
-    m_rbuf(NULL), m_wbuf(NULL), m_rbuf_head(0), m_wbuf_head(0), 
-    m_rbuf_tail(0), m_wbuf_tail(0), m_len_buf(0)
-    {
-      m_fname_out[0] = '\0';
-      m_fname_in[0] = '\0';
-	  m_host_dst[0] = '\0';
-      register_fpar("verb", &m_verb, "For debug.");
-      register_fpar("port", &m_port, "UDP port.");
-      register_fpar("port_dst", &m_port_dst, "Destination UDP port.");
-      register_fpar("host_dst", m_host_dst, 1024, "Host address.");
-      //register_fpar("lpkt", &m_len_pkt, "Packet length");
-      register_fpar("fout", m_fname_out, 1024, "Output log file.");
-      register_fpar("fin", m_fname_in, 1024, "Input log file.");
-    }
+	 f_ch_share(const char * fname) : f_base(fname), m_verb(false),
+		 m_port(20100), m_port_dst(20101),
+		 m_len_pkt_snd(1024), m_len_pkt_rcv(1024), m_sock(-1),
+		 m_svr(false),
+		 m_rbuf(NULL), m_wbuf(NULL), m_rbuf_head(0), m_wbuf_head(0),
+		 m_rbuf_tail(0), m_wbuf_tail(0), m_len_buf(0), m_tshare(0)
+	 {
+		 m_fname_out[0] = '\0';
+		 m_fname_in[0] = '\0';
+		 m_host_dst[0] = '\0';
+		 register_fpar("verb", &m_verb, "For debug.");
+		 register_fpar("port", &m_port, "UDP port.");
+		 register_fpar("port_dst", &m_port_dst, "Destination UDP port.");
+		 register_fpar("host_dst", m_host_dst, 1024, "Host address.");
+		 //register_fpar("lpkt", &m_len_pkt, "Packet length");
+		 register_fpar("fout", m_fname_out, 1024, "Output log file.");
+		 register_fpar("fin", m_fname_in, 1024, "Input log file.");
+		 register_fpar("tshare", &m_tshare, "Time data sharing");
+	 }
   
   virtual ~f_ch_share()
     {

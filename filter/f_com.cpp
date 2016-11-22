@@ -297,6 +297,8 @@ bool f_ch_share::proc()
   // sending phase
   if(m_svr && m_client_fixed || !m_svr){
     m_wbuf_head = m_wbuf_tail = 0;
+	(*(long long*)m_wbuf) = m_tshare;
+	m_wbuf_tail = sizeof(m_tshare);
     for(int ich = 0; ich < m_chin.size(); ich++)
       m_wbuf_tail += (int)(m_chin[ich]->read_buf(m_wbuf + m_wbuf_tail));
     
@@ -327,7 +329,7 @@ bool f_ch_share::proc()
       }
     }
     if(m_verb){
-      cout << "Inputs" << endl;
+      cout << "Inputs: t=" << m_tshare <<  endl;
       for(int ich = 0; ich < m_chin.size(); ich++)
 	m_chin[ich]->print(cout);
     }
@@ -362,11 +364,14 @@ bool f_ch_share::proc()
 
 	if(m_rbuf_tail == m_len_pkt_rcv){
 	  m_client_fixed = true;
+	  m_tshare = *((long long*)m_rbuf);
+	  m_rbuf_head = sizeof(m_tshare);
 	  for(int och = 0; och < m_chout.size(); och++){
 	    m_rbuf_head += (int)(m_chout[och]->write_buf(m_rbuf + m_rbuf_head));
 	  }
 	  if(m_verb){
-	    cout << "Outputs:" << m_rbuf_tail << "/" << res << endl;
+	    cout << "Outputs: t=" << m_tshare << " " <<
+			m_rbuf_tail << "/" << res << endl;
 	    for(int och = 0; och < m_chout.size(); och++)
 	      m_chout[och]->print(cout);
 	  }
