@@ -246,12 +246,12 @@ bool f_ch_share::init_run()
       return false;
   }
 
-  m_len_pkt_rcv = 0;
+  m_len_pkt_rcv = sizeof(m_cur_time);
   for (int och = 0; och < m_chout.size(); och++){
     m_len_pkt_rcv += (int) m_chout[och]->get_dsize();
   }
   
-  m_len_pkt_snd = 0;
+  m_len_pkt_snd = sizeof(m_cur_time);
   for (int ich = 0; ich < m_chin.size(); ich++){
     m_len_pkt_snd += (int) m_chin[ich]->get_dsize();
   }
@@ -297,8 +297,8 @@ bool f_ch_share::proc()
   // sending phase
   if(m_svr && m_client_fixed || !m_svr){
     m_wbuf_head = m_wbuf_tail = 0;
-	(*(long long*)m_wbuf) = m_tshare;
-	m_wbuf_tail = sizeof(m_tshare);
+	(*(long long*)m_wbuf) = m_cur_time;
+	m_wbuf_tail = sizeof(m_cur_time);
     for(int ich = 0; ich < m_chin.size(); ich++)
       m_wbuf_tail += (int)(m_chin[ich]->read_buf(m_wbuf + m_wbuf_tail));
     
