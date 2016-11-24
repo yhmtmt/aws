@@ -195,16 +195,18 @@ int main(int argc, char ** argv)
 
 	q = d + 1;
 	q[0] = 't'; q[1] = 'x'; q[2] = 't'; q[3] = '\0';
-
 	q = chname;
-	for(p = b ? b + 1 : argv[2]; p != u; p++, q++){
+	for(p = (b ? b + 1 : argv[2]); *p != '_'; p++, q++){
 		*q = *p;
 	}
 	*q = '\0';
 
+	cout << "Initializing channel factory." << endl;
 	ch_base::init();
 
+	cout << "Opening " << argv[2] << "." << endl;
 	FILE * pbfile = fopen(argv[2], "rb");
+	cout << "Opening " << fname << "." << endl;
 	FILE * ptfile = fopen(fname, "w");
 
 	if(!pbfile){
@@ -217,16 +219,18 @@ int main(int argc, char ** argv)
 		return 1;
 	}
 
+	cout << "Creating channel " << argv[1] << " as " << chname << "." << endl;
 	ch_base * pchan = ch_base::create(argv[1], chname);
 	if(!pchan){
 		cerr << "Channel type " << argv[1] << " cannot be found." << endl;
 		return 1;
 	}
 
+	cout << "Converting ... ";
 	if(!pchan->log2txt(pbfile, ptfile)){
 		cerr << "Failed to convert " << argv[2] << "." << endl;
 		return 1;
 	}
-
+	cout << " done." << endl;
 	return 0;
 }
