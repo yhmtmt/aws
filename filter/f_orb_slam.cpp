@@ -61,7 +61,7 @@ namespace ORB_SLAM2
 		m_max_frms(30), m_min_frms(0),
 		m_pvoc(NULL), m_timg(-1), m_ifrm(-1), m_state(NO_IMAGES_YET), m_last_state(NO_IMAGES_YET),
 		m_ifrm_last_reloc(0), m_pref_kf(NULL), m_bvo(false), m_pinit(NULL), m_plast_kf(NULL), m_last_kf_id(-1),
-		m_num_matches_inliers(0), m_brgb(false), m_undist(true)
+		m_num_matches_inliers(0), m_brgb(false), m_undist(true), m_roi(0, 0, 0, 0)
 	{
 		register_fpar("ch_sys", (ch_base**)&m_sys, typeid(ch_sys).name(), "System channel.");
 		register_fpar("ch_cam", (ch_base**)&m_cam, typeid(ch_image_ref).name(), "Camera image channel.");
@@ -86,6 +86,13 @@ namespace ORB_SLAM2
 		register_fpar("th_fast_min", &m_th_fast_min, "Min Threshold for FAST extraction of ORB Extractor");
 		register_fpar("rgb", &m_brgb, "Color order is RGB.");
 		register_fpar("undist", &m_undist, "Undistort original image.");
+
+		m_fmask[0] = '\0';
+		register_fpar("fmask", m_fmask, 1024, "File path for mask file.");
+		register_fpar("roi_x", &m_roi.x, "x of ROI.");
+		register_fpar("roi_y", &m_roi.y, "y of ROI.");
+		register_fpar("roi_w", &m_roi.width, "width of ROI");
+		register_fpar("roi_h", &m_roi.height, "height of ROI");
 	}
 
 	f_tracker::~f_tracker()
@@ -128,6 +135,42 @@ namespace ORB_SLAM2
 				*itrf = (float)*itr;
 		}
 
+		//Loading Mask image
+		if (m_fmask[0]){
+			Mat _mask = imread(m_fmask);
+			m_mask = Mat(_mask.cols, _mask.rows, CV_8UC1);
+			if (_mask.type() == CV_8UC3){
+				MatIterator_<Vec3s> itr = _mask.begin<Vec3s>();
+				MatIterator_<Vec3s> itr_end = _mask.end<Vec3s>();
+				MatIterator_<uchar> itr_dst = m_mask.begin<uchar>();
+				for (; itr != itr_end; itr++, itr_dst++){
+					if ((*itr)[0] < 128 && (*itr)[1] < 128 && (*itr)[2] < 128)
+						(*itr_dst) = 0;
+					else
+						(*itr_dst) = 255;
+				}
+			}
+			else if (_mask.type() == CV_8UC1)
+				m_mask = _mask;
+			else
+				m_mask = Mat();
+		}
+
+		// ROI triming 
+		if (m_roi.width != 0 && m_roi.height != 0){ // roi is enabled
+			// trimming mask 
+			if (!m_mask.empty()){
+				Mat _mask;
+				m_mask(m_roi).copyTo(_mask);
+				m_mask = _mask;
+			}
+
+			// changing principal point
+			m_Kf.at<float>(0, 2) -= m_roi.x;
+			m_Kf.at<float>(1, 2) -= m_roi.y;
+			cout << "ROI is given as " << m_roi << endl;
+			cout << "K is renewed as " << m_Kf << endl;
+		}
 
 		m_pORBEx = new ORBextractor(m_num_features, m_scale_factor, 
 			m_num_levels, m_th_fast_ini, m_th_fast_min);
@@ -141,6 +184,11 @@ namespace ORB_SLAM2
 		if (!m_pORBExIni){
 			cerr << "Failed to allocate ORBExIni in f_tracker::init_run" << endl;
 			return false;
+		}
+
+		if (!m_mask.empty()){
+			m_pORBEx->setMask(m_mask);
+			m_pORBExIni->setMask(m_mask);
 		}
 
 		if (!m_sys){
@@ -431,23 +479,34 @@ namespace ORB_SLAM2
 
 		m_timg = t;
 		m_ifrm = ifrm;
-		if (img.channels() == 3)
+		if (img.channels() == 3){
+			if (m_roi.width != 0 && m_roi.height != 0)
+				cvtColor(img(m_roi), m_img, (m_brgb ? CV_RGB2GRAY : CV_BGR2GRAY));
+			else
 			cvtColor(img, m_img, (m_brgb ? CV_RGB2GRAY : CV_BGR2GRAY));
-		else
-			m_img = img.clone();
-
+		}
+		else{
+			if (m_roi.width != 0 && m_roi.height != 0)
+				m_img = img(m_roi).clone();
+			else
+				m_img = img.clone();
+		}
 
 		if (m_undist){
 			if (m_map1.empty() || m_map2.empty()){
 				Mat Kd = m_cp.getCvPrjMat(), Dd = m_cp.getCvDistMat();
 				if (m_cp.isFishEye()){
-					Mat Kd = m_cp.getCvPrjMat(), Dd = m_cp.getCvDistFishEyeMat();
-					Size sz(img.cols, img.rows);
+					Mat Kd = m_cp.getCvPrjMat().clone(), Dd = m_cp.getCvDistFishEyeMat();
+					Kd.at<double>(0, 2) = (double)m_Kf.at<float>(0, 2);
+					Kd.at<double>(1, 2) = (double)m_Kf.at<float>(1, 2);
+					Size sz(m_img.cols, m_img.rows);
 					fisheye::initUndistortRectifyMap(Kd, Dd, Mat::eye(3, 3, CV_64FC1), Kd, sz, CV_32FC1, m_map1, m_map2);
 				}
 				else{
-					Mat Kd = m_cp.getCvPrjMat(), Dd = m_cp.getCvDistMat();
-					Size sz(img.cols, img.rows);
+					Mat Kd = m_cp.getCvPrjMat().clone(), Dd = m_cp.getCvDistMat();
+					Kd.at<double>(0, 2) = (double)m_Kf.at<float>(0, 2);
+					Kd.at<double>(1, 2) = (double)m_Kf.at<float>(1, 2);
+					Size sz(m_img.cols, m_img.rows);
 					initUndistortRectifyMap(Kd, Dd, Mat::eye(3, 3, CV_64FC1), Kd, sz, CV_32FC1, m_map1, m_map2);
 				}
 				m_Df = Mat::zeros(1, 5, CV_32FC1);
@@ -522,7 +581,9 @@ namespace ORB_SLAM2
 			// Find correspondences
 			ORBmatcher matcher(0.9, true);
 			int nmatches = matcher.SearchForInitialization(m_ini_frm, m_cur_frm, m_prev_matched_p2d, m_ini_matches, 100);
+#ifdef DEBUG_ORB_SLAM
 			cout << "matches=" << nmatches;
+#endif
 			// Check if there are enough correspondences
 			if (nmatches<100)
 			{

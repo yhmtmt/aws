@@ -48,6 +48,8 @@ public:
     
     enum {HARRIS_SCORE=0, FAST_SCORE=1 };
 
+	cv::Mat mask;
+
     ORBextractor(int nfeatures, float scaleFactor, int nlevels,
                  int iniThFAST, int minThFAST);
 
@@ -59,6 +61,11 @@ public:
     void operator()( cv::InputArray image, cv::InputArray mask,
       std::vector<cv::KeyPoint>& keypoints,
       cv::OutputArray descriptors);
+
+	void setMask(cv::Mat & _mask)
+	{
+		mask = _mask;
+	}
 
     int inline GetLevels(){
         return nlevels;}

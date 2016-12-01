@@ -53,6 +53,9 @@ namespace ORB_SLAM2{
 		ORBVocabulary * m_pvoc;
 
 		ORBextractor * m_pORBEx, *m_pORBExIni;
+		char m_fmask[1024];
+		Mat m_mask;
+		Rect m_roi;
 		int m_num_features;
 		float m_scale_factor;
 		int m_num_levels;
