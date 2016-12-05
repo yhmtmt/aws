@@ -15,14 +15,14 @@ OFLAGS = -O3
 
 
 # Platform specification (y: zynq environment is enabled)
-#BOARD = jtx
+BOARD = jtx
 #BOARD = jtk
 #BOARD = zed
-BOARD = pc
+#BOARD = pc
 
 # cpu architecture (currently arm, x64, x86, WIN64)
-#CPU	= arm
-CPU	= x64
+CPU	= arm
+#CPU	= x64
 #CPU	= x86
 
 #operating system (currently only for LINUX)
@@ -36,8 +36,8 @@ SANYO_HD5400 = n
 AVT_CAM = y
 UVC_CAM = y
 FWINDOW = n
-GLFW_WINDOW = n
-F_ORB_SLAM = n
+GLFW_WINDOW = y
+F_ORB_SLAM = y
 
 #directory settings
 CUR_DIR = $(shell pwd)
@@ -94,6 +94,10 @@ ifeq ($(BOARD), jtk)
 	F_ORB_SLAM = n
 	INC_CV_DIR = /usr/local/include
 	LIB_CV_DIR = /usr/local/lib
+endif
+
+ifeq ($(BOARD), jtx)
+	INC_EIGEN_DIR = /usr/include/eigen3
 endif
 
 # f_window 
