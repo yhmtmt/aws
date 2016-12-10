@@ -245,9 +245,14 @@ void ch_base::register_factory()
 #include "filter/f_aws1_ap.h"
 #include "filter/f_obj_manager.h"
 #include "filter/f_wp_manager.h"
+
 #ifdef ORB_SLAM
 #include "filter/f_orb_slam.h"
 #endif
+
+#include "filter/f_aws3_com.h"
+
+
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
 // need to initialize global and static data structure please insert your 
@@ -397,4 +402,6 @@ void f_base::register_factory()
 	register_factory<ORB_SLAM2::f_tracker>("orb_slam_tracker");
 	register_factory<ORB_SLAM2::f_viewer>("orb_slam_viewer");
 #endif
+
+	register_factory<f_aws3_com>("aws3c");
 }

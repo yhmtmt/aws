@@ -1,4 +1,5 @@
-#ifndef _f_H
+#ifndef _F_ORB_SLAM_H_
+#define _F_ORB_SLAM_H_
 // Copyright(c) 2016 Yohei Matsumoto, All right reserved. 
 
 // f_orb_slam.h is free software: you can redistribute it and/or modify
