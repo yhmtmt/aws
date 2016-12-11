@@ -52,7 +52,7 @@ LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
 LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
 INC_EIGEN_DIR = /usr/local/include/eigen3
-
+INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/standard
 # modules
 MODS = filter channel util orb_slam
 
@@ -60,7 +60,7 @@ MODS = filter channel util orb_slam
 FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map f_obj_manager \
-	f_wp_manager f_glfw_stereo_view f_stereo
+	f_wp_manager f_glfw_stereo_view f_stereo f_aws3_com
 
 # listing channels
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj
@@ -182,6 +182,7 @@ endif
 
 INC += -I$(INC_CV_DIR)
 INC += -I$(INC_EIGEN_DIR)
+INC += -I$(INC_MAVLINK)
 #LIB += -L$(LIB_CV_DIR) -lrt -lpthread -lopencv_world
 LIB += -L$(LIB_CV_DIR) -lrt -lpthread
 
