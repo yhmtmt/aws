@@ -36,7 +36,7 @@ using namespace std;
 #include "f_aws3_com.h"
 
 
-f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14551)
+f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550)
 {
 	register_fpar("port", &m_port, "UDP port recieving mavlink packets.");
 }
@@ -47,6 +47,8 @@ f_aws3_com::~f_aws3_com()
 
 bool f_aws3_com::init_run()
 {
+  m_sock = socket(AF_INET, SOCK_DGRAM, 0);
+  
 	m_sock_addr_rcv.sin_family = AF_INET;
 	m_sock_addr_rcv.sin_port = htons(m_port);
 	set_sockaddr_addr(m_sock_addr_rcv);
