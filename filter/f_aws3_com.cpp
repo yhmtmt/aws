@@ -150,6 +150,112 @@ bool f_aws3_com::proc()
 				{
 					// Packet received
 					printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
+					switch (msg.msgid){
+					case MAVLINK_MSG_ID_HEARTBEAT:
+						mavlink_msg_heartbeat_decode(&msg, &m_heartbeat);
+						break;
+					case MAVLINK_MSG_ID_RAW_IMU:
+						mavlink_msg_raw_imu_decode(&msg, &m_raw_imu);
+						break;
+					case MAVLINK_MSG_ID_SCALED_IMU2:
+						mavlink_msg_scaled_imu2_decode(&msg, &m_scaled_imu2);
+						break;
+					case MAVLINK_MSG_ID_SCALED_PRESSURE:
+						mavlink_msg_scaled_pressure_decode(&msg, &m_scaled_pressure);
+						break;
+					case MAVLINK_MSG_ID_SCALED_PRESSURE2:
+						mavlink_msg_scaled_pressure2_decode(&msg, &m_scaled_pressure2);
+						break;
+					case MAVLINK_MSG_ID_SYS_STATUS:
+						mavlink_msg_sys_status_decode(&msg, &m_sys_status);
+						break;
+					case MAVLINK_MSG_ID_POWER_STATUS:
+						mavlink_msg_power_status_decode(&msg, &m_power_status);
+						break;
+					case MAVLINK_MSG_ID_MISSION_CURRENT:
+						mavlink_msg_mission_current_decode(&msg, &m_mission_current);
+						break;
+					case MAVLINK_MSG_ID_SYSTEM_TIME:
+						mavlink_msg_system_time_decode(&msg, &m_system_time);
+						break;
+					case MAVLINK_MSG_ID_NAV_CONTROLLER_OUTPUT:
+						mavlink_msg_nav_controller_output_decode(&msg, &m_nav_controller_output);
+						break;
+					case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
+						mavlink_msg_global_position_int_decode(&msg, &m_global_position_int);
+						break;
+					case MAVLINK_MSG_ID_SERVO_OUTPUT_RAW:
+						mavlink_msg_servo_output_raw_decode(&msg, &m_servo_output_raw);
+						break;
+					case MAVLINK_MSG_ID_RC_CHANNELS_RAW:
+						mavlink_msg_rc_channels_raw_decode(&msg, &m_rc_channels_raw);
+						break;
+					case MAVLINK_MSG_ID_ATTITUDE:
+						mavlink_msg_attitude_decode(&msg, &m_attitude);
+						break;
+					//case MAVLINK_MSG_ID_RALLY_LAND_FETCH_POINT: //Message ID 178 is not appeared in ardupilot mega...
+					case MAVLINK_MSG_ID_VFR_HUD:
+						mavlink_msg_vfr_hud_decode(&msg, &m_vfr_hud);
+						break;
+					case MAVLINK_MSG_ID_HWSTATUS:
+						mavlink_msg_hwstatus_decode(&msg, &m_hwstatus);
+						break;
+					case MAVLINK_MSG_ID_MOUNT_STATUS:
+						mavlink_msg_mount_status_decode(&msg, &m_mount_status);
+						break;
+					case MAVLINK_MSG_ID_EKF_STATUS_REPORT:
+						mavlink_msg_ekf_status_report_decode(&msg, &m_ekf_status_report);
+						break;
+					case MAVLINK_MSG_ID_VIBRATION:
+						mavlink_msg_vibration_decode(&msg, &m_vibration);
+						break;
+					case MAVLINK_MSG_ID_SENSOR_OFFSETS:
+						mavlink_msg_sensor_offsets_decode(&msg, &m_sensor_offsets);
+						break;
+					case MAVLINK_MSG_ID_RANGEFINDER:
+						mavlink_msg_rangefinder_decode(&msg, &m_rangefinder);
+						break;
+					case MAVLINK_MSG_ID_RPM:
+						mavlink_msg_rpm_decode(&msg, &m_rpm);
+						break;
+					case MAVLINK_MSG_ID_CAMERA_FEEDBACK:
+						mavlink_msg_camera_feedback_decode(&msg, &m_camera_feedback);
+						break;
+					case MAVLINK_MSG_ID_LIMITS_STATUS:
+						mavlink_msg_limits_status_decode(&msg, &m_limits_status);
+						break;
+					case MAVLINK_MSG_ID_SIMSTATE:
+						mavlink_msg_simstate_decode(&msg, &m_simstate);
+						break;
+					case MAVLINK_MSG_ID_MEMINFO:
+						mavlink_msg_meminfo_decode(&msg, &m_meminfo);
+						break;
+					case MAVLINK_MSG_ID_BATTERY2:
+						mavlink_msg_battery2_decode(&msg, &m_battery2);
+						break;
+					case MAVLINK_MSG_ID_GIMBAL_REPORT:
+						mavlink_msg_gimbal_report_decode(&msg, &m_gimbal_report);
+						break;
+					case MAVLINK_MSG_ID_PID_TUNING:
+						mavlink_msg_pid_tuning_decode(&msg, &m_pid_tuning);
+						break;
+					case MAVLINK_MSG_ID_MAG_CAL_PROGRESS:
+						mavlink_msg_mag_cal_progress_decode(&msg, &m_mag_cal_progress);
+						break;
+					case MAVLINK_MSG_ID_MAG_CAL_REPORT:
+						mavlink_msg_mag_cal_report_decode(&msg, &m_mag_cal_report);
+						break;
+					case MAVLINK_MSG_ID_AHRS:
+						mavlink_msg_ahrs_decode(&msg, &m_ahrs);
+						break;
+					case MAVLINK_MSG_ID_AHRS2:
+						mavlink_msg_ahrs2_decode(&msg, &m_ahrs2);
+						break;
+					case MAVLINK_MSG_ID_AHRS3:
+						mavlink_msg_ahrs3_decode(&msg, &m_ahrs3);
+						break;
+					}
+					
 				}
 			}
 			printf("\n");
