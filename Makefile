@@ -52,7 +52,8 @@ LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
 LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
 INC_EIGEN_DIR = /usr/local/include/eigen3
-INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/standard
+INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
+
 # modules
 MODS = filter channel util orb_slam
 
