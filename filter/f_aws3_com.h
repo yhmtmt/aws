@@ -73,6 +73,9 @@ protected:
 	mavlink_ahrs3_t m_ahrs3;
 
 	// to aws3
+	bool m_jbtns[16];
+	short m_jx, m_jy, m_jz, m_jr;
+
 public:
 	f_aws3_com(const char * name);
 	virtual ~f_aws3_com();

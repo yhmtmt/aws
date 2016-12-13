@@ -71,22 +71,41 @@ bool f_aws3_com::proc()
 	timeval tv;
 	int res;
 	if (m_bcon){
+		/*
 		FD_ZERO(&fw);
 		FD_ZERO(&fe);
 		FD_SET(m_sock, &fw);
 		FD_SET(m_sock, &fe);
 		tv.tv_sec = 0;
 		tv.tv_usec = 1000;
-
-		/*Send Heartbeat */
-		/*
-		mavlink_msg_heartbeat_pack(1, 200, &msg, MAV_TYPE_HELICOPTER, MAV_AUTOPILOT_GENERIC, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
-
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-
-		bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
 		*/
+		mavlink_message_t msg;
+		mavlink_status_t status;
+		uint16_t len;
+		/*Send Heartbeat */
+		mavlink_msg_heartbeat_pack(1, 1, &msg, MAV_TYPE_SURFACE_BOAT, MAV_AUTOPILOT_GENERIC, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
 
+		len = mavlink_msg_to_send_buffer(m_buf, &msg);
+
+		res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
+
+		/* Send controller output */
+		uint16_t mask = 0x0001, btns = 0x0000;
+		for (int i = 0; i < 16; i++, mask <<= 1)
+			btns |= (m_jbtns[i] ? mask : 0);
+
+		// saturation -1000 to 1000
+		m_jx = max(min(m_jx, 1000), -1000);
+		m_jy = max(min(m_jy, 1000), -1000);
+		m_jz = max(min(m_jz, 1000), -1000);
+		m_jr = max(min(m_jr, 1000), -1000);
+
+		mavlink_msg_manual_control_pack(1, 1, &msg, 1, 
+			(int16_t)m_jx, (int16_t)m_jy, (int16_t)m_jz, (int16_t)m_jr, btns);
+
+		len = mavlink_msg_to_send_buffer(m_buf, &msg);
+
+		res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
 
 		/* Send Status */
 		/*
