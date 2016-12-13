@@ -83,7 +83,8 @@ bool f_aws3_com::proc()
 		mavlink_status_t status;
 		uint16_t len;
 		/*Send Heartbeat */
-		mavlink_msg_heartbeat_pack(1, 1, &msg, MAV_TYPE_SURFACE_BOAT, MAV_AUTOPILOT_GENERIC, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
+		mavlink_msg_heartbeat_pack(1, 1, &msg, MAV_TYPE_SURFACE_BOAT, 
+			MAV_AUTOPILOT_GENERIC, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
 
 		len = mavlink_msg_to_send_buffer(m_buf, &msg);
 
