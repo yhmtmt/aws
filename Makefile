@@ -64,7 +64,7 @@ FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 	f_wp_manager f_glfw_stereo_view f_stereo f_aws3_com
 
 # listing channels
-CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj
+CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3
 
 # listing utilities
 UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib 

@@ -95,10 +95,10 @@ bool f_aws3_com::proc()
 			btns |= (m_jbtns[i] ? mask : 0);
 
 		// saturation -1000 to 1000
-		m_jx = max(min(m_jx, 1000), -1000);
-		m_jy = max(min(m_jy, 1000), -1000);
-		m_jz = max(min(m_jz, 1000), -1000);
-		m_jr = max(min(m_jr, 1000), -1000);
+		m_jx = (int16_t)max(min((int)m_jx, 1000), -1000);
+		m_jy = (int16_t)max(min((int)m_jy, 1000), -1000);
+		m_jz = (int16_t)max(min((int)m_jz, 1000), -1000);
+		m_jr = (int16_t)max(min((int)m_jr, 1000), -1000);
 
 		mavlink_msg_manual_control_pack(1, 1, &msg, 1, 
 			(int16_t)m_jx, (int16_t)m_jy, (int16_t)m_jz, (int16_t)m_jr, btns);
