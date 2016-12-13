@@ -122,6 +122,7 @@ using namespace cv;
 #ifdef ORB_SLAM
 #include "channel/ch_orb_slam.h"
 #endif
+#include "channel/ch_aws3.h"
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
@@ -186,6 +187,9 @@ void ch_base::register_factory()
 	register_factory<ORB_SLAM2::ch_trj>("orb_slam_trj");
 	register_factory<ORB_SLAM2::ch_frm>("orb_slam_frm");
 #endif
+
+	register_factory<ch_aws3_cmd>("aws3cmd");
+	register_factory<ch_aws3_state>("aws3state");
 }
 
 ////////////////////////////////////////////////// setting up filter factory
