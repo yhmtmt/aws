@@ -22,8 +22,67 @@
 
 class f_aws3_com: f_base
 {
+public:
+	struct s_pelem{
+		int id;
+		const char * str;
+		const char * exp;
+		union {
+			char * c;
+			short * s;
+			int * i;
+			float * f;
+		};
 
+		s_pelem() : id(-1), str(NULL), exp(NULL), c(NULL)
+		{};
+
+		s_pelem(int _id, const char * _str, const char * _exp, char * _c) :id(_id), str(_str), exp(_exp), c(_c)
+		{
+		}
+
+		s_pelem(int _id, const char * _str, const char * _exp, short * _s) :id(_id), str(_str), exp(_exp), s(_s)
+		{
+		}
+
+		s_pelem(int _id, const char * _str, const char * _exp, int * _i) :id(_id), str(_str), exp(_exp), i(_i)
+		{
+		}
+
+		s_pelem(int _id, const char * _str, const char * _exp, float * _f) :id(_id), str(_str), exp(_exp), f(_f)
+		{
+		}
+	};
+
+	void create_param(int _id, const char * _str, const char * _exp, char * _c)
+	{
+		register_fpar(_str, _c, _exp);
+		m_ptbl.push_back(s_pelem(_id, _str, _exp, _c));
+	}
+
+	void create_param(int _id, const char * _str, const char * _exp, short * _s)
+	{
+		register_fpar(_str, _s, _exp);
+		m_ptbl.push_back(s_pelem(_id, _str, _exp, _s));
+	}
+	
+	void create_param(int _id, const char * _str, const char * _exp, int * _i)
+	{
+		register_fpar(_str, _i, _exp);
+		m_ptbl.push_back(s_pelem(_id, _str, _exp, _i));
+	}
+
+	void create_param(int _id, const char * _str, const char * _exp, float * _f)
+	{
+		register_fpar(_str, _f, _exp);
+		m_ptbl.push_back(s_pelem(_id, _str, _exp, _f));
+	}
 protected:
+	unsigned char m_sys_id;
+
+	enum e_state{
+		INIT = 0, LOAD_PARAM, ACTIVE
+	} m_state;
 
 	unsigned short m_port;
 	SOCKET m_sock;
@@ -72,12 +131,16 @@ protected:
 	mavlink_ahrs2_t m_ahrs2;
 	mavlink_ahrs3_t m_ahrs3;
 
+	mavlink_statustext_t m_statustext;
+	mavlink_param_value_t m_param_value;
+
 	// to aws3
 	bool m_jbtns[16];
 	short m_jx, m_jy, m_jz, m_jr;
 
-
 //Params (almost from ArduSub's Parameters.h)
+
+	vector<s_pelem> m_ptbl;
 
 	enum { //parameter indices
 		// Layout version number, always key zero.
@@ -105,7 +168,6 @@ protected:
 		k_param_notify, // Notify Library, AP_Notify
 		k_param_cli_enabled, // Old (deprecated) command line interface
 
-
 		// Sensor objects
 		k_param_ins = 30, // AP_InertialSensor
 		k_param_compass, // Compass
@@ -115,7 +177,6 @@ protected:
 		k_param_rangefinder, // Rangefinder
 		k_param_gps, // GPS
 		k_param_optflow, // Optical Flow
-
 
 		// Navigation libraries
 		k_param_ahrs = 50, // AHRS
@@ -131,13 +192,11 @@ protected:
 		k_param_circle_nav, // Disabled
 		k_param_avoid, // Relies on proximity and fence
 
-
 		// Other external hardware interfaces
 		k_param_motors = 65, // Motors
 		k_param_relay, // Relay
 		k_param_camera, // Camera
 		k_param_camera_mount, // Camera gimbal
-
 
 		// RC_Channel settings
 		k_param_rc_1 = 75,
@@ -181,7 +240,6 @@ protected:
 		k_param_jbtn_14,
 		k_param_jbtn_15,
 
-
 		// Flight mode selection
 		k_param_flight_mode1 = 120,
 		k_param_flight_mode2,
@@ -189,7 +247,6 @@ protected:
 		k_param_flight_mode4,
 		k_param_flight_mode5,
 		k_param_flight_mode6,
-
 
 		// PID Controllers
 		k_param_p_pos_xy,
@@ -199,7 +256,6 @@ protected:
 		k_param_pid_accel_z,
 		k_param_pid_crosstrack_control, // Experimental
 		k_param_pid_heading_control, // Experimental
-
 
 		// Failsafes
 		k_param_failsafe_gcs = 140,
@@ -217,7 +273,6 @@ protected:
 		k_param_fs_batt_voltage,
 		k_param_failsafe_throttle,
 		k_param_failsafe_throttle_value,
-
 
 		// Misc Sub settings
 		k_param_log_bitmask = 165,
@@ -240,7 +295,6 @@ protected:
 		k_param_terrain_follow,
 		k_param_rc_feel_rp,
 
-
 		// Acro Mode parameters
 		k_param_acro_yaw_p = 220, // Used in all modes for get_pilot_desired_yaw_rate
 		k_param_acro_trainer,
@@ -248,7 +302,6 @@ protected:
 		k_param_acro_rp_p,
 		k_param_acro_balance_roll,
 		k_param_acro_balance_pitch,
-
 
 		// AUX switch options
 		k_param_ch7_option, // Disabled
@@ -364,6 +417,7 @@ protected:
 		short rev;
 		short trim;
 	};
+
 	struct RCA{
 		short dz;
 		short function;

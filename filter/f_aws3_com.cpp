@@ -35,9 +35,12 @@ using namespace std;
 
 #include "f_aws3_com.h"
 
-
-f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550)
+f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id(255)
 {
+	create_param(k_param_format_version, "SYSID_SW_MREV", "Eeprom format version number.", &format_version);
+	create_param(k_param_software_type, "SYSID_SW_TYPE", "Software Type.", &software_type);
+
+	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
 	register_fpar("port", &m_port, "UDP port recieving mavlink packets.");
 }
 
@@ -56,6 +59,8 @@ bool f_aws3_com::init_run()
 		cerr << "Socket error" << endl;
 		return false;
 	}
+
+	m_state = INIT;
 
 	return true;
 }
@@ -83,7 +88,7 @@ bool f_aws3_com::proc()
 		mavlink_status_t status;
 		uint16_t len;
 		/*Send Heartbeat */
-		mavlink_msg_heartbeat_pack(1, 1, &msg, MAV_TYPE_SURFACE_BOAT, 
+		mavlink_msg_heartbeat_pack(255, 1, &msg, MAV_TYPE_SURFACE_BOAT,
 			MAV_AUTOPILOT_GENERIC, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
 
 		len = mavlink_msg_to_send_buffer(m_buf, &msg);
@@ -101,46 +106,57 @@ bool f_aws3_com::proc()
 		m_jz = (int16_t)max(min((int)m_jz, 1000), -1000);
 		m_jr = (int16_t)max(min((int)m_jr, 1000), -1000);
 
-		mavlink_msg_manual_control_pack(1, 1, &msg, 1, 
+		mavlink_msg_manual_control_pack(255, 1, &msg, 1,
 			(int16_t)m_jx, (int16_t)m_jy, (int16_t)m_jz, (int16_t)m_jr, btns);
 
 		len = mavlink_msg_to_send_buffer(m_buf, &msg);
 
 		res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
 
-		/* Send Status */
-		/*
-		mavlink_msg_sys_status_pack(1, 200, &msg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
+		if (m_state == INIT){
+			// issue request list
+			mavlink_msg_param_request_list_pack(m_sys_id, 1, &msg, 1, 1);
 
-		len = mavlink_msg_to_send_buffer(buf, &msg);
+			len = mavlink_msg_to_send_buffer(m_buf, &msg);
 
-		bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof (struct sockaddr_in));
-		*/
+			res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
 
-
-		/* Send Local Position */
-		/*
-		mavlink_msg_local_position_ned_pack(1, 200, &msg, microsSinceEpoch(),
-
-		position[0], position[1], position[2],
-
-		position[3], position[4], position[5]);
-
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-
-		bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-		*/
-
-
-		/* Send attitude */
-		/*
-		mavlink_msg_attitude_pack(1, 200, &msg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
-
-		len = mavlink_msg_to_send_buffer(buf, &msg);
-
-		bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-		*/
+			m_state = LOAD_PARAM;
+		}
 	}
+
+	/* Send Status */
+	/*
+	mavlink_msg_sys_status_pack(1, 200, &msg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
+
+	len = mavlink_msg_to_send_buffer(buf, &msg);
+
+	bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof (struct sockaddr_in));
+	*/
+
+
+	/* Send Local Position */
+	/*
+	mavlink_msg_local_position_ned_pack(1, 200, &msg, microsSinceEpoch(),
+
+	position[0], position[1], position[2],
+
+	position[3], position[4], position[5]);
+
+	len = mavlink_msg_to_send_buffer(buf, &msg);
+
+	bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+	*/
+
+
+	/* Send attitude */
+	/*
+	mavlink_msg_attitude_pack(1, 200, &msg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
+
+	len = mavlink_msg_to_send_buffer(buf, &msg);
+
+	bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
+	*/
 
 	FD_ZERO(&fr);
 	FD_ZERO(&fe);
@@ -274,6 +290,11 @@ bool f_aws3_com::proc()
 					case MAVLINK_MSG_ID_AHRS3:
 						mavlink_msg_ahrs3_decode(&msg, &m_ahrs3);
 						break;
+					case MAVLINK_MSG_ID_STATUSTEXT:
+						mavlink_msg_statustext_decode(&msg, &m_statustext);
+						break;
+					case MAVLINK_MSG_ID_PARAM_VALUE:
+						mavlink_msg_param_value_decode(&msg, &m_param_value);
 					}
 					
 				}
