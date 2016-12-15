@@ -379,35 +379,35 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_wp_nav, "WPNAV_LOIT_MINA", "Loiter horizontal minimum acceleration", &wpnav.loit_mina);
 	create_param(k_param_wp_nav, "WPNAV_RFND_USE", "Use rangefinder for terrain following", &wpnav.rfnd_use);
 
-	create_param(-1, "ATC_SLEW_YAW", "Yaw target slew rate", &atc.slew_yaw);
-	create_param(-1, "ATC_ACCEL_P_MAX", "Acceleration Max for Pitch", &atc.accel_p_max);
-	create_param(-1, "ATC_ACCEL_R_MAX", "Acceleration Max for Roll", &atc.accel_r_max);
-	create_param(-1, "ATC_ACCEL_Y_MAX", "Acceleration Max for Yaw", &atc.accel_y_max);
-	create_param(-1, "ATC_ANGLE_BOOST", "Angle Boost", &atc.angle_boost);
-	create_param(-1, "ATC_ANG_LIM_TC", "Angle Limit (to maintain altitude) Time Constant", &atc.ang_lim_tc);
-	create_param(-1, "ATC_ANG_PIT_P", "Pitch axis angle controller P gain", &atc.ang_pit_p);
-	create_param(-1, "ATC_ANG_RLL_P", "Roll axis angle controller P gain", &atc.ang_rll_p);
-	create_param(-1, "ATC_ANG_YAW_P", "Yaw axis angle controller P gain", &atc.ang_yaw_p);
-	create_param(-1, "ATC_RATE_FF_ENAB", "Rate Feedforward Enable", &atc.rate_ff_enab);
-	create_param(-1, "ATC_RAT_RLL_P", "Roll axis rate controller P gain", &atc.rat_rll_p);
-	create_param(-1, "ATC_RAT_RLL_I", "Roll axis rate controller I gain", &atc.rat_rll_i);
-	create_param(-1, "ATC_RAT_RLL_IMAX", "Roll axis rate controller I gain maximum", &atc.rat_rll_imax);
-	create_param(-1, "ATC_RAT_RLL_D", "Roll axis rate controller D gain", &atc.rat_rll_d);
-	create_param(-1, "ATC_RAT_RLL_FILT", "Roll axis rate controller input frequency in Hz", &atc.rat_rll_filt);
-	create_param(-1, "ATC_RAT_PIT_P", "Pitch axis rate controller P gain", &atc.rat_pit_p);
-	create_param(-1, "ATC_RAT_PIT_I", "Pitch axis rate controller I gain", &atc.rat_pit_i);
-	create_param(-1, "ATC_RAT_PIT_IMAX", "Pitch axis rate controller I gain maximum", &atc.rat_pit_imax);
-	create_param(-1, "ATC_RAT_PIT_D", "Pitch axis rate controller D gain", &atc.rat_pit_d);
-	create_param(-1, "ATC_RAT_PIT_FILT", "Pitch axis rate controller input frequency in Hz", &atc.rat_pit_filt);
-	create_param(-1, "ATC_RAT_YAW_P", "Yaw axis rate controller P gain", &atc.rat_yaw_p);
-	create_param(-1, "ATC_RAT_YAW_I", "Yaw axis rate controller I gain", &atc.rat_yaw_i);
-	create_param(-1, "ATC_RAT_YAW_IMAX", "Yaw axis rate controller I gain maximum", &atc.rat_yaw_imax);
-	create_param(-1, "ATC_RAT_YAW_D", "Yaw axis rate controller D gain", &atc.rat_yaw_d);
-	create_param(-1, "ATC_RAT_YAW_FILT", "Yaw axis rate controller input frequency in Hz", &atc.rat_yaw_filt);
-	create_param(-1, "ATC_THR_MIX_MIN", "Thhrottle Mix Minimum", &atc.thr_mix_min);
-	create_param(-1, "ATC_THR_MIX_MAX", "Thhrottle Mix Maximum", &atc.thr_mix_max);
+	create_param(k_param_attitude_control, "ATC_SLEW_YAW", "Yaw target slew rate", &atc.slew_yaw);
+	create_param(k_param_attitude_control, "ATC_ACCEL_P_MAX", "Acceleration Max for Pitch", &atc.accel_p_max);
+	create_param(k_param_attitude_control, "ATC_ACCEL_R_MAX", "Acceleration Max for Roll", &atc.accel_r_max);
+	create_param(k_param_attitude_control, "ATC_ACCEL_Y_MAX", "Acceleration Max for Yaw", &atc.accel_y_max);
+	create_param(k_param_attitude_control, "ATC_ANGLE_BOOST", "Angle Boost", &atc.angle_boost);
+	create_param(k_param_attitude_control, "ATC_ANG_LIM_TC", "Angle Limit (to maintain altitude) Time Constant", &atc.ang_lim_tc);
+	create_param(k_param_attitude_control, "ATC_ANG_PIT_P", "Pitch axis angle controller P gain", &atc.ang_pit_p);
+	create_param(k_param_attitude_control, "ATC_ANG_RLL_P", "Roll axis angle controller P gain", &atc.ang_rll_p);
+	create_param(k_param_attitude_control, "ATC_ANG_YAW_P", "Yaw axis angle controller P gain", &atc.ang_yaw_p);
+	create_param(k_param_attitude_control, "ATC_RATE_FF_ENAB", "Rate Feedforward Enable", &atc.rate_ff_enab);
+	create_param(k_param_attitude_control, "ATC_RAT_RLL_P", "Roll axis rate controller P gain", &atc.rat_rll_p);
+	create_param(k_param_attitude_control, "ATC_RAT_RLL_I", "Roll axis rate controller I gain", &atc.rat_rll_i);
+	create_param(k_param_attitude_control, "ATC_RAT_RLL_IMAX", "Roll axis rate controller I gain maximum", &atc.rat_rll_imax);
+	create_param(k_param_attitude_control, "ATC_RAT_RLL_D", "Roll axis rate controller D gain", &atc.rat_rll_d);
+	create_param(k_param_attitude_control, "ATC_RAT_RLL_FILT", "Roll axis rate controller input frequency in Hz", &atc.rat_rll_filt);
+	create_param(k_param_attitude_control, "ATC_RAT_PIT_P", "Pitch axis rate controller P gain", &atc.rat_pit_p);
+	create_param(k_param_attitude_control, "ATC_RAT_PIT_I", "Pitch axis rate controller I gain", &atc.rat_pit_i);
+	create_param(k_param_attitude_control, "ATC_RAT_PIT_IMAX", "Pitch axis rate controller I gain maximum", &atc.rat_pit_imax);
+	create_param(k_param_attitude_control, "ATC_RAT_PIT_D", "Pitch axis rate controller D gain", &atc.rat_pit_d);
+	create_param(k_param_attitude_control, "ATC_RAT_PIT_FILT", "Pitch axis rate controller input frequency in Hz", &atc.rat_pit_filt);
+	create_param(k_param_attitude_control, "ATC_RAT_YAW_P", "Yaw axis rate controller P gain", &atc.rat_yaw_p);
+	create_param(k_param_attitude_control, "ATC_RAT_YAW_I", "Yaw axis rate controller I gain", &atc.rat_yaw_i);
+	create_param(k_param_attitude_control, "ATC_RAT_YAW_IMAX", "Yaw axis rate controller I gain maximum", &atc.rat_yaw_imax);
+	create_param(k_param_attitude_control, "ATC_RAT_YAW_D", "Yaw axis rate controller D gain", &atc.rat_yaw_d);
+	create_param(k_param_attitude_control, "ATC_RAT_YAW_FILT", "Yaw axis rate controller input frequency in Hz", &atc.rat_yaw_filt);
+	create_param(k_param_attitude_control, "ATC_THR_MIX_MIN", "Thhrottle Mix Minimum", &atc.thr_mix_min);
+	create_param(k_param_attitude_control, "ATC_THR_MIX_MAX", "Thhrottle Mix Maximum", &atc.thr_mix_max);
 
-	create_param(-1, "PSC_ACC_XY_FILT", "XY Acceleration filter cuttoff frequency", &psc_acc_xy_filt);
+	create_param(k_param_pos_control, "PSC_ACC_XY_FILT", "XY Acceleration filter cuttoff frequency", &psc_acc_xy_filt);
 
 	create_param(-1, "SR0_EXTRA1", "Extra data type 1 stream rate to ground station", &sr0.extra1);
 	create_param(-1, "SR0_EXTRA2", "Extra data type 2 stream rate to ground station", &sr0.extra2);
@@ -448,6 +448,92 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(-1, "SR3_RAW_CTRL", "Raw Control stream rate to ground station", &sr3.raw_ctrl);
 	create_param(-1, "SR3_RAW_SENS", "Raw sensor stream rate", &sr3.raw_sens);
 	create_param(-1, "SR3_RC_CHAN", "RC Channel stream rate to ground station", &sr3.rc_chan);
+
+	create_param(k_param_ahrs, "AHRS_COMP_BETA", "AHRS velocity complementary filter beta coefficient", &ahrs.comp_beta);
+	create_param(k_param_ahrs, "AHRS_EKF_TYPE", "Use NavEKF Kalman filter for attitude and position estimation", &ahrs.ekf_type);
+	create_param(k_param_ahrs, "AHRS_GPS_GAIN", "AHRS GPS gain", &ahrs.gps_gain);
+	create_param(k_param_ahrs, "AHRS_GPS_MINSATS", "AHRS GPS minimum satellites", &ahrs.gps_minsats);
+	create_param(k_param_ahrs, "AHRS_GPS_USE", "AHRS use GPS for navigation", &ahrs.gps_use);
+	create_param(k_param_ahrs, "AHRS_ORIENTATION", "Board orientation", &ahrs.orientation);
+	create_param(k_param_ahrs, "AHRS_RP_P", "AHRS RP_P", &ahrs.rp_p);
+	create_param(k_param_ahrs, "AHRS_TRIM_Z", "AHRS Trim Yaw", &ahrs.trim_z);
+	create_param(k_param_ahrs, "AHRS_WIND_MAX", "Maximum wind", &ahrs.wind_max);
+	create_param(k_param_ahrs, "AHRS_YAW_P", "Yaw P", &ahrs.yaw_p);
+
+	create_param(k_param_barometer, "GND_ABS_PRESS", "Absolute Pressure", &gnd.abs_press);
+	create_param(k_param_barometer, "GND_TEMP", "Ground temperature", &gnd.temp);
+	create_param(k_param_barometer, "GND_ALT_OFFSET", "Altitude offset", &gnd.alt_offset);
+	create_param(k_param_barometer, "GND_PRIMARY", "Primary barometer", &gnd.primary);
+	create_param(k_param_barometer, "GND_SPEC_GRAV", "Specific Gravity (for water depth measurement)", &gnd.spec_grav);
+	create_param(k_param_barometer, "GND_BASE_PRESS", "Base Pressure (for water depth measurement)", &gnd.base_press);
+	create_param(k_param_barometer, "GND_BASE_RESET", "Reset Base Pressure (for water depth measurement)", &gnd.base_reset);
+
+	create_param(k_param_gps, "GPS_TYPE", "GPS Type", &gps.type);
+	create_param(k_param_gps, "GPS_TYPE2", "GPS2 Type", &gps.type2);
+	create_param(k_param_gps, "GPS_NAVFILTER", "Navigation filter setting", &gps.navfilter);
+	create_param(k_param_gps, "GPS_AUTO_SWITCH", "Automatic Switchover Setting", &gps.auto_switch);
+	create_param(k_param_gps, "GPS_MIN_DGPS", "Minimum Lock Type Accepted for DGPS", &gps.min_dgps);
+	create_param(k_param_gps, "GPS_SBAS_MODE", "SBAS Mode", &gps.sbas_mode);
+	create_param(k_param_gps, "GPS_MIN_ELEV", "Minimum elevation", &gps.min_elevation);
+	create_param(k_param_gps, "GPS_INJECT_TO", "Destination for GPS_INJECT_DATA Mavlink packets", &gps.inject_to);
+	create_param(k_param_gps, "GPS_SBP_LOGMASK", "Swift Binary Protocol Logging Mask", &gps.sbp_logmask);
+	create_param(k_param_gps, "GPS_RAW_DATA", "Raw data logging", &gps.raw_data);
+	create_param(k_param_gps, "GPS_GNSS_MODE", "GNSS system configuration", &gps.gnss_mode);
+	create_param(k_param_gps, "GPS_GNSS_MODE2", "GNSS system 2 configuration", &gps.gnss_mode2);
+	create_param(k_param_gps, "GPS_SAVE_CFG", "Save GPS configuration", &gps.save_cfg);
+	create_param(k_param_gps, "GPS_AUTOCONFIG", "Automatic GPS configuration", &gps.auto_config);
+	create_param(k_param_gps, "GPS_RATE_MS", "GPS update rate in milliseconds", &gps.rate_ms);
+	create_param(k_param_gps, "GPS_RATE_MS2", "GPS update rate in milliseconds", &gps.rate_ms2);
+	create_param(k_param_gps, "GPS_POS1_X", "Antenna X position offset", &gps.pos1_x);
+	create_param(k_param_gps, "GPS_POS1_Y", "Antenna Y position offset", &gps.pos1_y);
+	create_param(k_param_gps, "GPS_POS1_Z", "Antenna Z position offset", &gps.pos1_z);
+	create_param(k_param_gps, "GPS_POS2_X", "Antenna X position offset", &gps.pos2_x);
+	create_param(k_param_gps, "GPS_POS2_Y", "Antenna Y position offset", &gps.pos2_y);
+	create_param(k_param_gps, "GPS_POS2_Z", "Antenna Z position offset", &gps.pos2_z);
+
+	create_param(k_param_leak_detector, "LEAK1_LOGIC", "Default reading of leak detector when dry", &leak1.logic);
+	create_param(k_param_leak_detector, "LEAK1_PIN", "Pin that leak detector isconnected to", &leak1.pin);
+	create_param(k_param_leak_detector, "LEAK2_LOGIC", "Default reading of leak detector when dry", &leak2.logic);
+	create_param(k_param_leak_detector, "LEAK2_PIN", "Pin that leak detector isconnected to", &leak2.pin);
+	create_param(k_param_leak_detector, "LEAK3_LOGIC", "Default reading of leak detector when dry", &leak3.logic);
+	create_param(k_param_leak_detector, "LEAK3_PIN", "Pin that leak detector isconnected to", &leak3.pin);
+
+#if MOUNT == ENABLED
+	create_param(k_param_camera_mount, "MNT_RETRACT_X", "Mount roll angle when in retracted position", &mnt.retract_x);
+	create_param(k_param_camera_mount, "MNT_RETRACT_Y", "Mount tilt angle when in retracted position", &mnt.retract_y);
+	create_param(k_param_camera_mount, "MNT_RETRACT_Z", "Mount pan angle when in retracted position", &mnt.retract_z);
+
+	create_param(k_param_camera_mount, "MNT_NEUTRAL_X", "Mount roll angle when in neutral position", &mnt.neutral_x);
+	create_param(k_param_camera_mount, "MNT_NEUTRAL_Y", "Mount tilt angle when in neutral position", &mnt.neutral_y);
+	create_param(k_param_camera_mount, "MNT_NEUTRAL_Z", "Mount pan angle when in neutral position", &mnt.neutral_z);
+
+	create_param(k_param_camera_mount, "MNT_STAB_ROLL", "Stabilize mount's roll angle", &mnt.stab_roll);
+	create_param(k_param_camera_mount, "MNT_STAB_PAN", "Stabilize mount's pan angle", &mnt.stab_pan);
+	create_param(k_param_camera_mount, "MNT_STAB_TILT", "Stabilize mount's tilt angle", &mnt.stab_tilt);
+
+	create_param(k_param_camera_mount, "MNT_ANGMAX_ROLL", "Maximum roll angle", &mnt.angmax_rol);
+	create_param(k_param_camera_mount, "MNT_ANGMAX_PAN", "Maximum pan angle", &mnt.angmax_pan);
+	create_param(k_param_camera_mount, "MNT_ANGMAX_TILT", "Maximum tilt angle", &mnt.angmax_til);
+
+	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Minimum roll angle", &mnt.angmin_rol);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_PAN", "Minimum pan angle", &mnt.angmin_pan);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Minimum tilt angle", &mnt.angmin_til);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Stabilize mount's roll angle", &mnt.stab_roll);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_PAN", "Stabilize mount's pan angle", &mnt.stab_pan);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Stabilize mount's tilt angle", &mnt.stab_tilt);
+
+	create_param(k_param_camera_mount, "MNT_RC_IN_ROLL", "Roll RC input channel", &mnt.rc_in_roll);
+	create_param(k_param_camera_mount, "MNT_RC_IN_PAN", "Pan RC input channel", &mnt.rc_in_pan);
+	create_param(k_param_camera_mount, "MNT_RC_IN_TILT", "Tilt RC input channel", &mnt.rc_in_tilt);
+
+	create_param(k_param_camera_mount, "MNT_JSTICK_SPD", "Mount joystic speed", &mnt.jstick_spd);
+
+	create_param(k_param_camera_mount, "MNT_LEAD_PTCH", "Pitch stabilization lead time", &mnt.lead_pitch);
+	create_param(k_param_camera_mount, "MNT_LEAD_RLL", "Roll stabilization lead time", &mnt.lead_rll);
+
+	create_param(k_param_camera_mount, "MNT_TYPE", "Mount type", &mnt.type);
+#endif
+
 
 	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
 	register_fpar("port", &m_port, "UDP port recieving mavlink packets.");

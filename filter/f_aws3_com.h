@@ -20,7 +20,7 @@
 
 #include <mavlink.h>
 
-class f_aws3_com: f_base
+class f_aws3_com : f_base
 {
 public:
 	struct s_pelem{
@@ -65,7 +65,7 @@ public:
 		register_fpar(_str, _s, _exp);
 		m_ptbl.push_back(s_pelem(_id, _str, _exp, _s));
 	}
-	
+
 	void create_param(int _id, const char * _str, const char * _exp, int * _i)
 	{
 		register_fpar(_str, _i, _exp);
@@ -90,7 +90,7 @@ protected:
 	socklen_t m_sz;
 
 	uint8_t m_buf[2048];
-	
+
 	bool m_brst;
 	bool m_bcon;
 
@@ -109,7 +109,7 @@ protected:
 	mavlink_servo_output_raw_t m_servo_output_raw;
 	mavlink_rc_channels_raw_t m_rc_channels_raw;
 	mavlink_attitude_t m_attitude;
-//	mavlink_rally_fetch_point_t m_rally_fetch_point;
+	//	mavlink_rally_fetch_point_t m_rally_fetch_point;
 	mavlink_vfr_hud_t m_vfr_hud;
 	mavlink_hwstatus_t m_hwstatus;
 	mavlink_mount_status_t m_mount_status;
@@ -138,7 +138,7 @@ protected:
 	bool m_jbtns[16];
 	short m_jx, m_jy, m_jz, m_jr;
 
-//Params (almost from ArduSub's Parameters.h)
+	//Params (almost from ArduSub's Parameters.h)
 
 	vector<s_pelem> m_ptbl;
 
@@ -180,7 +180,7 @@ protected:
 
 		// Navigation libraries
 		k_param_ahrs = 50, // AHRS
-		k_param_NavEKF, // Extended Kalman Filter Inertial Navigation
+		k_param_NavEKF, // Extended Kalman Filter Inertial Navigationsr
 		k_param_NavEKF2, // EKF2
 		k_param_attitude_control, // Attitude Control
 		k_param_pos_control, // Position Control
@@ -729,7 +729,7 @@ protected:
 		float comp_beta;
 		char ekf_type;
 		float gps_gain;
-		short GPS_MINSATS;
+		short gps_minsats;
 		char gps_use;
 		short orientation;
 		float rp_p;
@@ -744,7 +744,7 @@ protected:
 		short angmax_pan;
 		short angmax_rol;
 		short angmax_til;
-		short ang_min_pan;
+		short angmin_pan;
 		short angmin_rol;
 		short angmin_til;
 		char deflt_mode;
@@ -805,32 +805,41 @@ protected:
 		char type;
 	} brd;
 
-	struct s_gps
-	{
+	struct s_gnd{
+		float abs_press;
+		float alt_offset;
+		float base_press;
+		char base_reset;
+		char primary;
+		float spec_grav;
+		float temp;
+	} gnd;
+	
+	struct s_gps{
 		char auto_config;
 		char auto_switch;
 		char gnss_mode;
 		char gnss_mode2;
-		short gnss_good;
+		short hdop_good;
 		short inject_to;
 		short min_dgps;
-		short min_elev;
-		char navfilter;
+		short min_elevation;
+		short navfilter;
 		float pos1_x;
 		float pos1_y;
 		float pos1_z;
 		float pos2_x;
 		float pos2_y;
 		float pos2_z;
-		short rate_ms;
-		short rate_ms2;
+		float rate_ms;
+		float rate_ms2;
 		char raw_data;
 		char save_cfg;
 		char sbas_mode;
 		short sbp_logmask;
 		char type;
 		char type2;
-	};
+	} gps;
 
 	struct s_leak
 	{
