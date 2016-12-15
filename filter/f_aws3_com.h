@@ -508,6 +508,7 @@ protected:
 	float pos_xy_p;
 	float pos_z_p;
 
+	short angle_max; // common parameter for all types of vehicles
 
 #if TRANSECT_ENABLED == ENABLED
 	//AC_PID pid_crosstrack_control;
@@ -523,12 +524,412 @@ protected:
 #endif
 
 	float				surface_depth;
+
+	struct s_camera{
+		short center;
+		short duration;
+		short feedback_pin;
+		short feedback_pol;
+		short max_roll;
+		short min_interval;
+		short relay_on;
+		short servo_off;
+		short servo_on;
+		float trigg_dist;
+		short trigg_type;
+	} cam;
+
+	struct s_relay{
+		short default;
+		short pin;
+		short pin2;
+		short pin3;
+		short pin4;
+	} relay;
+
+	struct s_compass{
+		char autodec;
+		float cal_fit;
+		float dec;
+		int dev_id;
+		int dev_id2;
+		int dev_id3;
+		float dia2_x;
+		float dia2_y;
+		float dia2_z;
+		float dia3_x;
+		float dia3_y;
+		float dia3_z;
+		float dia_x;
+		float dia_y;
+		float dia_z;
+		char extern2;
+		char extern3;
+		char external;
+		char learn;
+		float mot2_x;
+		float mot2_y;
+		float mot2_z;
+		float mot3_x;
+		float mot3_y;
+		float mot3_z;
+		float mot_x;
+		float mot_y;
+		float mot_z;
+		char motct;
+		float odi2_x;
+		float odi2_y;
+		float odi2_z;
+		float odi3_x;
+		float odi3_y;
+		float odi3_z;
+		float odi_x;
+		float odi_y;
+		float odi_z;
+		float ofs2_x;
+		float ofs2_y;
+		float ofs2_z;
+		float ofs3_x;
+		float ofs3_y;
+		float ofs3_z;
+		float ofs_x;
+		float ofs_y;
+		float ofs_z;
+		char orient;
+		char orient2;
+		char orient3;
+		char primary;
+		char use;
+		char use2;
+		char use3;
+
+	} compass;
+
+	struct s_ins{
+		float acc3offs_x;
+		float acc3offs_y;
+		float acc3offs_z;
+		float acc3scal_x;
+		float acc3scal_y;
+		float acc3scal_z;
+		float acc2offs_x;
+		float acc2offs_y;
+		float acc2offs_z;
+		float acc2scal_x;
+		float acc2scal_y;
+		float acc2scal_z;
+		float accoffs_x;
+		float accoffs_y;
+		float accoffs_z;
+		float accscal_x;
+		float accscal_y;
+		float accscal_z;
+		short accel_filter;
+		char acc_bodyfix;
+		int acc2_id;
+		int acc3_id;
+		int acc_id;
+		char fast_sample;
+		float gyr3offs_x;
+		float gyr3offs_y;
+		float gyr3offs_z;
+		float gyr2offs_x;
+		float gyr2offs_y;
+		float gyr2offs_z;
+		float gyroffs_x;
+		float gyroffs_y;
+		float gyroffs_z;
+		short gyro_filter;
+		char gyro_cal;
+		int gyr3_id;
+		int gyr2_id;
+		int gyr_id;
+		float pos1_x;
+		float pos1_y;
+		float pos1_z;
+		float pos2_x;
+		float pos2_y;
+		float pos2_z;
+		float pos3_x;
+		float pos3_y;
+		float pos3_z;
+		int product_id;
+		float still_thresh;
+		char trim_option;
+		char use;
+		char use2;
+		char use3;
+	} ins;
+
+	struct s_wpnav{
+		float accel;
+		float accel_z;
+		float loit_jerk;
+		float loit_maxa;
+		float loit_mina;
+		float loit_speed;
+		float radius;
+		char rfnd_use;
+		float speed;
+		float speed_dn;
+		float speed_up;
+	} wpnav;
+
+	struct s_atc{
+		float accel_p_max;
+		float accel_r_max;
+		float accel_y_max;
+		char angle_boost;
+		float ang_lim_tc;
+		float ang_pit_p;
+		float ang_rll_p;
+		float ang_yaw_p;
+		char rate_ff_enab;
+		float rat_pit_d;
+		float rat_pit_filt;
+		float rat_pit_i;
+		float rat_pit_imax;
+		float rat_pit_p;
+		float rat_rll_d;
+		float rat_rll_filt;
+		float rat_rll_i;
+		float rat_rll_imax;
+		float rat_rll_p;
+		float rat_yaw_d;
+		float rat_yaw_filt;
+		float rat_yaw_i;
+		float rat_yaw_imax;
+		float rat_yaw_p;
+		float slew_yaw;
+		float thr_mix_max;
+		float thr_mix_min;
+	} atc;
+
+	struct s_sr{
+		char extra1;
+		char extra2;
+		char extra3;
+		char ext_stat;
+		char params;
+		char position;
+		char raw_ctrl;
+		char raw_sens;
+		char rc_chan;
+	};
+
+	s_sr sr0;
+	s_sr sr1;
+	s_sr sr2;
+	s_sr sr3;
+
+	float psc_acc_xy_filt;
+
+	struct s_ahrs
+	{
+		float comp_beta;
+		char ekf_type;
+		float gps_gain;
+		short GPS_MINSATS;
+		char gps_use;
+		short orientation;
+		float rp_p;
+		float trim_z;
+		short wind_max;
+		float yaw_p;
+	} ahrs;
+
+#if MOUNT == ENABLED
+	struct s_mnt
+	{
+		short angmax_pan;
+		short angmax_rol;
+		short angmax_til;
+		short ang_min_pan;
+		short angmin_rol;
+		short angmin_til;
+		char deflt_mode;
+		char jstick_spd;
+		float lead_pitch;
+		float lead_rll;
+		float neutral_x;
+		float neutral_y;
+		float neutral_z;
+		char rc_in_pan;
+		char rc_in_roll;
+		char rc_in_tilt;
+		float retract_x;
+		float retract_y;
+		float retract_z;
+		char stab_pan;
+		char stab_roll;
+		char stab_tilt;
+		char type;
+	} mnt;
+#endif
+
+	struct s_log
+	{
+		char backend_type;
+		int bitmask;
+		char disarmed;
+		short file_bufsize;
+		char file_dsrmrot;
+		char replay;
+	} log;
+
+	struct s_batt
+	{
+		float amp_offset;
+		float amp_pervol;
+		short capacity;
+		char curr_pin;
+		char monitor;
+		float volt_mult;
+		char volt_pin;
+	};
+
+	s_batt batt;
+	s_batt batt2;
+
+	struct s_brd
+	{
+		char can_enable;
+		char imu_targetemp;
+		char pwm_count;
+		char safetyenable;
+		char safety_mask;
+		char sbus_out;
+		char ser1_rtscts;
+		char ser2_rtscts;
+		char serial_num;
+		char type;
+	} brd;
+
+	struct s_gps
+	{
+		char auto_config;
+		char auto_switch;
+		char gnss_mode;
+		char gnss_mode2;
+		short gnss_good;
+		short inject_to;
+		short min_dgps;
+		short min_elev;
+		char navfilter;
+		float pos1_x;
+		float pos1_y;
+		float pos1_z;
+		float pos2_x;
+		float pos2_y;
+		float pos2_z;
+		short rate_ms;
+		short rate_ms2;
+		char raw_data;
+		char save_cfg;
+		char sbas_mode;
+		short sbp_logmask;
+		char type;
+		char type2;
+	};
+
+	struct s_leak
+	{
+		char logic;
+		char pin;
+	};
+
+	s_leak leak1;
+	s_leak leak2;
+	s_leak leak3;
+
+	struct s_sched
+	{
+		char debug;
+		short loop_rate;
+	};
+
+#if AC_FENCE == ENABLED
+	struct s_fence
+	{
+		char action;
+		float alt_max;
+		float depth_max;
+		char enable;
+		float margin;
+		float radius;
+		char total;
+		char type;
+	} fence;
+#endif
+
+	struct s_ekf
+	{
+		char action;
+		float ekf_thresh;
+	} ekf;
+
+	struct s_ek2
+	{
+		float abias_p_nse;
+		float acc_p_nse;
+		float alt_m_nse;
+		char alt_source;
+		short bcn_delay;
+		short bcn_i_gte;
+		float bcn_m_nse;
+		char enable;
+		short flow_delay;
+		short flow_i_gate;
+		float flow_m_nse;
+		float gbias_p_nse;
+		short glitch_rad;
+		short gps_check;
+		short gps_delay;
+		short gps_type;
+		float gscl_p_nse;
+		float gyro_p_nse;
+		short hgt_delay;
+		short hgt_i_gate;
+		char imu_mask;
+		char log_mask;
+		float magb_p_nse;
+		float mage_p_nse;
+		char mag_cal;
+		short mag_i_gate;
+		float mag_m_nse;
+		float max_flow;
+		float noaid_m_nse;
+		float posne_m_nse;
+		short pos_i_gate;
+		short rng_i_gate;
+		float rng_m_nse;
+		char rng_use_hgt;
+		char tau_output;
+		float terr_grad;
+		float veld_m_nse;
+		float velne_m_nse;
+		short vel_i_gate;
+		float wind_pscale;
+		float wind_p_nse;
+		short yaw_i_gate;
+		float yaw_m_nse;
+	} ek2;
+
+	struct s_mis{
+		char restart;
+		short total;
+	} mis;
+
+	struct s_ntf{
+		char buzz_enable;
+		char led_brright;
+		char led_override;
+	} ntf;
 public:
 	f_aws3_com(const char * name);
 	virtual ~f_aws3_com();
 	
 	virtual bool init_run();
-
 	virtual void destroy_run();
 
 	virtual bool proc();
