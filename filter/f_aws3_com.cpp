@@ -694,6 +694,18 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_mission, "NTF_BUZZ_ENABLE", "Buzz enable", &ntf.buzz_enable);
 	create_param(k_param_mission, "NTF_LED_OVERRIDE", "Setup for Mavlink LED override", &ntf.led_override);
 
+	// initializaing hash table
+	m_htbl.resize(SIZE_HTBL, -1);
+	for (int i = 0; i < m_ptbl.size(); i++){
+		int key = hash(m_ptbl[i].str);
+		while (m_htbl[key] > 0)
+			key++;
+		m_htbl[key] = i;
+		m_ptbl[i].key = key;
+		m_ptbl[i].sync = false;
+	}
+
+	register_fpar("max_retry_load_param", &max_retry_load_param, "Maximum retry counts loading parameters.");
 	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
 	register_fpar("port", &m_port, "UDP port recieving mavlink packets.");
 }
@@ -715,6 +727,7 @@ bool f_aws3_com::init_run()
 	}
 
 	m_state = INIT;
+	num_retry_load_param = 0;
 
 	return true;
 }
@@ -768,14 +781,8 @@ bool f_aws3_com::proc()
 		res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
 
 		if (m_state == INIT){
-			// issue request list
-			mavlink_msg_param_request_list_pack(m_sys_id, 1, &msg, 1, 1);
-
-			len = mavlink_msg_to_send_buffer(m_buf, &msg);
-
-			res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
-
-			m_state = LOAD_PARAM;
+			if (!load_parameters())
+				return false;
 		}
 	}
 
@@ -946,9 +953,11 @@ bool f_aws3_com::proc()
 						break;
 					case MAVLINK_MSG_ID_STATUSTEXT:
 						mavlink_msg_statustext_decode(&msg, &m_statustext);
+						handle_statustext();
 						break;
 					case MAVLINK_MSG_ID_PARAM_VALUE:
 						mavlink_msg_param_value_decode(&msg, &m_param_value);
+						break;
 					}
 					
 				}
@@ -974,3 +983,147 @@ bool f_aws3_com::proc()
 	}
 	return true;
 }
+
+bool f_aws3_com::load_parameters()
+{
+	cout << "Loading parameters." << endl;
+
+	fd_set fr, fw, fe;
+	timeval tv;
+	int res;
+
+	mavlink_message_t msg;
+	mavlink_status_t status;
+	uint16_t len;
+
+	// issue request list
+	mavlink_msg_param_request_list_pack(m_sys_id, 1, &msg, 1, 1);
+
+	len = mavlink_msg_to_send_buffer(m_buf, &msg);
+
+	res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
+
+	m_state = LOAD_PARAM;
+
+	int count_to = 0;
+	while (count_to > 50){
+		FD_ZERO(&fr);
+		FD_ZERO(&fe);
+		FD_SET(m_sock, &fr);
+		FD_SET(m_sock, &fe);
+		tv.tv_sec = 0;
+		tv.tv_usec = 1000;
+
+		if (FD_ISSET(m_sock, &fr)){
+			res = recvfrom(m_sock, (char*)m_buf, 1024, 0, (struct sockaddr *)&m_sock_addr_snd, &m_sz);
+			if (res > 0)
+			{
+				// Something received - print out all bytes and parse packet
+				mavlink_message_t msg;
+				mavlink_status_t status;
+				uint8_t temp;
+
+				for (int i = 0; i < res; ++i)
+				{
+					temp = m_buf[i];
+					if (mavlink_parse_char(MAVLINK_COMM_0, m_buf[i], &msg, &status))
+					{
+						switch (msg.msgid){
+						case MAVLINK_MSG_ID_STATUSTEXT:
+							mavlink_msg_statustext_decode(&msg, &m_statustext);
+							handle_statustext();
+							break;
+						case MAVLINK_MSG_ID_PARAM_VALUE:
+							mavlink_msg_param_value_decode(&msg, &m_param_value);
+							handle_param_value();
+							break;
+						}
+					}
+				}
+			}
+			else{
+				cerr << "Error.Reopeninng socket." << endl;
+				closesocket(m_sock);
+				return init_run();
+			}
+		}
+		else if (FD_ISSET(m_sock, &fe)){
+			cerr << "Failed to recieve packet." << endl;
+		}
+		count_to++;
+	}
+
+	// check paramters;
+	bool complete = true;
+	for (int i = 0; i < m_ptbl.size(); i++){
+		if (!m_ptbl[i].is_sync()){
+			cout << "Parameter " << m_ptbl[i].str << " is not synchronized." << endl;
+			complete = false;
+		}
+	}
+
+	if (complete){
+		m_state = ACTIVE;
+	}
+	else{
+		m_state = INIT;
+		num_retry_load_param++;
+		if (num_retry_load_param == max_retry_load_param)
+		{
+			cerr << "Failed to load parameters." << endl;
+			return false;
+		}
+	}
+
+	return true;
+}
+
+void f_aws3_com::handle_param_value()
+{
+	int key = hash(m_param_value.param_id);
+	
+	int iparam = seek_param(m_param_value.param_id);
+	if (iparam < 0){
+		cout << "Unknown parameter ";
+		cout.write(m_param_value.param_id, 16);
+		cout << "(" <<  (unsigned short) m_param_value.param_index << "/" 
+			<< (unsigned short) m_param_value.param_count << ")" <<  endl;
+	}
+	else{
+		m_ptbl[iparam].set(m_param_value.param_value);
+	}
+}
+
+void f_aws3_com::handle_statustext()
+{
+	switch (m_statustext.severity)
+	{
+	case MAV_SEVERITY_EMERGENCY:
+		cout << "MAV EMERGENCY:";
+		break;
+	case MAV_SEVERITY_ALERT:
+		cout << "MAV ALERT:";
+		break;
+	case MAV_SEVERITY_CRITICAL:
+		cout << "MAV CRITICAL:";
+		break;
+	case MAV_SEVERITY_ERROR:
+		cout << "MAV ERROR:";
+		break;
+	case MAV_SEVERITY_WARNING:
+		cout << "MAV WORNING:";
+		break;
+	case MAV_SEVERITY_NOTICE:
+		cout << "MAV NOTICE:";
+		break;
+	case MAV_SEVERITY_INFO:
+		cout << "MAV INFO:";
+		break;
+	case MAV_SEVERITY_DEBUG:
+		cout << "MAV_DEBUG:";
+		break;
+	}
+	cout.write(m_statustext.text, 50);
+	cout << endl;
+}
+

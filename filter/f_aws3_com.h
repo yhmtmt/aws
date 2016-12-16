@@ -33,24 +33,75 @@ public:
 			int * i;
 			float * f;
 		};
+		int type;
 
 		s_pelem() : id(-1), str(NULL), exp(NULL), c(NULL)
 		{};
 
-		s_pelem(int _id, const char * _str, const char * _exp, char * _c) :id(_id), str(_str), exp(_exp), c(_c)
+		s_pelem(int _id, const char * _str, const char * _exp, char * _c) :id(_id), str(_str), exp(_exp), type(0), c(_c), key(-1), sync(false)
 		{
 		}
 
-		s_pelem(int _id, const char * _str, const char * _exp, short * _s) :id(_id), str(_str), exp(_exp), s(_s)
+		s_pelem(int _id, const char * _str, const char * _exp, short * _s) :id(_id), str(_str), exp(_exp), type(1), s(_s), key(-1), sync(false)
 		{
 		}
 
-		s_pelem(int _id, const char * _str, const char * _exp, int * _i) :id(_id), str(_str), exp(_exp), i(_i)
+		s_pelem(int _id, const char * _str, const char * _exp, int * _i) :id(_id), str(_str), exp(_exp), type(2), i(_i), key(-1), sync(false)
 		{
 		}
 
-		s_pelem(int _id, const char * _str, const char * _exp, float * _f) :id(_id), str(_str), exp(_exp), f(_f)
+		s_pelem(int _id, const char * _str, const char * _exp, float * _f) :id(_id), str(_str), exp(_exp), type(3), f(_f), key(-1), sync(false)
 		{
+		}
+
+		int key;
+		bool sync;
+
+		void set(float val)
+		{
+			switch (type){
+			case 0:
+				*c = (char)val;
+				break;
+			case 1:
+				*s = (short)val;
+				break;
+			case 2:
+				*i = (int)val;
+				break;
+			case 3:
+				*f = val;
+			}
+			sync = true;
+		};
+
+		void get(float & val)
+		{
+			switch (type){
+			case 0:
+				val = *c;
+				break;
+			case 1:
+				val = *s;
+				break;
+			case 2:
+				val = (float) *i;
+				break;
+			case 3:
+				val = *f;
+			}
+			sync = true;
+
+		}
+
+		bool is_sync()
+		{
+			return sync;
+		}
+
+		bool reset()
+		{
+			sync = false;
 		}
 	};
 
@@ -77,6 +128,8 @@ public:
 		register_fpar(_str, _f, _exp);
 		m_ptbl.push_back(s_pelem(_id, _str, _exp, _f));
 	}
+
+
 protected:
 	unsigned char m_sys_id;
 
@@ -139,8 +192,46 @@ protected:
 	short m_jx, m_jy, m_jz, m_jr;
 
 	//Params (almost from ArduSub's Parameters.h)
+#define SIZE_HTBL 1031
+	vector<int> m_htbl;		// hash table
+	vector<s_pelem> m_ptbl;	// parameter table
 
-	vector<s_pelem> m_ptbl;
+	int hash(const char * str){
+		int key = 0;
+		for (int i = 0; i < 16; i++){
+			if (str[i] != '\0')
+			{
+				key += (int)m_param_value.param_id[i];
+			}
+			else{ break; }
+		}
+		key =  key % SIZE_HTBL;
+		return key;
+	}
+
+	int seek_param(const char * str){
+		int key = hash(str);
+		int ipar;
+		while (key < SIZE_HTBL){
+			ipar = m_htbl[key];
+			const char * pstr = m_ptbl[ipar].str;
+			bool eq = true;
+			for (int i = 0; i < 16 && pstr[i] != '\0' && str[i] != '\0'; i++)
+			{
+				if (pstr[i] != str[i]){
+					eq = false;
+					break;
+				}
+			}
+			if (eq)
+				break;
+			else
+				key++;
+			ipar = -1;
+		}
+		return ipar;
+	}
+
 
 	enum { //parameter indices
 		// Layout version number, always key zero.
@@ -992,6 +1083,12 @@ protected:
 		char led_brright;
 		char led_override;
 	} ntf;
+
+	int num_retry_load_param;
+	int max_retry_load_param;
+	bool load_parameters();
+	void handle_param_value();
+	void handle_statustext();
 public:
 	f_aws3_com(const char * name);
 	virtual ~f_aws3_com();
