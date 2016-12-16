@@ -460,6 +460,76 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_ahrs, "AHRS_WIND_MAX", "Maximum wind", &ahrs.wind_max);
 	create_param(k_param_ahrs, "AHRS_YAW_P", "Yaw P", &ahrs.yaw_p);
 
+#if MOUNT == ENABLED
+	create_param(k_param_camera_mount, "MNT_RETRACT_X", "Mount roll angle when in retracted position", &mnt.retract_x);
+	create_param(k_param_camera_mount, "MNT_RETRACT_Y", "Mount tilt angle when in retracted position", &mnt.retract_y);
+	create_param(k_param_camera_mount, "MNT_RETRACT_Z", "Mount pan angle when in retracted position", &mnt.retract_z);
+
+	create_param(k_param_camera_mount, "MNT_NEUTRAL_X", "Mount roll angle when in neutral position", &mnt.neutral_x);
+	create_param(k_param_camera_mount, "MNT_NEUTRAL_Y", "Mount tilt angle when in neutral position", &mnt.neutral_y);
+	create_param(k_param_camera_mount, "MNT_NEUTRAL_Z", "Mount pan angle when in neutral position", &mnt.neutral_z);
+
+	create_param(k_param_camera_mount, "MNT_STAB_ROLL", "Stabilize mount's roll angle", &mnt.stab_roll);
+	create_param(k_param_camera_mount, "MNT_STAB_PAN", "Stabilize mount's pan angle", &mnt.stab_pan);
+	create_param(k_param_camera_mount, "MNT_STAB_TILT", "Stabilize mount's tilt angle", &mnt.stab_tilt);
+
+	create_param(k_param_camera_mount, "MNT_ANGMAX_ROLL", "Maximum roll angle", &mnt.angmax_rol);
+	create_param(k_param_camera_mount, "MNT_ANGMAX_PAN", "Maximum pan angle", &mnt.angmax_pan);
+	create_param(k_param_camera_mount, "MNT_ANGMAX_TILT", "Maximum tilt angle", &mnt.angmax_til);
+
+	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Minimum roll angle", &mnt.angmin_rol);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_PAN", "Minimum pan angle", &mnt.angmin_pan);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Minimum tilt angle", &mnt.angmin_til);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Stabilize mount's roll angle", &mnt.stab_roll);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_PAN", "Stabilize mount's pan angle", &mnt.stab_pan);
+	create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Stabilize mount's tilt angle", &mnt.stab_tilt);
+
+	create_param(k_param_camera_mount, "MNT_RC_IN_ROLL", "Roll RC input channel", &mnt.rc_in_roll);
+	create_param(k_param_camera_mount, "MNT_RC_IN_PAN", "Pan RC input channel", &mnt.rc_in_pan);
+	create_param(k_param_camera_mount, "MNT_RC_IN_TILT", "Tilt RC input channel", &mnt.rc_in_tilt);
+
+	create_param(k_param_camera_mount, "MNT_JSTICK_SPD", "Mount joystic speed", &mnt.jstick_spd);
+
+	create_param(k_param_camera_mount, "MNT_LEAD_PTCH", "Pitch stabilization lead time", &mnt.lead_pitch);
+	create_param(k_param_camera_mount, "MNT_LEAD_RLL", "Roll stabilization lead time", &mnt.lead_rll);
+
+	create_param(k_param_camera_mount, "MNT_TYPE", "Mount type", &mnt.type);
+#endif
+
+	create_param(k_param_DataFlash, "LOG_BACKEND_TYPE", "DataFlash Backend Storage type", &log.backend_type);
+	create_param(k_param_DataFlash, "LOG_FILE_BUFSIZE", "Maximum DataFlash File Backend buffer size (in kilobytes)", &log.file_bufsize);
+	create_param(k_param_DataFlash, "LOG_DISARMED", "Enable logging while disarmed", &log.disarmed);
+	create_param(k_param_DataFlash, "LOG_REPLAY", "Enable logging of information needed for Replay", &log.replay);
+	create_param(k_param_DataFlash, "LOG_FILE_DSRMROT", "Stop logging to current file on disarm", &log.file_dsrmrot);
+	create_param(k_param_log_bitmask, "LOG_BITMASK", "", &log.bitmask);
+
+	create_param(k_param_battery, "BAT_MONITOR", "Battery monitoring", &batt.monitor);
+	create_param(k_param_battery, "BAT_VOLT_PIN", "Battery Voltage sensing pin", &batt.volt_pin);
+	create_param(k_param_battery, "BAT_CURR_PIN", "Battery Current sensing pin", &batt.curr_pin);
+	create_param(k_param_battery, "BAT_VOLT_MULT", "Voltage Multiplier", &batt.volt_mult);
+	create_param(k_param_battery, "BAT_AMP_PERVOLT", "Amps per volt", &batt.amp_pervol);
+	create_param(k_param_battery, "BAT_AMP_OFFSET", "AMP offset", &batt.amp_offset);
+	create_param(k_param_battery, "BAT_CAPACITY", "Battery capacity", &batt.capacity);
+
+	create_param(k_param_battery, "BAT2_MONITOR", "Battery monitoring", &batt2.monitor);
+	create_param(k_param_battery, "BAT2_VOLT_PIN", "Battery Voltage sensing pin", &batt2.volt_pin);
+	create_param(k_param_battery, "BAT2_CURR_PIN", "Battery Current sensing pin", &batt2.curr_pin);
+	create_param(k_param_battery, "BAT2_VOLT_MULT", "Voltage Multiplier", &batt2.volt_mult);
+	create_param(k_param_battery, "BAT2_AMP_PERVOLT", "Amps per volt", &batt2.amp_pervol);
+	create_param(k_param_battery, "BAT2_AMP_OFFSET", "AMP offset", &batt2.amp_offset);
+	create_param(k_param_battery, "BAT2_CAPACITY", "Battery capacity", &batt2.capacity);
+
+	create_param(k_param_BoardConfig, "BRD_PWM_COUNT", "Auxiliary pin config", &brd.pwm_count);
+	create_param(k_param_BoardConfig, "BRD_SER1_RTSCTS", "Serial 1 flow control", &brd.ser1_rtscts); 
+	create_param(k_param_BoardConfig, "BRD_SER2_RTSCTS", "Serial 2 flow control", &brd.ser2_rtscts);
+	create_param(k_param_BoardConfig, "BRD_SAFETYENABLE", "Enable use of safety arming switch", &brd.safetyenable);
+	create_param(k_param_BoardConfig, "BRD_SBUS_OUT", "SBUS output rate", &brd.sbus_out);
+	create_param(k_param_BoardConfig, "BRD_SERIAL_NUM", "User-defined serial number", &brd.serial_num);
+	create_param(k_param_BoardConfig, "BRD_CAN_ENABLE", "Enable use of UAVCAN devices", &brd.can_enable);
+	create_param(k_param_BoardConfig, "BRD_SAFETY_MASK", "Channels to which ignore the safety switch state", &brd.safety_mask);
+	create_param(k_param_BoardConfig, "BRD_IMU_TARGTEMP", "Target IMU temperature", &brd.imu_targetemp);
+	create_param(k_param_BoardConfig, "BRD_TYPE", "Board type", &brd.type);
+
 	create_param(k_param_barometer, "GND_ABS_PRESS", "Absolute Pressure", &gnd.abs_press);
 	create_param(k_param_barometer, "GND_TEMP", "Ground temperature", &gnd.temp);
 	create_param(k_param_barometer, "GND_ALT_OFFSET", "Altitude offset", &gnd.alt_offset);
@@ -498,42 +568,131 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_leak_detector, "LEAK3_LOGIC", "Default reading of leak detector when dry", &leak3.logic);
 	create_param(k_param_leak_detector, "LEAK3_PIN", "Pin that leak detector isconnected to", &leak3.pin);
 
-#if MOUNT == ENABLED
-	create_param(k_param_camera_mount, "MNT_RETRACT_X", "Mount roll angle when in retracted position", &mnt.retract_x);
-	create_param(k_param_camera_mount, "MNT_RETRACT_Y", "Mount tilt angle when in retracted position", &mnt.retract_y);
-	create_param(k_param_camera_mount, "MNT_RETRACT_Z", "Mount pan angle when in retracted position", &mnt.retract_z);
+	create_param(k_param_scheduler, "SCHED_DEBUG", "Scheduler debug level", &sched.debug);
+	create_param(k_param_scheduler, "SCHED_LOOP_RATE", "Scheduling main loop rate", &sched.loop_rate);
 
-	create_param(k_param_camera_mount, "MNT_NEUTRAL_X", "Mount roll angle when in neutral position", &mnt.neutral_x);
-	create_param(k_param_camera_mount, "MNT_NEUTRAL_Y", "Mount tilt angle when in neutral position", &mnt.neutral_y);
-	create_param(k_param_camera_mount, "MNT_NEUTRAL_Z", "Mount pan angle when in neutral position", &mnt.neutral_z);
-
-	create_param(k_param_camera_mount, "MNT_STAB_ROLL", "Stabilize mount's roll angle", &mnt.stab_roll);
-	create_param(k_param_camera_mount, "MNT_STAB_PAN", "Stabilize mount's pan angle", &mnt.stab_pan);
-	create_param(k_param_camera_mount, "MNT_STAB_TILT", "Stabilize mount's tilt angle", &mnt.stab_tilt);
-
-	create_param(k_param_camera_mount, "MNT_ANGMAX_ROLL", "Maximum roll angle", &mnt.angmax_rol);
-	create_param(k_param_camera_mount, "MNT_ANGMAX_PAN", "Maximum pan angle", &mnt.angmax_pan);
-	create_param(k_param_camera_mount, "MNT_ANGMAX_TILT", "Maximum tilt angle", &mnt.angmax_til);
-
-	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Minimum roll angle", &mnt.angmin_rol);
-	create_param(k_param_camera_mount, "MNT_ANGMIN_PAN", "Minimum pan angle", &mnt.angmin_pan);
-	create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Minimum tilt angle", &mnt.angmin_til);
-	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Stabilize mount's roll angle", &mnt.stab_roll);
-	create_param(k_param_camera_mount, "MNT_ANGMIN_PAN", "Stabilize mount's pan angle", &mnt.stab_pan);
-	create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Stabilize mount's tilt angle", &mnt.stab_tilt);
-
-	create_param(k_param_camera_mount, "MNT_RC_IN_ROLL", "Roll RC input channel", &mnt.rc_in_roll);
-	create_param(k_param_camera_mount, "MNT_RC_IN_PAN", "Pan RC input channel", &mnt.rc_in_pan);
-	create_param(k_param_camera_mount, "MNT_RC_IN_TILT", "Tilt RC input channel", &mnt.rc_in_tilt);
-
-	create_param(k_param_camera_mount, "MNT_JSTICK_SPD", "Mount joystic speed", &mnt.jstick_spd);
-
-	create_param(k_param_camera_mount, "MNT_LEAD_PTCH", "Pitch stabilization lead time", &mnt.lead_pitch);
-	create_param(k_param_camera_mount, "MNT_LEAD_RLL", "Roll stabilization lead time", &mnt.lead_rll);
-
-	create_param(k_param_camera_mount, "MNT_TYPE", "Mount type", &mnt.type);
+#if AC_FENCE == ENABLED
+	create_param(k_param_fence, "FENCE_ENABLE", "Fence enable/disable", &fence.enable);
+	create_param(k_param_fence, "FENCE_TYPE", "Fence Type", &fence.type);
+	create_param(k_param_fence, "FENCE_ACTION", "Fence Action", &fence.action);
+	create_param(k_param_fence, "FENCE_ALT_MAX", "Fence Maximum Altitude", &fence.alt_max);
+	create_param(k_param_fence, "FENCE_RADIUS", "Circular Fence Radius", &fence.radius);
+	create_param(k_param_fence, "FENCE_MARGIN", "Fence Margin", &fence.margin);
+	create_param(k_param_fence, "FENCE_TOTAL", "Fence polygon points total", &fence.total);
+	create_param(k_param_fence, "FENCE_DEPTH_MAX", "Fence Maximum Depth", &fence.depth_max);
 #endif
 
+	create_param(k_param_motors, "MOT1_DIRECTION", "Motor normal or reverse", &mot.direction[0]);
+	create_param(k_param_motors, "MOT2_DIRECTION", "Motor normal or reverse", &mot.direction[1]);
+	create_param(k_param_motors, "MOT3_DIRECTION", "Motor normal or reverse", &mot.direction[2]);
+	create_param(k_param_motors, "MOT4_DIRECTION", "Motor normal or reverse", &mot.direction[3]);
+	create_param(k_param_motors, "MOT5_DIRECTION", "Motor normal or reverse", &mot.direction[4]);
+	create_param(k_param_motors, "MOT6_DIRECTION", "Motor normal or reverse", &mot.direction[5]);
+	create_param(k_param_motors, "MOT_YAW_HEADROOM", "Matrix Yaw Min", &mot.yaw_headroom);
+	create_param(k_param_motors, "MOT_THST_EXPO", "Thurust Curve Expo", &mot.thst_expo);
+	create_param(k_param_motors, "MOT_SPIN_MAX", "Motor Spin Maximum", &mot.spin_max);
+	create_param(k_param_motors, "MOT_BAT_VOLT_MAX", "Battery voltage compensation maximum voltage", &mot.bat_volt_max);
+	create_param(k_param_motors, "MOT_BAT_VOLT_MIN", "Battery voltage compensation minimum voltage", &mot.bat_volt_min);
+	create_param(k_param_motors, "MOT_BAT_CURR_MAX", "Motor Current Max", &mot.bat_curr_max);
+	create_param(k_param_motors, "MOT_PWM_TYPE", "Output PWM type", &mot.pwm_type);
+	create_param(k_param_motors, "MOT_PWM_MIN", "PWM output min", &mot.pwm_min);
+	create_param(k_param_motors, "MOT_PWM_MAX", "PWM output max", &mot.pwm_max);
+	create_param(k_param_motors, "MOT_SPIN_ARM", "Motor Spin armed", &mot.spin_arm);
+	create_param(k_param_motors, "MOT_SPIN_MIN", "Motor Spin minimum", &mot.spin_min);
+	create_param(k_param_motors, "MOT_BAT_CURR_TC", "Motor Current Max Time Constant", &mot.bat_curr_tc);
+	create_param(k_param_motors, "MOT_THUST_HOVER", "Thrust Hover Value", &mot.thst_hover);
+	create_param(k_param_motors, "MOT_HOVER_LEARN", "Hover Value Learning", &mot.hover_learn);
+	create_param(k_param_motors, "MOT_SAFE_DISARM", "Motor PWM output disabled when disarmed", &mot.safe_disarm);
+	
+	create_param(k_param_NavEKF, "EKF_ENABLE", "Enable EKF1", &ekf.enable);
+	create_param(k_param_NavEKF, "EKF_VELNE_NOISE", "GPS horizontal velocity measurement noise scaler", &ekf.velne_noise);
+	create_param(k_param_NavEKF, "EKF_VELD_NOISE", "GPS vertical velocity measurement noise scaler", &ekf.veld_noise);
+	create_param(k_param_NavEKF, "EKF_POSNE_NOISE", "GPS horizontal position measurement noise (m)", &ekf.posne_noise);
+	create_param(k_param_NavEKF, "EKF_ALT_NOISE", "Altitude measurement noise (m)", &ekf.alt_noise);
+	create_param(k_param_NavEKF, "EKF_MAG_NOISE", "Magnetometer measurement noise (Gauss)", &ekf.mag_noise);
+	create_param(k_param_NavEKF, "EKF_EAS_NOISE", "Equivalent airspeed measurement noise (m/s)", &ekf.eas_noise);
+	create_param(k_param_NavEKF, "EKF_WIND_PNOISE", "Wind velocity process noise (m/s^2)", &ekf.wind_pnoise);
+	create_param(k_param_NavEKF, "EKF_WIND_PSCALE", "Height rate to wind process noise scaler", &ekf.wind_pscale);
+	create_param(k_param_NavEKF, "EKF_GYRO_PNOISE", "Rate gyro noise (rad/s)", &ekf.gyro_pnoise);
+	create_param(k_param_NavEKF, "EKF_ACC_PNOISE", "Accelerometer noise (m/s^2)", &ekf.acc_pnoise);
+	create_param(k_param_NavEKF, "EKF_GBIAS_PNOISE", "Rate gyro bias process noise (rad/s)", &ekf.gbias_pnoise);
+	create_param(k_param_NavEKF, "EKF_ABIAS_PNOISE", "Accelerometer bias process noise (m/s^2)", &ekf.abias_pnoise);
+	create_param(k_param_NavEKF, "EKF_MAGE_PNOISE", "Body magnetic field process noise (gauss/s)", &ekf.mage_pnoise);
+	create_param(k_param_NavEKF, "EKF_VEL_DELAY", "GPS velocity measurement delay (msec)", &ekf.vel_delay);
+	create_param(k_param_NavEKF, "EKF_POS_DELAY", "GPS position measurement delay (msec)", &ekf.pos_delay);
+	create_param(k_param_NavEKF, "EKF_GPS_TYPE", "GPS mode control", &ekf.gps_type);
+	create_param(k_param_NavEKF, "EKF_VEL_GATE", "GPS velocity measurement gate size", &ekf.vel_gate);
+	create_param(k_param_NavEKF, "EKF_POS_GATE", "GPS position measurement gate size", &ekf.pos_gate);
+	create_param(k_param_NavEKF, "EKF_HGT_GATE", "Height measurement gate size", &ekf.hgt_gate);
+	create_param(k_param_NavEKF, "EKF_MAG_GATE", "Magnetometer measurement gate size", &ekf.mag_gate);
+	create_param(k_param_NavEKF, "EKF_EAS_GATE", "Airspeed measurement gate size", &ekf.eas_gate);
+	create_param(k_param_NavEKF, "EKF_MAG_CAL", "Magnetometer calibration mode", &ekf.mag_cal);
+	create_param(k_param_NavEKF, "EKF_GLITCH_ACCEL", "GPS glitch accel gate size (cm/s^2)", &ekf.glitch_accel);
+	create_param(k_param_NavEKF, "EKF_GLITCH_RAD", "GPS glitch radius gate size (m)", &ekf.glitch_rad);
+	create_param(k_param_NavEKF, "EKF_GND_GRADIENT", "Terrain Gradient % RMS", &ekf.gnd_gradient);
+	create_param(k_param_NavEKF, "EKF_FLOW_NOISE", "Optical flow measurement noise (rad/s)", &ekf.flow_noise);
+	create_param(k_param_NavEKF, "EKF_FLOW_GATE", "Optical flow measurement gate size", &ekf.flow_gate);
+	create_param(k_param_NavEKF, "EKF_FLOW_DELAY", "Optical flow measurement delay (msec)", &ekf.flow_delay);
+	create_param(k_param_NavEKF, "EKF_RNG_GATE", "Range finder measurement gate size", &ekf.rng_gate);
+	create_param(k_param_NavEKF, "EKF_MAX_FLOW", "Maximum valid optical flow rate", &ekf.max_flow);
+	create_param(k_param_NavEKF, "EKF_FALLBACK", "Fallback strictness", &ekf.fallback);
+	create_param(k_param_NavEKF, "EKF_ALT_SOURCE", "Primary height source", &ekf.alt_source);
+	create_param(k_param_NavEKF, "EKF_GPS_CHECK", "GPS preflight check", &ekf.gps_check);
+
+
+	create_param(k_param_NavEKF2, "EK2_ENABLE", "Enable EKF2", &ek2.enable);
+	create_param(k_param_NavEKF2, "EK2_GPS_TYPE", "GPS mode control", &ek2.gps_type);
+	create_param(k_param_NavEKF2, "EK2_VELNE_M_NSE", "GPS horizontal velocity measurement noise (m/s)", &ek2.velne_m_nse);
+	create_param(k_param_NavEKF2, "EK2_VELD_M_NSE", "GPS vertical velocity measurement noise (m/s)", &ek2.veld_m_nse);
+	create_param(k_param_NavEKF2, "EK2_VEL_I_GATE", "GPS velocity innovation gate size", &ek2.vel_i_gate);
+	create_param(k_param_NavEKF2, "EK2_POSNE_M_NSE", "GPS horizontal position measurement noise (m)", &ek2.posne_m_nse);
+	create_param(k_param_NavEKF2, "EK2_POS_I_GATE", "GPS position measurement gate size", &ek2.pos_i_gate);
+	create_param(k_param_NavEKF2, "EK2_GLITCH_RAD", "GPS glitch radius gate size (m)", &ek2.glitch_rad);
+	create_param(k_param_NavEKF2, "EK2_GPS_DELAY", "GPS measurement delay (msec)", &ek2.gps_delay);
+	create_param(k_param_NavEKF2, "EK2_ALT_SOURCE", "Primary height source", &ek2.alt_source);
+	create_param(k_param_NavEKF2, "EK2_ALT_M_NSE", "Altitude measurement noise (m)", &ek2.alt_m_nse);
+	create_param(k_param_NavEKF2, "EK2_HGT_I_GATE", "Height measurement gate size", &ek2.hgt_i_gate);
+	create_param(k_param_NavEKF2, "EK2_HGT_DELAY", "Height measurement delay (msec)", &ek2.hgt_delay);
+	create_param(k_param_NavEKF2, "EK2_MAG_M_NSE", "Magnetometer measurement noise (Gauss)", &ek2.mag_m_nse);
+	create_param(k_param_NavEKF2, "EK2_MAG_CAL", "Magnetometer calibration mode", &ek2.mag_cal);
+	create_param(k_param_NavEKF2, "EK2_MAG_I_GATE", "Magnetometer measurement gate size", &ek2.mag_i_gate);
+	create_param(k_param_NavEKF2, "EK2_EAS_M_NSE", "Equivalent airspeed measurement noise", &ek2.eas_m_nse);
+	create_param(k_param_NavEKF2, "EK2_EAS_I_GATE", "Equivalent airspeed measurment gate size", &ek2.eas_i_gate);
+	create_param(k_param_NavEKF2, "EK2_RNG_M_NSE", "Range finder measurement noise", &ek2.rng_m_nse);
+	create_param(k_param_NavEKF2, "EK2_RNG_I_GATE", "Range finder measurement gate size", &ek2.rng_i_gate);
+	create_param(k_param_NavEKF2, "EK2_MAX_FLOW", "Maximum valid optical flow rate", &ek2.max_flow);
+	create_param(k_param_NavEKF2, "EK2_FLOW_M_NSE", "Optical flow measurement noise (rad/s)", &ek2.flow_m_nse);
+	create_param(k_param_NavEKF2, "EK2_FLOW_I_GATE", "Optical flow measurement gate size", &ek2.flow_i_gate);
+	create_param(k_param_NavEKF2, "EK2_FLOW_DELAY", "Optical flow measurement delay (msec)", &ek2.flow_delay);
+	create_param(k_param_NavEKF2, "EK2_GYRO_P_NSE", "Rate gyro noise (rad/s)", &ek2.gyro_p_nse);
+	create_param(k_param_NavEKF2, "EK2_ACC_P_NSE", "Accelerometer noise (m/s^2)", &ek2.acc_p_nse);
+	create_param(k_param_NavEKF2, "EK2_GBIAS_P_NSE", "Rate gyro bias stability (rad/s^2)", &ek2.gbias_p_nse);
+	create_param(k_param_NavEKF2, "EK2_GSCL_P_NSE", "Rate gyro scale factor stability (1/s)", &ek2.gscl_p_nse);
+	create_param(k_param_NavEKF2, "EK2_ABIAS_P_NSE", "Accelerometer bias stability (m/s^3)", &ek2.abias_p_nse);
+	create_param(k_param_NavEKF2, "EK2_WIND_P_NSE", "Wind velocity process noise (m/s^2)", &ek2.wind_p_nse);
+	create_param(k_param_NavEKF2, "EK2_WIND_PSCALE", "Height rate to wind process noise scaler", &ek2.wind_pscale);
+	create_param(k_param_NavEKF2, "EK2_GPS_CHECK", "GPS preflight check", &ek2.gps_check);
+	create_param(k_param_NavEKF2, "EK2_IMU_MASK", "Bitmask of active IMUs", &ek2.imu_mask);
+	create_param(k_param_NavEKF2, "EK2_CHECK_SCALE", "GPS accuracy check scalere (%)", &ek2.check_scale);
+	create_param(k_param_NavEKF2, "EK2_NOAID_M_NSE", "Non-GPS operation position uncertainty (m)", &ek2.noaid_m_nse);
+	create_param(k_param_NavEKF2, "EK2_LOG_MASK", "EKF sensor logging IMU mask", &ek2.log_mask);
+	create_param(k_param_NavEKF2, "EK2_YAW_M_NSE", "Yaw measurement noise (rad)", &ek2.yaw_m_nse);
+	create_param(k_param_NavEKF2, "EK2_YAW_I_GATE", "Yaw measurement gate size", &ek2.yaw_i_gate);
+	create_param(k_param_NavEKF2, "EK2_TAU_OUTPUT", "Output complementary filter time constant (centi-sec)", &ek2.tau_output);
+	create_param(k_param_NavEKF2, "EK2_MAGE_P_NSE", "Earth magnetic field process noise (gauss/s)", &ek2.mage_p_nse);
+	create_param(k_param_NavEKF2, "EK2_MAGB_P_NSE", "Body magnetic field process noise (gauss/s)", &ek2.magb_p_nse);
+	create_param(k_param_NavEKF2, "EK2_RNG_USE_HGT", "Range finder switch height percentage", &ek2.rng_use_hgt);
+	create_param(k_param_NavEKF2, "EK2_TERR_GRAD", "Maximum terrain gradient", &ek2.terr_grad);
+	create_param(k_param_NavEKF2, "EK2_BCN_M_NSE", "Range beacon measurement noise (m)", &ek2.bcn_m_nse);
+	create_param(k_param_NavEKF2, "EK2_BCN_I_GTE", "Range beacon measurement gate size", &ek2.bcn_m_nse);
+	create_param(k_param_NavEKF2, "EK2_BCN_DELAY", "Range beacon measurement delay (msec)", &ek2.bcn_delay);
+
+	create_param(k_param_mission, "MIS_TOTAL", "total mission commands", &mis.total);
+	create_param(k_param_mission, "MIS_RESTART", "Mission Restart when entering Auto mode", &mis.restart);
+
+	create_param(k_param_mission, "NTF_LED_BRIGHT", "LED Brightness", &ntf.led_brright);
+	create_param(k_param_mission, "NTF_BUZZ_ENABLE", "Buzz enable", &ntf.buzz_enable);
+	create_param(k_param_mission, "NTF_LED_OVERRIDE", "Setup for Mavlink LED override", &ntf.led_override);
 
 	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
 	register_fpar("port", &m_port, "UDP port recieving mavlink packets.");

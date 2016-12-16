@@ -855,7 +855,7 @@ protected:
 	{
 		char debug;
 		short loop_rate;
-	};
+	} sched;
 
 #if AC_FENCE == ENABLED
 	struct s_fence
@@ -871,10 +871,64 @@ protected:
 	} fence;
 #endif
 
+	struct s_mot
+	{
+		float bat_curr_max;
+		float bat_curr_tc;
+		float bat_volt_max;
+		float bat_volt_min;
+		float fv_cplng_k;
+		char hover_learn;
+		short pwm_max;
+		short pwm_min;
+		char pwm_type;
+		char safe_disarm;
+		float spin_arm;
+		float spin_max;
+		float spin_min;
+		float thst_expo;
+		float thst_hover;
+		short yaw_headroom;
+		char direction[6];
+	} mot;
+
 	struct s_ekf
 	{
-		char action;
-		float ekf_thresh;
+		char enable;
+		float velne_noise;
+		float veld_noise;
+		float posne_noise;
+		float alt_noise;
+		float mag_noise;
+		float eas_noise;
+		float wind_pnoise;
+		float wind_pscale;
+		float gyro_pnoise;
+		float acc_pnoise;
+		float gbias_pnoise;
+		float abias_pnoise;
+		float mage_pnoise;
+		float magb_pnoise;
+		float vel_delay;
+		float pos_delay;
+		char gps_type;
+		short vel_gate;
+		short pos_gate;
+		short hgt_gate;
+		short mag_gate;
+		short eas_gate;
+		char mag_cal;
+		short glitch_accel;
+		short glitch_rad;
+		short gnd_gradient;
+		float flow_noise;
+		short flow_gate;
+		short flow_delay;
+		short rng_gate;
+		float max_flow;
+		char fallback;
+		char alt_source;
+		char gps_check;		
 	} ekf;
 
 	struct s_ek2
@@ -895,6 +949,9 @@ protected:
 		short gps_check;
 		short gps_delay;
 		short gps_type;
+		float eas_m_nse;
+		short eas_i_gate;
+
 		float gscl_p_nse;
 		float gyro_p_nse;
 		short hgt_delay;
@@ -922,6 +979,7 @@ protected:
 		float wind_p_nse;
 		short yaw_i_gate;
 		float yaw_m_nse;
+		short check_scale;
 	} ek2;
 
 	struct s_mis{
