@@ -35,7 +35,7 @@ using namespace std;
 
 #include "f_aws3_com.h"
 
-f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id(255)
+f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id(255), max_retry_load_param(10), m_bcon(false)
 {
 	create_param(k_param_surface_depth, "SURFACE_DEPTH", "Depth reading at surface", &surface_depth);
 	create_param(k_param_format_version, "SYSID_SW_MREV", "Eeprom format version number.", &format_version);
@@ -698,8 +698,12 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	m_htbl.resize(SIZE_HTBL, -1);
 	for (int i = 0; i < m_ptbl.size(); i++){
 		int key = hash(m_ptbl[i].str);
-		while (m_htbl[key] > 0)
+		while (m_htbl[key] > 0){
 			key++;
+			if (key == SIZE_HTBL)
+				key = 0;
+		}
+
 		m_htbl[key] = i;
 		m_ptbl[i].key = key;
 		m_ptbl[i].sync = false;
@@ -727,6 +731,7 @@ bool f_aws3_com::init_run()
 	}
 
 	m_state = INIT;
+	m_bcon = false;
 	num_retry_load_param = 0;
 
 	return true;
@@ -1006,7 +1011,7 @@ bool f_aws3_com::load_parameters()
 	m_state = LOAD_PARAM;
 
 	int count_to = 0;
-	while (count_to > 50){
+	while (count_to < 50){
 		FD_ZERO(&fr);
 		FD_ZERO(&fe);
 		FD_SET(m_sock, &fr);

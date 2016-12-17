@@ -192,7 +192,7 @@ protected:
 	short m_jx, m_jy, m_jz, m_jr;
 
 	//Params (almost from ArduSub's Parameters.h)
-#define SIZE_HTBL 1031
+#define SIZE_HTBL 2003
 	vector<int> m_htbl;		// hash table
 	vector<s_pelem> m_ptbl;	// parameter table
 
@@ -201,7 +201,7 @@ protected:
 		for (int i = 0; i < 16; i++){
 			if (str[i] != '\0')
 			{
-				key += (int)m_param_value.param_id[i];
+				key += (int)str[i];
 			}
 			else{ break; }
 		}
@@ -225,8 +225,11 @@ protected:
 			}
 			if (eq)
 				break;
-			else
+			else{
 				key++;
+				if (key == SIZE_HTBL)
+					key = 0;
+			}
 			ipar = -1;
 		}
 		return ipar;
