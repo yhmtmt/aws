@@ -1,0 +1,5 @@
+#!/bin/sh
+
+filter aws3c aws3c -i -o
+fset aws3c port 14550
+go
