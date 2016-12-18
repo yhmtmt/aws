@@ -252,7 +252,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_camera, "CAM_TRIGG_TYPE", "Camera shutter (trigger) type", &cam.trigg_type);
 #endif
 
-	create_param(k_param_relay, "RELAY_DEFAULT", "Default relay state", &relay.default);
+	create_param(k_param_relay, "RELAY_DEFAULT", "Default relay state", &relay.def);
 	create_param(k_param_relay, "RELAY_PIN", "First Relay Pin", &relay.pin);
 	create_param(k_param_relay, "RELAY_PIN2", "Second Relay Pin", &relay.pin2);
 	create_param(k_param_relay, "RELAY_PIN3", "Third Relay Pin", &relay.pin3);

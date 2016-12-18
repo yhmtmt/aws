@@ -634,7 +634,7 @@ protected:
 	} cam;
 
 	struct s_relay{
-		short default;
+		short def;
 		short pin;
 		short pin2;
 		short pin3;
