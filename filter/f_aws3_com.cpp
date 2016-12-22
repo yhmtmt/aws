@@ -35,7 +35,7 @@ using namespace std;
 
 #include "f_aws3_com.h"
 
-f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id(255), max_retry_load_param(10), m_bcon(false)
+f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id(255), max_retry_load_param(10), m_bcon(false), t_last_param(0), t_load_param_to(30*SEC)
 {
 	create_param(k_param_surface_depth, "SURFACE_DEPTH", "Depth reading at surface", &surface_depth);
 	create_param(k_param_format_version, "SYSID_SW_MREV", "Eeprom format version number.", &format_version);
@@ -49,12 +49,12 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	//create_param(k_param_serial_manager, "SERIAL", "")
 	create_param(k_param_gcs_pid_mask, "GCS_PID_MASK", "GCS PID tuning mask", &gcs_pid_mask);
 	create_param(k_param_rangefinder_gain, "RNGFND_GAIN", "Rangefinder gain", &rangefinder_gain);
-	create_param(k_param_failsafe_battery_enabled, "FS_BATT_ENABLED", "Battery Failsafe Enable", &failsafe_battery_enabled);
+	//	create_param(k_param_failsafe_battery_enabled, "FS_BATT_ENABLED", "Battery Failsafe Enable", &failsafe_battery_enabled);
 	create_param(k_param_fs_batt_voltage, "FS_BATT_VOLTAGE", "Failsafe battery voltage", &fs_batt_voltage);
 	create_param(k_param_fs_batt_mah, "FS_BATT_MAH", "Failsafe battery millAmpHours", &fs_batt_mah);
 	create_param(k_param_failsafe_gcs, "FS_GCS_ENABLE", "Ground Station Failsafe Enable", &failsafe_gcs);
-	create_param(k_param_failsafe_leak, "FS_LEAK_ENABLE", "Leak Failsafe Enable", &failsafe_leak);
-	create_param(k_param_failsafe_pressure, "FS_PRESS_ENABLE", "Internal Pressure Failsafe Enable", &failsafe_pressure);
+	//	create_param(k_param_failsafe_leak, "FS_LEAK_ENABLE", "Leak Failsafe Enable", &failsafe_leak);
+	//	create_param(k_param_failsafe_pressure, "FS_PRESS_ENABLE", "Internal Pressure Failsafe Enable", &failsafe_pressure);
 	create_param(k_param_failsafe_temperature, "FS_TEMP_ENABLE", "Internal Temprature Failsafe Enable", &failsafe_temperature);
 	create_param(k_param_failsafe_pressure_max, "FS_PRESS_MAX", "Internal Pressure Failsafe Threshold", &failsafe_pressure_max);
 	create_param(k_param_failsafe_temperature_max, "FS_TEMP_MAX", "Internal Temperature Failsafe Threshold", &failsafe_temperature_max);
@@ -185,36 +185,36 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_lights_step, "JS_LIGHTS_STEP", "Lights step size", &lights_step);
 	create_param(k_param_jbtn_0, "BTN0_FUNCTION", "Button 1 function", &jbtn_0);
 	create_param(k_param_jbtn_0, "BTN0_SFUNCTION", "Button 1 shift function", &jbtn_s_0);
-	create_param(k_param_jbtn_1, "BTN0_FUNCTION", "Button 2 function", &jbtn_1);
-	create_param(k_param_jbtn_1, "BTN0_SFUNCTION", "Button 2 shift function", &jbtn_s_1);
-	create_param(k_param_jbtn_2, "BTN0_FUNCTION", "Button 3 function", &jbtn_2);
-	create_param(k_param_jbtn_2, "BTN0_SFUNCTION", "Button 3 shift function", &jbtn_s_2);
-	create_param(k_param_jbtn_3, "BTN0_FUNCTION", "Button 4 function", &jbtn_3);
-	create_param(k_param_jbtn_3, "BTN0_SFUNCTION", "Button 4 shift function", &jbtn_s_3);
-	create_param(k_param_jbtn_4, "BTN0_FUNCTION", "Button 5 function", &jbtn_4);
-	create_param(k_param_jbtn_4, "BTN0_SFUNCTION", "Button 5 shift function", &jbtn_s_4);
-	create_param(k_param_jbtn_5, "BTN0_FUNCTION", "Button 6 function", &jbtn_5);
-	create_param(k_param_jbtn_5, "BTN0_SFUNCTION", "Button 6 shift function", &jbtn_s_5);
-	create_param(k_param_jbtn_6, "BTN0_FUNCTION", "Button 7 function", &jbtn_6);
-	create_param(k_param_jbtn_6, "BTN0_SFUNCTION", "Button 7 shift function", &jbtn_s_6);
-	create_param(k_param_jbtn_7, "BTN0_FUNCTION", "Button 8 function", &jbtn_7);
-	create_param(k_param_jbtn_7, "BTN0_SFUNCTION", "Button 8 shift function", &jbtn_s_7);
-	create_param(k_param_jbtn_8, "BTN0_FUNCTION", "Button 9 function", &jbtn_8);
-	create_param(k_param_jbtn_8, "BTN0_SFUNCTION", "Button 9 shift function", &jbtn_s_8);
-	create_param(k_param_jbtn_9, "BTN0_FUNCTION", "Button 10 function", &jbtn_9);
-	create_param(k_param_jbtn_9, "BTN0_SFUNCTION", "Button 10 shift function", &jbtn_s_9);
-	create_param(k_param_jbtn_10, "BTN0_FUNCTION", "Button 11 function", &jbtn_10);
-	create_param(k_param_jbtn_10, "BTN0_SFUNCTION", "Button 11 shift function", &jbtn_s_10);
-	create_param(k_param_jbtn_11, "BTN0_FUNCTION", "Button 12 function", &jbtn_11);
-	create_param(k_param_jbtn_11, "BTN0_SFUNCTION", "Button 12 shift function", &jbtn_s_11);
-	create_param(k_param_jbtn_12, "BTN0_FUNCTION", "Button 13 function", &jbtn_12);
-	create_param(k_param_jbtn_12, "BTN0_SFUNCTION", "Button 13 shift function", &jbtn_s_12);
-	create_param(k_param_jbtn_13, "BTN0_FUNCTION", "Button 14 function", &jbtn_13);
-	create_param(k_param_jbtn_13, "BTN0_SFUNCTION", "Button 14 shift function", &jbtn_s_13);
-	create_param(k_param_jbtn_14, "BTN0_FUNCTION", "Button 15 function", &jbtn_14);
-	create_param(k_param_jbtn_14, "BTN0_SFUNCTION", "Button 15 shift function", &jbtn_s_14);
-	create_param(k_param_jbtn_15, "BTN0_FUNCTION", "Button 16 function", &jbtn_15);
-	create_param(k_param_jbtn_15, "BTN0_SFUNCTION", "Button 16 shift function", &jbtn_s_15);
+	create_param(k_param_jbtn_1, "BTN1_FUNCTION", "Button 2 function", &jbtn_1);
+	create_param(k_param_jbtn_1, "BTN1_SFUNCTION", "Button 2 shift function", &jbtn_s_1);
+	create_param(k_param_jbtn_2, "BTN2_FUNCTION", "Button 3 function", &jbtn_2);
+	create_param(k_param_jbtn_2, "BTN2_SFUNCTION", "Button 3 shift function", &jbtn_s_2);
+	create_param(k_param_jbtn_3, "BTN3_FUNCTION", "Button 4 function", &jbtn_3);
+	create_param(k_param_jbtn_3, "BTN3_SFUNCTION", "Button 4 shift function", &jbtn_s_3);
+	create_param(k_param_jbtn_4, "BTN4_FUNCTION", "Button 5 function", &jbtn_4);
+	create_param(k_param_jbtn_4, "BTN4_SFUNCTION", "Button 5 shift function", &jbtn_s_4);
+	create_param(k_param_jbtn_5, "BTN5_FUNCTION", "Button 6 function", &jbtn_5);
+	create_param(k_param_jbtn_5, "BTN5_SFUNCTION", "Button 6 shift function", &jbtn_s_5);
+	create_param(k_param_jbtn_6, "BTN6_FUNCTION", "Button 7 function", &jbtn_6);
+	create_param(k_param_jbtn_6, "BTN6_SFUNCTION", "Button 7 shift function", &jbtn_s_6);
+	create_param(k_param_jbtn_7, "BTN7_FUNCTION", "Button 8 function", &jbtn_7);
+	create_param(k_param_jbtn_7, "BTN7_SFUNCTION", "Button 8 shift function", &jbtn_s_7);
+	create_param(k_param_jbtn_8, "BTN8_FUNCTION", "Button 9 function", &jbtn_8);
+	create_param(k_param_jbtn_8, "BTN8_SFUNCTION", "Button 9 shift function", &jbtn_s_8);
+	create_param(k_param_jbtn_9, "BTN9_FUNCTION", "Button 10 function", &jbtn_9);
+	create_param(k_param_jbtn_9, "BTN9_SFUNCTION", "Button 10 shift function", &jbtn_s_9);
+	create_param(k_param_jbtn_10, "BTN10_FUNCTION", "Button 11 function", &jbtn_10);
+	create_param(k_param_jbtn_10, "BTN10_SFUNCTION", "Button 11 shift function", &jbtn_s_10);
+	create_param(k_param_jbtn_11, "BTN11_FUNCTION", "Button 12 function", &jbtn_11);
+	create_param(k_param_jbtn_11, "BTN11_SFUNCTION", "Button 12 shift function", &jbtn_s_11);
+	create_param(k_param_jbtn_12, "BTN12_FUNCTION", "Button 13 function", &jbtn_12);
+	create_param(k_param_jbtn_12, "BTN12_SFUNCTION", "Button 13 shift function", &jbtn_s_12);
+	create_param(k_param_jbtn_13, "BTN13_FUNCTION", "Button 14 function", &jbtn_13);
+	create_param(k_param_jbtn_13, "BTN13_SFUNCTION", "Button 14 shift function", &jbtn_s_13);
+	create_param(k_param_jbtn_14, "BTN14_FUNCTION", "Button 15 function", &jbtn_14);
+	create_param(k_param_jbtn_14, "BTN14_SFUNCTION", "Button 15 shift function", &jbtn_s_14);
+	create_param(k_param_jbtn_15, "BTN15_FUNCTION", "Button 16 function", &jbtn_15);
+	create_param(k_param_jbtn_15, "BTN15_SFUNCTION", "Button 16 shift function", &jbtn_s_15);
 	create_param(k_param_rc_speed, "RC_SPEED", "ESC Update Speed", &rc_speed);
 	create_param(k_param_acro_rp_p, "ACRO_RP_P", "Acro Roll and Pitch P gain", &acro_rp_p);
 	create_param(k_param_acro_yaw_p, "ACRO_YAW_P", "Acro Yaw P gain", &acro_yaw_p);
@@ -291,8 +291,8 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_compass, "COMPASS_EXTERN3", "Compass is attached via an external cable (3)", &compass.extern3);
 	create_param(k_param_compass, "COMPASS_PRIMARY", "Choose primary compass", &compass.primary);
 	create_param(k_param_compass, "COMPASS_DEV_ID", "Compass device id", &compass.dev_id);
-	create_param(k_param_compass, "COMPASS_DEV_ID", "Compass device id2", &compass.dev_id);
-	create_param(k_param_compass, "COMPASS_DEV_ID", "Compass device id3", &compass.dev_id);
+	create_param(k_param_compass, "COMPASS_DEV_ID2", "Compass device id2", &compass.dev_id);
+	create_param(k_param_compass, "COMPASS_DEV_ID3", "Compass device id3", &compass.dev_id);
 	create_param(k_param_compass, "COMPASS_DIA_X", "Compass soft iron diagonal X component", &compass.dia_x);
 	create_param(k_param_compass, "COMPASS_DIA_Y", "Compass soft iron diagonal Y component", &compass.dia_y);
 	create_param(k_param_compass, "COMPASS_DIA_Z", "Compass soft iron diagonal Z component", &compass.dia_z);
@@ -480,9 +480,9 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Minimum roll angle", &mnt.angmin_rol);
 	create_param(k_param_camera_mount, "MNT_ANGMIN_PAN", "Minimum pan angle", &mnt.angmin_pan);
 	create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Minimum tilt angle", &mnt.angmin_til);
-	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Stabilize mount's roll angle", &mnt.stab_roll);
-	create_param(k_param_camera_mount, "MNT_ANGMIN_PAN", "Stabilize mount's pan angle", &mnt.stab_pan);
-	create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Stabilize mount's tilt angle", &mnt.stab_tilt);
+	//	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Stabilize mount's roll angle", &mnt.stab_roll);
+	//	create_param(k_param_camera_mount, "MNT_STAB_PAN", "Stabilize mount's pan angle", &mnt.stab_pan);
+	//create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Stabilize mount's tilt angle", &mnt.stab_tilt);
 
 	create_param(k_param_camera_mount, "MNT_RC_IN_ROLL", "Roll RC input channel", &mnt.rc_in_roll);
 	create_param(k_param_camera_mount, "MNT_RC_IN_PAN", "Pan RC input channel", &mnt.rc_in_pan);
@@ -501,7 +501,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_DataFlash, "LOG_DISARMED", "Enable logging while disarmed", &log.disarmed);
 	create_param(k_param_DataFlash, "LOG_REPLAY", "Enable logging of information needed for Replay", &log.replay);
 	create_param(k_param_DataFlash, "LOG_FILE_DSRMROT", "Stop logging to current file on disarm", &log.file_dsrmrot);
-	create_param(k_param_log_bitmask, "LOG_BITMASK", "", &log.bitmask);
+	//	create_param(k_param_log_bitmask, "LOG_BITMASK", "", &log.bitmask);
 
 	create_param(k_param_battery, "BAT_MONITOR", "Battery monitoring", &batt.monitor);
 	create_param(k_param_battery, "BAT_VOLT_PIN", "Battery Voltage sensing pin", &batt.volt_pin);
@@ -712,6 +712,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	register_fpar("max_retry_load_param", &max_retry_load_param, "Maximum retry counts loading parameters.");
 	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
 	register_fpar("port", &m_port, "UDP port recieving mavlink packets.");
+	register_fpar("tlpto", &t_load_param_to, "Time out for load param.");
 }
 
 f_aws3_com::~f_aws3_com()
@@ -733,6 +734,7 @@ bool f_aws3_com::init_run()
   m_state = INIT;
   m_bcon = false;
   num_retry_load_param = 0;
+  num_load_params = 0;
 
   return true;
 }
@@ -744,364 +746,303 @@ void f_aws3_com::destroy_run()
 
 bool f_aws3_com::proc()
 {
-	fd_set fr, fw, fe;
-	timeval tv;
-	int res;
-	if (m_bcon){
-		/*
-		FD_ZERO(&fw);
-		FD_ZERO(&fe);
-		FD_SET(m_sock, &fw);
-		FD_SET(m_sock, &fe);
-		tv.tv_sec = 0;
-		tv.tv_usec = 1000;
-		*/
-		mavlink_message_t msg;
-		mavlink_status_t status;
-		uint16_t len;
-		/*Send Heartbeat */
-		mavlink_msg_heartbeat_pack(255, 1, &msg, MAV_TYPE_SURFACE_BOAT,
-			MAV_AUTOPILOT_GENERIC, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
-
-		len = mavlink_msg_to_send_buffer(m_buf, &msg);
-
-		res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
-
-		/* Send controller output */
-		uint16_t mask = 0x0001, btns = 0x0000;
-		for (int i = 0; i < 16; i++, mask <<= 1)
-			btns |= (m_jbtns[i] ? mask : 0);
-
-		// saturation -1000 to 1000
-		m_jx = (int16_t)max(min((int)m_jx, 1000), -1000);
-		m_jy = (int16_t)max(min((int)m_jy, 1000), -1000);
-		m_jz = (int16_t)max(min((int)m_jz, 1000), -1000);
-		m_jr = (int16_t)max(min((int)m_jr, 1000), -1000);
-
-		mavlink_msg_manual_control_pack(255, 1, &msg, 1,
-			(int16_t)m_jx, (int16_t)m_jy, (int16_t)m_jz, (int16_t)m_jr, btns);
-
-		len = mavlink_msg_to_send_buffer(m_buf, &msg);
-
-		res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
-
-		if (m_state == INIT){
-			if (!load_parameters())
-				return false;
-		}
+  fd_set fr, fw, fe;
+  timeval tv;
+  int res;
+  if (m_state == LOAD_PARAM 
+      && (m_cur_time - t_last_param > t_load_param_to)){
+    if(check_sync_parameters()){
+      m_state = ACTIVE;
+    }else	if (!load_parameters())
+      return false;
+  }
+  
+  if (m_bcon){
+    /*
+      FD_ZERO(&fw);
+      FD_ZERO(&fe);
+      FD_SET(m_sock, &fw);
+      FD_SET(m_sock, &fe);
+      tv.tv_sec = 0;
+      tv.tv_usec = 1000;
+    */
+    mavlink_message_t msg;
+    mavlink_status_t status;
+    uint16_t len;
+    /*Send Heartbeat */
+    mavlink_msg_heartbeat_pack(255, 1, &msg, MAV_TYPE_SURFACE_BOAT,
+			       MAV_AUTOPILOT_GENERIC, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
+    
+    len = mavlink_msg_to_send_buffer(m_buf, &msg);
+    
+    res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
+    
+    /* Send controller output */
+    uint16_t mask = 0x0001, btns = 0x0000;
+    for (int i = 0; i < 16; i++, mask <<= 1)
+      btns |= (m_jbtns[i] ? mask : 0);
+    
+    // saturation -1000 to 1000
+    m_jx = (int16_t)max(min((int)m_jx, 1000), -1000);
+    m_jy = (int16_t)max(min((int)m_jy, 1000), -1000);
+    m_jz = (int16_t)max(min((int)m_jz, 1000), -1000);
+    m_jr = (int16_t)max(min((int)m_jr, 1000), -1000);
+    
+    mavlink_msg_manual_control_pack(255, 1, &msg, 1,
+				    (int16_t)m_jx, (int16_t)m_jy, (int16_t)m_jz, (int16_t)m_jr, btns);
+    
+    len = mavlink_msg_to_send_buffer(m_buf, &msg);
+    
+    res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
+    
+    if (m_state == INIT){
+      num_load_params = 0;
+      m_state = LOAD_PARAM;
+      t_last_param = 0;
+      num_retry_load_param = 0;
+    }
+  }
+  while(1){
+    FD_ZERO(&fr);
+    FD_ZERO(&fe);
+    FD_SET(m_sock, &fr);
+    FD_SET(m_sock, &fe);
+    tv.tv_sec = 0;
+    tv.tv_usec = 1000;
+    
+    memset(m_buf, 0, 2048);
+    res = select((int)m_sock + 1, &fr, NULL, &fe, &tv);
+    if (FD_ISSET(m_sock, &fr)){
+      res = recvfrom(m_sock, (char*)m_buf, 1024, 0, (struct sockaddr *)&m_sock_addr_snd, &m_sz);
+      if (res > 0){
+	// Something received - print out all bytes and parse packet
+	mavlink_message_t msg;
+	mavlink_status_t status;	  
+	uint8_t temp;
+	
+	for (int i = 0; i < res; ++i){
+	  temp = m_buf[i];
+	  if (mavlink_parse_char(MAVLINK_COMM_0, m_buf[i], &msg, &status)){
+	    // Packet received
+	    //	printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
+	    switch (msg.msgid){
+	    case MAVLINK_MSG_ID_HEARTBEAT:
+	      mavlink_msg_heartbeat_decode(&msg, &m_heartbeat);
+	      break;
+	    case MAVLINK_MSG_ID_RAW_IMU:
+	      mavlink_msg_raw_imu_decode(&msg, &m_raw_imu);
+	      break;
+	    case MAVLINK_MSG_ID_SCALED_IMU2:
+	      mavlink_msg_scaled_imu2_decode(&msg, &m_scaled_imu2);
+	      break;
+	    case MAVLINK_MSG_ID_SCALED_PRESSURE:
+	      mavlink_msg_scaled_pressure_decode(&msg, &m_scaled_pressure);
+	      break;
+	    case MAVLINK_MSG_ID_SCALED_PRESSURE2:
+	      mavlink_msg_scaled_pressure2_decode(&msg, &m_scaled_pressure2);
+	      break;
+	    case MAVLINK_MSG_ID_SYS_STATUS:
+	      mavlink_msg_sys_status_decode(&msg, &m_sys_status);
+	      break;
+	    case MAVLINK_MSG_ID_POWER_STATUS:
+	      mavlink_msg_power_status_decode(&msg, &m_power_status);
+	      break;
+	    case MAVLINK_MSG_ID_MISSION_CURRENT:
+	      mavlink_msg_mission_current_decode(&msg, &m_mission_current);
+	      break;
+	    case MAVLINK_MSG_ID_SYSTEM_TIME:
+	      mavlink_msg_system_time_decode(&msg, &m_system_time);
+	      break;
+	    case MAVLINK_MSG_ID_NAV_CONTROLLER_OUTPUT:
+	      mavlink_msg_nav_controller_output_decode(&msg, &m_nav_controller_output);
+	      break;
+	    case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
+	      mavlink_msg_global_position_int_decode(&msg, &m_global_position_int);
+	      break;
+	    case MAVLINK_MSG_ID_SERVO_OUTPUT_RAW:
+	      mavlink_msg_servo_output_raw_decode(&msg, &m_servo_output_raw);
+	      break;
+	    case MAVLINK_MSG_ID_RC_CHANNELS_RAW:
+	      mavlink_msg_rc_channels_raw_decode(&msg, &m_rc_channels_raw);
+	      break;
+	    case MAVLINK_MSG_ID_ATTITUDE:
+	      mavlink_msg_attitude_decode(&msg, &m_attitude);
+	      break;
+	      //case MAVLINK_MSG_ID_RALLY_LAND_FETCH_POINT: //Message ID 178 is not appeared in ardupilot mega...
+	    case MAVLINK_MSG_ID_VFR_HUD:
+	      mavlink_msg_vfr_hud_decode(&msg, &m_vfr_hud);
+	      break;
+	    case MAVLINK_MSG_ID_HWSTATUS:
+	      mavlink_msg_hwstatus_decode(&msg, &m_hwstatus);
+	      break;
+	    case MAVLINK_MSG_ID_MOUNT_STATUS:
+	      mavlink_msg_mount_status_decode(&msg, &m_mount_status);
+	      break;
+	    case MAVLINK_MSG_ID_EKF_STATUS_REPORT:
+	      mavlink_msg_ekf_status_report_decode(&msg, &m_ekf_status_report);
+	      break;
+	    case MAVLINK_MSG_ID_VIBRATION:
+	      mavlink_msg_vibration_decode(&msg, &m_vibration);
+	      break;
+	    case MAVLINK_MSG_ID_SENSOR_OFFSETS:
+	      mavlink_msg_sensor_offsets_decode(&msg, &m_sensor_offsets);
+	      break;
+	    case MAVLINK_MSG_ID_RANGEFINDER:
+	      mavlink_msg_rangefinder_decode(&msg, &m_rangefinder);
+	      break;
+	    case MAVLINK_MSG_ID_RPM:
+	      mavlink_msg_rpm_decode(&msg, &m_rpm);
+	      break;
+	    case MAVLINK_MSG_ID_CAMERA_FEEDBACK:
+	      mavlink_msg_camera_feedback_decode(&msg, &m_camera_feedback);
+	      break;
+	    case MAVLINK_MSG_ID_LIMITS_STATUS:
+	      mavlink_msg_limits_status_decode(&msg, &m_limits_status);
+	      break;
+	    case MAVLINK_MSG_ID_SIMSTATE:
+	      mavlink_msg_simstate_decode(&msg, &m_simstate);
+	      break;
+	    case MAVLINK_MSG_ID_MEMINFO:
+	      mavlink_msg_meminfo_decode(&msg, &m_meminfo);
+	      break;
+	    case MAVLINK_MSG_ID_BATTERY2:
+	      mavlink_msg_battery2_decode(&msg, &m_battery2);
+	      break;
+	    case MAVLINK_MSG_ID_GIMBAL_REPORT:
+	      mavlink_msg_gimbal_report_decode(&msg, &m_gimbal_report);
+	      break;
+	    case MAVLINK_MSG_ID_PID_TUNING:
+	      mavlink_msg_pid_tuning_decode(&msg, &m_pid_tuning);
+	      break;
+	    case MAVLINK_MSG_ID_MAG_CAL_PROGRESS:
+	      mavlink_msg_mag_cal_progress_decode(&msg, &m_mag_cal_progress);
+	      break;
+	    case MAVLINK_MSG_ID_MAG_CAL_REPORT:
+	      mavlink_msg_mag_cal_report_decode(&msg, &m_mag_cal_report);
+	      break;
+	    case MAVLINK_MSG_ID_AHRS:
+	      mavlink_msg_ahrs_decode(&msg, &m_ahrs);
+	      break;
+	    case MAVLINK_MSG_ID_AHRS2:
+	      mavlink_msg_ahrs2_decode(&msg, &m_ahrs2);
+	      break;
+	    case MAVLINK_MSG_ID_AHRS3:
+	      mavlink_msg_ahrs3_decode(&msg, &m_ahrs3);
+	      break;
+	    case MAVLINK_MSG_ID_STATUSTEXT:
+	      mavlink_msg_statustext_decode(&msg, &m_statustext);
+	      handle_statustext();
+	      break;
+	    case MAVLINK_MSG_ID_PARAM_VALUE:
+	      mavlink_msg_param_value_decode(&msg, &m_param_value);
+	      handle_param_value();
+	      break;
+	    }	  
+	  }
 	}
-
-	/* Send Status */
-	/*
-	mavlink_msg_sys_status_pack(1, 200, &msg, 0, 0, 0, 500, 11000, -1, -1, 0, 0, 0, 0, 0, 0);
-
-	len = mavlink_msg_to_send_buffer(buf, &msg);
-
-	bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof (struct sockaddr_in));
-	*/
-
-
-	/* Send Local Position */
-	/*
-	mavlink_msg_local_position_ned_pack(1, 200, &msg, microsSinceEpoch(),
-
-	position[0], position[1], position[2],
-
-	position[3], position[4], position[5]);
-
-	len = mavlink_msg_to_send_buffer(buf, &msg);
-
-	bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-	*/
-
-
-	/* Send attitude */
-	/*
-	mavlink_msg_attitude_pack(1, 200, &msg, microsSinceEpoch(), 1.2, 1.7, 3.14, 0.01, 0.02, 0.03);
-
-	len = mavlink_msg_to_send_buffer(buf, &msg);
-
-	bytes_sent = sendto(sock, buf, len, 0, (struct sockaddr*)&gcAddr, sizeof(struct sockaddr_in));
-	*/
-
-	FD_ZERO(&fr);
-	FD_ZERO(&fe);
-	FD_SET(m_sock, &fr);
-	FD_SET(m_sock, &fe);
-	tv.tv_sec = 0;
-	tv.tv_usec = 1000;
-
-	memset(m_buf, 0, 2048);
-	res = select((int)m_sock + 1, &fr, NULL, &fe, &tv);
-	cout << "Waiting packet" << endl;
-	if (FD_ISSET(m_sock, &fr)){
-	  cout << "Recieved a packet" << endl;
-		res = recvfrom(m_sock, (char*)m_buf, 1024, 0, (struct sockaddr *)&m_sock_addr_snd, &m_sz);
-		if (res > 0)
-		{
-			// Something received - print out all bytes and parse packet
-			mavlink_message_t msg;
-			mavlink_status_t status;
-
-			printf("Bytes Received: %d\nDatagram: ", (int)res);
-			uint8_t temp;
-
-			for (int i = 0; i < res; ++i)
-			{
-				temp = m_buf[i];
-				printf("%02x ", (unsigned char)temp);
-				if (mavlink_parse_char(MAVLINK_COMM_0, m_buf[i], &msg, &status))
-				{
-					// Packet received
-					printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
-					switch (msg.msgid){
-					case MAVLINK_MSG_ID_HEARTBEAT:
-						mavlink_msg_heartbeat_decode(&msg, &m_heartbeat);
-						break;
-					case MAVLINK_MSG_ID_RAW_IMU:
-						mavlink_msg_raw_imu_decode(&msg, &m_raw_imu);
-						break;
-					case MAVLINK_MSG_ID_SCALED_IMU2:
-						mavlink_msg_scaled_imu2_decode(&msg, &m_scaled_imu2);
-						break;
-					case MAVLINK_MSG_ID_SCALED_PRESSURE:
-						mavlink_msg_scaled_pressure_decode(&msg, &m_scaled_pressure);
-						break;
-					case MAVLINK_MSG_ID_SCALED_PRESSURE2:
-						mavlink_msg_scaled_pressure2_decode(&msg, &m_scaled_pressure2);
-						break;
-					case MAVLINK_MSG_ID_SYS_STATUS:
-						mavlink_msg_sys_status_decode(&msg, &m_sys_status);
-						break;
-					case MAVLINK_MSG_ID_POWER_STATUS:
-						mavlink_msg_power_status_decode(&msg, &m_power_status);
-						break;
-					case MAVLINK_MSG_ID_MISSION_CURRENT:
-						mavlink_msg_mission_current_decode(&msg, &m_mission_current);
-						break;
-					case MAVLINK_MSG_ID_SYSTEM_TIME:
-						mavlink_msg_system_time_decode(&msg, &m_system_time);
-						break;
-					case MAVLINK_MSG_ID_NAV_CONTROLLER_OUTPUT:
-						mavlink_msg_nav_controller_output_decode(&msg, &m_nav_controller_output);
-						break;
-					case MAVLINK_MSG_ID_GLOBAL_POSITION_INT:
-						mavlink_msg_global_position_int_decode(&msg, &m_global_position_int);
-						break;
-					case MAVLINK_MSG_ID_SERVO_OUTPUT_RAW:
-						mavlink_msg_servo_output_raw_decode(&msg, &m_servo_output_raw);
-						break;
-					case MAVLINK_MSG_ID_RC_CHANNELS_RAW:
-						mavlink_msg_rc_channels_raw_decode(&msg, &m_rc_channels_raw);
-						break;
-					case MAVLINK_MSG_ID_ATTITUDE:
-						mavlink_msg_attitude_decode(&msg, &m_attitude);
-						break;
-					//case MAVLINK_MSG_ID_RALLY_LAND_FETCH_POINT: //Message ID 178 is not appeared in ardupilot mega...
-					case MAVLINK_MSG_ID_VFR_HUD:
-						mavlink_msg_vfr_hud_decode(&msg, &m_vfr_hud);
-						break;
-					case MAVLINK_MSG_ID_HWSTATUS:
-						mavlink_msg_hwstatus_decode(&msg, &m_hwstatus);
-						break;
-					case MAVLINK_MSG_ID_MOUNT_STATUS:
-						mavlink_msg_mount_status_decode(&msg, &m_mount_status);
-						break;
-					case MAVLINK_MSG_ID_EKF_STATUS_REPORT:
-						mavlink_msg_ekf_status_report_decode(&msg, &m_ekf_status_report);
-						break;
-					case MAVLINK_MSG_ID_VIBRATION:
-						mavlink_msg_vibration_decode(&msg, &m_vibration);
-						break;
-					case MAVLINK_MSG_ID_SENSOR_OFFSETS:
-						mavlink_msg_sensor_offsets_decode(&msg, &m_sensor_offsets);
-						break;
-					case MAVLINK_MSG_ID_RANGEFINDER:
-						mavlink_msg_rangefinder_decode(&msg, &m_rangefinder);
-						break;
-					case MAVLINK_MSG_ID_RPM:
-						mavlink_msg_rpm_decode(&msg, &m_rpm);
-						break;
-					case MAVLINK_MSG_ID_CAMERA_FEEDBACK:
-						mavlink_msg_camera_feedback_decode(&msg, &m_camera_feedback);
-						break;
-					case MAVLINK_MSG_ID_LIMITS_STATUS:
-						mavlink_msg_limits_status_decode(&msg, &m_limits_status);
-						break;
-					case MAVLINK_MSG_ID_SIMSTATE:
-						mavlink_msg_simstate_decode(&msg, &m_simstate);
-						break;
-					case MAVLINK_MSG_ID_MEMINFO:
-						mavlink_msg_meminfo_decode(&msg, &m_meminfo);
-						break;
-					case MAVLINK_MSG_ID_BATTERY2:
-						mavlink_msg_battery2_decode(&msg, &m_battery2);
-						break;
-					case MAVLINK_MSG_ID_GIMBAL_REPORT:
-						mavlink_msg_gimbal_report_decode(&msg, &m_gimbal_report);
-						break;
-					case MAVLINK_MSG_ID_PID_TUNING:
-						mavlink_msg_pid_tuning_decode(&msg, &m_pid_tuning);
-						break;
-					case MAVLINK_MSG_ID_MAG_CAL_PROGRESS:
-						mavlink_msg_mag_cal_progress_decode(&msg, &m_mag_cal_progress);
-						break;
-					case MAVLINK_MSG_ID_MAG_CAL_REPORT:
-						mavlink_msg_mag_cal_report_decode(&msg, &m_mag_cal_report);
-						break;
-					case MAVLINK_MSG_ID_AHRS:
-						mavlink_msg_ahrs_decode(&msg, &m_ahrs);
-						break;
-					case MAVLINK_MSG_ID_AHRS2:
-						mavlink_msg_ahrs2_decode(&msg, &m_ahrs2);
-						break;
-					case MAVLINK_MSG_ID_AHRS3:
-						mavlink_msg_ahrs3_decode(&msg, &m_ahrs3);
-						break;
-					case MAVLINK_MSG_ID_STATUSTEXT:
-						mavlink_msg_statustext_decode(&msg, &m_statustext);
-						handle_statustext();
-						break;
-					case MAVLINK_MSG_ID_PARAM_VALUE:
-						mavlink_msg_param_value_decode(&msg, &m_param_value);
-						break;
-					}
-					
-				}
-			}
-			printf("\n");
-			m_bcon = true;
-		}
-		else{
-			cerr << "Error.Reopeninng socket." << endl;
-			closesocket(m_sock);
-			return init_run();
-		}
-	}
-	else if (FD_ISSET(m_sock, &fe)){
-		cerr << "Failed to recieve packet." << endl;
-	}
-
-	if (m_brst){
-		cout << "Reopening socket." << endl;
-		closesocket(m_sock);
-		return init_run();
-		m_brst = m_bcon = false;
-	}
-	return true;
+	m_bcon = true;
+	continue;
+      }else{ /* recv returned with < 0 */	
+	cerr << "Error.Reopeninng socket." << endl;
+	closesocket(m_sock);
+	return init_run();
+      }
+    }else if (FD_ISSET(m_sock, &fe)){
+      cerr << "Failed to recieve packet." << endl;
+    }
+    break;
+  }
+  
+  if (m_brst){
+    cout << "Reopening socket." << endl;
+    closesocket(m_sock);
+    m_brst = m_bcon = false;
+    return init_run();  
+  }
+  return true;
 }
 
 bool f_aws3_com::load_parameters()
 {
-	cout << "Loading parameters." << endl;
+  if(num_retry_load_param == max_retry_load_param){
+    cerr << "Failed to load parameters." <<  endl;
+    return false;
+  }
+  fd_set fr, fw, fe;
+  timeval tv;
+  int res;
+  
+  mavlink_message_t msg;
+  mavlink_status_t status;
+  uint16_t len;
+  
+  // issue request list
+  if(num_retry_load_param == 0){
+    cout << "Requesting parameter list." << endl;
+    mavlink_msg_param_request_list_pack(m_sys_id, 1, &msg, 1, 1);
+    len = mavlink_msg_to_send_buffer(m_buf, &msg);
+    
+    res = sendto(m_sock, (char*)m_buf, len, 0, 
+		 (struct sockaddr*)&m_sock_addr_snd, 
+		 sizeof(struct sockaddr_in)); 
+  }else{
+    for(int iparam = 0; iparam < m_ptbl.size(); iparam++){
+      if(m_ptbl[iparam].is_sync())
+	continue;
+      cout << "Requesting " << m_ptbl[iparam].str << endl;
+      mavlink_msg_param_request_read_pack(m_sys_id, 1, &msg, 1, 1, 
+					  m_ptbl[iparam].str, -1);
+      len = mavlink_msg_to_send_buffer(m_buf, &msg);
+      
+      res = sendto(m_sock, (char*)m_buf, len, 0, 
+		   (struct sockaddr*)&m_sock_addr_snd, 
+		   sizeof(struct sockaddr_in));
+    }
+  }
+  m_state = LOAD_PARAM;
+  t_last_param = m_cur_time;
+  num_retry_load_param++;
+  
+  return true;
+}
 
-	fd_set fr, fw, fe;
-	timeval tv;
-	int res;
-
-	mavlink_message_t msg;
-	mavlink_status_t status;
-	uint16_t len;
-
-	// issue request list
-	mavlink_msg_param_request_list_pack(m_sys_id, 1, &msg, 1, 1);
-
-	len = mavlink_msg_to_send_buffer(m_buf, &msg);
-
-	res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
-
-	m_state = LOAD_PARAM;
-
-	int count_to = 0;
-	while (count_to < 50){
-		FD_ZERO(&fr);
-		FD_ZERO(&fe);
-		FD_SET(m_sock, &fr);
-		FD_SET(m_sock, &fe);
-		tv.tv_sec = 0;
-		tv.tv_usec = 1000000;
-
-		if (FD_ISSET(m_sock, &fr)){
-			res = recvfrom(m_sock, (char*)m_buf, 1024, 0, (struct sockaddr *)&m_sock_addr_snd, &m_sz);
-			if (res > 0)
-			{
-				// Something received - print out all bytes and parse packet
-				mavlink_message_t msg;
-				mavlink_status_t status;
-				uint8_t temp;
-
-				for (int i = 0; i < res; ++i)
-				{
-					temp = m_buf[i];
-					if (mavlink_parse_char(MAVLINK_COMM_0, m_buf[i], &msg, &status))
-					{
-						switch (msg.msgid){
-						case MAVLINK_MSG_ID_STATUSTEXT:
-							mavlink_msg_statustext_decode(&msg, &m_statustext);
-							handle_statustext();
-							break;
-						case MAVLINK_MSG_ID_PARAM_VALUE:
-							mavlink_msg_param_value_decode(&msg, &m_param_value);
-							handle_param_value();
-							break;
-						}
-					}
-				}
-			}
-			else{
-				cerr << "Error.Reopeninng socket." << endl;
-				closesocket(m_sock);
-				return init_run();
-			}
-		}
-		else if (FD_ISSET(m_sock, &fe)){
-			cerr << "Failed to recieve packet." << endl;
-		}
-		count_to++;
-	}
-
-	// check paramters;
-	bool complete = true;
-	int synced = 0;
-	for (int i = 0; i < m_ptbl.size(); i++){
-		if (!m_ptbl[i].is_sync()){
-		  //			cout << "Parameter " << m_ptbl[i].str << " is not synchronized." << endl;
-			complete = false;
-		}else{
-		  synced++;
-		}
-	}
-	cout << synced << "/" << m_ptbl.size() << " parameters synchronized." << endl;
-
-	if (complete){
-		m_state = ACTIVE;
-	}
-	else{
-		m_state = INIT;
-		num_retry_load_param++;
-		if (num_retry_load_param == max_retry_load_param)
-		{
-			cerr << "Failed to load parameters." << endl;
-			return false;
-		}
-	}
-
-	return true;
+bool f_aws3_com::check_sync_parameters()
+{
+  // check paramters;
+  bool complete = true;
+  int sync = 0;
+  for (int i = 0; i < m_ptbl.size(); i++){
+    if (!m_ptbl[i].is_sync()){
+      if(sync - m_ptbl.size() < 10)
+	cout << "Parameter " << m_ptbl[i].str 
+	     << " is not synchronized." << endl;
+      complete = false;
+    }else{
+      sync++;
+    }
+  }
+  cout << sync << " of " << m_ptbl.size() << " parameters are synchronized." << endl;
+  return complete;
 }
 
 void f_aws3_com::handle_param_value()
 {
-	int key = hash(m_param_value.param_id);
-
 	int iparam = seek_param(m_param_value.param_id);
 	if (iparam < 0){
-		cout << "Unknown parameter ";
-		cout.write(m_param_value.param_id, 16);
-		cout << " (" <<  (unsigned short) m_param_value.param_index << "/" 
-			<< (unsigned short) m_param_value.param_count << ")" <<  endl;
+	  cout << "Unknown parameter ";
+	  cout.write(m_param_value.param_id, 16);
+		cout << " loaded (" <<  (unsigned short) m_param_value.param_index << "/" 
+		     << (unsigned short) m_param_value.param_count << ")" <<  endl;
+		t_last_param = m_cur_time;
 	}
 	else{
-		m_ptbl[iparam].set(m_param_value.param_value);
+	  m_ptbl[iparam].set(m_param_value.param_value);
+	  cout << "Recieved Parameter " 
+	       << m_ptbl[iparam].str << "(" 
+	       << m_param_value.param_index << "/" 
+	       << m_param_value.param_count <<  "):" 
+	       << m_param_value.param_value << endl;
+	  t_last_param = m_cur_time;
 	}
 }
 
@@ -1131,7 +1072,7 @@ void f_aws3_com::handle_statustext()
 		cout << "MAV INFO:";
 		break;
 	case MAV_SEVERITY_DEBUG:
-		cout << "MAV_DEBUG:";
+	  cout << "MAV_DEBUG:";
 		break;
 	}
 	cout.write(m_statustext.text, 50);

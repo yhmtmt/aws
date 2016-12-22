@@ -210,8 +210,6 @@ protected:
 	}
 
 	int seek_param(const char * str){
-	  cout.write(str, 16);
-	  cout << endl; 
 		int key = hash(str);
 		int ipar;
 		while ((ipar = m_htbl[key]) >= 0){
@@ -1089,7 +1087,11 @@ protected:
 	} ntf;
 
 	int num_retry_load_param;
+	long long t_last_param;
+	long long t_load_param_to;
 	int max_retry_load_param;
+	int num_load_params;
+	bool check_sync_parameters();
 	bool load_parameters();
 	void handle_param_value();
 	void handle_statustext();
