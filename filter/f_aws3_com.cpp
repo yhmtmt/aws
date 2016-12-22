@@ -698,7 +698,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	m_htbl.resize(SIZE_HTBL, -1);
 	for (int i = 0; i < m_ptbl.size(); i++){
 		int key = hash(m_ptbl[i].str);
-		while (m_htbl[key] > 0){
+		while (m_htbl[key] >= 0){
 			key++;
 			if (key == SIZE_HTBL)
 				key = 0;
@@ -722,24 +722,24 @@ bool f_aws3_com::init_run()
 {
   m_sock = socket(AF_INET, SOCK_DGRAM, 0);
   
-	m_sock_addr_rcv.sin_family = AF_INET;
-	m_sock_addr_rcv.sin_port = htons(m_port);
-	set_sockaddr_addr(m_sock_addr_rcv);
-	if (::bind(m_sock, (sockaddr*)&m_sock_addr_rcv, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
-		cerr << "Socket error" << endl;
-		return false;
-	}
+  m_sock_addr_rcv.sin_family = AF_INET;
+  m_sock_addr_rcv.sin_port = htons(m_port);
+  set_sockaddr_addr(m_sock_addr_rcv);
+  if (::bind(m_sock, (sockaddr*)&m_sock_addr_rcv, sizeof(m_sock_addr_rcv)) == SOCKET_ERROR){
+    cerr << "Socket error" << endl;
+    return false;
+  }
+  
+  m_state = INIT;
+  m_bcon = false;
+  num_retry_load_param = 0;
 
-	m_state = INIT;
-	m_bcon = false;
-	num_retry_load_param = 0;
-
-	return true;
+  return true;
 }
 
 void f_aws3_com::destroy_run()
 {
-	closesocket(m_sock);
+  closesocket(m_sock);
 }
 
 bool f_aws3_com::proc()
@@ -833,7 +833,9 @@ bool f_aws3_com::proc()
 
 	memset(m_buf, 0, 2048);
 	res = select((int)m_sock + 1, &fr, NULL, &fe, &tv);
+	cout << "Waiting packet" << endl;
 	if (FD_ISSET(m_sock, &fr)){
+	  cout << "Recieved a packet" << endl;
 		res = recvfrom(m_sock, (char*)m_buf, 1024, 0, (struct sockaddr *)&m_sock_addr_snd, &m_sz);
 		if (res > 0)
 		{
@@ -1017,7 +1019,7 @@ bool f_aws3_com::load_parameters()
 		FD_SET(m_sock, &fr);
 		FD_SET(m_sock, &fe);
 		tv.tv_sec = 0;
-		tv.tv_usec = 1000;
+		tv.tv_usec = 1000000;
 
 		if (FD_ISSET(m_sock, &fr)){
 			res = recvfrom(m_sock, (char*)m_buf, 1024, 0, (struct sockaddr *)&m_sock_addr_snd, &m_sz);
@@ -1060,12 +1062,16 @@ bool f_aws3_com::load_parameters()
 
 	// check paramters;
 	bool complete = true;
+	int synced = 0;
 	for (int i = 0; i < m_ptbl.size(); i++){
 		if (!m_ptbl[i].is_sync()){
-			cout << "Parameter " << m_ptbl[i].str << " is not synchronized." << endl;
+		  //			cout << "Parameter " << m_ptbl[i].str << " is not synchronized." << endl;
 			complete = false;
+		}else{
+		  synced++;
 		}
 	}
+	cout << synced << "/" << m_ptbl.size() << " parameters synchronized." << endl;
 
 	if (complete){
 		m_state = ACTIVE;
@@ -1086,12 +1092,12 @@ bool f_aws3_com::load_parameters()
 void f_aws3_com::handle_param_value()
 {
 	int key = hash(m_param_value.param_id);
-	
+
 	int iparam = seek_param(m_param_value.param_id);
 	if (iparam < 0){
 		cout << "Unknown parameter ";
 		cout.write(m_param_value.param_id, 16);
-		cout << "(" <<  (unsigned short) m_param_value.param_index << "/" 
+		cout << " (" <<  (unsigned short) m_param_value.param_index << "/" 
 			<< (unsigned short) m_param_value.param_count << ")" <<  endl;
 	}
 	else{

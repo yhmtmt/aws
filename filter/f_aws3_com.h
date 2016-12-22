@@ -210,10 +210,11 @@ protected:
 	}
 
 	int seek_param(const char * str){
+	  cout.write(str, 16);
+	  cout << endl; 
 		int key = hash(str);
 		int ipar;
-		while (key < SIZE_HTBL){
-			ipar = m_htbl[key];
+		while ((ipar = m_htbl[key]) >= 0){
 			const char * pstr = m_ptbl[ipar].str;
 			bool eq = true;
 			for (int i = 0; i < 16 && pstr[i] != '\0' && str[i] != '\0'; i++)

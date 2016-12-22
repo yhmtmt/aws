@@ -2,4 +2,5 @@
 
 filter aws3c aws3c -i -o
 fset aws3c port 14550
+cyc 1
 go
