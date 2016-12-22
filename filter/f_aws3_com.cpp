@@ -582,12 +582,12 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_fence, "FENCE_DEPTH_MAX", "Fence Maximum Depth", &fence.depth_max);
 #endif
 
-	create_param(k_param_motors, "MOT1_DIRECTION", "Motor normal or reverse", &mot.direction[0]);
-	create_param(k_param_motors, "MOT2_DIRECTION", "Motor normal or reverse", &mot.direction[1]);
-	create_param(k_param_motors, "MOT3_DIRECTION", "Motor normal or reverse", &mot.direction[2]);
-	create_param(k_param_motors, "MOT4_DIRECTION", "Motor normal or reverse", &mot.direction[3]);
-	create_param(k_param_motors, "MOT5_DIRECTION", "Motor normal or reverse", &mot.direction[4]);
-	create_param(k_param_motors, "MOT6_DIRECTION", "Motor normal or reverse", &mot.direction[5]);
+	create_param(k_param_motors, "MOT_1_DIRECTION", "Motor normal or reverse", &mot.direction[0]);
+	create_param(k_param_motors, "MOT_2_DIRECTION", "Motor normal or reverse", &mot.direction[1]);
+	create_param(k_param_motors, "MOT_3_DIRECTION", "Motor normal or reverse", &mot.direction[2]);
+	create_param(k_param_motors, "MOT_4_DIRECTION", "Motor normal or reverse", &mot.direction[3]);
+	create_param(k_param_motors, "MOT_5_DIRECTION", "Motor normal or reverse", &mot.direction[4]);
+	create_param(k_param_motors, "MOT_6_DIRECTION", "Motor normal or reverse", &mot.direction[5]);
 	create_param(k_param_motors, "MOT_YAW_HEADROOM", "Matrix Yaw Min", &mot.yaw_headroom);
 	create_param(k_param_motors, "MOT_THST_EXPO", "Thurust Curve Expo", &mot.thst_expo);
 	create_param(k_param_motors, "MOT_SPIN_MAX", "Motor Spin Maximum", &mot.spin_max);
