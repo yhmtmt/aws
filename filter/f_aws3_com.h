@@ -888,7 +888,6 @@ protected:
 		short angmin_pan;
 		short angmin_rol;
 		short angmin_til;
-		char deflt_mode;
 		char jstick_spd;
 		float lead_pitch;
 		float lead_rll;
@@ -1032,7 +1031,6 @@ protected:
 		float thst_hover;
 		short yaw_headroom;
 		char direction[6];
-		float fv_cplng_k;
 	} mot;
 
 #if RCMAP_ENABLED == ENABLED
@@ -1202,7 +1200,6 @@ protected:
 	} ntf;
 
 	char throw_motor_start;
-	char terrain_follow;
 
 	int num_retry_load_param;
 	long long t_last_param;
