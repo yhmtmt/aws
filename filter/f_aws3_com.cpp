@@ -801,7 +801,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_rpm_sensor, "RPM_SCALING", "RPM scaling", &rpm.scaling);
 	create_param(k_param_rpm_sensor, "RPM_MAX", "Maximum RPM", &rpm.max_rpm);
 	create_param(k_param_rpm_sensor, "RPM_MIN", "Minimum RPM", &rpm.min_rpm);
-	create_param(k_param_rpm_sensor, "RPM_QUAL", "RPM minimum quality", &rpm.min_qual);
+	create_param(k_param_rpm_sensor, "RPM_MIN_QUAL", "RPM minimum quality", &rpm.min_qual);
 	create_param(k_param_rpm_sensor, "RPM2_TYPE", "Second RPM type", &rpm.type2);
 	create_param(k_param_rpm_sensor, "RPM2_SCALING", "Second RPM scaling", &rpm.scaling2);
 
