@@ -20,6 +20,9 @@
 
 #include <mavlink.h>
 
+#define AC_FENCE ENABLED
+#define RCMAP_ENABLED ENABLED
+
 class f_aws3_com : f_base
 {
 public:
@@ -433,6 +436,19 @@ protected:
 #endif
 
 	float        throttle_filt;
+	float tkoff_alt;
+	float tkoff_dz;
+	char thr_bhv;
+
+	struct Serial{
+		short baud;
+		char protocol;
+	} serial[6];
+
+	char telem_delay;
+	short rtl_alt;
+	float rtl_cone_slope;
+	short rtl_speed;
 
 	float        rangefinder_gain;
 
@@ -453,9 +469,16 @@ protected:
 	short        gps_hdop_good;              // GPS Hdop value at or below this value represent a good position
 
 	char         compass_enabled;
-
+	char super_simple;
+	short rtl_alt_final;
+	short rtl_climb_min;
 	char         wp_yaw_behavior;            // controls how the autopilot controls yaw during missions
+	int rtl_loit_time;
+	short land_speed;
+	short land_speed_high;
+
 	char         rc_feel_rp;                 // controls vehicle response to user input with 0 being extremely soft and 100 begin extremely crisp
+	char  land_reposition;
 
 	// Waypoints
 	//
@@ -477,6 +500,8 @@ protected:
 	char         flight_mode5;
 	char         flight_mode6;
 
+	char simple;
+
 	// Misc
 	//
 	int        log_bitmask;
@@ -486,6 +511,7 @@ protected:
 	short        radio_tuning_high;
 	short        radio_tuning_low;
 #endif
+	char frame;
 	char         ch7_option;
 	char         ch8_option;
 	char         ch9_option;
@@ -640,6 +666,21 @@ protected:
 		short pin4;
 	} relay;
 
+	struct s_gripper
+	{
+		char enable;
+		char type;
+		short grab;
+		short release;
+		short neutral;
+		short seconds;
+		short regrab;
+		short uavcan_id;
+	} gripper;
+
+	short lgr_servo_rtract;
+	short lgr_servo_deploy;
+
 	struct s_compass{
 		char autodec;
 		float cal_fit;
@@ -754,6 +795,9 @@ protected:
 		char use3;
 	} ins;
 
+	short circle_radius;
+	char circle_rate;
+
 	struct s_wpnav{
 		float accel;
 		float accel_z;
@@ -808,6 +852,7 @@ protected:
 		char raw_ctrl;
 		char raw_sens;
 		char rc_chan;
+		char adsb;
 	};
 
 	s_sr sr0;
@@ -826,6 +871,8 @@ protected:
 		char gps_use;
 		short orientation;
 		float rp_p;
+		float trim_x;
+		float trim_y;
 		float trim_z;
 		short wind_max;
 		float yaw_p;
@@ -834,6 +881,7 @@ protected:
 #if MOUNT == ENABLED
 	struct s_mnt
 	{
+		char deflt_mode;
 		short angmax_pan;
 		short angmax_rol;
 		short angmax_til;
@@ -863,7 +911,6 @@ protected:
 	struct s_log
 	{
 		char backend_type;
-		int bitmask;
 		char disarmed;
 		short file_bufsize;
 		char file_dsrmrot;
@@ -950,6 +997,8 @@ protected:
 		short loop_rate;
 	} sched;
 
+	char avoid_enable;
+
 #if AC_FENCE == ENABLED
 	struct s_fence
 	{
@@ -983,7 +1032,19 @@ protected:
 		float thst_hover;
 		short yaw_headroom;
 		char direction[6];
+		float fv_cplng_k;
 	} mot;
+
+#if RCMAP_ENABLED == ENABLED
+	struct s_rcmap{
+		char roll;
+		char pitch;
+		char throttle;
+		char yaw;
+		char forward;
+		char lateral;
+	} rcmap;
+#endif
 
 	struct s_ekf
 	{
@@ -1080,11 +1141,68 @@ protected:
 		short total;
 	} mis;
 
+	struct s_rssi{
+		char type;
+		char ana_pin;
+		float pin_low;
+		float pin_high;
+		char channel;
+		short chan_low;
+		short chan_high;
+	} rssi;
+
+	struct s_rngfnd{
+		char type;
+		char pin;
+		float scaling;
+		float offset;
+		char function;
+		short min_cm;
+		short max_cm;
+		char stop_pin;
+		short settle;
+		char rmetric;
+		short pwrrng;
+		char gndclear;
+		char addr;
+		short pos_x;
+		short pos_y;
+		short pos_z;
+	} rngfnd[2];
+
+	struct s_flow{
+		char enable;
+		short fxscaler;
+		short fyscaler;
+		short orient_yaw;
+		short pos_x;
+		short pos_y;
+		short pos_z;
+		short bus_id;
+	} flow;
+
+	struct s_rpm{
+		char type;
+		float scaling;
+		short max_rpm;
+		short min_rpm;
+		float min_qual;
+		char type2;
+		float scaling2;
+	} rpm;
+
+	char autotune_axes;
+	float autotune_aggr;
+	float autotune_min_d;
+
 	struct s_ntf{
 		char buzz_enable;
 		char led_brright;
 		char led_override;
 	} ntf;
+
+	char throw_motor_start;
+	char terrain_follow;
 
 	int num_retry_load_param;
 	long long t_last_param;

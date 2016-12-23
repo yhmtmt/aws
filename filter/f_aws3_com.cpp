@@ -46,10 +46,30 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_cli_enabled, "CLI_ENABLED", "CLI Enabled", &cli_enabled);
 #endif
 	create_param(k_param_throttle_filt, "PILOT_THR_FILT", "Throttle filter cutoff", &throttle_filt);
-	//create_param(k_param_serial_manager, "SERIAL", "")
+	create_param(-1, "PILOT_TKOFF_ALT", "Pilot takeoff altitude", &tkoff_alt);
+	create_param(-1, "PILOT_TKOFF_DZ", "Takeoff trigger deadzone", &tkoff_dz);
+	create_param(-1, "PILOT_THR_BHV", "Throttle stick behavior", &thr_bhv);
+
+	create_param(k_param_serial_manager, "SERIAL0_BAUD", "Serial0 baud rate", &serial[0].baud);
+	create_param(k_param_serial_manager, "SERIAL0_PROTOCOL", "Console protocol selection", &serial[0].protocol);
+	create_param(k_param_serial_manager, "SERIAL1_BAUD", "Serial1 baud rate", &serial[1].baud);
+	create_param(k_param_serial_manager, "SERIAL1_PROTOCOL", "Console protocol selection", &serial[1].protocol);
+	create_param(k_param_serial_manager, "SERIAL2_BAUD", "Serial2 baud rate", &serial[2].baud);
+	create_param(k_param_serial_manager, "SERIAL2_PROTOCOL", "Console protocol selection", &serial[2].protocol);
+	create_param(k_param_serial_manager, "SERIAL3_BAUD", "Serial3 baud rate", &serial[3].baud);
+	create_param(k_param_serial_manager, "SERIAL3_PROTOCOL", "Console protocol selection", &serial[3].protocol);
+	create_param(k_param_serial_manager, "SERIAL4_BAUD", "Serial4 baud rate", &serial[4].baud);
+	create_param(k_param_serial_manager, "SERIAL4_PROTOCOL", "Console protocol selection", &serial[4].protocol);
+	create_param(k_param_serial_manager, "SERIAL5_BAUD", "Serial5 baud rate", &serial[5].baud);
+	create_param(k_param_serial_manager, "SERIAL5_PROTOCOL", "Console protocol selection", &serial[5].protocol);
+	create_param(-1, "TELEM_DELAY", "Telemetry startup delay", &telem_delay);
+	create_param(-1, "RTL_ALT", "The minimum relative altitude the model will move to before RTL", &rtl_alt);
+	create_param(-1, "RTL_CONE_SLOPE", "RTL cone slope", &rtl_cone_slope);
+	create_param(-1, "RTL_SPEED", "RTL speed", &rtl_speed);
+
 	create_param(k_param_gcs_pid_mask, "GCS_PID_MASK", "GCS PID tuning mask", &gcs_pid_mask);
 	create_param(k_param_rangefinder_gain, "RNGFND_GAIN", "Rangefinder gain", &rangefinder_gain);
-	//	create_param(k_param_failsafe_battery_enabled, "FS_BATT_ENABLED", "Battery Failsafe Enable", &failsafe_battery_enabled);
+	create_param(k_param_failsafe_battery_enabled, "FS_BATT_ENABLESUPER", "Battery Failsafe Enable", &failsafe_battery_enabled);
 	create_param(k_param_fs_batt_voltage, "FS_BATT_VOLTAGE", "Failsafe battery voltage", &fs_batt_voltage);
 	create_param(k_param_fs_batt_mah, "FS_BATT_MAH", "Failsafe battery millAmpHours", &fs_batt_mah);
 	create_param(k_param_failsafe_gcs, "FS_GCS_ENABLE", "Ground Station Failsafe Enable", &failsafe_gcs);
@@ -62,7 +82,15 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_xtrack_angle_limit, "XTRACK_ANG_LIM", "Crosstrack correction angle limit", &xtrack_angle_limit);
 	create_param(k_param_gps_hdop_good, "GPS_HDOP_GOOD", "GPS Hdop Good", &gps_hdop_good);
 	create_param(k_param_compass_enabled, "MAG_ENABLE", "Compass enable/disable", &compass_enabled);
+	create_param(-1, "SUPER_SIMPLE", "Super simple mode", &super_simple);
+	create_param(-1, "RTL_ALT_FINAL", "RTL final altitude", &rtl_alt_final);
+	create_param(-1, "RTL_CLIMB_MIN", "RTL minimum climb", &rtl_climb_min);
+
 	create_param(k_param_wp_yaw_behavior, "WP_YAW_BEHAVIOR", "Yaw behaviour during missions", &wp_yaw_behavior);
+	create_param(-1, "RTL_LOIT_TIME", "RTL loiter time", &rtl_loit_time);
+	create_param(-1, "LAND_SPEED", "Land speed", &land_speed);
+	create_param(-1, "LAND_SPEED_HIGH", "Land speed high", &land_speed_high);
+
 	create_param(k_param_pilot_velocity_z_max, "PILOT_VELZ_MAX", "Pilot maximum vertical speed", &pilot_velocity_z_max);
 	create_param(k_param_pilot_accel_z, "PILOT_ACCEL_Z", "Pilot vertical acceleration", &pilot_accel_z);
 	create_param(k_param_failsafe_throttle, "FS_THR_ENABLE", "Throttle Failsafe Enable", &failsafe_throttle);
@@ -74,14 +102,16 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_flight_mode4, "FLTMODE4", "Flight Mode 4", &flight_mode1);
 	create_param(k_param_flight_mode5, "FLTMODE5", "Flight Mode 5", &flight_mode1);
 	create_param(k_param_flight_mode6, "FLTMODE6", "Flight Mode 6", &flight_mode1);
+	create_param(-1, "SIMPLE", "Simple mode bitmask", &simple);
+
 	create_param(k_param_log_bitmask, "LOG_BITMASK", "Log bitmask", &log_bitmask);
 	create_param(k_param_esc_calibrate, "ESC_CALIBRATION", "ESC Calibration", &esc_calibrate);
 #if CH6_TUNE_ENABLED == ENABLED
 	create_param(k_param_radio_tuning, "TUNE", "Channel 6 Tuning", &radio_tuning);
 	create_param(k_param_radio_tuning_low, "TUNE_LOW", "Tuning minimum", &radio_tuning_low);
 	create_param(k_param_radio_tuning_high, "TUNE_HIGH", "Tuning maximum", &radio_tuning_high);
-
 #endif
+	create_param(-1, "FRAME", "Frame Orientation (+, X or V)", &frame);
 #if AUXSW_ENABLED == ENABLED
 	create_param(k_param_ch7_option, "CH7_OPT", "Channel 7 optioin", &ch7_option);
 	create_param(k_param_ch8_option, "CH8_OPT", "Channel 8 optioin", &ch8_option);
@@ -94,6 +124,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_disarm_delay, "DISARM_DELAY", "Disarm delay", &disarm_delay);
 	create_param(k_param_angle_max, "ANGLE_MAX", "Angle Max", &angle_max);
 	create_param(k_param_rc_feel_rp, "RC_FEEL_RP", "RC Feel Roll/Pitch", &rc_feel_rp);
+	create_param(-1, "LAND_REPOSITION", "Land repositioning", &land_reposition);
 	create_param(k_param_fs_ekf_action, "FS_EKF_ACTION", "EKF Failsafe Action", &fs_ekf_action);
 	create_param(k_param_fs_ekf_thresh, "FS_EKF_THRESH", "EKF failsafe variance theshold", &fs_ekf_thresh);
 	create_param(k_param_fs_crash_check, "FS_CRASH_CHECK", "Crash check enable", &fs_crash_check);
@@ -257,6 +288,15 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_relay, "RELAY_PIN2", "Second Relay Pin", &relay.pin2);
 	create_param(k_param_relay, "RELAY_PIN3", "Third Relay Pin", &relay.pin3);
 	create_param(k_param_relay, "RELAY_PIN4", "Fourth Relay Pin", &relay.pin4);
+	create_param(-1, "EPM_ENABLE", "Gripper Enable/Disable", &gripper.enable);
+	create_param(-1, "EPM_TYPE", "Gripper type", &gripper.type);
+	create_param(-1, "EPM_GRAB", "Gripper Grab PWM", &gripper.grab);
+	create_param(-1, "EPM_RELEASE", "Gripper Release PWM", &gripper.release);
+	create_param(-1, "EPM_NEUTRAL", "Gripper Neutral PWM", &gripper.neutral);
+	create_param(-1, "EPM_REGRAB", "Gripper Regrab Interval", &gripper.regrab);
+	create_param(-1, "EPM_UAVCAN_ID", "EPM UAVCAN Hardopoint ID", &gripper.uavcan_id);
+	create_param(-1, "LGR_SERVO_RTRACT", "Langing Gear Servo Retracted PWM value", &lgr_servo_rtract);
+	create_param(-1, "LGR_SERVO_DEPLOY", "Landing Gear Servo Deployed PWM Value", &lgr_servo_deploy);
 
 	create_param(k_param_compass, "COMPASS_AUTODEC", "Auto Declination", &compass.autodec);
 	create_param(k_param_compass, "COMPASS_OFS_X", "Compass offset in milligauss on the X axis", &compass.ofs_x);
@@ -367,6 +407,9 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_ins, "INS_ACC3_ID", "Accelerometer3 ID", &ins.acc3_id);
 	create_param(k_param_ins, "INS_FAST_SAMPLE", "Fast sampling mask", &ins.fast_sample);
 	
+	create_param(-1, "CIRCLE_RADIUS", "Circle Radius", &circle_radius);
+	create_param(-1, "CIRCLE_RATE", "Circle rate", &circle_rate);
+
 	create_param(k_param_wp_nav, "WPNAV_SPEED", "Waypoint Horizontal Speed Target", &wpnav.speed);
 	create_param(k_param_wp_nav, "WPNAV_RADIUS", "Waypoint Radius", &wpnav.radius);
 	create_param(k_param_wp_nav, "WPNAV_SPEED_UP", "Waypoint climb speed target", &wpnav.speed_up);
@@ -418,6 +461,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(-1, "SR0_RAW_CTRL", "Raw Control stream rate to ground station", &sr0.raw_ctrl);
 	create_param(-1, "SR0_RAW_SENS", "Raw sensor stream rate", &sr0.raw_sens);
 	create_param(-1, "SR0_RC_CHAN", "RC Channel stream rate to ground station", &sr0.rc_chan);
+	create_param(-1, "SR0_ADSB", "ADSB stream rate to ground station", &sr0.adsb);
 
 	create_param(-1, "SR1_EXTRA1", "Extra data type 1 stream rate to ground station", &sr1.extra1);
 	create_param(-1, "SR1_EXTRA2", "Extra data type 2 stream rate to ground station", &sr1.extra2);
@@ -428,6 +472,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(-1, "SR1_RAW_CTRL", "Raw Control stream rate to ground station", &sr1.raw_ctrl);
 	create_param(-1, "SR1_RAW_SENS", "Raw sensor stream rate", &sr1.raw_sens);
 	create_param(-1, "SR1_RC_CHAN", "RC Channel stream rate to ground station", &sr1.rc_chan);
+	create_param(-1, "SR1_ADSB", "ADSB stream rate to ground station", &sr0.adsb);
 
 	create_param(-1, "SR2_EXTRA1", "Extra data type 1 stream rate to ground station", &sr2.extra1);
 	create_param(-1, "SR2_EXTRA2", "Extra data type 2 stream rate to ground station", &sr2.extra2);
@@ -438,6 +483,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(-1, "SR2_RAW_CTRL", "Raw Control stream rate to ground station", &sr2.raw_ctrl);
 	create_param(-1, "SR2_RAW_SENS", "Raw sensor stream rate", &sr2.raw_sens);
 	create_param(-1, "SR2_RC_CHAN", "RC Channel stream rate to ground station", &sr2.rc_chan);
+	create_param(-1, "SR2_ADSB", "ADSB stream rate to ground station", &sr0.adsb);
 
 	create_param(-1, "SR3_EXTRA1", "Extra data type 1 stream rate to ground station", &sr3.extra1);
 	create_param(-1, "SR3_EXTRA2", "Extra data type 2 stream rate to ground station", &sr3.extra2);
@@ -448,6 +494,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(-1, "SR3_RAW_CTRL", "Raw Control stream rate to ground station", &sr3.raw_ctrl);
 	create_param(-1, "SR3_RAW_SENS", "Raw sensor stream rate", &sr3.raw_sens);
 	create_param(-1, "SR3_RC_CHAN", "RC Channel stream rate to ground station", &sr3.rc_chan);
+	create_param(-1, "SR3_ADSB", "ADSB stream rate to ground station", &sr0.adsb);
 
 	create_param(k_param_ahrs, "AHRS_COMP_BETA", "AHRS velocity complementary filter beta coefficient", &ahrs.comp_beta);
 	create_param(k_param_ahrs, "AHRS_EKF_TYPE", "Use NavEKF Kalman filter for attitude and position estimation", &ahrs.ekf_type);
@@ -456,11 +503,14 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_ahrs, "AHRS_GPS_USE", "AHRS use GPS for navigation", &ahrs.gps_use);
 	create_param(k_param_ahrs, "AHRS_ORIENTATION", "Board orientation", &ahrs.orientation);
 	create_param(k_param_ahrs, "AHRS_RP_P", "AHRS RP_P", &ahrs.rp_p);
+	create_param(k_param_ahrs, "AHRS_TRIM_X", "AHRS Trim Roll", &ahrs.trim_x);
+	create_param(k_param_ahrs, "AHRS_TRIM_Y", "AHRS Trim Pitch", &ahrs.trim_y);
 	create_param(k_param_ahrs, "AHRS_TRIM_Z", "AHRS Trim Yaw", &ahrs.trim_z);
 	create_param(k_param_ahrs, "AHRS_WIND_MAX", "Maximum wind", &ahrs.wind_max);
 	create_param(k_param_ahrs, "AHRS_YAW_P", "Yaw P", &ahrs.yaw_p);
 
 #if MOUNT == ENABLED
+	create_param(k_param_camera_mount, "MNT_DEFLT_MODE", "Mount default operating mode", &mnt.deflt_mode);
 	create_param(k_param_camera_mount, "MNT_RETRACT_X", "Mount roll angle when in retracted position", &mnt.retract_x);
 	create_param(k_param_camera_mount, "MNT_RETRACT_Y", "Mount tilt angle when in retracted position", &mnt.retract_y);
 	create_param(k_param_camera_mount, "MNT_RETRACT_Z", "Mount pan angle when in retracted position", &mnt.retract_z);
@@ -480,9 +530,6 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Minimum roll angle", &mnt.angmin_rol);
 	create_param(k_param_camera_mount, "MNT_ANGMIN_PAN", "Minimum pan angle", &mnt.angmin_pan);
 	create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Minimum tilt angle", &mnt.angmin_til);
-	//	create_param(k_param_camera_mount, "MNT_ANGMIN_ROLL", "Stabilize mount's roll angle", &mnt.stab_roll);
-	//	create_param(k_param_camera_mount, "MNT_STAB_PAN", "Stabilize mount's pan angle", &mnt.stab_pan);
-	//create_param(k_param_camera_mount, "MNT_ANGMIN_TILT", "Stabilize mount's tilt angle", &mnt.stab_tilt);
 
 	create_param(k_param_camera_mount, "MNT_RC_IN_ROLL", "Roll RC input channel", &mnt.rc_in_roll);
 	create_param(k_param_camera_mount, "MNT_RC_IN_PAN", "Pan RC input channel", &mnt.rc_in_pan);
@@ -501,23 +548,22 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_DataFlash, "LOG_DISARMED", "Enable logging while disarmed", &log.disarmed);
 	create_param(k_param_DataFlash, "LOG_REPLAY", "Enable logging of information needed for Replay", &log.replay);
 	create_param(k_param_DataFlash, "LOG_FILE_DSRMROT", "Stop logging to current file on disarm", &log.file_dsrmrot);
-	//	create_param(k_param_log_bitmask, "LOG_BITMASK", "", &log.bitmask);
 
-	create_param(k_param_battery, "BAT_MONITOR", "Battery monitoring", &batt.monitor);
-	create_param(k_param_battery, "BAT_VOLT_PIN", "Battery Voltage sensing pin", &batt.volt_pin);
-	create_param(k_param_battery, "BAT_CURR_PIN", "Battery Current sensing pin", &batt.curr_pin);
-	create_param(k_param_battery, "BAT_VOLT_MULT", "Voltage Multiplier", &batt.volt_mult);
-	create_param(k_param_battery, "BAT_AMP_PERVOLT", "Amps per volt", &batt.amp_pervol);
-	create_param(k_param_battery, "BAT_AMP_OFFSET", "AMP offset", &batt.amp_offset);
-	create_param(k_param_battery, "BAT_CAPACITY", "Battery capacity", &batt.capacity);
+	create_param(k_param_battery, "BATT_MONITOR", "Battery monitoring", &batt.monitor);
+	create_param(k_param_battery, "BATT_VOLT_PIN", "Battery Voltage sensing pin", &batt.volt_pin);
+	create_param(k_param_battery, "BATT_CURR_PIN", "Battery Current sensing pin", &batt.curr_pin);
+	create_param(k_param_battery, "BATT_VOLT_MULT", "Voltage Multiplier", &batt.volt_mult);
+	create_param(k_param_battery, "BATT_AMP_PERVOLT", "Amps per volt", &batt.amp_pervol);
+	create_param(k_param_battery, "BATT_AMP_OFFSET", "AMP offset", &batt.amp_offset);
+	create_param(k_param_battery, "BATT_CAPACITY", "Battery capacity", &batt.capacity);
 
-	create_param(k_param_battery, "BAT2_MONITOR", "Battery monitoring", &batt2.monitor);
-	create_param(k_param_battery, "BAT2_VOLT_PIN", "Battery Voltage sensing pin", &batt2.volt_pin);
-	create_param(k_param_battery, "BAT2_CURR_PIN", "Battery Current sensing pin", &batt2.curr_pin);
-	create_param(k_param_battery, "BAT2_VOLT_MULT", "Voltage Multiplier", &batt2.volt_mult);
-	create_param(k_param_battery, "BAT2_AMP_PERVOLT", "Amps per volt", &batt2.amp_pervol);
-	create_param(k_param_battery, "BAT2_AMP_OFFSET", "AMP offset", &batt2.amp_offset);
-	create_param(k_param_battery, "BAT2_CAPACITY", "Battery capacity", &batt2.capacity);
+	create_param(k_param_battery, "BATT2_MONITOR", "Battery monitoring", &batt2.monitor);
+	create_param(k_param_battery, "BATT2_VOLT_PIN", "Battery Voltage sensing pin", &batt2.volt_pin);
+	create_param(k_param_battery, "BATT2_CURR_PIN", "Battery Current sensing pin", &batt2.curr_pin);
+	create_param(k_param_battery, "BATT2_VOLT_MULT", "Voltage Multiplier", &batt2.volt_mult);
+	create_param(k_param_battery, "BATT2_AMP_PERVOLT", "Amps per volt", &batt2.amp_pervol);
+	create_param(k_param_battery, "BATT2_AMP_OFFSET", "AMP offset", &batt2.amp_offset);
+	create_param(k_param_battery, "BATT2_CAPACITY", "Battery capacity", &batt2.capacity);
 
 	create_param(k_param_BoardConfig, "BRD_PWM_COUNT", "Auxiliary pin config", &brd.pwm_count);
 	create_param(k_param_BoardConfig, "BRD_SER1_RTSCTS", "Serial 1 flow control", &brd.ser1_rtscts); 
@@ -549,9 +595,9 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_gps, "GPS_SBP_LOGMASK", "Swift Binary Protocol Logging Mask", &gps.sbp_logmask);
 	create_param(k_param_gps, "GPS_RAW_DATA", "Raw data logging", &gps.raw_data);
 	create_param(k_param_gps, "GPS_GNSS_MODE", "GNSS system configuration", &gps.gnss_mode);
-	create_param(k_param_gps, "GPS_GNSS_MODE2", "GNSS system 2 configuration", &gps.gnss_mode2);
+	//create_param(k_param_gps, "GPS_GNSS_MODE2", "GNSS system 2 configuration", &gps.gnss_mode2);
 	create_param(k_param_gps, "GPS_SAVE_CFG", "Save GPS configuration", &gps.save_cfg);
-	create_param(k_param_gps, "GPS_AUTOCONFIG", "Automatic GPS configuration", &gps.auto_config);
+	create_param(k_param_gps, "GPS_AUTO_CONFIG", "Automatic GPS configuration", &gps.auto_config);
 	create_param(k_param_gps, "GPS_RATE_MS", "GPS update rate in milliseconds", &gps.rate_ms);
 	create_param(k_param_gps, "GPS_RATE_MS2", "GPS update rate in milliseconds", &gps.rate_ms2);
 	create_param(k_param_gps, "GPS_POS1_X", "Antenna X position offset", &gps.pos1_x);
@@ -581,6 +627,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_fence, "FENCE_TOTAL", "Fence polygon points total", &fence.total);
 	create_param(k_param_fence, "FENCE_DEPTH_MAX", "Fence Maximum Depth", &fence.depth_max);
 #endif
+	create_param(k_param_avoid, "AVOID_ENABLE", "Avoidance control enable/disable", &avoid_enable);
 
 	create_param(k_param_motors, "MOT_1_DIRECTION", "Motor normal or reverse", &mot.direction[0]);
 	create_param(k_param_motors, "MOT_2_DIRECTION", "Motor normal or reverse", &mot.direction[1]);
@@ -603,7 +650,17 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_motors, "MOT_THUST_HOVER", "Thrust Hover Value", &mot.thst_hover);
 	create_param(k_param_motors, "MOT_HOVER_LEARN", "Hover Value Learning", &mot.hover_learn);
 	create_param(k_param_motors, "MOT_SAFE_DISARM", "Motor PWM output disabled when disarmed", &mot.safe_disarm);
-	
+	create_param(k_param_motors, "MOT_FV_CPLNG_K", "Forward/vertical to pitch decoupling factor", &mot.fv_cplng_k);
+
+#if RCMAP_ENABLED == ENABLED
+	create_param(k_param_rcmap, "RCMAP_ROLL", "Roll channel", &rcmap.roll);
+	create_param(k_param_rcmap, "RCMAP_PITCH", "Pitch channel", &rcmap.pitch);
+	create_param(k_param_rcmap, "RCMAP_THROTTLE", "Throttle channel", &rcmap.throttle);
+	create_param(k_param_rcmap, "RCMAP_YAW", "Yaw channel", &rcmap.yaw);
+	create_param(k_param_rcmap, "RCMAP_FORWARD", "Forward channel", &rcmap.forward);
+	create_param(k_param_rcmap, "RCMAP_LATERAL", "Lateral channel", &rcmap.lateral);
+#endif
+
 	create_param(k_param_NavEKF, "EKF_ENABLE", "Enable EKF1", &ekf.enable);
 	create_param(k_param_NavEKF, "EKF_VELNE_NOISE", "GPS horizontal velocity measurement noise scaler", &ekf.velne_noise);
 	create_param(k_param_NavEKF, "EKF_VELD_NOISE", "GPS vertical velocity measurement noise scaler", &ekf.veld_noise);
@@ -690,9 +747,74 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_mission, "MIS_TOTAL", "total mission commands", &mis.total);
 	create_param(k_param_mission, "MIS_RESTART", "Mission Restart when entering Auto mode", &mis.restart);
 
+	create_param(-1, "RSSI_TYPE", "RSSI Type", &rssi.type);
+	create_param(-1, "RSSI_ANA_PIN", "Reciever RSSI analog sensing pin", &rssi.ana_pin);
+	create_param(-1, "RSSI_PIN_LOW", "Reciever RSSI voltage low", &rssi.pin_low);
+	create_param(-1, "RSSI_PIN_HIGH", "Reciever RSSI voltage high", &rssi.pin_high);
+	create_param(-1, "RSSI_CHANNEL", "Reciever RSSI channel number", &rssi.channel);
+	create_param(-1, "RSSI_CHAN_LOW", "Reciever RSSI PWM low value", &rssi.pin_low);
+	create_param(-1, "RSSI_CHAN_HIGH", "Reciever RSSI PWM high value", &rssi.pin_high);
+
+	create_param(k_param_rangefinder, "RNGFND_TYPE", "Rangefinder type", &rngfnd[0].type);
+	create_param(k_param_rangefinder, "RNGFND_PIN", "Rangefinder pin", &rngfnd[0].pin);
+	create_param(k_param_rangefinder, "RNGFND_SCALING", "Rangefinder scaling", &rngfnd[0].scaling);
+	create_param(k_param_rangefinder, "RNGFND_OFFSET", "Rangefinder offset", &rngfnd[0].offset);
+	create_param(k_param_rangefinder, "RNGFND_FUNCTION", "Rangefinder function", &rngfnd[0].function);
+	create_param(k_param_rangefinder, "RNGFND_MIN_CM", "Rangefinder minimum distance", &rngfnd[0].min_cm);
+	create_param(k_param_rangefinder, "RNGFND_MAX_CM", "Rangefinder maximum distance", &rngfnd[0].max_cm);
+	create_param(k_param_rangefinder, "RNGFND_STOP_PIN", "Rangefinder stop pin", &rngfnd[0].stop_pin);
+	create_param(k_param_rangefinder, "RNGFND_SETTLE", "Rangefinder settle time", &rngfnd[0].settle);
+	create_param(k_param_rangefinder, "RNGFND_RMETRIC", "Rangefinder type", &rngfnd[0].rmetric);
+	create_param(k_param_rangefinder, "RNGFND_PWRRNG", "Powersave range", &rngfnd[0].pwrrng);
+	create_param(k_param_rangefinder, "RNGFND_GNDCLEAR", "Distance (in cm) from the range finder to the ground", &rngfnd[0].gndclear);
+	create_param(k_param_rangefinder, "RNGFND_ADDR", "Buss address of sensor", &rngfnd[0].addr);
+	create_param(k_param_rangefinder, "RNGFND_POS_X", "Rangefinder x position offset", &rngfnd[0].pos_x);
+	create_param(k_param_rangefinder, "RNGFND_POS_Y", "Rangefinder y position offset", &rngfnd[0].pos_y);
+	create_param(k_param_rangefinder, "RNGFND_POS_Z", "Rangefinder z position offset", &rngfnd[0].pos_z);
+	create_param(k_param_rangefinder, "RNGFND2_TYPE", "Rangefinder type", &rngfnd[1].type);
+	create_param(k_param_rangefinder, "RNGFND2_PIN", "Rangefinder pin", &rngfnd[1].pin);
+	create_param(k_param_rangefinder, "RNGFND2_SCALING", "Rangefinder scaling", &rngfnd[1].scaling);
+	create_param(k_param_rangefinder, "RNGFND2_OFFSET", "Rangefinder offset", &rngfnd[1].offset);
+	create_param(k_param_rangefinder, "RNGFND2_FUNCTION", "Rangefinder function", &rngfnd[1].function);
+	create_param(k_param_rangefinder, "RNGFND2_MIN_CM", "Rangefinder minimum distance", &rngfnd[1].min_cm);
+	create_param(k_param_rangefinder, "RNGFND2_MAX_CM", "Rangefinder maximum distance", &rngfnd[1].max_cm);
+	create_param(k_param_rangefinder, "RNGFND2_STOP_PIN", "Rangefinder stop pin", &rngfnd[1].stop_pin);
+	create_param(k_param_rangefinder, "RNGFND2_SETTLE", "Rangefinder settle time", &rngfnd[1].settle);
+	create_param(k_param_rangefinder, "RNGFND2_RMETRIC", "Rangefinder type", &rngfnd[1].rmetric);
+	create_param(k_param_rangefinder, "RNGFND2_PWRRNG", "Powersave range", &rngfnd[1].pwrrng);
+	create_param(k_param_rangefinder, "RNGFND2_GNDCLEAR", "Distance (in cm) from the range finder to the ground", &rngfnd[0].gndclear);
+	create_param(k_param_rangefinder, "RNGFND2_ADDR", "Buss address of sensor", &rngfnd[1].addr);
+	create_param(k_param_rangefinder, "RNGFND2_POS_X", "Rangefinder x position offset", &rngfnd[1].pos_x);
+	create_param(k_param_rangefinder, "RNGFND2_POS_Y", "Rangefinder y position offset", &rngfnd[1].pos_y);
+	create_param(k_param_rangefinder, "RNGFND2_POS_Z", "Rangefinder z position offset", &rngfnd[1].pos_z);
+
+	create_param(k_param_optflow, "FLOW_ENABLE", "Optical flow enable/disalbe", &flow.enable);
+	create_param(k_param_optflow, "FLOW_FXSCALER", "x axis optical flow scale factor correction", &flow.fxscaler);
+	create_param(k_param_optflow, "FLOW_FYSCALER", "y axis optical flow scale factor correction", &flow.fyscaler);
+	create_param(k_param_optflow, "FLOW_ORIENT_YAW", "Flow sensor yaw alignment", &flow.orient_yaw);
+	create_param(k_param_optflow, "FLOW_POS_X", "x position offset", &flow.pos_x);
+	create_param(k_param_optflow, "FLOW_POS_Y", "y position offset", &flow.pos_y);
+	create_param(k_param_optflow, "FLOW_POS_Z", "z position offset", &flow.pos_z);
+	create_param(k_param_optflow, "FLOW_BUS_ID", "ID on the bus", &flow.bus_id);
+
+	create_param(k_param_rpm_sensor, "RPM_TYPE", "RPM type", &rpm.type);
+	create_param(k_param_rpm_sensor, "RPM_SCALING", "RPM scaling", &rpm.scaling);
+	create_param(k_param_rpm_sensor, "RPM_MAX", "Maximum RPM", &rpm.max_rpm);
+	create_param(k_param_rpm_sensor, "RPM_MIN", "Minimum RPM", &rpm.min_rpm);
+	create_param(k_param_rpm_sensor, "RPM_QUAL", "RPM minimum quality", &rpm.min_qual);
+	create_param(k_param_rpm_sensor, "RPM2_TYPE", "Second RPM type", &rpm.type2);
+	create_param(k_param_rpm_sensor, "RPM2_SCALING", "Second RPM scaling", &rpm.scaling2);
+
+	create_param(k_param_autotune_axis_bitmask, "AUTOTUNE_AXES", "Autotune axis bitmask", &autotune_axes);
+	create_param(k_param_autotune_aggressiveness, "AUTOTUNE_AGGR", "Autotune aggressibeness", &autotune_aggr);
+	create_param(k_param_autotune_min_d, "AUTOTUNE_MIN_D", "Autotune minimum D", &autotune_min_d);
+
 	create_param(k_param_mission, "NTF_LED_BRIGHT", "LED Brightness", &ntf.led_brright);
 	create_param(k_param_mission, "NTF_BUZZ_ENABLE", "Buzz enable", &ntf.buzz_enable);
 	create_param(k_param_mission, "NTF_LED_OVERRIDE", "Setup for Mavlink LED override", &ntf.led_override);
+
+	create_param(-1, "THROW_MOT_START", "Start motors before throwing is detected", &throw_motor_start);
+	create_param(-1, "TERRAIN_FOLLOW", "Terrain Following use control", &terrain_follow);
 
 	// initializaing hash table
 	m_htbl.resize(SIZE_HTBL, -1);
