@@ -118,24 +118,24 @@ bool f_aws3_com::proc()
 			  fout << "fset " << m_name << " " << par.str << " ";
 			  switch (par.type){
 			  case MAV_PARAM_TYPE_INT8:
-				  cout << par.c; break;
+			    fout << (int)*par.c; break;
 			  case MAV_PARAM_TYPE_INT16:
-				  cout << par.s; break;
+				  fout << *par.s; break;
 			  case MAV_PARAM_TYPE_INT32:
-				  cout << par.i; break;
+				  fout << *par.i; break;
 			  case MAV_PARAM_TYPE_UINT8:
-				  cout << par.uc; break;
+			    fout << (int) *par.uc; break;
 			  case MAV_PARAM_TYPE_UINT16:
-				  cout << par.us; break;
+				  fout << *par.us; break;
 			  case MAV_PARAM_TYPE_UINT32:
-				  cout << par.ui; break;
+				  fout << *par.ui; break;
 			  case MAV_PARAM_TYPE_REAL32:
-				  cout << par.f; break;
+				  fout << *par.f; break;
 			  case MAV_PARAM_TYPE_REAL64:
-				  cout << par.d; break;
+				  fout << *par.d; break;
 
 			  } 
-			  cout << endl;
+			  fout << endl;
 		  }
 	  }
 	  else{
@@ -250,10 +250,11 @@ bool f_aws3_com::proc()
 	  if (mavlink_parse_char(MAVLINK_COMM_0, m_buf[i], &msg, &status)){
 	    // Packet received
 	    //	
-printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
+
 		  if (msg.sysid != 1 || msg.compid != 1){
 			  cerr << "Message is not from AWS3" << endl;
-			  
+			  printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n",
+				 msg.sysid, msg.compid, msg.len, msg.msgid);			  
 			  continue;
 		  }
 

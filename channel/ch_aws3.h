@@ -74,17 +74,30 @@ struct s_aws3_param{
 	void set(float val)
 	{
 		switch (type){
-		case 0:
-			*c = (char)val;
-			break;
-		case 1:
-			*s = (short)val;
-			break;
-		case 2:
-			*i = (int)val;
-			break;
-		case 3:
-			*f = val;
+		case MAV_PARAM_TYPE_UINT8:
+		  *uc = (unsigned char) val;
+		  break;
+		case MAV_PARAM_TYPE_UINT16:
+		  *us = (unsigned short) val; 
+		  break;
+		case MAV_PARAM_TYPE_UINT32:
+		  *ui = (unsigned int) val;
+		  break;
+		case MAV_PARAM_TYPE_INT8:
+		  *c = (char)val;
+		  break;
+		case MAV_PARAM_TYPE_INT16:
+		  *s = (short)val;
+		  break;
+		case MAV_PARAM_TYPE_INT32:
+		  *i = (int)val;
+		  break;
+		case MAV_PARAM_TYPE_REAL32:
+		  *f = val;
+		  break;
+		case MAV_PARAM_TYPE_REAL64:
+		  *d = val;
+		  break;
 		}
 		sync = true;
 	};
@@ -92,20 +105,28 @@ struct s_aws3_param{
 	void get(float & val)
 	{
 		switch (type){
-		case 0:
-			val = *c;
-			break;
-		case 1:
-			val = *s;
-			break;
-		case 2:
-			val = (float)*i;
-			break;
-		case 3:
-			val = *f;
+		case MAV_PARAM_TYPE_UINT8:
+		  val = *uc;
+		  break;
+		case MAV_PARAM_TYPE_UINT16:
+		  val = (float) *us;
+		  break;
+		case MAV_PARAM_TYPE_UINT32:		  
+		  val = (float) * ui;
+		  break;
+		case MAV_PARAM_TYPE_INT8:
+		  val = *c;
+		  break;
+		case MAV_PARAM_TYPE_INT16:
+		  val = *s;
+		  break;
+		case MAV_PARAM_TYPE_INT32:
+		  val = (float)*i;
+		  break;
+		case MAV_PARAM_TYPE_REAL32:
+		  val = *f;
+		  break;
 		}
-		sync = true;
-
 	}
 
 	bool is_sync()

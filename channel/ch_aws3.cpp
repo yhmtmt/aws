@@ -43,25 +43,24 @@ s_aws3_param& ch_aws3_param::get_param(int iparam)
 
 bool ch_aws3_param::set_value(mavlink_param_value_t & pv)
 {
-	int iparam = seek_param(pv.param_id);
-	if (iparam < 0){
-		cout << "Unknown parameter ";
-		cout.write(pv.param_id, 16);
-		cout << ":" << pv.param_value;
-		cout << " loaded (" << (unsigned short)pv.param_index << "/"
-			<< (unsigned short)pv.param_count << ")" << endl;
-		return false;
-	}
-	else{
-		m_ptbl[iparam].set(pv.param_value);
-		cout << "Recieved Parameter "
-			<< m_ptbl[iparam].str << "("
-			<< pv.param_index << "/"
-			<< pv.param_count << "):"
-			<< pv.param_value << endl;
-		return true;
-	}
-	return true;
+  int iparam = seek_param(pv.param_id);
+  if (iparam < 0){
+    cout << "Unknown parameter ";
+    cout.write(pv.param_id, 16);
+    cout << ":" << pv.param_value;
+    cout << " loaded (" << (unsigned short)pv.param_index << "/"
+	 << (unsigned short)pv.param_count << ")" << endl;
+    return false;
+  }
+  else{
+    cout << "Recieved Parameter "
+	 << m_ptbl[iparam].str << "("
+	 << pv.param_index << "/"
+	 << pv.param_count << "):"
+	 << pv.param_value << endl;
+    m_ptbl[iparam].set(pv.param_value);
+  }
+  return true;
 }
 
 bool ch_aws3_param::check_sync()
@@ -170,11 +169,11 @@ void ch_aws3_param::register_param(f_aws3_com * paws3c)
 	create_param(paws3c, k_param_failsafe_throttle_value, "FS_THR_VALUE", "Throttle Failsafe Value", &failsafe_throttle_value);
 	create_param(paws3c, k_param_throttle_deadzone, "THR_DZ", "Throttle deadzone", &throttle_deadzone);
 	create_param(paws3c, k_param_flight_mode1, "FLTMODE1", "Flight Mode 1", &flight_mode1);
-	create_param(paws3c, k_param_flight_mode2, "FLTMODE2", "Flight Mode 2", &flight_mode1);
-	create_param(paws3c, k_param_flight_mode3, "FLTMODE3", "Flight Mode 3", &flight_mode1);
-	create_param(paws3c, k_param_flight_mode4, "FLTMODE4", "Flight Mode 4", &flight_mode1);
-	create_param(paws3c, k_param_flight_mode5, "FLTMODE5", "Flight Mode 5", &flight_mode1);
-	create_param(paws3c, k_param_flight_mode6, "FLTMODE6", "Flight Mode 6", &flight_mode1);
+	create_param(paws3c, k_param_flight_mode2, "FLTMODE2", "Flight Mode 2", &flight_mode2);
+	create_param(paws3c, k_param_flight_mode3, "FLTMODE3", "Flight Mode 3", &flight_mode3);
+	create_param(paws3c, k_param_flight_mode4, "FLTMODE4", "Flight Mode 4", &flight_mode4);
+	create_param(paws3c, k_param_flight_mode5, "FLTMODE5", "Flight Mode 5", &flight_mode5);
+	create_param(paws3c, k_param_flight_mode6, "FLTMODE6", "Flight Mode 6", &flight_mode6);
 	create_param(paws3c, -1, "SIMPLE", "Simple mode bitmask", &simple);
 
 	create_param(paws3c, k_param_log_bitmask, "LOG_BITMASK", "Log bitmask", &log_bitmask);
