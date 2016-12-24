@@ -208,12 +208,12 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_rc_12, "RC12_FUNCTION", "RC Channel 12 function", &rc_12.function);
 	create_param(k_param_rc_13, "RC13_FUNCTION", "RC Channel 13 function", &rc_13.function);
 	create_param(k_param_rc_14, "RC14_FUNCTION", "RC Channel 14 function", &rc_14.function);
-	create_param(k_param_gain_default, "JS_GAIN_DEFAULT", "Default gain at boot", &gain_default);
-	create_param(k_param_maxGain, "JS_GAIN_MAX", "Maximum joystick gain", &maxGain);
-	create_param(k_param_minGain, "JS_GAIN_MIN", "Minimum jyostick gain", &minGain);
-	create_param(k_param_numGainSettings, "JS_GAIN_STEPS", "Gain steps", &numGainSettings);
-	create_param(k_param_cam_tilt_step, "JS_CAM_TILT_STEP", "Camera tilt step size", &cam_tilt_step);
-	create_param(k_param_lights_step, "JS_LIGHTS_STEP", "Lights step size", &lights_step);
+//	create_param(k_param_gain_default, "JS_GAIN_DEFAULT", "Default gain at boot", &gain_default);
+//	create_param(k_param_maxGain, "JS_GAIN_MAX", "Maximum joystick gain", &maxGain);
+//	create_param(k_param_minGain, "JS_GAIN_MIN", "Minimum jyostick gain", &minGain);
+//	create_param(k_param_numGainSettings, "JS_GAIN_STEPS", "Gain steps", &numGainSettings);
+//	create_param(k_param_cam_tilt_step, "JS_CAM_TILT_STEP", "Camera tilt step size", &cam_tilt_step);
+//	create_param(k_param_lights_step, "JS_LIGHTS_STEP", "Lights step size", &lights_step);
 	create_param(k_param_jbtn_0, "BTN0_FUNCTION", "Button 1 function", &jbtn_0);
 	create_param(k_param_jbtn_0, "BTN0_SFUNCTION", "Button 1 shift function", &jbtn_s_0);
 	create_param(k_param_jbtn_1, "BTN1_FUNCTION", "Button 2 function", &jbtn_1);
@@ -267,7 +267,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 	create_param(k_param_p_alt_hold, "POS_Z_P", "Position (vertical) controller P gain", &pos_z_p);
 	create_param(k_param_p_pos_xy, "POS_XY_P", "Position (horizontal) controller P gain", &pos_xy_p);
 #if TRANSECT_ENABLED == ENABLED
-	create_param(k_param_pid_crosstrack_control, "XTRACK_ANG_LIM", "", &xtrack_angle_limit);
+//	create_param(k_param_pid_crosstrack_control, "XTRACK_ANG_LIM", "", &xtrack_angle_limit);
 #endif
 #if CAMERA == ENABLED
 //	create_param(k_param_camera, "CAM_CENTER", "", &cam.center);
@@ -797,7 +797,7 @@ f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_port(14550), m_sys_id
 //	create_param(k_param_optflow, "FLOW_POS_X", "x position offset", &flow.pos_x);
 //	create_param(k_param_optflow, "FLOW_POS_Y", "y position offset", &flow.pos_y);
 //	create_param(k_param_optflow, "FLOW_POS_Z", "z position offset", &flow.pos_z);
-	create_param(k_param_optflow, "FLOW_BUS_ID", "ID on the bus", &flow.bus_id);
+//	create_param(k_param_optflow, "FLOW_BUS_ID", "ID on the bus", &flow.bus_id);
 
 	create_param(k_param_rpm_sensor, "RPM_TYPE", "RPM type", &rpm.type);
 	create_param(k_param_rpm_sensor, "RPM_SCALING", "RPM scaling", &rpm.scaling);
