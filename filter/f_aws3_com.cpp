@@ -40,7 +40,7 @@ m_port(14550), m_sys_id(255), max_retry_load_param(10), m_bcon(false), t_last_pa
 m_bsnd_param(false), m_brcv_param(false), m_bwrite_rom(false), m_bsave_param(false)
 {
 	register_fpar("ch_param", (ch_base**)&m_ch_param, typeid(ch_aws3_param).name(), "Channel of AWS3's parameters.");
-	register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_aws3_param).name(), "Channel of AWS3 state.");
+	register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_aws3_state).name(), "Channel of AWS3 state.");
 
 	register_fpar("max_retry_load_param", &max_retry_load_param, "Maximum retry counts loading parameters.");
 	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
@@ -66,6 +66,10 @@ bool f_aws3_com::init_run()
 	}
 	m_ch_param->register_param(this);
 
+	if(!m_ch_state){
+	  cerr << "ch_state is not ready." << endl;
+	  return false;
+	}
   m_sock = socket(AF_INET, SOCK_DGRAM, 0);
   
   m_sock_addr_rcv.sin_family = AF_INET;
@@ -104,7 +108,7 @@ bool f_aws3_com::proc()
   
   if (m_bsave_param){
 	  char fname[1024];
-	  snprintf(fname, 1024, "set_%s_param.aws");
+	  snprintf(fname, 1024, "set_%s_param.aws", m_name);
 	  ofstream fout(fname);
 	  if (fout.is_open()){
 		  int num_params = m_ch_param->get_num_params();
@@ -246,9 +250,10 @@ bool f_aws3_com::proc()
 	  if (mavlink_parse_char(MAVLINK_COMM_0, m_buf[i], &msg, &status)){
 	    // Packet received
 	    //	
+printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
 		  if (msg.sysid != 1 || msg.compid != 1){
 			  cerr << "Message is not from AWS3" << endl;
-			  printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
+			  
 			  continue;
 		  }
 

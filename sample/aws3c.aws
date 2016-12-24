@@ -1,6 +1,9 @@
 #!/bin/sh
-
+channel aws3par aws3par
+channel aws3state aws3state
 filter aws3c aws3c -i -o
 fset aws3c port 14550
+fset aws3c ch_param aws3par ch_state aws3state
+
 cyc 0.05
 go
