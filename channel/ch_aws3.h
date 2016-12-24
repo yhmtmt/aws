@@ -1336,6 +1336,9 @@ public:
 class ch_aws3_cmd: ch_base
 {
 private:
+	bool m_jbtns[16];
+	short m_jx, m_jy, m_jz, m_jr;
+
 public:
 	ch_aws3_cmd(const char * name) : ch_base(name)
 	{
@@ -1344,6 +1347,7 @@ public:
 	virtual ~ch_aws3_cmd()
 	{
 	}
+
 
 };
 

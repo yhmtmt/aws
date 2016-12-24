@@ -35,13 +35,13 @@ using namespace std;
 
 #include "f_aws3_com.h"
 
-f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_ch_param(NULL), m_ch_state(NULL),
+f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_ch_param(NULL), m_ch_state(NULL), m_ch_cmd(NULL),
 m_port(14550), m_sys_id(255), max_retry_load_param(10), m_bcon(false), t_last_param(0), t_load_param_to(5*SEC),
 m_bsnd_param(false), m_brcv_param(false), m_bwrite_rom(false), m_bsave_param(false)
 {
 	register_fpar("ch_param", (ch_base**)&m_ch_param, typeid(ch_aws3_param).name(), "Channel of AWS3's parameters.");
 	register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_aws3_state).name(), "Channel of AWS3 state.");
-
+	register_fpar("ch_cmd", (ch_base**)&m_ch_cmd, typeid(ch_aws3_cmd).name(), "Channel of AWS3 command.");
 	register_fpar("max_retry_load_param", &max_retry_load_param, "Maximum retry counts loading parameters.");
 	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
 	register_fpar("port", &m_port, "UDP port recieving mavlink packets.");
@@ -61,15 +61,21 @@ f_aws3_com::~f_aws3_com()
 bool f_aws3_com::init_run()
 {
 	if (!m_ch_param){
-		cerr << "ch_param is not ready." << endl;
+		cerr << "ch_param is not connected." << endl;
 		return false;
 	}
 	m_ch_param->register_param(this);
 
 	if(!m_ch_state){
-	  cerr << "ch_state is not ready." << endl;
+	  cerr << "ch_state is not connected." << endl;
 	  return false;
 	}
+
+	if (!m_ch_cmd){
+		cerr << "ch_cmd is not connected." << endl;
+		return false;
+	}
+
   m_sock = socket(AF_INET, SOCK_DGRAM, 0);
   
   m_sock_addr_rcv.sin_family = AF_INET;

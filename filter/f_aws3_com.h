@@ -51,6 +51,8 @@ public:
 protected:
 	ch_aws3_param * m_ch_param;
 	ch_aws3_state * m_ch_state;
+	ch_aws3_cmd * m_ch_cmd;
+
 	unsigned char m_sys_id;
 
 	enum e_state{
@@ -109,6 +111,7 @@ protected:
 	// to aws3
 	bool m_jbtns[16];
 	short m_jx, m_jy, m_jz, m_jr;
+
 	char m_str_tgt_param[17];
 	bool m_bsnd_param;
 	bool m_brcv_param;
