@@ -1348,7 +1348,44 @@ public:
 	{
 	}
 
+	void set(short _jx, short _jy, short _jz, short _jr)
+	{
+		lock();
+		m_jx = _jx;
+		m_jy = _jy;
+		m_jz = _jz;
+		m_jr = _jr;
+		m_jx = (int16_t)max(min((int)m_jx, 1000), -1000);
+		m_jy = (int16_t)max(min((int)m_jy, 1000), -1000);
+		m_jz = (int16_t)max(min((int)m_jz, 1000), -1000);
+		m_jr = (int16_t)max(min((int)m_jr, 1000), -1000);
+		unlock();
+	}
+	void get(short & _jx, short & _jy, short & _jz, short & _jr)
+	{
+		lock();
+		_jx = m_jx;
+		_jy = m_jy;
+		_jz = m_jz;
+		_jr = m_jr;
+		unlock();
+	}
 
+	void set(int ibtn, bool v = true)
+	{
+		lock();
+		m_jbtns[ibtn] = v;
+		unlock();
+	}
+
+	uint16_t get_btn(){
+		uint16_t mask = 0x0001, btns = 0x0000;
+		lock();
+		for (int i = 0; i < 16; i++, mask <<= 1)
+			btns |= (m_jbtns[i] ? mask : 0);
+		unlock();
+		return btns;
+	}
 };
 
 #endif

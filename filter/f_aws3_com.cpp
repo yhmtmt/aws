@@ -171,11 +171,9 @@ bool f_aws3_com::proc()
     res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
     
     /* Send controller output */
-    uint16_t mask = 0x0001, btns = 0x0000;
-    for (int i = 0; i < 16; i++, mask <<= 1)
-      btns |= (m_jbtns[i] ? mask : 0);
-    
+	uint16_t btns = m_ch_cmd->get_btn();
     // saturation -1000 to 1000
+	m_ch_cmd->get(m_jx, m_jy, m_jz, m_jr);
     m_jx = (int16_t)max(min((int)m_jx, 1000), -1000);
     m_jy = (int16_t)max(min((int)m_jy, 1000), -1000);
     m_jz = (int16_t)max(min((int)m_jz, 1000), -1000);

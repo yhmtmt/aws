@@ -81,6 +81,9 @@ bool f_aws3_ui::init_run()
 		cout << "Joystick " << m_js.name << " found." << endl;
 	}
 
+	if (!f_glfw_window::init_run())
+		return false;
+
 	return true;
 }
 
@@ -91,6 +94,33 @@ void f_aws3_ui::destroy_run()
 
 bool f_aws3_ui::proc()
 {
+
+	short x = (short)1000 * m_js.lr1;
+	short y = (short)1000 * m_js.ud1;
+	short z = (short)1000 * m_js.ud1;
+	short r = (short)1000 * m_js.lr1;
+	m_ch_cmd->set(x, y, z, r);
+	// flt mode 1 manual
+	// flt mode 2 stabilized
+	// flt mode 3 alt hold
+	m_ch_cmd->set(0, m_js.is_state_down(m_js.ex)); // 1 shift 0
+	m_ch_cmd->set(1, m_js.is_state_down(m_js.ey)); // 7 mode2 0
+	m_ch_cmd->set(2, m_js.is_state_down(m_js.ea)); // 0 0
+	m_ch_cmd->set(3, m_js.is_state_down(m_js.eb)); // 6 mode1 0
+	m_ch_cmd->set(4, m_js.is_state_down(m_js.elb)); // 32 lights1_brighter 0
+	m_ch_cmd->set(5, m_js.is_state_down(m_js.erb)); // 33 lights1_dimmer 0
+	m_ch_cmd->set(6, m_js.is_state_down(m_js.elt)); // 0 45 trim_roll_dec 
+	m_ch_cmd->set(7, m_js.is_state_down(m_js.ert)); // 0 44 trim_roll_inc
+	m_ch_cmd->set(8, m_js.is_state_down(m_js.elst)); // 0 0
+	m_ch_cmd->set(9, m_js.is_state_down(m_js.erst)); // 0 0
+	m_ch_cmd->set(10, m_js.is_state_down(m_js.eback)); //4 disarm 0 
+	m_ch_cmd->set(11, m_js.is_state_down(m_js.estart)); // 3 arm 0
+	m_ch_cmd->set(12, m_js.is_state_down(m_js.erx)); // 0 0
+	m_ch_cmd->set(13, m_js.is_state_down(m_js.elx)); // 32 lights1_brighter 0
+	m_ch_cmd->set(14, m_js.is_state_down(m_js.eux)); // 33 lights1_dimmer 0 
+	m_ch_cmd->set(15, m_js.is_state_down(m_js.edx)); // 0  0
+
+
 	return true;
 }
 
