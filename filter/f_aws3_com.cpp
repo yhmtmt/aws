@@ -35,15 +35,23 @@ using namespace std;
 
 #include "f_aws3_com.h"
 
-f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_ch_param(NULL),
-m_port(14550), m_sys_id(255), max_retry_load_param(10), m_bcon(false), t_last_param(0), t_load_param_to(5*SEC)
+f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_ch_param(NULL), m_ch_state(NULL),
+m_port(14550), m_sys_id(255), max_retry_load_param(10), m_bcon(false), t_last_param(0), t_load_param_to(5*SEC),
+m_bsnd_param(false), m_brcv_param(false), m_bwrite_rom(false), m_bsave_param(false)
 {
 	register_fpar("ch_param", (ch_base**)&m_ch_param, typeid(ch_aws3_param).name(), "Channel of AWS3's parameters.");
+	register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_aws3_param).name(), "Channel of AWS3 state.");
 
 	register_fpar("max_retry_load_param", &max_retry_load_param, "Maximum retry counts loading parameters.");
 	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
 	register_fpar("port", &m_port, "UDP port recieving mavlink packets.");
 	register_fpar("tlpto", &t_load_param_to, "Time out for load param.");
+
+	register_fpar("tgtp", m_str_tgt_param, 17, "Target parameter");
+	register_fpar("sndp", &m_bsnd_param, "Send target parameter to AWS3");
+	register_fpar("rcvp", &m_brcv_param, "Recieve target parameter from AWS3");
+	register_fpar("svp", &m_bsave_param, "Save parameters");
+
 }
 
 f_aws3_com::~f_aws3_com()
@@ -94,6 +102,44 @@ bool f_aws3_com::proc()
       return false;
   }
   
+  if (m_bsave_param){
+	  char fname[1024];
+	  snprintf(fname, 1024, "set_%s_param.aws");
+	  ofstream fout(fname);
+	  if (fout.is_open()){
+		  int num_params = m_ch_param->get_num_params();
+		  for (int iparam = 0; iparam < num_params; iparam++){
+			  s_aws3_param & par = m_ch_param->get_param(iparam);
+			  
+			  fout << "fset " << m_name << " " << par.str << " ";
+			  switch (par.type){
+			  case MAV_PARAM_TYPE_INT8:
+				  cout << par.c; break;
+			  case MAV_PARAM_TYPE_INT16:
+				  cout << par.s; break;
+			  case MAV_PARAM_TYPE_INT32:
+				  cout << par.i; break;
+			  case MAV_PARAM_TYPE_UINT8:
+				  cout << par.uc; break;
+			  case MAV_PARAM_TYPE_UINT16:
+				  cout << par.us; break;
+			  case MAV_PARAM_TYPE_UINT32:
+				  cout << par.ui; break;
+			  case MAV_PARAM_TYPE_REAL32:
+				  cout << par.f; break;
+			  case MAV_PARAM_TYPE_REAL64:
+				  cout << par.d; break;
+
+			  } 
+			  cout << endl;
+		  }
+	  }
+	  else{
+		  cerr << "Failed to save parameter settings to " << fname << endl;
+	  }
+	  m_bsave_param = false;
+  }
+
   if (m_bcon){
     /*
       FD_ZERO(&fw);
@@ -128,8 +174,7 @@ bool f_aws3_com::proc()
     mavlink_msg_manual_control_pack(255, 1, &msg, 1,
 				    (int16_t)m_jx, (int16_t)m_jy, (int16_t)m_jz, (int16_t)m_jr, btns);
     
-    len = mavlink_msg_to_send_buffer(m_buf, &msg);
-    
+    len = mavlink_msg_to_send_buffer(m_buf, &msg);  
     res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
     
     if (m_state == INIT){
@@ -138,7 +183,46 @@ bool f_aws3_com::proc()
       t_last_param = 0;
       num_retry_load_param = 0;
     }
+
+	if (m_bsnd_param)
+	{
+		int iparam;
+		res = 0;
+		if ((iparam = m_ch_param->seek_param(m_str_tgt_param)) >= 0){
+			s_aws3_param & par = m_ch_param->get_param(iparam);
+			float val;
+			par.get(val);
+			mavlink_msg_param_set_pack(255, 1, &msg, 1, 1, par.str, val, par.type);
+			len = mavlink_msg_to_send_buffer(m_buf, &msg);
+			res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
+		}
+		if (res <= 0)
+			cerr << "Failed to send parameter for " << m_str_tgt_param << endl;
+		m_bsnd_param = false;
+	}
+
+	if (m_brcv_param)
+	{
+		int iparam;
+		res = 0;
+		if ((iparam = m_ch_param->seek_param(m_str_tgt_param)) >= 0){
+			s_aws3_param & par = m_ch_param->get_param(iparam);
+			mavlink_msg_param_request_read_pack(255, 1, &msg, 1, 1, par.str, -1);
+			len = mavlink_msg_to_send_buffer(m_buf, &msg);
+			res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
+		}
+		if (res <= 0)
+			cerr << "Failed to send parameter request for " << m_str_tgt_param << endl;
+		m_brcv_param = false;
+	}
+
+	if (m_bwrite_rom)
+	{
+		cerr << "I don't know how to do that ..." << endl;
+		m_bwrite_rom = false;
+	}
   }
+
   while(1){
     FD_ZERO(&fr);
     FD_ZERO(&fe);
@@ -161,10 +245,19 @@ bool f_aws3_com::proc()
 	  temp = m_buf[i];
 	  if (mavlink_parse_char(MAVLINK_COMM_0, m_buf[i], &msg, &status)){
 	    // Packet received
-	    //	printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
+	    //	
+		  if (msg.sysid != 1 || msg.compid != 1){
+			  cerr << "Message is not from AWS3" << endl;
+			  printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n", msg.sysid, msg.compid, msg.len, msg.msgid);
+			  continue;
+		  }
+
 	    switch (msg.msgid){
 	    case MAVLINK_MSG_ID_HEARTBEAT:
 	      mavlink_msg_heartbeat_decode(&msg, &m_heartbeat);
+		  m_ch_state->set_base_mode(m_heartbeat.base_mode);
+		  m_ch_state->set_custom_mode(m_heartbeat.custom_mode);
+		  m_ch_state->set_system_status(m_heartbeat.system_status);
 	      break;
 	    case MAVLINK_MSG_ID_RAW_IMU:
 	      mavlink_msg_raw_imu_decode(&msg, &m_raw_imu);

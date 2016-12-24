@@ -26,29 +26,45 @@ struct s_aws3_param{
 	const char * str;
 	const char * exp;
 	union {
+		unsigned char * uc;
+		unsigned short * us;
+		unsigned int * ui;
 		char * c;
 		short * s;
 		int * i;
 		float * f;
+		double * d;
 	};
-	int type;
+	uint8_t type;
 
 	s_aws3_param() : id(-1), str(NULL), exp(NULL), c(NULL)
 	{};
-
-	s_aws3_param(int _id, const char * _str, const char * _exp, char * _c) :id(_id), str(_str), exp(_exp), type(0), c(_c), key(-1), sync(false)
+	s_aws3_param(int _id, const char * _str, const char * _exp, unsigned char * _uc) :id(_id), str(_str), exp(_exp), type(MAV_PARAM_TYPE_UINT8), uc(_uc), key(-1), sync(false)
+	{
+	}
+	s_aws3_param(int _id, const char * _str, const char * _exp, unsigned short * _us) :id(_id), str(_str), exp(_exp), type(MAV_PARAM_TYPE_UINT16), us(_us), key(-1), sync(false)
+	{
+	}
+	s_aws3_param(int _id, const char * _str, const char * _exp, unsigned int * _ui) :id(_id), str(_str), exp(_exp), type(MAV_PARAM_TYPE_UINT32), ui(_ui), key(-1), sync(false)
 	{
 	}
 
-	s_aws3_param(int _id, const char * _str, const char * _exp, short * _s) :id(_id), str(_str), exp(_exp), type(1), s(_s), key(-1), sync(false)
+	s_aws3_param(int _id, const char * _str, const char * _exp, char * _c) :id(_id), str(_str), exp(_exp), type(MAV_PARAM_TYPE_INT8), c(_c), key(-1), sync(false)
 	{
 	}
 
-	s_aws3_param(int _id, const char * _str, const char * _exp, int * _i) :id(_id), str(_str), exp(_exp), type(2), i(_i), key(-1), sync(false)
+	s_aws3_param(int _id, const char * _str, const char * _exp, short * _s) :id(_id), str(_str), exp(_exp), type(MAV_PARAM_TYPE_INT16), s(_s), key(-1), sync(false)
 	{
 	}
 
-	s_aws3_param(int _id, const char * _str, const char * _exp, float * _f) :id(_id), str(_str), exp(_exp), type(3), f(_f), key(-1), sync(false)
+	s_aws3_param(int _id, const char * _str, const char * _exp, int * _i) :id(_id), str(_str), exp(_exp), type(MAV_PARAM_TYPE_INT32), i(_i), key(-1), sync(false)
+	{
+	}
+
+	s_aws3_param(int _id, const char * _str, const char * _exp, float * _f) :id(_id), str(_str), exp(_exp), type(MAV_PARAM_TYPE_REAL32), f(_f), key(-1), sync(false)
+	{
+	}
+	s_aws3_param(int _id, const char * _str, const char * _exp, double * _d) :id(_id), str(_str), exp(_exp), type(MAV_PARAM_TYPE_REAL64), d(_d), key(-1), sync(false)
 	{
 	}
 
@@ -292,109 +308,105 @@ private:
 		k_param_autotune_min_d, // Disabled
 	};
 
-	short        format_version;
-	char         software_type;
+	short format_version;
+	char  software_type;
 
 	// Telemetry control
 	//
-	short        sysid_this_mav;
-	short        sysid_my_gcs;
-#if CLI_ENABLED == ENABLED
-	char         cli_enabled;
-#endif
+	short sysid_this_mav;
+	short sysid_my_gcs;
+	char  cli_enabled;
 
-	float        throttle_filt;
+	float throttle_filt;
 	float tkoff_alt;
 	float tkoff_dz;
-	char thr_bhv;
+	char  thr_bhv;
 
 	struct Serial{
 		short baud;
 		char protocol;
 	} serial[6];
 
-	char telem_delay;
+	char  telem_delay;
 	short rtl_alt;
 	float rtl_cone_slope;
 	short rtl_speed;
 
-	float        rangefinder_gain;
+	float rangefinder_gain;
 
-	char         failsafe_battery_enabled;   // battery failsafe enabled
-	float        fs_batt_voltage;            // battery voltage below which failsafe will be triggered
-	float        fs_batt_mah;                // battery capacity (in mah) below which failsafe will be triggered
+	char  failsafe_battery_enabled;   // battery failsafe enabled
+	float fs_batt_voltage;            // battery voltage below which failsafe will be triggered
+	float fs_batt_mah;                // battery capacity (in mah) below which failsafe will be triggered
 
-	char			failsafe_leak;				// leak detection failsafe behavior
-	char         failsafe_gcs;               // ground station failsafe behavior
-	char			failsafe_pressure;
-	char			failsafe_temperature;
-	int		failsafe_pressure_max;
-	char			failsafe_temperature_max;
-	char			failsafe_terrain;
+	char  failsafe_leak;				// leak detection failsafe behavior
+	char  failsafe_gcs;               // ground station failsafe behavior
+	char  failsafe_pressure;
+	char  failsafe_temperature;
+	int	  failsafe_pressure_max;
+	char  failsafe_temperature_max;
+	char  failsafe_terrain;
 
-	char			xtrack_angle_limit;
+	char  xtrack_angle_limit;
 
-	short        gps_hdop_good;              // GPS Hdop value at or below this value represent a good position
+	short gps_hdop_good;              // GPS Hdop value at or below this value represent a good position
 
-	char         compass_enabled;
-	char super_simple;
+	char  compass_enabled;
+	char  super_simple;
 	short rtl_alt_final;
 	short rtl_climb_min;
-	char         wp_yaw_behavior;            // controls how the autopilot controls yaw during missions
-	int rtl_loit_time;
+	char  wp_yaw_behavior;            // controls how the autopilot controls yaw during missions
+	int   rtl_loit_time;
 	short land_speed;
 	short land_speed_high;
 
-	char         rc_feel_rp;                 // controls vehicle response to user input with 0 being extremely soft and 100 begin extremely crisp
+	char  rc_feel_rp;                 // controls vehicle response to user input with 0 being extremely soft and 100 begin extremely crisp
 	char  land_reposition;
 
 	// Waypoints
 	//
-	short        pilot_velocity_z_max;        // maximum vertical velocity the pilot may request
-	short        pilot_accel_z;               // vertical acceleration the pilot may request
+	short pilot_velocity_z_max;        // maximum vertical velocity the pilot may request
+	short pilot_accel_z;               // vertical acceleration the pilot may request
 
 	// Throttle
 	//
-	char         failsafe_throttle;
-	short        failsafe_throttle_value;
-	short        throttle_deadzone;
+	char  failsafe_throttle;
+	short failsafe_throttle_value;
+	short throttle_deadzone;
 
 	// Flight modes
 	//
-	char         flight_mode1;
-	char         flight_mode2;
-	char         flight_mode3;
-	char         flight_mode4;
-	char         flight_mode5;
-	char         flight_mode6;
+	char  flight_mode1;
+	char  flight_mode2;
+	char  flight_mode3;
+	char  flight_mode4;
+	char  flight_mode5;
+	char  flight_mode6;
 
 	char simple;
 
 	// Misc
 	//
-	int        log_bitmask;
-	char         esc_calibrate;
-#if CH6_TUNE_ENABLED == ENABLED
-	char         radio_tuning;
-	short        radio_tuning_high;
-	short        radio_tuning_low;
-#endif
-	char frame;
-	char         ch7_option;
-	char         ch8_option;
-	char         ch9_option;
-	char         ch10_option;
-	char         ch11_option;
-	char         ch12_option;
-	char         arming_check;
-	char         disarm_delay;
+	int   log_bitmask;
+	char  esc_calibrate;
+	char  radio_tuning;
+	short radio_tuning_high;
+	short radio_tuning_low;
+	char  frame;
+	char  ch7_option;
+	char  ch8_option;
+	char  ch9_option;
+	char  ch10_option;
+	char  ch11_option;
+	char  ch12_option;
+	char  arming_check;
+	char  disarm_delay;
 
-	char         fs_ekf_action;
-	char         fs_crash_check;
-	float        fs_ekf_thresh;
-	short        gcs_pid_mask;
+	char  fs_ekf_action;
+	char  fs_crash_check;
+	float fs_ekf_thresh;
+	short gcs_pid_mask;
 
-	char         terrain_follow;
+	char  terrain_follow;
 
 	// RC channels
 	struct RC{
@@ -414,75 +426,131 @@ private:
 		short trim;
 	};
 
-	RC              rc_1;
-	RC              rc_2;
-	RC              rc_3;
-	RC              rc_4;
-	RCA          rc_5;
-	RCA          rc_6;
-	RCA          rc_7;
-	RCA          rc_8;
-	RCA          rc_9;
-	RCA          rc_10;
-	RCA          rc_11;
-	RCA          rc_12;
-	RCA          rc_13;
-	RCA          rc_14;
+	RC  rc_1;
+	RC  rc_2;
+	RC  rc_3;
+	RC  rc_4;
+	RCA rc_5;
+	RCA rc_6;
+	RCA rc_7;
+	RCA rc_8;
+	RCA rc_9;
+	RCA rc_10;
+	RCA rc_11;
+	RCA rc_12;
+	RCA rc_13;
+	RCA rc_14;
 
-	short                rc_speed; // speed of fast RC Channels in Hz
+	short rc_speed; // speed of fast RC Channels in Hz
 
-	float				gain_default;
-	float				maxGain;
-	float				minGain;
-	char					numGainSettings;
+	float gain_default;
+	float maxGain;
+	float minGain;
+	char numGainSettings;
 
-	short					cam_tilt_step;
-	short					lights_step;
+	short cam_tilt_step;
+	short lights_step;
 
 	// Joystick button parameters
-	char 				jbtn_0;
-	char 				jbtn_1;
-	char 				jbtn_2;
-	char 				jbtn_3;
-	char 				jbtn_4;
-	char 				jbtn_5;
-	char 				jbtn_6;
-	char 				jbtn_7;
-	char 				jbtn_8;
-	char 				jbtn_9;
-	char 				jbtn_10;
-	char 				jbtn_11;
-	char 				jbtn_12;
-	char 				jbtn_13;
-	char 				jbtn_14;
-	char 				jbtn_15;
-	char 				jbtn_s_0;
-	char 				jbtn_s_1;
-	char 				jbtn_s_2;
-	char 				jbtn_s_3;
-	char 				jbtn_s_4;
-	char 				jbtn_s_5;
-	char 				jbtn_s_6;
-	char 				jbtn_s_7;
-	char 				jbtn_s_8;
-	char 				jbtn_s_9;
-	char 				jbtn_s_10;
-	char 				jbtn_s_11;
-	char 				jbtn_s_12;
-	char 				jbtn_s_13;
-	char 				jbtn_s_14;
-	char 				jbtn_s_15;
+	typedef enum
+	{
+		k_none = 0,            ///< disabled
+		k_shift = 1,            ///< "shift" buttons to allow more functions
+		k_arm_toggle = 2,            ///< arm/disarm vehicle toggle
+		k_arm = 3,            ///< arm vehicle
+		k_disarm = 4,            ///< disarm vehicle
+		k_mode_toggle = 5,            ///< toggle through available modes
+		k_mode_1 = 6,            ///< enter mode 1
+		k_mode_2 = 7,            ///< enter mode 2
+		k_mode_3 = 8,            ///< enter mode 3
+		k_mode_4 = 9,            ///< enter mode 4
+		k_mode_5 = 10,           ///< enter mode 5
+		k_mode_6 = 11,           ///< enter mode 6
+		// 12-20 reserved for future mode functions
+		k_mount_center = 21,           ///< move mount to center
+		k_mount_tilt_up = 22,           ///< tilt mount up
+		k_mount_tilt_down = 23,           ///< tilt mount down
+		k_camera_trigger = 24,           ///< trigger camera shutter
+		k_camera_source_toggle = 25,           ///< toggle camera source
+		k_mount_pan_right = 26,           ///< pan mount right
+		k_mount_pan_left = 27,           ///< pan mount left
+		// 26-30 reserved for future camera functions
+		k_lights1_cycle = 31,           ///< lights 1 cycle
+		k_lights1_brighter = 32,           ///< lights 1 up
+		k_lights1_dimmer = 33,           ///< lights 1 down
+		k_lights2_cycle = 34,           ///< lights 2 cycle
+		k_lights2_brighter = 35,           ///< lights 2 up
+		k_lights2_dimmer = 36,           ///< lights 2 down
+		// 37-40 reserved for future light functions
+		k_gain_toggle = 41,           ///< toggle different gain settings
+		k_gain_inc = 42,           ///< increase control gain
+		k_gain_dec = 43,           ///< decrease control gain
+		k_trim_roll_inc = 44,           ///< increase roll trim
+		k_trim_roll_dec = 45,           ///< decrease roll trim
+		k_trim_pitch_inc = 46,           ///< increase pitch trim
+		k_trim_pitch_dec = 47,           ///< decrease pitch trim
+		k_input_hold_toggle = 48,           ///< toggle input hold (trim to current controls)
+		// 49-50 reserved for future functions
+		k_relay_1_on = 51,           ///< trigger relay on
+		k_relay_1_off = 52,           ///< trigger relay off
+		k_relay_1_toggle = 53,           ///< trigger relay toggle
+		k_relay_2_on = 54,           ///< trigger relay on
+		k_relay_2_off = 55,           ///< trigger relay off
+		k_relay_2_toggle = 56,           ///< trigger relay toggle
+		// 57-90 reserved for future functions
+		k_custom_1 = 91,           ///< custom user button 1
+		k_custom_2 = 92,           ///< custom user button 2
+		k_custom_3 = 93,           ///< custom user button 3
+		k_custom_4 = 94,           ///< custom user button 4
+		k_custom_5 = 95,           ///< custom user button 5
+		k_custom_6 = 96,           ///< custom user button 6
+		// 97+ reserved for future functions
+		k_nr_btn_functions         ///< This must be the last enum value (only add new values _before_ this one)
+	} button_function_t;
+ 
+	char jbtn_0;
+	char jbtn_1;
+	char jbtn_2;
+	char jbtn_3;
+	char jbtn_4;
+	char jbtn_5;
+	char jbtn_6;
+	char jbtn_7;
+	char jbtn_8;
+	char jbtn_9;
+	char jbtn_10;
+	char jbtn_11;
+	char jbtn_12;
+	char jbtn_13;
+	char jbtn_14;
+	char jbtn_15;
+	char jbtn_s_0;
+	char jbtn_s_1;
+	char jbtn_s_2;
+	char jbtn_s_3;
+	char jbtn_s_4;
+	char jbtn_s_5;
+	char jbtn_s_6;
+	char jbtn_s_7;
+	char jbtn_s_8;
+	char jbtn_s_9;
+	char jbtn_s_10;
+	char jbtn_s_11;
+	char jbtn_s_12;
+	char jbtn_s_13;
+	char jbtn_s_14;
+	char jbtn_s_15;
 
 	// Acro parameters
-	float                acro_rp_p;
-	float                acro_yaw_p;
-	float                acro_balance_roll;
-	float                acro_balance_pitch;
-	char                 acro_trainer;
-	float                acro_expo;
+	float acro_rp_p;
+	float acro_yaw_p;
+	float acro_balance_roll;
+	float acro_balance_pitch;
+	char  acro_trainer;
+	float acro_expo;
 
 	// PI/D controllers
-	float			xy_filt_hz;
+	float xy_filt_hz;
 	float xy_i;
 	float xy_imax;
 	float xy_p;
@@ -1139,7 +1207,30 @@ public:
 
 class ch_aws3_state: ch_base
 {
+public:
+	// Auto Pilot Modes enumeration(custom mode)
+	enum control_mode_t {
+		STABILIZE = 0,  // manual angle with manual depth/throttle
+		ACRO = 1,  // manual body-frame angular rate with manual depth/throttle
+		ALT_HOLD = 2,  // manual angle with automatic depth/throttle
+		AUTO = 3,  // not implemented in sub // fully automatic waypoint control using mission commands
+		GUIDED = 4,  // not implemented in sub // fully automatic fly to coordinate or fly at velocity/direction using GCS immediate commands
+		VELHOLD = 5,  // automatic x/y velocity control and automatic depth/throttle
+		RTL = 6,  // not implemented in sub // automatic return to launching point
+		CIRCLE = 7,  // not implemented in sub // automatic circular flight with automatic throttle
+		SURFACE = 9,  // automatically return to surface, pilot maintains horizontal control
+		OF_LOITER = 10,  // deprecated
+		TRANSECT = 13,  // automatic x/y velocity, automatic heading/crosstrack error compensation, automatic depth/throttle
+		AUTOTUNE = 15,  // not implemented in sub // automatically tune the vehicle's roll and pitch gains
+		POSHOLD = 16,  // automatic position hold with manual override, with automatic throttle
+		MANUAL = 19   // Pass-through input with no stabilization
+	};
+
 private:
+	long long thb; // heart beat time
+	uint8_t base_mode;
+	uint32_t custom_mode;
+	uint8_t system_status;
 
 public:
 	ch_aws3_state(const char * name) : ch_base(name)
@@ -1149,6 +1240,76 @@ public:
 	virtual ~ch_aws3_state()
 	{
 	}
+
+	void set_alive(const long long _thb)
+	{
+		thb = _thb;
+	}
+
+	bool is_alive(const long long _thb_last)
+	{
+		return thb > _thb_last;
+	}
+
+	// handler of base_mode 
+	void set_base_mode(const uint8_t _base_mode)
+	{
+		base_mode = _base_mode;
+	}
+
+	bool is_safety_armed()
+	{
+		return (MAV_MODE_FLAG_SAFETY_ARMED & base_mode) != 0;
+	}
+
+	bool is_manual_input_enabled()
+	{
+		return (MAV_MODE_FLAG_MANUAL_INPUT_ENABLED & base_mode) != 0;
+	}
+
+	bool is_hil_enabled()
+	{
+		return (MAV_MODE_FLAG_HIL_ENABLED & base_mode) != 0;
+	}
+
+	bool is_stabilize_enabled()
+	{
+		return (MAV_MODE_FLAG_STABILIZE_ENABLED & base_mode) != 0;
+	}
+
+	bool is_guided_enabled()
+	{ 
+		return (MAV_MODE_FLAG_GUIDED_ENABLED & base_mode) != 0;
+	}
+
+	bool is_auto_enabled()
+	{
+		return (MAV_MODE_FLAG_AUTO_ENABLED & base_mode) != 0;
+	}
+
+	bool is_test_enabled()
+	{
+		return (MAV_MODE_FLAG_TEST_ENABLED & base_mode) != 0;
+	}
+
+	bool is_custom_mode_enabled()
+	{
+		return (MAV_MODE_FLAG_CUSTOM_MODE_ENABLED & base_mode) != 0;
+	}
+	// handler of custom_mode
+	void set_custom_mode(const uint8_t _custom_mode)
+	{
+		custom_mode = _custom_mode;
+	}
+
+	// handler of mav_state
+	void set_system_status(const uint8_t _system_status)
+	{
+		// MAV_STATE_STANDBY means not armed/ MAV_STATE_ACTIVE means armed
+		system_status = _system_status;
+	}
+
+
 };
 
 class ch_aws3_cmd: ch_base
@@ -1162,6 +1323,7 @@ public:
 	virtual ~ch_aws3_cmd()
 	{
 	}
+
 };
 
 #endif
