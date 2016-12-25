@@ -16,6 +16,8 @@ private:
 	ch_aws3_state * m_ch_state;
 	ch_aws3_cmd * m_ch_cmd;
 
+	bool m_verb;
+
 	int m_js_id;
 	s_jc_u3613m m_js;
 public:

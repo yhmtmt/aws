@@ -35,13 +35,16 @@ using namespace std;
 
 #include "f_aws3_com.h"
 
-f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_ch_param(NULL), m_ch_state(NULL), m_ch_cmd(NULL),
-m_port(14550), m_sys_id(255), max_retry_load_param(10), m_bcon(false), t_last_param(0), t_load_param_to(5*SEC),
+f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_ch_param(NULL), m_ch_state(NULL), m_ch_cmd(NULL), m_verb(false),
+m_port(14550), m_sys_id(255), max_retry_load_param(10), 
+m_bcon(false), t_last_param(0), t_load_param_to(5*SEC),
 m_bsnd_param(false), m_brcv_param(false), m_bwrite_rom(false), m_bsave_param(false)
 {
 	register_fpar("ch_param", (ch_base**)&m_ch_param, typeid(ch_aws3_param).name(), "Channel of AWS3's parameters.");
 	register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_aws3_state).name(), "Channel of AWS3 state.");
 	register_fpar("ch_cmd", (ch_base**)&m_ch_cmd, typeid(ch_aws3_cmd).name(), "Channel of AWS3 command.");
+
+	register_fpar("verb", &m_verb, "Debug mode.");
 	register_fpar("max_retry_load_param", &max_retry_load_param, "Maximum retry counts loading parameters.");
 	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
 	register_fpar("port", &m_port, "UDP port recieving mavlink packets.");
@@ -51,7 +54,6 @@ m_bsnd_param(false), m_brcv_param(false), m_bwrite_rom(false), m_bsave_param(fal
 	register_fpar("sndp", &m_bsnd_param, "Send target parameter to AWS3");
 	register_fpar("rcvp", &m_brcv_param, "Recieve target parameter from AWS3");
 	register_fpar("svp", &m_bsave_param, "Save parameters");
-
 }
 
 f_aws3_com::~f_aws3_com()
@@ -108,48 +110,48 @@ bool f_aws3_com::proc()
       && (m_cur_time - t_last_param > t_load_param_to)){
     if(m_ch_param->check_sync()){
       m_state = ACTIVE;
-    }else	if (!load_parameters())
+    }else if (!load_parameters())
       return false;
   }
   
   if (m_bsave_param){
-	  char fname[1024];
-	  snprintf(fname, 1024, "set_%s_param.aws", m_name);
-	  ofstream fout(fname);
-	  if (fout.is_open()){
-		  int num_params = m_ch_param->get_num_params();
-		  for (int iparam = 0; iparam < num_params; iparam++){
-			  s_aws3_param & par = m_ch_param->get_param(iparam);
-			  
-			  fout << "fset " << m_name << " " << par.str << " ";
-			  switch (par.type){
-			  case MAV_PARAM_TYPE_INT8:
-			    fout << (int)*par.c; break;
-			  case MAV_PARAM_TYPE_INT16:
-				  fout << *par.s; break;
-			  case MAV_PARAM_TYPE_INT32:
-				  fout << *par.i; break;
-			  case MAV_PARAM_TYPE_UINT8:
-			    fout << (int) *par.uc; break;
-			  case MAV_PARAM_TYPE_UINT16:
-				  fout << *par.us; break;
-			  case MAV_PARAM_TYPE_UINT32:
-				  fout << *par.ui; break;
-			  case MAV_PARAM_TYPE_REAL32:
-				  fout << *par.f; break;
-			  case MAV_PARAM_TYPE_REAL64:
-				  fout << *par.d; break;
-
-			  } 
-			  fout << endl;
-		  }
-	  }
-	  else{
-		  cerr << "Failed to save parameter settings to " << fname << endl;
-	  }
-	  m_bsave_param = false;
+    char fname[1024];
+    snprintf(fname, 1024, "set_%s_param.aws", m_name);
+    ofstream fout(fname);
+    if (fout.is_open()){
+      int num_params = m_ch_param->get_num_params();
+      for (int iparam = 0; iparam < num_params; iparam++){
+	s_aws3_param & par = m_ch_param->get_param(iparam);
+	
+	fout << "fset " << m_name << " " << par.str << " ";
+	switch (par.type){
+	case MAV_PARAM_TYPE_INT8:
+	  fout << (int)*par.c; break;
+	case MAV_PARAM_TYPE_INT16:
+	  fout << *par.s; break;
+	case MAV_PARAM_TYPE_INT32:
+	  fout << *par.i; break;
+	case MAV_PARAM_TYPE_UINT8:
+	  fout << (int) *par.uc; break;
+	case MAV_PARAM_TYPE_UINT16:
+	  fout << *par.us; break;
+	case MAV_PARAM_TYPE_UINT32:
+	  fout << *par.ui; break;
+	case MAV_PARAM_TYPE_REAL32:
+	  fout << *par.f; break;
+	case MAV_PARAM_TYPE_REAL64:
+	  fout << *par.d; break;
+	  
+	} 
+	fout << endl;
+      }
+    }
+    else{
+      cerr << "Failed to save parameter settings to " << fname << endl;
+    }
+    m_bsave_param = false;
   }
-
+  
   if (m_bcon){
     /*
       FD_ZERO(&fw);
@@ -163,7 +165,7 @@ bool f_aws3_com::proc()
     mavlink_status_t status;
     uint16_t len;
     /*Send Heartbeat */
-    mavlink_msg_heartbeat_pack(255, 1, &msg, MAV_TYPE_SURFACE_BOAT,
+    mavlink_msg_heartbeat_pack(m_sys_id, 1, &msg, MAV_TYPE_SURFACE_BOAT,
 			       MAV_AUTOPILOT_GENERIC, MAV_MODE_GUIDED_ARMED, 0, MAV_STATE_ACTIVE);
     
     len = mavlink_msg_to_send_buffer(m_buf, &msg);
@@ -178,8 +180,12 @@ bool f_aws3_com::proc()
     m_jy = (int16_t)max(min((int)m_jy, 1000), -1000);
     m_jz = (int16_t)max(min((int)m_jz, 1000), -1000);
     m_jr = (int16_t)max(min((int)m_jr, 1000), -1000);
-    
-    mavlink_msg_manual_control_pack(255, 1, &msg, 1,
+    if(m_verb){
+      cout << "Control x:" << m_jx << " y:" << m_jy 
+	   << " z:" << m_jz << " r:" << m_jr << endl;
+      printf("Btn:%04x\n", btns);
+    }
+    mavlink_msg_manual_control_pack(m_sys_id, 1, &msg, 1,
 				    (int16_t)m_jx, (int16_t)m_jy, (int16_t)m_jz, (int16_t)m_jr, btns);
     
     len = mavlink_msg_to_send_buffer(m_buf, &msg);  
@@ -192,45 +198,42 @@ bool f_aws3_com::proc()
       num_retry_load_param = 0;
     }
 
-	if (m_bsnd_param)
-	{
-		int iparam;
-		res = 0;
-		if ((iparam = m_ch_param->seek_param(m_str_tgt_param)) >= 0){
-			s_aws3_param & par = m_ch_param->get_param(iparam);
-			float val;
-			par.get(val);
-			mavlink_msg_param_set_pack(255, 1, &msg, 1, 1, par.str, val, par.type);
-			len = mavlink_msg_to_send_buffer(m_buf, &msg);
-			res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
-		}
-		if (res <= 0)
-			cerr << "Failed to send parameter for " << m_str_tgt_param << endl;
-		m_bsnd_param = false;
-	}
-
-	if (m_brcv_param)
-	{
-		int iparam;
-		res = 0;
-		if ((iparam = m_ch_param->seek_param(m_str_tgt_param)) >= 0){
-			s_aws3_param & par = m_ch_param->get_param(iparam);
-			mavlink_msg_param_request_read_pack(255, 1, &msg, 1, 1, par.str, -1);
-			len = mavlink_msg_to_send_buffer(m_buf, &msg);
-			res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
-		}
-		if (res <= 0)
-			cerr << "Failed to send parameter request for " << m_str_tgt_param << endl;
-		m_brcv_param = false;
-	}
-
-	if (m_bwrite_rom)
-	{
-		cerr << "I don't know how to do that ..." << endl;
-		m_bwrite_rom = false;
-	}
+    if (m_bsnd_param){
+      int iparam;
+      res = 0;
+      if ((iparam = m_ch_param->seek_param(m_str_tgt_param)) >= 0){
+	s_aws3_param & par = m_ch_param->get_param(iparam);
+	float val;
+	par.get(val);
+	mavlink_msg_param_set_pack(m_sys_id, 1, &msg, 1, 1, par.str, val, par.type);
+	len = mavlink_msg_to_send_buffer(m_buf, &msg);
+	res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
+      }
+      if (res <= 0)
+	cerr << "Failed to send parameter for " << m_str_tgt_param << endl;
+      m_bsnd_param = false;
+    }
+    
+    if (m_brcv_param){
+      int iparam;
+      res = 0;
+      if ((iparam = m_ch_param->seek_param(m_str_tgt_param)) >= 0){
+	s_aws3_param & par = m_ch_param->get_param(iparam);
+	mavlink_msg_param_request_read_pack(m_sys_id, 1, &msg, 1, 1, par.str, -1);
+	len = mavlink_msg_to_send_buffer(m_buf, &msg);
+	res = sendto(m_sock, (char*)m_buf, len, 0, (struct sockaddr*)&m_sock_addr_snd, sizeof(struct sockaddr_in));
+      }
+      if (res <= 0)
+	cerr << "Failed to send parameter request for " << m_str_tgt_param << endl;
+      m_brcv_param = false;
+    }
+    
+    if (m_bwrite_rom){
+      cerr << "I don't know how to do that ..." << endl;
+      m_bwrite_rom = false;
+    }
   }
-
+  
   while(1){
     FD_ZERO(&fr);
     FD_ZERO(&fe);
@@ -242,7 +245,8 @@ bool f_aws3_com::proc()
     memset(m_buf, 0, 2048);
     res = select((int)m_sock + 1, &fr, NULL, &fe, &tv);
     if (FD_ISSET(m_sock, &fr)){
-      res = recvfrom(m_sock, (char*)m_buf, 1024, 0, (struct sockaddr *)&m_sock_addr_snd, &m_sz);
+      res = recvfrom(m_sock, (char*)m_buf, 1024, 0, 
+		     (struct sockaddr *)&m_sock_addr_snd, &m_sz);
       if (res > 0){
 	// Something received - print out all bytes and parse packet
 	mavlink_message_t msg;
@@ -254,20 +258,20 @@ bool f_aws3_com::proc()
 	  if (mavlink_parse_char(MAVLINK_COMM_0, m_buf[i], &msg, &status)){
 	    // Packet received
 	    //	
-
-		  if (msg.sysid != 1 || msg.compid != 1){
-			  cerr << "Message is not from AWS3" << endl;
-			  printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n",
-				 msg.sysid, msg.compid, msg.len, msg.msgid);			  
-			  continue;
-		  }
-
+	    
+	    if (msg.sysid != 1 || msg.compid != 1){
+	      cerr << "Message is not from AWS3" << endl;
+	      printf("\nReceived packet: SYS: %d, COMP: %d, LEN: %d, MSG ID: %d\n",
+		     msg.sysid, msg.compid, msg.len, msg.msgid);			  
+	      continue;
+	    }
+	    
 	    switch (msg.msgid){
 	    case MAVLINK_MSG_ID_HEARTBEAT:
 	      mavlink_msg_heartbeat_decode(&msg, &m_heartbeat);
-		  m_ch_state->set_base_mode(m_heartbeat.base_mode);
-		  m_ch_state->set_custom_mode(m_heartbeat.custom_mode);
-		  m_ch_state->set_system_status(m_heartbeat.system_status);
+	      m_ch_state->set_base_mode(m_heartbeat.base_mode);
+	      m_ch_state->set_custom_mode(m_heartbeat.custom_mode);
+	      m_ch_state->set_system_status(m_heartbeat.system_status);
 	      break;
 	    case MAVLINK_MSG_ID_RAW_IMU:
 	      mavlink_msg_raw_imu_decode(&msg, &m_raw_imu);
@@ -375,8 +379,8 @@ bool f_aws3_com::proc()
 	      break;
 	    case MAVLINK_MSG_ID_PARAM_VALUE:
 	      mavlink_msg_param_value_decode(&msg, &m_param_value);
-		  m_ch_param->set_value(m_param_value);
-		  t_last_param = m_cur_time;
+	      m_ch_param->set_value(m_param_value);
+	      t_last_param = m_cur_time;
 	      break;
 	    }	  
 	  }
@@ -418,7 +422,7 @@ bool f_aws3_com::load_parameters()
   uint16_t len;
   
   // issue request list
-  if(num_retry_load_param == 0){
+  if(num_retry_load_param < 3){
     cout << "Requesting parameter list." << endl;
     mavlink_msg_param_request_list_pack(m_sys_id, 1, &msg, 1, 1);
     len = mavlink_msg_to_send_buffer(m_buf, &msg);
@@ -454,34 +458,34 @@ bool f_aws3_com::load_parameters()
 
 void f_aws3_com::handle_statustext()
 {
-	switch (m_statustext.severity)
-	{
-	case MAV_SEVERITY_EMERGENCY:
-		cout << "MAV EMERGENCY:";
-		break;
-	case MAV_SEVERITY_ALERT:
-		cout << "MAV ALERT:";
-		break;
-	case MAV_SEVERITY_CRITICAL:
-		cout << "MAV CRITICAL:";
-		break;
-	case MAV_SEVERITY_ERROR:
-		cout << "MAV ERROR:";
-		break;
-	case MAV_SEVERITY_WARNING:
-		cout << "MAV WORNING:";
-		break;
-	case MAV_SEVERITY_NOTICE:
-		cout << "MAV NOTICE:";
-		break;
-	case MAV_SEVERITY_INFO:
-		cout << "MAV INFO:";
-		break;
-	case MAV_SEVERITY_DEBUG:
-	  cout << "MAV_DEBUG:";
-		break;
-	}
-	cout.write(m_statustext.text, 50);
-	cout << endl;
+  switch (m_statustext.severity)
+    {
+    case MAV_SEVERITY_EMERGENCY:
+      cout << "MAV EMERGENCY:";
+      break;
+    case MAV_SEVERITY_ALERT:
+      cout << "MAV ALERT:";
+      break;
+    case MAV_SEVERITY_CRITICAL:
+      cout << "MAV CRITICAL:";
+      break;
+    case MAV_SEVERITY_ERROR:
+      cout << "MAV ERROR:";
+      break;
+    case MAV_SEVERITY_WARNING:
+      cout << "MAV WORNING:";
+      break;
+    case MAV_SEVERITY_NOTICE:
+      cout << "MAV NOTICE:";
+      break;
+    case MAV_SEVERITY_INFO:
+      cout << "MAV INFO:";
+      break;
+    case MAV_SEVERITY_DEBUG:
+      cout << "MAV_DEBUG:";
+      break;
+    }
+  cout.write(m_statustext.text, 50);
+  cout << endl;
 }
 

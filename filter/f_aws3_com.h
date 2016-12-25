@@ -53,6 +53,7 @@ protected:
 	ch_aws3_state * m_ch_state;
 	ch_aws3_cmd * m_ch_cmd;
 
+	bool m_verb;
 	unsigned char m_sys_id;
 
 	enum e_state{

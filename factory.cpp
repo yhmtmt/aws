@@ -232,6 +232,7 @@ void ch_base::register_factory()
 #include "filter/f_glfw_window.h"
 #include "filter/f_glfw_stereo_view.h"
 #include "filter/f_aws1_ui.h"
+#include "filter/f_aws3_ui.h"
 #endif
 
 #include "filter/f_nmea.h"
@@ -352,6 +353,7 @@ void f_base::register_factory()
 	register_factory<f_glfw_imview>("glimv");
 	register_factory<f_aws1_ui>("aws1_ui");
 	register_factory<f_aws1_ui_test>("aws1_ui_test");
+	register_factory<f_aws3_ui>("aws3_ui");
 	register_factory<f_glfw_calib>("gcalib");
 #endif
 
