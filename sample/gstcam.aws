@@ -1,0 +1,14 @@
+#!/bin/sh
+
+channel imgr img
+
+filter gstcam gstcam -i -o
+fset gstcam ch_out img
+fset gstcam width 1920 height 1080
+fset gstcam fppl ~/aws/sample/bluerov.gst
+
+filter glimv win -i img -o
+fset win width 1280 height 720
+cyc 0.1
+
+go
