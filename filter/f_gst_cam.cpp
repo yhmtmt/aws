@@ -40,7 +40,6 @@ using namespace cv;
 GstFlowReturn f_gst_cam::new_preroll(GstAppSink * appsink, gpointer data)
 {
   f_gst_cam * pcam = (f_gst_cam*) data;
-  g_print("Got preroll!\n");
   return GST_FLOW_OK;
 }
 
@@ -48,18 +47,24 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
 {
   f_gst_cam * pcam = (f_gst_cam*) data;
   GstSample * sample =  gst_app_sink_pull_sample(appsink);
+  if(sample == NULL)
+    return GST_FLOW_OK;
+  
   GstCaps * caps = gst_sample_get_caps(sample);
+  GstStructure * str = gst_caps_get_structure(caps, 0)
   GstBuffer * buffer = gst_sample_get_buffer(sample);
-  const GstStructure * info = gst_sample_get_info(sample);
+  //const GstStructure * info = gst_sample_get_info(sample);
   
   GstMapInfo map;
   gst_buffer_map(buffer, &map, GST_MAP_READ);
+  
   Size sz = pcam->get_sz();
   int width, height;
-  if(!gst_structure_get_int(info, "width", &width) || 
-     !gst_structure_get_int(info, "height", &height)){
+  if(!gst_structure_get_int(str, "width", &width) || 
+     !gst_structure_get_int(str, "height", &height)){
     if(sz.width == 0 && sz.height == 0){
       g_print("No width/height available\n");
+      return;
     }
   }else{
     sz.width = width;
@@ -124,17 +129,14 @@ bool f_gst_cam::init_run()
   {
     char tmp[2048], descr[2048];
     fppl.getline(tmp, 2048);
-    snprintf(descr, 2048, "%s ! appsink name=sink sync=true", tmp);
+    snprintf(descr, 2048, "%s ! video/xraw,format=RGB ! videoconvert ! appsink name=sink sync=true", tmp);
     m_descr = g_strdup(descr);
   }
 
   m_error = NULL;
   
   // maybe these three lines are to be in the application initialization code.
-  int argc = 1;
-  char ** argv;
-  argv[0] = "aws";
-  gst_init(&argc, &argv);
+  gst_init(NULL, NULL);
   m_ppl = gst_parse_launch(m_descr, &m_error);
 
   if(m_error != NULL){
@@ -144,13 +146,14 @@ bool f_gst_cam::init_run()
   }
 
   m_sink = gst_bin_get_by_name(GST_BIN(m_ppl), "sink");
-  gst_app_sink_set_emit_signals((GstAppSink*)m_sink, true);
+  //  gst_app_sink_set_emit_signals((GstAppSink*)m_sink, true);
   gst_app_sink_set_drop((GstAppSink*)m_sink, true);
   gst_app_sink_set_max_buffers((GstAppSink*)m_sink, 1);
   GstAppSinkCallbacks callbacks = {NULL, new_preroll, new_sample};
   gst_app_sink_set_callbacks(GST_APP_SINK(m_sink), &callbacks, (gpointer)this, NULL);
   
   guint bus_watch_id;
+  m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_ppl));
   m_bus_watch_id = gst_bus_add_watch(m_bus, bus_callback, NULL);
   gst_object_unref(m_bus);
   
@@ -167,8 +170,6 @@ void f_gst_cam::destroy_run()
 
 bool f_gst_cam::proc()
 {
-  g_main_iteration(false);
-  
   return true;
 }
 

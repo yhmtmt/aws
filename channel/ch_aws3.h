@@ -438,6 +438,73 @@ private:
 		short trim;
 	};
 
+	typedef enum
+	{
+		//k_none = 0,            ///< disabled
+		k_manual = 1,            ///< manual, just pass-thru the RC in signal
+		k_flap = 2,            ///< flap
+		k_flap_auto = 3,            ///< flap automated
+		k_aileron = 4,            ///< aileron
+		k_unused1 = 5,            ///< unused function
+		k_mount_pan = 6,            ///< mount yaw (pan)
+		k_mount_tilt = 7,            ///< mount pitch (tilt)
+		k_mount_roll = 8,            ///< mount roll
+		k_mount_open = 9,            ///< mount open (deploy) / close (retract)
+		k_cam_trigger = 10,           ///< camera trigger
+		k_egg_drop = 11,           ///< egg drop
+		k_mount2_pan = 12,           ///< mount2 yaw (pan)
+		k_mount2_tilt = 13,           ///< mount2 pitch (tilt)
+		k_mount2_roll = 14,           ///< mount2 roll
+		k_mount2_open = 15,           ///< mount2 open (deploy) / close (retract)
+		k_dspoiler1 = 16,           ///< differential spoiler 1 (left wing)
+		k_dspoiler2 = 17,           ///< differential spoiler 2 (right wing)
+		k_aileron_with_input = 18,            ///< aileron, with rc input
+		k_elevator = 19,            ///< elevator
+		k_elevator_with_input = 20,            ///< elevator, with rc input
+		k_rudder = 21,            ///< secondary rudder channel
+		k_sprayer_pump = 22,            ///< crop sprayer pump channel
+		k_sprayer_spinner = 23,            ///< crop sprayer spinner channel
+		k_flaperon1 = 24,            ///< flaperon, left wing
+		k_flaperon2 = 25,            ///< flaperon, right wing
+		k_steering = 26,            ///< ground steering, used to separate from rudder
+		k_parachute_release = 27,            ///< parachute release
+		k_gripper = 28,            ///< gripper
+		k_landing_gear_control = 29,            ///< landing gear controller
+		k_engine_run_enable = 30,            ///< engine kill switch, used for gas airplanes and helicopters
+		k_heli_rsc = 31,            ///< helicopter RSC output
+		k_heli_tail_rsc = 32,            ///< helicopter tail RSC output
+		k_motor1 = 33,            ///< these allow remapping of copter motors
+		k_motor2 = 34,
+		k_motor3 = 35,
+		k_motor4 = 36,
+		k_motor5 = 37,
+		k_motor6 = 38,
+		k_motor7 = 39,
+		k_motor8 = 40,
+		k_motor_tilt = 41,            ///< tiltrotor motor tilt control
+		k_rcin1 = 51,            ///< these are for pass-thru from arbitrary rc inputs
+		k_rcin2 = 52,
+		k_rcin3 = 53,
+		k_rcin4 = 54,
+		k_rcin5 = 55,
+		k_rcin6 = 56,
+		k_rcin7 = 57,
+		k_rcin8 = 58,
+		k_rcin9 = 59,
+		k_rcin10 = 60,
+		k_rcin11 = 61,
+		k_rcin12 = 62,
+		k_rcin13 = 63,
+		k_rcin14 = 64,
+		k_rcin15 = 65,
+		k_rcin16 = 66,
+		k_ignition = 67,
+		k_choke = 68,
+		k_starter = 69,
+		k_throttle = 70,
+		k_nr_aux_servo_functions         ///< This must be the last enum value (only add new values _before_ this one)
+	} Aux_servo_function_t;
+
 	struct RCA{
 		short dz;
 		short function;
@@ -475,7 +542,7 @@ private:
 	// Joystick button parameters
 	typedef enum
 	{
-		k_none = 0,            ///< disabled
+		//k_none = 0,            ///< disabled
 		k_shift = 1,            ///< "shift" buttons to allow more functions
 		k_arm_toggle = 2,            ///< arm/disarm vehicle toggle
 		k_arm = 3,            ///< arm vehicle
