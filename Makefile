@@ -37,6 +37,7 @@ DEFS = -D_$(CPU) -D_$(OS)
 SANYO_HD5400 = n
 AVT_CAM = y
 UVC_CAM = y
+GST_CAM = y
 FWINDOW = n
 GLFW_WINDOW = y
 F_ORB_SLAM = y
@@ -55,6 +56,10 @@ INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
 LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
 INC_EIGEN_DIR = /usr/local/include/eigen3
 INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
+INC_GST = /usr/include/gstreamer-1.0
+LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
+INC_GLIB = /usr/include/glib-2.0
+INC_GLIB_CONFIG = /usr/lib/arm-linux-gnueabihf/glib-2.0/include
 
 # modules
 MODS = filter channel util
@@ -90,6 +95,7 @@ ifeq ($(BOARD), zed)
 	FWINDOW = n
 	GLFW_WINDOW = n
 	F_ORB_SLAM = n
+	GST_CAM = n
 	#OFLAGS += -mfloat-abi=hard
 endif
 
@@ -106,6 +112,10 @@ ifeq ($(BOARD), jtx)
 	INC_CV_DIR = /usr/local/include
 	LIB_CV_DIR = /usr/local/lib
 	INC_EIGEN_DIR = /usr/include/eigen3
+endif
+
+ifeq ($(BOARD), pc)
+	GST_CAM = n
 endif
 
 ################################################# cpu specific compiler option
@@ -184,6 +194,13 @@ endif
 ###################################################### f_uvc_cam configuration
 ifeq ($(UVC_CAM),y)
 	DEFS += -DUVC_CAM
+endif
+
+ifeq ($(GST_CAM),y)
+	INC += -I$(INC_GST) -I$(INC_GLIB) -I$(INC_GLIB_CONFIG)
+	LIB += -L$(LIB_GST) -lgstreamer-1.0 -lgobject-2.0 -lglib-2.0 -lgstapp-1.0
+	DEFS += -DGST_CAM
+	FILTER += f_gst_cam
 endif
 
 ######################################################## f_window configutaion
