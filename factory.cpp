@@ -258,6 +258,10 @@ void ch_base::register_factory()
 #include "filter/f_aws3_com.h"
 
 
+#ifdef GST_CAM
+#include "filter/f_gst_cam.h"
+#endif
+
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
 // need to initialize global and static data structure please insert your 
@@ -410,4 +414,9 @@ void f_base::register_factory()
 #endif
 
 	register_factory<f_aws3_com>("aws3c");
+
+
+#ifdef GST_CAM
+	register_factory<f_gst_cam>("gstcam");
+#endif
 }
