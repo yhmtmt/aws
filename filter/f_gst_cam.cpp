@@ -51,7 +51,7 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
     return GST_FLOW_OK;
   
   GstCaps * caps = gst_sample_get_caps(sample);
-  GstStructure * str = gst_caps_get_structure(caps, 0)
+  GstStructure * str = gst_caps_get_structure(caps, 0);
   GstBuffer * buffer = gst_sample_get_buffer(sample);
   //const GstStructure * info = gst_sample_get_info(sample);
   
@@ -64,14 +64,17 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
      !gst_structure_get_int(str, "height", &height)){
     if(sz.width == 0 && sz.height == 0){
       g_print("No width/height available\n");
-      return;
+      return GST_FLOW_OK;
     }
   }else{
     sz.width = width;
     sz.height = height;
   }
 
-  Mat img(sz, CV_8UC3, (char*) map.data);
+  // assuming input is nv12. converting it to bgr
+  Mat yuv(sz.height + sz.height / 2, sz.width, CV_8UC1, map.data);
+  Mat img;
+  cvtColor(yuv, img, CV_YUV2BGR_NV12);
   pcam->set_img(img);
   gst_buffer_unmap(buffer, &map);
   gst_sample_unref(sample);
@@ -129,8 +132,11 @@ bool f_gst_cam::init_run()
   {
     char tmp[2048], descr[2048];
     fppl.getline(tmp, 2048);
-    snprintf(descr, 2048, "%s ! video/xraw,format=RGB ! videoconvert ! appsink name=sink sync=true", tmp);
+    //    snprintf(descr, 2048, "%s ! video/x-raw,format=RGB ! videoconvert ! appsink name=sink sync=true", tmp);
+    snprintf(descr, 2048, "%s ! appsink name=sink sync=true", tmp);
+    
     m_descr = g_strdup(descr);
+    cout << "gst launch with: " << m_descr << endl;
   }
 
   m_error = NULL;
