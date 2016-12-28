@@ -905,3 +905,10 @@ void ch_aws3_param::register_param(f_aws3_com * paws3c)
 	}
 
 }
+
+
+const char * ch_aws3_state::str_control_mode[MANUAL + 1] = {
+	"STABILIZED", "ACRO", "ALT HOLD", "AUTO", "GUIDED", "VELHOLD", "RTL", "CIRCLE", "", "SURFACE",
+	"OF_LOITER", "", "", "TRANSECT", "", "AUTOTUNE", "POSHOLD", "MANUAL"
+};
+

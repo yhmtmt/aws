@@ -92,6 +92,12 @@ bool f_aws3_ui::init_run()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
+	m_xscale = (float)(0.5 * m_sz_win.width);
+	m_yscale = (float)(0.5 * m_sz_win.height);
+	m_ixscale = (float)(2.0 / (double)m_sz_win.width);
+	m_iyscale = (float)(2.0 / (double)m_sz_win.height);
+
+
 	return true;
 }
 
@@ -108,8 +114,7 @@ bool f_aws3_ui::proc()
     return false;
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-
+ 
   long long timg;
   if(m_ch_img){
     Mat img = m_ch_img->get_img(timg);
@@ -126,6 +131,12 @@ bool f_aws3_ui::proc()
       glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
     }
   }
+  else{
+	  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+  }
+
+  draw_overlay();
+
   glfwSwapBuffers(pwin());
   glfwPollEvents();
 
@@ -172,3 +183,105 @@ void f_aws3_ui::handle_js()
     printf("Btn:%04x\n", b);
   }
 }
+
+void f_aws3_ui::draw_overlay()
+{
+	draw_txt();
+	draw_att();
+	draw_alt();
+	draw_batt();
+}
+
+void f_aws3_ui::draw_batt()
+{
+}
+
+void f_aws3_ui::draw_att()
+{
+}
+
+void f_aws3_ui::draw_alt()
+{
+}
+
+void f_aws3_ui::draw_txt()
+{
+	// Current Time (Operation Time)
+	// state {arm, stnby, err}
+	// mode {man, stab, alth}
+	// hdg
+	// sog
+	// roll, pitch, yaw
+	// alt(climb)
+	// throttle
+	// batt 
+
+	char buf[1024];
+	float xorg = -1., yorg = 1.;
+	float x, y, wfont, hfont;
+	wfont = (float)(8. * m_ixscale);
+	hfont = (float)(8. * m_iyscale);
+
+	uint32_t top = m_ch_state->get_op_time();
+
+	x = xorg + wfont; 
+	y = yorg - 2 * hfont;
+	// Time
+	snprintf(buf, 1024, "%s[OP %4.3f sec]", (float)((float)top * 0.001));
+	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+
+	// Operation state
+	if (m_ch_state->is_safety_armed())
+		snprintf(buf, 1024, "STATE     : %s", "ARMED");
+	else
+		snprintf(buf, 1024, "STATE     : %s", "STANDBY");
+	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
+
+	// Mode 
+	snprintf(buf, 1024, "MODE      : %s", m_ch_state->get_custom_mode_str());
+	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+
+	// HDG
+	float sog;
+	int16_t hdg;
+	m_ch_state->get_vel(sog, hdg);
+	snprintf(buf, 1024, "HDG       : %ddeg", hdg);
+	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+
+	snprintf(buf, 1024, "SOG       : %3.1fm/s", sog);
+	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+
+	//Attitude
+	float r, p, yw, rs, rp, ry;
+	m_ch_state->get_att(r, p, yw, rs, rp, ry);
+	snprintf(buf, 1024, "RPY       : %3.1fdeg %3.1fdeg %3.1fdeg", 
+		(float)(r * (180. / PI)), (float)(p * (180. / PI)), (float)(yw * (180. / PI)));
+	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+
+	// Altitude
+	float alt, climb;
+	m_ch_state->get_climb(alt, climb);
+	snprintf(buf, 1024, "ALT(CLIMB): %3.2fm (%3.2fm/s)", alt, climb);
+	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+
+	// Throttle
+	uint16_t thr;
+	m_ch_state->get_thr(thr);
+	snprintf(buf, 1024, "THR       : %03d%%", thr);
+	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+
+	// Battery
+	uint8_t batt = m_ch_state->get_batt_rem();
+	snprintf(buf, 1024, "BAT       : %03d%%", batt);
+	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
+	y -= 2 * hfont;
+
+}
+

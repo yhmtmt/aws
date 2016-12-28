@@ -1313,6 +1313,7 @@ public:
 		POSHOLD = 16,  // automatic position hold with manual override, with automatic throttle
 		MANUAL = 19   // Pass-through input with no stabilization
 	};
+	static const char * str_control_mode[MANUAL + 1];
 
 private:
 	long long thb; // heart beat time
@@ -1320,6 +1321,16 @@ private:
 	uint32_t custom_mode;
 	uint8_t system_status;
 
+	uint8_t batt_rem;
+	uint16_t com_err;
+
+	float r, p, y, rs, ps, ys;
+
+	float sog;
+	int16_t hdg;
+	uint16_t thr;
+	float alt, climb;
+	uint32_t top;
 public:
 	ch_aws3_state(const char * name) : ch_base(name)
 	{
@@ -1327,6 +1338,90 @@ public:
 
 	virtual ~ch_aws3_state()
 	{
+	}
+
+	void set_op_timm(const uint32_t _top)
+	{
+		top = _top;
+	}
+
+	const uint32_t get_op_time()
+	{
+		return top;
+	}
+
+	void set_batt_rem(const uint8_t _batt_rem)
+	{
+		batt_rem = _batt_rem;
+	}
+
+	const uint8_t get_batt_rem()
+	{
+		return batt_rem;
+	}
+
+	void set_com_err(const uint16_t _com_err)
+	{
+		com_err = _com_err;
+	}
+
+	const uint16_t get_com_err()
+	{
+		return com_err;
+	}
+
+	void set_att(const float _r, const float _p, const float _y, const float _rs, const float _ps, const float _ys)
+	{
+		r = _r;
+		p = _p;
+		y = _y;
+		rs = _rs;
+		ps = _ps;
+		ys = _ys;
+	}
+
+	void get_att(float & _r, float & _p, float & _y, float & _rs, float & _ps, float & _ys)
+	{
+		_r = r;
+		_p = p;
+		_y = y;
+		_rs = rs;
+		_ps = ps;
+		_ys = ys;
+	}
+
+	void set_vel(const float _sog, const int16_t _hdg)
+	{
+		sog = _sog;
+		hdg = _hdg;
+	}
+
+	void get_vel(float & _sog, int16_t & _hdg)
+	{
+		_sog = sog;
+		_hdg = hdg;
+	}
+
+	void set_thr(const uint16_t _thr)
+	{
+		thr = _thr;
+	}
+
+	void get_thr(uint16_t & _thr)
+	{
+		_thr = thr;
+	}
+
+	void set_climb(const float _alt, const float _climb)
+	{
+		alt = _alt;
+		climb = _climb;
+	}
+
+	void get_climb(float & _alt, float & _climb)
+	{
+		_alt = alt;
+		_climb = climb;
 	}
 
 	void set_alive(const long long _thb)
@@ -1390,14 +1485,22 @@ public:
 		custom_mode = _custom_mode;
 	}
 
+	const uint8_t get_custom_mode()
+	{
+		return custom_mode;
+	}
+
+	const char * get_custom_mode_str()
+	{
+		return str_control_mode[custom_mode];
+	}
+
 	// handler of mav_state
 	void set_system_status(const uint8_t _system_status)
 	{
 		// MAV_STATE_STANDBY means not armed/ MAV_STATE_ACTIVE means armed
 		system_status = _system_status;
 	}
-
-
 };
 
 class ch_aws3_cmd: ch_base

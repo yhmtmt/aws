@@ -287,13 +287,15 @@ bool f_aws3_com::proc()
 	      mavlink_msg_scaled_imu2_decode(&msg, &m_scaled_imu2);
 	      break;
 	    case MAVLINK_MSG_ID_SCALED_PRESSURE:
-	      mavlink_msg_scaled_pressure_decode(&msg, &m_scaled_pressure);
+			mavlink_msg_scaled_pressure_decode(&msg, &m_scaled_pressure);
 	      break;
 	    case MAVLINK_MSG_ID_SCALED_PRESSURE2:
 	      mavlink_msg_scaled_pressure2_decode(&msg, &m_scaled_pressure2);
 	      break;
 	    case MAVLINK_MSG_ID_SYS_STATUS:
 	      mavlink_msg_sys_status_decode(&msg, &m_sys_status);
+		  m_ch_state->set_batt_rem(m_sys_status.battery_remaining);
+		  m_ch_state->set_com_err(m_sys_status.drop_rate_comm);
 	      break;
 	    case MAVLINK_MSG_ID_POWER_STATUS:
 	      mavlink_msg_power_status_decode(&msg, &m_power_status);
@@ -318,10 +320,15 @@ bool f_aws3_com::proc()
 	      break;
 	    case MAVLINK_MSG_ID_ATTITUDE:
 	      mavlink_msg_attitude_decode(&msg, &m_attitude);
+		  m_ch_state->set_att(m_attitude.roll, m_attitude.pitch, m_attitude.yaw,
+			  m_attitude.rollspeed, m_attitude.pitchspeed, m_attitude.yawspeed);
 	      break;
 	      //case MAVLINK_MSG_ID_RALLY_LAND_FETCH_POINT: //Message ID 178 is not appeared in ardupilot mega...
 	    case MAVLINK_MSG_ID_VFR_HUD:
 	      mavlink_msg_vfr_hud_decode(&msg, &m_vfr_hud);
+		  m_ch_state->set_climb(m_vfr_hud.alt, m_vfr_hud.climb);
+		  m_ch_state->set_thr(m_vfr_hud.throttle);
+		  m_ch_state->set_vel(m_vfr_hud.groundspeed, m_vfr_hud.heading);
 	      break;
 	    case MAVLINK_MSG_ID_HWSTATUS:
 	      mavlink_msg_hwstatus_decode(&msg, &m_hwstatus);
