@@ -126,6 +126,8 @@ protected:
 	int num_load_params;
 	bool load_parameters();
 	void handle_statustext();
+
+	bool init_socket();
 public:
 	f_aws3_com(const char * name);
 	virtual ~f_aws3_com();

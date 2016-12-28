@@ -37,7 +37,7 @@ using namespace std;
 
 f_aws3_com::f_aws3_com(const char * name) :f_base(name), m_ch_param(NULL), m_ch_state(NULL), m_ch_cmd(NULL), m_verb(false),
 m_port(14550), m_sys_id(255), max_retry_load_param(10), 
-m_bcon(false), t_last_param(0), t_load_param_to(5*SEC),
+					   m_bcon(false), m_brst(false),  t_last_param(0), t_load_param_to(5*SEC),
 m_bsnd_param(false), m_brcv_param(false), m_bwrite_rom(false), m_bsave_param(false)
 {
 	register_fpar("ch_param", (ch_base**)&m_ch_param, typeid(ch_aws3_param).name(), "Channel of AWS3's parameters.");
@@ -78,6 +78,19 @@ bool f_aws3_com::init_run()
 		return false;
 	}
 
+	if(!init_socket()){
+	  return false;
+	}
+  m_state = INIT;
+  m_bcon = false;
+  num_retry_load_param = 0;
+  num_load_params = 0;
+
+  return true;
+}
+
+bool f_aws3_com::init_socket()
+{
   m_sock = socket(AF_INET, SOCK_DGRAM, 0);
   
   m_sock_addr_rcv.sin_family = AF_INET;
@@ -87,12 +100,6 @@ bool f_aws3_com::init_run()
     cerr << "Socket error" << endl;
     return false;
   }
-  
-  m_state = INIT;
-  m_bcon = false;
-  num_retry_load_param = 0;
-  num_load_params = 0;
-
   return true;
 }
 
@@ -390,7 +397,7 @@ bool f_aws3_com::proc()
       }else{ /* recv returned with < 0 */	
 	cerr << "Error.Reopeninng socket." << endl;
 	closesocket(m_sock);
-	return init_run();
+	return init_socket();
       }
     }else if (FD_ISSET(m_sock, &fe)){
       cerr << "Failed to recieve packet." << endl;
@@ -402,7 +409,7 @@ bool f_aws3_com::proc()
     cout << "Reopening socket." << endl;
     closesocket(m_sock);
     m_brst = m_bcon = false;
-    return init_run();  
+    return init_socket();  
   }
   return true;
 }
