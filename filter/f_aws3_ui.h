@@ -15,11 +15,12 @@ private:
 	ch_aws3_param * m_ch_param;
 	ch_aws3_state * m_ch_state;
 	ch_aws3_cmd * m_ch_cmd;
-
+	ch_image_ref * m_ch_img;
 	bool m_verb;
-
 	int m_js_id;
 	s_jc_u3613m m_js;
+
+	void handle_js();
 public:
 	f_aws3_ui(const char * name);
 

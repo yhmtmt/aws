@@ -45,15 +45,15 @@ using namespace cv;
 #include "../util/aws_glib.h"
 #include "f_aws3_ui.h"
 
-f_aws3_ui::f_aws3_ui(const char * name) :f_glfw_window(name), m_ch_param(NULL), m_ch_state(NULL), m_ch_cmd(NULL), m_verb(false),
+f_aws3_ui::f_aws3_ui(const char * name) :f_glfw_window(name), m_ch_param(NULL), m_ch_state(NULL), m_ch_cmd(NULL), m_ch_img(NULL), m_verb(false),
 					 m_js_id(0)
 {
 	register_fpar("js", &m_js_id, "Joystick id");
 	register_fpar("ch_param", (ch_base**)&m_ch_param, typeid(ch_aws3_param).name(), "Channel of AWS3's parameters.");
 	register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_aws3_state).name(), "Channel of AWS3 state.");
 	register_fpar("ch_cmd", (ch_base**)&m_ch_cmd, typeid(ch_aws3_cmd).name(), "Channel of AWS3 command.");
+	register_fpar("ch_img", (ch_base**)&m_ch_img, typeid(ch_image_ref).name(), "Streaming channel");
 	register_fpar("verb", &m_verb, "Debug mode.");
-
 }
 
 f_aws3_ui::~f_aws3_ui()
@@ -102,49 +102,73 @@ void f_aws3_ui::destroy_run()
 
 bool f_aws3_ui::proc()
 {
-  m_js.set_stk();
-  m_js.set_btn();
-	short x = (short)1000 * m_js.lr1;
-	short y = (short)1000 * m_js.ud1;
-	short z = -(short)1000 * m_js.ud2;
-	short r = (short)1000 * m_js.lr2;
-	m_ch_cmd->set(x, y, z, r);
-	// flt mode 1 manual
-	// flt mode 2 stabilized
-	// flt mode 3 alt hold
-	m_ch_cmd->set(0, m_js.is_state_down(m_js.ex)); // 1 shift 0
-	m_ch_cmd->set(1, m_js.is_state_down(m_js.ey)); // 7 mode2 0
-	m_ch_cmd->set(2, m_js.is_state_down(m_js.ea)); // 0 0
-	m_ch_cmd->set(3, m_js.is_state_down(m_js.eb)); // 6 mode1 0
-	m_ch_cmd->set(4, m_js.is_state_down(m_js.elb)); // 32 lights1_brighter 0
-	m_ch_cmd->set(5, m_js.is_state_down(m_js.erb)); // 33 lights1_dimmer 0
-	m_ch_cmd->set(6, m_js.is_state_down(m_js.elt)); // 0 45 trim_roll_dec 
-	m_ch_cmd->set(7, m_js.is_state_down(m_js.ert)); // 0 44 trim_roll_inc
-	m_ch_cmd->set(8, m_js.is_state_down(m_js.elst)); // 0 0
-	m_ch_cmd->set(9, m_js.is_state_down(m_js.erst)); // 0 0
-	m_ch_cmd->set(10, m_js.is_state_down(m_js.eback)); //4 disarm 0 
-	m_ch_cmd->set(11, m_js.is_state_down(m_js.estart)); // 3 arm 0
-	m_ch_cmd->set(12, m_js.is_state_down(m_js.erx)); // 0 0
-	m_ch_cmd->set(13, m_js.is_state_down(m_js.elx)); // 32 lights1_brighter 0
-	m_ch_cmd->set(14, m_js.is_state_down(m_js.eux)); // 33 lights1_dimmer 0 
-	m_ch_cmd->set(15, m_js.is_state_down(m_js.edx)); // 0  0
+  handle_js();
+  
+  if(glfwWindowShouldClose(pwin()))
+    return false;
 
-	if(m_verb){
-	  short x, y, z, r;
-	  uint16_t b;
-	  m_ch_cmd->get(x, y, z,r);
-	  b = m_ch_cmd->get_btn();
-	  cout << "Control x:" << x << " y:" << y 
-	       << " z:" << z << " r:" << r << endl;
-	  printf("Btn:%04x\n", b);
-	}
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
 
-	if(glfwWindowShouldClose(pwin()))
-	  return false;
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
-	glfwSwapBuffers(pwin());
-	glfwPollEvents();
-	return true;
+  long long timg;
+  if(m_ch_img){
+    Mat img = m_ch_img->get_img(timg);
+    if(!img.empty()){
+      // assuming bgr color order from ch_img
+      if(m_sz_win.width != img.cols || m_sz_win.height != img.rows){
+	Mat tmp;
+	resize(img, tmp, m_sz_win);
+	img = tmp;
+      }
+      
+      glRasterPos2i(-1, -1);
+      cnvCVBGR8toGLRGB8(img);
+      glDrawPixels(img.cols, img.rows, GL_RGB, GL_UNSIGNED_BYTE, img.data);
+    }
+  }
+  glfwSwapBuffers(pwin());
+  glfwPollEvents();
+
+  return true;
 }
 
+void f_aws3_ui::handle_js()
+{
+  m_js.set_stk();
+  m_js.set_btn();
+
+  short x = (short)1000 * m_js.lr1;
+  short y = (short)1000 * m_js.ud1;
+  short z = -(short)1000 * m_js.ud2;
+  short r = (short)1000 * m_js.lr2;
+  m_ch_cmd->set(x, y, z, r);
+  // flt mode 1 manual
+  // flt mode 2 stabilized
+  // flt mode 3 alt hold
+  m_ch_cmd->set(0, m_js.is_state_down(m_js.ex)); // 1 shift 0
+  m_ch_cmd->set(1, m_js.is_state_down(m_js.ey)); // 7 mode2 0
+  m_ch_cmd->set(2, m_js.is_state_down(m_js.ea)); // 0 0
+  m_ch_cmd->set(3, m_js.is_state_down(m_js.eb)); // 6 mode1 0
+  m_ch_cmd->set(4, m_js.is_state_down(m_js.elb)); // 32 lights1_brighter 0
+  m_ch_cmd->set(5, m_js.is_state_down(m_js.erb)); // 33 lights1_dimmer 0
+  m_ch_cmd->set(6, m_js.is_state_down(m_js.elt)); // 0 45 trim_roll_dec 
+  m_ch_cmd->set(7, m_js.is_state_down(m_js.ert)); // 0 44 trim_roll_inc
+  m_ch_cmd->set(8, m_js.is_state_down(m_js.elst)); // 0 0
+  m_ch_cmd->set(9, m_js.is_state_down(m_js.erst)); // 0 0
+  m_ch_cmd->set(10, m_js.is_state_down(m_js.eback)); //4 disarm 0 
+  m_ch_cmd->set(11, m_js.is_state_down(m_js.estart)); // 3 arm 0
+  m_ch_cmd->set(12, m_js.is_state_down(m_js.erx)); // 0 0
+  m_ch_cmd->set(13, m_js.is_state_down(m_js.elx)); // 32 lights1_brighter 0
+  m_ch_cmd->set(14, m_js.is_state_down(m_js.eux)); // 33 lights1_dimmer 0 
+  m_ch_cmd->set(15, m_js.is_state_down(m_js.edx)); // 0  0
+  
+  if(m_verb){
+    short x, y, z, r;
+    uint16_t b;
+    m_ch_cmd->get(x, y, z,r);
+    b = m_ch_cmd->get_btn();
+    cout << "Control x:" << x << " y:" << y 
+	 << " z:" << z << " r:" << r << endl;
+    printf("Btn:%04x\n", b);
+  }
+}
