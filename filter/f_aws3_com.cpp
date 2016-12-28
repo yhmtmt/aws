@@ -43,7 +43,7 @@ m_bsnd_param(false), m_brcv_param(false), m_bwrite_rom(false), m_bsave_param(fal
 	register_fpar("ch_param", (ch_base**)&m_ch_param, typeid(ch_aws3_param).name(), "Channel of AWS3's parameters.");
 	register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_aws3_state).name(), "Channel of AWS3 state.");
 	register_fpar("ch_cmd", (ch_base**)&m_ch_cmd, typeid(ch_aws3_cmd).name(), "Channel of AWS3 command.");
-
+	register_fpar("rst", &m_brst, "Reset");
 	register_fpar("verb", &m_verb, "Debug mode.");
 	register_fpar("max_retry_load_param", &max_retry_load_param, "Maximum retry counts loading parameters.");
 	register_fpar("sysid", &m_sys_id, "System id in mavlink protocol (default 255)");
