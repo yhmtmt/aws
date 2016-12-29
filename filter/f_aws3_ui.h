@@ -20,18 +20,17 @@ private:
 	int m_js_id;
 	s_jc_u3613m m_js;
 
-
 	float m_ixscale, m_iyscale;
 	float m_xscale, m_yscale;
 	void handle_js();
 	void draw_overlay();
 	void draw_batt();
+	void draw_thr();
 	void draw_att();
 	void draw_alt();
 	void draw_txt();
 public:
 	f_aws3_ui(const char * name);
-
 	virtual ~f_aws3_ui();
 
 	virtual bool init_run();
