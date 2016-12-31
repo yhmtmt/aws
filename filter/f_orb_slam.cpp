@@ -93,6 +93,10 @@ namespace ORB_SLAM2
 		register_fpar("roi_y", &m_roi.y, "y of ROI.");
 		register_fpar("roi_w", &m_roi.width, "width of ROI");
 		register_fpar("roi_h", &m_roi.height, "height of ROI");
+
+		register_fpar("FrameGridCols", &Frame::mFrameGridCols, "Frame grid cols.");
+		register_fpar("FrameGridRows", &Frame::mFrameGridRows, "Frame grid rows.");
+
 	}
 
 	f_tracker::~f_tracker()
@@ -521,9 +525,6 @@ namespace ORB_SLAM2
 			m_cur_frm = Frame(m_img, m_timg, m_pORBExIni, m_pvoc, m_Kf, m_Df, bf, th_depth);
 		else
 			m_cur_frm = Frame(m_img, m_timg, m_pORBEx, m_pvoc, m_Kf, m_Df, bf, th_depth);
-#ifdef DEBUG_ORB_SLAM
-		cout << "New Frame[" << m_ifrm << "]: id = " << m_cur_frm.mnId << " t=" << m_timg << "." << m_cur_frm.mvKeys.size() << " Keypoints are found." << endl;
-#endif
 		return true;
 	}
 

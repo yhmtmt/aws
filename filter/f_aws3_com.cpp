@@ -110,7 +110,7 @@ void f_aws3_com::destroy_run()
 
 bool f_aws3_com::proc()
 {
-  fd_set fr, fw, fe;
+  fd_set fr, fe;
   timeval tv;
   int res;
   if (m_state == LOAD_PARAM 
@@ -169,7 +169,6 @@ bool f_aws3_com::proc()
       tv.tv_usec = 1000;
     */
     mavlink_message_t msg;
-    mavlink_status_t status;
     uint16_t len;
     /*Send Heartbeat */
     mavlink_msg_heartbeat_pack(m_sys_id, 1, &msg, MAV_TYPE_SURFACE_BOAT,
@@ -427,12 +426,10 @@ bool f_aws3_com::load_parameters()
     cerr << "Failed to load parameters." <<  endl;
     return false;
   }
-  fd_set fr, fw, fe;
-  timeval tv;
+
   int res;
   
   mavlink_message_t msg;
-  mavlink_status_t status;
   uint16_t len;
   
   // issue request list

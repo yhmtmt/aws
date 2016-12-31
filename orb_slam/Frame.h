@@ -34,15 +34,13 @@
 
 namespace ORB_SLAM2
 {
-#define FRAME_GRID_ROWS 48
-#define FRAME_GRID_COLS 64
-
 class MapPoint;
 class KeyFrame;
 
 class Frame
 {
 public:
+	static int mFrameGridRows, mFrameGridCols;
     Frame();
 
     // Copy constructor.
@@ -56,6 +54,8 @@ public:
 
     // Constructor for Monocular cameras.
     Frame(const cv::Mat &imGray, const long long &timeStamp, ORBextractor* extractor,ORBVocabulary* voc, cv::Mat &K, cv::Mat &distCoef, const float &bf, const float &thDepth);
+
+	~Frame();
 
     // Extract ORB on the image. 0 for left image and 1 for right image.
     void ExtractORB(int flag, const cv::Mat &im);
@@ -158,7 +158,8 @@ public:
     // Keypoints are assigned to cells in a grid to reduce matching complexity when projecting MapPoints.
     static float mfGridElementWidthInv;
     static float mfGridElementHeightInv;
-    std::vector<std::size_t> mGrid[FRAME_GRID_COLS][FRAME_GRID_ROWS];
+	int * mRefGrid;
+    std::vector<std::size_t> ** mGrid;
 
     // Camera pose.
     cv::Mat mTcw;
@@ -186,8 +187,6 @@ public:
     static float mnMaxY;
 
     static bool mbInitialComputations;
-
-
 private:
 
     // Undistort keypoints given OpenCV distortion parameters.

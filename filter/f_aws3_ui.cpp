@@ -148,10 +148,10 @@ void f_aws3_ui::handle_js()
   m_js.set_stk();
   m_js.set_btn();
 
-  short x = (short)1000 * m_js.lr1;
-  short y = (short)1000 * m_js.ud1;
-  short z = -(short)1000 * m_js.ud2;
-  short r = (short)1000 * m_js.lr2;
+  short x = (short)(1000 * m_js.lr1);
+  short y = (short)(1000 * m_js.ud1);
+  short z = -(short)(1000 * m_js.ud2);
+  short r = (short)(1000 * m_js.lr2);
   m_ch_cmd->set(x, y, z, r);
   // flt mode 1 manual
   // flt mode 2 stabilized

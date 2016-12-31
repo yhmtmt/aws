@@ -29,7 +29,7 @@ namespace ORB_SLAM2
 long unsigned int KeyFrame::nNextId=0;
 
 KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
-    mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), mnGridCols(FRAME_GRID_COLS), mnGridRows(FRAME_GRID_ROWS),
+    mnFrameId(F.mnId),  mTimeStamp(F.mTimeStamp), mnGridCols(F.mFrameGridCols), mnGridRows(F.mFrameGridRows),
     mfGridElementWidthInv(F.mfGridElementWidthInv), mfGridElementHeightInv(F.mfGridElementHeightInv),
     mnTrackReferenceForFrame(0), mnFuseTargetForKF(0), mnBALocalForKF(0), mnBAFixedForKF(0),
     mnLoopQuery(0), mnLoopWords(0), mnRelocQuery(0), mnRelocWords(0), mnBAGlobalForKF(0),
@@ -44,7 +44,10 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
     mbToBeErased(false), mbBad(false), mHalfBaseline(F.mb/2), mpMap(pMap)
 {
     mnId=nNextId++;
-
+	mGrid = F.mGrid;
+	mRefGrid = F.mRefGrid;
+	*mRefGrid++;
+	/*
     mGrid.resize(mnGridCols);
     for(int i=0; i<mnGridCols;i++)
     {
@@ -52,8 +55,19 @@ KeyFrame::KeyFrame(Frame &F, Map *pMap, KeyFrameDatabase *pKFDB):
         for(int j=0; j<mnGridRows; j++)
             mGrid[i][j] = F.mGrid[i][j];
     }
-
+	*/
     SetPose(F.mTcw);    
+}
+
+KeyFrame::~KeyFrame()
+{
+	*mRefGrid--;
+	if (mRefGrid == 0){
+		for (int i = 0; i < mnGridCols; i++)
+			delete[] mGrid[i];
+		delete[] mGrid;
+		delete mRefGrid;
+	}
 }
 
 void KeyFrame::ComputeBoW()
