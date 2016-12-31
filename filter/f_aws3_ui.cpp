@@ -97,7 +97,6 @@ bool f_aws3_ui::init_run()
 	m_ixscale = (float)(2.0 / (double)m_sz_win.width);
 	m_iyscale = (float)(2.0 / (double)m_sz_win.height);
 
-
 	return true;
 }
 
@@ -114,7 +113,7 @@ bool f_aws3_ui::proc()
     return false;
 
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
- 
+  glDisable(GL_DEPTH_TEST);
   long long timg;
   if(m_ch_img){
     Mat img = m_ch_img->get_img(timg);
@@ -137,6 +136,7 @@ bool f_aws3_ui::proc()
 
   draw_overlay();
 
+  glEnable(GL_DEPTH_TEST);
   glfwSwapBuffers(pwin());
   glfwPollEvents();
 
@@ -158,7 +158,7 @@ void f_aws3_ui::handle_js()
   // flt mode 3 alt hold
   m_ch_cmd->set(0, m_js.is_state_down(m_js.ex)); // 1 shift 0
   m_ch_cmd->set(1, m_js.is_state_down(m_js.ey)); // 7 mode2 0
-  m_ch_cmd->set(2, m_js.is_state_down(m_js.ea)); // 0 0
+  m_ch_cmd->set(2, m_js.is_state_down(m_js.ea)); // 8 mode3
   m_ch_cmd->set(3, m_js.is_state_down(m_js.eb)); // 6 mode1 0
   m_ch_cmd->set(4, m_js.is_state_down(m_js.elb)); // 32 lights1_brighter 0
   m_ch_cmd->set(5, m_js.is_state_down(m_js.erb)); // 33 lights1_dimmer 0
@@ -169,9 +169,9 @@ void f_aws3_ui::handle_js()
   m_ch_cmd->set(10, m_js.is_state_down(m_js.eback)); //4 disarm 0 
   m_ch_cmd->set(11, m_js.is_state_down(m_js.estart)); // 3 arm 0
   m_ch_cmd->set(12, m_js.is_state_down(m_js.erx)); // 0 0
-  m_ch_cmd->set(13, m_js.is_state_down(m_js.elx)); // 32 lights1_brighter 0
-  m_ch_cmd->set(14, m_js.is_state_down(m_js.eux)); // 33 lights1_dimmer 0 
-  m_ch_cmd->set(15, m_js.is_state_down(m_js.edx)); // 0  0
+  m_ch_cmd->set(13, m_js.is_state_down(m_js.elx)); // 0 0
+  m_ch_cmd->set(14, m_js.is_state_down(m_js.eux)); // 22 mount_tilt_up 0 
+  m_ch_cmd->set(15, m_js.is_state_down(m_js.edx)); // 23 mount_tilt_down 0
   
   if(m_verb){
     short x, y, z, r;
@@ -190,18 +190,269 @@ void f_aws3_ui::draw_overlay()
 	draw_att();
 	draw_alt();
 	draw_batt();
+	draw_thr();
 }
 
 void f_aws3_ui::draw_batt()
 {
+  char buf[1024];
+  uint8_t batt = m_ch_state->get_batt_rem();
+  snprintf(buf, 1024, "%03d%%", batt);
+
+  float r, g, b;
+  float x1, y1, x2, y2, wfont, hfont;
+  float wbar = (float) (30. * m_ixscale);
+  float hbar = (float)(m_sz_win.height * 0.4 * m_iyscale);
+  wfont = (float)(8. * m_ixscale);
+  hfont = (float)(13. * m_iyscale);
+  float xorg = -1. + wfont, yorg = -1. + 2 * hfont;
+
+  if(batt < 25){
+    r = 1.0;
+    g = 0.0;
+    b = 0.0;
+  }else{
+    r = 0.0;
+    g = 1.0; 
+    b = 0.0;
+  }
+
+  x1 = xorg;
+  x2 = (float)(xorg + wbar);
+  y1 = yorg;
+  y2 = (float)(yorg + hbar);
+
+  // drawing boundary 
+  drawGlSquare2Df(x1, y1, x2, y2, r, g, b, 1, 1.);
+
+  // drawing text
+  drawGlText(x1, yorg - 1.5 * hfont, "BAT", r, g, b, 1., GLUT_BITMAP_8_BY_13);
+  drawGlText(x1, y2 + 0.5 * hfont, buf, r, g, b, 1., GLUT_BITMAP_8_BY_13);
+
+  y2 = (float)(yorg + 0.01 * (float) batt * hbar);
+  // drawing indicator
+  drawGlSquare2Df(x1, y1, x2, y2, r, g, b, 1);
+
+  // drawing grid (10%)
+  x2 = (float)(x1 + wbar * 0.125);
+  float step = (float)(0.1 * hbar);
+  for (int i = 1; i < 10; i++){
+    y1 += step;
+    if(i != 5)
+      drawGlLine2Df(x1, y1, x2, y1, r, g, b, 1, 1);
+    else
+      drawGlLine2Df(x1, y1, (float)(x2 + wbar * 0.125), y1, r, g, b, 1, 1);
+  }
+  
+}
+
+void f_aws3_ui::draw_thr()
+{
+  char buf[1024];
+  uint16_t thr = m_ch_state->get_thr();
+  snprintf(buf, 1024, "%03d%%", thr);
+
+  float r, g, b;
+  float x1, y1, x2, y2, wfont, hfont;
+  float wbar = (float) (30. * m_ixscale);
+  float hbar = (float)(m_sz_win.height * 0.4 * m_iyscale);
+  wfont = (float)(8. * m_ixscale);
+  hfont = (float)(13. * m_iyscale);
+  float xorg = (float)(-1. + 2 * wfont + wbar);;
+  float yorg = (float)(-1. + 2 * hfont);
+
+  if(thr > 90){
+    r = 1.0;
+    g = 0.0;
+    b = 0.0;
+  }else{
+    r = 0.0;
+    g = 1.0; 
+    b = 0.0;
+  }
+
+  x1 = xorg;
+  x2 = (float)(xorg + wbar);
+  y1 = yorg;
+  y2 = (float)(yorg + hbar);
+
+  // drawing boundary 
+  drawGlSquare2Df(x1, y1, x2, y2, r, g, b, 1, 1.);
+
+  // drawing text
+  drawGlText(x1, yorg - 1.5 * hfont, "THR", r, g, b, 1., GLUT_BITMAP_8_BY_13);
+  drawGlText(x1, y2 + 0.5 * hfont, buf, r, g, b, 1., GLUT_BITMAP_8_BY_13);
+
+  y2 = (float)(yorg + 0.01 * (float) thr * hbar);
+  // drawing indicator
+  drawGlSquare2Df(x1, y1, x2, y2, r, g, b, 1);
+
+  // drawing grid (10%)
+  x2 = (float)(x1 + wbar * 0.125);
+  float step = (float)(0.1 * hbar);
+  for (int i = 1; i < 10; i++){
+    y1 += step;
+    if(i != 5)
+      drawGlLine2Df(x1, y1, x2, y1, r, g, b, 1, 1);
+    else
+      drawGlLine2Df(x1, y1, (float)(x2 + wbar * 0.125), y1, r, g, b, 1, 1);
+  } 
 }
 
 void f_aws3_ui::draw_att()
-{
+{ 
+  char buf[1024];
+  float rl, p, yw, rs, rp, ry;
+  float rld, pd, ywd;
+  const float ranged = 60;
+  const float range = ranged * PI / 180.;
+  m_ch_state->get_att(rl, p, yw, rs, rp, ry);
+
+  rld = (float)(rl * (180. / PI));
+  pd = (float)(p * (180. / PI));
+  ywd = (float)(yw * (180. / PI));
+
+  float sog;
+  int16_t hdg;
+  m_ch_state->get_vel(sog, hdg);
+
+  float r = 0, g = 1, b = 0;
+  float wbar = (float)(m_sz_win.width * 0.6 * m_ixscale);
+  float hbar = (float)(10. * m_iyscale);
+  float x1, y1, x2, y2, wfont, hfont;
+  wfont = (float)(8. * m_ixscale);
+  hfont = (float)(13. * m_iyscale);
+  float xorg = (float)(-m_sz_win.width * 0.3 * m_ixscale);
+  float yorg = (float)(-m_sz_win.height * 0.4 * m_iyscale);
+  x1 = xorg;
+  x2 = (float)(xorg + wbar);
+  y1 = yorg;
+  y2 = (float)(yorg + hbar);
+  drawGlLine2Df(x1, y1, x2, y1, r, g, b, 1., 1);
+  
+  float xc = 0;
+  drawGlLine2Df(xc, y1, xc, y2, r, g, b, 1, 1);
+  snprintf(buf, 1024, "%03d", hdg);
+  drawGlSquare2Df((float)(xc - 2.0 * wfont), 
+		  (float)(y2),
+		  (float)(xc + 2.0 * wfont),
+		  (float)(y2 + 2.0 * hfont),
+		  r, g, b, 1, 1.0);
+  drawGlText((float)(xc - 1.5 * wfont), (float)(y2 + 0.5 * hfont),
+	     buf, r, g, b, 1, GLUT_BITMAP_8_BY_13);
+  
+  int dc = (((int)(ywd + 370.) % 360) / 10) * 10;
+  float dstep = (float) (wbar / ranged);
+  xc = (float)(((float)dc - ywd) * dstep);
+  float xcur = xc;
+  int istep = 0;
+  y2 = (float)(yorg - hbar);
+  float y3 = (float)(yorg - 0.5 * hbar);
+  int dcur = dc/10;
+  while(xcur < x2){
+    if(istep == 0){
+      snprintf(buf, 1024, "%02d", dcur);
+      drawGlLine2Df(xcur, y1, xcur, y2, r, g, b, 1, 1);
+      drawGlText((float)(xcur - 1.5 * wfont), (float)(y2 - hfont), buf,
+		 r, g, b, 1, GLUT_BITMAP_8_BY_13);
+      dcur++;
+    }else{
+      drawGlLine2Df(xcur, y1, xcur, y3, r, g, b, 1, 1);
+    }
+    xcur += dstep;
+    istep = (istep + 1) % 10;
+  }
+
+  istep = 1;
+  dcur = (dc/10) - 1;
+  xcur = xc - dstep;
+  while(xcur > x1){
+    if(istep == 0){
+      snprintf(buf, 1024, "%02d", dcur);
+      drawGlLine2Df(xcur, y1, xcur, y2, r, g, b, 1, 1);
+      drawGlText((float)(xcur - 1.5 * wfont), (float)(y2 - hfont), buf,
+		 r, g, b, 1, GLUT_BITMAP_8_BY_13);
+      dcur--;
+      if(dcur < 0)
+	dcur + 36;
+    }else{
+      drawGlLine2Df(xcur, y1, xcur, y3, r, g, b, 1, 1);
+    }
+    xcur -= dstep;
+    istep = (istep + 1) % 10;
+  }
 }
 
 void f_aws3_ui::draw_alt()
 {
+  char buf[1024];
+  const float range = 5.; // 5 meter range indicated
+  float alt, climb;
+  m_ch_state->get_climb(alt, climb);
+  snprintf(buf, 1024, "%3.1fm", alt);
+
+  float r = 0, g = 1, b = 0;
+  float x1, y1, x2, y2, wfont, hfont;
+  float wbar = (float) (10. * m_ixscale);
+  float hbar = (float) (m_sz_win.height * 0.8 * m_iyscale);
+  wfont = (float)(8. * m_ixscale);
+  hfont = (float)(13. * m_iyscale);
+  float xorg = (float)(m_sz_win.width * 0.4 * m_ixscale);
+  float yorg = (float)(0.);
+
+  x1 = xorg;
+  y1 = 0;
+  x2 = (float)(xorg - wbar);
+  y2 = 0;
+  drawGlLine2Df(x1, y1, x2, y1, r, g, b, 1, 1);
+  drawGlSquare2Df(x2, y1 + hfont, x2 - 7 * wfont, y1 - hfont, r, g, b, 1, 1);
+  drawGlText(x2 - 6.5 * wfont, y1 - 0.5 * hfont, buf, r, g, b, 1., GLUT_BITMAP_8_BY_13);
+
+  y1 = (float) (yorg - 0.5 * hbar);
+  y2 = (float) (yorg + 0.5 * hbar);
+  drawGlLine2Df(x1, y1, x1, y2, r, g, b, 1, 1);
+
+  x2 = (float)(xorg + wbar);
+  float mstep = (float)(hbar * (0.1 / range)); // steps 10 cm
+  float ycur = 0.;
+  int mc = (int)(floor(alt + 1.0)); // nearest higher meter
+  int mcur = mc;
+  float yc = (float)(hbar * (mc - alt) * (1. / range)); // mc's y
+  float x3 = (float)(xorg + 0.5 * wbar); // small tick
+  ycur = yc;
+  int istep = 0;
+  // larger 
+  while(ycur < y2){
+    if(istep == 0){
+      snprintf(buf, 1024, "%d", mcur);
+      drawGlLine2Df(x1, ycur, x2, ycur, r, g, b, 1, 1);   
+      drawGlText(x2, (float)(ycur - 0.5 * hfont), buf, 
+		 r, g, b, 1., GLUT_BITMAP_8_BY_13);
+      mcur++;
+    }else{
+      drawGlLine2Df(x1, ycur, x3, ycur, r, g, b, 1, 1);
+    }
+    ycur += mstep;
+    istep = (istep + 1) % 10;
+  }
+
+  ycur = (float)(yc - mstep);
+  mcur = mc - 1;
+  istep = 1;
+  // smaller
+  while(ycur > y1){
+    if(istep == 0){
+      snprintf(buf, 1024, "%d", mcur);
+      drawGlLine2Df(x1, ycur, x2, ycur, r, g, b, 1, 1);   
+      drawGlText(x2, (float)(ycur - 0.5 * hfont), buf, 
+		 r, g, b, 1., GLUT_BITMAP_8_BY_13);
+      mcur++;
+    }else{
+      drawGlLine2Df(x1, ycur, x3, ycur, r, g, b, 1, 1);
+    }
+    ycur -= mstep;
+    istep = (istep + 1) % 10;
+  }
 }
 
 void f_aws3_ui::draw_txt()
@@ -220,14 +471,14 @@ void f_aws3_ui::draw_txt()
 	float xorg = -1., yorg = 1.;
 	float x, y, wfont, hfont;
 	wfont = (float)(8. * m_ixscale);
-	hfont = (float)(8. * m_iyscale);
+	hfont = (float)(13. * m_iyscale);
 
 	uint32_t top = m_ch_state->get_op_time();
 
 	x = xorg + wfont; 
 	y = yorg - 2 * hfont;
 	// Time
-	snprintf(buf, 1024, "%s[OP %4.3f sec]", (float)((float)top * 0.001));
+	snprintf(buf, 1024, "%s[OP %4.3f sec]", m_time_str,  (float)((float)top * 0.001));
 	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
 	y -= 2 * hfont;
 
@@ -237,7 +488,7 @@ void f_aws3_ui::draw_txt()
 	else
 		snprintf(buf, 1024, "STATE     : %s", "STANDBY");
 	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
-
+	y -= 2 * hfont;
 	// Mode 
 	snprintf(buf, 1024, "MODE      : %s", m_ch_state->get_custom_mode_str());
 	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
@@ -272,7 +523,7 @@ void f_aws3_ui::draw_txt()
 
 	// Throttle
 	uint16_t thr;
-	m_ch_state->get_thr(thr);
+	thr = m_ch_state->get_thr();
 	snprintf(buf, 1024, "THR       : %03d%%", thr);
 	drawGlText(x, y, buf, 0., 1., 0., 1., GLUT_BITMAP_8_BY_13);
 	y -= 2 * hfont;

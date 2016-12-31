@@ -1407,9 +1407,9 @@ public:
 		thr = _thr;
 	}
 
-	void get_thr(uint16_t & _thr)
+	uint16_t get_thr()
 	{
-		_thr = thr;
+		return thr;
 	}
 
 	void set_climb(const float _alt, const float _climb)
