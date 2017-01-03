@@ -112,6 +112,42 @@ namespace ORB_SLAM2{
 
 		e_tracking_state m_state, m_last_state;
 
+		bool m_blog; // logging mode flag
+
+		long long *** alloc_array_3d(int sx, int sy, int sz){
+			long long *** p = new long long **[sx];
+			long long ** px = new long long *[sx * sy];
+			long long * py = new long long [sx * sy * sz];
+			for (int x = 0; x < sx; x++){
+				p[x] = px;
+				for (int y = 0; y < sy; y++){
+					p[x][y] = py;
+					py += sz;
+				}
+				px += sy;
+			}
+			memset((void*)py, 0, sizeof(long long)* sx * sy * sz);
+			return p;
+		}
+
+		void free_array_3d(long long *** p){
+			delete[] p[0][0];
+			delete[] p[0];
+			delete[] p;	
+		}
+
+		void dump_array_3d(ofstream & ofile, long long *** p, int sx, int sy, int sz)
+		{
+			for (int x = 0; x < sx; x++){
+				ofile << "p[" << x << "]" << endl;
+				for (int y = 0; y < sy; y++){
+					for (int z = 0; z < sz; z++){
+						ofile << p[x][y][z] << ",";
+					}
+					ofile << endl;
+				}
+			}
+		}
 	public:
 		f_tracker(const char * name);
 		virtual ~f_tracker();

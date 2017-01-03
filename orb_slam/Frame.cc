@@ -37,6 +37,10 @@ float Frame::mfGridElementWidthInv, Frame::mfGridElementHeightInv;
 
 int Frame::mFrameGridCols = FRAME_GRID_COLS;
 int Frame::mFrameGridRows = FRAME_GRID_ROWS;
+long long *** Frame::m_cnt_kp = NULL;
+long long *** Frame::m_cnt_ol = NULL;
+unsigned int Frame::m_nol = 0;
+unsigned int Frame::m_nkp = 0;
 
 Frame::Frame()
 {}
@@ -286,6 +290,19 @@ void Frame::AssignFeaturesToGrid()
         if(PosInGrid(kp,nGridPosX,nGridPosY))
             mGrid[nGridPosX][nGridPosY].push_back(i);
     }
+
+	if (m_cnt_kp){
+		for (int i = 0; i < mFrameGridRows; i++){
+			for (int j = 0; j < mFrameGridCols; j++){
+				for (int k = 0; k < mGrid[j][i].size(); k++){
+					int ikey = mGrid[j][i][k];
+					int lv = mvKeysUn[ikey].octave;
+					m_cnt_kp[lv][i][j]++;
+				}
+			}
+		}
+		m_nkp++;
+	}
 }
 
 void Frame::ExtractORB(int flag, const cv::Mat &im)
@@ -425,7 +442,7 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
     return vIndices;
 }
 
-bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY)
+bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY) const
 {
     posX = round((kp.pt.x-mnMinX)*mfGridElementWidthInv);
     posY = round((kp.pt.y-mnMinY)*mfGridElementHeightInv);

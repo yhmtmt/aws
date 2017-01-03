@@ -41,6 +41,27 @@ public:
     bool Initialize(const Frame &CurrentFrame, const vector<int> &vMatches12,
                     cv::Mat &R21, cv::Mat &t21, vector<cv::Point3f> &vP3D, vector<bool> &vbTriangulated);
 
+	static int m_nfini, m_nhini;
+	static bool m_bfini, m_bhini;
+	static long long *** m_cnt_ol_hini;
+	static long long *** m_cnt_ol_fini;
+
+	void cnt_ol_ini(const Frame & cur_frm, long long *** p, vector<bool> & bt, int & cnt){
+		for (int idx = 0; idx < bt.size(); idx++){
+			if (bt[idx])
+				continue;
+			int key1 = mvMatches12[idx].first;
+			int key2 = mvMatches12[idx].second;
+			int x, y, l;
+			l = mvKeys1[key1].octave;
+			cur_frm.PosInGrid(mvKeys1[key1], x, y);
+			p[l][y][x]++;
+			l = mvKeys2[key2].octave;
+			cur_frm.PosInGrid(mvKeys1[key2], x, y);
+			p[l][y][x]++;
+		}
+		cnt++;
+	}
 
 private:
 

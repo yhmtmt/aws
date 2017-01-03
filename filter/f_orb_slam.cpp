@@ -61,7 +61,7 @@ namespace ORB_SLAM2
 		m_max_frms(30), m_min_frms(0),
 		m_pvoc(NULL), m_timg(-1), m_ifrm(-1), m_state(NO_IMAGES_YET), m_last_state(NO_IMAGES_YET),
 		m_ifrm_last_reloc(0), m_pref_kf(NULL), m_bvo(false), m_pinit(NULL), m_plast_kf(NULL), m_last_kf_id(-1),
-		m_num_matches_inliers(0), m_brgb(false), m_undist(true), m_roi(0, 0, 0, 0)
+		m_num_matches_inliers(0), m_brgb(false), m_undist(true), m_roi(0, 0, 0, 0), m_blog(false)
 	{
 		register_fpar("ch_sys", (ch_base**)&m_sys, typeid(ch_sys).name(), "System channel.");
 		register_fpar("ch_cam", (ch_base**)&m_cam, typeid(ch_image_ref).name(), "Camera image channel.");
@@ -97,6 +97,7 @@ namespace ORB_SLAM2
 		register_fpar("FrameGridCols", &Frame::mFrameGridCols, "Frame grid cols.");
 		register_fpar("FrameGridRows", &Frame::mFrameGridRows, "Frame grid rows.");
 
+		register_fpar("log", &m_blog, "Enable logging.");
 	}
 
 	f_tracker::~f_tracker()
@@ -219,6 +220,21 @@ namespace ORB_SLAM2
 		}
 		cout << "done" << endl;
 
+		if (m_blog){
+			// logging mode capability
+			// Key point distribution in frames
+			// Outlier distribution in frames for lv, (x, y) in grid
+			// Key point distribution under tracking for lv, (x, y) in grid
+			// Initialization mode (F or H)
+			// condition failed
+			Frame::m_cnt_ol = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Frame::m_cnt_kp = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Initializer::m_cnt_ol_hini = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Initializer::m_cnt_ol_fini = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Initializer::m_bfini = Initializer::m_bhini = false;
+			Initializer::m_nfini = Initializer::m_nhini = 0;
+		}
+
 		return true;
 	}
 
@@ -232,6 +248,31 @@ namespace ORB_SLAM2
 		if (m_pORBExIni){
 			delete m_pORBExIni;
 			m_pORBExIni = NULL;
+		}
+
+		if (m_blog){
+			// output each distribution as csv
+			char fname[1024];
+			snprintf(fname, 1024, "%s_grid_stat.csv", m_name);
+			ofstream ofile(fname);
+			
+			if (ofile.is_open()){
+				ofile << "Key points in " << Frame::m_nkp << " / " << Frame::nNextId << endl;
+				dump_array_3d(ofile, Frame::m_cnt_kp, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+				ofile << "Outlier in " << Frame::m_nol << " / " << Frame::nNextId << endl;
+				dump_array_3d(ofile, Frame::m_cnt_ol, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+				ofile << "Initializer H outlier (trying " << Initializer::m_nhini << " times result = " << Initializer::m_bhini << ")" << endl;
+				dump_array_3d(ofile, Initializer::m_cnt_ol_hini, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+				ofile << "Initializer F outlier (trying" << Initializer::m_nfini << " times result = " << Initializer::m_bfini << ")" << endl;
+				dump_array_3d(ofile, Initializer::m_cnt_ol_fini, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			}
+
+			free_array_3d(Frame::m_cnt_ol);
+			free_array_3d(Frame::m_cnt_kp);
+			free_array_3d(Initializer::m_cnt_ol_fini);
+			free_array_3d(Initializer::m_cnt_ol_hini);
+			Frame::m_cnt_ol = Frame::m_cnt_kp = NULL;
+			Initializer::m_cnt_ol_fini = Initializer::m_cnt_ol_hini = NULL;
 		}
 	}
 
@@ -248,7 +289,6 @@ namespace ORB_SLAM2
 
 		if (!load_frm())
 			return true;
-		aws_scope_show sc("f_tracker::proc");
 
 		if (m_state == NO_IMAGES_YET)
 			m_state = NOT_INITIALIZED;
@@ -918,6 +958,9 @@ namespace ORB_SLAM2
 
 		// Optimize frame pose with all matches
 		Optimizer::PoseOptimization(&m_cur_frm);
+
+		if (m_blog)
+			m_cur_frm.cnt_ol();
 
 		// Discard outliers
 		int nmatchesMap = 0;

@@ -41,6 +41,20 @@ class Frame
 {
 public:
 	static int mFrameGridRows, mFrameGridCols;
+	static long long *** m_cnt_ol, *** m_cnt_kp;
+	static unsigned int m_nol, m_nkp;
+	void cnt_ol(){
+		m_nol++;
+		for (int i = 0; i < N; i++){
+			if (mvbOutlier[i]){
+				int x, y;
+				PosInGrid(mvKeysUn[i], x, y);
+				int l = mvKeysUn[i].octave;
+				m_cnt_ol[i][y][x]++;
+			}
+		}
+	}
+
     Frame();
 
     // Copy constructor.
@@ -84,7 +98,7 @@ public:
     bool isInFrustum(MapPoint* pMP, float viewingCosLimit);
 
     // Compute the cell of a keypoint (return false if outside the grid)
-    bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY);
+    bool PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY) const;
 
     vector<size_t> GetFeaturesInArea(const float &x, const float  &y, const float  &r, const int minLevel=-1, const int maxLevel=-1) const;
 
