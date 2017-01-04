@@ -18,6 +18,6 @@ filter aws3_ui aws3ui -i -o
 fset aws3ui ch_param aws3par ch_state aws3state ch_cmd aws3cmd ch_img img
 fset aws3ui width 1600 height 900
 #fset aws3ui verb yes
-
+fset aws3ui nz -500
 cyc 0.05
 go
