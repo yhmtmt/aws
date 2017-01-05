@@ -46,7 +46,8 @@ using namespace cv;
 #include "f_aws3_ui.h"
 
 f_aws3_ui::f_aws3_ui(const char * name) :f_glfw_window(name), m_ch_param(NULL), m_ch_state(NULL), m_ch_cmd(NULL), m_ch_img(NULL), m_verb(false),
-					 m_js_id(0)
+					 m_js_id(0),
+					 m_nx(0), m_ny(0), m_nz(0), m_nr(0)
 {
 	register_fpar("js", &m_js_id, "Joystick id");
 	register_fpar("ch_param", (ch_base**)&m_ch_param, typeid(ch_aws3_param).name(), "Channel of AWS3's parameters.");
@@ -54,6 +55,10 @@ f_aws3_ui::f_aws3_ui(const char * name) :f_glfw_window(name), m_ch_param(NULL), 
 	register_fpar("ch_cmd", (ch_base**)&m_ch_cmd, typeid(ch_aws3_cmd).name(), "Channel of AWS3 command.");
 	register_fpar("ch_img", (ch_base**)&m_ch_img, typeid(ch_image_ref).name(), "Streaming channel");
 	register_fpar("verb", &m_verb, "Debug mode.");
+	register_fpar("nx", &m_nx, "Neutral in x direction.");
+	register_fpar("ny", &m_ny, "Neutral in y direction.");
+	register_fpar("nz", &m_nz, "Neutral in z direction.");
+	register_fpar("nr", &m_nr, "Neutral in rotation.");
 }
 
 f_aws3_ui::~f_aws3_ui()
@@ -148,10 +153,10 @@ void f_aws3_ui::handle_js()
   m_js.set_stk();
   m_js.set_btn();
 
-  short x = (short)(1000 * m_js.lr1);
-  short y = (short)(1000 * m_js.ud1);
-  short z = -(short)(1000 * m_js.ud2);
-  short r = (short)(1000 * m_js.lr2);
+  short x = -(short)(1000 * m_js.ud1) - m_nx;
+  short y = (short)(1000 * m_js.lr1) + m_ny;
+  short z = -(short)(1000 * m_js.ud2) - m_nz;
+  short r = (short)(1000 * m_js.lr2) + m_nr;
   m_ch_cmd->set(x, y, z, r);
   // flt mode 1 manual
   // flt mode 2 stabilized
@@ -343,7 +348,7 @@ void f_aws3_ui::draw_att()
   
   int dc = (((int)(ywd + 370.) % 360) / 10) * 10;
   float dstep = (float) (wbar / ranged);
-  xc = (float)(((float)dc - ywd) * dstep);
+  xc = (float)((float)((int)((float)dc - ywd) % 360) * dstep);
   float xcur = xc;
   int istep = 0;
   y2 = (float)(yorg - hbar);

@@ -29,6 +29,8 @@ private:
 	void draw_att();
 	void draw_alt();
 	void draw_txt();
+	
+	short m_nx, m_ny, m_nz, m_nr;
 public:
 	f_aws3_ui(const char * name);
 	virtual ~f_aws3_ui();
