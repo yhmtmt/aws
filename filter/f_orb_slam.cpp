@@ -57,7 +57,7 @@ namespace ORB_SLAM2
 	///////////////////////////////////////////////// tracker
 	f_tracker::f_tracker(const char * name) :f_base(name),
 		m_cam(NULL), m_pORBEx(NULL), m_pORBExIni(NULL),
-		m_kf_mapper(NULL), m_kfdb(NULL), m_map(NULL), m_trj(NULL), m_frm(NULL),
+		m_kf_mapper(NULL), m_kfdb(NULL), m_map(NULL), m_trj(NULL), m_frm(NULL), m_ch_state(NULL),
 		m_max_frms(30), m_min_frms(0),
 		m_pvoc(NULL), m_timg(-1), m_ifrm(-1), m_state(NO_IMAGES_YET), m_last_state(NO_IMAGES_YET),
 		m_ifrm_last_reloc(0), m_pref_kf(NULL), m_bvo(false), m_pinit(NULL), m_plast_kf(NULL), m_last_kf_id(-1),
@@ -70,7 +70,7 @@ namespace ORB_SLAM2
 		register_fpar("ch_map", (ch_base**)&m_map, typeid(ch_map).name(), "Map channel.");
 		register_fpar("ch_trj", (ch_base**)&m_trj, typeid(ch_trj).name(), "Trajectory channel.");
 		register_fpar("ch_frm", (ch_base**)&m_frm, typeid(ch_frm).name(), "Frame channel.");
-
+		register_fpar("ch_state", (ch_base**)(&m_ch_state), typeid(ch_state).name(), "State channel");
 		m_fcp[0] = m_fvoc[0] = '\0';
 		register_fpar("fcp", m_fcp, 1024, "File of camera parameters.");
 		register_fpar("fvoc", m_fvoc, 1024, "File of vocablary.");

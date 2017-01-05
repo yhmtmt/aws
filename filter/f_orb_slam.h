@@ -23,6 +23,7 @@
 
 #include "../channel/ch_image.h"
 #include "../channel/ch_orb_slam.h"
+#include "../channel/ch_state.h"
 
 #include "f_base.h"
 
@@ -44,6 +45,7 @@ namespace ORB_SLAM2{
 		ch_map * m_map;
 		ch_trj * m_trj;
 		ch_frm * m_frm;
+		ch_state * m_ch_state;
 
 		AWSCamPar m_cp;
 		Mat m_Kf, m_Df; // m_cp is double precision, here the single precision camera parameters are presented
