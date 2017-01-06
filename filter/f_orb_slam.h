@@ -231,7 +231,7 @@ namespace ORB_SLAM2{
 		ch_map * m_map;
 		ch_trj * m_trj;
 		ch_frm * m_frm;
-
+		ch_state * m_ch_state;
 		enum e_vmode{
 			FRAME, MAP, MAP_AND_FRAME, UNDEF
 		} m_vmode;
@@ -256,6 +256,8 @@ namespace ORB_SLAM2{
 		bool m_draw_kf, m_draw_g;
 		void draw_cam(GLdouble * Twc);
 		void load_cam_pose(GLdouble * Twc);
+
+		float m_xscale, m_yscale, m_ixscale, m_iyscale;
 	public:
 		f_viewer(const char * name);
 		virtual ~f_viewer();

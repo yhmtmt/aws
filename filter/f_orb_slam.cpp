@@ -43,7 +43,7 @@ using namespace cv;
 #include <GL/glut.h>
 #include <GL/glu.h>
 
-
+#include "../util/aws_glib.h"
 #include"../orb_slam/PnPsolver.h"
 #include "../orb_slam/ORBmatcher.h"
 #include "../orb_slam/Converter.h"
@@ -2686,7 +2686,7 @@ namespace ORB_SLAM2
 	};
 
 	f_viewer::f_viewer(const char * name) : f_glfw_window(name), m_cam(NULL), m_sys(NULL),
-		m_map(NULL), m_trj(NULL), m_frm(NULL),
+		m_map(NULL), m_trj(NULL), m_frm(NULL), m_ch_state(NULL),
 		m_draw_kf(true), m_draw_g(true), m_vmode(FRAME)
 	{
 		register_fpar("ch_sys", (ch_base**)&m_sys, typeid(ch_sys).name(), "System channel.");
@@ -2694,6 +2694,8 @@ namespace ORB_SLAM2
 		register_fpar("ch_map", (ch_base**)&m_map, typeid(ch_map).name(), "Map channel.");
 		register_fpar("ch_trj", (ch_base**)&m_trj, typeid(ch_trj).name(), "Trajectory channel.");
 		register_fpar("ch_frm", (ch_base**)&m_frm, typeid(ch_frm).name(), "Frame channel.");
+		register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_state).name(), "State channel");
+
 		register_fpar("draw_kf", &m_draw_kf, "Flag drawing key frames.");
 		register_fpar("draw_g", &m_draw_g, "Flag drawing graph.");
 		register_fpar("lw_g", &m_lw_g, "Line width of graph");
@@ -2740,6 +2742,11 @@ namespace ORB_SLAM2
 		glLoadIdentity();
 		gluLookAt(m_eyex, m_eyey, m_eyez, 0, 0, 0, 0, -1., 0);
 
+		m_xscale = (float)(0.5 * m_sz_win.width);
+		m_yscale = (float)(0.5 * m_sz_win.height);
+		m_ixscale = (float)(2.0 / (double)m_sz_win.width);
+		m_iyscale = (float)(2.0 / (double)m_sz_win.height);
+
 		return true;
 	}
 
@@ -2782,6 +2789,8 @@ namespace ORB_SLAM2
 				resize(imWithInfo, tmp, m_sz_win);
 				imWithInfo = tmp;
 			}
+			glRasterPos2i(-1, -1);
+
 			glDrawPixels(imWithInfo.cols, imWithInfo.rows, GL_RGB, GL_UNSIGNED_BYTE, imWithInfo.data);
 		}
 		else if (m_vmode == MAP_AND_FRAME){
@@ -2790,8 +2799,61 @@ namespace ORB_SLAM2
 				resize(imWithInfo, tmp, Size(m_sz_win.width >> 2, m_sz_win.height >> 2));
 				imWithInfo = tmp;
 			}
+			glRasterPos2i(-1, -1);
+
 			glDrawPixels(imWithInfo.cols, imWithInfo.rows, GL_RGB, GL_UNSIGNED_BYTE, imWithInfo.data);
 		}
+
+		if (m_ch_state){
+			glDisable(GL_DEPTH_TEST);
+			long long tatt, tpos, tecef, tvel;
+			float roll, pitch, yaw;
+			m_ch_state->get_attitude(tatt, roll, pitch, yaw);
+			float lat, lon, alt, galt;
+			m_ch_state->get_position(tpos, lat, lon, alt, galt);
+			float xecef, yecef, zecef;
+			m_ch_state->get_position_ecef(tecef, xecef, yecef, zecef);
+			float cog, sog;
+			m_ch_state->get_velocity(tvel, cog, sog);
+
+
+			float x, y, wfont, hfont;
+			char buf[1024];
+			int dt;
+			wfont = (float)(8. * m_ixscale);
+			hfont = (float)(13. * m_iyscale);
+
+			x = (float)(-1. + wfont);
+			y = (float)(1 - 2 * hfont);
+
+			snprintf(buf, 1024, "%s", m_time_str);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+			dt = (int)(tatt - m_cur_time);
+			snprintf(buf, 1024, "t %d roll %3.3f pitch %3.3f yaw %3.3f", dt, roll, pitch, yaw);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+			dt = (int)(tpos - m_cur_time);
+			snprintf(buf, 1024, "t %d lat %3.8f lon %3.8f alt %3.3f", dt, lat, lon, alt);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+			dt = (int)(tecef - m_cur_time);
+			snprintf(buf, 1024, "t %d x %f y %f z %f", dt, xecef, yecef, zecef);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+			dt = (int)(tvel - m_cur_time);
+			snprintf(buf, 1024, "t %d cog %f sog %f", dt, cog, sog);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+
+			glEnable(GL_DEPTH_TEST);
+		}
+
 		glPopMatrix();
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
