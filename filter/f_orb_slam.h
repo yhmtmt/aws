@@ -120,6 +120,8 @@ namespace ORB_SLAM2{
 			long long *** p = new long long **[sx];
 			long long ** px = new long long *[sx * sy];
 			long long * py = new long long [sx * sy * sz];
+			memset((void*)py, 0, sizeof(long long)* sx * sy * sz);
+
 			for (int x = 0; x < sx; x++){
 				p[x] = px;
 				for (int y = 0; y < sy; y++){
@@ -128,7 +130,6 @@ namespace ORB_SLAM2{
 				}
 				px += sy;
 			}
-			memset((void*)py, 0, sizeof(long long)* sx * sy * sz);
 			return p;
 		}
 
@@ -257,6 +258,8 @@ namespace ORB_SLAM2{
 		void draw_cam(GLdouble * Twc);
 		void load_cam_pose(GLdouble * Twc);
 
+		long long m_t;
+		unsigned long m_id;
 		float m_xscale, m_yscale, m_ixscale, m_iyscale;
 	public:
 		f_viewer(const char * name);

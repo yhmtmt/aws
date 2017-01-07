@@ -409,6 +409,8 @@ namespace ORB_SLAM2
 	class ch_frm : public ch_base
 	{
 	protected:
+		long long m_t;
+		unsigned long m_id_frm;
 		Mat m_img;
 		int m_num_keys;
 		vector<bool> m_bmap;
@@ -440,9 +442,11 @@ namespace ORB_SLAM2
 		}
 
 		// call if tracking state is not NOT_INITIALIZED
-		void update(Mat & img, vector<MapPoint*> &cur_mps, vector<bool> & outlier, vector<KeyPoint> & cur_keys, e_tracking_state state)
+		void update(long long t, unsigned long id_frm, Mat & img, vector<MapPoint*> &cur_mps, vector<bool> & outlier, vector<KeyPoint> & cur_keys, e_tracking_state state)
 		{
 			lock();
+			m_t = t;
+			m_id_frm = id_frm;
 			img.copyTo(m_img);
 			m_cur_keys = cur_keys;
 			m_num_keys = cur_keys.size();
@@ -468,7 +472,7 @@ namespace ORB_SLAM2
 			unlock();
 		}
 
-		void get(Mat & img, vector<int> & matches, vector<KeyPoint> & ini_keys,
+		void get(long long & t, unsigned long &id, Mat & img, vector<int> & matches, vector<KeyPoint> & ini_keys,
 			vector<KeyPoint> & cur_keys, vector<bool> & bvo, vector<bool> & bmap,
 			e_tracking_state & state)
 		{
@@ -492,6 +496,8 @@ namespace ORB_SLAM2
 				cur_keys = m_cur_keys;
 			}
 			state = m_state;
+			t = m_t;
+			id = m_id_frm;
 			unlock();
 		}
 

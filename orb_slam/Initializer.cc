@@ -120,17 +120,17 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
 	bool res;
 	if (RH > 0.40){
 		res = ReconstructH(vbMatchesInliersH, H, mK, R21, t21, vP3D, vbTriangulated, 1.0, 50);
-		if (m_cnt_ol_hini){
-			cnt_ol_ini(CurrentFrame, m_cnt_ol_hini, vbTriangulated, m_nhini);
-			m_bhini = res;
+		if (m_cnt_ol_hini && (m_bhini = res)){
+			cnt_ol_ini(CurrentFrame, m_cnt_ol_hini, vbTriangulated);
 		}
+		m_nhini++;
 	}
 	else{ //if(pF_HF>0.6)
 		res = ReconstructF(vbMatchesInliersF, F, mK, R21, t21, vP3D, vbTriangulated, 1.0, 50);
-		if (m_cnt_ol_fini){
-			cnt_ol_ini(CurrentFrame, m_cnt_ol_fini, vbTriangulated, m_nfini);
-			m_bfini = res;
+		if (m_cnt_ol_fini && (m_bfini = res)){
+			cnt_ol_ini(CurrentFrame, m_cnt_ol_fini, vbTriangulated);
 		}
+		m_nfini++;
 	}
     return res;
 }

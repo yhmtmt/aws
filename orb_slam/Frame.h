@@ -50,7 +50,7 @@ public:
 				int x, y;
 				PosInGrid(mvKeysUn[i], x, y);
 				int l = mvKeysUn[i].octave;
-				m_cnt_ol[i][y][x]++;
+				m_cnt_ol[l][y][x]++;
 			}
 		}
 	}

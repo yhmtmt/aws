@@ -201,6 +201,21 @@ namespace ORB_SLAM2
 			return false;
 		}
 
+		if (m_blog){
+			// logging mode capability
+			// Key point distribution in frames
+			// Outlier distribution in frames for lv, (x, y) in grid
+			// Key point distribution under tracking for lv, (x, y) in grid
+			// Initialization mode (F or H)
+			// condition failed
+			Frame::m_cnt_ol = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Frame::m_cnt_kp = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Initializer::m_cnt_ol_hini = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Initializer::m_cnt_ol_fini = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Initializer::m_bfini = Initializer::m_bhini = false;
+			Initializer::m_nfini = Initializer::m_nhini = 0;
+		}
+
 		if (!m_pvoc)
 			delete m_pvoc;
 
@@ -219,21 +234,6 @@ namespace ORB_SLAM2
 			return false;
 		}
 		cout << "done" << endl;
-
-		if (m_blog){
-			// logging mode capability
-			// Key point distribution in frames
-			// Outlier distribution in frames for lv, (x, y) in grid
-			// Key point distribution under tracking for lv, (x, y) in grid
-			// Initialization mode (F or H)
-			// condition failed
-			Frame::m_cnt_ol = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
-			Frame::m_cnt_kp = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
-			Initializer::m_cnt_ol_hini = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
-			Initializer::m_cnt_ol_fini = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
-			Initializer::m_bfini = Initializer::m_bhini = false;
-			Initializer::m_nfini = Initializer::m_nhini = 0;
-		}
 
 		return true;
 	}
@@ -263,7 +263,7 @@ namespace ORB_SLAM2
 				dump_array_3d(ofile, Frame::m_cnt_ol, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
 				ofile << "Initializer H outlier (trying " << Initializer::m_nhini << " times result = " << Initializer::m_bhini << ")" << endl;
 				dump_array_3d(ofile, Initializer::m_cnt_ol_hini, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
-				ofile << "Initializer F outlier (trying" << Initializer::m_nfini << " times result = " << Initializer::m_bfini << ")" << endl;
+				ofile << "Initializer F outlier (trying " << Initializer::m_nfini << " times result = " << Initializer::m_bfini << ")" << endl;
 				dump_array_3d(ofile, Initializer::m_cnt_ol_fini, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
 			}
 
@@ -321,7 +321,7 @@ namespace ORB_SLAM2
 				if (m_state == NOT_INITIALIZED)
 					m_frm->init(m_img, m_cur_frm.mvKeys, m_ini_frm.mvKeys, m_ini_matches, m_state);
 				else
-					m_frm->update(m_img, m_cur_frm.mvpMapPoints, m_cur_frm.mvbOutlier, m_cur_frm.mvKeys, m_state);
+					m_frm->update(m_cur_frm.mTimeStamp, m_cur_frm.mnId, m_img, m_cur_frm.mvpMapPoints, m_cur_frm.mvbOutlier, m_cur_frm.mvKeys, m_state);
 			}
 
 			if (m_state != OK){
@@ -407,7 +407,7 @@ namespace ORB_SLAM2
 #ifdef DEBUG_ORB_SLAM
 				cout << "m_frm->update ... ";
 #endif
-				m_frm->update(m_img, m_cur_frm.mvpMapPoints, m_cur_frm.mvbOutlier, m_cur_frm.mvKeys, m_state);
+				m_frm->update(m_cur_frm.mTimeStamp, m_cur_frm.mnId, m_img, m_cur_frm.mvpMapPoints, m_cur_frm.mvbOutlier, m_cur_frm.mvKeys, m_state);
 #ifdef DEBUG_ORB_SLAM
 				cout << "done." << endl;
 #endif
@@ -2687,7 +2687,7 @@ namespace ORB_SLAM2
 
 	f_viewer::f_viewer(const char * name) : f_glfw_window(name), m_cam(NULL), m_sys(NULL),
 		m_map(NULL), m_trj(NULL), m_frm(NULL), m_ch_state(NULL),
-		m_draw_kf(true), m_draw_g(true), m_vmode(FRAME)
+		m_draw_kf(true), m_draw_g(true), m_vmode(FRAME), m_sz_kf(0.05), m_sz_cam(0.08)
 	{
 		register_fpar("ch_sys", (ch_base**)&m_sys, typeid(ch_sys).name(), "System channel.");
 		register_fpar("ch_cam", (ch_base**)&m_cam, typeid(ch_image_ref).name(), "Camera image channel.");
@@ -2830,23 +2830,28 @@ namespace ORB_SLAM2
 			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 			y -= 2 * hfont;
 
+			dt = (int)(m_t - m_cur_time);
+			snprintf(buf, 1024, "t %+10d FrameId %+10d", dt, m_id);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
 			dt = (int)(tatt - m_cur_time);
-			snprintf(buf, 1024, "t %d roll %3.3f pitch %3.3f yaw %3.3f", dt, roll, pitch, yaw);
+			snprintf(buf, 1024, "t %+10d roll %+3.3f pitch %+3.3f yaw %+3.3f", dt, roll, pitch, yaw);
 			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 			y -= 2 * hfont;
 
 			dt = (int)(tpos - m_cur_time);
-			snprintf(buf, 1024, "t %d lat %3.8f lon %3.8f alt %3.3f", dt, lat, lon, alt);
+			snprintf(buf, 1024, "t %+10d lat %+3.8f lon %+3.8f alt %+3.3f", dt, lat, lon, alt);
 			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 			y -= 2 * hfont;
 
 			dt = (int)(tecef - m_cur_time);
-			snprintf(buf, 1024, "t %d x %f y %f z %f", dt, xecef, yecef, zecef);
+			snprintf(buf, 1024, "t %+10d x %+f y %+f z %+f", dt, xecef, yecef, zecef);
 			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 			y -= 2 * hfont;
 
 			dt = (int)(tvel - m_cur_time);
-			snprintf(buf, 1024, "t %d cog %f sog %f", dt, cog, sog);
+			snprintf(buf, 1024, "t %+10d cog %+3.1f sog %+3.1f", dt, cog, sog);
 			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 			y -= 2 * hfont;
 
@@ -2868,7 +2873,7 @@ namespace ORB_SLAM2
 			GLdouble eyex, eyey, eyez;
 			eyex = _eyex * Twc[0] + _eyey * Twc[4] + _eyez * Twc[8] + Twc[12];
 			eyey = _eyex * Twc[1] + _eyey * Twc[5] + _eyez * Twc[9] + Twc[13];
-			eyez = _eyez * Twc[2] + _eyey * Twc[6] + _eyez * Twc[10] + Twc[14];
+			eyez = _eyex * Twc[2] + _eyey * Twc[6] + _eyez * Twc[10] + Twc[14];
 			gluLookAt(eyex, eyey, eyez, Twc[12], Twc[13], Twc[14], 0, -1, 0);
 			draw_cam(Twc);
 			draw_kfs();
@@ -2889,7 +2894,7 @@ namespace ORB_SLAM2
 		vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
 		vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
 		e_tracking_state state; // Tracking state
-		m_frm->get(im, vMatches, vIniKeys, vCurrentKeys, vbVO, vbMap, state);
+		m_frm->get(m_t, m_id, im, vMatches, vIniKeys, vCurrentKeys, vbVO, vbMap, state);
 
 		if (im.empty())
 			return;
