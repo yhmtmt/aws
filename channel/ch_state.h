@@ -24,13 +24,72 @@
 class ch_estate : public ch_base
 {
 protected:
-
+	long long tbih, tecef, tenu;
+	float lat, lon, alt;
+	float xecef, yecef, zecef;
+	Mat Renu;
 public:
 	ch_estate(const char * name) :ch_base(name)
 	{
 	}
 	virtual ~ch_estate()
 	{
+	}
+
+	void set_pos(const long long _t, const float _lat, const float _lon, const float _alt)
+	{
+		lock();
+		tbih = _t;
+		lat = _lat;
+		lon = _lon;
+		alt = _alt;
+		unlock();
+	}
+
+	void get_pos(long long & _t, float & _lat, float & _lon, float & _alt)
+	{
+		lock();
+		_t = tbih;
+		_lat = lat;
+		_lon = lon;
+		_alt = alt;
+		unlock();
+	}
+
+	void set_pos_ecef(const long long _t, const float _x, const float _y, const float _z)
+	{
+		lock();
+		tecef = _t;
+		xecef = _x;
+		yecef = _y;
+		zecef = _z;
+		unlock();
+	}
+
+	void get_pos_ecef(long long & _t, float & _x, float & _y, float & _z)
+	{
+		lock();
+		_t = tecef;
+		_x = xecef;
+		_y = yecef;
+		_z = zecef;
+		unlock();
+	}
+
+	void set_enu_rot(long long & _t, const Mat & R)
+	{
+		lock();
+		tenu = _t;
+		Renu = R.clone();
+		unlock();
+	}
+
+	Mat get_enu_rot(long long & _t){
+		lock();
+		_t = tenu;
+		Mat R = Renu.clone();
+		unlock();
+		return R;
 	}
 };
 

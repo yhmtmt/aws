@@ -247,6 +247,7 @@ void ch_base::register_factory()
 #include "filter/f_ahrs.h"
 #include "filter/f_map.h"
 #include "filter/f_time.h"
+#include "filter/f_state_estimator.h"
 #include "filter/f_aws1_ap.h"
 #include "filter/f_obj_manager.h"
 #include "filter/f_wp_manager.h"
@@ -414,7 +415,7 @@ void f_base::register_factory()
 #endif
 
 	register_factory<f_aws3_com>("aws3c");
-
+	register_factory<f_state_estimator>("stest");
 
 #ifdef GST_CAM
 	register_factory<f_gst_cam>("gstcam");
