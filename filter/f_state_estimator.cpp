@@ -51,7 +51,7 @@ m_tpos_prev(0), m_tvel_prev(0), m_bacv(false), m_lag_x(10), m_lag_v(10), m_blog(
 	float * pRv = m_Rv.ptr<float>();
 	
 	register_fpar("ch_state", (ch_base**)(&m_ch_state), typeid(ch_state).name(), "State channel");
-	register_fpar("ch_estate", (ch_base**)(&m_ch_state), typeid(ch_state).name(), "Estimated state channel");
+	register_fpar("ch_estate", (ch_base**)(&m_ch_estate), typeid(ch_estate).name(), "Estimated state channel");
 	register_fpar("qxx", pQx, "Qx(0, 0)");
 	register_fpar("qxy", pQx + 1, "Qx(0, 1)");
 	register_fpar("qyx", pQx + 2, "Qx(1, 0) should be equal to Qx(0, 1)");
@@ -93,6 +93,8 @@ bool f_state_estimator::init_run()
 		return false;
 	}
 
+	m_tpos_prev = m_tvel_prev = 0;
+
 	m_Px = Mat::zeros(2, 2, CV_32FC1);
 	m_Pv = Mat::zeros(2, 2, CV_32FC1);
 
@@ -100,6 +102,8 @@ bool f_state_estimator::init_run()
 		m_ACVx = Mat::zeros(m_lag_x*2, m_lag_x*2, CV_64FC1);
 		m_ACVv = Mat::zeros(m_lag_v*2, m_lag_v*2, CV_64FC1);
 		m_ex.resize(m_lag_x);
+		m_ey.resize(m_lag_x);
+		m_eu.resize(m_lag_v);
 		m_ev.resize(m_lag_v);
 		m_cur_x = m_cnt_x = 0;
 		m_cur_v = m_cnt_v = 0;
@@ -121,10 +125,13 @@ bool f_state_estimator::init_run()
 			cerr << "Failed to open " << fname << endl;
 			return false;
 		}
+		m_flog_x.precision(12);
+		m_flog_v.precision(12);
+		m_flog_x.setf(ios::scientific);
+		m_flog_v.setf(ios::scientific);
+		m_flog_x << "Time, Observation, lat, lon alt, elat, elon, ealt, x, y, z, ex, ey, ez, sxx, syy, szz, sxy, sxz, syz" << endl;
 
-		m_flog_x << "Time, Observation, lat, lon, alt, x, y, z, sxx, syy, szz, sxy, sxz, syz" << endl;
-
-		m_flog_v << "Time Observation, u, v, cog, sog, suu, svv, suv" << endl;
+		m_flog_v << "Time Observation, u, v, eu, ev, cog, sog, ecog, esog, suu, svv, suv" << endl;
 	}
 
 	return true;
@@ -140,6 +147,7 @@ void f_state_estimator::destroy_run()
 		if (ofile.is_open()){
 			double inv_cnt_x = 1.0 / m_cnt_x;
 			double inv_cnt_v = 1.0 / m_cnt_v;
+			double soff = 0.;
 			m_m_ex *= inv_cnt_x;
 			m_m_ey *= inv_cnt_x;
 			m_m_eu *= inv_cnt_v;
@@ -154,18 +162,27 @@ void f_state_estimator::destroy_run()
 				double * p = m_ACVx.ptr<double>(i);
 				for (int j = 0; j < m_ACVx.cols; j++){
 					ofile << *p * inv_cnt_x << ",";
+					if (i != j)
+						soff += abs(*p);
 					p++;			
 				}
 				ofile << endl;
 			}
+			soff *= inv_cnt_x;
+			ofile << "Sum of off-diagonal part," << soff << endl;
+
 			ofile << "Autocovariance for velosity" << endl;
 			for (int i = 0; i < m_ACVv.rows; i++){
 				double * p = m_ACVv.ptr<double>(i);
 				for (int j = 0; j < m_ACVv.cols; j++){
 					ofile << *p * inv_cnt_v << ",";
+					if (i != j)
+						soff += abs(*p);
 					p++;
 				}
 			}
+			soff *= inv_cnt_v;
+			ofile << "Sum of off-diagonal part," << soff << endl;
 		}
 	}
 
@@ -196,7 +213,7 @@ bool f_state_estimator::proc()
 	float dtx = (float)((m_cur_time - tbih) * (1.0 / (double)SEC));
 	float dtv = (float)((m_cur_time - tvel) * (1.0 / (double)SEC));
 
-	if (m_tpos_prev == 0){
+	if (m_tpos_prev == 0 && tbih != 0){
 		m_lat_prev = m_lat_opt = gps_lat;
 		m_lon_prev = m_lon_opt = gps_lon;
 		m_alt_prev = m_alt_opt = gps_alt;
@@ -207,10 +224,10 @@ bool f_state_estimator::proc()
 		m_ch_estate->set_pos(t, m_lat_opt, m_lon_opt, 0);
 		m_ch_estate->set_pos_ecef(t, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px);
 		m_ch_estate->set_enu_rot(t, m_Renu_opt);
-		m_tpos_prev = t;
+		m_tpos_prev = tbih;
 	}
 
-	if (m_tvel_prev == 0){
+	if (m_tvel_prev == 0 && tvel != 0){
 		float cog_rad = (float)(cog * (PI / 180.));
 		float cog_cos = (float)cos(cog_rad);
 		float cog_sin = (float)sin(cog_rad);
@@ -222,7 +239,11 @@ bool f_state_estimator::proc()
 		m_v_prev = m_v_opt = v;
 		m_ch_estate->set_velp(t, cog, sog);
 		m_ch_estate->set_vel(t, u, v, m_Pv);
-		m_tvel_prev = t;
+		m_tvel_prev = tvel;
+	}
+
+	if (m_tvel_prev == 0 || m_tpos_prev == 0){
+		return true;
 	}
 
 	// write estimated state to estate channel
@@ -301,9 +322,9 @@ bool f_state_estimator::proc()
 
 			getwrldrotf(m_lat_opt, m_lon_opt, m_Renu_opt);
 
-			m_ch_estate->set_pos(t, m_lat_opt, m_lon_opt, 0);
-			m_ch_estate->set_pos_ecef(t, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef);
-			m_ch_estate->set_enu_rot(t, m_Renu_opt);
+			m_ch_estate->set_pos(tbih, m_lat_opt, m_lon_opt, 0);
+			m_ch_estate->set_pos_ecef(tbih, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef);
+			m_ch_estate->set_enu_rot(tbih, m_Renu_opt);
 
 			m_lat_prev = gps_lat;
 			m_lon_prev = gps_lon;
@@ -312,7 +333,7 @@ bool f_state_estimator::proc()
 			m_yecef_prev = gps_yecef;
 			m_zecef_prev = gps_zecef;
 			m_Renu_prev = Renu;
-			m_tpos_prev = t;
+			m_tpos_prev = tbih;
 
 			if (m_bacv){
 				m_ex[m_cur_x] = ex;
@@ -333,18 +354,22 @@ bool f_state_estimator::proc()
 
 							m--;
 							if (m < 0)
-								m += m_cur_x;
+								m += m_lag_x;
 						}
 						l--;
 						if (l < 0)
-							l += m_cur_x;
+							l += m_lag_x;
 					}
 				}
 			}
 
 			if (m_blog){
 				float * p = m_Px.ptr<float>();
-				m_flog_x << t << ",0," << m_lat_opt << "," << m_lon_opt << ",0," << m_xecef_opt << "," << m_yecef_opt << "," << m_zecef_opt
+				m_flog_x << t << ",1," 
+					<< gps_lat << "," << gps_lon << "," << gps_alt << "," 
+					<< m_lat_opt << "," << m_lon_opt << ",0," 
+					<< gps_xecef << "," << gps_yecef << "," << gps_zecef << ","
+					<< m_xecef_opt << "," << m_yecef_opt << "," << m_zecef_opt
 					<< p[0] << "," << p[4] << "," << p[8] << "," << p[1] << "," << p[2] << "," << p[5] << endl;
 			}
 		}
@@ -363,7 +388,11 @@ bool f_state_estimator::proc()
 
 			if (m_blog){
 				float * p = P.ptr<float>();
-				m_flog_x << t << ",0," << plat << "," << plon << ",0," << xpecef << "," << ypecef << "," << zpecef
+				m_flog_x << t << ",0," 
+					<< ",,,"
+					<< plat << "," << plon << ",0," 
+					<< ",,,"
+					<< xpecef << "," << ypecef << "," << zpecef
 					<< p[0] << "," << p[4] << "," << p[8] <<  "," << p[1] << "," << p[2] << "," << p[5] << endl;
 			}
 		}
@@ -386,10 +415,10 @@ bool f_state_estimator::proc()
 		m_u_opt = (float)(pK[0] * eu + pK[1] * ev + u);
 		m_v_opt = (float)(pK[2] * eu + pK[3] * ev + v);
 		m_cog_opt = (float)atan2(u, v) * (180. / PI);
-		m_sog_opt = (float)sqrt(m_u_opt * m_u_opt + m_v_opt * m_v_opt);
+		m_sog_opt = (float)sqrt(m_u_opt * m_u_opt + m_v_opt * m_v_opt) * (3600. / 1852.);
 		m_tvel_prev = t;
-		m_ch_estate->set_velp(t, m_cog_opt, m_sog_opt);
-		m_ch_estate->set_vel(t, m_u_opt, m_v_opt, m_Pv);
+		m_ch_estate->set_velp(tvel, m_cog_opt, m_sog_opt);
+		m_ch_estate->set_vel(tvel, m_u_opt, m_v_opt, m_Pv);
 
 		if (m_bacv){
 			m_eu[m_cur_v] = eu;
@@ -410,18 +439,22 @@ bool f_state_estimator::proc()
 
 						m--;
 						if (m < 0)
-							m += m_cur_v;
+							m += m_lag_v;
 					}
 					l--;
 					if (l < 0)
-						l += m_cur_v;
+						l += m_lag_v;
 				}
 			}
 		}
 
 		if (m_blog){
 			float * p = m_Pv.ptr<float>();
-			m_flog_v << t << ",1," << m_u_opt << "," << m_v_opt << "," << m_cog_opt << "," << m_sog_opt
+			m_flog_v << t << ",1," 
+				<< u << "," << v 
+				<< m_u_opt << "," << m_v_opt << "," 
+				<< cog << "," << sog << ","
+				<< m_cog_opt << "," << m_sog_opt
 				<< p[0] << "," << p[3] << "," << p[1] << endl;
 		}
 	}

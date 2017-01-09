@@ -47,11 +47,15 @@ protected:
 
 	Mat calc_cov_ecef(Mat & Penu){
 		Mat Pecef = Mat::zeros(3, 3, CV_32FC1);
+		Mat R;
+		m_Renu_opt.convertTo(R, CV_32FC1);
 		Pecef.at<float>(0, 0) = Penu.at<float>(0, 0);
 		Pecef.at<float>(0, 1) = Penu.at<float>(0, 1);
 		Pecef.at<float>(1, 0) = Penu.at<float>(1, 0);
 		Pecef.at<float>(1, 1) = Penu.at<float>(1, 1);
-		return m_Renu_opt * Pecef * m_Renu_opt.t();
+	    Pecef = R * Pecef;
+		Pecef *= R.t();
+		return Pecef;
 	}
 
 	// Related to measuring auto-covariance
