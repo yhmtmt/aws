@@ -40,9 +40,31 @@ protected:
 	float m_cog_prev, m_sog_prev;
 	float m_u_prev, m_v_prev;
 	float m_u_opt, m_v_opt;
+	float m_cog_opt, m_sog_opt;
 
 	Mat m_Renu_prev, m_Renu_opt;
-	Mat m_Qx, m_Qv, m_Rx, m_Rv, m_Px, m_Pv;
+	Mat m_Qx, m_Qv, m_Rx, m_Rv, m_Px, m_Pv, m_Px_ecef;
+
+	Mat calc_cov_ecef(Mat & Penu){
+		Mat Pecef = Mat::zeros(3, 3, CV_32FC1);
+		Pecef.at<float>(0, 0) = Penu.at<float>(0, 0);
+		Pecef.at<float>(0, 1) = Penu.at<float>(0, 1);
+		Pecef.at<float>(1, 0) = Penu.at<float>(1, 0);
+		Pecef.at<float>(1, 1) = Penu.at<float>(1, 1);
+		return m_Renu_opt * Pecef * m_Renu_opt.t();
+	}
+
+	// Related to measuring auto-covariance
+	bool m_bacv;
+	int m_lag_x, m_lag_v;
+	Mat m_ACVx, m_ACVv;
+	double m_m_ex, m_m_ey, m_m_eu, m_m_ev;
+	vector<float> m_ex, m_ey, m_eu, m_ev;
+	int m_cur_x, m_cur_v;
+	int m_cnt_x, m_cnt_v;
+
+	bool m_blog;
+	ofstream m_flog_x, m_flog_v;
 
 public:
 	f_state_estimator(const char * name);

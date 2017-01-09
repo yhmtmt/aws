@@ -24,10 +24,13 @@
 class ch_estate : public ch_base
 {
 protected:
-	long long tbih, tecef, tenu;
+	long long tbih, tecef, tenu, tvp, tv;
 	float lat, lon, alt;
 	float xecef, yecef, zecef;
-	Mat Renu;
+	Mat Renu, Pecef;
+	float u, v, cog, sog;
+	Mat Pv;
+
 public:
 	ch_estate(const char * name) :ch_base(name)
 	{
@@ -56,23 +59,25 @@ public:
 		unlock();
 	}
 
-	void set_pos_ecef(const long long _t, const float _x, const float _y, const float _z)
+	void set_pos_ecef(const long long _t, const float _x, const float _y, const float _z, Mat & P)
 	{
 		lock();
 		tecef = _t;
 		xecef = _x;
 		yecef = _y;
 		zecef = _z;
+		Pecef = P;
 		unlock();
 	}
 
-	void get_pos_ecef(long long & _t, float & _x, float & _y, float & _z)
+	void get_pos_ecef(long long & _t, float & _x, float & _y, float & _z, Mat & P)
 	{
 		lock();
 		_t = tecef;
 		_x = xecef;
 		_y = yecef;
 		_z = zecef;
+		P = Pecef;
 		unlock();
 	}
 
@@ -90,6 +95,44 @@ public:
 		Mat R = Renu.clone();
 		unlock();
 		return R;
+	}
+
+	void set_vel(const long long _t, const float _u, const float _v, Mat & P)
+	{
+		lock();
+		tv = _t;
+		u = _u;
+		v = _v;
+		Pv = P;
+		unlock();
+	}
+
+	void get_vel(long long & _t, float & _u, float & _v, Mat & P)
+	{
+		lock();
+		_t = tv;
+		_u = u;
+		_v = v;
+		P = Pv;
+		unlock();
+	}
+
+	void set_velp(const long long _t, const float _cog, const float _sog)
+	{
+		lock();
+		tvp = _t;
+		cog = _cog;
+		sog = _sog;
+		unlock();
+	}
+
+	void get_velp(long long & _t, float & _cog, float & _sog)
+	{
+		lock();
+		_t = tvp;
+		_cog = cog;
+		_sog = sog;
+		unlock();
 	}
 };
 
