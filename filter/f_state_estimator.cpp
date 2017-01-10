@@ -225,6 +225,7 @@ bool f_state_estimator::proc()
 		m_ch_estate->set_pos_ecef(t, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px);
 		m_ch_estate->set_enu_rot(t, m_Renu_opt);
 		m_tpos_prev = tbih;
+		return true;
 	}
 
 	if (m_tvel_prev == 0 && tvel != 0){
@@ -240,6 +241,7 @@ bool f_state_estimator::proc()
 		m_ch_estate->set_velp(t, cog, sog);
 		m_ch_estate->set_vel(t, u, v, m_Pv);
 		m_tvel_prev = tvel;
+		return true;
 	}
 
 	if (m_tvel_prev == 0 || m_tpos_prev == 0){
@@ -307,21 +309,29 @@ bool f_state_estimator::proc()
 			float xp = m_u_prev * dtx, yp = m_v_prev * dtx;
 			Mat Kx = Pdtx * (m_Rx + Pdtx).inv();
 			float x, y, z; // observed x, y, z
-			eceftowrld(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, gps_xecef, gps_yecef, gps_zecef, x, y, z);
+			//eceftowrld(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, gps_xecef, gps_yecef, gps_zecef, x, y, z);
+			x = y = z = 0.;
 			float ex = (float)(x - xp), ey = (float)(y - yp);
 
 			float *pK = Kx.ptr<float>(0);
 			float xe, ye;
 
-			xe = (float)(pK[0] * ex + pK[1] * ey + x);
-			ye = (float)(pK[2] * ex + pK[3] * ey + y);
-			wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xe, ye, 0.f, m_xecef_opt, m_yecef_opt, m_zecef_opt);
+			xe = (float)(pK[0] * ex + pK[1] * ey + xp);
+			ye = (float)(pK[2] * ex + pK[3] * ey + yp);
+			float x_opt, y_opt, z_opt;
+			wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xe, ye, 0.f,x_opt, y_opt, z_opt);
+			m_xecef_opt = x_opt;
+			m_yecef_opt = y_opt;
+			m_zecef_opt = z_opt;
 			eceftobih(m_xecef_opt, m_yecef_opt, m_zecef_opt, m_lat_opt, m_lon_opt, m_alt_opt);
 			m_Px = (Mat::eye(2, 2, CV_32FC1) - Kx) * Pdtx;
+
 			m_Px_ecef = calc_cov_ecef(m_Px);
 
-			getwrldrotf(m_lat_opt, m_lon_opt, m_Renu_opt);
+			getwrldrot(m_lat_opt, m_lon_opt, m_Renu_opt);
 
+			m_lat_opt *= (float)(180. / PI);
+			m_lon_opt *= (float)(180. / PI);
 			m_ch_estate->set_pos(tbih, m_lat_opt, m_lon_opt, 0);
 			m_ch_estate->set_pos_ecef(tbih, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef);
 			m_ch_estate->set_enu_rot(tbih, m_Renu_opt);
@@ -375,13 +385,16 @@ bool f_state_estimator::proc()
 		}
 		else{
 			// update prediction
+			
 			float xp = m_u_prev * dtx, yp = m_v_prev * dtx;
 			float xpecef, ypecef, zpecef, plat, plon, palt;
 			wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xp, yp, 0.f, xpecef, ypecef, zpecef);
 			eceftobih(xpecef, ypecef, zpecef, plat, plon, palt);
 			Mat P = calc_cov_ecef(Pdtx);
 			Mat R;
-			getwrldrotf(plat, plon, R);
+			getwrldrot(plat, plon, R);
+			plat *= (float)(180. / PI);
+			plon *= (float)(180. / PI);
 			m_ch_estate->set_pos(t, plat, plon, 0.f);
 			m_ch_estate->set_pos_ecef(t, xpecef, ypecef, zpecef, P);
 			m_ch_estate->set_enu_rot(t, R);
@@ -395,6 +408,7 @@ bool f_state_estimator::proc()
 					<< xpecef << "," << ypecef << "," << zpecef
 					<< p[0] << "," << p[4] << "," << p[8] <<  "," << p[1] << "," << p[2] << "," << p[5] << endl;
 			}
+			
 		}
 	}
 
