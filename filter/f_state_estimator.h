@@ -53,8 +53,8 @@ protected:
 		Pecef.at<float>(0, 1) = Penu.at<float>(0, 1);
 		Pecef.at<float>(1, 0) = Penu.at<float>(1, 0);
 		Pecef.at<float>(1, 1) = Penu.at<float>(1, 1);
-	    Pecef = R * Pecef;
-		Pecef *= R.t();
+	    Pecef = R.t() * Pecef;
+		Pecef *= R;
 		return Pecef;
 	}
 

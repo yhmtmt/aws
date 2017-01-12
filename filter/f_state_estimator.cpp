@@ -60,14 +60,14 @@ m_tpos_prev(0), m_tvel_prev(0), m_bacv(false), m_lag_x(10), m_lag_v(10), m_blog(
 	register_fpar("quv", pQv + 1, "Qv(0, 1)");
 	register_fpar("qvu", pQv + 2, "Qv(1, 0) should be equal to Qv(0, 1)");
 	register_fpar("qvv", pQv + 3, "Qv(1, 1)");
-	register_fpar("rxx", pQx, "Rx(0, 0)");
-	register_fpar("rxy", pQx + 1, "Rx(0, 1)");
-	register_fpar("ryx", pQx + 2, "Rx(1, 0) should be equal to Rx(0, 1)");
-	register_fpar("ryy", pQx + 3, "Rx(1, 1)");
-	register_fpar("ruu", pQv, "Rv(0, 0)");
-	register_fpar("ruv", pQv + 1, "Rv(0, 1)");
-	register_fpar("rvu", pQv + 2, "Rv(1, 0) should be equal to Rv(0, 1)");
-	register_fpar("rvv", pQv + 3, "Rv(1, 1)");
+	register_fpar("rxx", pRx, "Rx(0, 0)");
+	register_fpar("rxy", pRx + 1, "Rx(0, 1)");
+	register_fpar("ryx", pRx + 2, "Rx(1, 0) should be equal to Rx(0, 1)");
+	register_fpar("ryy", pRx + 3, "Rx(1, 1)");
+	register_fpar("ruu", pRv, "Rv(0, 0)");
+	register_fpar("ruv", pRv + 1, "Rv(0, 1)");
+	register_fpar("rvu", pRv + 2, "Rv(1, 0) should be equal to Rv(0, 1)");
+	register_fpar("rvv", pRv + 3, "Rv(1, 1)");
 
 	register_fpar("acv", &m_bacv, "Calculating auto-covariance.");
 	register_fpar("lag_x", &m_lag_x, "Maximum lag calculating auto-covariance for position.");
@@ -210,9 +210,6 @@ bool f_state_estimator::proc()
 	float cog, sog;
 	m_ch_state->get_velocity(tvel, cog, sog);
 
-	float dtx = (float)((m_cur_time - tbih) * (1.0 / (double)SEC));
-	float dtv = (float)((m_cur_time - tvel) * (1.0 / (double)SEC));
-
 	if (m_tpos_prev == 0 && tbih != 0){
 		m_lat_prev = m_lat_opt = gps_lat;
 		m_lon_prev = m_lon_opt = gps_lon;
@@ -298,43 +295,57 @@ bool f_state_estimator::proc()
 	// | ue | = Kv | eu | +  | u |
 	// | ve |      | ev |    | v |
 
-	Mat Pdtv;
-	Pdtv = dtv * m_Qv + m_Pv;
+
 	if (tbih == tecef && tbih == tenu){
-		Mat Pdtx;
-		Pdtx = dtx * m_Qx + m_Px + dtx * dtx * Pdtv;
 
 		if (tbih > m_tpos_prev){
+			float dtx = (float)((tbih - m_tpos_prev) * (1.0 / (double)SEC));
+			float dtv = (float)((tbih - m_tvel_prev) * (1.0 / (double)SEC));
+
+			Mat Pdtv;
+			Pdtv = dtv * m_Qv + m_Pv;
+			Mat Pdtx;
+			Pdtx = dtx * m_Qx + m_Px + dtx * dtx * Pdtv;
+
 			// updating previous measurement
-			float xp = m_u_prev * dtx, yp = m_v_prev * dtx;
+			float xp = m_u_opt * dtx, yp = m_v_opt * dtx;
 			Mat Kx = Pdtx * (m_Rx + Pdtx).inv();
 			float x, y, z; // observed x, y, z
-			//eceftowrld(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, gps_xecef, gps_yecef, gps_zecef, x, y, z);
-			x = y = z = 0.;
+			eceftowrld(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, gps_xecef, gps_yecef, gps_zecef, x, y, z);
+		
 			float ex = (float)(x - xp), ey = (float)(y - yp);
-
+			cout << "(xp,yp)=(" << xp << "," << yp << ")" << endl;
+			cout << "(xo, yo)=(" << x << "," << y << ")" << endl;
 			float *pK = Kx.ptr<float>(0);
 			float xe, ye;
 
 			xe = (float)(pK[0] * ex + pK[1] * ey + xp);
 			ye = (float)(pK[2] * ex + pK[3] * ey + yp);
+			cout << "(xe,ye)=(" << xe << "," << ye << ")" << endl;
 			float x_opt, y_opt, z_opt;
-			wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xe, ye, 0.f,x_opt, y_opt, z_opt);
+			wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xe, ye, 0., x_opt, y_opt, z_opt);
 			m_xecef_opt = x_opt;
 			m_yecef_opt = y_opt;
 			m_zecef_opt = z_opt;
 			eceftobih(m_xecef_opt, m_yecef_opt, m_zecef_opt, m_lat_opt, m_lon_opt, m_alt_opt);
 			m_Px = (Mat::eye(2, 2, CV_32FC1) - Kx) * Pdtx;
+			cout << "Kx:" << endl << Kx << endl;
+//			cout << "Pdtx:" << endl << Pdtx << endl;
+//			cout << "m_Px:" << endl << m_Px << endl;
 
 			m_Px_ecef = calc_cov_ecef(m_Px);
-
+			cout << "m_Px_ecef:" << endl << m_Px_ecef << endl;
+			double dx = m_xecef_opt - gps_xecef, dy = m_yecef_opt - gps_yecef, dz = m_zecef_opt - gps_zecef;
+			double d = sqrt(dx * dx + dy * dy + dz * dz);
+			cout << "dist measured and opt:" << d << endl;
+			cout << "alt:" << m_alt_opt << "=" << gps_alt <<  endl;
 			getwrldrot(m_lat_opt, m_lon_opt, m_Renu_opt);
 
 			m_lat_opt *= (float)(180. / PI);
 			m_lon_opt *= (float)(180. / PI);
-			m_ch_estate->set_pos(tbih, m_lat_opt, m_lon_opt, 0);
-			m_ch_estate->set_pos_ecef(tbih, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef);
-			m_ch_estate->set_enu_rot(tbih, m_Renu_opt);
+			m_ch_estate->set_pos_opt(tbih, m_lat_opt, m_lon_opt, m_alt_opt);
+			m_ch_estate->set_pos_ecef_opt(tbih, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef);
+			m_ch_estate->set_enu_rot_opt(tbih, m_Renu_opt);
 
 			m_lat_prev = gps_lat;
 			m_lon_prev = gps_lon;
@@ -374,21 +385,29 @@ bool f_state_estimator::proc()
 			}
 
 			if (m_blog){
-				float * p = m_Px.ptr<float>();
+				float * p = m_Px_ecef.ptr<float>();
 				m_flog_x << t << ",1," 
 					<< gps_lat << "," << gps_lon << "," << gps_alt << "," 
 					<< m_lat_opt << "," << m_lon_opt << ",0," 
 					<< gps_xecef << "," << gps_yecef << "," << gps_zecef << ","
-					<< m_xecef_opt << "," << m_yecef_opt << "," << m_zecef_opt
-					<< p[0] << "," << p[4] << "," << p[8] << "," << p[1] << "," << p[2] << "," << p[5] << endl;
+					<< m_xecef_opt << "," << m_yecef_opt << "," << m_zecef_opt << ","
+ 					<< p[0] << "," << p[4] << "," << p[8] << "," << p[1] << "," << p[2] << "," << p[5] << endl;
 			}
 		}
 		else{
+			float dtx = (float)((m_cur_time - m_tpos_prev) * (1.0 / (double)SEC));
+			float dtv = (float)((m_cur_time - m_tvel_prev) * (1.0 / (double)SEC));
+
+			Mat Pdtv;
+			Pdtv = dtv * m_Qv + m_Pv;
+			Mat Pdtx;
+			Pdtx = dtx * m_Qx + m_Px + dtx * dtx * Pdtv;
+
 			// update prediction
 			
 			float xp = m_u_prev * dtx, yp = m_v_prev * dtx;
 			float xpecef, ypecef, zpecef, plat, plon, palt;
-			wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xp, yp, 0.f, xpecef, ypecef, zpecef);
+			wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xp, yp, 0., xpecef, ypecef, zpecef);
 			eceftobih(xpecef, ypecef, zpecef, plat, plon, palt);
 			Mat P = calc_cov_ecef(Pdtx);
 			Mat R;
@@ -405,7 +424,7 @@ bool f_state_estimator::proc()
 					<< ",,,"
 					<< plat << "," << plon << ",0," 
 					<< ",,,"
-					<< xpecef << "," << ypecef << "," << zpecef
+					<< xpecef << "," << ypecef << "," << zpecef << ","
 					<< p[0] << "," << p[4] << "," << p[8] <<  "," << p[1] << "," << p[2] << "," << p[5] << endl;
 			}
 			
@@ -413,6 +432,12 @@ bool f_state_estimator::proc()
 	}
 
 	if (tvel > m_tvel_prev){
+		float dtx = (float)((tvel - m_tpos_prev) * (1.0 / (double)SEC));
+		float dtv = (float)((tvel - m_tvel_prev) * (1.0 / (double)SEC));
+
+		Mat Pdtv;
+		Pdtv = dtv * m_Qv + m_Pv;
+
 		Mat Kv = Pdtv * (m_Rv + Pdtv).inv();
 		float cog_rad = (float)(cog * (PI / 180.));
 		float cog_cos = (float)cos(cog_rad);

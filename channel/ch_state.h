@@ -25,9 +25,16 @@ class ch_estate : public ch_base
 {
 protected:
 	long long tbih, tecef, tenu, tvp, tv;
+
 	float lat, lon, alt;
 	float xecef, yecef, zecef;
 	Mat Renu, Pecef;
+
+	long long tbih_opt, tecef_opt, tenu_opt;
+	float lat_opt, lon_opt, alt_opt;
+	float xecef_opt, yecef_opt, zecef_opt;
+	Mat Renu_opt, Pecef_opt;
+
 	float u, v, cog, sog;
 	Mat Pv;
 
@@ -38,6 +45,7 @@ public:
 	virtual ~ch_estate()
 	{
 	}
+
 
 	void set_pos(const long long _t, const float _lat, const float _lon, const float _alt)
 	{
@@ -56,6 +64,26 @@ public:
 		_lat = lat;
 		_lon = lon;
 		_alt = alt;
+		unlock();
+	}
+
+	void set_pos_opt(const long long _t, const float _lat, const float _lon, const float _alt)
+	{
+		lock();
+		tbih_opt = _t;
+		lat = _lat;
+		lon = _lon;
+		alt = _alt;
+		unlock();
+	}
+
+	void get_pos_opt(long long & _t, float & _lat, float & _lon, float & _alt)
+	{
+		lock();
+		_t = tbih_opt;
+		_lat = lat_opt;
+		_lon = lon_opt;
+		_alt = alt_opt;
 		unlock();
 	}
 
@@ -81,6 +109,28 @@ public:
 		unlock();
 	}
 
+	void set_pos_ecef_opt(const long long _t, const float _x, const float _y, const float _z, Mat & P)
+	{
+		lock();
+		tecef_opt = _t;
+		xecef_opt = _x;
+		yecef_opt = _y;
+		zecef_opt = _z;
+		Pecef_opt = P;
+		unlock();
+	}
+
+	void get_pos_ecef_opt(long long & _t, float & _x, float & _y, float & _z, Mat & P)
+	{
+		lock();
+		_t = tecef_opt;
+		_x = xecef_opt;
+		_y = yecef_opt;
+		_z = zecef_opt;
+		P = Pecef;
+		unlock();
+	}
+
 	void set_enu_rot(long long & _t, const Mat & R)
 	{
 		lock();
@@ -93,6 +143,22 @@ public:
 		lock();
 		_t = tenu;
 		Mat R = Renu.clone();
+		unlock();
+		return R;
+	}
+
+	void set_enu_rot_opt(long long & _t, const Mat & R)
+	{
+		lock();
+		tenu_opt = _t;
+		Renu_opt = R.clone();
+		unlock();
+	}
+
+	Mat get_enu_rot_opt(long long & _t){
+		lock();
+		_t = tenu_opt;
+		Mat R = Renu_opt.clone();
 		unlock();
 		return R;
 	}
