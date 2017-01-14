@@ -96,6 +96,7 @@ bool f_state_estimator::init_run()
 	m_tpos_prev = m_tvel_prev = 0;
 
 	m_Px = Mat::zeros(2, 2, CV_32FC1);
+	m_Px_ecef = Mat::zeros(3, 3, CV_32FC1);
 	m_Pv = Mat::zeros(2, 2, CV_32FC1);
 
 	if (m_bacv){
@@ -169,9 +170,10 @@ void f_state_estimator::destroy_run()
 				ofile << endl;
 			}
 			soff *= inv_cnt_x;
-			ofile << "Sum of off-diagonal part," << soff << endl;
+			ofile << "Avg of off-diagonal part," << soff << endl;
 
 			ofile << "Autocovariance for velosity" << endl;
+			soff = 0;
 			for (int i = 0; i < m_ACVv.rows; i++){
 				double * p = m_ACVv.ptr<double>(i);
 				for (int j = 0; j < m_ACVv.cols; j++){
@@ -180,9 +182,10 @@ void f_state_estimator::destroy_run()
 						soff += abs(*p);
 					p++;
 				}
+				ofile << endl;
 			}
 			soff *= inv_cnt_v;
-			ofile << "Sum of off-diagonal part," << soff << endl;
+			ofile << "Avg of off-diagonal part," << soff << endl;
 		}
 	}
 
@@ -218,9 +221,7 @@ bool f_state_estimator::proc()
 		m_yecef_prev = m_yecef_opt = gps_yecef;
 		m_zecef_prev = m_zecef_opt = gps_zecef;
 		m_Renu_prev = m_Renu_opt = Renu;
-		m_ch_estate->set_pos(t, m_lat_opt, m_lon_opt, 0);
-		m_ch_estate->set_pos_ecef(t, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px);
-		m_ch_estate->set_enu_rot(t, m_Renu_opt);
+		m_ch_estate->set_pos_opt(t, m_lat_opt, m_lon_opt, m_alt_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef, m_Px, m_Renu_opt);
 		m_tpos_prev = tbih;
 		return true;
 	}
@@ -235,8 +236,7 @@ bool f_state_estimator::proc()
 		m_sog_prev = m_sog_opt = sog;
 		m_u_prev = m_u_opt = u;
 		m_v_prev = m_v_opt = v;
-		m_ch_estate->set_velp(t, cog, sog);
-		m_ch_estate->set_vel(t, u, v, m_Pv);
+		m_ch_estate->set_vel_opt(t, u, v, cog, sog, m_Pv);
 		m_tvel_prev = tvel;
 		return true;
 	}
@@ -297,7 +297,6 @@ bool f_state_estimator::proc()
 
 
 	if (tbih == tecef && tbih == tenu){
-
 		if (tbih > m_tpos_prev){
 			float dtx = (float)((tbih - m_tpos_prev) * (1.0 / (double)SEC));
 			float dtv = (float)((tbih - m_tvel_prev) * (1.0 / (double)SEC));
@@ -312,7 +311,7 @@ bool f_state_estimator::proc()
 			Mat Kx = Pdtx * (m_Rx + Pdtx).inv();
 			float x, y, z; // observed x, y, z
 			eceftowrld(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, gps_xecef, gps_yecef, gps_zecef, x, y, z);
-		
+
 			float ex = (float)(x - xp), ey = (float)(y - yp);
 			cout << "(xp,yp)=(" << xp << "," << yp << ")" << endl;
 			cout << "(xo, yo)=(" << x << "," << y << ")" << endl;
@@ -330,22 +329,21 @@ bool f_state_estimator::proc()
 			eceftobih(m_xecef_opt, m_yecef_opt, m_zecef_opt, m_lat_opt, m_lon_opt, m_alt_opt);
 			m_Px = (Mat::eye(2, 2, CV_32FC1) - Kx) * Pdtx;
 			cout << "Kx:" << endl << Kx << endl;
-//			cout << "Pdtx:" << endl << Pdtx << endl;
-//			cout << "m_Px:" << endl << m_Px << endl;
+			//			cout << "Pdtx:" << endl << Pdtx << endl;
+			//			cout << "m_Px:" << endl << m_Px << endl;
 
 			m_Px_ecef = calc_cov_ecef(m_Px);
 			cout << "m_Px_ecef:" << endl << m_Px_ecef << endl;
 			double dx = m_xecef_opt - gps_xecef, dy = m_yecef_opt - gps_yecef, dz = m_zecef_opt - gps_zecef;
 			double d = sqrt(dx * dx + dy * dy + dz * dz);
 			cout << "dist measured and opt:" << d << endl;
-			cout << "alt:" << m_alt_opt << "=" << gps_alt <<  endl;
+			cout << "alt:" << m_alt_opt << "=" << gps_alt << endl;
 			getwrldrot(m_lat_opt, m_lon_opt, m_Renu_opt);
 
 			m_lat_opt *= (float)(180. / PI);
 			m_lon_opt *= (float)(180. / PI);
-			m_ch_estate->set_pos_opt(tbih, m_lat_opt, m_lon_opt, m_alt_opt);
-			m_ch_estate->set_pos_ecef_opt(tbih, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef);
-			m_ch_estate->set_enu_rot_opt(tbih, m_Renu_opt);
+			m_ch_estate->set_pos_opt(tbih, m_lat_opt, m_lon_opt, m_alt_opt,
+				m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef, m_Renu_opt, m_Px);
 
 			m_lat_prev = gps_lat;
 			m_lon_prev = gps_lon;
@@ -386,48 +384,13 @@ bool f_state_estimator::proc()
 
 			if (m_blog){
 				float * p = m_Px_ecef.ptr<float>();
-				m_flog_x << t << ",1," 
-					<< gps_lat << "," << gps_lon << "," << gps_alt << "," 
-					<< m_lat_opt << "," << m_lon_opt << ",0," 
+				m_flog_x << t << ",1,"
+					<< gps_lat << "," << gps_lon << "," << gps_alt << ","
+					<< m_lat_opt << "," << m_lon_opt << ",0,"
 					<< gps_xecef << "," << gps_yecef << "," << gps_zecef << ","
 					<< m_xecef_opt << "," << m_yecef_opt << "," << m_zecef_opt << ","
- 					<< p[0] << "," << p[4] << "," << p[8] << "," << p[1] << "," << p[2] << "," << p[5] << endl;
+					<< p[0] << "," << p[4] << "," << p[8] << "," << p[1] << "," << p[2] << "," << p[5] << endl;
 			}
-		}
-		else{
-			float dtx = (float)((m_cur_time - m_tpos_prev) * (1.0 / (double)SEC));
-			float dtv = (float)((m_cur_time - m_tvel_prev) * (1.0 / (double)SEC));
-
-			Mat Pdtv;
-			Pdtv = dtv * m_Qv + m_Pv;
-			Mat Pdtx;
-			Pdtx = dtx * m_Qx + m_Px + dtx * dtx * Pdtv;
-
-			// update prediction
-			
-			float xp = m_u_prev * dtx, yp = m_v_prev * dtx;
-			float xpecef, ypecef, zpecef, plat, plon, palt;
-			wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xp, yp, 0., xpecef, ypecef, zpecef);
-			eceftobih(xpecef, ypecef, zpecef, plat, plon, palt);
-			Mat P = calc_cov_ecef(Pdtx);
-			Mat R;
-			getwrldrot(plat, plon, R);
-			plat *= (float)(180. / PI);
-			plon *= (float)(180. / PI);
-			m_ch_estate->set_pos(t, plat, plon, 0.f);
-			m_ch_estate->set_pos_ecef(t, xpecef, ypecef, zpecef, P);
-			m_ch_estate->set_enu_rot(t, R);
-
-			if (m_blog){
-				float * p = P.ptr<float>();
-				m_flog_x << t << ",0," 
-					<< ",,,"
-					<< plat << "," << plon << ",0," 
-					<< ",,,"
-					<< xpecef << "," << ypecef << "," << zpecef << ","
-					<< p[0] << "," << p[4] << "," << p[8] <<  "," << p[1] << "," << p[2] << "," << p[5] << endl;
-			}
-			
 		}
 	}
 
@@ -456,8 +419,8 @@ bool f_state_estimator::proc()
 		m_cog_opt = (float)atan2(u, v) * (180. / PI);
 		m_sog_opt = (float)sqrt(m_u_opt * m_u_opt + m_v_opt * m_v_opt) * (3600. / 1852.);
 		m_tvel_prev = t;
-		m_ch_estate->set_velp(tvel, m_cog_opt, m_sog_opt);
-		m_ch_estate->set_vel(tvel, m_u_opt, m_v_opt, m_Pv);
+
+		m_ch_estate->set_vel_opt(tvel, m_u_opt, m_v_opt, m_cog_opt, m_sog_opt, m_Pv);
 
 		if (m_bacv){
 			m_eu[m_cur_v] = eu;
@@ -489,9 +452,9 @@ bool f_state_estimator::proc()
 
 		if (m_blog){
 			float * p = m_Pv.ptr<float>();
-			m_flog_v << t << ",1," 
-				<< u << "," << v 
-				<< m_u_opt << "," << m_v_opt << "," 
+			m_flog_v << t << ",1,"
+				<< u << "," << v
+				<< m_u_opt << "," << m_v_opt << ","
 				<< cog << "," << sog << ","
 				<< m_cog_opt << "," << m_sog_opt
 				<< p[0] << "," << p[3] << "," << p[1] << endl;

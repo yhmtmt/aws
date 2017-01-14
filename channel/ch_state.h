@@ -24,181 +24,210 @@
 class ch_estate : public ch_base
 {
 protected:
-	long long tbih, tecef, tenu, tvp, tv;
 
-	float lat, lon, alt;
-	float xecef, yecef, zecef;
-	Mat Renu, Pecef;
+	struct s_pos_opt{
+		long long t;
+		float lat, lon, alt;
+		float xecef, yecef, zecef;
+		Mat Renu, Penu, Pecef;
+	};
 
-	long long tbih_opt, tecef_opt, tenu_opt;
-	float lat_opt, lon_opt, alt_opt;
-	float xecef_opt, yecef_opt, zecef_opt;
-	Mat Renu_opt, Pecef_opt;
+	int cur_pos_opt;
+	int num_pos_opt;
+	vector<s_pos_opt> pos_opt;
 
-	float u, v, cog, sog;
-	Mat Pv;
+	struct s_vel_opt{
+		long long t;
+		float u, v, cog, sog;
+		Mat Pv;
+	};
+
+	int cur_vel_opt;
+	int num_vel_opt;
+	vector<s_vel_opt> vel_opt;
 
 public:
 	ch_estate(const char * name) :ch_base(name)
 	{
+		cur_pos_opt = num_pos_opt = 0;
+		cur_vel_opt = num_vel_opt = 0;
+		pos_opt.resize(100);
+		vel_opt.resize(100);
 	}
 	virtual ~ch_estate()
 	{
 	}
 
-
-	void set_pos(const long long _t, const float _lat, const float _lon, const float _alt)
+	void set_pos_opt(const long long _t, const float _lat, const float _lon, const float _alt,
+		const float _x, const float _y, const float _z, const Mat & Pecef, const Mat & Penu, const Mat & Renu)
 	{
 		lock();
-		tbih = _t;
-		lat = _lat;
-		lon = _lon;
-		alt = _alt;
+		s_pos_opt & p = pos_opt[cur_pos_opt];
+		p.t = _t;
+		p.lat = _lat;
+		p.lon = _lon;
+		p.alt = _alt;
+		p.xecef = _x;
+		p.yecef = _y;
+		p.zecef = _z;
+		p.Pecef = Pecef.clone();
+		p.Penu = Penu.clone();
+		p.Renu = Renu.clone();
+		cur_pos_opt++;
+		if (cur_pos_opt == pos_opt.size())
+			cur_pos_opt = 0;
+		if (num_pos_opt < pos_opt.size())
+			num_pos_opt++;
+
 		unlock();
 	}
+	
+	bool get_pos_opt(const long long t, const Mat & Qv, const Mat & Qx, 
+		float & lat, float & lon, float & alt,
+		float & xecef, float & yecef, float & zecef, 
+		Mat & Pecef, Mat & Renu, bool both = false)
+	{
+		float u, v;
+		Mat Pv;
+		if (!get_vel_opt(t, Qv, u, v, Pv))
+			return false;
 
-	void get_pos(long long & _t, float & _lat, float & _lon, float & _alt)
+		lock();
+		// seek nearest position record
+		int ipos = (cur_pos_opt + pos_opt.size() - 1) % pos_opt.size();
+		int ipos_best = -1, ipos_next = -1;
+
+		long long tdiff;
+		for (int i = 0; i < num_pos_opt; i++){
+			if ((tdiff = t - pos_opt[ipos].t) >= 0){
+				ipos_next = ipos_best;
+				ipos_best = ipos;
+			}
+			else{
+				break;
+			}
+			ipos = (ipos + pos_opt.size() - 1) % pos_opt.size();
+		}
+
+		if (ipos_best < 0){
+			unlock();
+			return false;
+		}
+
+		float dtx = (float)(tdiff * (1.0 / (double)SEC));
+		s_pos_opt & p = pos_opt[ipos_best];
+		Mat Pdtx = p.Penu + dtx * Qx + dtx * dtx * Pv;
+
+		float x = (float)(u * dtx);
+		float y = (float)(v * dtx);
+
+		if (both && ipos_next >= 0){
+			s_pos_opt & pnext = pos_opt[ipos_next];
+			float dtxn = (float)((pnext.t - t) * (1.0 / (double)(SEC)));
+			float xn = (float)(-u * dtxn);
+			float yn = (float)(-v * dtxn);
+			Mat Pdtxn = pnext.Penu + dtxn * Qx + dtxn * dtxn * Pv;
+			Mat Pdtxn_inv = Pdtxn.inv();
+			Mat Pdtx_inv = Pdtx.inv();
+			float * pPdtxn = Pdtxn_inv.ptr<float>();
+			float * pPdtx = Pdtx_inv.ptr<float>();
+			float _xn = (float)(pPdtxn[0] * xn + pPdtxn[1] * yn);
+			float _yn = (float)(pPdtxn[2] * xn + pPdtxn[3] * yn);
+			float _x = (float)(pPdtx[0] * x + pPdtx[1] * y);
+			float _y = (float)(pPdtx[2] * x + pPdtx[3] * y);
+			_x = _xn + _x;
+			_y = _yn + _y;
+			Pdtx = (Pdtxn_inv + Pdtx_inv).inv();
+			pPdtx = Pdtx.ptr<float>();
+			x = (float)(pPdtx[0] * _x + pPdtx[1] * _y);
+			y = (float)(pPdtx[2] * _x + pPdtx[3] * _y);
+		}
+
+		wrldtoecef(p.Renu, p.xecef, p.yecef, p.zecef, x, y, 0., xecef, yecef, zecef);
+		eceftobih(xecef, yecef, zecef, lat, lon, alt);
+		getwrldrot(lat, lon, Renu);
+		lat *= (float)(180. / PI);
+		lon *= (float)(180. / PI);
+		
+		Pecef = Mat::zeros(3, 3, CV_32FC1);
+		Mat Renuf;
+		p.Renu.convertTo(Renuf, CV_32FC1);
+		Pecef.at<float>(0, 0) = Pdtx.at<float>(0, 0);
+		Pecef.at<float>(0, 1) = Pdtx.at<float>(0, 1);
+		Pecef.at<float>(1, 0) = Pdtx.at<float>(1, 0);
+		Pecef.at<float>(1, 1) = Pdtx.at<float>(1, 1);
+		Pecef = Renuf.t() * Pecef * Renuf;
+
+		unlock();
+
+		return true;
+	}
+
+	void set_vel_opt(const long long _t, const float _u, const float _v, 
+		const float _cog, const float _sog, const Mat & Pv)
 	{
 		lock();
-		_t = tbih;
-		_lat = lat;
-		_lon = lon;
-		_alt = alt;
+		s_vel_opt & v = vel_opt[cur_vel_opt];
+		v.t = _t;
+		v.u = _u;
+		v.v = _v;
+		v.cog = _cog;
+		v.sog = _sog;
+		v.Pv = Pv.clone();
+		cur_vel_opt++;
+		if (cur_vel_opt == vel_opt.size())
+			cur_vel_opt = 0;
+
+		if (num_vel_opt < vel_opt.size())
+			num_vel_opt++;
+
 		unlock();
 	}
 
-	void set_pos_opt(const long long _t, const float _lat, const float _lon, const float _alt)
+	bool get_vel_opt(const long long t, const Mat & Qv, float & u, float & v, Mat & Pv, bool both = false)
 	{
 		lock();
-		tbih_opt = _t;
-		lat = _lat;
-		lon = _lon;
-		alt = _alt;
+		int ivel = (cur_vel_opt + vel_opt.size() - 1) % vel_opt.size();
+		int ivel_best = -1, ivel_next = -1;
+		long long tdiff;
+		for (int i = 0; i < num_vel_opt; i++){
+			if ((tdiff = t - vel_opt[ivel].t) >= 0){
+				ivel_next = ivel_best;
+				ivel_best = ivel;
+			}
+			else{
+				break;
+			}
+			ivel = (ivel + vel_opt.size() - 1) % vel_opt.size();
+		}
+		if (ivel_best < 0){
+			unlock();
+			return false;
+		}
+		u = vel_opt[ivel_best].u;
+		v = vel_opt[ivel_best].v;
+		Pv = vel_opt[ivel_best].Pv + ((double)tdiff * (1. / (double)SEC)) * Qv;
+		if (both && ivel_next >= 0){
+			float un = vel_opt[ivel_next].u;
+			float vn = vel_opt[ivel_next].v;
+			Mat Pvn = vel_opt[ivel_next].Pv + ((double)(vel_opt[ivel_next].t - t) * (1. / (double)SEC)) * Qv;
+			Mat Pv_inv = Pv.inv();
+			Mat Pvn_inv = Pvn.inv();
+			float * pPv_inv = Pv_inv.ptr<float>();
+			float * pPvn_inv = Pvn_inv.ptr<float>();
+			float _u = (float)(pPv_inv[0] * u + pPv_inv[1] * v);
+			float _v = (float)(pPv_inv[2] * u + pPv_inv[3] * v);
+			float _un = (float)(pPvn_inv[0] * un + pPvn_inv[1] * vn);
+			float _vn = (float)(pPvn_inv[2] * un + pPvn_inv[3] * vn);
+			_u += _un;
+			_v += vn;
+			Pv = (Pv_inv + Pvn_inv).inv();
+			float * pPv = Pv.ptr<float>();
+			u = (float)(pPv[0] * _u + pPv[1] * _v);
+			v = (float)(pPv[2] * _u + pPv[3] * _v);
+		}
 		unlock();
-	}
-
-	void get_pos_opt(long long & _t, float & _lat, float & _lon, float & _alt)
-	{
-		lock();
-		_t = tbih_opt;
-		_lat = lat_opt;
-		_lon = lon_opt;
-		_alt = alt_opt;
-		unlock();
-	}
-
-	void set_pos_ecef(const long long _t, const float _x, const float _y, const float _z, Mat & P)
-	{
-		lock();
-		tecef = _t;
-		xecef = _x;
-		yecef = _y;
-		zecef = _z;
-		Pecef = P;
-		unlock();
-	}
-
-	void get_pos_ecef(long long & _t, float & _x, float & _y, float & _z, Mat & P)
-	{
-		lock();
-		_t = tecef;
-		_x = xecef;
-		_y = yecef;
-		_z = zecef;
-		P = Pecef;
-		unlock();
-	}
-
-	void set_pos_ecef_opt(const long long _t, const float _x, const float _y, const float _z, Mat & P)
-	{
-		lock();
-		tecef_opt = _t;
-		xecef_opt = _x;
-		yecef_opt = _y;
-		zecef_opt = _z;
-		Pecef_opt = P;
-		unlock();
-	}
-
-	void get_pos_ecef_opt(long long & _t, float & _x, float & _y, float & _z, Mat & P)
-	{
-		lock();
-		_t = tecef_opt;
-		_x = xecef_opt;
-		_y = yecef_opt;
-		_z = zecef_opt;
-		P = Pecef;
-		unlock();
-	}
-
-	void set_enu_rot(long long & _t, const Mat & R)
-	{
-		lock();
-		tenu = _t;
-		Renu = R.clone();
-		unlock();
-	}
-
-	Mat get_enu_rot(long long & _t){
-		lock();
-		_t = tenu;
-		Mat R = Renu.clone();
-		unlock();
-		return R;
-	}
-
-	void set_enu_rot_opt(long long & _t, const Mat & R)
-	{
-		lock();
-		tenu_opt = _t;
-		Renu_opt = R.clone();
-		unlock();
-	}
-
-	Mat get_enu_rot_opt(long long & _t){
-		lock();
-		_t = tenu_opt;
-		Mat R = Renu_opt.clone();
-		unlock();
-		return R;
-	}
-
-	void set_vel(const long long _t, const float _u, const float _v, Mat & P)
-	{
-		lock();
-		tv = _t;
-		u = _u;
-		v = _v;
-		Pv = P;
-		unlock();
-	}
-
-	void get_vel(long long & _t, float & _u, float & _v, Mat & P)
-	{
-		lock();
-		_t = tv;
-		_u = u;
-		_v = v;
-		P = Pv;
-		unlock();
-	}
-
-	void set_velp(const long long _t, const float _cog, const float _sog)
-	{
-		lock();
-		tvp = _t;
-		cog = _cog;
-		sog = _sog;
-		unlock();
-	}
-
-	void get_velp(long long & _t, float & _cog, float & _sog)
-	{
-		lock();
-		_t = tvp;
-		_cog = cog;
-		_sog = sog;
-		unlock();
+		return true;
 	}
 };
 
