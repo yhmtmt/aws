@@ -66,10 +66,16 @@ protected:
 	vector<float> m_ex, m_ey, m_eu, m_ev;
 	int m_cur_x, m_cur_v;
 	int m_cnt_x, m_cnt_v;
+	void calc_pos_acv(const float ex, const float ey);
+	void calc_vel_acv(const float eu, const float ev);
 
 	bool m_blog;
 	ofstream m_flog_x, m_flog_v;
+	void log_pos(const long long t, const long long tpos, const float gps_lat, const float gps_lon, const float gps_alt,
+		const float gps_xecef, const float gps_yecef, const float gps_zeef);
+	void log_vel(const long long t, const long long tvel, const float u, const float v, const float cog, const float sog);
 
+	bool m_bverb;
 public:
 	f_state_estimator(const char * name);
 	~f_state_estimator();

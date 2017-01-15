@@ -38,7 +38,7 @@ using namespace cv;
 #include "f_state_estimator.h"
 
 f_state_estimator::f_state_estimator(const char * name) : f_base(name), m_ch_state(NULL), m_ch_estate(NULL),
-m_tpos_prev(0), m_tvel_prev(0), m_bacv(false), m_lag_x(10), m_lag_v(10), m_blog(false)
+m_tpos_prev(0), m_tvel_prev(0), m_bacv(false), m_lag_x(10), m_lag_v(10), m_blog(false), m_bverb(false)
 
 {
 	m_Qx = Mat::zeros(2, 2, CV_32FC1);
@@ -75,6 +75,7 @@ m_tpos_prev(0), m_tvel_prev(0), m_bacv(false), m_lag_x(10), m_lag_v(10), m_blog(
 
 	register_fpar("log", &m_blog, "Logging mode");
 
+	register_fpar("verb", &m_bverb, "Debug mode");
 }
 
 f_state_estimator::~f_state_estimator()
@@ -108,7 +109,7 @@ bool f_state_estimator::init_run()
 		m_ev.resize(m_lag_v);
 		m_cur_x = m_cnt_x = 0;
 		m_cur_v = m_cnt_v = 0;
-		m_m_ex = m_m_ey = m_m_eu = m_m_ev;
+		m_m_ex = m_m_ey = m_m_eu = m_m_ev = 0.;
 	}
 
 	if (m_blog){
@@ -130,9 +131,9 @@ bool f_state_estimator::init_run()
 		m_flog_v.precision(12);
 		m_flog_x.setf(ios::scientific);
 		m_flog_v.setf(ios::scientific);
-		m_flog_x << "Time, Observation, lat, lon alt, elat, elon, ealt, x, y, z, ex, ey, ez, sxx, syy, szz, sxy, sxz, syz" << endl;
+		m_flog_x << "Time, Observation Time, lat, lon alt, elat, elon, ealt, x, y, z, ex, ey, ez, sxx, syy, szz, sxy, sxz, syz" << endl;
 
-		m_flog_v << "Time Observation, u, v, eu, ev, cog, sog, ecog, esog, suu, svv, suv" << endl;
+		m_flog_v << "Time Observation Time, u, v, eu, ev, cog, sog, ecog, esog, suu, svv, suv" << endl;
 	}
 
 	return true;
@@ -200,20 +201,18 @@ bool f_state_estimator::proc()
 
 	long long t = m_cur_time;
 	// retrieve state from state channel
-	long long tbih;
+
+	long long tpos;
 	float gps_lat, gps_lon, gps_alt, gps_galt;
-	m_ch_state->get_position(tbih, gps_lat, gps_lon, gps_alt, gps_galt);
-	long long tecef;
 	float gps_xecef, gps_yecef, gps_zecef;
-	m_ch_state->get_position_ecef(tecef, gps_xecef, gps_yecef, gps_zecef);
-	long long tenu;
-	Mat Renu = m_ch_state->get_enu_rotation(tenu);
+	Mat Renu;
+	m_ch_state->get_position(tpos, gps_lat, gps_lon, gps_alt, gps_galt, gps_xecef, gps_yecef, gps_zecef, Renu);
 
 	long long tvel;
 	float cog, sog;
 	m_ch_state->get_velocity(tvel, cog, sog);
 
-	if (m_tpos_prev == 0 && tbih != 0){
+	if (m_tpos_prev == 0 && tpos != 0){
 		m_lat_prev = m_lat_opt = gps_lat;
 		m_lon_prev = m_lon_opt = gps_lon;
 		m_alt_prev = m_alt_opt = gps_alt;
@@ -222,7 +221,7 @@ bool f_state_estimator::proc()
 		m_zecef_prev = m_zecef_opt = gps_zecef;
 		m_Renu_prev = m_Renu_opt = Renu;
 		m_ch_estate->set_pos_opt(t, m_lat_opt, m_lon_opt, m_alt_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef, m_Px, m_Renu_opt);
-		m_tpos_prev = tbih;
+		m_tpos_prev = tpos;
 		return true;
 	}
 
@@ -296,103 +295,71 @@ bool f_state_estimator::proc()
 	// | ve |      | ev |    | v |
 
 
-	if (tbih == tecef && tbih == tenu){
-		if (tbih > m_tpos_prev){
-			float dtx = (float)((tbih - m_tpos_prev) * (1.0 / (double)SEC));
-			float dtv = (float)((tbih - m_tvel_prev) * (1.0 / (double)SEC));
+	if (tpos > m_tpos_prev){
+		float dtx = (float)((tpos - m_tpos_prev) * (1.0 / (double)SEC));
+		float dtv = (float)((tpos - m_tvel_prev) * (1.0 / (double)SEC));
 
-			Mat Pdtv;
-			Pdtv = dtv * m_Qv + m_Pv;
-			Mat Pdtx;
-			Pdtx = dtx * m_Qx + m_Px + dtx * dtx * Pdtv;
+		Mat Pdtv;
+		Pdtv = dtv * m_Qv + m_Pv;
+		Mat Pdtx;
+		Pdtx = dtx * m_Qx + m_Px + dtx * dtx * Pdtv;
 
-			// updating previous measurement
-			float xp = m_u_opt * dtx, yp = m_v_opt * dtx;
-			Mat Kx = Pdtx * (m_Rx + Pdtx).inv();
-			float x, y, z; // observed x, y, z
-			eceftowrld(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, gps_xecef, gps_yecef, gps_zecef, x, y, z);
+		// updating previous measurement
+		float xp = m_u_opt * dtx, yp = m_v_opt * dtx;
+		Mat Kx = Pdtx * (m_Rx + Pdtx).inv();
+		float x, y, z; // observed x, y, z
+		eceftowrld(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, gps_xecef, gps_yecef, gps_zecef, x, y, z);
 
-			float ex = (float)(x - xp), ey = (float)(y - yp);
-			cout << "(xp,yp)=(" << xp << "," << yp << ")" << endl;
-			cout << "(xo, yo)=(" << x << "," << y << ")" << endl;
-			float *pK = Kx.ptr<float>(0);
-			float xe, ye;
+		float ex = (float)(x - xp);
+		float ey = (float)(y - yp);
+		float * pK = Kx.ptr<float>(0);
+		float xe = (float)(pK[0] * ex + pK[1] * ey + xp);
+		float ye = (float)(pK[2] * ex + pK[3] * ey + yp);
 
-			xe = (float)(pK[0] * ex + pK[1] * ey + xp);
-			ye = (float)(pK[2] * ex + pK[3] * ey + yp);
-			cout << "(xe,ye)=(" << xe << "," << ye << ")" << endl;
-			float x_opt, y_opt, z_opt;
-			wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xe, ye, 0., x_opt, y_opt, z_opt);
-			m_xecef_opt = x_opt;
-			m_yecef_opt = y_opt;
-			m_zecef_opt = z_opt;
-			eceftobih(m_xecef_opt, m_yecef_opt, m_zecef_opt, m_lat_opt, m_lon_opt, m_alt_opt);
-			m_Px = (Mat::eye(2, 2, CV_32FC1) - Kx) * Pdtx;
-			cout << "Kx:" << endl << Kx << endl;
-			//			cout << "Pdtx:" << endl << Pdtx << endl;
-			//			cout << "m_Px:" << endl << m_Px << endl;
 
-			m_Px_ecef = calc_cov_ecef(m_Px);
-			cout << "m_Px_ecef:" << endl << m_Px_ecef << endl;
-			double dx = m_xecef_opt - gps_xecef, dy = m_yecef_opt - gps_yecef, dz = m_zecef_opt - gps_zecef;
-			double d = sqrt(dx * dx + dy * dy + dz * dz);
-			cout << "dist measured and opt:" << d << endl;
-			cout << "alt:" << m_alt_opt << "=" << gps_alt << endl;
-			getwrldrot(m_lat_opt, m_lon_opt, m_Renu_opt);
+		float x_opt, y_opt, z_opt;
+		wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xe, ye, 0., x_opt, y_opt, z_opt);
+		m_xecef_opt = x_opt;
+		m_yecef_opt = y_opt;
+		m_zecef_opt = z_opt;
 
-			m_lat_opt *= (float)(180. / PI);
-			m_lon_opt *= (float)(180. / PI);
-			m_ch_estate->set_pos_opt(tbih, m_lat_opt, m_lon_opt, m_alt_opt,
-				m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef, m_Renu_opt, m_Px);
+		eceftobih(m_xecef_opt, m_yecef_opt, m_zecef_opt, m_lat_opt, m_lon_opt, m_alt_opt);
 
-			m_lat_prev = gps_lat;
-			m_lon_prev = gps_lon;
-			m_alt_prev = gps_alt;
-			m_xecef_prev = gps_xecef;
-			m_yecef_prev = gps_yecef;
-			m_zecef_prev = gps_zecef;
-			m_Renu_prev = Renu;
-			m_tpos_prev = tbih;
+		m_Px = (Mat::eye(2, 2, CV_32FC1) - Kx) * Pdtx;
+		m_Px_ecef = calc_cov_ecef(m_Px);
 
-			if (m_bacv){
-				m_ex[m_cur_x] = ex;
-				m_m_ex += ex;
-				m_ey[m_cur_x] = ey;
-				m_m_ey += ey;
-				m_cur_x = (m_cur_x + 1) % m_lag_x;
-				m_cnt_x++;
-				if (m_cnt_x > 10){
-					for (int i = 0, l = m_cur_x; i < m_lag_x; i++){
-						for (int j = i, m = l; j < m_lag_x; j++){
-							double * pij = m_ACVx.ptr<double>(i * 2, j * 2);
-							pij[0] += m_ex[l] * m_ex[m];
-							pij[1] += m_ex[l] * m_ey[m];
-							pij += m_ACVx.cols;
-							pij[0] += m_ey[l] * m_ex[m];
-							pij[1] += m_ey[l] * m_ev[m];
+		getwrldrot(m_lat_opt, m_lon_opt, m_Renu_opt);
 
-							m--;
-							if (m < 0)
-								m += m_lag_x;
-						}
-						l--;
-						if (l < 0)
-							l += m_lag_x;
-					}
-				}
-			}
+		m_lat_opt *= (float)(180. / PI);
+		m_lon_opt *= (float)(180. / PI);
 
-			if (m_blog){
-				float * p = m_Px_ecef.ptr<float>();
-				m_flog_x << t << ",1,"
-					<< gps_lat << "," << gps_lon << "," << gps_alt << ","
-					<< m_lat_opt << "," << m_lon_opt << ",0,"
-					<< gps_xecef << "," << gps_yecef << "," << gps_zecef << ","
-					<< m_xecef_opt << "," << m_yecef_opt << "," << m_zecef_opt << ","
-					<< p[0] << "," << p[4] << "," << p[8] << "," << p[1] << "," << p[2] << "," << p[5] << endl;
-			}
+		m_ch_estate->set_pos_opt(tpos, m_lat_opt, m_lon_opt, m_alt_opt,
+			m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef, m_Renu_opt, m_Px);
+
+		m_lat_prev = gps_lat;
+		m_lon_prev = gps_lon;
+		m_alt_prev = gps_alt;
+		m_xecef_prev = gps_xecef;
+		m_yecef_prev = gps_yecef;
+		m_zecef_prev = gps_zecef;
+		m_Renu_prev = Renu;
+		m_tpos_prev = tpos;
+
+		if (m_bverb){
+			cout << "tsys:" << m_cur_time << " t:" << tpos << " (xp,yp)=(" << xp << "," << yp << ")"
+				<< " (xo, yo)=(" << x << "," << y << ")" 
+				<< " (xe,ye)=(" << xe << "," << ye << ")" << endl;
+		}
+
+		if (m_bacv){
+			calc_pos_acv(ex, ey);
+		}
+
+		if (m_blog){
+			log_pos(t, tpos, gps_lat, gps_lon, gps_alt, gps_xecef, gps_yecef, gps_zecef);
 		}
 	}
+
 
 	if (tvel > m_tvel_prev){
 		float dtx = (float)((tvel - m_tpos_prev) * (1.0 / (double)SEC));
@@ -422,46 +389,102 @@ bool f_state_estimator::proc()
 
 		m_ch_estate->set_vel_opt(tvel, m_u_opt, m_v_opt, m_cog_opt, m_sog_opt, m_Pv);
 
-		if (m_bacv){
-			m_eu[m_cur_v] = eu;
-			m_m_eu += eu;
-			m_ev[m_cur_v] = ev;
-			m_m_ev += ev;
-			m_cur_v = (m_cur_v + 1) % m_lag_v;
-			m_cnt_v++;
-			if (m_cnt_v > 10){
-				for (int i = 0, l = m_cur_v; i < m_lag_v; i++){
-					for (int j = i, m = l; j < m_lag_v; j++){
-						double * pij = m_ACVv.ptr<double>(i * 2, j * 2);
-						pij[0] += m_eu[l] * m_eu[m];
-						pij[1] += m_eu[l] * m_ev[m];
-						pij += m_ACVv.cols;
-						pij[0] += m_ev[l] * m_eu[m];
-						pij[1] += m_ev[l] * m_ev[m];
+		if (m_bverb){
+			cout << "tsys:" << m_cur_time << " t:" << tvel << " (u,v)=(" << u << "," << v << ") (uopt,vopt)=(" 
+				<< m_u_opt << "," << m_v_opt << ")" << endl;
+		}
 
-						m--;
-						if (m < 0)
-							m += m_lag_v;
-					}
-					l--;
-					if (l < 0)
-						l += m_lag_v;
-				}
-			}
+		if (m_bacv){
+			calc_vel_acv(eu, ev);
 		}
 
 		if (m_blog){
-			float * p = m_Pv.ptr<float>();
-			m_flog_v << t << ",1,"
-				<< u << "," << v
-				<< m_u_opt << "," << m_v_opt << ","
-				<< cog << "," << sog << ","
-				<< m_cog_opt << "," << m_sog_opt
-				<< p[0] << "," << p[3] << "," << p[1] << endl;
+			log_vel(t, tvel, u, v, cog, sog);
 		}
 	}
 
 	return true;
 }
 
+void f_state_estimator::log_pos(const long long t, const long long tpos, 
+	const float gps_lat, const float gps_lon, const float gps_alt,
+	const float gps_xecef, const float gps_yecef, const float gps_zecef)
+{
+	float * p = m_Px_ecef.ptr<float>();
+	m_flog_x << t << "," << tpos << ","
+		<< gps_lat << "," << gps_lon << "," << gps_alt << ","
+		<< m_lat_opt << "," << m_lon_opt << ",0,"
+		<< gps_xecef << "," << gps_yecef << "," << gps_zecef << ","
+		<< m_xecef_opt << "," << m_yecef_opt << "," << m_zecef_opt << ","
+		<< p[0] << "," << p[4] << "," << p[8] << "," << p[1] << "," << p[2] << "," << p[5] << endl;
+}
 
+void f_state_estimator::log_vel(const long long t, const long long tvel, const float u, const float v, const float cog, const float sog)
+{
+	float * p = m_Pv.ptr<float>();
+	m_flog_v << t << "," << tvel << ","
+		<< u << "," << v
+		<< m_u_opt << "," << m_v_opt << ","
+		<< cog << "," << sog << ","
+		<< m_cog_opt << "," << m_sog_opt
+		<< p[0] << "," << p[3] << "," << p[1] << endl;
+}
+
+
+void f_state_estimator::calc_pos_acv(const float ex, const float ey)
+{
+	m_ex[m_cur_x] = ex;
+	m_m_ex += ex;
+	m_ey[m_cur_x] = ey;
+	m_m_ey += ey;
+	m_cur_x = (m_cur_x + 1) % m_lag_x;
+	m_cnt_x++;
+	if (m_cnt_x > 10){
+		for (int i = 0, l = m_cur_x; i < m_lag_x; i++){
+			for (int j = i, m = l; j < m_lag_x; j++){
+				double * pij = m_ACVx.ptr<double>(i * 2, j * 2);
+				pij[0] += m_ex[l] * m_ex[m];
+				pij[1] += m_ex[l] * m_ey[m];
+				pij += m_ACVx.cols;
+				pij[0] += m_ey[l] * m_ex[m];
+				pij[1] += m_ey[l] * m_ev[m];
+
+				m--;
+				if (m < 0)
+					m += m_lag_x;
+			}
+			l--;
+			if (l < 0)
+				l += m_lag_x;
+		}
+	}
+}
+
+void f_state_estimator::calc_vel_acv(const float eu, const float ev)
+{
+	m_eu[m_cur_v] = eu;
+	m_m_eu += eu;
+	m_ev[m_cur_v] = ev;
+	m_m_ev += ev;
+	m_cur_v = (m_cur_v + 1) % m_lag_v;
+	m_cnt_v++;
+	if (m_cnt_v > 10){
+		for (int i = 0, l = m_cur_v; i < m_lag_v; i++){
+			for (int j = i, m = l; j < m_lag_v; j++){
+				double * pij = m_ACVv.ptr<double>(i * 2, j * 2);
+				pij[0] += m_eu[l] * m_eu[m];
+				pij[1] += m_eu[l] * m_ev[m];
+				pij += m_ACVv.cols;
+				pij[0] += m_ev[l] * m_eu[m];
+				pij[1] += m_ev[l] * m_ev[m];
+
+				m--;
+				if (m < 0)
+					m += m_lag_v;
+			}
+			l--;
+			if (l < 0)
+				l += m_lag_v;
+		}
+	}
+}
