@@ -23,7 +23,7 @@
 
 
 #include "../channel/ch_state.h"
-#include "f_base.h"
+#include "f_glfw_window.h"
 
 class f_state_estimator : public f_base
 {
@@ -84,5 +84,24 @@ public:
 	virtual void destroy_run();
 	virtual bool proc();
 };
+
+class f_est_viewer : public f_glfw_window
+{
+private:
+	ch_state * m_ch_state;
+	ch_estate * m_ch_estate;
+	double m_range;
+	float m_xscale, m_yscale, m_ixscale, m_iyscale;
+	float m_tf;
+	Point2f m_ncirc[12];
+public:
+	f_est_viewer(const char * name);
+	virtual ~f_est_viewer();
+
+	virtual bool init_run();
+	virtual void destroy_run();
+	virtual bool proc();
+};
+
 
 #endif

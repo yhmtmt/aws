@@ -34,6 +34,19 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
+#ifdef _WIN32
+#include <Windows.h>
+#endif
+
+#include <GL/glew.h>
+
+#include <GLFW/glfw3.h>
+
+#include <GL/glut.h>
+#include <GL/glu.h>
+
+
+#include "../util/aws_glib.h"
 
 #include "f_state_estimator.h"
 
@@ -198,7 +211,6 @@ void f_state_estimator::destroy_run()
 
 bool f_state_estimator::proc()
 {
-
 	long long t = m_cur_time;
 	// retrieve state from state channel
 
@@ -487,4 +499,109 @@ void f_state_estimator::calc_vel_acv(const float eu, const float ev)
 				l += m_lag_v;
 		}
 	}
+}
+
+////////////////////////////////////////////////////////////////////// f_est_viewer
+
+f_est_viewer::f_est_viewer(const char * name) : f_glfw_window(name), m_ch_state(NULL), m_ch_estate(NULL), m_range(3000), m_tf(180)
+{
+	register_fpar("ch_state", (ch_base**)(&m_ch_state), typeid(ch_state).name(), "State channel");
+	register_fpar("ch_estate", (ch_base**)(&m_ch_estate), typeid(ch_estate).name(), "Estimated state channel");
+	register_fpar("range", &m_range, "Range in the view (radius)");
+}
+
+f_est_viewer::~f_est_viewer()
+{
+}
+
+bool f_est_viewer::init_run()
+{
+	if (!m_ch_state){
+		cerr << "State channel is not connected." << endl;
+		return false;
+	}
+
+	if (!m_ch_estate){
+		cerr << "Estimated state channel is not connected." << endl;
+		return false;
+	}
+
+	if (!f_glfw_window::init_run())
+		return false;
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+	m_xscale = (float)(0.5 * m_sz_win.width);
+	m_yscale = (float)(0.5 * m_sz_win.height);
+	m_ixscale = (float)(2.0 / (double)m_sz_win.width);
+	m_iyscale = (float)(2.0 / (double)m_sz_win.height);
+
+	for (int i = 0; i < 12; i++){
+		float c, s;
+		double th = i * PI * (1. / 12.);
+		c = (float)(cos(th));
+		s = (float)(sin(th));
+		m_ncirc[i].x = c;
+		m_ncirc[i].y = s;
+	}
+	return true;
+}
+
+void f_est_viewer::destroy_run()
+{
+}
+
+bool f_est_viewer::proc()
+{
+	if (glfwWindowShouldClose(pwin()))
+		return false;
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(1.0f, 1.0f, 1.0f, 1.0f);
+	glEnable(GL_DEPTH_TEST);
+
+	glDisable(GL_DEPTH_TEST);
+	long long t = m_cur_time;
+	long long tf = t + (long long)(m_tf * SEC);
+
+	// coordinate system is centered at the position of last estimation 
+	vector<s_pos_opt> pos_opt;
+	m_ch_estate->get_pos_opt(pos_opt);
+	if (pos_opt.size() == 0){
+		return true;
+	}
+
+	// pixels per meter
+	double ppm = (double)(m_sz_win.height >> 1) / m_range;
+	double dfacx = ppm * m_ixscale, dfacy = ppm * m_iyscale;
+	s_pos_opt & p = pos_opt[0];
+	Mat Renu = p.Renu;
+	Point2f circ[12];
+	Point2f offset_prev(0, 0);
+	float xorg = p.xecef, yorg = p.yecef, zorg = p.zecef;
+	for (int i = 0; i < pos_opt.size(); i++){
+		p = pos_opt[i];
+		Mat Penu = Renu * p.Pecef * Renu.t();
+		float x, y, z;
+		eceftowrld(Renu, xorg, yorg, zorg, p.xecef, p.yecef, p.zecef, x, y, z);
+
+		// calculating center of the prediction
+		Point2f offset((float)(x * dfacx), (float)(y * dfacy));
+		float sx2 = Penu.at<float>(0, 0), sy2 = Penu.at<float>(1, 1), sz2 = Penu.at<float>(2, 2);
+		float sx = (float)(sqrt(sx2) * dfacx), sy = (float)(sqrt(sy2) * dfacy);
+		for (int i = 0; i < 12; i++){
+			circ[i].x = m_ncirc[i].x * sx;
+			circ[i].y = m_ncirc[i].y * sy;
+		}
+
+		drawGlPolygon2Df(circ, 12, offset, 0, 1, 0, 1);
+		drawGlLine2Df(offset_prev.x, offset_prev.y, offset.x, offset.y, 0, 1, 0, 1, 1);
+		offset_prev = offset;
+	}
+
+	glfwSwapBuffers(pwin());
+	glfwPollEvents();
+	return true;
 }

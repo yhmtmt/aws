@@ -416,7 +416,7 @@ void f_base::register_factory()
 
 	register_factory<f_aws3_com>("aws3c");
 	register_factory<f_state_estimator>("stest");
-
+	register_factory<f_est_viewer>("estv");
 #ifdef GST_CAM
 	register_factory<f_gst_cam>("gstcam");
 #endif
