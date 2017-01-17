@@ -32,6 +32,13 @@ struct s_pos_opt{
 		Penu = p.Penu.clone();
 		Pecef = p.Pecef.clone();
 	}
+	s_pos_opt(s_pos_opt & p) :t(p.t), lat(p.lat), lon(p.lon), alt(p.alt),
+		xecef(p.xecef), yecef(p.yecef), zecef(p.zecef)
+	{
+		Renu = p.Renu.clone();
+		Penu = p.Penu.clone();
+		Pecef = p.Pecef.clone();
+	}
 };
 
 struct s_vel_opt{
@@ -40,6 +47,10 @@ struct s_vel_opt{
 	Mat Pv;
 	s_vel_opt():t(0), u(0), v(0), cog(0), sog(0), Pv(){}
 	s_vel_opt(const s_vel_opt & _v) :t(_v.t), u(_v.u), v(_v.v), cog(_v.cog), sog(_v.sog)
+	{
+		Pv = _v.Pv.clone();
+	}
+	s_vel_opt(s_vel_opt & _v) :t(_v.t), u(_v.u), v(_v.v), cog(_v.cog), sog(_v.sog)
 	{
 		Pv = _v.Pv.clone();
 	}
@@ -99,8 +110,18 @@ public:
 		lock();
 		_pos_opt.resize(num_pos_opt);
 	
-		for (int i = 0, ipos = (cur_pos_opt + pos_opt.size() - 1) % pos_opt.size(); i < num_pos_opt; i++, ipos = (ipos + 1) % pos_opt.size()){
-			_pos_opt[i] = pos_opt[ipos];
+		for (int i = 0, ipos = (cur_pos_opt + pos_opt.size() - 1) % pos_opt.size();
+			i < num_pos_opt; i++, ipos = (ipos + pos_opt.size() - 1) % pos_opt.size()){
+			_pos_opt[i].t = pos_opt[ipos].t;
+			_pos_opt[i].alt = pos_opt[ipos].alt;
+			_pos_opt[i].lat = pos_opt[ipos].lat;
+			_pos_opt[i].lon = pos_opt[ipos].lon;
+			_pos_opt[i].xecef = pos_opt[ipos].xecef;
+			_pos_opt[i].yecef = pos_opt[ipos].yecef;
+			_pos_opt[i].zecef = pos_opt[ipos].zecef;
+			_pos_opt[i].Pecef = pos_opt[ipos].Pecef.clone();
+			_pos_opt[i].Penu = pos_opt[ipos].Penu.clone();
+			_pos_opt[i].Renu = pos_opt[ipos].Renu.clone();
 		}
 		unlock();
 	}

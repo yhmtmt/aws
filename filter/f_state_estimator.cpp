@@ -232,7 +232,8 @@ bool f_state_estimator::proc()
 		m_yecef_prev = m_yecef_opt = gps_yecef;
 		m_zecef_prev = m_zecef_opt = gps_zecef;
 		m_Renu_prev = m_Renu_opt = Renu;
-		m_ch_estate->set_pos_opt(t, m_lat_opt, m_lon_opt, m_alt_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef, m_Px, m_Renu_opt);
+		m_ch_estate->set_pos_opt(t, m_lat_opt, m_lon_opt, m_alt_opt, 
+			m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef, m_Px, m_Renu_opt);
 		m_tpos_prev = tpos;
 		return true;
 	}
@@ -346,7 +347,7 @@ bool f_state_estimator::proc()
 		m_lon_opt *= (float)(180. / PI);
 
 		m_ch_estate->set_pos_opt(tpos, m_lat_opt, m_lon_opt, m_alt_opt,
-			m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef, m_Renu_opt, m_Px);
+			m_xecef_opt, m_yecef_opt, m_zecef_opt, m_Px_ecef, m_Px, m_Renu_opt);
 
 		m_lat_prev = gps_lat;
 		m_lon_prev = gps_lon;
@@ -540,7 +541,7 @@ bool f_est_viewer::init_run()
 
 	for (int i = 0; i < 12; i++){
 		float c, s;
-		double th = i * PI * (1. / 12.);
+		double th = i * PI * (2. / 12.);
 		c = (float)(cos(th));
 		s = (float)(sin(th));
 		m_ncirc[i].x = c;
@@ -576,14 +577,15 @@ bool f_est_viewer::proc()
 	// pixels per meter
 	double ppm = (double)(m_sz_win.height >> 1) / m_range;
 	double dfacx = ppm * m_ixscale, dfacy = ppm * m_iyscale;
-	s_pos_opt & p = pos_opt[0];
-	Mat Renu = p.Renu;
+	s_pos_opt & pcur = pos_opt[0];
+	Mat Renuf, Renu = pcur.Renu;
+	Renu.convertTo(Renuf, CV_32F);
 	Point2f circ[12];
 	Point2f offset_prev(0, 0);
-	float xorg = p.xecef, yorg = p.yecef, zorg = p.zecef;
+	float xorg = pcur.xecef, yorg = pcur.yecef, zorg = pcur.zecef;
 	for (int i = 0; i < pos_opt.size(); i++){
-		p = pos_opt[i];
-		Mat Penu = Renu * p.Pecef * Renu.t();
+		s_pos_opt & p = pos_opt[i];
+		Mat Penu = Renuf * p.Pecef * Renuf.t();
 		float x, y, z;
 		eceftowrld(Renu, xorg, yorg, zorg, p.xecef, p.yecef, p.zecef, x, y, z);
 
@@ -591,9 +593,9 @@ bool f_est_viewer::proc()
 		Point2f offset((float)(x * dfacx), (float)(y * dfacy));
 		float sx2 = Penu.at<float>(0, 0), sy2 = Penu.at<float>(1, 1), sz2 = Penu.at<float>(2, 2);
 		float sx = (float)(sqrt(sx2) * dfacx), sy = (float)(sqrt(sy2) * dfacy);
-		for (int i = 0; i < 12; i++){
-			circ[i].x = m_ncirc[i].x * sx;
-			circ[i].y = m_ncirc[i].y * sy;
+		for (int j = 0; j < 12; j++){
+			circ[j].x = m_ncirc[j].x * sx;
+			circ[j].y = m_ncirc[j].y * sy;
 		}
 
 		drawGlPolygon2Df(circ, 12, offset, 0, 1, 0, 1);
