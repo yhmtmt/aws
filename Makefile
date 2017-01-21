@@ -15,14 +15,13 @@ OFLAGS = -O3
 
 
 # Platform specification (y: zynq environment is enabled)
-#BOARD = jtx
+BOARD = jtx
 #BOARD = jtk
 #BOARD = zed
-BOARD = pc
 
 # cpu architecture (currently arm, x64, x86, WIN64)
-#CPU	= arm
-CPU	= x64
+CPU	= arm
+#CPU	= x64
 #CPU	= x86
 
 #operating system (currently only for LINUX)
@@ -36,8 +35,8 @@ SANYO_HD5400 = n
 AVT_CAM = y
 UVC_CAM = y
 FWINDOW = n
-GLFW_WINDOW = n
-F_ORB_SLAM = n
+GLFW_WINDOW = y
+F_ORB_SLAM = y
 
 #directory settings
 CUR_DIR = $(shell pwd)
@@ -45,8 +44,8 @@ FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
 RCMD_DIR = $(CUR_DIR)/rcmd
-INC_CV_DIR = /usr/local/include
-LIB_CV_DIR = /usr/local/lib
+INC_CV_DIR = $(CUR_DIR)/opencv/include
+LIB_CV_DIR = $(CUR_DIR)/opencv/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
@@ -191,10 +190,6 @@ endif
 ifeq ($(BOARD), zed)
 	LIB += -lopencv_world
 endif
-ifeq ($(PC), pc)
-	LIB += -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
-endif
-
 
 FOBJS = $(addsuffix .o,$(FILTER))
 COBJS = $(addsuffix .o,$(CHANNEL))
