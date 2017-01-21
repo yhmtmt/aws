@@ -83,6 +83,7 @@ void f_ahrs::destroy_run()
 
 bool f_ahrs::proc()
 {
+	long long t = get_time();
 	// command handling
 	int cmdlen = set_buf_cmd(m_cmd);
 	switch(m_cmd){
@@ -228,25 +229,25 @@ bool f_ahrs::proc()
 		break;
 	}
 
+	bool braw = false;
+	bool bcal = false;
+	switch (m_omode){
+	case ERC_OSRT:
+	case ERC_OSRB:
+	case ERC_OSBB:
+	case ERC_OSBT:
+		braw = true;
+	}
+
+	switch (m_omode){
+	case ERC_OSCB:
+	case ERC_OSCT:
+	case ERC_OSBB:
+	case ERC_OSBT:
+		bcal = true;
+	}
+
 	if(m_verb){
-		bool braw = false;
-		bool bcal = false;
-		switch(m_omode){
-		case ERC_OSRT:
-		case ERC_OSRB:
-		case ERC_OSBB:
-		case ERC_OSBT:
-			braw = true;
-		}
-
-		switch(m_omode){
-		case ERC_OSCB:
-		case ERC_OSCT:
-		case ERC_OSBB:
-		case ERC_OSBT:
-			bcal = true;
-		}
-
 		if(braw){
 			cout << "A-R=" << m_raw.ax << " " << m_raw.ay << " " << m_raw.az << endl;
 			cout << "M-R=" << m_raw.mx << " " << m_raw.my << " " << m_raw.mz << endl;
@@ -264,8 +265,17 @@ bool f_ahrs::proc()
 		}
 	}
 
-	if(m_state){
-	  m_state->set_attitude(get_time(), m_ypr.r, m_ypr.p, m_ypr.y);
+	if(m_state){	
+		if (braw){
+			m_state->set_9dof_raw(t, m_cal.mx, m_cal.my, m_cal.mz, m_cal.ax, m_cal.ay, m_cal.az, m_cal.gx, m_cal.gy, m_cal.gz);
+		}
+
+		if (bcal){
+			m_state->set_9dof_raw(t, m_raw.mx, m_raw.my, m_raw.mz, m_raw.ax, m_raw.ay, m_raw.az, m_raw.gx, m_raw.gy, m_raw.gz);
+		}
+
+		if (!braw && !bcal)
+			m_state->set_attitude(get_time(), m_ypr.r, m_ypr.p, m_ypr.y);	  
 	}
 
 	return true;

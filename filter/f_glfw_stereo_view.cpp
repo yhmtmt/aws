@@ -766,7 +766,7 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 	char item[1024];
 	for (int i = 0; i < num_chsbd; i++){
 		snprintf(item, 1024, "frm%d", i);
-		FileNode frm = fs[item];
+		FileNode frm = fs[(const char*)item];
 		if (frm.empty()){
 			cerr << item << " cannot be found." << endl;
 			return;
@@ -795,7 +795,7 @@ void f_glfw_stereo_view::load_chsbd(int icam)
 		for (int j = 0; j < num_chsbd_per_frm; j++){
 			(*pts[j])[i].resize(chsbd_pts);
 			snprintf(item, 1024, "chsbd%d", j);
-			FileNode chsbd = frm[item];
+			FileNode chsbd = frm[(const char*)item];
 			if (chsbd.empty()){
 				cerr << item << " cannot be found." << endl;
 				return;

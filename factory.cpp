@@ -122,6 +122,7 @@ using namespace cv;
 #ifdef ORB_SLAM
 #include "channel/ch_orb_slam.h"
 #endif
+#include "channel/ch_aws3.h"
 
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
@@ -186,6 +187,9 @@ void ch_base::register_factory()
 	register_factory<ORB_SLAM2::ch_trj>("orb_slam_trj");
 	register_factory<ORB_SLAM2::ch_frm>("orb_slam_frm");
 #endif
+	register_factory<ch_aws3_param>("aws3par");
+	register_factory<ch_aws3_cmd>("aws3cmd");
+	register_factory<ch_aws3_state>("aws3state");
 }
 
 ////////////////////////////////////////////////// setting up filter factory
@@ -228,6 +232,7 @@ void ch_base::register_factory()
 #include "filter/f_glfw_window.h"
 #include "filter/f_glfw_stereo_view.h"
 #include "filter/f_aws1_ui.h"
+#include "filter/f_aws3_ui.h"
 #endif
 
 #include "filter/f_nmea.h"
@@ -242,12 +247,22 @@ void ch_base::register_factory()
 #include "filter/f_ahrs.h"
 #include "filter/f_map.h"
 #include "filter/f_time.h"
+#include "filter/f_state_estimator.h"
 #include "filter/f_aws1_ap.h"
 #include "filter/f_obj_manager.h"
 #include "filter/f_wp_manager.h"
+
 #ifdef ORB_SLAM
 #include "filter/f_orb_slam.h"
 #endif
+
+#include "filter/f_aws3_com.h"
+
+
+#ifdef GST_CAM
+#include "filter/f_gst_cam.h"
+#endif
+
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
 // need to initialize global and static data structure please insert your 
@@ -343,6 +358,7 @@ void f_base::register_factory()
 	register_factory<f_glfw_imview>("glimv");
 	register_factory<f_aws1_ui>("aws1_ui");
 	register_factory<f_aws1_ui_test>("aws1_ui_test");
+	register_factory<f_aws3_ui>("aws3_ui");
 	register_factory<f_glfw_calib>("gcalib");
 #endif
 
@@ -396,5 +412,12 @@ void f_base::register_factory()
 	register_factory<ORB_SLAM2::f_loop_closer>("orb_slam_loop_closer");
 	register_factory<ORB_SLAM2::f_tracker>("orb_slam_tracker");
 	register_factory<ORB_SLAM2::f_viewer>("orb_slam_viewer");
+#endif
+
+	register_factory<f_aws3_com>("aws3c");
+	register_factory<f_state_estimator>("stest");
+	register_factory<f_est_viewer>("estv");
+#ifdef GST_CAM
+	register_factory<f_gst_cam>("gstcam");
 #endif
 }

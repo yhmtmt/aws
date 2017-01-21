@@ -1,0 +1,23 @@
+#!/bin/sh
+channel aws3par aws3par
+channel aws3state aws3state
+channel aws3cmd aws3cmd
+channel imgr img
+
+filter gstcam gstcam -i -o
+fset gstcam ch_out img
+fset gstcam width 1920 height 1080
+fset gstcam fppl ~/aws/sample/bluerov.gst
+
+filter aws3c aws3c -i -o
+fset aws3c port 14550
+fset aws3c ch_param aws3par ch_state aws3state ch_cmd aws3cmd
+#fset aws3c verb yes
+
+filter aws3_ui aws3ui -i -o
+fset aws3ui ch_param aws3par ch_state aws3state ch_cmd aws3cmd ch_img img
+fset aws3ui width 1600 height 900
+#fset aws3ui verb yes
+fset aws3ui nz -500
+cyc 0.05
+go

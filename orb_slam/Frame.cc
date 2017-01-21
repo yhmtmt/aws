@@ -26,11 +26,21 @@
 namespace ORB_SLAM2
 {
 
+#define FRAME_GRID_ROWS 48
+#define FRAME_GRID_COLS 64
+
 long unsigned int Frame::nNextId=0;
 bool Frame::mbInitialComputations=true;
 float Frame::cx, Frame::cy, Frame::fx, Frame::fy, Frame::invfx, Frame::invfy;
 float Frame::mnMinX, Frame::mnMinY, Frame::mnMaxX, Frame::mnMaxY;
 float Frame::mfGridElementWidthInv, Frame::mfGridElementHeightInv;
+
+int Frame::mFrameGridCols = FRAME_GRID_COLS;
+int Frame::mFrameGridRows = FRAME_GRID_ROWS;
+long long *** Frame::m_cnt_kp = NULL;
+long long *** Frame::m_cnt_ol = NULL;
+unsigned int Frame::m_nol = 0;
+unsigned int Frame::m_nkp = 0;
 
 Frame::Frame()
 {}
@@ -49,9 +59,17 @@ Frame::Frame(const Frame &frame)
      mvScaleFactors(frame.mvScaleFactors), mvInvScaleFactors(frame.mvInvScaleFactors),
      mvLevelSigma2(frame.mvLevelSigma2), mvInvLevelSigma2(frame.mvInvLevelSigma2)
 {
-    for(int i=0;i<FRAME_GRID_COLS;i++)
-        for(int j=0; j<FRAME_GRID_ROWS; j++)
-            mGrid[i][j]=frame.mGrid[i][j];
+	/*
+	mGrid = new std::vector<std::size_t>*[mFrameGridCols];
+	for (int i = 0; i < mFrameGridCols; i++){
+		mGrid[i] = new std::vector<std::size_t>[mFrameGridRows];
+		for (int j = 0; j < mFrameGridRows; j++)
+			mGrid[i][j] = frame.mGrid[i][j];
+	}
+	*/
+	mGrid = frame.mGrid;
+	mRefGrid = frame.mRefGrid;
+	*mRefGrid++;
 
     if(!frame.mTcw.empty())
         SetPose(frame.mTcw);
@@ -62,7 +80,13 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const long long &tim
     :mpORBvocabulary(voc),mpORBextractorLeft(extractorLeft),mpORBextractorRight(extractorRight), mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth),
      mpReferenceKF(static_cast<KeyFrame*>(NULL))
 {
-    // Frame ID
+	mGrid = new std::vector<std::size_t>*[mFrameGridCols];
+	for (int i = 0; i < mFrameGridCols; i++)
+		mGrid[i] = new std::vector<std::size_t>[mFrameGridRows];
+	mRefGrid = new int;
+	*mRefGrid = 1;
+
+	// Frame ID
     mnId=nNextId++;
 
     // Scale Level Info
@@ -98,8 +122,8 @@ Frame::Frame(const cv::Mat &imLeft, const cv::Mat &imRight, const long long &tim
     {
         ComputeImageBounds(imLeft);
 
-        mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/(mnMaxX-mnMinX);
-        mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/(mnMaxY-mnMinY);
+        mfGridElementWidthInv=static_cast<float>(mFrameGridCols)/(mnMaxX-mnMinX);
+        mfGridElementHeightInv=static_cast<float>(mFrameGridRows)/(mnMaxY-mnMinY);
 
         fx = K.at<float>(0,0);
         fy = K.at<float>(1,1);
@@ -120,7 +144,13 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const long long &tim
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
      mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
 {
-    // Frame ID
+	mGrid = new std::vector<std::size_t>*[mFrameGridCols];
+	for (int i = 0; i < mFrameGridCols; i++)
+		mGrid[i] = new std::vector<std::size_t>[mFrameGridRows];
+	mRefGrid = new int;
+	*mRefGrid = 1;
+
+	// Frame ID
     mnId=nNextId++;
 
     // Scale Level Info
@@ -152,8 +182,8 @@ Frame::Frame(const cv::Mat &imGray, const cv::Mat &imDepth, const long long &tim
     {
         ComputeImageBounds(imGray);
 
-        mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
-        mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
+        mfGridElementWidthInv=static_cast<float>(mFrameGridCols)/static_cast<float>(mnMaxX-mnMinX);
+        mfGridElementHeightInv=static_cast<float>(mFrameGridRows)/static_cast<float>(mnMaxY-mnMinY);
 
         fx = K.at<float>(0,0);
         fy = K.at<float>(1,1);
@@ -175,6 +205,12 @@ Frame::Frame(const cv::Mat &imGray, const long long &timeStamp, ORBextractor* ex
     :mpORBvocabulary(voc),mpORBextractorLeft(extractor),mpORBextractorRight(static_cast<ORBextractor*>(NULL)),
      mTimeStamp(timeStamp), mK(K.clone()),mDistCoef(distCoef.clone()), mbf(bf), mThDepth(thDepth)
 {
+	mGrid = new std::vector<std::size_t>*[mFrameGridCols];
+	for (int i = 0; i < mFrameGridCols; i++)
+		mGrid[i] = new std::vector<std::size_t>[mFrameGridRows];
+	mRefGrid = new int;
+	*mRefGrid = 1;
+
     // Frame ID
     mnId=nNextId++;
 
@@ -209,8 +245,8 @@ Frame::Frame(const cv::Mat &imGray, const long long &timeStamp, ORBextractor* ex
     {
         ComputeImageBounds(imGray);
 
-        mfGridElementWidthInv=static_cast<float>(FRAME_GRID_COLS)/static_cast<float>(mnMaxX-mnMinX);
-        mfGridElementHeightInv=static_cast<float>(FRAME_GRID_ROWS)/static_cast<float>(mnMaxY-mnMinY);
+        mfGridElementWidthInv=static_cast<float>(mFrameGridCols)/static_cast<float>(mnMaxX-mnMinX);
+        mfGridElementHeightInv=static_cast<float>(mFrameGridRows)/static_cast<float>(mnMaxY-mnMinY);
 
         fx = K.at<float>(0,0);
         fy = K.at<float>(1,1);
@@ -227,11 +263,23 @@ Frame::Frame(const cv::Mat &imGray, const long long &timeStamp, ORBextractor* ex
     AssignFeaturesToGrid();
 }
 
+Frame::~Frame()
+{
+	*mRefGrid--;
+	if (mRefGrid == 0){
+
+		for (int i = 0; i < mFrameGridCols; i++)
+			delete[] mGrid[i];
+		delete[] mGrid;
+		delete mRefGrid;
+	}
+}
+
 void Frame::AssignFeaturesToGrid()
 {
-    int nReserve = 0.5f*N/(FRAME_GRID_COLS*FRAME_GRID_ROWS);
-    for(unsigned int i=0; i<FRAME_GRID_COLS;i++)
-        for (unsigned int j=0; j<FRAME_GRID_ROWS;j++)
+    int nReserve = 0.5f*N/(mFrameGridCols*mFrameGridRows);
+    for(unsigned int i=0; i<mFrameGridCols;i++)
+        for (unsigned int j=0; j<mFrameGridRows;j++)
             mGrid[i][j].reserve(nReserve);
 
     for(int i=0;i<N;i++)
@@ -242,6 +290,19 @@ void Frame::AssignFeaturesToGrid()
         if(PosInGrid(kp,nGridPosX,nGridPosY))
             mGrid[nGridPosX][nGridPosY].push_back(i);
     }
+
+	if (m_cnt_kp){
+		for (int i = 0; i < mFrameGridRows; i++){
+			for (int j = 0; j < mFrameGridCols; j++){
+				for (int k = 0; k < mGrid[j][i].size(); k++){
+					int ikey = mGrid[j][i][k];
+					int lv = mvKeysUn[ikey].octave;
+					m_cnt_kp[lv][i][j]++;
+				}
+			}
+		}
+		m_nkp++;
+	}
 }
 
 void Frame::ExtractORB(int flag, const cv::Mat &im)
@@ -332,18 +393,18 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
     vIndices.reserve(N);
 
     const int nMinCellX = max(0,(int)floor((x-mnMinX-r)*mfGridElementWidthInv));
-    if(nMinCellX>=FRAME_GRID_COLS)
+    if(nMinCellX>=mFrameGridCols)
         return vIndices;
 
-    const int nMaxCellX = min((int)FRAME_GRID_COLS-1,(int)ceil((x-mnMinX+r)*mfGridElementWidthInv));
+    const int nMaxCellX = min((int)mFrameGridCols-1,(int)ceil((x-mnMinX+r)*mfGridElementWidthInv));
     if(nMaxCellX<0)
         return vIndices;
 
     const int nMinCellY = max(0,(int)floor((y-mnMinY-r)*mfGridElementHeightInv));
-    if(nMinCellY>=FRAME_GRID_ROWS)
+    if(nMinCellY>=mFrameGridRows)
         return vIndices;
 
-    const int nMaxCellY = min((int)FRAME_GRID_ROWS-1,(int)ceil((y-mnMinY+r)*mfGridElementHeightInv));
+    const int nMaxCellY = min((int)mFrameGridRows-1,(int)ceil((y-mnMinY+r)*mfGridElementHeightInv));
     if(nMaxCellY<0)
         return vIndices;
 
@@ -381,13 +442,13 @@ vector<size_t> Frame::GetFeaturesInArea(const float &x, const float  &y, const f
     return vIndices;
 }
 
-bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY)
+bool Frame::PosInGrid(const cv::KeyPoint &kp, int &posX, int &posY) const
 {
     posX = round((kp.pt.x-mnMinX)*mfGridElementWidthInv);
     posY = round((kp.pt.y-mnMinY)*mfGridElementHeightInv);
 
     //Keypoint's coordinates are undistorted, which could cause to go out of the image
-    if(posX<0 || posX>=FRAME_GRID_COLS || posY<0 || posY>=FRAME_GRID_ROWS)
+    if(posX<0 || posX>=mFrameGridCols || posY<0 || posY>=mFrameGridRows)
         return false;
 
     return true;

@@ -43,7 +43,7 @@ using namespace cv;
 #include <GL/glut.h>
 #include <GL/glu.h>
 
-
+#include "../util/aws_glib.h"
 #include"../orb_slam/PnPsolver.h"
 #include "../orb_slam/ORBmatcher.h"
 #include "../orb_slam/Converter.h"
@@ -57,11 +57,11 @@ namespace ORB_SLAM2
 	///////////////////////////////////////////////// tracker
 	f_tracker::f_tracker(const char * name) :f_base(name),
 		m_cam(NULL), m_pORBEx(NULL), m_pORBExIni(NULL),
-		m_kf_mapper(NULL), m_kfdb(NULL), m_map(NULL), m_trj(NULL), m_frm(NULL),
+		m_kf_mapper(NULL), m_kfdb(NULL), m_map(NULL), m_trj(NULL), m_frm(NULL), m_ch_state(NULL),
 		m_max_frms(30), m_min_frms(0),
 		m_pvoc(NULL), m_timg(-1), m_ifrm(-1), m_state(NO_IMAGES_YET), m_last_state(NO_IMAGES_YET),
 		m_ifrm_last_reloc(0), m_pref_kf(NULL), m_bvo(false), m_pinit(NULL), m_plast_kf(NULL), m_last_kf_id(-1),
-		m_num_matches_inliers(0), m_brgb(false), m_undist(true), m_roi(0, 0, 0, 0)
+		m_num_matches_inliers(0), m_brgb(false), m_undist(true), m_roi(0, 0, 0, 0), m_blog(false)
 	{
 		register_fpar("ch_sys", (ch_base**)&m_sys, typeid(ch_sys).name(), "System channel.");
 		register_fpar("ch_cam", (ch_base**)&m_cam, typeid(ch_image_ref).name(), "Camera image channel.");
@@ -70,7 +70,7 @@ namespace ORB_SLAM2
 		register_fpar("ch_map", (ch_base**)&m_map, typeid(ch_map).name(), "Map channel.");
 		register_fpar("ch_trj", (ch_base**)&m_trj, typeid(ch_trj).name(), "Trajectory channel.");
 		register_fpar("ch_frm", (ch_base**)&m_frm, typeid(ch_frm).name(), "Frame channel.");
-
+		register_fpar("ch_state", (ch_base**)(&m_ch_state), typeid(ch_state).name(), "State channel");
 		m_fcp[0] = m_fvoc[0] = '\0';
 		register_fpar("fcp", m_fcp, 1024, "File of camera parameters.");
 		register_fpar("fvoc", m_fvoc, 1024, "File of vocablary.");
@@ -93,6 +93,11 @@ namespace ORB_SLAM2
 		register_fpar("roi_y", &m_roi.y, "y of ROI.");
 		register_fpar("roi_w", &m_roi.width, "width of ROI");
 		register_fpar("roi_h", &m_roi.height, "height of ROI");
+
+		register_fpar("FrameGridCols", &Frame::mFrameGridCols, "Frame grid cols.");
+		register_fpar("FrameGridRows", &Frame::mFrameGridRows, "Frame grid rows.");
+
+		register_fpar("log", &m_blog, "Enable logging.");
 	}
 
 	f_tracker::~f_tracker()
@@ -196,6 +201,21 @@ namespace ORB_SLAM2
 			return false;
 		}
 
+		if (m_blog){
+			// logging mode capability
+			// Key point distribution in frames
+			// Outlier distribution in frames for lv, (x, y) in grid
+			// Key point distribution under tracking for lv, (x, y) in grid
+			// Initialization mode (F or H)
+			// condition failed
+			Frame::m_cnt_ol = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Frame::m_cnt_kp = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Initializer::m_cnt_ol_hini = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Initializer::m_cnt_ol_fini = alloc_array_3d(m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			Initializer::m_bfini = Initializer::m_bhini = false;
+			Initializer::m_nfini = Initializer::m_nhini = 0;
+		}
+
 		if (!m_pvoc)
 			delete m_pvoc;
 
@@ -229,6 +249,31 @@ namespace ORB_SLAM2
 			delete m_pORBExIni;
 			m_pORBExIni = NULL;
 		}
+
+		if (m_blog){
+			// output each distribution as csv
+			char fname[1024];
+			snprintf(fname, 1024, "%s_grid_stat.csv", m_name);
+			ofstream ofile(fname);
+			
+			if (ofile.is_open()){
+				ofile << "Key points in " << Frame::m_nkp << " / " << Frame::nNextId << endl;
+				dump_array_3d(ofile, Frame::m_cnt_kp, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+				ofile << "Outlier in " << Frame::m_nol << " / " << Frame::nNextId << endl;
+				dump_array_3d(ofile, Frame::m_cnt_ol, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+				ofile << "Initializer H outlier (trying " << Initializer::m_nhini << " times result = " << Initializer::m_bhini << ")" << endl;
+				dump_array_3d(ofile, Initializer::m_cnt_ol_hini, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+				ofile << "Initializer F outlier (trying " << Initializer::m_nfini << " times result = " << Initializer::m_bfini << ")" << endl;
+				dump_array_3d(ofile, Initializer::m_cnt_ol_fini, m_num_levels, Frame::mFrameGridRows, Frame::mFrameGridCols);
+			}
+
+			free_array_3d(Frame::m_cnt_ol);
+			free_array_3d(Frame::m_cnt_kp);
+			free_array_3d(Initializer::m_cnt_ol_fini);
+			free_array_3d(Initializer::m_cnt_ol_hini);
+			Frame::m_cnt_ol = Frame::m_cnt_kp = NULL;
+			Initializer::m_cnt_ol_fini = Initializer::m_cnt_ol_hini = NULL;
+		}
 	}
 
 	bool f_tracker::proc()
@@ -244,7 +289,6 @@ namespace ORB_SLAM2
 
 		if (!load_frm())
 			return true;
-		aws_scope_show sc("f_tracker::proc");
 
 		if (m_state == NO_IMAGES_YET)
 			m_state = NOT_INITIALIZED;
@@ -277,7 +321,7 @@ namespace ORB_SLAM2
 				if (m_state == NOT_INITIALIZED)
 					m_frm->init(m_img, m_cur_frm.mvKeys, m_ini_frm.mvKeys, m_ini_matches, m_state);
 				else
-					m_frm->update(m_img, m_cur_frm.mvpMapPoints, m_cur_frm.mvbOutlier, m_cur_frm.mvKeys, m_state);
+					m_frm->update(m_cur_frm.mTimeStamp, m_cur_frm.mnId, m_img, m_cur_frm.mvpMapPoints, m_cur_frm.mvbOutlier, m_cur_frm.mvKeys, m_state);
 			}
 
 			if (m_state != OK){
@@ -363,7 +407,7 @@ namespace ORB_SLAM2
 #ifdef DEBUG_ORB_SLAM
 				cout << "m_frm->update ... ";
 #endif
-				m_frm->update(m_img, m_cur_frm.mvpMapPoints, m_cur_frm.mvbOutlier, m_cur_frm.mvKeys, m_state);
+				m_frm->update(m_cur_frm.mTimeStamp, m_cur_frm.mnId, m_img, m_cur_frm.mvpMapPoints, m_cur_frm.mvbOutlier, m_cur_frm.mvKeys, m_state);
 #ifdef DEBUG_ORB_SLAM
 				cout << "done." << endl;
 #endif
@@ -521,9 +565,6 @@ namespace ORB_SLAM2
 			m_cur_frm = Frame(m_img, m_timg, m_pORBExIni, m_pvoc, m_Kf, m_Df, bf, th_depth);
 		else
 			m_cur_frm = Frame(m_img, m_timg, m_pORBEx, m_pvoc, m_Kf, m_Df, bf, th_depth);
-#ifdef DEBUG_ORB_SLAM
-		cout << "New Frame[" << m_ifrm << "]: id = " << m_cur_frm.mnId << " t=" << m_timg << "." << m_cur_frm.mvKeys.size() << " Keypoints are found." << endl;
-#endif
 		return true;
 	}
 
@@ -917,6 +958,9 @@ namespace ORB_SLAM2
 
 		// Optimize frame pose with all matches
 		Optimizer::PoseOptimization(&m_cur_frm);
+
+		if (m_blog)
+			m_cur_frm.cnt_ol();
 
 		// Discard outliers
 		int nmatchesMap = 0;
@@ -2642,14 +2686,16 @@ namespace ORB_SLAM2
 	};
 
 	f_viewer::f_viewer(const char * name) : f_glfw_window(name), m_cam(NULL), m_sys(NULL),
-		m_map(NULL), m_trj(NULL), m_frm(NULL),
-		m_draw_kf(true), m_draw_g(true), m_vmode(FRAME)
+		m_map(NULL), m_trj(NULL), m_frm(NULL), m_ch_state(NULL),
+		m_draw_kf(true), m_draw_g(true), m_vmode(FRAME), m_sz_kf(0.05), m_sz_cam(0.08)
 	{
 		register_fpar("ch_sys", (ch_base**)&m_sys, typeid(ch_sys).name(), "System channel.");
 		register_fpar("ch_cam", (ch_base**)&m_cam, typeid(ch_image_ref).name(), "Camera image channel.");
 		register_fpar("ch_map", (ch_base**)&m_map, typeid(ch_map).name(), "Map channel.");
 		register_fpar("ch_trj", (ch_base**)&m_trj, typeid(ch_trj).name(), "Trajectory channel.");
 		register_fpar("ch_frm", (ch_base**)&m_frm, typeid(ch_frm).name(), "Frame channel.");
+		register_fpar("ch_state", (ch_base**)&m_ch_state, typeid(ch_state).name(), "State channel");
+
 		register_fpar("draw_kf", &m_draw_kf, "Flag drawing key frames.");
 		register_fpar("draw_g", &m_draw_g, "Flag drawing graph.");
 		register_fpar("lw_g", &m_lw_g, "Line width of graph");
@@ -2696,6 +2742,11 @@ namespace ORB_SLAM2
 		glLoadIdentity();
 		gluLookAt(m_eyex, m_eyey, m_eyez, 0, 0, 0, 0, -1., 0);
 
+		m_xscale = (float)(0.5 * m_sz_win.width);
+		m_yscale = (float)(0.5 * m_sz_win.height);
+		m_ixscale = (float)(2.0 / (double)m_sz_win.width);
+		m_iyscale = (float)(2.0 / (double)m_sz_win.height);
+
 		return true;
 	}
 
@@ -2738,6 +2789,8 @@ namespace ORB_SLAM2
 				resize(imWithInfo, tmp, m_sz_win);
 				imWithInfo = tmp;
 			}
+			glRasterPos2i(-1, -1);
+
 			glDrawPixels(imWithInfo.cols, imWithInfo.rows, GL_RGB, GL_UNSIGNED_BYTE, imWithInfo.data);
 		}
 		else if (m_vmode == MAP_AND_FRAME){
@@ -2746,8 +2799,66 @@ namespace ORB_SLAM2
 				resize(imWithInfo, tmp, Size(m_sz_win.width >> 2, m_sz_win.height >> 2));
 				imWithInfo = tmp;
 			}
+			glRasterPos2i(-1, -1);
+
 			glDrawPixels(imWithInfo.cols, imWithInfo.rows, GL_RGB, GL_UNSIGNED_BYTE, imWithInfo.data);
 		}
+
+		if (m_ch_state){
+			glDisable(GL_DEPTH_TEST);
+			long long tatt, tpos, tecef, tvel;
+			float roll, pitch, yaw;
+			m_ch_state->get_attitude(tatt, roll, pitch, yaw);
+			float lat, lon, alt, galt;
+			m_ch_state->get_position(tpos, lat, lon, alt, galt);
+			float xecef, yecef, zecef;
+			m_ch_state->get_position_ecef(tecef, xecef, yecef, zecef);
+			float cog, sog;
+			m_ch_state->get_velocity(tvel, cog, sog);
+
+
+			float x, y, wfont, hfont;
+			char buf[1024];
+			int dt;
+			wfont = (float)(8. * m_ixscale);
+			hfont = (float)(13. * m_iyscale);
+
+			x = (float)(-1. + wfont);
+			y = (float)(1 - 2 * hfont);
+
+			snprintf(buf, 1024, "%s", m_time_str);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+			dt = (int)(m_t - m_cur_time);
+			snprintf(buf, 1024, "t %+10d FrameId %+10d", dt, m_id);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+			dt = (int)(tatt - m_cur_time);
+			snprintf(buf, 1024, "t %+10d roll %+3.3f pitch %+3.3f yaw %+3.3f", dt, roll, pitch, yaw);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+			dt = (int)(tpos - m_cur_time);
+			snprintf(buf, 1024, "t %+10d lat %+3.8f lon %+3.8f alt %+3.3f", dt, lat, lon, alt);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+			dt = (int)(tecef - m_cur_time);
+			snprintf(buf, 1024, "t %+10d x %+f y %+f z %+f", dt, xecef, yecef, zecef);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+			dt = (int)(tvel - m_cur_time);
+			snprintf(buf, 1024, "t %+10d cog %+3.1f sog %+3.1f", dt, cog, sog);
+			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+			y -= 2 * hfont;
+
+
+			glEnable(GL_DEPTH_TEST);
+		}
+
 		glPopMatrix();
 		glMatrixMode(GL_PROJECTION);
 		glPopMatrix();
@@ -2762,7 +2873,7 @@ namespace ORB_SLAM2
 			GLdouble eyex, eyey, eyez;
 			eyex = _eyex * Twc[0] + _eyey * Twc[4] + _eyez * Twc[8] + Twc[12];
 			eyey = _eyex * Twc[1] + _eyey * Twc[5] + _eyez * Twc[9] + Twc[13];
-			eyez = _eyez * Twc[2] + _eyey * Twc[6] + _eyez * Twc[10] + Twc[14];
+			eyez = _eyex * Twc[2] + _eyey * Twc[6] + _eyez * Twc[10] + Twc[14];
 			gluLookAt(eyex, eyey, eyez, Twc[12], Twc[13], Twc[14], 0, -1, 0);
 			draw_cam(Twc);
 			draw_kfs();
@@ -2783,7 +2894,7 @@ namespace ORB_SLAM2
 		vector<cv::KeyPoint> vCurrentKeys; // KeyPoints in current frame
 		vector<bool> vbVO, vbMap; // Tracked MapPoints in current frame
 		e_tracking_state state; // Tracking state
-		m_frm->get(im, vMatches, vIniKeys, vCurrentKeys, vbVO, vbMap, state);
+		m_frm->get(m_t, m_id, im, vMatches, vIniKeys, vCurrentKeys, vbVO, vbMap, state);
 
 		if (im.empty())
 			return;

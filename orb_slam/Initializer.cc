@@ -29,7 +29,12 @@
 
 namespace ORB_SLAM2
 {
-
+	int Initializer::m_nfini = 0;
+	int Initializer::m_nhini = 0;
+	bool Initializer::m_bfini = false;
+	bool Initializer::m_bhini = false;
+	long long *** Initializer::m_cnt_ol_fini = NULL;
+	long long *** Initializer::m_cnt_ol_hini = NULL;
 Initializer::Initializer(const Frame &ReferenceFrame, float sigma, int iterations)
 {
     mK = ReferenceFrame.mK.clone();
@@ -112,12 +117,22 @@ bool Initializer::Initialize(const Frame &CurrentFrame, const vector<int> &vMatc
     float RH = SH/(SH+SF);
 
     // Try to reconstruct from homography or fundamental depending on the ratio (0.40-0.45)
-    if(RH>0.40)
-        return ReconstructH(vbMatchesInliersH,H,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
-    else //if(pF_HF>0.6)
-        return ReconstructF(vbMatchesInliersF,F,mK,R21,t21,vP3D,vbTriangulated,1.0,50);
-
-    return false;
+	bool res;
+	if (RH > 0.40){
+		res = ReconstructH(vbMatchesInliersH, H, mK, R21, t21, vP3D, vbTriangulated, 1.0, 50);
+		if (m_cnt_ol_hini && (m_bhini = res)){
+			cnt_ol_ini(CurrentFrame, m_cnt_ol_hini, vbTriangulated);
+		}
+		m_nhini++;
+	}
+	else{ //if(pF_HF>0.6)
+		res = ReconstructF(vbMatchesInliersF, F, mK, R21, t21, vP3D, vbTriangulated, 1.0, 50);
+		if (m_cnt_ol_fini && (m_bfini = res)){
+			cnt_ol_ini(CurrentFrame, m_cnt_ol_fini, vbTriangulated);
+		}
+		m_nfini++;
+	}
+    return res;
 }
 
 

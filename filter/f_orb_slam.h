@@ -1,4 +1,5 @@
-#ifndef _f_H
+#ifndef _F_ORB_SLAM_H_
+#define _F_ORB_SLAM_H_
 // Copyright(c) 2016 Yohei Matsumoto, All right reserved. 
 
 // f_orb_slam.h is free software: you can redistribute it and/or modify
@@ -22,6 +23,7 @@
 
 #include "../channel/ch_image.h"
 #include "../channel/ch_orb_slam.h"
+#include "../channel/ch_state.h"
 
 #include "f_base.h"
 
@@ -43,6 +45,7 @@ namespace ORB_SLAM2{
 		ch_map * m_map;
 		ch_trj * m_trj;
 		ch_frm * m_frm;
+		ch_state * m_ch_state;
 
 		AWSCamPar m_cp;
 		Mat m_Kf, m_Df; // m_cp is double precision, here the single precision camera parameters are presented
@@ -111,6 +114,43 @@ namespace ORB_SLAM2{
 
 		e_tracking_state m_state, m_last_state;
 
+		bool m_blog; // logging mode flag
+
+		long long *** alloc_array_3d(int sx, int sy, int sz){
+			long long *** p = new long long **[sx];
+			long long ** px = new long long *[sx * sy];
+			long long * py = new long long [sx * sy * sz];
+			memset((void*)py, 0, sizeof(long long)* sx * sy * sz);
+
+			for (int x = 0; x < sx; x++){
+				p[x] = px;
+				for (int y = 0; y < sy; y++){
+					p[x][y] = py;
+					py += sz;
+				}
+				px += sy;
+			}
+			return p;
+		}
+
+		void free_array_3d(long long *** p){
+			delete[] p[0][0];
+			delete[] p[0];
+			delete[] p;	
+		}
+
+		void dump_array_3d(ofstream & ofile, long long *** p, int sx, int sy, int sz)
+		{
+			for (int x = 0; x < sx; x++){
+				ofile << "p[" << x << "]" << endl;
+				for (int y = 0; y < sy; y++){
+					for (int z = 0; z < sz; z++){
+						ofile << p[x][y][z] << ",";
+					}
+					ofile << endl;
+				}
+			}
+		}
 	public:
 		f_tracker(const char * name);
 		virtual ~f_tracker();
@@ -192,7 +232,7 @@ namespace ORB_SLAM2{
 		ch_map * m_map;
 		ch_trj * m_trj;
 		ch_frm * m_frm;
-
+		ch_state * m_ch_state;
 		enum e_vmode{
 			FRAME, MAP, MAP_AND_FRAME, UNDEF
 		} m_vmode;
@@ -217,6 +257,10 @@ namespace ORB_SLAM2{
 		bool m_draw_kf, m_draw_g;
 		void draw_cam(GLdouble * Twc);
 		void load_cam_pose(GLdouble * Twc);
+
+		long long m_t;
+		unsigned long m_id;
+		float m_xscale, m_yscale, m_ixscale, m_iyscale;
 	public:
 		f_viewer(const char * name);
 		virtual ~f_viewer();

@@ -59,7 +59,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					 m_ch_map(NULL),
 					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL), m_ch_img2(NULL), m_ch_disp(NULL),
 					 m_ch_obst(NULL), m_ch_ap_inst(NULL),
-					 m_imv(IMV_IMG1),
+					 m_imv(IMV_IMG1), m_js_id(0),
 					 m_img_x_flip(false), m_img_y_flip(false), m_img2_x_flip(false), m_img2_y_flip(false),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
 					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.), m_bsvw(false), m_bss(false)

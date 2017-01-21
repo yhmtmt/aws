@@ -304,7 +304,6 @@ bool f_glfw_calib::init_run()
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	
-	GLfloat m[16];
 	glMatrixMode(GL_PROJECTION);
 	glLoadIdentity();
 	gluPerspective(120, (double)m_sz_win.width / (double)m_sz_win.height, 0.1, 1000);
@@ -452,10 +451,10 @@ bool f_glfw_calib::proc()
 		Mat P = m_par.getCvPrjMat();
 		double fx = P.at<double>(0, 0), fy = P.at<double>(1, 1);
 		double wc = 0.05 * (double)m_img_det.cols / fx, hc = 0.05 * (double)m_img_det.rows / fy;
-		p0 = Point3f(wc, hc, 0.1);
-		p1 = Point3f(-wc, hc, 0.1);
-		p2 = Point3f(-wc, -hc, 0.1);
-		p3 = Point3f(wc, -hc, 0.1);
+		p0 = Point3f((float)wc,(float)hc, 0.1f);
+		p1 = Point3f((float)-wc, (float)hc, 0.1f);
+		p2 = Point3f((float)-wc, (float)-hc, 0.1f);
+		p3 = Point3f((float)wc, (float)-hc, 0.1f);
 		glColor3f(1., 0., 0.);
 
 		glBegin(GL_LINES);
@@ -533,8 +532,8 @@ bool f_glfw_calib::proc()
 	// overlay information (Number of chessboard, maximum, minimum, average scores, reprojection error)
 	float hfont = (float)(24. / (float)img.rows);
 	float wfont = (float)(24. / (float)img.cols);
-	float x = wfont - 1.0;
-	float y = hfont - 1.0;
+	float x = (float)(wfont - 1.0);
+	float y = (float)(hfont - 1.0);
 	char buf[1024];
 
 	// calculating chessboard's stats
@@ -1049,7 +1048,7 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 		break;
 	case GLFW_KEY_LEFT:
 		pthread_mutex_lock(&m_mtx);
-		m_sel_chsbd = (m_sel_chsbd + m_objs.size() - 1) % m_objs.size();
+		m_sel_chsbd = (m_sel_chsbd + (int)m_objs.size() - 1) % (int)m_objs.size();
 		pthread_mutex_unlock(&m_mtx);
 		break;
 	case GLFW_KEY_UP:
@@ -1169,7 +1168,7 @@ void f_glfw_calib::load()
 	char item[1024];
 	for (int i = 0; i < m_num_chsbds_det; i++){
 		snprintf(item, 1024, "chsbdpt%d", i);
-		fn = fs[item];
+		fn = fs[(char*)item];
 		if (fn.empty()){
 			cerr << item << " was not found" << endl;
 			goto finish;
@@ -1186,7 +1185,7 @@ void f_glfw_calib::load()
 		}
 
 		snprintf(item, 1024, "chsbdsc%d", i);
-		fn = fs[item];
+		fn = fs[(char*)item];
 		if (fn.empty()){
 			cerr << item << " was not found" << endl;
 			goto finish;
@@ -1200,7 +1199,7 @@ void f_glfw_calib::load()
 		*itr >> m_score[i].rep;;
 
 		snprintf(item, 1024, "chsbdat%d", i);
-		fn = fs[item];
+		fn = fs[(char*)item];
 		if (fn.empty()){
 			cerr << item << " was not found" << endl;
 			goto finish;

@@ -44,6 +44,7 @@ class KeyFrame
 {
 public:
     KeyFrame(Frame &F, Map* pMap, KeyFrameDatabase* pKFDB);
+	~KeyFrame();
 
     // Pose functions
     void SetPose(const cv::Mat &Tcw);
@@ -207,7 +208,8 @@ protected:
     ORBVocabulary* mpORBvocabulary;
 
     // Grid over the image to speed up feature matching
-    std::vector< std::vector <std::vector<size_t> > > mGrid;
+	int * mRefGrid;
+	std::vector<size_t> ** mGrid;
 
     std::map<KeyFrame*,int> mConnectedKeyFrameWeights;
     std::vector<KeyFrame*> mvpOrderedConnectedKeyFrames;
