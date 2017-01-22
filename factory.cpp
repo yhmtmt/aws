@@ -233,6 +233,7 @@ void ch_base::register_factory()
 #include "filter/f_glfw_stereo_view.h"
 #include "filter/f_aws1_ui.h"
 #include "filter/f_aws3_ui.h"
+#include "filter/f_state_estimator.h"
 #endif
 
 #include "filter/f_nmea.h"
@@ -247,7 +248,6 @@ void ch_base::register_factory()
 #include "filter/f_ahrs.h"
 #include "filter/f_map.h"
 #include "filter/f_time.h"
-#include "filter/f_state_estimator.h"
 #include "filter/f_aws1_ap.h"
 #include "filter/f_obj_manager.h"
 #include "filter/f_wp_manager.h"
@@ -360,6 +360,8 @@ void f_base::register_factory()
 	register_factory<f_aws1_ui_test>("aws1_ui_test");
 	register_factory<f_aws3_ui>("aws3_ui");
 	register_factory<f_glfw_calib>("gcalib");
+	register_factory<f_state_estimator>("stest");
+	register_factory<f_est_viewer>("estv");
 #endif
 
 	// video sources
@@ -415,8 +417,6 @@ void f_base::register_factory()
 #endif
 
 	register_factory<f_aws3_com>("aws3c");
-	register_factory<f_state_estimator>("stest");
-	register_factory<f_est_viewer>("estv");
 #ifdef GST_CAM
 	register_factory<f_gst_cam>("gstcam");
 #endif

@@ -313,14 +313,14 @@ class ch_state: public ch_base
   void set_position(const long long _tpos, const float _lat, const float _lon, const float _alt, const float _galt)
   {
     lock();
-	tpos = _tpos;
+    tpos = _tpos;
     lat = _lat;
     lon = _lon;
     alt = _alt;
-	galt = _galt;
-	float lat_rad = (float)(lat * (PI / 180.)), lon_rad = (float)(lon * (PI / 180.));
-	getwrldrot(lat_rad, lon_rad, R);
-	bihtoecef(lat_rad, lon_rad, alt, x, y, z);
+    galt = _galt;
+    float lat_rad = (float)(lat * (PI / 180.)), lon_rad = (float)(lon * (PI / 180.));
+    getwrldrot(lat_rad, lon_rad, R);
+    bihtoecef(lat_rad, lon_rad, alt, x, y, z);
     unlock();
   }
 
@@ -343,7 +343,7 @@ class ch_state: public ch_base
   void get_attitude(long long & _tatt, float & _r, float & _p, float & _y)
   {
     lock();
-	_tatt = tatt;
+    _tatt = tatt;
     _r = roll;
     _p = pitch;
     _y = yaw;
@@ -369,11 +369,11 @@ class ch_state: public ch_base
   void get_position(long long & _tpos, float & _lat, float & _lon, float & _alt, float & _galt)
   {
     lock();
-	_tpos = tpos;
+    _tpos = tpos;
     _lat = lat;
     _lon = lon;
     _alt = alt;
-	_galt = galt;
+    _galt = galt;
     unlock();
   }
 
@@ -422,14 +422,14 @@ class ch_state: public ch_base
   virtual size_t write_buf(const char *buf)
   {
     lock();
-	const long long *lptr = (const long long*) buf;
-	tpos = lptr[0];
-	tatt = lptr[1];;
-	tvel = lptr[2];
-	tdp = lptr[3];
-	t9dofc = lptr[4];
-	t9dofr = lptr[5];
-
+    const long long *lptr = (const long long*) buf;
+    tpos = lptr[0];
+    tatt = lptr[1];;
+    tvel = lptr[2];
+    tdp = lptr[3];
+    t9dofc = lptr[4];
+    t9dofr = lptr[5];
+    
     const float * ptr = (const float*) (lptr + 6);
     roll = ptr[0];
     pitch = ptr[1];
@@ -438,34 +438,33 @@ class ch_state: public ch_base
     lon = ptr[4];
     alt = ptr[5];
     galt = ptr[6];
-	x = ptr[7];
-	y = ptr[8];
-	z = ptr[9];
+    x = ptr[7];
+    y = ptr[8];
+    z = ptr[9];
     cog = ptr[10];
     sog = ptr[11];
     depth = ptr[12];
-	mxc = ptr[13];
-	myc = ptr[14];
-	mzc = ptr[15];
-	axc = ptr[16];
-	ayc = ptr[17];
-	azc = ptr[18];
-	gxc = ptr[19];
-	gyc = ptr[20];
-	gzc = ptr[21];
-	mxr = ptr[22];
-	myr = ptr[23];
-	mzr = ptr[24];
-	axr = ptr[25];
-	ayr = ptr[26];
-	azr = ptr[27];
-	gxr = ptr[28];
-	gyr = ptr[29];
-	gzr = ptr[30];
-
-
-	const double * dptr = (const double*)(ptr + 31);
-	memcpy((void*)R.data, (void*) dptr, sizeof(double) * 9);
+    mxc = ptr[13];
+    myc = ptr[14];
+    mzc = ptr[15];
+    axc = ptr[16];
+    ayc = ptr[17];
+    azc = ptr[18];
+    gxc = ptr[19];
+    gyc = ptr[20];
+    gzc = ptr[21];
+    mxr = ptr[22];
+    myr = ptr[23];
+    mzr = ptr[24];
+    axr = ptr[25];
+    ayr = ptr[26];
+    azr = ptr[27];
+    gxr = ptr[28];
+    gyr = ptr[29];
+    gzr = ptr[30]; 
+    
+    const double * dptr = (const double*)(ptr + 31);
+    memcpy((void*)R.data, (void*) dptr, sizeof(double) * 9);
 
     unlock();
     return get_dsize();
@@ -474,15 +473,15 @@ class ch_state: public ch_base
   virtual size_t read_buf(char * buf)
   {
     lock();
-	long long * lptr = (long long *) buf;
-	lptr[0] = tpos;
-	lptr[1] = tatt;
-	lptr[2] = tvel;
-	lptr[3] = tdp;
-	lptr[4] = t9dofc;
-	lptr[5] = t9dofr;
+    long long * lptr = (long long *) buf;
+    lptr[0] = tpos;
+    lptr[1] = tatt;
+    lptr[2] = tvel;
+    lptr[3] = tdp;
+    lptr[4] = t9dofc;
+    lptr[5] = t9dofr;
 
-    float * ptr =  (float*) (lptr + 4);
+    float * ptr =  (float*) (lptr + 6);
     ptr[0] = roll;
     ptr[1] = pitch;
     ptr[2] = yaw;
@@ -490,33 +489,33 @@ class ch_state: public ch_base
     ptr[4] = lon;
     ptr[5] = alt;
     ptr[6] = galt;
-	ptr[7] = x;
-	ptr[8] = y;
-	ptr[9] = z;
+    ptr[7] = x;
+    ptr[8] = y;
+    ptr[9] = z;
     ptr[10] = cog;
     ptr[11] = sog;
     ptr[12] = depth;
-	ptr[13] = mxc;
-	ptr[14] = myc;
-	ptr[15] = mzc;
-	ptr[16] = axc;
-	ptr[17] = ayc;
-	ptr[18] = azc;
-	ptr[19] = gxc;
-	ptr[20] = gyc;
-	ptr[21] = gzc;
-	ptr[22] = mxr;
-	ptr[23] = myr;
-	ptr[24] = mzr;
-	ptr[25] = axr;
-	ptr[26] = ayr;
-	ptr[27] = azr;
-	ptr[28] = gxr;
-	ptr[29] = gyr;
-	ptr[30] = gzr;
-
-	double * dptr = (double*) (ptr + 31);
-	memcpy((void*)dptr, (void*) R.data, sizeof(double) * 9);
+    ptr[13] = mxc;
+    ptr[14] = myc;
+    ptr[15] = mzc;
+    ptr[16] = axc;
+    ptr[17] = ayc;
+    ptr[18] = azc;
+    ptr[19] = gxc;
+    ptr[20] = gyc;
+    ptr[21] = gzc;
+    ptr[22] = mxr;
+    ptr[23] = myr;
+    ptr[24] = mzr;
+    ptr[25] = axr;
+    ptr[26] = ayr;
+    ptr[27] = azr;
+    ptr[28] = gxr;
+    ptr[29] = gyr;
+    ptr[30] = gzr;
+    
+    double * dptr = (double*) (ptr + 31);
+    memcpy((void*)dptr, (void*) R.data, sizeof(double) * 9);
     unlock();
     return get_dsize();
   }
