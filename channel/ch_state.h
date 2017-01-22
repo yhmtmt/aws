@@ -693,7 +693,7 @@ class ch_state: public ch_base
 		  res += fread((void*) &cogf, sizeof(float), 1, pf);
 		  res += fread((void*) &sogf, sizeof(float), 1, pf);
 
-		  res += fread((void*) &tdpf, sizeof(float), 1, pf);
+		  res += fread((void*) &tdpf, sizeof(long long), 1, pf);
 		  res += fread((void*) &depthf, sizeof(float), 1, pf);
 
 		  res += fread((void*)&t9dofcf, sizeof(long long), 1, pf);
@@ -725,7 +725,7 @@ class ch_state: public ch_base
 
   virtual bool log2txt(FILE * pbf, FILE * ptf)
   {
-	  fprintf(ptf, "t, tpos, tatt, tvel, tdp, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth\n");
+	  fprintf(ptf, "t, tpos, tatt, tvel, tdp, t9dofc, t9dofr, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth, mxc, myc, mzc, axc, ayc, azc, gxc, gyc, gzc, mxr, myr, mzr, axr, ayr, azr, gxr, gyr, gzr\n");
 	  while(!feof(pbf)){
 		  long long t, tmax = 0;
 
@@ -751,7 +751,7 @@ class ch_state: public ch_base
 
 		  tvelf = tvel = t;
 	
-		  res += fread((void*) &t, sizeof(float), 1, pbf);
+		  res += fread((void*) &t, sizeof(long long), 1, pbf);
 		  res += fread((void*) &depth, sizeof(float), 1, pbf);
 		  tdpf = tdp = t;
 
@@ -782,7 +782,7 @@ class ch_state: public ch_base
 			  m_tfile, tpos, tatt, tvel, tdp, t9dofc, t9dofr, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
 		  fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,",
 			  mxcf, mycf, mzcf, axcf, aycf, azcf, gxcf, gycf, gzcf);
-		  fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f¥n",
+		  fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f \n",
 			  mxrf, myrf, mzrf, axrf, ayrf, azrf, gxrf, gyrf, gzrf);
 
 	  }
