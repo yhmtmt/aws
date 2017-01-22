@@ -523,8 +523,8 @@ class ch_state: public ch_base
   virtual void print(ostream & out)
   {
     out << "channel " << m_name  <<  endl;
-	out << "cal mxmymz axayaz gxgygz" << mxc << "," << myc << "," << mzc << " " << axc << "," << ayc << "," << azc << " " << gxc << "," << gyc << "," << gzc << endl;
-	out << "raw mxmymz axayaz gxgygz" << mxr << "," << myr << "," << mzr << " " << axr << "," << ayr << "," << azr << " " << gxr << "," << gyr << "," << gzr << endl;
+	out << "cal mxmymz axayaz gxgygz" << mxc << "," << myc << "," << mzc << " " << axc << "," << ayc << "," << azc << " " << gxc << "," << gyc << "," << gzc << " t=" << t9dofc << endl;
+	out << "raw mxmymz axayaz gxgygz" << mxr << "," << myr << "," << mzr << " " << axr << "," << ayr << "," << azr << " " << gxr << "," << gyr << "," << gzr << " t=" << t9dofr << endl;
   }
 
   virtual int write(FILE * pf, long long tcur)
@@ -782,7 +782,7 @@ class ch_state: public ch_base
 			  m_tfile, tpos, tatt, tvel, tdp, t9dofc, t9dofr, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
 		  fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,",
 			  mxcf, mycf, mzcf, axcf, aycf, azcf, gxcf, gycf, gzcf);
-		  fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,",
+		  fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f¥n",
 			  mxrf, myrf, mzrf, axrf, ayrf, azrf, gxrf, gyrf, gzrf);
 
 	  }
