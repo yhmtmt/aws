@@ -266,11 +266,11 @@ bool f_ahrs::proc()
 	}
 
 	if(m_state){	
-		if (braw){
-			m_state->set_9dof_raw(t, m_cal.mx, m_cal.my, m_cal.mz, m_cal.ax, m_cal.ay, m_cal.az, m_cal.gx, m_cal.gy, m_cal.gz);
+		if (bcal){
+			m_state->set_9dof_calib(t, m_cal.mx, m_cal.my, m_cal.mz, m_cal.ax, m_cal.ay, m_cal.az, m_cal.gx, m_cal.gy, m_cal.gz);
 		}
 
-		if (bcal){
+		if (braw){
 			m_state->set_9dof_raw(t, m_raw.mx, m_raw.my, m_raw.mz, m_raw.ax, m_raw.ay, m_raw.az, m_raw.gx, m_raw.gy, m_raw.gz);
 		}
 
