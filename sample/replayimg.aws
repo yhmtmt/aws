@@ -1,0 +1,10 @@
+channel imgr img
+filter read_ch_log img -i -o img
+fset img path $1
+
+filter glimv win -i img -o
+fset win width 1920 height 1200
+
+online no
+cyc 0.5
+go $2
