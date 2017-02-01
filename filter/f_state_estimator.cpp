@@ -51,7 +51,8 @@ using namespace cv;
 #include "f_state_estimator.h"
 
 f_state_estimator::f_state_estimator(const char * name) : f_base(name), m_ch_state(NULL), m_ch_estate(NULL),
-m_tpos_prev(0), m_tvel_prev(0), m_bacv(false), m_lag_x(10), m_lag_v(10), m_blog(false), m_bverb(false)
+m_tpos_prev(0), m_tvel_prev(0), m_bacv(false), m_lag_x(10), m_lag_v(10), m_blog(false), m_bverb(false),
+m_b9dof(true), m_binit_9dof(false), m_magg(256.), m_Kai(0.00002), m_Kap(0.02), m_Kmi(0.00002), m_Kmp(1.2)
 
 {
 	m_Qx = Mat::zeros(2, 2, CV_32FC1);
@@ -87,6 +88,9 @@ m_tpos_prev(0), m_tvel_prev(0), m_bacv(false), m_lag_x(10), m_lag_v(10), m_blog(
 	register_fpar("lag_v", &m_lag_v, "Maximum lag calculating auto-covariance for velocity.");
 
 	register_fpar("log", &m_blog, "Logging mode");
+
+	register_fpar("9dof", &m_b9dof, "Enablel 9dof sensor fusion.");
+	register_fpar("init_9dof", &m_binit_9dof, "Initialize 9DoF sensor fusion.");
 
 	register_fpar("verb", &m_bverb, "Debug mode");
 }
@@ -223,6 +227,22 @@ bool f_state_estimator::proc()
 	long long tvel;
 	float cog, sog;
 	m_ch_state->get_velocity(tvel, cog, sog);
+
+	long long t9dof;
+	float mx, my, mz, ax, ay, az, gx, gy, gz;
+	m_ch_state->get_9dof_calib(t9dof, mx, my, mz, ax, ay, az, gx, gy, gz);
+
+	if (!m_binit_9dof){
+		if (init_9dof(t9dof, mx, my, mz, ax, ay, az, gx, gy, gz))
+			m_binit_9dof = true;	
+	}
+
+	if (t9dof != m_t9dof_prev && t9dof != 0){
+		update_9dof(t9dof, mx, my, mz, ax, ay, az, gx, gy, gz);
+		if (m_bverb){
+			printf("r%03.1f p%03.1f y%+3.1f\n", m_roll, m_pitch, m_yaw);
+		}
+	}
 
 	if (m_tpos_prev == 0 && tpos != 0){
 		m_lat_prev = m_lat_opt = gps_lat;
@@ -500,6 +520,151 @@ void f_state_estimator::calc_vel_acv(const float eu, const float ev)
 				l += m_lag_v;
 		}
 	}
+}
+
+bool f_state_estimator::init_9dof(const long long t,
+	const float mx, const float my, const float mz, const float ax, const float ay, 
+	const float az, const float gx, const float gy, const float gz)
+{
+	m_t9dof_prev = t;
+
+	m_pitch = -atan2(ax, sqrt(ay * ay + ay * ay));
+	m_cpitch = cos(m_pitch);
+	m_spitch = sin(m_pitch);
+
+//	float x1, y1, z1, x2, y2, z2;
+//	calc_xproduct(ax, ay, az, 1, 0, 0, x1, y1, z1); // x1 <- 0 y1 <- az z1 <- -ay
+//	calc_xproduct(1, 0, 0, x1, y1, z1, x2, y2, z2); // x2 <- 0 y2 <- ay z2 <- az
+	m_roll = atan2(ay, az);
+	m_croll = cos(m_roll);
+	m_sroll = sin(m_roll);
+
+	m_yaw = calc_yaw(mx, my, mz);
+	m_cyaw = cos(m_yaw);
+	m_syaw = sin(m_yaw);
+
+	// Init rotation matrix
+	m_DCM = Mat::zeros(3, 3, CV_32FC1);
+	float * pDCM = m_DCM.ptr<float>();
+	pDCM[0] = m_cyaw * m_cpitch;
+	pDCM[1] = m_syaw * m_cpitch;
+	pDCM[2] = -m_spitch;
+
+	pDCM[3] = m_cyaw * m_spitch * m_sroll - m_syaw * m_croll;
+	pDCM[4] = m_syaw * m_spitch * m_sroll + m_cyaw * m_croll;
+	pDCM[5] = m_cpitch * m_sroll;
+
+	pDCM[6] = m_cyaw * m_spitch * m_croll + m_syaw * m_sroll;
+	pDCM[7] = m_syaw * m_spitch * m_croll - m_cyaw * m_sroll;
+	pDCM[8] = m_cpitch * m_croll;
+
+
+	m_waxi = m_wayi = m_wazi = 0.0;
+	m_waxp = m_wayp = m_wazp = 0.0;
+	m_wmxi = m_wmyi = m_wmzi = 0.0;
+	m_wmxp = m_wmyp = m_wmzp = 0.0;
+
+	return true;
+}
+
+bool f_state_estimator::update_9dof(const long long t, 
+	const float mx, const float my, const float mz, 
+	const float ax, const float ay, const float az, 
+	const float gx, const float gy, const float gz)
+{
+	float dt = (float)((t - m_t9dof_prev) * (1.0 / (double)SEC));
+
+	m_yaw = calc_yaw(mx, my, mz);
+	m_cyaw = cos(m_yaw);
+	m_syaw = sin(m_yaw);	
+
+	// Updating DCM 
+	m_wx = m_waxi + m_waxp + m_wmxi + m_wmxp + gx;
+	m_wy = m_wayi + m_wayp + m_wmyi + m_wmyp + gy;
+	m_wz = m_wazi + m_wazp + m_wmzi + m_wmzp + gz;
+
+	Mat W = Mat::zeros(3, 3, CV_32FC1);
+	float * pW = W.ptr<float>();	
+	pW[1] = (float)(-dt * m_wz);
+	pW[2] = (float)(dt * m_wy);
+	pW[3] = (float)(dt * m_wz);
+	pW[5] = (float)(-dt * m_wx);
+	pW[6] = (float)(-dt * m_wy);
+	pW[7] = (float)(dt * m_wx);
+
+	m_DCM = m_DCM * W;
+
+	// Normalizing DCM [I, J, K]
+	float * pDCM = m_DCM.ptr<float>();
+
+	// calculate -0.5I^tJ
+	float err = (float)(-0.5 * (pDCM[0] * pDCM[1] + pDCM[3] * pDCM[4] + pDCM[6] * pDCM[7]));
+	float I[3], J[3], K[3];
+	I[0] = err * pDCM[1];
+	I[1] = err * pDCM[4];
+	I[2] = err * pDCM[7];
+	J[0] = err * pDCM[0];
+	J[1] = err * pDCM[3];
+	J[2] = err * pDCM[6];
+	calc_xproduct(I[0], I[1], I[2], J[0], J[1], J[2], K[0], K[1], K[2]);
+
+	float scale;
+	scale = 0.5 * (3. - (I[0] * I[0] + I[1] * I[1] + I[2] * I[2]));
+	pDCM[0] = scale * I[0];
+	pDCM[3] = scale * I[1];
+	pDCM[6] = scale * I[2];
+
+	scale = 0.5 * (3. - (J[0] * J[0] + J[1] * J[1] + J[2] * J[2]));
+	pDCM[1] = scale * J[0];
+	pDCM[4] = scale * J[1];
+	pDCM[7] = scale * J[2];
+
+	scale = 0.5 * (3. - (K[0] * K[0] + K[1] * K[1] + K[2] * K[2]));
+	pDCM[2] = scale * K[0];
+	pDCM[5] = scale * K[1];
+	pDCM[8] = scale * K[2];
+
+	// acceleration based correction
+	// Calculate the magnitude of the accelerometer vector
+	float wax, way, waz;
+	float maga = sqrt(ax * ax + ay * ay + az * az) * (1.0 / m_magg);
+	float sa = max(1.0, min(0.0, 1.0 - 2.0 * abs(1.0 - maga)));
+	calc_xproduct(ax, ay, az, pDCM[2], pDCM[5], pDCM[8], wax, way, waz);
+	m_waxp = sa * m_Kap * wax;
+	m_wayp = sa * m_Kap * way;
+	m_wazp = sa * m_Kap * waz;
+	m_waxi += sa * m_Kai * wax;
+	m_wayi += sa * m_Kai * way;
+	m_wazi += sa * m_Kai * waz;
+
+	// magnet based correction
+	float wmx, wmy, wmz;
+	float sm = (pDCM[0] * m_syaw) - (pDCM[1] * m_cyaw);
+	wmx = sm * pDCM[2];
+	wmy = sm * pDCM[5];
+	wmz = sm * pDCM[8];
+
+	m_wmxp = m_Kmp * wmx;
+	m_wmyp = m_Kmp * wmy;
+	m_wmzp = m_Kmp * wmz;
+	m_wmxi = m_Kmi * wmx;
+	m_wmyi = m_Kmi * wmy;
+	m_wmzi = m_Kmi * wmz;
+
+	// clalcurating rotation of DCM
+	m_wx = gx + m_waxp + m_waxi + m_wmxp + m_wmxi;
+	m_wy = gy + m_wayp + m_wayi + m_wmyp + m_wmyi;
+	m_wz = gz + m_wazp + m_wazi + m_wmzp + m_wmzi;
+
+	// recalculate roll, pitch, yaw
+	m_roll = atan2(pDCM[5], pDCM[8]);
+	m_pitch = -asin(pDCM[2]);
+	m_yaw = atan2(pDCM[1], pDCM[0]);
+	m_cyaw = cos(m_yaw);
+	m_syaw = sin(m_yaw);
+
+	m_ch_state->set_attitude(t, m_roll, m_pitch, m_yaw);
+	return true;
 }
 
 ////////////////////////////////////////////////////////////////////// f_est_viewer

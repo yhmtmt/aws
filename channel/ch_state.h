@@ -56,6 +56,11 @@ struct s_vel_opt{
 	}
 };
 
+struct s_att_opt{
+	long long t;
+	float roll, pitch, yaw;
+};
+
 // estimated state channel contains estimmated sensor data
 class ch_estate : public ch_base
 {
@@ -69,6 +74,10 @@ protected:
 	int num_vel_opt;
 	vector<s_vel_opt> vel_opt;
 
+
+	int cur_att_opt;
+	int num_att_opt;
+	vector<s_att_opt> att_opt;
 public:
 	ch_estate(const char * name) :ch_base(name)
 	{
@@ -143,8 +152,6 @@ public:
 		return Pecef;
 	}
 
-
-
 	void set_vel_opt(const long long _t, const float _u, const float _v, 
 		const float _cog, const float _sog, const Mat & Pv)
 	{
@@ -168,7 +175,25 @@ public:
 
 	bool get_vel(const long long t, const Mat & Qv, float & u, float & v, Mat & Pv, bool both = false);
 
+	void set_att_opt(const long long t, const float & roll, const float & pitch, const float & yaw)
+	{
+		lock();
+		s_att_opt & at = att_opt[cur_att_opt];
+		at.t = t;
+		at.roll = roll;
+		at.pitch = pitch;
+		at.yaw = yaw;
+		cur_att_opt++;
+		if (cur_att_opt == att_opt.size())
+			cur_att_opt = 0;
 
+		if (num_att_opt < att_opt.size())
+			num_att_opt++;
+
+		unlock();
+	}
+
+	bool get_att(const long long t, float & roll, float & pitch, float & yaw);
 };
 
 // state channel contains row sensor data.
@@ -694,7 +719,7 @@ class ch_state: public ch_base
 		  res += fread((void*) &cogf, sizeof(float), 1, pf);
 		  res += fread((void*) &sogf, sizeof(float), 1, pf);
 
-		  res += fread((void*) &tdpf, sizeof(float), 1, pf);
+		  res += fread((void*) &tdpf, sizeof(long long), 1, pf);
 		  res += fread((void*) &depthf, sizeof(float), 1, pf);
 
 		  res += fread((void*)&t9dofcf, sizeof(long long), 1, pf);
@@ -752,7 +777,7 @@ class ch_state: public ch_base
 
 		  tvelf = tvel = t;
 	
-		  res += fread((void*) &t, sizeof(float), 1, pbf);
+		  res += fread((void*) &t, sizeof(long long), 1, pbf);
 		  res += fread((void*) &depth, sizeof(float), 1, pbf);
 		  tdpf = tdp = t;
 

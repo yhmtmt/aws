@@ -147,6 +147,7 @@ bool ch_estate::get_pos(const long long t, const Mat & Qv, const Mat & Qx,
 
 	return true;
 }
+
 bool ch_estate::get_vel(const long long t, const Mat & Qv, float & u, float & v,
 	Mat & Pv, bool both)
 {
@@ -225,6 +226,65 @@ bool ch_estate::get_vel(const long long t, const Mat & Qv, float & u, float & v,
 			v = vf;
 			Pv = Pvf;
 		}
+	}
+	unlock();
+	return true;
+}
+
+bool ch_estate::get_att(const long long t, float & roll, float & pitch, float & yaw)
+{
+	lock();
+	int iatt_new = (cur_att_opt + att_opt.size() - 1) % att_opt.size();
+	int iatt_old = (iatt_new + num_att_opt - 1) % att_opt.size();
+	long long tnew = att_opt[iatt_new].t;
+	long long told = att_opt[iatt_old].t;
+	if (tnew < t){
+		iatt_old = iatt_new;
+		iatt_new = -1;
+	}
+	else if (told > t){
+		iatt_new = iatt_old;
+		iatt_old = -1;
+	}
+	else{
+		int n = num_att_opt;
+		while (n != 0)
+		{
+			int nmid = n >> 1;
+			int iatt_mid = (iatt_old + nmid) % att_opt.size();
+			if (att_opt[iatt_mid].t < t){
+				iatt_old = iatt_mid;
+				n -= nmid;
+			}
+			else{
+				iatt_new = iatt_mid;
+				n = nmid;
+			}
+		}
+	}
+
+	if (iatt_old >= 0 && iatt_new > 0 && iatt_old != iatt_new){
+		s_att_opt & att_new = att_opt[iatt_new];
+		s_att_opt & att_old = att_opt[iatt_old];
+		float a = (float)((float)(att_new.t - t) / (float)(att_new.t - att_old.t));
+		float ia = 1.0 - a;
+
+		roll = ia * att_new.roll - a * att_old.roll;
+		pitch = ia * att_new.pitch - a * att_old.pitch;
+		yaw = ia * att_new.yaw - a * att_old.yaw;
+
+	}
+	else if (iatt_old >= 0){
+		s_att_opt & att_old = att_opt[iatt_old];
+		roll = att_old.roll;
+		pitch = att_old.pitch;
+		yaw = att_old.yaw;
+	}
+	else{
+		s_att_opt & att_new = att_opt[iatt_new];
+		roll = att_new.roll;
+		pitch = att_new.pitch;
+		yaw = att_new.yaw;
 	}
 	unlock();
 	return true;

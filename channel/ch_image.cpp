@@ -37,29 +37,29 @@ int ch_image::write(FILE * pf, long long tcur)
 {
 	if(pf){
 	  lock_fr();
-	  if(!m_img[m_front].empty()){
-	    if(m_tfile < m_time[m_front]){
-	      m_tfile = m_time[m_front];
-	      Mat & img = m_img[m_front];
-	      int r, c, type, size;
-	      r = img.rows;
-	      c = img.cols;
-	      type = img.type();
-	      size = (int)(r * c * img.channels() * img.elemSize());
-	      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
-	      fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);		  
-	      fwrite((void*)&type, sizeof(int), 1, pf);
-	      fwrite((void*)&m_offset, sizeof(m_offset), 1, pf); // from ver.1.00	      
-	      fwrite((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pf); // from ver.1.00	      
-	      fwrite((void*)&r, sizeof(int), 1, pf);
-	      fwrite((void*)&c, sizeof(int), 1, pf);
-	      fwrite((void*)&size, sizeof(int), 1, pf);
-	      fwrite((void*)img.data, sizeof(char), size, pf);
-	      unlock_fr();
-	      return sizeof(long long) + 4 * sizeof(int) + size;
-	    }
+	  Mat img;
+	  if (!m_img[m_front].empty() && m_tfile < m_time[m_front]){
+		  img = m_img[m_front].clone();
 	  }
 	  unlock_fr();
+	  if (!img.empty()){
+		  m_tfile = m_time[m_front];
+		  int r, c, type, size;
+		  r = img.rows;
+		  c = img.cols;
+		  type = img.type();
+		  size = (int)(r * c * img.elemSize());
+		  fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
+		  fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);
+		  fwrite((void*)&type, sizeof(int), 1, pf);
+		  fwrite((void*)&m_offset, sizeof(m_offset), 1, pf); // from ver.1.00	      
+		  fwrite((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pf); // from ver.1.00	      
+		  fwrite((void*)&r, sizeof(int), 1, pf);
+		  fwrite((void*)&c, sizeof(int), 1, pf);
+		  fwrite((void*)&size, sizeof(int), 1, pf);
+		  fwrite((void*)img.data, sizeof(char), size, pf);
+		  return sizeof(long long) + sizeof(m_offset) + sizeof(m_sz_sensor) + 4 * sizeof(int)+size;
+	  }
 	}
 	return 0;
 }
