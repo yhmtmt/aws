@@ -140,8 +140,11 @@ bool f_glfw_imview::proc()
 	if(glfwWindowShouldClose(pwin()))
 		return false;
 
-	long long timg;
-	Mat img = m_pin->get_img(timg);
+	long long timg, tfrm;
+	Mat img = m_pin->get_img(timg, tfrm);
+	if(m_bverb == true){
+	  cout << "Newframe[" << tfrm << "] t=" << timg << endl;
+	}
 
 	bool bnew = true;
 	if(img.empty())
@@ -153,7 +156,6 @@ bool f_glfw_imview::proc()
 	}
 
 	m_timg = timg;
-
 	if(m_sz_win.width != img.cols || m_sz_win.height != img.rows){
 	  Mat tmp;
 	  resize(img, tmp, m_sz_win);

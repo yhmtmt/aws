@@ -168,12 +168,13 @@ class f_glfw_imview: public f_glfw_window
 protected:
 	ch_image * m_pin;
 	long long m_timg;
-
+	bool m_bverb;
 	virtual bool init_run();
 
 public:
-	f_glfw_imview(const char * name): f_glfw_window(name), m_pin(NULL), m_timg(-1)
+ f_glfw_imview(const char * name): f_glfw_window(name), m_pin(NULL), m_timg(-1), m_bverb(false)
 	{
+	  register_fpar("verb", &m_bverb, "For debug.");
 	}
 	virtual ~f_glfw_imview()
 	{
