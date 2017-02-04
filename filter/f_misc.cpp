@@ -1302,6 +1302,10 @@ const char * f_debayer::m_strBayer[UNKNOWN] = {
 
 bool f_debayer::proc(){
 	long long timg, ifrm;
+	if (!m_pin->is_new(m_timg)){
+		return true;
+	}
+
 	Mat img = m_pin->get_img(timg, ifrm);
 	if(m_timg == timg){
 		return true;

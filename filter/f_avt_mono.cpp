@@ -73,6 +73,9 @@ bool f_avt_mono::proc()
 		m_ttrig_prev + m_ttrig_int < get_time()){
 		PvCommandRun(m_cam.m_hcam, "FrameStartTriggerSoftware");
 		m_ttrig_prev = get_time();
+		if (m_cam.verb){
+			cout << "Trigger t=" << get_time() << endl;
+		}
 	}
 
 	return true;

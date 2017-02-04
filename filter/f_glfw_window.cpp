@@ -140,6 +140,9 @@ bool f_glfw_imview::proc()
 	if(glfwWindowShouldClose(pwin()))
 		return false;
 
+	if (!m_pin->is_new(m_timg))
+		return true;
+
 	long long timg, tfrm;
 	Mat img = m_pin->get_img(timg, tfrm);
 	if(m_bverb == true){
@@ -151,7 +154,6 @@ bool f_glfw_imview::proc()
 		return true;
 
 	if (m_timg == timg){
-		bnew = false;
 		return true;
 	}
 

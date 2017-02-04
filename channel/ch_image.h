@@ -70,6 +70,11 @@ public:
 		pthread_mutex_destroy(&m_mtx_fr);
 	}
 
+	bool is_new(const long long t)
+	{
+		return t < m_time[m_front];
+	}
+
 	void set_offset(const int ox, const int oy){
 		m_offset.x = ox;
 		m_offset.y = oy;

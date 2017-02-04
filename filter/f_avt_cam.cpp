@@ -1239,7 +1239,12 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 				remap(m_mat_frame[ibuf], tmp, udmap1, udmap2, INTER_LINEAR);
 				tmp.copyTo(m_mat_frame[ibuf]);
 			}
-			pout->set_img(m_mat_frame[ibuf], m_cur_time, pfrm->FrameCount);
+			m_cur_frm = pfrm->FrameCount;
+			if (verb){
+				cout << "Frame[" << m_cur_frm << "] arrived." << endl;
+			}
+
+			pout->set_img(m_mat_frame[ibuf], m_cur_time, m_cur_frm);
 			pout->set_offset(m_RegionX, m_RegionY);
 			pout->set_sz_sensor(m_sWidth, m_sHeight);
 		}
@@ -1254,11 +1259,7 @@ void f_avt_cam::s_cam_params::set_new_frm(tPvFrame * pfrm)
 		}
 	}
 
-	m_cur_frm = pfrm->FrameCount;
 	m_frm_done[ibuf] = true;
-	if(verb){
-		cout << "Frame[" << m_cur_frm << "] arrived." << endl;
-	}
 
 	tPvErr PvErr;
 #if  defined(_M_AMD64) || defined(_x64)
