@@ -954,19 +954,24 @@ bool f_write_ch_log::close_log(const int ich)
 	return true;
 }
 
+bool f_write_ch_log::open_logs()
+{
+	int ich;
+	for (ich = 0; ich < m_chin.size(); ich++){
+		if (!open_log(ich)){
+			return false;
+		}
+	}
+
+	return m_bopened = true;
+}
+
 bool f_write_ch_log::init_run()
 {
 	m_logs.resize(m_chin.size(), NULL);
 	m_szs.resize(m_chin.size(), 0);
-
-	int ich;
-	for(ich = 0; ich < m_chin.size(); ich++){
-		if(!open_log(ich)){
-			return false;
-		}
-	}
 	
-	return true;
+	return open_logs();
 }
 
 void f_write_ch_log::destroy_run()
@@ -976,8 +981,26 @@ void f_write_ch_log::destroy_run()
 	}
 }
 
+void f_write_ch_log::close_logs()
+{
+	for (int ich = 0; ich < m_chin.size(); ich++){
+		close_log(ich);
+	}
+	m_bopened = false;
+}
+
 bool f_write_ch_log::proc()
 {
+	if (!m_benable){
+		if (m_bopened)
+			close_logs();
+		return true;
+	}
+
+	if (!m_bopened){
+		open_logs();
+	}
+
   for(int ich = 0; ich < m_chin.size(); ich++){
 	  if(m_szs[ich] > m_max_size){
 		  close_log(ich);
