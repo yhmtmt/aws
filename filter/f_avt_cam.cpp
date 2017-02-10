@@ -83,6 +83,7 @@ const char * f_avt_cam::m_strParams[NUM_PV_PARAMS] = {
 	"Strobe1Duration", "Strobe1Delay", "Strobe1ControlledDuration", "Strobe1Mode",
 	"SyncOut1Mode", "SyncOut2Mode", "SyncOut3Mode", "SyncOut4Mode", 
 	"SyncOut1Invert", "SyncOut2Invert", "SyncOut3Invert", "SyncOut4Invert", 
+	"GvspResendPercent", "GvspRetries", "GvspTimeout",
 	"fcp", "ud", "udw", "udh", "emsg", "verb"
 };
 
@@ -127,8 +128,9 @@ f_avt_cam::s_cam_params::s_cam_params(int icam): m_num_buf(5),
   m_BinningX(UINT_MAX), m_BinningY(UINT_MAX), m_DecimationHorizontal(0), m_DecimationVertical(0), m_ReverseSoftware(false), m_ReverseX(false), m_ReverseY(false),
   m_Strobe1Mode(esmUndef), m_Strobe1ControlledDuration(escdUndef), m_Strobe1Duration(UINT_MAX), m_Strobe1Delay(UINT_MAX),
   m_SyncOut1Mode(esomUndef), m_SyncOut2Mode(esomUndef), m_SyncOut3Mode(esomUndef), m_SyncOut4Mode(esomUndef),
-  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef), bundist(false),
-  bemsg(false), verb(false)
+  m_SyncOut1Invert(esoiUndef), m_SyncOut2Invert(esoiUndef), m_SyncOut3Invert(esoiUndef), m_SyncOut4Invert(esoiUndef),
+  m_GvspResendPercent(FLT_MAX), m_GvspRetries(UINT_MAX), m_GvspTimeout(UINT_MAX),
+  bundist(false), bemsg(false), verb(false)
 {
 	if(icam == -1){
 		strParams = m_strParams;
@@ -227,13 +229,16 @@ void f_avt_cam::register_params(s_cam_params & cam)
 	register_fpar(cam.strParams[46], (int*) &cam.m_SyncOut2Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut2");
 	register_fpar(cam.strParams[47], (int*) &cam.m_SyncOut3Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut3");
 	register_fpar(cam.strParams[48], (int*) &cam.m_SyncOut4Invert, (int) esoiUndef, strSyncOutInvert, "Sync Out Invert of SyncOut4");
+	register_fpar(cam.strParams[49], &cam.m_GvspResendPercent, "Maximum ratio of missing packet to still resend is requested.");
+	register_fpar(cam.strParams[50], &cam.m_GvspRetries, "Maximum number of resend requests.");
+	register_fpar(cam.strParams[51], &cam.m_GvspTimeout, "The time till request resend.");
 
-	register_fpar(cam.strParams[49], cam.fcp, 1024, "File path to the camera parameter. (AWS camera parameter format)");
-	register_fpar(cam.strParams[50], &cam.bundist, "Enabling undistort.");
-	register_fpar(cam.strParams[51], &cam.szud.width, "Width of the undistorted image.");
-	register_fpar(cam.strParams[52], &cam.szud.height, "Height of the undistorted image.");
-	register_fpar(cam.strParams[53], &cam.bemsg, "If asserted, error message is enabled in the callback.");
-	register_fpar(cam.strParams[54], &cam.verb, "Verbose for debug.");
+	register_fpar(cam.strParams[52], cam.fcp, 1024, "File path to the camera parameter. (AWS camera parameter format)");
+	register_fpar(cam.strParams[53], &cam.bundist, "Enabling undistort.");
+	register_fpar(cam.strParams[54], &cam.szud.width, "Width of the undistorted image.");
+	register_fpar(cam.strParams[55], &cam.szud.height, "Height of the undistorted image.");
+	register_fpar(cam.strParams[56], &cam.bemsg, "If asserted, error message is enabled in the callback.");
+	register_fpar(cam.strParams[57], &cam.verb, "Verbose for debug.");
 }
 
 const char * f_avt_cam::get_err_msg(int code)
@@ -283,7 +288,6 @@ void f_avt_cam::destroy_interface(){
 	PvUnInitialize();
 	m_bready_api = false;
 }
-
 
 bool f_avt_cam::s_cam_params::config_param()
 {
@@ -1208,6 +1212,60 @@ bool f_avt_cam::s_cam_params::config_param_dynamic()
 		err = PvAttrEnumSet(m_hcam, "SyncOut4Invert", strSyncOutInvert[m_SyncOut4Invert]);
 		if(err != ePvErrSuccess){
 			cerr << "Failed to set SyncOut4Invert" << endl;
+			return false;
+		}
+	}
+
+	if (m_GvspResendPercent == FLT_MAX){
+		float val;
+		err = PvAttrFloat32Get(m_hcam, "GvspResendPercent", &val);
+		if (err != ePvErrSuccess){
+			cerr << "Failed to get GvspResendPercent" << endl;
+		}
+		else{
+			m_GvspResendPercent = val;
+		}
+	}
+	else{
+		err = PvAttrFloat32Set(m_hcam, "GvspResendPercent", m_GvspResendPercent);
+		if (err != ePvErrSuccess){
+			cerr << "Failed to set GvspResendPercent" << endl;
+			return false;
+		}
+	}
+
+	if (m_GvspRetries == UINT_MAX){
+		tPvUint32 val;
+		err = PvAttrUint32Get(m_hcam, "GvspRetries", &val);
+		if (err != ePvErrSuccess){
+			cerr << "Failed to get GvspRetries" << endl;
+		}
+		else{
+			m_GvspRetries = val;
+		}
+	}
+	else{
+		err = PvAttrUint32Set(m_hcam, "GvspResendPercent", m_GvspRetries);
+		if (err != ePvErrSuccess){
+			cerr << "Failed to set GvspResendPercent" << endl;
+			return false;
+		}
+	}
+
+	if (m_GvspTimeout == UINT_MAX){
+		tPvUint32 val;
+		err = PvAttrUint32Get(m_hcam, "GvspTimeout", &val);
+		if (err != ePvErrSuccess){
+			cerr << "Failed to get GvspTimeout" << endl;
+		}
+		else{
+			m_GvspTimeout = val;
+		}
+	}
+	else{
+		err = PvAttrUint32Set(m_hcam, "GvspTimeout", m_GvspTimeout);
+		if (err != ePvErrSuccess){
+			cerr << "Failed to set GvspTimeout" << endl;
 			return false;
 		}
 	}

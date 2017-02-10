@@ -184,7 +184,7 @@ protected:
 	long long m_ttrig_int;
 	long long m_ttrig_prev;
 
-	#define NUM_PV_PARAMS 55
+	#define NUM_PV_PARAMS 58
 	static const char * m_strParams[NUM_PV_PARAMS];
 	struct s_cam_params{
 		bool m_bactive;
@@ -263,6 +263,11 @@ protected:
 		unsigned int m_Strobe1Delay;
 		eSyncOutMode m_SyncOut1Mode, m_SyncOut2Mode, m_SyncOut3Mode, m_SyncOut4Mode;
 		eSyncOutInvert m_SyncOut1Invert, m_SyncOut2Invert, m_SyncOut3Invert, m_SyncOut4Invert;
+
+		float m_GvspResendPercent;
+		unsigned int m_GvspRetries;
+		unsigned int m_GvspTimeout;
+
 
 		bool config_param_dynamic();
 		s_cam_params(int icam = -1);
