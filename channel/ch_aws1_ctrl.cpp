@@ -40,5 +40,5 @@ const char * str_aws1_ctrl_src[ACS_NONE] =
 
 const char * str_aws1_ap_mode[EAP_NONE] =
 {
-	"cursor", "wp", "stay"
+	"cursor", "wp", "wpav", "stay"
 };

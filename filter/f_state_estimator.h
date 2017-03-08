@@ -58,46 +58,6 @@ protected:
 		return Pecef;
 	}
 
-	bool m_b9dof;
-	bool m_binit_9dof;
-	long long m_t9dof_prev;
-	float m_roll, m_pitch, m_yaw;
-	float m_croll, m_sroll, m_cpitch, m_spitch, m_cyaw, m_syaw;
-	float m_mag_x, m_mag_y;
-	const float m_magg;
-	const float m_Kai, m_Kap, m_Kmi, m_Kmp;
-	float m_wx, m_wy, m_wz,
-		m_waxi, m_wayi, m_wazi,
-		m_waxp, m_wayp, m_wazp,
-		m_wmxi, m_wmyi, m_wmzi,
-		m_wmxp, m_wmyp, m_wmzp;
-
-	Mat m_DCM;
-
-	bool init_9dof(const long long t, const float mx, const float my, const float mz, const float ax,
-		const float ay, const float az, const float gx, const float gy, const float gz);
-
-	bool update_9dof(const long long t, const float mx, const float my, const float mz, const float ax,
-		const float ay, const float az, const float gx, const float gy, const float gz);
-
-	const float calc_yaw(const float mx, const float my, const float mz)
-	{
-		m_mag_x = mx * m_cpitch + my * m_sroll * m_spitch + mz * m_croll * m_spitch;
-		m_mag_y = my * m_croll - mz * m_sroll;
-
-		return atan2(-m_mag_y, m_mag_x);
-	}
-
-	void calc_xproduct(
-		const float x1, const float y1, const float z1,
-		const float x2, const float y2, const float z2,
-		float & xo, float & yo, float & zo)
-	{
-		xo = y1 * z2 - z1 * y2;
-		yo = z1 * x2 - x1 * z2;
-		zo = x1 * y2 - y1 * x2;
-	}
-
 	// Related to measuring auto-covariance
 	bool m_bacv;
 	int m_lag_x, m_lag_v;

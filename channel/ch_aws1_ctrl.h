@@ -386,7 +386,7 @@ public:
 
 enum e_ap_mode
 {
-	EAP_CURSOR, EAP_WP, EAP_STAY, EAP_NONE
+	EAP_CURSOR, EAP_WP, EAP_WPAV, EAP_STAY, EAP_NONE
 };
 
 extern const char * str_aws1_ap_mode[EAP_NONE];

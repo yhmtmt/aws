@@ -32,9 +32,14 @@ protected:
 	ch_aws1_ap_inst * m_ap_inst;
 	ch_wp * m_wp;
 	ch_obst * m_obst;
+	ch_ais_obj * m_ais_obj;
 
 	s_aws1_ctrl_inst m_inst;
-
+	float m_Lo, m_Wo; // assumed size for my own ship
+	float m_Lais, m_Wais; // assumed size for ais target
+	float m_Rav; // range for avoidance(multiple of ship size)
+	float m_Tav; // time for avoidance
+	float m_Cav_max; // maximum course change in degree
 	bool m_verb;
 
 	// for wp mode
@@ -59,7 +64,7 @@ protected:
 	float m_pc_s, m_ic_s, m_dc_s;
 	float m_ps_s, m_is_s, m_ds_s;
 
-	void wp(const float sog, const float cog, const float yaw);
+	void wp(const float sog, const float cog, const float yaw, bool bav = false);
 	void stay(const float sog, const float cog, const float yaw);
 	void cursor();
 
