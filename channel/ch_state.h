@@ -207,6 +207,8 @@ class ch_state: public ch_base
 	 float x, y, z; // ecef coordinate
 	 Mat R, Rret; // Rotation matrix for ENU transformation
 	 float cog, sog; // Course over ground(deg), Speed over ground (kts)
+	 float vx, vy;	 
+	 float nvx, nvy;
 	 float depth; // water depth
 	 long long m_tfile;
 	 float rollf, pitchf, yawf; // roll(deg), pitch(deg), yaw(deg)
@@ -355,6 +357,13 @@ class ch_state: public ch_base
 	  tvel = _tvel;
 	  cog = _cog;
 	  sog = _sog;
+	  float th = cog * (PI / 180.);
+	  nvx = (float)sin(th);
+	  nvy = (float)cos(th);
+	  float mps = sog * KNOT;
+	  vx = (float)(mps * nvx);
+	  vy = (float)(mps * nvy);
+
 	  unlock();
   }
 
@@ -427,6 +436,24 @@ class ch_state: public ch_base
 	  _tvel = tvel;
 	  _cog = cog;
 	  _sog = sog;
+	  unlock();
+  }
+
+  void get_velocity_vector(long long & _tvel, float & _vx, float & _vy)
+  {
+	  lock();
+	  _tvel = tvel;
+	  _vx = vx;
+	  _vy = vy;
+	  unlock();
+  }
+
+  void get_norm_velocity_vector(long long & _tvel, float & _nvx, float & _nvy)
+  {
+	  lock();
+	  _tvel = tvel;
+	  _nvx = nvx;
+	  _nvy = nvy;
 	  unlock();
   }
 
@@ -628,70 +655,27 @@ class ch_state: public ch_base
 
 	  int sz = 0;
 	  if(tposf < tcur && tposf != tpos){
-		  lock();
-		  lat = latf;
-		  lon = lonf;
-		  alt = altf;
-		  galt = galtf;
-		  float lat_rad = (float)(lat * (PI / 180.)), lon_rad = (float)(lon * (PI / 180.));
-		  getwrldrot(lat_rad, lon_rad, R);
-		  bihtoecef(lat_rad, lon_rad, alt, x, y, z);
-		  unlock();
-		  tpos = tposf;
+		  set_position(tposf, latf, lonf, altf, galtf);
 	  }
 
 	  if(tattf < tcur && tattf != tatt){
-		  lock();
-		  roll = rollf;
-		  pitch = pitchf;
-		  yaw = yawf;
-		  tatt = tattf;
-		  unlock();
+		  set_attitude(tattf, rollf, pitchf, yawf);
 	  }
 
 	  if(tvelf < tcur && tvelf != tvel){
-		  lock();
-		  cog = cogf;
-		  sog = sogf;
-		  tvel = tvelf;
-		  unlock();
+		  set_velocity(tvelf, cogf, sogf);
 	  }
 
 	  if(tdpf < tcur && tdpf != tdp){
-		  lock();
-		  depth = depthf;
-		  tdp = tdpf;
-		  unlock();
+		  set_depth(tdpf, depthf);
 	  }
 
 	  if (t9dofcf < tcur && t9dofcf != t9dofc){
-		  lock();
-		  t9dofc = t9dofcf;
-		  mxc = mxcf;
-		  myc = mycf;
-		  mzc = mzcf;
-		  axc = axcf;
-		  ayc = aycf;
-		  azc = azcf;
-		  gxc = gxcf;
-		  gyc = gycf;
-		  gzc = gzcf;
-		  unlock();
+		  set_9dof_calib(t9dofcf, mxcf, mycf, mzcf, axcf, aycf, azcf, gxcf, gycf, gzcf);
 	  }
 
 	  if (t9dofrf < tcur && t9dofrf != t9dofr){
-		  lock();
-		  t9dofr = t9dofrf;
-		  mxr = mxrf;
-		  myr = myrf;
-		  mzr = mzrf;
-		  axr = axrf;
-		  ayr = ayrf;
-		  azr = azrf;
-		  gxr = gxrf;
-		  gyr = gyrf;
-		  gzr = gzrf;
-		  unlock();
+		  set_9dof_raw(t9dofrf, mxrf, myrf, mzrf, axrf, ayrf, azrf, gxrf, gyrf, gzrf);
 	  }
 
 	  while(!feof(pf)){

@@ -19,6 +19,8 @@
 #include "../channel/ch_state.h"
 #include "../channel/ch_map.h"
 
+#include "../util/aws_map.h"
+
 // load location related map, and save newly added data.
 // connects ch_map
 class f_map: public f_base

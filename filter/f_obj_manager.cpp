@@ -52,6 +52,8 @@ f_obj_manager::~f_obj_manager()
 
 bool f_obj_manager::init_run()
 {
+	if (!m_state)
+		return false;
 	return true;
 }
 
@@ -63,11 +65,12 @@ bool f_obj_manager::proc()
 {
 	Mat Renu;
 	float x, y, z;
-	if(m_state){
-		long long t = 0;
-		Renu = m_state->get_enu_rotation(t);
-		m_state->get_position_ecef(t, x, y, z);
-	}
+	float r, p;
+	float vox, voy;
+	long long t = 0;
+	Renu = m_state->get_enu_rotation(t);
+	m_state->get_position_ecef(t, x, y, z);
+	m_state->get_velocity_vector(t, vox, voy);
 
 	if(m_ais_obj){
 		// update enu coordinate
@@ -77,6 +80,7 @@ bool f_obj_manager::proc()
 			m_ais_obj->remove_out(m_range);
 		}
 		m_ais_obj->reset_updates();
+		m_ais_obj->calc_tdcpa(t, vox, voy);
 	}
 
 	if(m_obj){

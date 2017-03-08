@@ -46,36 +46,36 @@ inline void cnvCvPoint2GlPoint(const float fac_x, const float fac_y, const float
 
 
 void drawGlText(float x, float y, const char * str,
-	float r, float g, float b, float alpha,
+	const float r, const float g, const float b, const float alpha,
 	void* font);
 
 void drawGlSquare2Df(float x1, float y1, float x2, float y2,
-	float r, float g, float b, float alpha, float size);
+	const float r, const float g, const float b, const float alpha, const float size);
 
 void drawGlSquare2Df(float x1, float y1, float x2, float y2,
-	float r, float g, float b, float alpha);
+	const float r, const float g, const float b, const float alpha);
 
 void drawGlTriangle2Df(float x1, float y1, float x2, float y2,
-	float x3, float y3, float r, float g, float b, float alpha, float size);
+	float x3, float y3, const float r, const float g, const float b, const float alpha, const float size);
 
 void drawGlTriangle2Df(float x1, float y1, float x2, float y2,
-	float x3, float y3, float r, float g, float b, float alpha);
+	float x3, float y3, const float r, const float g, const float b, const float alpha);
 
 void drawGlPolygon2Df(Point2f * pts, int num_pts,
-	float r, float g, float b, float alpha, float size);
+	const float r, const float g, const float b, const float alpha, const float size);
 
 void drawGlPolygon2Df(Point2f * pts, int num_pts,
-	float r, float g, float b, float alpha);
+	const float r, const float g, const float b, const float alpha);
 
-void drawGlPolygon2Df(Point2f * pts, int num_pts, Point2f & offset,
-	float r, float g, float b, float alpha, float size);
+void drawGlPolygon2Df(Point2f * pts, int num_pts, const Point2f & offset,
+	const float r, const float g, const float b, const float alpha, const float size);
 
-void drawGlPolygon2Df(Point2f * pts, int num_pts, Point2f & offset,
-	float r, float g, float b, float alpha);
+void drawGlPolygon2Df(Point2f * pts, int num_pts, const Point2f & offset,
+	const float r, const float g, const float b, const float alpha);
 
 
 void drawGlLine2Df(float x1, float y1, float x2, float y2,
-	float r, float g, float b, float alpha, float size);
+	const float r, const float g, const float b, const float alpha, const float size);
 
 void drawCvPoints(const Size & vp, vector<Point2f> & pts,
 	const float r, const float g, const float b, const float alpha,

@@ -419,21 +419,16 @@ void c_aws1_ui_map::draw_waypoints(const float wfont, const float lw)
 			Point2f pos;
 			pos.x = (float)((wp.rx * ifxmeter) + offset.x);
 			pos.y = (float)((wp.ry * ifymeter) + offset.y);
-			for (int i = 0; i < 36; i++){
-				pix2nml((float)(m_circ_pts[i].x * wp.rarv), (float)(m_circ_pts[i].y * wp.rarv),
-					pts[i].x, pts[i].y);
-			}
-
+		
 			float d, cdiff;
 			char str[32];
 			pwp->get_diff(d, cdiff);
 			snprintf(str, 32, "D%04.1f,C%04.1f", d, cdiff);
 			drawGlText(pos.x + wfont, pos.y, str, 0, 1.0, 0, 1.0, GLUT_BITMAP_8_BY_13);
-			drawGlPolygon2Df(pts, 36, pos, 0, 0.5, 0, 1., lw); 
+			draw_circle(pos, wp.rarv, 1.0, 1.0, 0, 1.0, lw);
 
 			if (ap_mode == EAP_WP)
 				drawGlLine2Df(pos.x, pos.y, offset.x, offset.y, 0, 1.0, 0., 1., lw);
-
 		}
 
 		pwp->unlock();
@@ -444,12 +439,16 @@ void c_aws1_ui_map::draw_waypoints(const float wfont, const float lw)
 void c_aws1_ui_map::draw()
 {
   float cog, sog, roll, pitch, yaw;
+  float nvx, nvy, vx, vy;
   Point3f cecef;
   long long t = 0;
   ch_state * pstate = get_ch_state();
   pstate->get_velocity(t, cog, sog);
   pstate->get_attitude(t, roll, pitch, yaw);
   pstate->get_position_ecef(t, cecef.x, cecef.y, cecef.z);
+  pstate->get_norm_velocity_vector(t, nvx, nvy);
+  pstate->get_velocity_vector(t, vx, vy);
+
   float wfont = 8, hfont = 13;
   pix2nml(wfont, hfont, wfont, hfont);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -473,7 +472,7 @@ void c_aws1_ui_map::draw()
 		}
 	}
 
-	// draw circle centered at my own ship 
+	// draw range circle 
 	{
 		Point2f pts[36]; // scaled points
 		for(int i = 0; i < 36; i++){
@@ -502,12 +501,8 @@ void c_aws1_ui_map::draw()
 
 		drawGlPolygon2Df(pts, 3, 0, 1, 0, 0, lw); // own ship triangle
 
-		theta = (float)(cog * (PI / 180.));
-		c = (float)cos(theta);
-		s = (float)sin(theta);
-		float v = (float)(sog * KNOT * 180.); // vector is 180 sec length
-		float vy = v * c * ifymeter; 
-		float vx = v * s * ifxmeter;
+		vy = vy * 180. * ifymeter; 
+		vx = vx * 180. * ifxmeter;
 		drawGlLine2Df(offset.x, offset.y, (float)(offset.x + vx), (float)(offset.y + vy), 0., 1., 0., 0., lw);
 	}
 
@@ -534,11 +529,24 @@ void c_aws1_ui_map::draw()
 		ch_ais_obj * pobj = get_ch_ais_obj();
 		if (pobj){
 			pobj->lock();
-			for (pobj->begin(); !pobj->is_end(); pobj->next()){
-				float x, y, z, vx, vy, vz, yw;
-				if (pobj->get_cur_state(x, y, z, vx, vy, vz, yw))
-					draw_ship_object(x, y, z, vx, vy, vz, yw);
+			float range = (float)(0.5 * m_map_range);
 
+			for (pobj->begin(); !pobj->is_end(); pobj->next()){
+				{ // range test
+					float bear = 0.f, dist = 0.f;
+					if (!pobj->get_pos_bd(bear, dist) || dist > range)
+						continue;
+				}
+
+				float x = 0.f, y = 0.f, z = 0.f, vx = 0.f, vy = 0.f, vz = 0.f,
+					yw = 0.f, tcpa = 0, dcpa = 0, xp = 0, yp = 0, sp = 0;
+				if (pobj->get_cur_state(x, y, z, vx, vy, vz, yw)){
+					if (pobj->get_tdcpa(tcpa, dcpa)
+						&& pobj->get_prediction(t, xp, yp, sp))
+						draw_ship_object(x, y, z, vx, vy, vz, yw,tcpa, dcpa, xp, yp, sp);
+					else
+						draw_ship_object(x, y, z, vx, vy, vz, yw);
+				}
 			}
 			pobj->unlock();
 		}
@@ -557,15 +565,11 @@ void c_aws1_ui_map::draw()
 					continue;
 
 				r = pobst->get_rad();
-				for (int i = 0; i < 36; i++){
-					pix2nml((float)(m_circ_pts[i].x * r), (float)(m_circ_pts[i].y * r),
-						pts[i].x, pts[i].y);
-				}
 				Point2f pos;
 				pos.x = (float)((x * ifxmeter) + offset.x);
 				pos.y = (float)((y * ifymeter) + offset.y);
 				
-				drawGlPolygon2Df(pts, 36, pos, (float)min(1.0, pobst->get_update_count() * 0.1), 0, 0, 0, lw);
+				draw_circle(pos, r, (float)min(1.0, pobst->get_update_count() * 0.1), 0, 0, 0, lw);
 			}
 			pch_obst->unlock();
 		}
@@ -700,28 +704,66 @@ void c_aws1_ui_map::key(int key, int scancode, int action, int mods)
 }
 
 void c_aws1_ui_map::draw_ship_object(const float x, const float y, const float z, 
-		const float vx, const float vy, const float vz, const float yw)
+		const float vx, const float vy, const float vz, const float yw,
+		const float tcpa, const float dcpa,
+		const float xp, const float yp, const float sp)
 {
 	float theta = (float)(yw * (PI / 180.));
 	float c = (float) cos(theta), s = (float) sin(theta);
 
-	float ws, hs;
+	float ws, hs, wf, hf;
 	pix2nml(10., 10., ws, hs);
-	Point2f _offset = offset;
-	_offset.x += x * ifxmeter;
-	_offset.y += y * ifymeter;
+	pix2nml(8, 13, wf, hf);
+	Point2f pt0 = offset;
+	pt0.x += x * ifxmeter;
+	pt0.y += y * ifymeter;
 
 	Point2f pts[3];
 	for(int i = 0; i < 3; i++){
 		// rotating the points
-		// multiply [ c -s; s c]
+		// multiply [ c s; -s c]
 		pts[i].x = (float)(ws * (m_ship_pts[i].x * c + m_ship_pts[i].y * s));
 		pts[i].y = (float)(hs * (- m_ship_pts[i].x * s + m_ship_pts[i].y * c));
 	}
-	drawGlPolygon2Df(pts, 3, _offset, 0, 1, 0, 0.5); // own ship triangle
+	drawGlPolygon2Df(pts, 3, pt0, 0, 1, 0, 0.5); // own ship triangle
 	float lw;
 	pix2nml(1, 1, lw, lw);
-	drawGlLine2Df(_offset.x, _offset.y, 
-		(float)(_offset.x + vx * ifxmeter * 180.f), (float)(_offset.y + vy * ifymeter * 180.f), 
+	drawGlLine2Df(pt0.x, pt0.y, 
+		(float)(pt0.x + vx * ifxmeter * 180.f), (float)(pt0.y + vy * ifymeter * 180.f), 
 		0., 1., 0., 1.0, lw);
+
+	if (tcpa != 0){
+		char str[128];
+		Point2f pt1;
+		snprintf(str, 128, "T%3.1f D%3.1f", tcpa, dcpa);
+		int l = strlen(str) + 1;
+		pt1.x = pt0.x + wf;
+		pt1.y = pt0.y + hf;
+
+		// drawing tcpa/dcpa
+		drawGlLine2Df(pt0.x, pt0.y, pt1.x, pt1.y, 0, 1, 0, 1, 1);
+		drawGlLine2Df(pt1.x, pt1.y, pt1.x + l * wf, pt1.y, 0, 1, 0, 1, 1);
+		drawGlText(pt1.x + wf, pt0.y + 1.5 * hf, str, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
+
+		pt1 = offset;
+		pt1.x += xp * ifxmeter;
+		pt1.y += yp * ifymeter;
+		draw_circle(pt1, sp, 0, 1, 0, 1, lw);
+		drawGlLine2Df(pt0.x, pt0.y, pt1.x, pt1.y, 0, 1, 0, 1, lw);
+	}
 }
+
+
+void c_aws1_ui_map::draw_circle(const Point2f & pt, const float s, 
+	const float r, const float g, const float b, const float a, const float lw)
+{
+	Point2f pts[36];
+	for (int i = 0; i < 36; i++){
+		pix2nml(
+			(float)(m_circ_pts[i].x * s),
+			(float)(m_circ_pts[i].y * s),
+			pts[i].x, pts[i].y);
+	}
+	drawGlPolygon2Df(pts, 36, pt, r, g, b, a, lw);
+}
+

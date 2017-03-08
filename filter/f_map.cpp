@@ -67,6 +67,7 @@ bool f_map::init_run()
 				if(strcmp(buf, "\t\t\t<gml:posList>") == 0){
 					bline = true;
 				}
+
 			}else{
 				if(strcmp(buf, "\t\t\t</gml:posList>") == 0){
 					vector<Point3f> * pline = new vector<Point3f>;

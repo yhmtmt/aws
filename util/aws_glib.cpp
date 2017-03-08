@@ -139,7 +139,7 @@ void drawCvPointDensity(Mat hist, const int hist_max, const Size grid,
 }
 
 void drawGlText(float x, float y, const char * str,
-	float r, float g, float b, float alpha,
+	const float r, const float g, const float b, const float alpha,
 	void* font)
 {
 	glColor4f(r, g, b, alpha);
@@ -151,7 +151,7 @@ void drawGlText(float x, float y, const char * str,
 }
 
 void drawGlSquare2Df(float x1, float y1, float x2, float y2,
-	float r, float g, float b, float alpha, float size)
+	const float r, const float g, const float b, const float alpha, const float size)
 {
 	glColor4f(r, g, b, alpha);
 	glLineWidth(size);
@@ -164,7 +164,7 @@ void drawGlSquare2Df(float x1, float y1, float x2, float y2,
 }
 
 void drawGlSquare2Df(float x1, float y1, float x2, float y2,
-	float r, float g, float b, float alpha)
+	const float r, const float g, const float b, const float alpha)
 {
 	glColor4f(r, g, b, alpha);
 	glBegin(GL_QUADS);
@@ -176,7 +176,7 @@ void drawGlSquare2Df(float x1, float y1, float x2, float y2,
 }
 
 void drawGlTriangle2Df(float x1, float y1, float x2, float y2,
-	float x3, float y3, float r, float g, float b, float alpha, float size)
+	float x3, float y3, const float r, const float g, const float b, const float alpha, const float size)
 {
 	glColor4f(r, g, b, alpha);
 	glLineWidth(size);
@@ -188,7 +188,7 @@ void drawGlTriangle2Df(float x1, float y1, float x2, float y2,
 }
 
 void drawGlTriangle2Df(float x1, float y1, float x2, float y2,
-	float x3, float y3, float r, float g, float b, float alpha)
+	float x3, float y3, const float r, const float g, const float b, const float alpha)
 {
 	glColor4f(r, g, b, alpha);
 	glBegin(GL_TRIANGLES);
@@ -199,7 +199,7 @@ void drawGlTriangle2Df(float x1, float y1, float x2, float y2,
 }
 
 void drawGlPolygon2Df(Point2f * pts, int num_pts,
-	float r, float g, float b, float alpha, float size)
+	const float r, const float g, const float b, const float alpha, const float size)
 {
 	glColor4f(r, g, b, alpha);
 	glLineWidth(size);
@@ -210,7 +210,7 @@ void drawGlPolygon2Df(Point2f * pts, int num_pts,
 }
 
 void drawGlPolygon2Df(Point2f * pts, int num_pts,
-	float r, float g, float b, float alpha)
+	const float r, const float g, const float b, const float alpha)
 {
 	glColor4f(r, g, b, alpha);
 	glBegin(GL_POLYGON);
@@ -220,8 +220,8 @@ void drawGlPolygon2Df(Point2f * pts, int num_pts,
 }
 
 void drawGlPolygon2Df(Point2f * pts, int num_pts,
-	Point2f & offset,
-	float r, float g, float b, float alpha, float size)
+	const Point2f & offset,
+	const float r, const float g, const float b, const float alpha, const float size)
 {
 	glColor4f(r, g, b, alpha);
 	glLineWidth(size);
@@ -232,8 +232,8 @@ void drawGlPolygon2Df(Point2f * pts, int num_pts,
 }
 
 void drawGlPolygon2Df(Point2f * pts, int num_pts,
-	Point2f & offset,
-	float r, float g, float b, float alpha)
+	const Point2f & offset,
+	const float r, const float g, const float b, const float alpha)
 {
 	glColor4f(r, g, b, alpha);
 	glBegin(GL_POLYGON);
@@ -244,7 +244,7 @@ void drawGlPolygon2Df(Point2f * pts, int num_pts,
 
 
 void drawGlLine2Df(float x1, float y1, float x2, float y2,
-	float r, float g, float b, float alpha, float size)
+	const float r, const float g, const float b, const float alpha, const float size)
 {
 	glColor4f(r, g, b, alpha);
 	glLineWidth(size);

@@ -95,10 +95,14 @@ protected:
 	Point2f offset;
 
 	void draw_ship_object(const float x, const float y, const float z, 
-		const float vx, const float vy, const float vz, const float yw);
+		const float vx, const float vy, const float vz, const float yw,
+		const float tcpa = 0, const float dcpa = 0,
+		const float xp = 0, const float yp = 0, const float sp = 0);
 
 	void draw_waypoints(const float wfont, const float lw);
-
+	void draw_circle(const Point2f & pt, const float s,
+		const float r, const float g, const float b, const float a, 
+		const float lw = 1.0f);
 	void draw_coast_line(const vector<Point3f> & cl, float lw);
 	int m_cur_wp;
 public:

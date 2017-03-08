@@ -43,7 +43,8 @@ enum e_obj_data_type
 	EOD_POS_BIH=0x8, EOD_VEL_BIH = 0x10, 
 	EOD_POS_ECEF=0x20, EOD_VEL_ECEF = 0x40,
 	EOD_POS_REL=0x80, EOD_VEL_REL = 0x100,
-	EOD_ATTD=0x200, EOD_AIS=0x400, EOD_R = 0x800, EOD_POS_BD = 0x1000
+	EOD_ATTD=0x200, EOD_AIS=0x400, EOD_R = 0x800, EOD_POS_BD = 0x1000,
+	EOD_TDCPA=0x2000
 };
 
 // The base class of the objects in aws
@@ -61,9 +62,15 @@ protected:
 	float m_x, m_y, m_z;		// ECEF  coordinate
 	float m_vx, m_vy, m_vz;		// Velocity in ECEF
 	float m_xr, m_yr, m_zr;		// Relative orthogonal coordinate (centered at my own ship)
-	float m_vxr, m_vyr, m_vzr;	// Reltative velocity in orthogonal coordinate centered at my own ship
+	float m_vxr, m_vyr, m_vzr;	// velocity in orthogonal coordinate centered at my own ship
+	float m_vrx, m_vry;			// relative velocity in relative coordinate
+	float m_nvxr, m_nvyr;		// normalized relative velocity vector in relative coordinate
+	float m_nhdgx, m_nhdgy;		// heading vector
 	float m_bear, m_dist;		// bearing and distance
 	float m_roll, m_pitch, m_yaw; // The attitude Roll pitch yaw
+
+	float m_tcpa, m_dcpa;
+	float m_s0, m_dsdt;			// standard deviation of initial fix, and for prediction  
 public:
 	c_obj();
 	virtual ~c_obj();
@@ -141,6 +148,11 @@ public:
 	void set_vel_bih(const float cog, const float sog){
 		m_cog = cog;
 		m_sog = sog;
+		float theta = (float)(m_cog * (PI / 180.));
+		float c = cos(theta);
+		float s = sin(theta);
+		m_nvxr = s;
+		m_nvyr = c;
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_BIH);
 	}
 
@@ -192,11 +204,9 @@ public:
 
 	void set_vel_ecef_from_bih(const Mat & Rorg)
 	{
-		if(m_dtype & EOD_POS_BIH){
-			float theta = (float)(m_cog * (PI / 180.));
-			float c = cos(theta);
-			float s = sin(theta);
+		if(m_dtype & EOD_POS_BIH){	
 			float v = (float)(m_sog * KNOT);
+			float c = m_nvyr, s = m_nvxr;
 			const double * ptr = Rorg.ptr<double>();
 			m_vx = (float)(s * ptr[0] + c * ptr[3]);
 			m_vy = (float)(s * ptr[1] + c * ptr[4]);
@@ -249,6 +259,12 @@ public:
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_REL);
 	}
 
+	bool get_vel_vec2d(float & nvxr, float &nvyr){
+		nvxr = m_nvxr;
+		nvyr = m_nvyr;
+		return (m_dtype & EOD_VEL_BIH);
+	}
+
 	void set_vel_rel_from_ecef(const Mat & Rorg)
 	{
 		if(m_dtype & EOD_VEL_ECEF){
@@ -263,13 +279,9 @@ public:
 	void set_vel_rel_from_bih()
 	{
 		if(m_dtype & EOD_VEL_BIH){
-			float c, s;
-			float theta = (float)(m_cog * (PI / 180.));
 			float v = (float)(m_sog * KNOT);
-			c = (float) cos(theta);
-			s = (float) sin(theta);
-			m_vxr = (float) (v * s);
-			m_vyr = (float) (v * c);
+			m_vxr = (float) (v * m_nvxr);
+			m_vyr = (float) (v * m_nvyr);
 			m_vzr = 0.f;
 			m_dtype = (e_obj_data_type)(m_dtype | EOD_VEL_REL);
 		}
@@ -287,6 +299,11 @@ public:
 		m_roll = roll;
 		m_pitch = pitch;
 		m_yaw = yaw;
+		float th = (float)(m_yaw * (PI / 180.));
+
+		m_nhdgx = (float)sin(th);
+		m_nhdgy = (float)cos(th);
+
 		m_dtype = (e_obj_data_type)(m_dtype | EOD_ATTD);
 	}
 
@@ -300,6 +317,13 @@ public:
 		roll = m_roll;
 		pitch = m_pitch;
 		yaw = m_yaw;
+		return (m_dtype & EOD_ATTD) != 0;
+	}
+
+	bool get_hdg_vec2d(float & nhdgx, float & nhdgy)
+	{
+		nhdgx = m_nhdgx;
+		nhdgy = m_nhdgy;
 		return (m_dtype & EOD_ATTD) != 0;
 	}
 
@@ -337,6 +361,61 @@ public:
 	void reset_bd()
 	{
 		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_POS_BD);
+	}
+
+	bool calc_tdcpa(const long long t, float vx, float vy)
+	{
+		if (m_dtype & EOD_POS_REL){
+			float dt = (float)((t - m_t) / (double) SEC);
+			float vrx = (float)(m_vxr - vx);
+			float vry = (float)(m_vyr - vy);
+			float xr = (float)(vrx * dt + m_xr);
+			float yr = (float)(vry * dt + m_yr);
+			float D2 = (float)(xr * xr + yr * yr);
+			if (m_dtype & EOD_POS_BD == 0){
+				m_bear = (float)atan2(m_xr, m_yr);
+				m_dist = (float)sqrt(D2);
+				m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_BD);
+			}
+
+			m_tcpa = (float)(-D2 / (xr * vrx + yr * vry));
+
+			float xcpa = (float)(m_tcpa * vrx + m_xr);
+			float ycpa = (float)(m_tcpa * vry + m_yr);
+			float dcpa2 = (float)(xcpa * xcpa + ycpa * ycpa);
+			m_dcpa = (float)sqrt(dcpa2);
+			m_dtype = (e_obj_data_type)(m_dtype | EOD_TDCPA);
+			m_vrx = vrx;
+			m_vry = vry;
+			return true;
+		}
+		return false;
+	}
+
+	bool get_tdcpa(float & tcpa, float & dcpa)
+	{
+		tcpa = m_tcpa;
+		dcpa = m_dcpa;
+
+		return (m_dtype & EOD_TDCPA) != 0;
+	}
+
+	void reset_tdcpa(){
+		m_dtype = (e_obj_data_type)(m_dtype & ~EOD_TDCPA);
+	}
+
+	bool get_prediction(const long long t, float & x, float & y, float & s)
+	{
+		if (m_dtype & EOD_TDCPA == 0)
+			return false;
+
+		float dt = (float)((t - m_t) * (1.0 / (double)SEC));
+
+		s = m_s0 + dt * m_dsdt;
+		x = (float)(m_xr + m_vrx * dt);
+		y = (float)(m_yr + m_vry * dt);
+
+		return true;
 	}
 };
 
@@ -452,6 +531,7 @@ public:
 
 	void update(const long long t, float lat, float lon, 
 		    float cog, float sog, float hdg){
+		m_t = t;
 		m_dtype = (e_obj_data_type)(EOD_AIS | EOD_ATTD);
 		m_yaw = hdg;
 		set_pos_bih(lat, lon, 0.);
@@ -828,6 +908,17 @@ public:
 			pobj->set_pos_rel_from_ecef(R, x, y, z);
 			pobj->set_vel_ecef_from_bih(R);
 			pobj->set_vel_rel_from_bih();
+			pobj->set_pos_bd_from_rel();
+		}
+		unlock();
+	}
+
+	void calc_tdcpa(const long long t, float vx, float vy)
+	{
+		lock();
+		for (itr = objs.begin(); itr != objs.end(); itr++){
+			c_ais_obj * pobj = itr->second;
+			pobj->calc_tdcpa(t, vx, vy);
 		}
 		unlock();
 	}
@@ -896,6 +987,20 @@ public:
 			flag = false;
 		}
 		return flag;
+	}
+
+	bool get_tdcpa(float & tcpa, float & dcpa){
+		return (itr->second)->get_tdcpa(tcpa, dcpa);
+	}
+
+	bool get_pos_bd(float & bear, float & dist)
+	{
+		return (itr->second)->get_pos_bd(bear, dist);
+	}
+
+	bool get_prediction(const long long t, float & x, float & y, float & s)
+	{
+		return (itr->second)->get_prediction(t, x, y, s);
 	}
 
 	bool is_end(){
