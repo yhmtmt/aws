@@ -21,6 +21,7 @@
 
 
 #define AHRS_BUF 1024
+#define GYRO_GAIN 0.06957
 
 class f_ahrs: public f_base
 {
@@ -42,7 +43,8 @@ protected:
     ERC_O0, ERC_O1, 
     ERC_OB, ERC_OT, ERC_OC, ERC_ON, 
     ERC_OSCT, ERC_OSRT, ERC_OSBT, 
-    ERC_OSCB, ERC_OSRB, ERC_OSBB, 
+    ERC_OSCB, ERC_OSRB, ERC_OSBB,
+	ERC_OFT, ERC_OFB, 
     ERC_F, ERC_S, ERC_UNDEF
   } m_cmd, m_omode;
   bool m_ocont;
@@ -94,6 +96,26 @@ protected:
 		memcpy((void*) &m_ypr, (void*) ptr, (size_t) sz);
 		ptr += sz;
 		for(int i = 0; i < res; i++, ptr++)
+			m_rbuf[i] = *ptr;
+		m_rbuf_head = 0;
+		m_rbuf_tail = res;
+		return sz;
+	}
+
+	int set_bin_ypr9(s_ahrs9 * p9)
+	{
+		int sz = sizeof(s_ahrs9)+sizeof(s_ahrs_ypr);
+		int rblen = m_rbuf_tail - m_rbuf_head;
+		if (rblen < sz)
+			return 0;
+
+		int res = rblen % sz;
+		const char * ptr = m_rbuf + m_rbuf_tail - res - sz;
+		memcpy((void*)&m_ypr, (void*)ptr, sizeof(s_ahrs_ypr));
+		ptr += sizeof(s_ahrs_ypr);
+		memcpy((void*)p9, (void*)ptr, sizeof(s_ahrs9));
+		ptr += sizeof(s_ahrs9);
+		for (int i = 0; i < res; i++, ptr++)
 			m_rbuf[i] = *ptr;
 		m_rbuf_head = 0;
 		m_rbuf_tail = res;
@@ -183,6 +205,46 @@ protected:
 		*py = (float) atof(stry);
 		*pz = (float) atof(strz);
 	}
+
+	bool m_b9dof;
+	bool m_binit_9dof;
+	long long m_t9dof_prev;
+	float m_roll, m_pitch, m_yaw;
+	float m_croll, m_sroll, m_cpitch, m_spitch, m_cyaw, m_syaw;
+	float m_mag_x, m_mag_y;
+	const float m_magg;
+	const float m_Kai, m_Kap, m_Kmi, m_Kmp;
+	float m_wx, m_wy, m_wz,
+		m_waxi, m_wayi, m_wazi,
+		m_waxp, m_wayp, m_wazp,
+		m_wmxi, m_wmyi, m_wmzi,
+		m_wmxp, m_wmyp, m_wmzp;
+
+	Mat m_DCM;
+
+	bool init_9dof(const long long t, const float mx, const float my, const float mz, const float ax,
+		const float ay, const float az, const float gx, const float gy, const float gz);
+
+	bool update_9dof(const long long t, const float mx, const float my, const float mz, const float ax,
+		const float ay, const float az, const float gx, const float gy, const float gz);
+	const float calc_yaw(const float mx, const float my, const float mz)
+	{
+		m_mag_x = mx * m_cpitch + my * m_sroll * m_spitch + mz * m_croll * m_spitch;
+		m_mag_y = my * m_croll - mz * m_sroll;
+
+		return atan2(-m_mag_y, m_mag_x);
+	}
+
+	void calc_xproduct(
+		const float x1, const float y1, const float z1,
+		const float x2, const float y2, const float z2,
+		float & xo, float & yo, float & zo)
+	{
+		xo = y1 * z2 - z1 * y2;
+		yo = z1 * x2 - x1 * z2;
+		zo = x1 * y2 - y1 * x2;
+	}
+
 public:
 	f_ahrs(const char * name);
 	virtual ~f_ahrs();
