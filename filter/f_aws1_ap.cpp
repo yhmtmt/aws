@@ -259,8 +259,8 @@ void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
 
 		m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
 		m_meng = (float)min(m_meng, m_meng_max);
-		m_meng = (float)max(m_meng, m_meng_min);
-
+		//m_meng = (float)max(m_meng, m_meng_min);
+		m_meng = (float)max(m_meng, 127.f);
 		if (m_verb){
 			printf("ap rud=%3.1f c=%2.2f dc=%2.2f ic=%2.2f", m_rud, m_cdiff, m_dcdiff, m_icdiff);
 			printf(" meg=%3.1f s=%2.2f ds=%2.2f is=%2.2f \n", m_meng, m_sdiff, m_dsdiff, m_isdiff);
