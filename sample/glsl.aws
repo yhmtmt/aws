@@ -1,0 +1,16 @@
+#!/bin/sh
+
+filter test3d  win -i -o
+fset win width 1024 height 768
+fset win fvs C:/cygwin64/home/yhmtm/aws/GLSL/sample.vs
+fset win ffs C:/cygwin64/home/yhmtm/aws/GLSL/sample.fs
+fset win fetex c:/cygwin64/home/yhmtm/aws/res/earth_atmos_2048.jpg
+fset win ffnttex c:/cygwin64/home/yhmtm/aws/res/gothic40.png
+fset win ffntcfg c:/cygwin64/home/yhmtm/aws/res/gothic40.fontsettings
+fset win n 3
+
+cyc 0.0344827
+go
+
+
+
