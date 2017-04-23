@@ -111,6 +111,12 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	// calculating the map center positioin in three coordinate
 	wrldtoecef(Rorg, Porg.x, Porg.y, Porg.z, m_map_pos.x, m_map_pos.y, 0.f, mp_x, mp_y, mp_z);
 	eceftobih(mp_x, mp_y, mp_z, mp_lat, mp_lon, mp_alt);
+	{
+		ch_map* pmap = get_ch_map();
+		if (pmap){
+			pmap->set_center(mp_x, mp_y, mp_z);
+		}
+	}
 
 	// Cursor move (right stick)
 	m_cur_pos.x += (float)(js.lr2 * fx * (1.0/60.0));
@@ -461,14 +467,16 @@ void c_aws1_ui_map::draw()
 		ch_map * pmap = get_ch_map();
 		if(pmap){
 			pmap->lock();
-			for(pmap->cls_begin(); !pmap->is_cls_end(); pmap->cls_next()){
-				// Rorg, Porg, offset
-				draw_coast_line(pmap->cls_cur(), lw);
+			int ilv = (int)(log10(m_map_range * 0.001) + 0.5);
+
+			const list<const vector<Point3f>*> & lines = pmap->get_lines(ilv);
+			for (list<const vector<Point3f>*>::const_iterator itr = lines.begin();
+				itr != lines.end(); itr++){
+				const vector<Point3f> & line = *(*itr);
+				draw_coast_line(line, lw);
+
 			}
 			pmap->unlock();
-			pmap->set_range(m_map_range);
-			pmap->set_center(Porg.x, Porg.y, Porg.z);
-
 		}
 	}
 

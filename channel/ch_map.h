@@ -16,6 +16,8 @@
 // along with ch_map.h.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "ch_base.h"
+#include "../util/aws_coord.h"
+#include "../util/aws_map.h"
 
 // contains map information - multiple layered, dynamically updatable map.
 // has insert, delete, configuration methods
@@ -24,12 +26,16 @@ class ch_map: public ch_base
 protected:
 	float m_range;
 	Point3f m_cecef;
-	list<const vector<Point3f>*> m_cls;
-	list<const vector<Point3f>*>::iterator m_cls_itr;
+	vector<list<const vector<Point3f>*>> m_cls;
 public:
 	ch_map(const char * name):ch_base(name), m_range(10000), m_cecef()
 	{
-		m_cls_itr = m_cls.begin();
+	}
+
+	bool init(int nLevels)
+	{
+		m_cls.resize(nLevels);
+		return true;
 	}
 
 	virtual ~ch_map()
@@ -66,44 +72,26 @@ public:
 		unlock();
 	}
 
-	void insert(const vector<Point3f> * pline){
-		lock();
-		m_cls.push_back(pline);
-		unlock();
+	void insert(const int ilevel, const vector<Point3f> * pline){
+		m_cls[ilevel].push_back(pline);
 	}
 
-	void erase(const vector<Point3f> * pline){
-		lock();
-		m_cls.remove(pline);
-		unlock();
+	void erase(const int ilevel, const vector<Point3f> * pline){
+		m_cls[ilevel].remove(pline);
+	}
+
+	void clear(const int ilevel)
+	{
+		m_cls[ilevel].clear();
 	}
 
 	int get_num_lines(){
 		return (int)m_cls.size();
 	}
 
-	void cls_begin()
+	const list<const vector<Point3f>*> & get_lines(const int ilevel)
 	{
-		m_cls_itr = m_cls.begin();
-	}
-
-	void cls_next()
-	{
-		m_cls_itr++;
-	}
-
-	void cls_end()
-	{
-		m_cls_itr = m_cls.end();
-	}
-
-	bool is_cls_end()
-	{
-		return m_cls_itr == m_cls.end();
-	}
-	const vector<Point3f> & cls_cur()
-	{
-		return *(*m_cls_itr);
+		return m_cls[ilevel];
 	}
 };
 

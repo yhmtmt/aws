@@ -3,9 +3,13 @@
 #else 
 #include <sys/statvfs.h>
 #include <sys/types.h>
+#include <sys/types.h>
 #endif
 #include <errno.h>
 #include <string.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <tchar.h>
 #include <cstdio>
 #include <iostream>
 #include <fstream>
@@ -48,5 +52,21 @@ float getDrvUse(const char * path)
 		return 1.;
 	}
 	return (float)(1.0 - (double)buf.f_bfree / (double)buf.f_blocks);
+#endif
+}
+
+void aws_mkdir(const char * path, const char * perm)
+{
+	
+#ifdef _WIN32
+	wchar_t wpath[2048];
+	mbstowcs(wpath, path, 2048);
+	struct _stat st;
+	if(_tstat(wpath, &st) == -1)
+		_tmkdir(wpath);
+#else // No windows
+	struct stat st;
+	if (stat(path, &st) == -1)
+		mkdir(path, perm);
 #endif
 }

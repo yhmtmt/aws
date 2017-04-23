@@ -228,6 +228,14 @@ void ch_base::register_factory()
 
 #ifdef GLFW_WINDOW
 #include <GLFW/glfw3.h>
+
+#include <GL/glut.h>
+#include <GL/glu.h>
+
+#include <glm.hpp>
+#include <gtc/matrix_transform.hpp>
+#include <gtc/type_ptr.hpp>
+
 #include "util/aws_glib.h"
 #include "filter/f_glfw_window.h"
 #include "filter/f_glfw_stereo_view.h"
@@ -362,6 +370,7 @@ void f_base::register_factory()
 	register_factory<f_glfw_calib>("gcalib");
 	register_factory<f_state_estimator>("stest");
 	register_factory<f_est_viewer>("estv");
+	register_factory<f_glfw_test3d>("test3d");
 #endif
 
 	// video sources

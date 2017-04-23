@@ -21,6 +21,8 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+#include <vector>
+#include <list>
 using namespace std;
 
 #include "../util/aws_stdlib.h"
@@ -45,8 +47,43 @@ using namespace cv;
 #include <GL/glu.h>
 
 #include "../util/aws_glib.h"
+
 #include "f_glfw_window.h"
 
+
+void printShaderInfoLog(GLuint obj)
+{
+	int infologLength = 0;
+	int charsWritten = 0;
+	char *infoLog;
+
+	glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+
+	if (infologLength > 0)
+	{
+		infoLog = (char *)malloc(infologLength);
+		glGetShaderInfoLog(obj, infologLength, &charsWritten, infoLog);
+		printf("%s\n", infoLog);
+		free(infoLog);
+	}
+}
+
+void printProgramInfoLog(GLuint obj)
+{
+	int infologLength = 0;
+	int charsWritten = 0;
+	char *infoLog;
+
+	glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
+
+	if (infologLength > 0)
+	{
+		infoLog = (char *)malloc(infologLength);
+		glGetProgramInfoLog(obj, infologLength, &charsWritten, infoLog);
+		printf("%s\n", infoLog);
+		free(infoLog);
+	}
+}
 
 //////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window
 MapGLFWin f_glfw_window::m_map_glfwin;
@@ -1276,4 +1313,475 @@ void f_glfw_calib::calc_contrast(Mat & img)
 	m_contrast = res;
 }
 
+
+////////////////////////////////////////////////////////////////////// f_gflw_test3d
+
+const char * f_glfw_test3d::strings[5] = {
+	"                                                  ",
+	"Rotation",
+	"Translation",
+	"1st line\n2nd line",
+	"Color change"
+};
+
+f_glfw_test3d::f_glfw_test3d(const char * name) : f_glfw_window(name), n(1), deg(0), tprev(0)
+{
+	register_fpar("n", &n, "number of division");
+	register_fpar("fvs", fvs, 1024, "File of the vertex shader.");
+	register_fpar("ffs", ffs, 1024, "File of the fragment shader.");
+	register_fpar("fetex", fetex, 1024, "File of the earth texture.");
+
+	register_fpar("ffnttex", ffnttex, 1024, "File of the font texture");
+	register_fpar("ffntcfg", ffntcfg, 1024, "File of the font setting file.");
+
+	pthread_mutex_init(&mtx_mouse, NULL);
+}
+
+f_glfw_test3d::~f_glfw_test3d()
+{
+	pthread_mutex_destroy(&mtx_mouse);
+}
+
+bool f_glfw_test3d::init_run()
+{
+
+	if (!f_glfw_window::init_run()){
+		return false;
+	}
+	
+	if (!setup_shader()){
+		cerr << "Failed to setup shader." << endl;
+		return false;
+	}
+
+	c_icosahedron * p0, *p1;
+	p0 = new c_icosahedron();
+
+	for (int i = 0; i < n; i++){
+		p1 = new c_icosahedron(*p0);
+		delete p0;
+		p0 = p1;
+	}
+	nf = p0->get_nf();
+
+	if (!setup_objects(p0)){
+		cerr << "Failed to setup bufferobjects." << endl;
+		return false;
+	}
+
+	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glEnable(GL_TEXTURE_2D);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glEnable(GL_BLEND);
+	return true;
+}
+
+char * f_glfw_test3d::load_glsl_text(const char * fname){
+	ifstream fin(fname);
+	if (!fin.is_open())
+		return NULL;
+
+	fin.seekg(0, fin.end);
+	unsigned int flen = fin.tellg();
+	fin.seekg(0, fin.beg);
+
+	char * txt = new char [flen+1];
+	if (!txt)
+		return false;
+	
+	memset((void*)txt, 0, (size_t)(flen + 1));
+	fin.read(txt, flen);
+	return txt;
+}
+
+bool f_glfw_test3d::setup_shader()
+{
+	char *vs = NULL, *fs = NULL;
+
+	v = glCreateShader(GL_VERTEX_SHADER);
+	if (!v)
+		return false;
+	f = glCreateShader(GL_FRAGMENT_SHADER);
+	if (!f)
+		return false;
+
+
+	vs = load_glsl_text(fvs);
+	fs = load_glsl_text(ffs);
+
+	const char * vv = vs;
+	const char * ff = fs;
+
+	glShaderSource(v, 1, &vv, NULL);
+	glShaderSource(f, 1, &ff, NULL);
+
+	delete[] vs;
+	delete[] fs;
+
+	glCompileShader(v);
+	glCompileShader(f);
+
+	printShaderInfoLog(v);
+	printShaderInfoLog(f);
+
+	p = glCreateProgram();
+	glAttachShader(p, v);
+	glAttachShader(p, f);
+	glLinkProgram(p);
+	printProgramInfoLog(p);
+
+	glDeleteShader(v);
+	glDeleteShader(f);
+
+	mvpl = glGetUniformLocation(p, "Mmvp");
+	ml = glGetUniformLocation(p, "Mm");
+	parl = glGetUniformLocation(p, "Lpar");
+	smpl = glGetUniformLocation(p, "sampler");
+	posl = glGetAttribLocation(p, "position");
+	nml = glGetAttribLocation(p, "normal");
+	texcdl = glGetAttribLocation(p, "texcoord");
+
+	return true;
+}
+
+bool f_glfw_test3d::setup_objects(c_icosahedron * pic)
+{
+	struct s_vertex{
+		float x, y, z;
+		float nx, ny, nz;
+		float u, v;
+	} *vtx, *vtx_tmp;
+	unsigned int * idx = new unsigned int[pic->get_nf() * 3];
+
+	vtx = new s_vertex[pic->get_nv()];
+	for (int iv = 0; iv < pic->get_nv(); iv++){
+		Point3f v = pic->getv()[iv];
+		vtx[iv].x = v.x;
+		vtx[iv].y = v.y;
+		vtx[iv].z = v.z;
+
+		Point2f q = pic->getq()[iv];
+		q.x += 0.5 * PI;
+		q.y += PI;
+		q.x = q.x * (1.0 / PI);
+		q.y = q.y * (0.5 / PI);
+		vtx[iv].u = q.y;
+		vtx[iv].v = q.x;
+		float inorm = (float)(1.0 / norm(v));
+		v = inorm * v;
+		vtx[iv].nx = v.x;
+		vtx[iv].ny = v.y;
+		vtx[iv].nz = v.z;
+	}
+	vector<s_vertex> vtxb;	
+	for (int ifc = 0; ifc < pic->get_nf(); ifc++){
+		unsigned int * f = pic->getf()[ifc];
+		s_vertex &v0 = vtx[f[0]];
+		s_vertex &v1 = vtx[f[1]];
+		s_vertex &v2 = vtx[f[2]];
+		bool b0 = false, b1 = false, b2 = false;
+		
+		if (fabs(v0.u - v1.u) > 0.8){
+			if (v0.u < v1.u){
+				b0 = true;
+			}
+			else{
+				b1 = true;
+			}
+		}
+
+		if (fabs(v0.u - v2.u) > 0.8){
+			if (v0.u < v2.u){
+				b0 = true;
+			}
+			else{
+				b2 = true;
+			}
+		}
+
+		if (fabs(v1.u - v2.u) > 0.8){
+			if (v1.u < v2.u){
+				b1 = true;
+			}
+			else{
+				b2 = true;
+			}
+		}
+
+		int bidx = vtxb.size() + pic->get_nv();
+		if (b0){
+			vtxb.push_back(v0);
+			vtxb.back().u += 1.0;
+			idx[ifc * 3] = bidx;
+			bidx++;
+		}
+		else{
+			idx[ifc * 3] = f[0];
+		}
+
+		if (b1){
+			vtxb.push_back(v1);
+			vtxb.back().u += 1.0;
+			idx[ifc * 3 + 1] = bidx;
+			bidx++;
+		}
+		else{
+			idx[ifc * 3 + 1] = f[1];
+		}
+
+		if (b2){
+			vtxb.push_back(v2);
+			vtxb.back().u += 1.0;
+			idx[ifc * 3 + 2] = bidx;
+			bidx++;
+		}
+		else{
+			idx[ifc * 3 + 2] = f[2];
+		}
+	}
+
+	unsigned int nvertices = pic->get_nv() + vtxb.size();
+	vtx_tmp = new s_vertex[nvertices];
+	memcpy((void*)vtx_tmp, (const void*)vtx, sizeof(s_vertex)* pic->get_nv());
+	delete[] vtx;
+	vtx = vtx_tmp;
+	vtx_tmp = vtx + pic->get_nv();
+	for (int ibvtx = 0; ibvtx < vtxb.size(); ibvtx++){
+		vtx_tmp[ibvtx] = vtxb[ibvtx];
+	}
+	vtxb.clear();
+
+	glGenVertexArrays(1, &vao);
+	glBindVertexArray(vao);
+
+	glGenBuffers(2, vbo);
+	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+	float * v = (float*)pic->getv();
+	glBufferData(GL_ARRAY_BUFFER, sizeof(s_vertex)* nvertices, vtx, GL_STATIC_DRAW);
+	glVertexAttribPointer(posl, 3, GL_FLOAT, GL_FALSE,
+		sizeof(s_vertex), 0);
+	glVertexAttribPointer(nml, 3, GL_FLOAT, GL_FALSE, 
+		sizeof(s_vertex), (const void*)(sizeof(float)* 3));
+	glVertexAttribPointer(texcdl, 2, GL_FLOAT, GL_FALSE,
+		sizeof(s_vertex), (const void*)(sizeof(float)* 6));
+	glEnableVertexAttribArray(posl);
+	glEnableVertexAttribArray(nml);
+	glEnableVertexAttribArray(texcdl);
+
+	delete[] vtx;
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int)* pic->get_nf() * 3, idx, GL_STATIC_DRAW);
+
+	etex = imread(fetex);
+	if (etex.empty()){
+		cerr << "Error to open texture file " << fetex << endl;
+		return false;
+	}
+	awsFlip(etex, false, true, false);
+
+	// Preparing texture
+	glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
+	glActiveTexture(GL_TEXTURE0);
+	glGenTextures(1, &hetex);
+	glBindTexture(GL_TEXTURE_2D, hetex);
+	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, /*GL_CLAMP_TO_EDGE*/ GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, /*GL_CLAMP_TO_EDGE*/ GL_REPEAT);
+
+	struct s_pix{
+		unsigned char r, g, b, a;
+		s_pix() :r(255), g(255), b(255), a(255)
+		{
+		}
+	} *tex = new s_pix[etex.cols * etex.rows];
+	int i = 0;
+	for (MatIterator_<Vec3b> itr = etex.begin<Vec3b>(); itr != etex.end<Vec3b>(); itr++){
+		tex[i].a = 255;
+		tex[i].r = (*itr)[2];
+		tex[i].g = (*itr)[1];
+		tex[i].b = (*itr)[0];
+		i++;
+	}
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, etex.cols, etex.rows, 0,
+		GL_RGBA, GL_UNSIGNED_BYTE, tex);
+	delete[] tex;
+
+	GLuint loc_mode_flag = glGetUniformLocation(p, "mode");
+	GLuint loc_gcolor = glGetUniformLocation(p, "gcolor");
+	GLuint loc_pos2d = glGetAttribLocation(p, "pos2d");
+
+	otxt.init(ffnttex, ffntcfg, loc_mode_flag, loc_pos2d, texcdl, smpl, loc_gcolor);
+	glm::vec2 sz_fnt = glm::vec2((float)(0.3 * 41.2890625 * 2.0 / (double)m_sz_win.width),
+		(float)(0.3 * 40.0 * 2.0 / (double)m_sz_win.height));
+	glm::vec2 mgn = sz_fnt;
+	float txt_pos = -0.8;
+	for (int i = 0; i < 5; i++){
+		hstr[i] = otxt.reserv(strlen(strings[i]) + 1);
+		otxt.set(hstr[i], strings[i]);
+		otxt.config(hstr[i], glm::vec4(1., 1., 0., 1.), sz_fnt, mgn, c_gl_text_obj::an_lt, glm::vec2(txt_pos, txt_pos), 0.);
+		otxt.enable(hstr[i]);
+		txt_pos += 0.1;
+	}
+	otxt.update_vertices();
+
+	struct s_vertex2{
+		float x, y, z;
+	};
+	s_vertex2  vtx2[8] = {
+		{ 4e6, 4e6, 4e6 },		// 0 0 0
+		{ -4e6, 4e6, 4e6 },		// 1 0 0
+		{ -4e6, -4e6, 4e6 },	// 1 1 0
+		{ 4e6, -4e6, 4e6 },		// 0 1 0
+		{ 4e6, -4e6, -4e6 },	// 0 1 1
+		{ -4e6, -4e6, -4e6 },	// 1 1 1
+		{ -4e6, 4e6, -4e6 },	// 1 0 1
+		{ 4e6, 4e6, -4e6 }		// 0 0 1
+	};
+
+	s_vertex2 vtx3[3] = {
+		{ 4e6, 4e6, 4e6 },		// 0 0 0
+		{ 4e6, 4e6, -4e6 },		// 0 0 1
+		{ 4e6, -4e6, -4e6 }	// 0 1 1
+	};
+
+	s_vertex2 vtx4[2] = {
+		{ 4e6, 4e6, 4e6 },		// 0 0 0
+		{ 4e6, -4e6, 4e6 }		// 0 1 0
+	};
+
+	s_vertex2 vtx5[2] = {
+		{ -4e6, -4e6, 4e6 },	// 1 1 0
+		{ -4e6, -4e6, -4e6 }	// 1 1 1
+	};
+
+	oline.init(loc_mode_flag, posl, mvpl, loc_gcolor);
+	oline.set(8, (const float*)vtx2);
+	oline.set(3, (const float*)vtx3);
+	oline.set(2, (const float*)vtx4);
+	oline.set(2, (const float*)vtx5);
+	oline.enable(0);
+	oline.enable(1);
+	oline.enable(2);
+	oline.enable(3);
+	oline.update_vertices();
+
+	opts.init(loc_mode_flag, posl, mvpl, loc_gcolor);
+	
+	modeloc = loc_mode_flag;
+
+	s_vertex2 vtx6[1000];
+	srand(0);
+
+	float r = 6400000, dr = 6800000 - r;
+	for (int i = 0; i < 1000; i++)
+	{
+		float lat, lon, alt;
+		lat = (((float)rand() / (float)RAND_MAX) - 0.5) * PI;
+		lon = (((float)rand() / (float)RAND_MAX) - 0.5)  * 2.0 * PI;
+		alt = (dr * ((float)rand() / (float)RAND_MAX)) + r;
+
+		bihtoecef(lat, lon, alt, vtx6[i].x, vtx6[i].y, vtx6[i].z);
+	}
+	opts.set(1000, (const float*)vtx6);
+
+	return true;
+}
+
+void f_glfw_test3d::destroy_run()
+{
+	glDeleteBuffers(2, vbo);
+	glDeleteVertexArrays(1, &vao);
+	glDeleteProgram(p);
+
+	return;
+}
+
+bool f_glfw_test3d::proc()
+{
+	if (tprev == 0)
+		tprev = m_cur_time;
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glClearColor(0, 0, 0, 1);
+
+	glUseProgram(p);
+
+	float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
+	glm::mat4 pm = glm::perspective(55.f, ratio, 1.f, 30e6f);
+	glm::mat4 vm = glm::lookAt(glm::vec3(0, 0, 10e6f), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+	glm::mat4 rm(1.0);
+	deg += 5. * (PI / (180. * (double) SEC)) * (double) (m_cur_time - tprev);
+	tprev = m_cur_time;
+	if (deg >= 2 * PI){
+		deg = 0.0;
+	}
+	glm::mat4 rym(1.0);
+	rym = glm::rotate(rym, (float)(0.5 * PI), glm::vec3(1, 0, 0));
+	rm = glm::rotate(rm, deg, glm::vec3(0, 1, 0));
+	rm = rm * rym;
+
+	glm::mat4 pvm = pm * vm;
+	glm::mat4 m = pvm * rm;
+	glm::vec3 Lpar = glm::normalize(glm::vec3(1, 1, 1));
+	glUniform1i(modeloc, 0);
+	glUniformMatrix4fv(mvpl, 1, GL_FALSE, glm::value_ptr(m));
+	glUniformMatrix4fv(ml, 1, GL_FALSE, glm::value_ptr(rm));
+	glUniform3fv(parl, 1, glm::value_ptr(Lpar));
+
+	glBindVertexArray(vao);
+	glEnableVertexAttribArray(posl);
+	glEnableVertexAttribArray(texcdl);
+	glEnableVertexAttribArray(nml);
+
+	glActiveTexture(GL_TEXTURE0);
+	glUniform1i(smpl, 0);
+	glBindTexture(GL_TEXTURE_2D, hetex);
+
+	glDrawElements(GL_TRIANGLES, nf * 3, GL_UNSIGNED_INT, 0);
+
+	otxt.set(hstr[0], m_time_str);
+	otxt.config_rotation(hstr[1], deg);
+	float c = cos(deg), s = sin(deg);
+	otxt.config_position(hstr[2], glm::vec2(0.2 * c, 0.2 * s));
+	otxt.config_color(hstr[4], glm::vec4(c, -s, -c, s));
+	otxt.render(0);	
+
+	oline.config_rotation(rm);
+	oline.config_position(glm::vec3(0.0, 0.0, 0.0));
+	oline.config_width(1.0);
+	oline.config_color(glm::vec4(1.0, 1.0, 0.0, 1.0));
+	oline.render(pvm);
+
+	opts.config_rotation(rm);
+	opts.config_position(glm::vec3(0.0, 0.0, 0.0));
+	opts.config_size(1.0);
+	opts.config_color(glm::vec4(0.0, 1.0, 1.0, 1.0));
+	opts.render(pvm);
+
+	glfwSwapBuffers(pwin());
+	glfwPollEvents();
+
+	pthread_mutex_lock(&mtx_mouse);
+	switch (mbtn){
+	case GLFW_MOUSE_BUTTON_LEFT:
+		if (mact == GLFW_PRESS){
+			int ihandle = otxt.collision(point_cursor);
+			if (ihandle >= 0)
+			cout << "String[" << ihandle << "] is clicked." << endl;
+		}
+		break;
+	case GLFW_MOUSE_BUTTON_RIGHT:
+		break;
+	}
+	mbtn = mact = mmd = -1;
+	pthread_mutex_unlock(&mtx_mouse);
+
+	return true;
+}
 #endif

@@ -161,7 +161,6 @@ protected:
   }
 };
 
-
 // simply shows input image 
 class f_glfw_imview: public f_glfw_window
 {
@@ -328,4 +327,173 @@ public:
 	virtual bool proc();
 };
 
+#include "../util/aws_map.h"
+using namespace AWSMap;
+
+class f_glfw_test3d : public f_glfw_window
+{
+protected:
+	int n;
+	int nf;
+	GLuint v, f, p;
+	GLuint mvpl, ml, parl, smpl, modeloc;
+	GLuint posl, texcdl, nml;
+	GLuint vao, vbo[4];// vbo[0]: vetex, vbo[1]: color or texcoord, vbo[2]: normal, vbo[3]: index
+	GLuint hetex; // texture handle
+	Mat etex; // texture image
+
+	long long tprev;
+	float deg;
+
+	char fvs[1024]; // file name of the vertex shader
+	char ffs[1024]; // file name of the fragment shader
+	char fetex[1024]; // file name of the earth texture
+
+
+	static const char * strings[5];
+	int hstr[5];
+	c_gl_text_obj otxt;
+	char ffnttex[1024];
+	char ffntcfg[1024];
+
+	c_gl_line_obj oline;
+	c_gl_point_obj opts;
+
+	char * load_glsl_text(const char * fname);
+	bool setup_shader();
+	bool setup_objects(c_icosahedron * pic);
+
+	glm::vec2 point_cursor;
+	int mbtn, mact, mmd;
+	pthread_mutex_t mtx_mouse;
+	virtual void _cursor_position_callback(double xpos, double ypos)
+	{		
+		point_cursor.x = (float)(2.0 * xpos / (double) m_sz_win.width - 1.);
+		point_cursor.y = (float)(1. - 2.0 * ypos / (double) m_sz_win.height);
+	}
+
+	virtual void _mouse_button_callback(int button, int action, int mods)
+	{
+		pthread_mutex_lock(&mtx_mouse);
+		mbtn = button;
+		mact = action;
+		mmd = mods;
+		pthread_mutex_unlock(&mtx_mouse);
+	}
+public:
+	f_glfw_test3d(const char * name);
+	~f_glfw_test3d();
+	virtual bool init_run();
+	virtual void destroy_run();
+	virtual bool proc();
+};
+
+inline void set_identity4x4(float * m) 
+{
+	for (int i = 0; i < 16; i++){
+		m[i] = 0.f;
+	}
+
+	m[0] = m[5] = m[10] = m[15] = 1.0f;
+}
+
+inline void mult4x4(float * a, float * b) // a = axb
+{
+	float m[16];
+	for (int i = 0; i < 4; ++i) {
+		for (int j = 0; j < 4; ++j) {
+			m[j * 4 + i] = 0.0f;
+			for (int k = 0; k < 4; ++k) {
+				m[j * 4 + i] += a[k * 4 + i] * b[j * 4 + k];
+			}
+		}
+	}
+	memcpy(a, m, 16 * sizeof(float));
+}
+
+inline void set_tran(float * m, float x, float y, float z)
+{
+	set_identity4x4(m);
+	m[12] = x;
+	m[13] = y;
+	m[14] = z;
+}
+
+inline void set_pm(float * m, float fov, float ratio, float nearP, float farP)
+{
+	float f = 1.0f / tan(fov * (PI / 360.0));
+
+	set_identity4x4(m);
+
+	m[0] = f / ratio;
+	m[1 * 4 + 1] = f;
+	m[2 * 4 + 2] = (farP + nearP) / (nearP - farP);
+	m[3 * 4 + 2] = (2.0f * farP * nearP) / (nearP - farP);
+	m[2 * 4 + 3] = -1.0f;
+	m[3 * 4 + 3] = 0.0f;
+}
+
+inline void xproduct(float * a, float * b, float * res)
+{
+	res[0] = a[1] * b[2] - b[1] * a[2];
+	res[1] = a[2] * b[0] - b[2] * a[0];
+	res[2] = a[0] * b[1] - b[0] * a[1];
+}
+
+inline void norm(float * a)
+{
+	float imag = 1.0 / sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+
+	a[0] *= imag;
+	a[1] *= imag;
+	a[2] *= imag;
+}
+
+inline void set_vm(float * m, float posX, float posY, float posZ,
+	float lookAtX, float lookAtY, float lookAtZ) 
+{
+	float dir[3], right[3], up[3];
+
+	up[0] = 0.0f;   up[1] = 1.0f;   up[2] = 0.0f;
+
+	dir[0] = (lookAtX - posX);
+	dir[1] = (lookAtY - posY);
+	dir[2] = (lookAtZ - posZ);
+	norm(dir);
+
+	xproduct(dir, up, right);
+	norm(right);
+
+	xproduct(right, dir, up);
+	norm(up);
+
+	float aux[16];
+
+	m[0] = right[0];
+	m[4] = right[1];
+	m[8] = right[2];
+	m[12] = 0.0f;
+
+	m[1] = up[0];
+	m[5] = up[1];
+	m[9] = up[2];
+	m[13] = 0.0f;
+
+	m[2] = -dir[0];
+	m[6] = -dir[1];
+	m[10] = -dir[2];
+	m[14] = 0.0f;
+
+	m[3] = 0.0f;
+	m[7] = 0.0f;
+	m[11] = 0.0f;
+	m[15] = 1.0f;
+
+	set_tran(aux, -posX, -posY, -posZ);
+
+	mult4x4(m, aux);
+}
+
+void printShaderInfoLog(GLuint obj);
+void printProgramInfoLog(GLuint obj);
 #endif
