@@ -293,7 +293,7 @@ bool f_ahrs::proc()
 
 	if(m_state){	
 		if (bcal){
-			m_state->set_9dof_calib(t, m_cal.mx, m_cal.my, m_cal.mz, m_cal.ax, m_cal.ay, m_cal.az, m_cal.gx, m_cal.gy, m_cal.gz);
+			m_state->set_9dof(t, m_cal.mx, m_cal.my, m_cal.mz, m_cal.ax, m_cal.ay, m_cal.az, m_cal.gx, m_cal.gy, m_cal.gz);
 			if (!bypr){
 				m_cal.gx *= (GYRO_GAIN * PI / 180.);
 				m_cal.gy *= (GYRO_GAIN * PI / 180.);
@@ -310,8 +310,8 @@ bool f_ahrs::proc()
 			}
 		}
 
-		if (braw){
-			m_state->set_9dof_raw(t, m_raw.mx, m_raw.my, m_raw.mz, m_raw.ax, m_raw.ay, m_raw.az, m_raw.gx, m_raw.gy, m_raw.gz);
+		if (!bcal && braw){
+			m_state->set_9dof(t, m_raw.mx, m_raw.my, m_raw.mz, m_raw.ax, m_raw.ay, m_raw.az, m_raw.gx, m_raw.gy, m_raw.gz);
 		}
 
 		if (bypr)

@@ -330,7 +330,6 @@ bool f_state_estimator::proc()
 		float xe = (float)(pK[0] * ex + pK[1] * ey + xp);
 		float ye = (float)(pK[2] * ex + pK[3] * ey + yp);
 
-
 		float x_opt, y_opt, z_opt;
 		wrldtoecef(m_Renu_opt, m_xecef_opt, m_yecef_opt, m_zecef_opt, xe, ye, 0., x_opt, y_opt, z_opt);
 		m_xecef_opt = x_opt;
