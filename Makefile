@@ -17,9 +17,9 @@ INST_DIR = ./bin
 OFLAGS = -O3
 
 # Platform specification
-BOARD = jtx
+#BOARD = jtx
 #BOARD = jtk
-#BOARD = zed
+BOARD = zed
 #BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
@@ -73,13 +73,13 @@ LIB = -lrt -lpthread
 FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map f_obj_manager \
-	f_wp_manager f_glfw_stereo_view f_stereo f_aws3_com f_aws3_ui f_state_estimator
+	f_wp_manager f_glfw_stereo_view f_stereo f_aws3_com
 
 # listing channels
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state
 
 # listing utilities
-UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib 
+UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib aws_map
 
 # for debug mode
 ifeq ($(DEBUG), y)
@@ -139,7 +139,7 @@ else
 endif # cpu is not arm
 	DEFS += -DGLFW_WINDOW 
 	FILTER += f_glfw_window
-	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev
+	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev f_aws3_ui f_state_estimator
 	OFLAGS += -fopenmp
 endif
 
