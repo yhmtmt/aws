@@ -17,9 +17,9 @@ INST_DIR = ./bin
 OFLAGS = -O3
 
 # Platform specification
-BOARD = jtx
+#BOARD = jtx
 #BOARD = jtk
-#BOARD = zed
+BOARD = zed
 #BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
@@ -74,7 +74,7 @@ LIB = -lrt -lpthread
 FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
 	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map f_obj_manager \
-	f_wp_manager f_glfw_stereo_view f_stereo f_aws3_com
+	f_wp_manager f_stereo f_aws3_com
 
 # listing channels
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state
@@ -131,15 +131,17 @@ ifeq ($(GLFW_WINDOW), y)
 ifeq ($(CPU), arm)
 ifeq ($(BOARD), jtx)
 	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor 
+	FILTER += f_glfw_window  f_glfw_stereo_view 	
 endif # jtx
 ifeq ($(BOARD), jtk)
 	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr
+	FILTER += f_glfw_window  f_glfw_stereo_view 
 endif # jtk
 else
 	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lglut 
 endif # cpu is not arm
 	DEFS += -DGLFW_WINDOW 
-	FILTER += f_glfw_window
+	FILTER += f_glfw_window  f_glfw_stereo_view 
 	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev f_aws3_ui f_state_estimator
 	OFLAGS += -fopenmp
 endif
