@@ -1748,7 +1748,8 @@ bool f_glfw_test3d::proc()
 	otxt.set(hstr[0], m_time_str);
 	otxt.config_rotation(hstr[1], deg);
 	float c = cos(deg), s = sin(deg);
-	otxt.config_position(hstr[2], glm::vec2(0.2 * c, 0.2 * s));
+	glm::vec2 pos2d = glm::vec2((float)(0.2 * c), (float)(0.2 * s));
+	otxt.config_position(hstr[2], pos2d);
 	otxt.config_color(hstr[4], glm::vec4(c, -s, -c, s));
 	otxt.render(0);	
 

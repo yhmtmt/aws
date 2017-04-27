@@ -17,9 +17,9 @@ INST_DIR = ./bin
 OFLAGS = -O3
 
 # Platform specification
-#BOARD = jtx
+BOARD = jtx
 #BOARD = jtk
-BOARD = zed
+#BOARD = zed
 #BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
@@ -60,11 +60,12 @@ INC_GST = /usr/include/gstreamer-1.0
 LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
 INC_GLIB = /usr/include/glib-2.0
 INC_GLIB_CONFIG = /usr/lib/arm-linux-gnueabihf/glib-2.0/include
+INC_GLM = $(CUR_DIR)/glm
 
 # modules
 MODS = filter channel util
 
-INC = -I$(INC_CV_DIR) -I$(INC_EIGEN_DIR) -I$(INC_MAVLINK)
+INC = -I$(INC_CV_DIR) -I$(INC_EIGEN_DIR) -I$(INC_GLM) -I$(INC_MAVLINK)
 
 # base linker option
 LIB = -lrt -lpthread
