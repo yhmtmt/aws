@@ -75,7 +75,7 @@ void cmd_proc_loop(const char * prompt, c_aws & aws, istream & in)
 
 		int len = (int) strlen(cmd_line);
 		if(len >= CMD_LEN){
-			cerr << "Irregal command. Command length\
+			cerr << "Illegal command. Command length\
 					should be less than " << CMD_LEN << endl;
 			continue;
 		}

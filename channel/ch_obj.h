@@ -874,7 +874,7 @@ public:
 	void push(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
 	{
 	  if(mmsi == 0 || mmsi > 999999999){
-	    //cout << "irregal mmsi detected: mmsi " << mmsi <<  endl;
+	    //cout << "illegal mmsi detected: mmsi " << mmsi <<  endl;
 	    return ;
 	  }
 		lock();
