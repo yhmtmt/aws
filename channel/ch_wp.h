@@ -65,7 +65,16 @@ struct s_wp
 // has insert, delete, access method
 class ch_wp: public ch_base
 {
+public:
+	enum e_cmd{
+		cmd_save, cmd_load, cmd_none
+	};
+
 protected:
+	e_cmd cmd;
+
+	int id;
+
 	list<s_wp*> wps;
 	list<s_wp*>::iterator itr;
 	int focus;
@@ -80,7 +89,7 @@ protected:
 	}
 
 public:
-	ch_wp(const char * name):ch_base(name), focus(0), dist_next(0.), cdiff_next(0)
+	ch_wp(const char * name) :ch_base(name), focus(0), dist_next(0.), cdiff_next(0), cmd(cmd_none), id(0)
 	{
 		itr_next = itr_focus = itr = wps.begin();
 	}
@@ -92,6 +101,26 @@ public:
 		wps.clear();
 		focus = 0;
 		itr_next = itr_focus = itr = wps.begin();
+	}
+
+	void set_cmd(const e_cmd _cmd)
+	{
+		cmd = _cmd;
+	}
+
+	const e_cmd get_cmd()
+	{
+		return cmd;
+	}
+
+	void set_route_id(const int _id)
+	{
+		id = _id;
+	}
+
+	const int get_route_id()
+	{
+		return id;
 	}
 
 	void set_diff(const float dist, const float cdiff)
@@ -106,14 +135,6 @@ public:
 		cdiff = cdiff_next;
 	}
 
-	void ins(float lat, float lon, float rarv , float v = 0.){
-		s_wp * pwp = new s_wp(lat, lon, rarv, v);
-		itr_focus = wps.insert(itr_focus, pwp);		
-		focus++;
-		itr_focus++;
-
-	  find_next();
-	}
 
 	bool is_finished(){
 		return itr_next == wps.end();
@@ -126,6 +147,15 @@ public:
 	void set_next_wp(){
 		if(itr_next != wps.end())
 			itr_next++;
+	}
+
+	void ins(float lat, float lon, float rarv, float v = 0.){
+		s_wp * pwp = new s_wp(lat, lon, rarv, v);
+		itr_focus = wps.insert(itr_focus, pwp);
+		focus++;
+		itr_focus++;
+
+		find_next();
 	}
 
 	void ers(){
@@ -171,6 +201,11 @@ public:
 			focus = 0;
 		else
 			focus--;
+	}
+
+	s_wp & get_focused_wp()
+	{
+		return **itr_focus;
 	}
 
 	bool is_focused()

@@ -26,9 +26,13 @@
 class f_wp_manager: public f_base
 {
 protected:
+	const char * m_aws1_waypoint_file_version;
+	char path[1024];
 	ch_state * m_state;
 	ch_wp * m_wp;
 
+	void save(const int id);
+	void load(const int id);
 public:
 	f_wp_manager(const char * name);
 	virtual ~f_wp_manager();
