@@ -83,6 +83,9 @@ class f_glfw_window: public f_base
 protected:
   static MapGLFWin m_map_glfwin;
   GLFWwindow * m_pwin;
+  int m_depth_bits;
+  bool m_bfull;
+  int m_display;
 
   GLFWwindow * pwin(){
     return m_pwin;
@@ -336,8 +339,8 @@ protected:
 	int n;
 	int nf;
 	GLuint v, f, p;
-	GLuint mvpl, ml, parl, smpl, modeloc;
-	GLuint posl, texcdl, nml;
+	GLuint mvpl, ml, parl, smpl, modeloc, inv_sz_scrn_loc;
+	GLuint posl, texcdl, nml, depth2dl;
 	GLuint vao, vbo[4];// vbo[0]: vetex, vbo[1]: color or texcoord, vbo[2]: normal, vbo[3]: index
 	GLuint hetex; // texture handle
 	Mat etex; // texture image
@@ -358,6 +361,7 @@ protected:
 
 	c_gl_line_obj oline;
 	c_gl_point_obj opts;
+	c_gl_2d_obj o2d;
 
 	char * load_glsl_text(const char * fname);
 	bool setup_shader();
@@ -368,8 +372,8 @@ protected:
 	pthread_mutex_t mtx_mouse;
 	virtual void _cursor_position_callback(double xpos, double ypos)
 	{		
-		point_cursor.x = (float)(2.0 * xpos / (double) m_sz_win.width - 1.);
-		point_cursor.y = (float)(1. - 2.0 * ypos / (double) m_sz_win.height);
+		point_cursor.x = (float)(xpos - (double)(m_sz_win.width >> 1));
+		point_cursor.y = (float)((double)(m_sz_win.height >> 1) - ypos);
 	}
 
 	virtual void _mouse_button_callback(int button, int action, int mods)

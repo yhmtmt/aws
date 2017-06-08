@@ -1,7 +1,10 @@
 #!/bin/sh
 
 filter test3d  win -i -o
-fset win width 1024 height 768
+
+#fset win width 3840 height 2160
+#fset win full yes
+fset win width 1920 height 1080
 fset win fvs C:/cygwin64/home/yhmtm/aws/GLSL/sample.vs
 fset win ffs C:/cygwin64/home/yhmtm/aws/GLSL/sample.fs
 fset win fetex c:/cygwin64/home/yhmtm/aws/res/earth_atmos_2048.jpg

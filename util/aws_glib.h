@@ -96,148 +96,7 @@ void cnvCvRTToGlRT(const Mat & r, const Mat & t, GLfloat * m);
 void printGlMatrix(const GLfloat * m);
 void printGlMatrix(const GLdouble * m);
 
-
-class c_gl_2d_obj
-{
-private:
-	GLuint vao, vbo[2]; // veterx buffer objects: vertex and index
-
-	struct s_vertex{
-		float x, y;
-	};
-
-	s_vertex * v;
-
-public:
-	virtual bool init();
-
-};
-
-class c_gl_point_obj
-{
-private:
-	GLuint vao, vbo;
-	int num_total_vertices;
-	glm::vec4 clr;
-	glm::vec3 t;
-	glm::mat4 R;
-	float size, szrange[2];
-	GLuint modeloc, posloc, Mmvploc, clrloc;
-
-public:
-	c_gl_point_obj(): size(1.0){}
-	~c_gl_point_obj(){
-	}
-
-	bool init(GLuint _modeloc, GLuint posloc, GLuint Mmvploc, GLuint clrloc);
-
-	void set(const int num_points, const float * points);
-
-	void config_color(const glm::vec4 & _clr)
-	{
-		clr = _clr;
-	}
-
-	void config_position(const glm::vec3 & _t)
-	{
-		t = _t;
-	}
-
-	void config_rotation(const glm::mat4 & _R)
-	{
-		R = _R;
-	}
-
-	void config_size(const float _size)
-	{
-		size = _size;
-	}
-
-	void render(const glm::mat4 & PV);
-
-};
-
-class c_gl_line_obj
-{
-private:
-	GLuint vao, vbo;
-	struct s_vertex
-	{
-		float x, y, z;
-	};
-
-	unsigned int buffer_size;
-	int num_total_vertices;
-	s_vertex * vertices;
-	glm::vec4 clr;
-	glm::vec3 t;
-	glm::mat4 R;
-	float width;
-	float wrange[2];
-	GLuint modeloc, posloc, Mmvploc, clrloc;
-
-	struct s_line_buffer_inf
-	{
-		bool bvalid;
-		bool bactive;
-		s_vertex * vtx;
-		unsigned int offset;
-		unsigned int npts;
-		s_line_buffer_inf() :offset(0), npts(0), vtx(NULL), bvalid(false), bactive(false)
-		{}
-	};
-
-	vector<s_line_buffer_inf> lbis;
-
-	bool bupdated;
-public:
-	c_gl_line_obj();
-	~c_gl_line_obj();
-
-	bool init(GLuint modeloc, GLuint posloc, GLuint Mmvploc, GLuint clrloc, unsigned int buffer_size = 4096);
-	int set(const int npts, const float * pts);
-	void remove(const int handle);
-
-	void enable(const int handle)
-	{
-		if (handle < lbis.size())
-		{
-			lbis[handle].bactive = true;
-		}
-	}
-
-	void disable(const int handle)
-	{
-		if (handle < lbis.size())
-		{
-			lbis[handle].bactive = false;
-		}
-	}
-
-	void config_color(const glm::vec4 & _clr)
-	{
-		clr = _clr;
-	}
-
-	void config_position(const glm::vec3 & _t)
-	{
-		t = _t;
-	}
-
-	void config_rotation(const glm::mat4 & _R)
-	{
-		R = _R;
-	}
-
-	void config_width(const float _width)
-	{
-		width = _width;
-	}
-
-	void update_vertices();
-
-	void render(const glm::mat4 & PV);
-};
+bool load_glsl_program(const char * ffs, const char * fvs, GLuint & p);
 
 class c_gl_text_obj
 {
@@ -255,10 +114,12 @@ public:
 	};
 
 private:
-
-	GLuint modeloc, posloc, txcloc, smploc, clrloc;
+	bool bupdated;
+	GLuint modeloc, posloc, txcloc, smploc, clrloc, bkgclrloc, depthloc;
 	GLuint htex;
 	GLuint vao, vbo[2];
+
+	float zstep;
 	enum e_parser_state{
 		ps_none,
 		ps_index,
@@ -284,23 +145,21 @@ private:
 		glm::vec2 box[4];
 		glm::vec2 t;
 		glm::mat2 rot;
+		float z;
 		glm::vec2 sz_fnt;
 		glm::vec2 sz_str;
 		glm::vec2 mgn;
-		glm::vec4 clr;
+		glm::vec4 clr, bkgclr;
 		bool bact;
 		bool bvalid;
 		bool bupdate;
 		s_vertex * vtx;
 		unsigned short * idx;
 		s_string_buffer_inf() :str(NULL), offset(0), length(0), bact(false), bvalid(false), bupdate(false), 
-			vtx(NULL), idx(NULL)
+			vtx(NULL), idx(NULL), z(-1.0)
 		{}
 		~s_string_buffer_inf()
 		{
-			if (str)
-				delete[] str;
-			str = NULL;
 		}
 	};
 
@@ -326,20 +185,28 @@ public:
 	~c_gl_text_obj();
 
 	bool init(const char * ftex, const char * finf, GLuint _modeloc,
-		GLuint _posloc, GLuint _txcloc, GLuint _smploc, GLuint _clrloc, unsigned int _sz_buf = 4096);
+		GLuint _posloc, GLuint _txcloc, GLuint _smploc, 
+		GLuint _clrloc, GLuint _bkgclrloc, GLuint _depthloc,
+		unsigned int _sz_buf = 4096);
+
+	void destroy();
 
 	const int reserv(const unsigned int len);
 	void set(const int handle, const char * str);
 
-	void config(const int handle, const glm::vec4 & clr, const glm::vec2 & sz_fnt,
+	void config(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr, const glm::vec2 & sz_fnt,
 		const glm::vec2 & mgn, const e_anchor sc,
-		const glm::vec2 & t, const float  rot);
-	void config_font_size(const int handle, glm::vec2 & sz_fnt);
+		const glm::vec2 & t, const float  rot, const int depth = 0);
+	void config_font_size(const int handle, const glm::vec2 & sz_fnt);
 	void config_font_space(const int handle, const glm::vec2 & mgn);
-	void config_color(const int handle, const glm::vec4 & clr);
+	void config_color(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr);
+
 	void config_position(const int handle, glm::vec2 & t);
 	void config_rotation(const int handle, const float rot);
+	void config_rotation(const int handle, const float c, const float s);
 	void config_anchor(const int handle, const e_anchor sc);
+	void config_depth(const int handle, const int depth);
+
 	int collision(const glm::vec2 & pt);
 	void remove(const int handle);
 	void enable(const int handle){
@@ -354,6 +221,461 @@ public:
 
 	void update_vertices(bool bfull = true);
 };
+
+class c_gl_line_obj
+{
+private:
+	GLuint vao, vbo;
+	struct s_vertex
+	{
+		float x, y, z;
+	};
+
+	unsigned int buffer_size;
+	int num_total_vertices;
+	s_vertex * vertices;
+	float wrange[2];
+	GLuint modeloc, posloc, Mmvploc, clrloc;
+
+	struct s_line_buffer_inf
+	{
+		bool bvalid;
+		bool bactive;
+		s_vertex * vtx;
+		unsigned int offset;
+		unsigned int npts;
+		float w;
+		glm::vec4 clr;
+		glm::vec3 t;
+		glm::mat4 R;
+
+		s_line_buffer_inf() :offset(0), npts(0), vtx(NULL), bvalid(false), bactive(false), w(1.f)
+		{}
+	};
+
+	vector<s_line_buffer_inf> lbis;
+
+	bool bupdated;
+public:
+	c_gl_line_obj();
+	~c_gl_line_obj();
+
+	bool init(GLuint modeloc, GLuint posloc, GLuint Mmvploc, GLuint clrloc,
+		unsigned int buffer_size = 4096);
+	int add(const int npts, const float * pts);
+
+	void destroy();
+
+	void remove(const int handle);
+
+	void enable(const int handle)
+	{
+		if (handle < lbis.size())
+		{
+			lbis[handle].bactive = true;
+		}
+	}
+
+	void disable(const int handle)
+	{
+		if (handle < lbis.size())
+		{
+			lbis[handle].bactive = false;
+		}
+	}
+
+	void config_color(const glm::vec4 & _clr)
+	{
+		for (int ih = 0; ih < lbis.size(); ih++){
+			lbis[ih].clr = _clr;
+		}
+	}
+
+	void config_color(const int handle, const glm::vec4 & _clr)
+	{
+		if (handle >= lbis.size())
+			return;
+
+		lbis[handle].clr = _clr;
+	}
+
+	void config_position(const glm::vec3 & _t)
+	{
+		for (int ih = 0; ih < lbis.size(); ih++){
+			lbis[ih].t = _t; 
+		}
+	}
+
+	void config_position(const int handle, const glm::vec3 & _t)
+	{
+		if (handle >= lbis.size())
+			return;
+
+		lbis[handle].t = _t;
+	}
+
+	void config_rotation(const glm::mat4 & _R)
+	{
+		for (int ih = 0; ih < lbis.size(); ih++){
+			lbis[ih].R = _R;
+		}
+	}
+
+	void config_rotation(const int handle, const glm::mat4 & _R)
+	{
+		if (handle >= lbis.size())
+			return;
+
+		lbis[handle].R = _R;
+	}
+
+	void config_width(const float _width)
+	{
+		for (int ih = 0; ih < lbis.size(); ih++){
+			lbis[ih].w = _width;
+		}
+	}
+
+	void config_width(const int handle, const float _width)
+	{
+		if (lbis.size() >= handle)
+			return;
+
+		lbis[handle].w = _width;
+	}
+
+	void update_vertices();
+
+	void render(const glm::mat4 & PV);
+};
+
+class c_gl_point_obj
+{
+private:
+	GLuint vao, vbo;
+	int num_total_vertices;
+	glm::vec4 clr;
+	glm::vec3 t;
+	glm::mat4 R;
+	float size, szrange[2];
+	GLuint modeloc, posloc, Mmvploc, clrloc;
+
+public:
+	c_gl_point_obj() : vao(0), size(1.0){}
+	~c_gl_point_obj(){
+		destroy();
+	}
+
+	bool init(GLuint _modeloc, GLuint posloc, GLuint Mmvploc, GLuint clrloc);
+	void destroy();
+
+	void add(const int num_points, const float * points);
+
+	void config_color(const glm::vec4 & _clr)
+	{
+		clr = _clr;
+	}
+
+	void config_position(const glm::vec3 & _t)
+	{
+		t = _t;
+	}
+
+	void config_rotation(const glm::mat4 & _R)
+	{
+		R = _R;
+	}
+
+	void config_size(const float _size)
+	{
+		size = _size;
+	}
+
+	void render(const glm::mat4 & PV);
+
+};
+
+class c_gl_2d_line_obj{
+	GLuint vao, vbo;
+	struct s_vertex
+	{
+		float x, y;
+	};
+
+	unsigned int buffer_size;
+	int num_total_vertices;
+	s_vertex * vertices, * vertices_trn;
+	float wrange[2];
+	GLuint modeloc, posloc, clrloc, depthloc;
+	float zstep;
+
+	struct s_line_buffer_inf
+	{
+		bool bvalid;
+		bool bactive;
+		bool bupdated;
+		bool blines;
+		s_vertex * vtx;
+		s_vertex * vtx_trn;
+		float w;
+		float z;
+		float rot;
+		glm::vec4 clr;
+		glm::vec2 t;
+		glm::mat2 R;
+		unsigned int offset;
+		unsigned int npts;
+		s_line_buffer_inf() :offset(0), npts(0), vtx(NULL), bvalid(false), bactive(false), bupdated(false)
+		{}
+	};
+
+	vector<s_line_buffer_inf> lbis;
+
+	bool bupdated;
+public:
+	c_gl_2d_line_obj();
+	~c_gl_2d_line_obj();
+
+	bool init(GLuint modeloc, GLuint posloc, GLuint clrloc, GLuint _depthloc,
+		unsigned int buffer_size = 4096);
+	int add(const int npts, const float * pts, bool blines = false);
+
+	void destroy();
+
+	void remove(const int handle);
+
+
+	void enable(const int handle)
+	{
+		if (handle < lbis.size())
+		{
+			lbis[handle].bactive = true;
+		}
+	}
+
+	void disable(const int handle)
+	{
+		if (handle < lbis.size())
+		{
+			lbis[handle].bactive = false;
+		}
+	}
+
+
+
+	void config_color(const glm::vec4 & _clr)
+	{
+		for (int ih = 0; ih < lbis.size(); ih++){
+			lbis[ih].clr = _clr;
+		}
+	}
+
+	void config_color(const int handle, const glm::vec4 & _clr)
+	{
+		if (handle >= lbis.size())
+			return;
+
+		lbis[handle].clr = _clr;
+	}
+
+	void config_points(const int handle, const float * pts);
+
+	void config_position(const glm::vec2 & _t)
+	{
+		for (int ih = 0; ih < lbis.size(); ih++){
+			lbis[ih].t = _t;
+			lbis[ih].bupdated = false;
+		}
+		bupdated = false;
+	}
+
+	void config_position(const int handle, const glm::vec2 & _t)
+	{
+		if (handle >= lbis.size())
+			return;
+
+		lbis[handle].t = _t;
+		lbis[handle].bupdated = false;
+		bupdated = false;
+	}
+
+	void config_rotation(const float & _rot)
+	{
+		for (int ih = 0; ih < lbis.size(); ih++){
+			lbis[ih].rot = _rot;
+			float s = (float)(sin(lbis[ih].rot)), c = (float)(cos(lbis[ih].rot));
+			lbis[ih].R = glm::mat2(c, -s, s, c);
+			lbis[ih].bupdated = false;
+		}
+		bupdated = false;
+	}
+
+	void config_rotation(const int handle, const float & _rot)
+	{
+		if (handle >= lbis.size())
+			return;
+		lbis[handle].rot = _rot;
+		float s = (float)(sin(lbis[handle].rot)), c = (float)(cos(lbis[handle].rot));
+		lbis[handle].R = glm::mat2(c, -s, s, c);
+		lbis[handle].bupdated = false;
+		bupdated = false;
+	}
+
+	void config_rotation(const int handle, const float & rot, const float & c, const float s)
+	{
+		if (handle >= lbis.size())
+			return;
+		lbis[handle].rot = rot;
+		lbis[handle].R = glm::mat2(c, -s, s, c);
+		lbis[handle].bupdated = false;
+
+		bupdated = false;
+	}
+
+	void config_width(const float _width)
+	{
+		for (int ih = 0; ih < lbis.size(); ih++){
+			lbis[ih].w = _width;
+		}
+	}
+
+	void config_width(const int handle, const float _width)
+	{
+		if (lbis.size() >= handle)
+			return;
+
+		lbis[handle].w = _width;
+	}
+
+	void config_depth(const int handle, const int depth = 0);
+
+	void update_vertices();
+
+	void render();
+};
+
+class c_gl_2d_obj
+{
+public:
+	enum e_type{
+		custom,
+		circle,
+		rectangle
+	} type;
+
+private:
+	GLuint vao, vbo[2]; // veterx buffer objects: vertex and index
+	GLuint modeloc, posloc, clrloc, depthloc;
+	float zstep;
+	struct s_vertex{
+		float x, y;
+	};
+
+	struct s_prottype{
+		unsigned int nvtx, nidxt, nidxs;
+		s_vertex * vtx;
+		glm::vec2 r;
+		unsigned short *idxt; // for triangles
+		unsigned short *idxs; // for shape
+		s_prottype() :vtx(NULL), idxt(NULL), idxs(NULL){}
+		~s_prottype()
+		{
+			destroy();
+		}
+		void destroy()
+		{
+			if (vtx)
+				delete[] vtx;
+			if (idxs)
+				delete[] idxs;
+			vtx = NULL;
+			idxt = idxs = NULL;
+		}
+	} prottype;
+
+	unsigned int buffer_size;
+	s_vertex * vtxbuf;
+	unsigned short * idxbuf;
+
+	struct s_inst_inf{
+		bool bvalid, bactive, bupdated, bborder, binlst;
+		int order;
+		float rot;
+		glm::vec2 scale, relps2inv /* inverse squared radius of ellipsoid */;
+		glm::vec4 clr; // color
+		glm::vec2 pos; // position
+		glm::mat2 r;
+		glm::mat2 sr;  // scale and rotation
+		float w;		// border width
+		float z;		// depth
+		unsigned int vtxoffset;
+		unsigned int idxtoffset, idxsoffset;
+		s_inst_inf() :bvalid(false), bactive(false), bupdated(false), bborder(false), binlst(false), z(-1.)
+		{}
+	};
+
+	vector<s_inst_inf> iis;
+	vector<int> iis_sorted_by_depth;
+	void reorder(const int handle);
+public:
+	c_gl_2d_obj();
+	~c_gl_2d_obj();
+
+	void destroy();
+
+	void enable(const int handle)
+	{
+		if (handle < iis.size())
+		{
+			iis[handle].bactive = true;
+		}
+	}
+
+	bool is_enabled(const int handle)
+	{
+		if (handle < iis.size())
+		{
+			return iis[handle].bactive;
+		}
+		return false;
+	}
+
+	void disable(const int handle)
+	{
+		if (handle < iis.size())
+		{
+			iis[handle].bactive = false;
+		}
+	}
+
+	bool init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
+		const unsigned int npts, const float * points,
+		const unsigned int nids, const unsigned short * indices,
+		const unsigned int buffer_size = 64);
+	bool init_rectangle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
+		const glm::vec2 & plb, glm::vec2 & sz,const unsigned int buffer_size = 64);
+	bool init_circle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
+		const unsigned int npts, const float rx, const float ry, const unsigned int buffer_size = 64);
+
+	int add(const glm::vec4 & clr, const glm::vec2 & pos, const float rot = 0.0, const float scale = 1.0);
+	int add(const glm::vec4 & clr, const glm::vec2 & pos, const float rot = 0.0, const glm::vec2 & scale = glm::vec2(1.0, 1.0));
+
+	void remove(const int handle);
+
+	void config_color(const int handle, const glm::vec4 & clr);
+	void config_position(const int handle, const  glm::vec2 & pos);
+	void config_rotation(const int handle, const float rot);
+	void config_scale(const int handle, const float scl);
+	void config_scale(const int handle, const glm::vec2 & scl);
+	void config_border(const int handle, const bool b, const float w);
+	void config_depth(const int handle, const int depth = 0);
+
+	int collision(const glm::vec2 & pt, const vector<int> & lst = vector<int>());
+	bool collision(const glm::vec2 & pt, const int handle);
+	void render();
+	void update_vertices();
+};
+
 
 
 #endif

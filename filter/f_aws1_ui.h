@@ -33,10 +33,697 @@
 
 #include "c_aws1_ui_core.h"
 
+class c_aws_ui_box
+{
+protected:
+	static c_gl_2d_obj * porect, * potri;
+	static c_gl_2d_line_obj * poline;
+	static c_gl_text_obj * potxt;
+	bool bopened;
+	int hbox, hopen, hclose;
+	bool btn_oc_pushed, btn_oc_released;
+	glm::vec2 pt_mouse;
+	glm::vec2 pos_close, pos_open; // box position
+	glm::vec2 sz_close, sz_open; // box size
+
+	glm::vec4 clr, bkgclr;
+	
+	void add_btn(int & hbtn, int & hstr, const char * str,
+		const glm::vec2 & pos, const glm::vec2 & sz_btn, const glm::vec2 & sz_fnt);
+	void add_select_box(int & hlbtn, int & hlstr, const char * lstr, int & hrbtn, int & hrstr, const char * rstr, int & hvalstr, 
+		const glm::vec2 & pos, const glm::vec2 & sz_btn, const glm::vec2 & sz_box, const glm::vec2 & sz_fnt, const unsigned int len_str);
+	void setup_frame(const float y, const bool left, const glm::vec2 & sz_scrn, 
+		const glm::vec2 &sz_box, const glm::vec2  & sz_fnt, const glm::vec4 & clr);
+
+	void set_selected_color(const int hrect);
+	void set_normal_color(const int hrect);
+	void set_checked_color(const int hbtn, const int hstr);
+	void set_normal_color(const int hbtn, const int hstr);
+
+	virtual void open();
+	virtual void close();
+
+	virtual bool handle_left_push(const glm::vec2 & pt);
+	virtual bool handle_left_release(const glm::vec2 & pt);
+
+public:
+	c_aws_ui_box() : bopened(false), hbox(-1), hopen(-1), hclose(-1), btn_oc_pushed(false), btn_oc_released(false)
+	{
+	}
+
+	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left)
+	{
+		setup_frame(y, left, sz_scrn, get_box_size(sz_fnt), sz_fnt, clr);
+
+		bopened = false;
+		close();
+		return true;
+	};
+
+	virtual const glm::vec2 get_box_size(const glm::vec2 sz_font)
+	{
+		return sz_open;
+	};
+
+	virtual bool set_mouse_event(const glm::vec2 & pt, 
+		const int button, const int action, const int modifier);
+
+	virtual bool proc(const bool bpushed, const bool breleased);
+
+	static void set_gl_objs(c_gl_2d_obj * _porect, c_gl_2d_obj * potri, 
+		c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline);
+};
+
+class c_view_mode_box : public c_aws_ui_box
+{
+public:
+	enum e_btn{
+		fpv = 0, // first person view
+		map, // map view
+		sys, // system menu
+		nul
+	};
+private:
+	static const char * str_btn[nul];
+	vector<int> hstr;
+	vector<int> hbtn;
+	e_btn btn_pushed, btn_released;
+
+	e_btn mode;
+	virtual void open();
+	virtual void close();
+	virtual bool handle_left_push(const glm::vec2 & pt);
+	virtual bool handle_left_release(const glm::vec2 & pt);
+public:
+	c_view_mode_box() :c_aws_ui_box(), mode(fpv), btn_pushed(nul), btn_released(nul)
+	{
+		hstr.resize(nul);
+		hbtn.resize(nul);
+	}
+
+	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
+	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
+	{
+		glm::vec2 pos, sz_btn, sz_box;
+		sz_btn.x = 4 * sz_fnt.x;
+		sz_btn.y = 1.5 * sz_fnt.y;
+		sz_box.x = sz_btn.x;
+		sz_box.y = sz_btn.y * (float)nul;
+		return sz_box;
+	}
+
+	virtual bool proc(const bool bpushed, const bool breleased);
+
+	void set_mode(const e_btn _mode){
+		mode = _mode;
+	}
+
+	e_btn get_mode(){
+		return mode;
+	}
+};
+
+class c_ctrl_mode_box : public c_aws_ui_box
+{
+public:
+	enum e_btn{
+		crz = 0, // manual cruise mode
+		ctl,	// manual control mode
+		csr,	// cursor control mode
+		fwp,	// follow way point mode
+		sty,	// stay mode
+		ftg,	// follow target mode
+		nul
+	};
+private:
+	static const char * str_btn[nul];
+	vector<int> hstr;
+	vector<int> hbtn;
+	e_btn btn_pushed, btn_released;
+
+	e_btn mode;
+	virtual void open();
+	virtual void close();
+	virtual bool handle_left_push(const glm::vec2 & pt);
+	virtual bool handle_left_release(const glm::vec2 & pt);
+
+public:
+	c_ctrl_mode_box() :c_aws_ui_box(), mode(crz), btn_pushed(nul), btn_released(nul)
+	{
+		hstr.resize(nul);
+		hbtn.resize(nul);
+	};
+
+	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
+
+	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
+	{
+		glm::vec2 pos, sz_btn, sz_box;
+		sz_btn.x = 4 * sz_fnt.x;
+		sz_btn.y = 1.5 * sz_fnt.y;
+		sz_box.x = sz_btn.x;
+		sz_box.y = sz_btn.y * (float)nul;
+		return sz_box;
+	}
+
+	virtual bool proc(const bool bpushed, const bool breleased);
+
+	void set_mode(const e_btn _mode){
+		set_normal_color(hbtn[mode], hstr[mode]);
+		mode = _mode;
+		set_checked_color(hbtn[mode], hstr[mode]);
+	}
+
+	const e_btn get_mode(){
+		return mode;
+	}
+};
+
+class c_obj_cfg_box : public c_aws_ui_box
+{
+public:
+	enum e_btn{
+		wp,		// waypoint
+		vsl,	// vessel
+		mrk,	// mark
+		cl,		// cast line
+		range_down,
+		range_up,
+		nul
+	};
+
+private:
+	static const char * str_btn[nul];
+	vector<int> hstr;
+	vector<int> hbtn;
+	e_btn btn_pushed, btn_released;
+	e_btn command;
+
+	vector<bool> check;
+	int hstr_range;
+	char range_str[8];
+	float range;
+	virtual void open();
+	virtual void close();
+	virtual bool handle_left_push(const glm::vec2 & pt);
+	virtual bool handle_left_release(const glm::vec2 & pt);
+public:
+	c_obj_cfg_box() : c_aws_ui_box(), range(1000), btn_pushed(nul), btn_released(nul), command(nul)
+	{
+		hstr.resize(nul);
+		hbtn.resize(nul);
+		check.resize(range_down, true);
+	}
+
+	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
+
+	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
+	{
+		glm::vec2 sz_btn, sz_box;
+		int rows = nul / 3 + (nul % 3 ? 1 : 0);
+		sz_btn.x = 4 * sz_fnt.x;
+		sz_btn.y = 1.5 * sz_fnt.y;
+		sz_box.x = (float)(sz_btn.x * 3);
+		sz_box.y = (float)(sz_btn.y * (rows + 1));
+		return sz_box;
+	}
+
+	virtual bool proc(const bool bpushed, const bool breleased);
+
+	void set_params(const float _range, vector<bool> _check)
+	{
+		range = _range;
+		snprintf(range_str, "%6.1f", range);
+		potxt->set(hstr_range, range_str);
+
+		for (int ibtn = 0; ibtn < range_down; ibtn++){
+			check[ibtn] = _check[ibtn];
+			if (check[ibtn]){
+				set_checked_color(hbtn[ibtn], hstr[ibtn]);
+			}
+			else{
+				set_normal_color(hbtn[ibtn], hstr[ibtn]);
+			}
+		}
+		command = nul;
+	}
+
+	void get_params(float & _range, vector<bool> & _check)
+	{
+		_range = range;
+		if (_check.size() != check.size())
+			_check.resize(check.size());
+		for (int ibtn = 0; ibtn < range_down; ibtn++){
+			_check[ibtn] = check[ibtn];
+		}
+	}
+
+	e_btn get_command()
+	{
+		return command;
+	}
+};
+
+class c_route_cfg_box : public c_aws_ui_box
+{
+public:
+	enum e_btn{
+		wp_prev, wp_next,
+		wp_spd_down, wp_spd_up,
+		wp_add, wp_del,
+		rt_prev, rt_next,
+		rt_load, rt_save,
+		nul
+	};
+private:
+	static const char * str_btn[nul];
+	vector<int> hstr;
+	vector<int> hbtn;
+	e_btn btn_pushed, btn_released;
+	e_btn command;
+	char str_val[8];
+	int hstr_wp, hstr_spd, hstr_rt;
+	unsigned int wp;
+	unsigned int spd;
+	unsigned int rt;
+	virtual void open();
+	virtual void close();
+	virtual bool handle_left_push(const glm::vec2 & pt);
+	virtual bool handle_left_release(const glm::vec2 & pt);
+public:
+	c_route_cfg_box() :c_aws_ui_box(), wp(0), rt(0), btn_pushed(nul), btn_released(nul), command(nul)
+	{
+		hstr.resize(nul);
+		hbtn.resize(nul);
+	}
+
+	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
+
+	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
+	{
+		glm::vec2 sz_btn, sz_box;
+		sz_btn.x = 5 * sz_fnt.x;
+		sz_btn.y = 1.5 * sz_fnt.y;
+
+		sz_box.x = (float)(sz_btn.x * 2);
+		sz_box.y = (float)(sz_btn.y * 5);
+		return sz_box;
+	}
+	virtual bool proc(const bool bpushed, const bool breleased);
+
+	const e_btn get_command()
+	{
+		return command;
+	}
+
+	void reset_command()
+	{
+		command = nul;
+	}
+
+	void command_processed(e_btn _command)
+	{
+		if (_command != nul)
+		{
+			set_normal_color(hbtn[command], hstr[command]);
+		}
+	}
+
+	void set_params(const unsigned int _wp, const unsigned int _spd, const unsigned int _rt)
+	{
+		wp = _wp;
+		snprintf(str_val, 8, "WP%03d", wp);
+		potxt->set(hstr_wp, str_val);
+
+		spd = _spd;
+		snprintf(str_val, 8, "%03d", spd);
+		potxt->set(hstr_spd, str_val);
+
+		rt = _rt;
+		snprintf(str_val, 8, "R%d", rt);
+		potxt->set(hstr_rt, str_val);
+	}
+
+	void get_params(unsigned int & _wp, unsigned int & _spd, unsigned int & _rt)
+	{
+		_wp = wp;
+		_spd = wp;
+		_rt = rt;
+	}
+};
+
+class c_indicator
+{
+public:
+	enum e_ind_mode{
+		im_fpv = 0, im_map, im_sys
+	};
+
+	// main/sub engine throttle
+	// main/sub engine gear
+	// rudder 
+	// roll/pitch/yaw
+	// cog/sog
+private:
+	e_ind_mode mode;
+	c_gl_2d_obj * porect, * potri;
+	c_gl_2d_line_obj * poline;
+	c_gl_text_obj * potxt;
+
+	const unsigned char veng_n, veng_nf, veng_nb;
+	unsigned char meng, seng, rud;
+	float cog, sog, yaw, pitch, roll;
+
+	int hmeng_in, hmeng_out, hseng_in, hseng_out, hrud_in, hrud_out;
+	int hmeng_n, hmeng_f, hmeng_b, hseng_n, hseng_f, hseng_b;
+	glm::vec2 scl_eng, scl_rud, pos_rud;
+	void create_engine_indicator(int & heng_in, int & heng_out, 
+		int & heng_n, int & heng_f, int & heng_b, 
+		glm::vec2 & pos, const glm::vec2 & sz_fnt,
+		const glm::vec4 & clr);
+	void update_engine_indicator(int & heng_in, int & heng_n, int & heng_f, int & heng_b,
+		const unsigned char val);
+	void create_rudder_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
+		const glm::vec4 & clr);
+	void update_rudder_indicator();
+#define SOG_STEP 5
+	glm::vec2 pos_sog;
+	glm::vec2 rad_sog;
+	int hsog_arc, hsog_scale, hstr_sog_scale[SOG_STEP], hsog_ptr;
+	void create_sog_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt, const glm::vec4 & clr);
+	void update_sog_indicator();
+
+#define PITCH_STEP 9
+#define ROLL_STEP 19
+	glm::vec2 pos_rp;
+	float lpmeas;
+	int hrarc, hrscale, hstr_rscale[ROLL_STEP], hpmeas, hpscale, hstr_pscale[PITCH_STEP], hpptr;
+	glm::vec2 pos_pscale[PITCH_STEP];
+	void create_rp_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt, const glm::vec4 & clr);
+	void update_rp_indicator();
+
+#define YAW_STEP 36
+	float dir_cam, pos_ystr, pos_yptr, fxcam;
+	
+	glm::vec2 pos_yscl[YAW_STEP], pos_yscl_tmp[YAW_STEP];
+	int hhlzn, hyscale[YAW_STEP], hstr_yscale[YAW_STEP], hhptr, hcptr;
+	void create_hc_indicator(const float fovx, const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const glm::vec4 & clr);
+	void update_hc_indicator();
+public:
+	c_indicator();
+	~c_indicator();
+	bool init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt, 
+		c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
+		const glm::vec2 & sz_fnt, const glm::vec4 & clr, 
+		const float fovx, const glm::vec2 & sz_scrn);
+
+	void set_param(
+		const unsigned char _meng, const unsigned char _seng, const unsigned char _rud,
+		const float _cog, const float _sog,
+		const float _yaw, const float _pitch, const float _roll);
+
+	void set_dir_cam(const float _dir_cam)
+	{
+		dir_cam = _dir_cam;
+	}
+
+	void set_mode(e_ind_mode _mode = im_fpv)
+	{
+		mode = _mode;
+	}
+};
+
+class c_ui_obj
+{
+protected:
+	bool bvm_map;
+	glm::mat4 pv;
+	glm::vec2 sz_scrn;
+	float pix_per_meter;
+	float meter_per_pix;
+	Mat Rmap;
+	float xmap, ymap, zmap;
+
+	glm::vec2 calc_fpv_pos(const float rx, const float ry, const float rz)
+	{
+		glm::vec2 pos;
+		glm::vec4 x(rx, ry, rz, 1), xprj;
+		xprj = pv * x;
+		float iw = (float)(1.0 / xprj.w);
+		pos.x = xprj.x * iw * sz_scrn.x;
+		pos.y = xprj.y * iw * sz_scrn.y;
+		return pos;
+	}
+
+	glm::vec2 calc_map_pos(const float rx, const float ry, const float rz)
+	{
+		glm::vec2 pos;
+		pos.x = meter_per_pix * rx;
+		pos.y = meter_per_pix * ry;
+		return pos;
+	}
+public:
+	c_ui_obj() :bvm_map(false)
+	{
+	}
+
+	virtual int collision(const glm::vec2 pos) = 0;
+
+	void set_vm_fpv()
+	{
+		bvm_map = false;
+	}
+
+	void set_vm_map()
+	{
+		bvm_map = true;
+	}
+
+	void set_fpv_param(
+		const glm::mat4 & _pv /* camera projection x camera rotation and translation*/,
+		const glm::vec2 & _sz_scrn)
+	{
+		pv = _pv;
+		sz_scrn.x = (float)(_sz_scrn.x * 0.5);
+		sz_scrn.y = (float)(_sz_scrn.y * 0.5);
+	}
+
+	void set_map_param(const float _pix_per_meter, const Mat & Rorg, const float xorg, const float yorg, const float zorg)
+	{
+		pix_per_meter = _pix_per_meter;
+		meter_per_pix = (float)(1.0 / pix_per_meter);
+		Rmap = Rorg;
+		xmap = xorg;
+		ymap = yorg; 
+		zmap = zorg;
+	}
+};
+
+class c_ui_waypoint_obj: public c_ui_obj
+{
+private:
+
+	c_gl_2d_obj * pocirc;
+	c_gl_text_obj * potxt;
+	c_gl_2d_line_obj * poline;
+	glm::vec4 clr;
+	vector<s_wp> wps;
+	struct s_marker{
+		int hmark, hstr, hline_inf, hline_next;
+	};
+	vector<s_marker> hmarks;
+	int focus, next;
+	float dist, crs;
+	int nmaxwps;
+	float rmark;
+public:
+	c_ui_waypoint_obj();
+	bool init(c_gl_2d_obj * pocirc, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline, 
+		const glm::vec4 & clr,  const glm::vec2 & sz_fnt, const float _rmark, 
+		const unsigned int _nmaxwps = 100);
+	void update_wps(const int iwp, const s_wp & wp);
+	void update_drawings();
+	void enable(const int iwp);
+	void disable(const int iwp);
+	void disable();
+	void set_focus(const int iwp);
+	void set_next(const int iwp, const float dist, const float crs);
+	virtual int collision(const glm::vec2 pos);
+};
+
+class c_ui_ais_obj : public c_ui_obj
+{
+private:
+	c_gl_2d_obj * porect;
+	c_gl_text_obj * potxt;
+	c_gl_2d_line_obj * poline;
+	glm::vec2 sz_rect;
+	glm::vec4 clr;
+	struct s_marker{
+		int hmark, hstr, hline_inf, hline_vel;
+	};
+	vector<s_marker> hmarks;
+	vector<c_ais_obj> objs;
+	int nmax_objs;
+	int focus;
+	float tvel;
+public:
+	c_ui_ais_obj() : tvel(300)
+	{
+	}
+
+	bool init(c_gl_2d_obj * porect, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
+		const glm::vec4 & clr, const glm::vec2 & sz_fnt, const glm::vec2 & sz_rect,
+		const unsigned int _nmax_objs = 100);
+	void update_ais_obj(const int iobj, const c_ais_obj & ais_obj);
+	void update_drawings();
+	void enable(const int iobj);
+	void disable(const int iobj);
+	void disable();
+	void set_focus(const int iobj);
+	void set_vel_len(const float t = 300){ tvel = t; };
+	virtual int collision(const glm::vec2 pos);
+};
+
+class c_own_ship
+{
+private:
+	c_gl_2d_obj * potri;
+	c_gl_2d_line_obj * poline;
+	int hship, hline_vel;
+	float tvel;
+public:
+	c_own_ship() :tvel(300)
+	{
+
+	}
+
+	bool init(c_gl_2d_obj * potri, c_gl_2d_line_obj * poline,
+		const glm::vec4 & clr, const glm::vec2 & sz);
+	void set_param(const float rx, const float ry, const float rz,
+		const float hdg, const float vx, const float vy, const float pix_per_meter);
+	void set_vel_len(const float t = 300);
+	void enable();
+	void disable();
+};
+
+class c_cursor
+{
+private:
+	c_gl_2d_line_obj * poline;
+	c_gl_text_obj * potxt;
+	int harrow, hpos, hpos_str;
+	glm::vec2 pos_str;
+public:
+	bool init(c_gl_2d_line_obj * poline, c_gl_text_obj * potxt, const glm::vec4 & clr, glm::vec2 sz_fnt, glm::vec2 & sz);
+	void set_cursor_position(const glm::vec2 & _pos_mouse, const glm::vec2 & _pos_bih);
+	void enable_arrow();
+	void enable_pos();
+	void disable();
+};
+
+class c_aws_ui_box_manager
+{
+public:
+	enum e_box{
+		view_mode = 0,
+		ctrl_mode = 1,
+		obj_cfg = 2,
+		route_cfg = 3,
+		nul
+	};
+private:
+	vector<c_aws_ui_box*> pboxes;
+	vector<int> hboxes;
+
+	e_box box_pushed, box_released, box_updated;
+	bool blpushed, blreleased;
+	c_gl_2d_obj * porect, *potri;
+	c_gl_text_obj * potxt;
+	c_gl_2d_line_obj * poline;
+
+	glm::vec4 clr, bkgclr;
+	glm::vec2 sz_font, sz_screen;
+public:
+	c_aws_ui_box_manager();
+	~c_aws_ui_box_manager();
+
+	bool init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
+		c_gl_text_obj * _potxt, c_gl_2d_line_obj * poline, 
+		const glm::vec4 & _clr, const glm::vec4 & _bkgclr, const glm::vec2 & _sz_font, const float fovx, const glm::vec2 & _sz_screen);
+
+	bool set_mouse_event(const glm::vec2 & pt, const int button, const int action, const int modifier);
+
+	bool set_ui_params();
+	c_aws_ui_box * get_ui_box(const e_box & box)
+	{
+		return pboxes[box];
+	}
+
+	e_box get_box_updated()
+	{
+		return box_updated;
+	}
+};
+
 
 class f_aws1_ui: public f_glfw_window
 {
+public:
+	enum e_obj_type{
+		ot_wp, ot_cl, ot_ais, ot_mark, ot_nul
+	};
+	struct s_obj{
+		e_obj_type type;
+		int handle;
+	};
+
+	enum e_mouse_state{
+		ms_add_wp, ms_drag, ms_normal
+	} mouse_state;
+
  private:
+	// old members
+	 bool m_img_x_flip, m_img_y_flip;
+	 bool m_img2_x_flip, m_img2_y_flip;
+	 void cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy);
+	 enum e_imv{
+		 IMV_IMG1, IMV_IMG2, IMV_DISP, IMV_IMG12, IMV_IMG12D, IMV_UNDEF
+	 } m_imv;
+	 static const char * m_str_imv[IMV_UNDEF];
+
+	 s_aws1_ctrl_inst m_inst;
+	 s_aws1_ctrl_stat m_stat;
+
+	 // send control packet to m_acd_socket or m_ch_ctrl_out
+	 void snd_ctrl_inst();
+	 // Recive control state (rudder angle) from m_acd_socket or m_ch_ctrl_in.
+	 void rcv_ctrl_stat();
+	 double m_mx, m_my;
+	 float m_xscale, m_yscale, m_ixscale, m_iyscale;
+
+	 // User interface mode sets
+	 enum e_aws1_ui_mode {
+		 AUM_NORMAL, AUM_MAP, AUM_DEV, AUM_UNDEF
+	 } m_mode;
+
+	 static const  char * m_str_aws1_ui_mode[AUM_UNDEF];
+	 c_aws1_ui_core * m_ui[AUM_UNDEF];
+
+	 // Main image view related parameters
+	 // Main image view shows an image from m_ch_img, the focal length and the principal point are defined as follows.
+	 float m_fx, m_fy; // focal length of the main image view
+	 float m_cx, m_cy; // principal point of the main image view
+	 // Note that image in m_ch_img should be the undistorted image.
+
+	 friend class c_aws1_ui_core;
+
+	 ////////////////////////////////////////// current version
   ch_state * m_state;
   ch_aws1_sys * m_ch_sys;
   ch_aws1_ctrl_inst * m_ch_ctrl_inst;
@@ -49,62 +736,115 @@ class f_aws1_ui: public f_glfw_window
   ch_obst * m_ch_obst;
   ch_aws1_ap_inst * m_ch_ap_inst;
 
-  bool m_img_x_flip, m_img_y_flip;
-  bool m_img2_x_flip, m_img2_y_flip;
- void cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy);
-
-  enum e_imv{
-	  IMV_IMG1, IMV_IMG2, IMV_DISP, IMV_IMG12, IMV_IMG12D, IMV_UNDEF
-  } m_imv;
-  static const char * m_str_imv[IMV_UNDEF];
-
   char m_path_storage[1024];
-  // Main image view related parameters
-  // Main image view shows an image from m_ch_img, the focal length and the principal point are defined as follows.
-  float m_fx, m_fy; // focal length of the main image view
-  float m_cx, m_cy; // principal point of the main image view
-  // Note that image in m_ch_img should be the undistorted image.
 
-  friend class c_aws1_ui_core;
+  // shader related members
+  char fvs[1024], ffs[1024], ftex[1024], ftexinf[1024];
+  GLuint p;
+  GLuint loc_mode, loc_gcolor, loc_gcolorb, loc_pos2d, loc_inv_sz_half_scrn,
+	  loc_Mmvp, loc_Mm, loc_Lpar, loc_sampler, 
+	  loc_depth2d, loc_position, loc_normal, loc_texcoord;
+  float inv_sz_half_scrn[2], fov_cam, fcam, ifcam, height_cam, dir_cam_hdg;
+  float iRE, height_cam_ec, dhorizon_cam, th_horizon_arc, dhorizon_arc, zhorizon;
+  bool setup_shader();
 
+  // visual elements
+  c_gl_2d_obj orect, otri, ocirc;
+  c_gl_text_obj otxt;
+  c_gl_2d_line_obj oline;
+  void render_gl_objs()
+  {
+	  orect.render();
+	  otri.render();
+	  ocirc.render();
+	  otxt.render(0);
+	  oline.render();
+  }
+
+  // ui elements
+  c_aws_ui_box_manager uim;
+  void update_view_mode_box(c_view_mode_box * pvm_box);
+  void update_ctrl_mode_box(c_ctrl_mode_box * pcm_box);
+  void update_obj_cfg_box(c_obj_cfg_box * poc_box);
+  void update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new);
+  c_indicator ind;
+
+  float sz_mark;
+  c_ui_waypoint_obj owp;
+  int num_max_wps;
+  void update_route();
+
+  c_ui_ais_obj oais;
+  int num_max_ais;
+  void update_ais_objs();
+  vector<bool> visible_obj;
+
+  c_own_ship own_ship;
+
+  c_cursor ocsr;
+
+  // joypad related members
   bool m_verb;
   s_jc_u3613m m_js;
   int m_js_id;
   const char * m_js_name;
+  float m_rud_f, m_meng_f, m_seng_f;
+  enum e_ctrl_mode{
+	  cm_crz, cm_ctl, cm_csr
+  } ctrl_mode;
 
-  s_aws1_ctrl_inst m_inst;
-  s_aws1_ctrl_stat m_stat;
+  void handle_ctrl_crz(); // cruise mode: sticks are used to increase/decrease engine throttle and rudder angle 
+  void handle_ctrl_ctl(); // control mode: positions of sticks are the throttle values. 
+  void handle_ctrl_csr(); // cursor mode: follows cursor position 
 
-  // send control packet to m_acd_socket or m_ch_ctrl_out
-  void snd_ctrl_inst();
-  // Recive control state (rudder angle) from m_acd_socket or m_ch_ctrl_in.
-  void rcv_ctrl_stat();
+  // mouse related members
+  glm::vec2 pt_mouse, pt_mouse_drag_begin, pt_mouse_enu, pt_mouse_drag_begin_enu, pt_mouse_bih;
+  glm::vec3 pt_mouse_ecef;
+  int mouse_button, mouse_action, mouse_mods;
+  s_obj obj_mouse_on;
 
-  double m_mx, m_my;
-  virtual void _cursor_position_callback(double xpos, double ypos){
-    m_mx = xpos;
-    m_my = ypos;
+  void calc_mouse_enu_and_ecef_pos(c_view_mode_box::e_btn vm, Mat & Rown,
+	  const float lat, const float lon, 
+	  const float xown, const float yown, const float zown, const float yaw);
+  void handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
+	  c_obj_cfg_box * poc_box, c_route_cfg_box * prc_box);
+  void handle_mouse_lbtn_up(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
+	  c_obj_cfg_box * poc_box, c_route_cfg_box * prc_box);
+  void handle_mouse_mv(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
+	  c_obj_cfg_box * poc_box, c_route_cfg_box * prc_box);
+  void handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp);
+  void add_waypoint(c_route_cfg_box * prc_box);
+  void drag_waypoint();
+  void drag_cam_dir();
+  void drag_map();
+  void det_obj_collision();
+
+  // map related members
+  bool bmap_center_free;
+  Mat Rmap;
+  glm::vec2 pt_map_center_enu, pt_map_center_bih;
+  glm::vec3 pt_map_center_ecef;
+  float map_range, meter_per_pix, pix_per_meter;
+  void recalc_range()
+  {
+	  meter_per_pix = (float)(map_range / (float)(m_sz_win.height >> 1));
+	  pix_per_meter = (float)(1.0 / meter_per_pix);
   }
 
-  float m_xscale, m_yscale, m_ixscale, m_iyscale;
+  // FPV related member
+  glm::mat4 pm, vm, pvm;
 
-  virtual void _mouse_button_callback(int button, int action, int mods);
-  virtual void _key_callback(int key, int scancode, int action, int mods);
-
-  // User interface mode sets
-  enum e_aws1_ui_mode {
-	  AUM_NORMAL, AUM_MAP, AUM_DEV, AUM_UNDEF
-  } m_mode;
-
-  static const  char * m_str_aws1_ui_mode[AUM_UNDEF];
-  c_aws1_ui_core * m_ui[AUM_UNDEF];
-
+  // video/screen capture related members
   VideoWriter m_vw;
   bool m_bsvw; // screen video write
   bool m_bss; // screen shot
   Mat m_simg;	// screen img
-
   void write_screen();
+
+  // glfw event handler 
+  virtual void _cursor_position_callback(double xpos, double ypos);
+  virtual void _mouse_button_callback(int button, int action, int mods);
+  virtual void _key_callback(int key, int scancode, int action, int mods);
 
  public:
   f_aws1_ui(const char * name);

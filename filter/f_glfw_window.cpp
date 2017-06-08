@@ -50,49 +50,17 @@ using namespace cv;
 
 #include "f_glfw_window.h"
 
-
-void printShaderInfoLog(GLuint obj)
-{
-	int infologLength = 0;
-	int charsWritten = 0;
-	char *infoLog;
-
-	glGetShaderiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
-
-	if (infologLength > 0)
-	{
-		infoLog = (char *)malloc(infologLength);
-		glGetShaderInfoLog(obj, infologLength, &charsWritten, infoLog);
-		printf("%s\n", infoLog);
-		free(infoLog);
-	}
-}
-
-void printProgramInfoLog(GLuint obj)
-{
-	int infologLength = 0;
-	int charsWritten = 0;
-	char *infoLog;
-
-	glGetProgramiv(obj, GL_INFO_LOG_LENGTH, &infologLength);
-
-	if (infologLength > 0)
-	{
-		infoLog = (char *)malloc(infologLength);
-		glGetProgramInfoLog(obj, infologLength, &charsWritten, infoLog);
-		printf("%s\n", infoLog);
-		free(infoLog);
-	}
-}
-
 //////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window
 MapGLFWin f_glfw_window::m_map_glfwin;
 
-f_glfw_window::f_glfw_window(const char * name):f_base(name), m_sz_win(640, 480)
+f_glfw_window::f_glfw_window(const char * name) :f_base(name), m_sz_win(640, 480), m_depth_bits(16), m_bfull(false), m_display(0)
 {
 	m_pwin = NULL;
 	register_fpar("width", &m_sz_win.width, "Width of the window.");
 	register_fpar("height", &m_sz_win.height, "Height of the window.");
+	register_fpar("depth_bits", &m_depth_bits, "Bit depth of depth buffer.");
+	register_fpar("full", &m_bfull, "Full screen mode is enabled.");
+	register_fpar("display", &m_display, "Display number used for full screen mode");
 }
 
 f_glfw_window::~f_glfw_window()
@@ -106,7 +74,53 @@ bool f_glfw_window::init_run()
     return false;
   }
 
-  m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, m_name, NULL, NULL);
+  glfwWindowHint(GLFW_RESIZABLE, GL_FALSE);
+
+  glfwWindowHint(GLFW_DEPTH_BITS, m_depth_bits);
+
+  GLFWmonitor * pmonitor = NULL;
+  if (m_bfull)
+  {
+	  int count = 0;
+	  GLFWmonitor ** pmonitors = glfwGetMonitors(&count);
+	  if (m_display < count)
+		  pmonitor = pmonitors[m_display];
+	  else
+		  pmonitor = pmonitors[0];
+	  
+	  int min_diff = INT_MAX;
+	  int ivm_best = 0;
+	  /*
+	  const GLFWvidmode * pvidmods = glfwGetVideoModes(pmonitor, &count);
+	  for (int ivm = 0; ivm < count; ivm++){
+		  int diff = abs(pvidmods[ivm].width - m_sz_win.width) + abs(pvidmods[ivm].height - m_sz_win.height);
+		  if (diff < min_diff){
+			  min_diff = diff;
+			  ivm_best = ivm;
+		  }
+	  }
+	  GLFWvidmode vidmod;  
+	  vidmod = pvidmods[ivm_best];
+
+	  m_sz_win.width = vidmod.width;
+	  m_sz_win.height = vidmod.height;
+	  glfwWindowHint(GLFW_RED_BITS, vidmod.redBits);
+	  glfwWindowHint(GLFW_GREEN_BITS, vidmod.greenBits);
+	  glfwWindowHint(GLFW_BLUE_BITS, vidmod.blueBits);
+	  glfwWindowHint(GLFW_REFRESH_RATE, vidmod.refreshRate);
+
+	  */
+	  const GLFWvidmode * pvidmod = glfwGetVideoMode(pmonitor);
+
+	  m_sz_win.width = pvidmod->width;
+	  m_sz_win.height = pvidmod->height;
+	  glfwWindowHint(GLFW_RED_BITS, pvidmod->redBits);
+	  glfwWindowHint(GLFW_GREEN_BITS, pvidmod->greenBits);
+	  glfwWindowHint(GLFW_BLUE_BITS, pvidmod->blueBits);
+	  glfwWindowHint(GLFW_REFRESH_RATE, pvidmod->refreshRate);
+  }
+  
+  m_pwin = glfwCreateWindow(m_sz_win.width, m_sz_win.height, m_name, pmonitor, NULL);
   if (!pwin())
     {
       cerr << "Failed to create GLFW window." << endl;
@@ -1398,47 +1412,15 @@ char * f_glfw_test3d::load_glsl_text(const char * fname){
 
 bool f_glfw_test3d::setup_shader()
 {
-	char *vs = NULL, *fs = NULL;
-
-	v = glCreateShader(GL_VERTEX_SHADER);
-	if (!v)
-		return false;
-	f = glCreateShader(GL_FRAGMENT_SHADER);
-	if (!f)
+	if (!load_glsl_program(ffs, fvs, p))
 		return false;
 
-
-	vs = load_glsl_text(fvs);
-	fs = load_glsl_text(ffs);
-
-	const char * vv = vs;
-	const char * ff = fs;
-
-	glShaderSource(v, 1, &vv, NULL);
-	glShaderSource(f, 1, &ff, NULL);
-
-	delete[] vs;
-	delete[] fs;
-
-	glCompileShader(v);
-	glCompileShader(f);
-
-	printShaderInfoLog(v);
-	printShaderInfoLog(f);
-
-	p = glCreateProgram();
-	glAttachShader(p, v);
-	glAttachShader(p, f);
-	glLinkProgram(p);
-	printProgramInfoLog(p);
-
-	glDeleteShader(v);
-	glDeleteShader(f);
-
+	inv_sz_scrn_loc = glGetUniformLocation(p, "inv_sz_scrn");
 	mvpl = glGetUniformLocation(p, "Mmvp");
 	ml = glGetUniformLocation(p, "Mm");
 	parl = glGetUniformLocation(p, "Lpar");
 	smpl = glGetUniformLocation(p, "sampler");
+	depth2dl = glGetUniformLocation(p, "depth2d");
 	posl = glGetAttribLocation(p, "position");
 	nml = glGetAttribLocation(p, "normal");
 	texcdl = glGetAttribLocation(p, "texcoord");
@@ -1614,19 +1596,23 @@ bool f_glfw_test3d::setup_objects(c_icosahedron * pic)
 
 	GLuint loc_mode_flag = glGetUniformLocation(p, "mode");
 	GLuint loc_gcolor = glGetUniformLocation(p, "gcolor");
+	GLuint loc_gcolorb = glGetUniformLocation(p, "gcolorb");
 	GLuint loc_pos2d = glGetAttribLocation(p, "pos2d");
 
-	otxt.init(ffnttex, ffntcfg, loc_mode_flag, loc_pos2d, texcdl, smpl, loc_gcolor);
-	glm::vec2 sz_fnt = glm::vec2((float)(0.3 * 41.2890625 * 2.0 / (double)m_sz_win.width),
-		(float)(0.3 * 40.0 * 2.0 / (double)m_sz_win.height));
+	otxt.init(ffnttex, ffntcfg, loc_mode_flag, loc_pos2d, texcdl, smpl, loc_gcolor, loc_gcolorb, depth2dl);
+//	glm::vec2 sz_fnt = glm::vec2((float)(0.3 * 41.2890625 * 2.0 / (double)m_sz_win.width),
+//		(float)(0.3 * 40.0 * 2.0 / (double)m_sz_win.height));
+	glm::vec2 sz_fnt = glm::vec2((float)(41.2890625),
+				(float)(40.0));
 	glm::vec2 mgn = sz_fnt;
-	float txt_pos = -0.8;
+	float txt_pos = -100;
 	for (int i = 0; i < 5; i++){
 		hstr[i] = otxt.reserv(strlen(strings[i]) + 1);
 		otxt.set(hstr[i], strings[i]);
-		otxt.config(hstr[i], glm::vec4(1., 1., 0., 1.), sz_fnt, mgn, c_gl_text_obj::an_lt, glm::vec2(txt_pos, txt_pos), 0.);
+		otxt.config(hstr[i], glm::vec4(0., 0., 0., 0.), glm::vec4(0, 0, 1, 1),
+			sz_fnt, mgn, c_gl_text_obj::an_lt, glm::vec2(txt_pos, txt_pos), 0.);
 		otxt.enable(hstr[i]);
-		txt_pos += 0.1;
+		txt_pos += 100;
 	}
 	otxt.update_vertices();
 
@@ -1661,10 +1647,10 @@ bool f_glfw_test3d::setup_objects(c_icosahedron * pic)
 	};
 
 	oline.init(loc_mode_flag, posl, mvpl, loc_gcolor);
-	oline.set(8, (const float*)vtx2);
-	oline.set(3, (const float*)vtx3);
-	oline.set(2, (const float*)vtx4);
-	oline.set(2, (const float*)vtx5);
+	oline.add(8, (const float*)vtx2);
+	oline.add(3, (const float*)vtx3);
+	oline.add(2, (const float*)vtx4);
+	oline.add(2, (const float*)vtx5);
 	oline.enable(0);
 	oline.enable(1);
 	oline.enable(2);
@@ -1688,8 +1674,24 @@ bool f_glfw_test3d::setup_objects(c_icosahedron * pic)
 
 		bihtoecef(lat, lon, alt, vtx6[i].x, vtx6[i].y, vtx6[i].z);
 	}
-	opts.set(1000, (const float*)vtx6);
+	opts.add(1000, (const float*)vtx6);
 
+
+	o2d.init_circle(loc_mode_flag, loc_pos2d, loc_gcolor, depth2dl, 10, 
+		1.0, 1.0);
+	o2d.add(glm::vec4(1.0, 0.0, 0.0, 1.0), glm::vec2(100, 100), 0, 150);
+	o2d.add(glm::vec4(0.0, 1.0, 0.0, 1.0), glm::vec2(100, -100), 0, 150);
+	o2d.add(glm::vec4(0.0, 0.0, 1.0, 1.0), glm::vec2(-100, -100), 0, 150);
+	o2d.add(glm::vec4(1.0, 1.0, 0.0, 1.0), glm::vec2(-100, 100), 0, 150);
+	o2d.config_border(0, false, 1.0);
+	o2d.config_depth(0, 0);
+	o2d.config_border(1, true, 1.0);
+	o2d.config_depth(1, 1);
+	o2d.config_border(2, true, 2.0);
+	o2d.config_depth(2, 2);
+	o2d.config_border(3, false, 2.0);
+	o2d.config_depth(3, 3);
+	o2d.update_vertices();
 	return true;
 }
 
@@ -1711,6 +1713,11 @@ bool f_glfw_test3d::proc()
 	glClearColor(0, 0, 0, 1);
 
 	glUseProgram(p);
+	{
+		float inv_sz_scrn[2] = { (float)(2. / (float)m_sz_win.width),
+			(float)(2. / (float)m_sz_win.height) };
+		glUniform2fv(inv_sz_scrn_loc, 1, inv_sz_scrn);
+	}
 
 	float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
 	glm::mat4 pm = glm::perspective(55.f, ratio, 1.f, 30e6f);
@@ -1750,7 +1757,7 @@ bool f_glfw_test3d::proc()
 	float c = cos(deg), s = sin(deg);
 	glm::vec2 pos2d = glm::vec2((float)(0.2 * c), (float)(0.2 * s));
 	otxt.config_position(hstr[2], pos2d);
-	otxt.config_color(hstr[4], glm::vec4(c, -s, -c, s));
+	otxt.config_color(hstr[4], glm::vec4(c, -s, -c, s), glm::vec4(0, 0, 0, 0));
 	otxt.render(0);	
 
 	oline.config_rotation(rm);
@@ -1765,6 +1772,8 @@ bool f_glfw_test3d::proc()
 	opts.config_color(glm::vec4(0.0, 1.0, 1.0, 1.0));
 	opts.render(pvm);
 
+	o2d.render();
+
 	glfwSwapBuffers(pwin());
 	glfwPollEvents();
 
@@ -1774,7 +1783,11 @@ bool f_glfw_test3d::proc()
 		if (mact == GLFW_PRESS){
 			int ihandle = otxt.collision(point_cursor);
 			if (ihandle >= 0)
-			cout << "String[" << ihandle << "] is clicked." << endl;
+				cout << "String[" << ihandle << "] is clicked." << endl;
+
+			ihandle = o2d.collision(point_cursor);
+			if (ihandle >= 0)
+				cout << "2DObj[" << ihandle << "] is cliced." << endl;
 		}
 		break;
 	case GLFW_MOUSE_BUTTON_RIGHT:

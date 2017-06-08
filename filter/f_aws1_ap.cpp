@@ -142,7 +142,10 @@ bool f_aws1_ap::proc()
 			e_ap_mode mode = m_ap_inst->get_mode();
 			switch (mode){
 			case EAP_CURSOR:
-				cursor();
+				cursor(sog, cog, yaw, false);
+				break;
+			case EAP_FLW_TGT:
+				flw_tgt(sog, cog, yaw, false);
 				break;
 			case EAP_STAY:
 				stay(sog, cog, yaw);
@@ -175,12 +178,12 @@ bool f_aws1_ap::proc()
 }
 
 
-void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
+const float f_aws1_ap::calc_course_change_for_ais_ship(const float crs)
 {
 	float cc = 0.; // course change
 
 	if (m_ais_obj){
-		float thyo = (float)(yaw * (PI / 180.));	
+		float thcrs = (float)(crs * (PI / 180.));
 		float iwo2 = (float)(1.0 / (m_Wo * m_Wo));
 		float ilo2 = (float)(1.0 / (m_Lo * m_Lo));
 
@@ -198,7 +201,7 @@ void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
 				continue;
 			}
 
-			float bro = (float)(bear - thyo);
+			float bro = (float)(bear - thcrs);
 			float cro = (float)cos(bro);
 			float sro = (float)sin(bro);
 
@@ -226,6 +229,45 @@ void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
 
 	cc = min(m_Cav_max, cc);
 
+	return cc;
+}
+
+void f_aws1_ap::ctrl_to_location(const float sog, const float d, const float cdiff)
+{
+	m_dcdiff = (float)(cdiff - m_cdiff);
+	m_icdiff += cdiff;
+	m_cdiff = cdiff;
+
+	m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
+	m_rud = (float)min(m_rud, 255.f);
+	m_rud = (float)max(m_rud, 0.f);
+
+	float stgt = (float)((m_smax - m_smin) *(1.0 - abs(m_rud - 127.) * (1 / 127.)) + m_smin);
+	float sdiff = (float)(stgt - sog);
+	sdiff *= (float)(1. / stgt);
+
+	m_dsdiff = (float)(sdiff - m_sdiff);
+	m_isdiff += sdiff;
+	m_sdiff = sdiff;
+
+	m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
+	m_meng = (float)min(m_meng, m_meng_max);
+	//m_meng = (float)max(m_meng, m_meng_min);
+	m_meng = (float)max(m_meng, 127.f);
+	if (m_verb){
+		printf("ap rud=%3.1f c=%2.2f dc=%2.2f ic=%2.2f", m_rud, m_cdiff, m_dcdiff, m_icdiff);
+		printf(" meg=%3.1f s=%2.2f ds=%2.2f is=%2.2f \n", m_meng, m_sdiff, m_dsdiff, m_isdiff);
+	}
+
+}
+
+void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
+{
+	float cc = 0;
+
+	if (bav)
+		cc = calc_course_change_for_ais_ship(yaw);
+
 	m_wp->lock();
 	if (m_wp->is_finished()){
 		m_rud = 127.;
@@ -241,37 +283,43 @@ void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
 		m_wp->get_diff(d, cdiff);
 		cdiff += cc;
 		cdiff *= (float)(1. / 180.); // normalize
-		m_dcdiff = (float)(cdiff - m_cdiff);
-		m_icdiff += cdiff;
-		m_cdiff = cdiff;
 
-		m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
-		m_rud = (float)min(m_rud, 255.f);
-		m_rud = (float)max(m_rud, 0.f);
-
-		float stgt = (float)((m_smax - m_smin) *(1.0 - abs(m_rud - 127.) * (1 / 127.)) + m_smin);
-		float sdiff = (float)(stgt - sog);
-		sdiff *= (float)(1. / stgt);
-
-		m_dsdiff = (float)(sdiff - m_sdiff);
-		m_isdiff += sdiff;
-		m_sdiff = sdiff;
-
-		m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
-		m_meng = (float)min(m_meng, m_meng_max);
-		//m_meng = (float)max(m_meng, m_meng_min);
-		m_meng = (float)max(m_meng, 127.f);
-		if (m_verb){
-			printf("ap rud=%3.1f c=%2.2f dc=%2.2f ic=%2.2f", m_rud, m_cdiff, m_dcdiff, m_icdiff);
-			printf(" meg=%3.1f s=%2.2f ds=%2.2f is=%2.2f \n", m_meng, m_sdiff, m_dsdiff, m_isdiff);
-		}
+		ctrl_to_location(sog, d, cdiff);
 	}
 
 	m_wp->unlock();
 }
 
-void f_aws1_ap::cursor()
+void f_aws1_ap::cursor(const float sog, const float cog, const float yaw, bool bav)
 {
+	float xr, yr, d, dir;
+	m_ap_inst->get_csr_pos_rel(xr, yr, d, dir);
+	float cdiff = (float)(dir - cog);
+	if (abs(cdiff) > 180.){
+		if (cdiff < 0)
+			cdiff += 360.;
+		else
+			cdiff -= 360.;
+	}
+
+	cdiff *= (float)(1. / 180.);
+	ctrl_to_location(sog, d, cdiff);
+}
+
+void f_aws1_ap::flw_tgt(const float sog, const float cog, const float yaw, bool bav)
+{
+	float xr, yr, d, dir;
+	m_ap_inst->get_tgt_pos_rel(xr, yr, d, dir);
+	float cdiff = (float)(dir - cog);
+	if (abs(cdiff) > 180.){
+		if (cdiff < 0)
+			cdiff += 360.;
+		else
+			cdiff -= 360.;
+	}
+
+	cdiff *= (float)(1. / 180.);
+	ctrl_to_location(sog, d, cdiff);
 }
 
 void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
