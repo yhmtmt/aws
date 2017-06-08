@@ -16,6 +16,7 @@
 
 #ifndef _AWS_THREAD_H_
 #define _AWS_THREAD_H_
+#define HAVE_STRUCT_TIMESPEC
 #include <pthread.h>
 
 class pthread_lock{

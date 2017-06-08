@@ -68,7 +68,7 @@ inline void reformRtAsGl4x4(Mat & R, Mat & t, GLfloat * m)
 }
 
 struct cmpglfwin{
-  bool operator () (const GLFWwindow * a, const GLFWwindow * b){
+  bool operator () (const GLFWwindow * a, const GLFWwindow * b) const{
     return reinterpret_cast<unsigned long long>(a) 
       < reinterpret_cast<unsigned long long>(b);
   }
