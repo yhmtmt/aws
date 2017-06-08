@@ -458,19 +458,87 @@ public:
 	}
 };
 
-class c_ui_waypoint_obj
+class c_ui_obj
+{
+protected:
+	bool bvm_map;
+	glm::mat4 pv;
+	glm::vec2 sz_scrn;
+	float pix_per_meter;
+	float meter_per_pix;
+	Mat Rmap;
+	float xmap, ymap, zmap;
+
+	glm::vec2 calc_fpv_pos(const float rx, const float ry, const float rz)
+	{
+		glm::vec2 pos;
+		glm::vec4 x(rx, ry, rz, 1), xprj;
+		xprj = pv * x;
+		float iw = (float)(1.0 / xprj.w);
+		pos.x = xprj.x * iw * sz_scrn.x;
+		pos.y = xprj.y * iw * sz_scrn.y;
+		return pos;
+	}
+
+	glm::vec2 calc_map_pos(const float rx, const float ry, const float rz)
+	{
+		glm::vec2 pos;
+		pos.x = meter_per_pix * rx;
+		pos.y = meter_per_pix * ry;
+		return pos;
+	}
+public:
+	c_ui_obj() :bvm_map(false)
+	{
+	}
+
+	virtual int collision(const glm::vec2 pos) = 0;
+
+	void set_vm_fpv()
+	{
+		bvm_map = false;
+	}
+
+	void set_vm_map()
+	{
+		bvm_map = true;
+	}
+
+	void set_fpv_param(
+		const glm::mat4 & _pv /* camera projection x camera rotation and translation*/,
+		const glm::vec2 & _sz_scrn)
+	{
+		pv = _pv;
+		sz_scrn.x = (float)(_sz_scrn.x * 0.5);
+		sz_scrn.y = (float)(_sz_scrn.y * 0.5);
+	}
+
+	void set_map_param(const float _pix_per_meter, const Mat & Rorg, const float xorg, const float yorg, const float zorg)
+	{
+		pix_per_meter = _pix_per_meter;
+		meter_per_pix = (float)(1.0 / pix_per_meter);
+		Rmap = Rorg;
+		xmap = xorg;
+		ymap = yorg; 
+		zmap = zorg;
+	}
+};
+
+class c_ui_waypoint_obj: public c_ui_obj
 {
 private:
+
 	c_gl_2d_obj * pocirc;
 	c_gl_text_obj * potxt;
 	c_gl_2d_line_obj * poline;
+	glm::vec4 clr;
 	vector<s_wp> wps;
 	struct s_marker{
-		int hmark, hstr, hline;
+		int hmark, hstr, hline_inf, hline_next;
 	};
 	vector<s_marker> hmarks;
-	vector<bool> benalbed;
-	int focus;
+	int focus, next;
+	float dist, crs;
 	int nmaxwps;
 	float rmark;
 public:
@@ -479,19 +547,69 @@ public:
 		const glm::vec4 & clr,  const glm::vec2 & sz_fnt, const float _rmark, 
 		const unsigned int _nmaxwps = 100);
 	void update_wps(const int iwp, const s_wp & wp);
+	void update_drawings();
 	void enable(const int iwp);
 	void disable(const int iwp);
 	void disable();
 	void set_focus(const int iwp);
-	int collision(const glm::vec2 pos);
+	void set_next(const int iwp, const float dist, const float crs);
+	virtual int collision(const glm::vec2 pos);
 };
 
-class c_ui_ais_obj
+class c_ui_ais_obj : public c_ui_obj
 {
 private:
+	c_gl_2d_obj * porect;
+	c_gl_text_obj * potxt;
+	c_gl_2d_line_obj * poline;
+	glm::vec2 sz_rect;
+	glm::vec4 clr;
+	struct s_marker{
+		int hmark, hstr, hline_inf, hline_vel;
+	};
+	vector<s_marker> hmarks;
+	vector<c_ais_obj> objs;
+	int nmax_objs;
+	int focus;
+	float tvel;
 public:
-	bool init();
-	void render();
+	c_ui_ais_obj() : tvel(300)
+	{
+	}
+
+	bool init(c_gl_2d_obj * porect, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
+		const glm::vec4 & clr, const glm::vec2 & sz_fnt, const glm::vec2 & sz_rect,
+		const unsigned int _nmax_objs = 100);
+	void update_ais_obj(const int iobj, const c_ais_obj & ais_obj);
+	void update_drawings();
+	void enable(const int iobj);
+	void disable(const int iobj);
+	void disable();
+	void set_focus(const int iobj);
+	void set_vel_len(const float t = 300){ tvel = t; };
+	virtual int collision(const glm::vec2 pos);
+};
+
+class c_own_ship
+{
+private:
+	c_gl_2d_obj * potri;
+	c_gl_2d_line_obj * poline;
+	int hship, hline_vel;
+	float tvel;
+public:
+	c_own_ship() :tvel(300)
+	{
+
+	}
+
+	bool init(c_gl_2d_obj * potri, c_gl_2d_line_obj * poline,
+		const glm::vec4 & clr, const glm::vec2 & sz);
+	void set_param(const float rx, const float ry, const float rz,
+		const float hdg, const float vx, const float vy, const float pix_per_meter);
+	void set_vel_len(const float t = 300);
+	void enable();
+	void disable();
 };
 
 class c_cursor
@@ -499,13 +617,14 @@ class c_cursor
 private:
 	c_gl_2d_line_obj * poline;
 	c_gl_text_obj * potxt;
+	int harrow, hpos, hpos_str;
+	glm::vec2 pos_str;
 public:
-	bool init(c_gl_2d_line_obj * poline, c_gl_text_obj * potxt);
-	void set_cursor_position(const glm::vec2 & _pos);
-	void set_cursor_position_bih(const glm::vec2 & _bih);
-	void set_map_position_bih(const glm::vec2 & _bih);
-	void set_selected_obj();
-	void render();
+	bool init(c_gl_2d_line_obj * poline, c_gl_text_obj * potxt, const glm::vec4 & clr, glm::vec2 sz_fnt, glm::vec2 & sz);
+	void set_cursor_position(const glm::vec2 & _pos_mouse, const glm::vec2 & _pos_bih);
+	void enable_arrow();
+	void enable_pos();
+	void disable();
 };
 
 class c_aws_ui_box_manager
@@ -649,13 +768,21 @@ public:
   void update_obj_cfg_box(c_obj_cfg_box * poc_box);
   void update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new);
   c_indicator ind;
+
+  float sz_mark;
   c_ui_waypoint_obj owp;
   int num_max_wps;
-  bool bupdate_route;
-  float r_wp_mark;
   void update_route();
+
+  c_ui_ais_obj oais;
+  int num_max_ais;
+  void update_ais_objs();
   vector<bool> visible_obj;
- 
+
+  c_own_ship own_ship;
+
+  c_cursor ocsr;
+
   // joypad related members
   bool m_verb;
   s_jc_u3613m m_js;
@@ -672,7 +799,7 @@ public:
 
   // mouse related members
   glm::vec2 pt_mouse, pt_mouse_drag_begin, pt_mouse_enu, pt_mouse_drag_begin_enu, pt_mouse_bih;
-  glm::vec3  pt_mouse_ecef;
+  glm::vec3 pt_mouse_ecef;
   int mouse_button, mouse_action, mouse_mods;
   s_obj obj_mouse_on;
 
@@ -690,17 +817,7 @@ public:
   void drag_waypoint();
   void drag_cam_dir();
   void drag_map();
-  void det_obj_collision()
-  {
-	  int handle;
-	  handle = owp.collision(pt_mouse);
-	  if (handle >= 0){
-		  obj_mouse_on.handle = handle;
-		  obj_mouse_on.type = ot_wp;
-	  }
-	  obj_mouse_on.handle = -1;
-	  obj_mouse_on.type = ot_nul;
-  }
+  void det_obj_collision();
 
   // map related members
   bool bmap_center_free;
@@ -713,6 +830,9 @@ public:
 	  meter_per_pix = (float)(map_range / (float)(m_sz_win.height >> 1));
 	  pix_per_meter = (float)(1.0 / meter_per_pix);
   }
+
+  // FPV related member
+  glm::mat4 pm, vm, pvm;
 
   // video/screen capture related members
   VideoWriter m_vw;

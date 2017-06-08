@@ -77,14 +77,14 @@ protected:
 
 	list<s_wp*> wps;
 	list<s_wp*>::iterator itr;
-	int focus;
+	int focus, inext;
 	list<s_wp*>::iterator itr_focus;
 	list<s_wp*>::iterator itr_next;
 	float dist_next;
 	float cdiff_next;
 
 	void find_next(){
-		for(itr = wps.begin(); itr != wps.end() && (*itr)->get_arrival_time() > 0; itr++);
+		for(itr = wps.begin(), inext = 0; itr != wps.end() && (*itr)->get_arrival_time() > 0; inext++, itr++);
 		itr_next = itr;
 	}
 
@@ -145,8 +145,10 @@ public:
 	}
 
 	void set_next_wp(){
-		if(itr_next != wps.end())
+		if (itr_next != wps.end()){
+			inext++;
 			itr_next++;
+		}
 	}
 
 	void ins(float lat, float lon, float rarv, float v = 0.){
@@ -179,6 +181,11 @@ public:
 	int get_focus()
 	{
 		return focus;
+	}
+
+	int get_next()
+	{
+		return inext;
 	}
 
 	void next_focus()

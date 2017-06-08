@@ -58,12 +58,12 @@ protected:
 
 	long long m_t;				// Time updated.
 	float m_lat, m_lon, m_alt;	// BIH coordinate
-	float m_cog, m_sog;			// Velocity in BIH coordinate
-	float m_x, m_y, m_z;		// ECEF  coordinate
-	float m_vx, m_vy, m_vz;		// Velocity in ECEF
-	float m_xr, m_yr, m_zr;		// Relative orthogonal coordinate (centered at my own ship)
-	float m_vxr, m_vyr, m_vzr;	// velocity in orthogonal coordinate centered at my own ship
-	float m_vrx, m_vry;			// relative velocity in relative coordinate
+	float m_cog, m_sog;			// Velocity in BIH coordinate (knots, degree)
+	float m_x, m_y, m_z;		// ECEF  coordinate (meter)
+	float m_vx, m_vy, m_vz;		// Velocity in ECEF (meter / sec)
+	float m_xr, m_yr, m_zr;		// Relative orthogonal coordinate (centered at my own ship, meter)
+	float m_vxr, m_vyr, m_vzr;	// velocity in orthogonal coordinate centered at my own ship (meter per sec)
+	float m_vrx, m_vry;			// relative velocity in relative coordinate (meter / sec)
 	float m_nvxr, m_nvyr;		// normalized relative velocity vector in relative coordinate
 	float m_nhdgx, m_nhdgy;		// heading vector
 	float m_bear, m_dist;		// bearing and distance
@@ -1019,6 +1019,11 @@ public:
 
 	void end(){
 		itr = objs.end();
+	}
+
+	c_ais_obj & cur()
+	{
+		return *(itr->second);
 	}
 
 	void next(){

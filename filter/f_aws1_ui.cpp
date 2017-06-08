@@ -63,8 +63,8 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					 m_img_x_flip(false), m_img_y_flip(false), m_img2_x_flip(false), m_img2_y_flip(false),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
 					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.), m_bsvw(false), m_bss(false),
-					 fov_cam(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), num_max_wps(100),
-					 map_range(100), r_wp_mark(10.0f), mouse_state(ms_normal),
+					 fov_cam(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), num_max_wps(100), num_max_ais(100),
+					 map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
 					 pt_map_center_enu(0, 0), bmap_center_free(false)
 {
 	m_path_storage[0] = '.';m_path_storage[1] = '\0';
@@ -108,7 +108,8 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("menu", &m_ui_menu, "Invoke menu");
 
   register_fpar("nwps", &num_max_wps, "Maximum number of waypoints.");
-  register_fpar("rwp", &r_wp_mark, "Radius of the waypoint marker.");
+  register_fpar("nais", &num_max_ais, "Maximum number of ais objects.");
+  register_fpar("sz_mark", &sz_mark, "Radius of the waypoint marker.");
 
   register_fpar("fov", &fov_cam, "Field of view in FPV mode.");
   register_fpar("fcam", &fcam, "Focal length of the camera assumed in FPV mode in pixel(calculated from fov if not given).");
@@ -164,6 +165,11 @@ bool f_aws1_ui::setup_shader()
 
 bool f_aws1_ui::init_run()
 {
+	if (!m_state){
+		cerr << "State channel is not connected." << endl;
+		return false;
+	}
+
   m_inst.ctrl_src = ACS_UI;
   m_inst.tcur = get_time();
   m_inst.rud_aws = 127;
@@ -212,9 +218,8 @@ bool f_aws1_ui::init_run()
 		  return false;
 	  if (!otri.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 10, 1, 1, num_max_wps))
 		  return false;
-	  if (!otxt.init(ftex, ftexinf, loc_mode, loc_pos2d, loc_texcoord, loc_sampler, loc_gcolor, loc_gcolorb, loc_depth2d, 4096))
+	  if (!otxt.init(ftex, ftexinf, loc_mode, loc_pos2d, loc_texcoord, loc_sampler, loc_gcolor, loc_gcolorb, loc_depth2d, 65535))
 		  return false;
-
 	  if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 4096))
 		  return false;
   }
@@ -223,12 +228,19 @@ bool f_aws1_ui::init_run()
   glm::vec4 clrb(0, 0, 0, 0);
   glm::vec2 sz_fnt(20, 20), sz_fnt_small(10, 10);
   glm::vec2 sz_scrn(m_sz_win.width, m_sz_win.height);
+  glm::vec2 sz_mark_xy(sz_mark, sz_mark);
   uim.init(&orect, &otri, &otxt, &oline, 
 	  clr, clrb, sz_fnt, fov_cam, sz_scrn);
 
   if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr, fov_cam, sz_scrn))
 	  return false;
-  if (!owp.init(&ocirc, &otxt, &oline, clr, sz_fnt_small, r_wp_mark, num_max_wps))
+  if (!owp.init(&ocirc, &otxt, &oline, clr, sz_fnt_small, sz_mark, num_max_wps))
+	  return false;
+  if (!oais.init(&orect, &otxt, &oline, clr, sz_fnt_small, sz_mark_xy, num_max_ais))
+	  return false;
+  if (!own_ship.init(&otri, &oline, clr, sz_fnt))
+	  return false;
+  if (!ocsr.init(&oline, &otxt, clr, sz_fnt_small, sz_fnt))
 	  return false;
 
   glEnable(GL_CULL_FACE);
@@ -921,10 +933,53 @@ void f_aws1_ui::update_route()
 			wp.x, wp.y, wp.z, wp.rx, wp.ry, wp.rz);
 		owp.update_wps(iwp, wp);
 		owp.enable(iwp);
+
 		iwp++;
 	}
 	owp.set_focus(iwp);
+	float ddiff, cdiff;
+	m_ch_wp->get_diff(ddiff, cdiff);
+	owp.set_next(m_ch_wp->get_cmd(), ddiff, cdiff);
+
+	if (obj_mouse_on.type == ot_wp){
+		owp.set_focus(obj_mouse_on.handle);
+		if (obj_mouse_on.handle != m_ch_wp->get_focus())
+			m_ch_wp->set_focus(obj_mouse_on.handle);
+	}
+	else{
+		owp.set_focus(-1);
+	}
+
 	m_ch_wp->unlock();
+	owp.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
+	owp.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+
+	owp.update_drawings();
+}
+
+void f_aws1_ui::update_ais_objs()
+{
+	if (!m_ch_ais_obj)
+		return;
+	oais.disable();
+	m_ch_ais_obj->lock();
+	int iobj = 0;
+	for (m_ch_ais_obj->begin(); !m_ch_ais_obj->is_end(); m_ch_ais_obj->next()){
+		{
+			float bear = 0.f, dist = 0.f;
+			if (!m_ch_ais_obj->get_pos_bd(bear, dist) || dist > map_range)
+				continue;
+		}
+
+		oais.enable(iobj);
+		oais.update_ais_obj(iobj, m_ch_ais_obj->cur());
+		iobj++;
+	}
+	m_ch_ais_obj->unlock();
+
+	oais.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
+	oais.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+	oais.update_drawings();
 }
 
 
@@ -967,11 +1022,11 @@ bool f_aws1_ui::proc()
 
 	// loading states
 	long long t;
-	float roll, pitch, yaw, cog, sog;
+	float roll, pitch, yaw, cog, sog, vx, vy;
+	float xown, yown, zown;
 	m_state->get_attitude(t, roll, pitch, yaw);
 	m_state->get_velocity(t, cog, sog);
-
-	float xown, yown, zown;
+	m_state->get_velocity_vector(t, vx, vy);
 	m_state->get_position_ecef(t, xown, yown, zown);
 
 	float lat, lon, alt, galt;
@@ -1027,6 +1082,22 @@ bool f_aws1_ui::proc()
 		}	
 	}
 
+	if(pvm_box->get_mode() == c_view_mode_box::fpv){ // calculating projection matrix
+		float c, s, th = (float)((dir_cam_hdg + yaw) * PI / 180.);
+		c = (float)cos(th);
+		s = (float)sin(th);
+
+		float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
+		pm = glm::perspective(fov_cam, ratio, 1.f, 30e6f);
+		vm = glm::lookAt(glm::vec3(s, 0, c), glm::vec3(0, height_cam, 0), glm::vec3(0, 1, 0));
+		pvm = pm * vm;
+	}
+	else if (pvm_box->get_mode() == c_view_mode_box::map){
+		float rx, ry, rz;
+		eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z, xown, yown, zown, rx, ry, rz);
+		own_ship.set_param(rx, ry, rz, yaw, vx, vy, pix_per_meter);
+	}
+
 	// updating indicator
 	ind.set_param(m_stat.meng, m_stat.seng, m_stat.rud, (float)(cog * (PI / 180.f)), sog,
 		(float)(yaw * (PI / 180.f)), (float)(pitch* (PI / 180.f)), (float)(roll* (PI / 180.f)));
@@ -1034,6 +1105,9 @@ bool f_aws1_ui::proc()
 
 	// update route object
 	update_route();
+
+	// update ais object
+	update_ais_objs();
 
 	// rendering graphics
 	render_gl_objs();
@@ -1268,6 +1342,25 @@ void f_aws1_ui::drag_cam_dir()
 	dir_cam_hdg = (float)((th1 - th0) * 180.0f / PI);
 }
 
+void f_aws1_ui::det_obj_collision()
+{
+	int handle;
+	obj_mouse_on.handle = -1;
+	obj_mouse_on.type = ot_nul;
+
+	handle = owp.collision(pt_mouse);
+	if (handle >= 0){
+		obj_mouse_on.handle = handle;
+		obj_mouse_on.type = ot_wp;
+	}
+
+	handle = oais.collision(pt_mouse);
+	if (handle >= 0){
+		obj_mouse_on.handle = handle;
+		obj_mouse_on.type = ot_ais;
+	}
+}
+
 void f_aws1_ui::handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
 	c_obj_cfg_box * poc_box, c_route_cfg_box * prc_box)
 {
@@ -1300,7 +1393,6 @@ void f_aws1_ui::handle_mouse_lbtn_up(c_view_mode_box * pvm_box, c_ctrl_mode_box 
 		mouse_state = ms_normal;
 		break;
 	case ms_normal:
-		// find object selected
 		break;
 	}
 }
@@ -3116,7 +3208,7 @@ c_ui_waypoint_obj::c_ui_waypoint_obj() :pocirc(NULL), potxt(NULL)
 }
 
 bool c_ui_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline,
-	const glm::vec4 & clr, const glm::vec2 & sz_fnt, const float _rmark, const unsigned int _nmaxwps)
+	const glm::vec4 & _clr, const glm::vec2 & sz_fnt, const float _rmark, const unsigned int _nmaxwps)
 {
 	nmaxwps = _nmaxwps;
 	rmark = _rmark;
@@ -3124,6 +3216,7 @@ bool c_ui_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt, c_gl
 	potxt = _potxt;
 	poline = _poline;
 
+	clr = _clr;
 	glm::vec2 pos(0.f, 0.f), r(_rmark, _rmark), mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y);
 	wps.resize(nmaxwps);
 	hmarks.resize(nmaxwps);
@@ -3132,8 +3225,19 @@ bool c_ui_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt, c_gl
 		pocirc->config_border(hmarks[i].hmark, true, 1.0);
 		pocirc->config_depth(hmarks[i].hmark, 0);
 		pocirc->disable(hmarks[i].hmark);
-		hmarks[i].hstr = potxt->reserv(15);
-		potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, 0);
+		hmarks[i].hstr = potxt->reserv(20);
+		potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos, 0, 0);
+
+		float pts[4] = { 0, 0, 0, (float)(rmark * 2.0)};
+		hmarks[i].hline_next = poline->add(2, pts);
+		poline->config_color(hmarks[i].hline_next, clr);
+		poline->config_depth(hmarks[i].hline_next);
+		poline->config_position(hmarks[i].hline_next, pos);
+
+		hmarks[i].hline_inf = poline->add(2, pts);
+		poline->config_color(hmarks[i].hline_inf, clr);
+		poline->config_depth(hmarks[i].hline_inf);
+		poline->config_position(hmarks[i].hline_inf, pos);
 	}
 	return true;
 }
@@ -3145,16 +3249,73 @@ void c_ui_waypoint_obj::update_wps(const int iwp, const s_wp & wp)
 	}
 }
 
+void c_ui_waypoint_obj::update_drawings()
+{
+	char buf[20];
+	glm::vec2 pos0, pos1;
+	for (int iwp = 0; iwp < nmaxwps; iwp++){
+		if (!pocirc->is_enabled(hmarks[iwp].hmark)){
+			poline->disable(hmarks[iwp].hline_next);
+			poline->disable(hmarks[iwp].hline_inf);
+			potxt->disable(hmarks[iwp].hstr);
+			continue;
+		}
+		else{
+			poline->enable(hmarks[iwp].hline_next);
+			poline->enable(hmarks[iwp].hline_inf);
+			potxt->enable(hmarks[iwp].hstr);
+		}
+
+		s_wp & wp = wps[iwp];
+
+		if (bvm_map){
+			pos1 = calc_map_pos(wp.rx, wp.ry, wp.rz);
+		}
+		else{
+			pos1 = calc_fpv_pos(wp.rx, wp.ry, wp.rz);
+		}
+
+		pocirc->config_position(hmarks[iwp].hmark, pos1);
+		if (iwp > 0){
+			float x[4] = { pos0.x, pos0.y, pos1.x, pos1.y };
+			poline->config_points(hmarks[iwp].hline_next, x);
+		}
+
+		if (iwp == focus){
+			pocirc->config_border(hmarks[iwp].hmark, false, 2.0);
+		}
+		else{
+			pocirc->config_border(hmarks[iwp].hmark, false, 1.0);
+		}
+
+		glm::vec2 pos_inf = pos1;
+		pos_inf.x += 2.0 * rmark;
+		pos_inf.y += 2.0 * rmark;
+		if (iwp == next){
+			snprintf(buf, 20, "WP%03d\nD%4.0f\nC%3.1f", iwp, dist, crs);
+		}
+		else{
+			snprintf(buf, 20, "WP%03d", iwp);
+		}
+		potxt->set(hmarks[iwp].hstr, buf);
+		potxt->config_position(hmarks[iwp].hstr, pos_inf);
+		poline->config_position(hmarks[iwp].hline_inf, pos1);
+
+		pos0 = pos1;
+	}
+}
+
 void c_ui_waypoint_obj::enable(const int iwp)
 {
-	if (iwp < nmaxwps)
+	if (iwp < nmaxwps){
 		pocirc->enable(hmarks[iwp].hmark);
+	}
 }
 
 void c_ui_waypoint_obj::disable(const int iwp)
 {
 	if (iwp < nmaxwps){
-		pocirc->enable(hmarks[iwp].hmark);
+		pocirc->disable(hmarks[iwp].hmark);
 	}
 }
 
@@ -3170,6 +3331,13 @@ void c_ui_waypoint_obj::set_focus(const int iwp)
 	focus = iwp;
 }
 
+void c_ui_waypoint_obj::set_next(const int iwp, const float _dist, const float _crs)
+{
+	next = iwp;
+	dist = _dist;
+	crs = _crs;
+}
+
 int c_ui_waypoint_obj::collision(const glm::vec2 pos)
 {
 	for (int i = 0; i < nmaxwps; i++){
@@ -3182,13 +3350,265 @@ int c_ui_waypoint_obj::collision(const glm::vec2 pos)
 }
 
 /////////////////////////////////////////////////////////////////// c_ais_obj
-bool c_ui_ais_obj::init()
+bool c_ui_ais_obj::init(c_gl_2d_obj * _porect,
+	c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline,
+	const glm::vec4 & _clr, const glm::vec2 & sz_fnt, 
+	const glm::vec2 & _sz_rect, const unsigned int _nmax_objs)
 {
+	nmax_objs = _nmax_objs;
+	porect = _porect;
+	potxt = _potxt;
+	poline = _poline;
+
+	sz_rect = _sz_rect;
+	clr = _clr;
+	glm::vec2 pos(0.f, 0.f), mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y);
+	hmarks.resize(nmax_objs);
+	objs.resize(nmax_objs);
+	for (int i = 0; i < nmax_objs; i++){
+		hmarks[i].hmark = porect->add(clr, pos, 0.0f, sz_rect);
+		porect->config_border(hmarks[i].hmark, true, 1.0);
+		porect->config_depth(hmarks[i].hmark, 0);
+		porect->disable(hmarks[i].hmark);
+		hmarks[i].hstr = potxt->reserv(64);
+		potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), 
+			sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, 0);
+
+		float pts[4] = { 0, 0, 0, (float)(sz_rect.y) };
+		hmarks[i].hline_inf = poline->add(2, pts);
+		poline->config_color(hmarks[i].hline_inf, clr);
+		poline->config_depth(hmarks[i].hline_inf);
+		poline->config_position(hmarks[i].hline_inf, pos);
+
+		hmarks[i].hline_vel = poline->add(2, pts);
+		poline->config_color(hmarks[i].hline_vel, clr);
+		poline->config_depth(hmarks[i].hline_vel);
+		poline->config_position(hmarks[i].hline_vel, pos);
+	}
+
 	return true;
 }
 
-void c_ui_ais_obj::render()
+int c_ui_ais_obj::collision(const glm::vec2 pos)
 {
+	for (int i = 0; i < nmax_objs; i++)
+	{
+		if (porect->is_enabled(hmarks[i].hmark)){
+			if (porect->collision(pos, hmarks[i].hmark))
+				return i;
+		}
+	}
+	return -1;
+}
+
+void c_ui_ais_obj::update_ais_obj(const int iobj, const c_ais_obj & ais_obj)
+{
+	if (objs.size() > iobj && iobj >= 0){
+		objs[iobj] = ais_obj;
+	}
+}
+
+void c_ui_ais_obj::update_drawings()
+{
+	char buf[20];
+	for (int iobj = 0; iobj < nmax_objs; iobj++){
+		if (!porect->is_enabled(hmarks[iobj].hmark)){
+			poline->disable(hmarks[iobj].hline_inf);
+			poline->disable(hmarks[iobj].hline_vel);
+			potxt->disable(hmarks[iobj].hstr);
+			continue;
+		}
+		else{
+			poline->enable(hmarks[iobj].hline_inf);
+			poline->enable(hmarks[iobj].hline_vel);
+			potxt->enable(hmarks[iobj].hstr);
+		}
+
+		c_ais_obj & obj = objs[iobj];
+		float x, y, z, rx, ry, rz, rxf, ryf, rzf;
+		obj.get_pos_ecef(x, y, z);
+		eceftowrld(Rmap, xmap, ymap, zmap, x, y, z, rx, ry, rz);
+		glm::vec2 pos, pos_future;
+		porect->config_position(hmarks[iobj].hmark, pos);
+		glm::vec2 pos_inf = pos;
+		pos_inf.y += sz_rect.y;
+
+		unsigned int mmsi = obj.get_mmsi();
+		float bear, dist, tcpa, dcpa, vel, nvx, nvy, vxr, vyr, vzr, cog, sog;
+		obj.get_pos_bd(bear, dist);
+		obj.get_tdcpa(tcpa, dcpa);
+		obj.get_vel_rel(vxr, vyr, vzr);
+		obj.get_vel_vec2d(nvx, nvy);
+		obj.get_vel_bih(cog, sog);
+
+		rxf = rx + vxr * tvel;
+		ryf = ry + vyr * tvel;
+		rzf = rz + vzr * tvel;
+
+		if (bvm_map){
+			pos = calc_map_pos(rx, ry, rz);
+			pos_future = calc_map_pos(rxf, ryf, rzf);
+		}
+		else{
+			pos = calc_fpv_pos(rx, ry, rz);
+			pos_future = calc_map_pos(rxf, ryf, rzf);
+		}
+
+		if (iobj == focus){
+			snprintf(buf, 64, "AIS%09u\nD%4.0f V%02.1f\nCPA T%04.0f D%04.0f", 
+				mmsi, dist, sog, tcpa, dcpa);
+			porect->config_border(hmarks[iobj].hmark, false, 2.0);
+		}
+		else{
+			snprintf(buf, 64, "D%4.0f", dist);
+			porect->config_border(hmarks[iobj].hmark, false, 1.0);
+		}
+
+		potxt->set(hmarks[iobj].hstr, buf);
+		potxt->config_position(hmarks[iobj].hstr, pos_inf);
+		poline->config_position(hmarks[iobj].hline_inf, pos);
+
+		float pts[4] = { pos.x, pos.y, pos_future.x, pos_future.y };
+		poline->config_points(hmarks[iobj].hline_vel, pts);
+	}
+}
+
+void c_ui_ais_obj::enable(const int iobj)
+{
+	if (objs.size() > iobj && iobj >= 0){
+		porect->enable(hmarks[iobj].hmark);
+	}
+}
+
+void c_ui_ais_obj::disable(const int iobj)
+{
+	if (objs.size() > iobj && iobj >= 0){
+		porect->disable(hmarks[iobj].hmark);
+	}
+}
+
+void c_ui_ais_obj::disable()
+{
+	for (int iobj = 0; iobj < nmax_objs; iobj)
+	{
+		disable(iobj);
+	}
+}
+
+void c_ui_ais_obj::set_focus(const int iobj)
+{
+	focus = iobj;
+}
+/////////////////////////////////////////////////////////////////// c_own_ship
+bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
+	const glm::vec4 & clr, const glm::vec2 & sz)
+{
+	potri = _potri;
+	poline = _poline;
+
+	glm::vec2 pos(0, 0);
+	hship = potri->add(clr, pos, 0, sz);
+	potri->config_depth(hship, 0);
+	potri->config_border(hship, false, 1.0);
+
+	float pts[4] = { 0, 0, 1, 1 };
+	hline_vel = poline->add(2, pts);
+	poline->config_color(clr);
+	poline->config_depth(hline_vel, 0);
+}
+
+void c_own_ship::enable()
+{
+	potri->enable(hship);
+	poline->enable(hline_vel);
+}
+
+void c_own_ship::disable()
+{
+	potri->disable(hship);
+	poline->disable(hline_vel);
+}
+
+void c_own_ship::set_param(const float rx, const float ry, const float rz, const float hdg, const float vx, const float vy, const float pix_per_meter)
+{
+	float th = (float)((90.f - hdg) * PI / 180.);
+	potri->config_rotation(hship, th);
+	float pts[4] = {
+		(float)(rx * pix_per_meter), (float)(ry * pix_per_meter),
+		(float)((rx + vx) * pix_per_meter), (float)((ry + vy) * pix_per_meter)
+	};
+	poline->config_points(hline_vel, pts);
+}
+
+/////////////////////////////////////////////////////////////////// c_cursor
+bool c_cursor::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt, 
+	const glm::vec4 & clr, glm::vec2 sz_fnt, glm::vec2 & sz)
+{
+	poline = _poline;
+	potxt = _potxt;
+	struct s_vertex{
+		float x, y;
+	};
+
+
+	s_vertex arrow[8] = {
+		{sz.x * 0.25, sz.y * 0.25}, {sz.x * 0.5, sz.y * 0.5},
+		{-sz.x * 0.25, sz.y * 0.25}, {-sz.x * 0.5, sz.y * 0.5},
+		{-sz.x * 0.25, -sz.y * 0.25}, {-sz.x * 0.5,-sz.y * 0.5},
+		{sz.x * 0.25, -sz.y * 0.25}, {sz.x * 0.5, -sz.y * 0.5}
+	};
+	harrow = poline->add(8, (float*)arrow, true);
+	poline->config_color(harrow, clr);
+	poline->config_depth(harrow, 0);
+	poline->config_width(harrow, 1.0);
+
+
+	s_vertex pos[3] = {
+		{ 0, 0 }, { -sz.x, sz.y }, {-sz.x * 1.5, sz.y}
+	};
+
+	hpos = poline->add(3, (float*)pos, false);
+	poline->config_color(hpos, clr);
+	poline->config_depth(hpos, 0);
+	poline->config_width(hpos, 1.0);
+
+	hpos_str = potxt->reserv(32);
+	pos_str = glm::vec2(pos[2].x, pos[2].y);
+	glm::vec2 sz_mgn(sz_fnt.x * 0.6, sz_fnt.y);
+	potxt->config(hpos_str, clr, glm::vec4(0, 0, 0, 0), 
+		sz_fnt, sz_mgn, c_gl_text_obj::an_rc, pos_str, 0, 0);
+
+	return true;
+}
+
+
+void c_cursor::set_cursor_position(const glm::vec2 & _pos_mouse, const glm::vec2 & _pos_bih)
+{
+	glm::vec2 pos = _pos_mouse + pos_str;
+	potxt->config_position(hpos_str, pos);
+	poline->config_position(hpos, _pos_mouse);
+	poline->config_position(harrow, _pos_mouse);
+}
+
+void c_cursor::enable_arrow()
+{
+	potxt->disable(hpos_str);
+	poline->disable(hpos);
+	poline->enable(harrow);
+}
+
+void c_cursor::enable_pos()
+{
+	potxt->enable(hpos_str);
+	poline->enable(hpos);
+	poline->disable(harrow);
+}
+
+void c_cursor::disable()
+{
+	poline->disable(hpos);
+	poline->enable(harrow);
+	poline->disable(harrow);
 }
 
 /////////////////////////////////////////////////////////////////// c_aws_ui_box_manager
