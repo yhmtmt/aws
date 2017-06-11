@@ -315,7 +315,8 @@ public:
 
 	////////////////////////////// static members /////////////////////////
 private:
-	static pthread_mutex_t m_list_mtx;
+	static mutex m_list_mtx;
+	static unique_lock<mutex> m_lock_list;
 	static unsigned int m_mmsi_own;
 	static c_ship m_ship_own;
 

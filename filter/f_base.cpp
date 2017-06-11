@@ -190,8 +190,10 @@ void f_base::s_ferr::dump_err(ostream & out)
 }
 
 ////////////////////////////////////////////////////// f_base members
-pthread_mutex_t f_base::m_mutex;
-pthread_cond_t f_base::m_cond;
+mutex f_base::m_mutex;
+condition_variable f_base::m_cond;
+//pthread_mutex_t f_base::m_mutex;
+//pthread_cond_t f_base::m_cond;
 long long f_base::m_cur_time = 0;
 long long f_base::m_count_clock = 0;
 int f_base::m_time_zone_minute = 540;
@@ -204,7 +206,8 @@ ofstream f_base::m_file_err;
 f_base::s_ferr f_base::m_err_buf[SIZE_FERR_BUF];
 int f_base::m_err_head = 0;
 int f_base::m_err_tail = 0;
-pthread_mutex_t f_base::m_err_mtx;
+mutex f_base::m_err_mtx;
+//pthread_mutex_t f_base::m_err_mtx;
 
 // this is the filter thread function, but actually called from main thread.
 // this function is used if the filter should be executed in the mainthread such as the case using OpenGL
@@ -233,9 +236,8 @@ void f_base::fthread()
 }
 
 // Filter thread function
-void * f_base::fthread(void * ptr)
+void f_base::sfthread(f_base * filter)
 {
-	f_base * filter = (f_base *) ptr;
 	while(filter->m_bactive){
 		filter->m_count_pre = filter->m_count_clock;
 
@@ -264,27 +266,30 @@ void * f_base::fthread(void * ptr)
 	}
 
 	filter->m_bstopped = true;
-	return NULL;
 }
 
 void f_base::flush_err_buf(){
-	pthread_mutex_lock(&m_err_mtx);
+	unique_lock<mutex> lock(m_err_mtx);
+//	pthread_mutex_lock(&m_err_mtx);
 	for(;m_err_tail != m_err_head; 
 		m_err_head = (1 + m_err_head) % SIZE_FERR_BUF){
 			m_err_buf[m_err_head].dump_err(m_file_err);
 			m_err_buf[m_err_head].dump_err(cerr);
 	}
-	pthread_mutex_unlock(&m_err_mtx);
+//	pthread_mutex_unlock(&m_err_mtx);
 }
 
 void f_base::send_err(f_base * ptr, const char * fname, int line, int code)
 {
-	pthread_mutex_lock(&m_err_mtx);
+	unique_lock<mutex> lock(m_err_mtx);
+//	pthread_mutex_lock(&m_err_mtx);
 	int next_tail = (m_err_tail + 1) % SIZE_FERR_BUF;
 	if(next_tail == m_err_head){
-		pthread_mutex_unlock(&m_err_mtx);
+		lock.unlock();
+//		pthread_mutex_unlock(&m_err_mtx);
 		flush_err_buf();
-		pthread_mutex_lock(&m_err_mtx);
+		lock.lock();
+//		pthread_mutex_lock(&m_err_mtx);
 	} 
 
 	strncpy(m_err_buf[m_err_tail].tstr, get_time_str(), 32);
@@ -293,11 +298,12 @@ void f_base::send_err(f_base * ptr, const char * fname, int line, int code)
 	m_err_buf[m_err_tail].line = line;
 	m_err_buf[m_err_tail].code = code;
 	m_err_tail = next_tail;
-	pthread_mutex_unlock(&m_err_mtx);
+//	pthread_mutex_unlock(&m_err_mtx);
 }
 
 void f_base::clock(long long cur_time){
-	pthread_mutex_lock(&m_mutex);
+	//pthread_mutex_lock(&m_mutex);
+	unique_lock<mutex> lock(m_mutex);
 	if(m_clk.is_run())
 		m_count_clock++;
 	m_cur_time = cur_time;
@@ -311,18 +317,21 @@ void f_base::clock(long long cur_time){
 		m_tm.tm_sec,
 		m_tm.tm_msec,
 		m_tm.tm_year + 1900);
-
-	pthread_mutex_unlock(&m_mutex);
-	pthread_cond_broadcast(&m_cond);
+	lock.unlock();
+//	pthread_mutex_unlock(&m_mutex);
+	m_cond.notify_all();
+//	pthread_cond_broadcast(&m_cond);
 }
 
-f_base::f_base(const char * name):m_offset_time(0), m_bactive(false), 
-	m_intvl(1), m_bstopped(true), m_cmd(false)
+f_base::f_base(const char * name):m_offset_time(0), m_bactive(false), m_fthread(NULL),
+	m_intvl(1), m_bstopped(true), m_cmd(false), m_mutex_cmd(), m_lock_cmd(m_mutex_cmd)
 {
-	pthread_mutex_init(&m_mutex_cmd, NULL);
-	pthread_cond_init(&m_cnd_cmd, NULL);
+//	pthread_mutex_init(&m_mutex_cmd, NULL);
+//	pthread_cond_init(&m_cnd_cmd, NULL);
 	m_name = new char[strlen(name) + 1];
 	strncpy(m_name, name, strlen(name) + 1);
+
+	m_lock_cmd.unlock();
 
 	register_fpar("TimeShift", &m_offset_time, "Filter time offset relative to global clock. (may be offline mode only)");
 	register_fpar("Interval", &m_intvl, "Execution interval in cycle. (default 0)");
@@ -334,7 +343,7 @@ f_base::f_base(const char * name):m_offset_time(0), m_bactive(false),
 
 f_base::~f_base()
 {
-	pthread_mutex_destroy(&m_mutex_cmd);
+//	pthread_mutex_destroy(&m_mutex_cmd);
 	m_chin.clear();
 	m_chout.clear();
 	delete [] m_name;

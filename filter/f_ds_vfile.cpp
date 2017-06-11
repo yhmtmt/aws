@@ -421,7 +421,8 @@ bool f_ds_vfile::run(long long start_time, long long end_time)
 	m_cycle = 0;
 	m_count_pre = m_count_post = m_count_clock;
 
-	pthread_create(&m_fthread, NULL, fthread, (void*) this);
+	m_fthread = new thread(sfthread, this);
+//	pthread_create(&m_fthread, NULL, fthread, (void*) this);
 	return true;
 }
 
@@ -430,6 +431,10 @@ bool f_ds_vfile::stop()
 	if(f_base::stop()){
 		if(m_pGraph != NULL)
 			m_pControl->Stop();
+		if (m_fthread) {
+			delete m_fthread;
+			m_fthread = NULL;
+		}
 		return true;
 	}
 	return false;

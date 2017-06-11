@@ -127,10 +127,10 @@ public:
 	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
 	{
 		glm::vec2 pos, sz_btn, sz_box;
-		sz_btn.x = 4 * sz_fnt.x;
-		sz_btn.y = 1.5 * sz_fnt.y;
+		sz_btn.x = (float)(4 * sz_fnt.x);
+		sz_btn.y = (float)(1.5 * sz_fnt.y);
 		sz_box.x = sz_btn.x;
-		sz_box.y = sz_btn.y * (float)nul;
+		sz_box.y = (float)(sz_btn.y * (float)nul);
 		return sz_box;
 	}
 
@@ -681,6 +681,7 @@ public:
 	struct s_obj{
 		e_obj_type type;
 		int handle;
+		s_obj():type(ot_nul), handle(-1){}
 	};
 
 	enum e_mouse_state{

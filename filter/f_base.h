@@ -302,9 +302,10 @@ protected:
 	////////////////////////////////////////////////////////////// main thread 
 protected:
 	// thread object.
-	pthread_t m_fthread;
+//	pthread_t m_fthread;
+	thread * m_fthread;
 	// thread body. called with m_fthread
-	static void * fthread(void * ptr);
+	static void sfthread(f_base * filter);
 
 	bool m_bactive; // if it is true, filter thread continues to loop
 	bool m_bstopped; //true indicates filter is stopped. 
@@ -316,8 +317,10 @@ protected:
 	int m_max_cycle;
 
 	// mutex and signal for clocking
-	static pthread_mutex_t m_mutex; 
-	static pthread_cond_t m_cond;	
+	static mutex m_mutex;
+	static condition_variable m_cond;
+//	static pthread_mutex_t m_mutex; 
+//	static pthread_cond_t m_cond;	
 
 
 	virtual bool seek(long long seek_time)
@@ -359,8 +362,9 @@ public:
 		m_max_cycle = 0;
 		m_cycle = 0;
 		m_count_pre = m_count_post = m_count_clock;
-		if(!is_main_thread())
-			pthread_create(&m_fthread, NULL, fthread, (void*) this);
+		if (!is_main_thread())
+			m_fthread = new thread(sfthread, this);
+			//pthread_create(&m_fthread, NULL, fthread, (void*) this);
 		return true;
 	}
 
@@ -369,6 +373,11 @@ public:
 	{	
 		m_bactive = false;
 		if(m_bstopped || is_main_thread()){
+			if (m_bstopped && m_fthread) {
+				m_fthread->join();
+				delete m_fthread;
+				m_fthread = NULL;
+			}
 			m_bstopped = true;
 			return true;
 		}
@@ -437,9 +446,12 @@ protected:
 
 	// wait signal from aws main loop clocked with hardware timer.
 	void clock_wait(){
-		pthread_mutex_lock(&m_mutex);
-		pthread_cond_wait(&m_cond, &m_mutex);
-		pthread_mutex_unlock(&m_mutex);
+		unique_lock<mutex> lock(m_mutex);
+		m_cond.wait(lock);
+
+//		pthread_mutex_lock(&m_mutex);
+//		pthread_cond_wait(&m_cond, &m_mutex);
+//		pthread_mutex_unlock(&m_mutex);
 	}
 
 public:
@@ -481,7 +493,8 @@ public:
 	static void clock(long long cur_time);
 	static void send_clock_signal()
 	{
-		pthread_cond_broadcast(&m_cond);
+		m_cond.notify_all();
+//		pthread_cond_broadcast(&m_cond);
 	}
 
 	static void init_run_all(){
@@ -494,9 +507,10 @@ public:
 
 	static long long get_time(){
 		long long t;
-		pthread_mutex_lock(&m_mutex);
+//		pthread_mutex_lock(&m_mutex);
+		unique_lock<mutex> lock(m_mutex);
 		t = m_cur_time;
-		pthread_mutex_unlock(&m_mutex);
+//		pthread_mutex_unlock(&m_mutex);
 	  return t;
 	}
 	
@@ -568,7 +582,8 @@ protected:
 	static s_ferr m_err_buf[SIZE_FERR_BUF];
 	static int m_err_head;
 	static int m_err_tail;
-	static pthread_mutex_t m_err_mtx;
+	static mutex m_err_mtx;
+//	static pthread_mutex_t m_err_mtx;
 
 	static void send_err(f_base * ptr, const char * fname, int line, int code);
 public:
@@ -584,8 +599,11 @@ public:
 	////////////////////////////////////////////////// command and the methods
 protected:
 	// mutex for command processing
-	pthread_mutex_t m_mutex_cmd;
-	pthread_cond_t m_cnd_cmd;
+	mutex m_mutex_cmd;
+	condition_variable m_cnd_cmd;
+	unique_lock<mutex> m_lock_cmd;
+//	pthread_mutex_t m_mutex_cmd;
+//	pthread_cond_t m_cnd_cmd;
 	bool m_cmd;
 public:
 	// lock for command processing mutex
@@ -594,20 +612,32 @@ public:
 		if(bcmd)
 			m_cmd = true;
 
-		pthread_mutex_lock(&m_mutex_cmd);
-		while(m_cmd && !bcmd){
-			pthread_cond_wait(&m_cnd_cmd, &m_mutex_cmd);
+//		pthread_mutex_lock(&m_mutex_cmd);
+		{
+			bool & r_m_cmd = m_cmd;
+			bool & r_bcmd = bcmd;
+			m_mutex_cmd.lock();
+//			m_lock_cmd.lock();
+			
+			
+//			while(m_cmd && !bcmd){
+//				m_cnd_cmd.wait(m_lock_cmd);
+			//			pthread_cond_wait(&m_cnd_cmd, &m_mutex_cmd);
+	//		}
 		}
 	}
 
 	// unlock for command processing mutex
 	void unlock_cmd(bool bcmd = false)
 	{
-		pthread_mutex_unlock(&m_mutex_cmd);
-		if(bcmd){
-			pthread_cond_signal(&m_cnd_cmd);
-			m_cmd = false;
-		}
+		m_mutex_cmd.unlock();
+///		m_lock_cmd.unlock();
+//		pthread_mutex_unlock(&m_mutex_cmd);
+//		if(bcmd){
+//			m_cnd_cmd.notify_one();
+//			pthread_cond_signal(&m_cnd_cmd);
+//			m_cmd = false;
+//		}
 	}
 
 	// interface for original command in each child class

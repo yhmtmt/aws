@@ -269,7 +269,8 @@ f_glfw_calib::f_glfw_calib(const char * name) :f_glfw_window(name), m_b3dview(tr
 	m_bcalib_fix_skew(false), m_bcalib_fix_intrinsic(false),
 	m_bcalib_done(false), m_num_chsbds(30), m_bthact(false), m_hist_grid(10, 10), m_rep_avg(1.0),
 	m_bshow_chsbd_all(true), m_bshow_chsbd_sel(true), m_sel_chsbd(-1), m_bshow_chsbd_density(true),
-	m_bsave(false), m_bload(false), m_bundist(false), m_bdel(false), m_bdet(false), m_bcalib(false)
+	m_bsave(false), m_bload(false), m_bundist(false), m_bdel(false), m_bdet(false), m_bcalib(false),
+	m_thwork(NULL)
 {
 	m_fcampar[0] = m_fcbdet[0] = m_fsmplimg[0] = '\0';
 
@@ -332,7 +333,7 @@ f_glfw_calib::f_glfw_calib(const char * name) :f_glfw_window(name), m_b3dview(tr
 	register_fpar("load", &m_bload, "Load parameters.");
 	register_fpar("undist", &m_bundist, "Undistort.");
 
-	pthread_mutex_init(&m_mtx, NULL);
+//	pthread_mutex_init(&m_mtx, NULL);
 }
 
 f_glfw_calib::~f_glfw_calib()
@@ -413,7 +414,12 @@ bool f_glfw_calib::proc()
 		else
 			m_img_det = img.clone();
 
-		pthread_create(&m_thwork, NULL, thwork, (void*) this);
+		if (m_thwork){
+			delete m_thwork;
+			m_thwork = NULL;
+		}
+		m_thwork = new thread(thwork, this);
+//		pthread_create(&m_thwork, NULL, thwork, (void*) this);
 	}
 
 	// calculating contrast
@@ -432,9 +438,10 @@ bool f_glfw_calib::proc()
 	}
 
 	if (bnew && m_bundist){
-		pthread_mutex_lock(&m_mtx);
+		unique_lock<mutex> lock(m_mtx);
+//		pthread_mutex_lock(&m_mtx);
 		remap(img, img, m_map1, m_map2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
-		pthread_mutex_unlock(&m_mtx);
+//		pthread_mutex_unlock(&m_mtx);
 	}
 
 	m_timg = timg;
@@ -485,13 +492,14 @@ bool f_glfw_calib::proc()
 		}
 
 		if (m_bshow_chsbd_sel){
-			pthread_mutex_lock(&m_mtx);
+			unique_lock<mutex> lock(m_mtx);
+//			pthread_mutex_lock(&m_mtx);
 			if (m_sel_chsbd >= 0 && m_sel_chsbd < m_objs.size() && m_objs[m_sel_chsbd]){
 				drawCvChessboard(sz_img, m_objs[m_sel_chsbd]->pt2d, 1.0, 0.0, 0.0, 1.0, 3, 2);
 				if (m_bcalib_done)
 					drawCvChessboard(sz_img, m_objs[m_sel_chsbd]->pt2dprj, 0.0, 0.0, 1.0, 1.0, 3, 2);
 			}
-			pthread_mutex_unlock(&m_mtx);
+//			pthread_mutex_unlock(&m_mtx);
 		}
 	}
 
@@ -633,9 +641,8 @@ bool f_glfw_calib::proc()
 	return true;
 }
 
-void * f_glfw_calib::thwork(void * ptr)
+void f_glfw_calib::thwork(f_glfw_calib * pclb)
 {
-	f_glfw_calib * pclb = (f_glfw_calib*) ptr;
 	if (pclb->m_bdet){
 		pclb->detect();
 	}
@@ -646,7 +653,6 @@ void * f_glfw_calib::thwork(void * ptr)
 	}
 	pclb->m_bcalib = false;
 	pclb->m_bthact = false;
-	return NULL;
 }
 
 void * f_glfw_calib::detect()
@@ -669,13 +675,14 @@ void * f_glfw_calib::detect()
 		double sc_worst = DBL_MAX;
 		for (int i = 0; i < m_num_chsbds; i++){
 			if (m_objs[i] == NULL){
-				pthread_mutex_lock(&m_mtx);
+				unique_lock<mutex> lock(m_mtx);
+//				pthread_mutex_lock(&m_mtx);
 				m_objs[i] = pobj;
 				m_score[i].crn = scrn;
 				m_upt2d[i].clear();
 				is_changed = true;
 				m_num_chsbds_det++;
-				pthread_mutex_unlock(&m_mtx);
+//				pthread_mutex_unlock(&m_mtx);
 				break;
 			}
 			if (sc_worst > m_score[i].tot){
@@ -685,7 +692,8 @@ void * f_glfw_calib::detect()
 		}
 
 		if (!is_changed){// if there is no empty slot
-			pthread_mutex_lock(&m_mtx);
+			unique_lock<mutex> lock(m_mtx);
+//			pthread_mutex_lock(&m_mtx);
 			double scrn_tmp = m_score[iobj_worst].crn;
 			s_obj * pobj_tmp = m_objs[iobj_worst];
 			m_score[iobj_worst].crn = scrn;
@@ -704,7 +712,7 @@ void * f_glfw_calib::detect()
 				m_upt2d[iobj_worst].clear();
 				m_upt2d[iobj_worst].clear();
 			}
-			pthread_mutex_unlock(&m_mtx);
+//			pthread_mutex_unlock(&m_mtx);
 		}
 		else{
 			calc_chsbd_score();
@@ -961,7 +969,8 @@ void f_glfw_calib::calibrate()
 	}
 
 	// copying obtained camera parameter to m_par
-	pthread_mutex_lock(&m_mtx);
+	unique_lock<mutex> lock(m_mtx);
+//	pthread_mutex_lock(&m_mtx);
 	m_par.setCvPrj(P);
 	m_par.setCvDist(D);
 
@@ -975,7 +984,7 @@ void f_glfw_calib::calibrate()
 		m_objs[iobj]->tvec = tvecs[icount];
 	}
 	init_undistort();
-	pthread_mutex_unlock(&m_mtx);
+//	pthread_mutex_unlock(&m_mtx);
 }
 
 void f_glfw_calib::init_undistort()
@@ -1097,15 +1106,21 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 	case GLFW_KEY_Y:
 	case GLFW_KEY_Z:
 	case GLFW_KEY_RIGHT:
-		pthread_mutex_lock(&m_mtx);
+	{
+		unique_lock<mutex> lock(m_mtx);
+//		pthread_mutex_lock(&m_mtx);
 		m_sel_chsbd = (m_sel_chsbd + 1) % m_objs.size();
-		pthread_mutex_unlock(&m_mtx);
+//		pthread_mutex_unlock(&m_mtx);
 		break;
+	}
 	case GLFW_KEY_LEFT:
-		pthread_mutex_lock(&m_mtx);
+	{
+		unique_lock<mutex> lock(m_mtx);
+		//		pthread_mutex_lock(&m_mtx);
 		m_sel_chsbd = (m_sel_chsbd + (int)m_objs.size() - 1) % (int)m_objs.size();
-		pthread_mutex_unlock(&m_mtx);
+		//		pthread_mutex_unlock(&m_mtx);
 		break;
+	}
 	case GLFW_KEY_UP:
 	case GLFW_KEY_DOWN:
 	case GLFW_KEY_SPACE:
@@ -1143,7 +1158,9 @@ void f_glfw_calib::_key_callback(int key, int scancode, int action, int mods)
 
 void f_glfw_calib::save()
 {
-	pthread_mutex_lock(&m_mtx);
+	unique_lock<mutex> lock(m_mtx);
+
+//	pthread_mutex_lock(&m_mtx);
 	if (m_fcampar[0] == '\0' || !m_par.write(m_fcampar)){
 		cerr << "Failed to save camera parameters into " << m_fcampar << endl;
 	}
@@ -1180,14 +1197,15 @@ void f_glfw_calib::save()
 			iobj++;
 		}
 	}
-	pthread_mutex_unlock(&m_mtx);
+//	pthread_mutex_unlock(&m_mtx);
 	m_bsave = false;
 
 }
 
 void f_glfw_calib::load()
 {
-	pthread_mutex_lock(&m_mtx);
+	unique_lock<mutex> lock(m_mtx);
+//	pthread_mutex_lock(&m_mtx);
 	if (m_fcampar[0] == '\0' || !m_par.read(m_fcampar)){
 		cerr << "Failed to load camera parameters from " << m_fcampar << endl;
 	}
@@ -1198,7 +1216,7 @@ void f_glfw_calib::load()
 	if (!fs.isOpened()){
 		cerr << "Failed to open " << m_fcampar << endl;
 		m_bload = false;
-		pthread_mutex_unlock(&m_mtx);
+//		pthread_mutex_unlock(&m_mtx);
 		return;
 	}
 
@@ -1268,14 +1286,15 @@ void f_glfw_calib::load()
 finish:
 	init_undistort();
 	calc_chsbd_score();
-	pthread_mutex_unlock(&m_mtx);
+	//pthread_mutex_unlock(&m_mtx);
 	m_bload = false;
 	m_bcalib_done = true;
 }
 
 void f_glfw_calib::del()
 {
-	pthread_mutex_lock(&m_mtx);
+	unique_lock<mutex> lock(m_mtx);
+//	pthread_mutex_lock(&m_mtx);
 
 	if (m_sel_chsbd >= 0 && m_sel_chsbd < m_objs.size() && m_objs[m_sel_chsbd]){
 		delete[] m_objs[m_sel_chsbd];
@@ -1285,7 +1304,7 @@ void f_glfw_calib::del()
 		m_upt2dprj[m_sel_chsbd].clear();
 		m_num_chsbds_det--;
 	}
-	pthread_mutex_unlock(&m_mtx);
+//	pthread_mutex_unlock(&m_mtx);
 	m_bdel = false;
 }
 
@@ -1348,12 +1367,12 @@ f_glfw_test3d::f_glfw_test3d(const char * name) : f_glfw_window(name), n(1), deg
 	register_fpar("ffnttex", ffnttex, 1024, "File of the font texture");
 	register_fpar("ffntcfg", ffntcfg, 1024, "File of the font setting file.");
 
-	pthread_mutex_init(&mtx_mouse, NULL);
+//	pthread_mutex_init(&mtx_mouse, NULL);
 }
 
 f_glfw_test3d::~f_glfw_test3d()
 {
-	pthread_mutex_destroy(&mtx_mouse);
+//	pthread_mutex_destroy(&mtx_mouse);
 }
 
 bool f_glfw_test3d::init_run()
@@ -1777,7 +1796,8 @@ bool f_glfw_test3d::proc()
 	glfwSwapBuffers(pwin());
 	glfwPollEvents();
 
-	pthread_mutex_lock(&mtx_mouse);
+	unique_lock<mutex> lock(mtx_mouse);
+//	pthread_mutex_lock(&mtx_mouse);
 	switch (mbtn){
 	case GLFW_MOUSE_BUTTON_LEFT:
 		if (mact == GLFW_PRESS){
@@ -1794,7 +1814,7 @@ bool f_glfw_test3d::proc()
 		break;
 	}
 	mbtn = mact = mmd = -1;
-	pthread_mutex_unlock(&mtx_mouse);
+//	pthread_mutex_unlock(&mtx_mouse);
 
 	return true;
 }

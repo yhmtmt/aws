@@ -225,6 +225,7 @@ public:
 	{
 		m_path[0] = '.';m_path[1] = '\0';
 		register_fpar("path", m_path, 1024, "Storage path for logging");
+		register_fpar("verb", &m_verb, "Debug mode");
 	}
 
 	virtual ~f_read_ch_log()

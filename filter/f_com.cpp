@@ -1088,6 +1088,9 @@ bool f_read_ch_log::proc()
 	  if(!m_logs[och])
 		  continue;
 	  m_chout[och]->read(m_logs[och], get_time());
+	  if (m_verb) {
+		  m_chout[och]->print(cout);
+	  }
 	  if(get_time() > m_te[och]){
 		  fclose(m_logs[och]);
 		  m_logs[och] = NULL;

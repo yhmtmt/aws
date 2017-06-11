@@ -53,27 +53,33 @@ public:
 	static void uninit();
 protected:
 	char * m_name;
-	pthread_mutex_t m_mtx;
+	mutex m_mtx;
+	//unique_lock<mutex> m_lock;
+//	pthread_mutex_t m_mtx;
 public:
 	ch_base(const char * name):m_name(NULL){
 		m_name = new char[strlen(name) + 1];
 		strcpy(m_name, name);
-		pthread_mutex_init(&m_mtx, NULL);
+//		pthread_mutex_init(&m_mtx, NULL);
 	};
 
 	virtual ~ch_base(){
 		delete [] m_name;
-		pthread_mutex_destroy(&m_mtx);
+//		pthread_mutex_destroy(&m_mtx);
 	}
 	
 	void lock()
 	{
-		pthread_mutex_lock(&m_mtx);
+		m_mtx.lock();
+		//m_lock.lock();
+//		pthread_mutex_lock(&m_mtx);
 	}
 	
 	void unlock()
 	{
-		pthread_mutex_unlock(&m_mtx);
+		m_mtx.unlock();
+		//m_lock.unlock();
+//		pthread_mutex_unlock(&m_mtx);
 	}
 	
 	const char * get_name(){ return m_name;};

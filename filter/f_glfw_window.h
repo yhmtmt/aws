@@ -234,9 +234,11 @@ protected:
 	s_model m_model_chsbd;
 
 	// detection thread objects.
-	pthread_t m_thwork;
-	pthread_mutex_t m_mtx;
-	static void * thwork(void * ptr);
+	thread * m_thwork;
+	mutex m_mtx;
+//	pthread_t m_thwork;
+//	pthread_mutex_t m_mtx;
+	static void thwork(f_glfw_calib * ptr);
 	void * detect();
 	bool m_bthact;
 	
@@ -369,7 +371,8 @@ protected:
 
 	glm::vec2 point_cursor;
 	int mbtn, mact, mmd;
-	pthread_mutex_t mtx_mouse;
+	mutex mtx_mouse;
+//	pthread_mutex_t mtx_mouse;
 	virtual void _cursor_position_callback(double xpos, double ypos)
 	{		
 		point_cursor.x = (float)(xpos - (double)(m_sz_win.width >> 1));
@@ -378,11 +381,12 @@ protected:
 
 	virtual void _mouse_button_callback(int button, int action, int mods)
 	{
-		pthread_mutex_lock(&mtx_mouse);
+		unique_lock<mutex> lock(mtx_mouse);
+//		pthread_mutex_lock(&mtx_mouse);
 		mbtn = button;
 		mact = action;
 		mmd = mods;
-		pthread_mutex_unlock(&mtx_mouse);
+//		pthread_mutex_unlock(&mtx_mouse);
 	}
 public:
 	f_glfw_test3d(const char * name);

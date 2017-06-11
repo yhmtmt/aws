@@ -55,7 +55,8 @@ vector<c_ship*> c_ship::m_ship_list_recent;
 int c_ship::m_head_slrpv = -1;
 int c_ship::m_max_slrpv = 32;
 c_ship * c_ship::m_ship_pool = NULL;
-pthread_mutex_t c_ship::m_list_mtx;
+mutex c_ship::m_list_mtx;
+unique_lock<mutex> c_ship::m_lock_list(m_list_mtx);
 
 unsigned int c_ship::m_mmsi_own = -1;
 c_ship c_ship::m_ship_own;
@@ -65,8 +66,9 @@ void c_ship::init()
 #ifdef _WIN32
 	m_ship_own.m_clr = D3DCOLOR_RGBA(0, 255, 0, 255);
 #endif
-	pthread_mutex_init(&m_list_mtx, NULL);
+	//pthread_mutex_init(&m_list_mtx, NULL);
 	memset(m_htbl, 0, sizeof(c_ship*) * m_htbl_size);
+	m_lock_list.unlock();
 	m_ship_list_recent.resize(m_max_slrpv, NULL);
 }
 
@@ -87,17 +89,17 @@ void c_ship::destroy()
 		delete m_ship_pool;
 		m_ship_pool = NULL;
 	}
-	pthread_mutex_destroy(&m_list_mtx);
+	//pthread_mutex_destroy(&m_list_mtx);
 }
 
 void c_ship::list_lock()
 {
-	pthread_mutex_lock(&m_list_mtx);
+	m_lock_list.lock();
 }
 
 void c_ship::list_unlock()
 {
-	pthread_mutex_unlock(&m_list_mtx);
+	m_lock_list.unlock();
 }
 
 void c_ship::set_mmsi_own(unsigned int mmsi_own)

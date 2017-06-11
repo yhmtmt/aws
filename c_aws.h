@@ -25,9 +25,13 @@ class c_aws: public CmdAppBase
 {
 protected:
 	s_cmd m_cmd;
+	mutex m_mtx;
+	condition_variable m_cnd_ret, m_cnd_none;
+	/*
 	pthread_mutex_t m_mtx;
 	pthread_cond_t m_cnd_ret;
 	pthread_cond_t m_cnd_none;
+	*/
 
 	int m_cmd_port;
 	char * m_working_path;
@@ -133,7 +137,8 @@ private:
 	SOCKET m_svr_sock;		// socket waiting for commands
 	sockaddr_in m_svr_addr; // server address initiating socket
 	sockaddr_in m_client;	// client address initiating socket
-	pthread_t m_th_rcmd;	// command processing thread
+	thread * m_th_rcmd;
+	//pthread_t m_th_rcmd;	// command processing thread
 	fd_set m_fdread;		// for use select() in recieving command
 	fd_set m_fdwrite;		// for use select() in transmitting return value
 	fd_set m_fderr;			// for use select() 
@@ -143,7 +148,7 @@ private:
 	char m_buf_recv[CMD_LEN]; // buffer for recieving command
 	char m_buf_send[RET_LEN]; // buffer for return value 
 
-	static void * thrcmd(void * ptr); // command processing thread function
+	static void thrcmd(c_rcmd * ptr); // command processing thread function
 	bool wait_connection(SOCKET & s); 
 	bool wait_receive(SOCKET & s, char * buf, int & total);
 	bool push_command(const char * cmd_str, char * ret_str, bool ret_stat);
@@ -156,7 +161,7 @@ public:
 	bool is_exit();
 };
 
-void * cmd_proc(void * paws);
+void cmd_proc(void * paws);
 
 extern bool g_kill;
 

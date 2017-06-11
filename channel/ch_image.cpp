@@ -36,12 +36,12 @@ using namespace cv;
 int ch_image::write(FILE * pf, long long tcur)
 {
 	if(pf){
-	  lock_fr();
+		unique_lock<mutex> lock(m_mtx_fr);
 	  Mat img;
 	  if (!m_img[m_front].empty() && m_tfile < m_time[m_front]){
 		  img = m_img[m_front].clone();
 	  }
-	  unlock_fr();
+	  lock.unlock();
 	  if (!img.empty()){
 		  m_tfile = m_time[m_front];
 		  int r, c, type, size;
@@ -79,7 +79,7 @@ int ch_image::read(FILE * pf, long long tcur)
 			return 0;
 		sz += res;
 		
-		lock_bk();
+		unique_lock<mutex> lock_bk(m_mtx_bk);
 		res = fread((void*)&ifrm, sizeof(long long), 1, pf);
 		if(!res)
 			goto failed;
@@ -130,18 +130,16 @@ int ch_image::read(FILE * pf, long long tcur)
 
 		cout << m_name << " time " << m_time[m_back] << " frm " << m_ifrm[m_back] << " loaded." << endl;
 
-		lock_fr();
+		unique_lock<mutex> lock_fr(m_mtx_fr);
 		
 		int tmp = m_front;
 		m_front = m_back;
 		m_back = tmp;
-		unlock_fr();
-
-		unlock_bk();
+		lock_fr.unlock();
+		lock_bk.unlock();
 	}
 	return (int) sz;
 failed:
-	unlock_bk();
 	return 0;
 }
 

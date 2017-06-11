@@ -88,6 +88,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("flip_img2_y", &m_img2_y_flip, "Image in ch_img is fliped in y direction.");
   register_fpar("imv", (int*)&m_imv, IMV_UNDEF, m_str_imv, "Image view mode.");
 
+  fvs[0] = ffs[0] = '\0';
   register_fpar("fvs", fvs, 1024, "File path to the vertex shader program.");
   register_fpar("ffs", ffs, 1024, "File path to the fragment shader program.");
   register_fpar("ffnttex", ftex, 1024, "File path to the text texture.");
@@ -212,11 +213,11 @@ bool f_aws1_ui::init_run()
   {
 	  glm::vec2 lb(0, 0);
 	  glm::vec2 sz(1, 1);
-	  if (!orect.init_rectangle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, lb, sz, 64))
+	  if (!orect.init_rectangle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, lb, sz, 256))
 		  return false;
 	  if (!otri.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 3, 1, 1, 16))
 		  return false;
-	  if (!otri.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 10, 1, 1, num_max_wps))
+	  if (!ocirc.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 10, 1, 1, 256))
 		  return false;
 	  if (!otxt.init(ftex, ftexinf, loc_mode, loc_pos2d, loc_texcoord, loc_sampler, loc_gcolor, loc_gcolorb, loc_depth2d, 65535))
 		  return false;
@@ -240,7 +241,7 @@ bool f_aws1_ui::init_run()
 	  return false;
   if (!own_ship.init(&otri, &oline, clr, sz_fnt))
 	  return false;
-  if (!ocsr.init(&oline, &otxt, clr, sz_fnt_small, sz_fnt))
+  if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
 	  return false;
 
   glEnable(GL_CULL_FACE);
@@ -1013,12 +1014,15 @@ bool f_aws1_ui::proc()
 	// Window forcus is now at this window
 	glfwMakeContextCurrent(pwin());
 
+	// the image is completely fitted to the screen
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+
 	glUseProgram(p);
 	glUniform2fv(loc_inv_sz_half_scrn, 1, inv_sz_half_scrn);
 
-	mouse_button = -1;
-	mouse_action = -1;
-	mouse_mods = -1;
+	// UI polling.
+	glfwPollEvents();
 
 	// loading states
 	long long t;
@@ -1059,9 +1063,19 @@ bool f_aws1_ui::proc()
 			else if (mouse_action == GLFW_RELEASE){
 				handle_mouse_lbtn_up(pvm_box, pcm_box, poc_box, prc_box);
 			}
+			mouse_button = -1;
+			mouse_action = -1;
+			mouse_mods = -1;
 		}
 		else{
 			handle_mouse_mv(pvm_box, pcm_box, poc_box, prc_box);
+		}
+		if (obj_mouse_on.type == ot_nul){
+			ocsr.enable_pos();
+			ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
+		}
+		else {
+			ocsr.disable();
 		}
 	}
 	else{ //handling ui event
@@ -1080,6 +1094,11 @@ bool f_aws1_ui::proc()
 			update_route_cfg_box(prc_box, mouse_state_new);
 			break;
 		}	
+		ocsr.enable_arrow();
+		ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
+		mouse_button = -1;
+		mouse_action = -1;
+		mouse_mods = -1;
 	}
 
 	if(pvm_box->get_mode() == c_view_mode_box::fpv){ // calculating projection matrix
@@ -1091,10 +1110,12 @@ bool f_aws1_ui::proc()
 		pm = glm::perspective(fov_cam, ratio, 1.f, 30e6f);
 		vm = glm::lookAt(glm::vec3(s, 0, c), glm::vec3(0, height_cam, 0), glm::vec3(0, 1, 0));
 		pvm = pm * vm;
+		own_ship.disable();
 	}
 	else if (pvm_box->get_mode() == c_view_mode_box::map){
 		float rx, ry, rz;
 		eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z, xown, yown, zown, rx, ry, rz);
+		own_ship.enable();
 		own_ship.set_param(rx, ry, rz, yaw, vx, vy, pix_per_meter);
 	}
 
@@ -1117,10 +1138,6 @@ bool f_aws1_ui::proc()
 
 	// screen shot or video capturue
 	write_screen();
-
-	// UI polling.
-	glfwPollEvents();
-
 	return true;
 }
 
@@ -1541,9 +1558,17 @@ void f_aws1_ui::update_obj_cfg_box(c_obj_cfg_box * poc_box)
 void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new)
 {
 	m_ch_wp->lock();
-	s_wp & fwp = m_ch_wp->get_focused_wp();
+	bool bno_focused_wp = m_ch_wp->get_focus() == m_ch_wp->get_num_wps();
+	s_wp fwp;
+
 	unsigned int rt, spd, wp;
 	prc_box->get_params(wp, spd, rt);
+	if (!bno_focused_wp)
+		fwp = m_ch_wp->get_focused_wp();
+	else{
+		fwp.v = spd;	
+	}
+
 	switch (prc_box->get_command())
 	{
 	case c_route_cfg_box::wp_prev:
@@ -1600,7 +1625,8 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
 	}
 
 	wp = m_ch_wp->get_focus();
-	fwp = m_ch_wp->get_focused_wp();
+	if (!bno_focused_wp)
+		m_ch_wp->get_focused_wp() = fwp;
 	spd = (unsigned int)fwp.v;
 	prc_box->set_params(wp, spd, rt);
 	prc_box->reset_command();
@@ -1807,7 +1833,9 @@ void c_aws_ui_box::add_select_box(int & hlbtn, int & hlstr, const char * lstr,
 	pos_btn.x += (float)(sz_box.x * 0.5);
 	pos_btn.y += (float)(sz_fnt.y * 0.5);
 	hvalstr = potxt->reserv(len_str);
-	potxt->config(hvalstr, clr, bkgclr, sz_fnt, sz_fnt, c_gl_text_obj::an_cc, pos, 0.0);
+	glm::vec2 mgn_fnt((float)(sz_fnt.x * 0.5), sz_fnt.y);
+
+	potxt->config(hvalstr, clr, bkgclr, sz_fnt, mgn_fnt, c_gl_text_obj::an_cc, pos_btn, 0.0);
 	
 	pos_btn.x = (float)(pos.x + sz_box.x - sz_btn.x);
 	pos_btn.y = pos.y;
@@ -1819,24 +1847,24 @@ void c_aws_ui_box::setup_frame(const float y, const bool left,
 	const glm::vec2 & sz_scrn, const glm::vec2 &sz_box, 
 	const glm::vec2  & sz_fnt, const glm::vec4 & clr)
 {
-	float xmax = (float)(0.5 * sz_scrn.x), xmin = -xmax,
-		ymax = (float)(0.5 * sz_scrn.y), ymin = -ymax;
+	float xmax = (float)(0.5 * sz_scrn.x), xmin = (float)(-xmax),
+		ymax = (float)(0.5 * sz_scrn.y), ymin = (float)(-ymax);
 
 	sz_close.x = sz_fnt.x;
 	sz_close.y = sz_box.y;
 	sz_open.x = (float)(sz_box.x + sz_close.x);
 	sz_open.y = sz_box.y;
-	pos_open.x = (left ? xmin : xmax - sz_open.x);
+	pos_open.x = (left ? xmin : (float)(xmax - sz_open.x));
 	pos_open.y = y;
-	pos_close.x = (left ? xmin : xmax - sz_close.x);
+	pos_close.x = (left ? xmin : (float)(xmax - sz_close.x));
 	pos_close.y = y;
 
 	glm::vec2 pos;
 	pos.y = (float)(y + sz_box.y * 0.5);
-	pos.x = (left ? xmin + sz_box.x + 0.5 * sz_fnt.x : xmax - sz_box.x - 0.5 * sz_fnt.x);
-	hopen = potri->add(clr, pos, (left ? PI : 0.0f), sz_fnt.x * 0.5);
-	pos.x = (left ? xmin + 0.5 * sz_fnt.x : xmax - 0.5 * sz_fnt.x);
-	hclose = potri->add(clr, pos, (left ? 0.0f : PI), sz_fnt.x * 0.5);
+	pos.x = (left ? (float)(xmin + sz_box.x + 0.5 * sz_fnt.x) : (float)(xmax - sz_box.x - 0.5 * sz_fnt.x));
+	hopen = potri->add(clr, pos, (left ? (float)(PI) : 0.0f), (float)(sz_fnt.x * 0.5));
+	pos.x = (left ? (float)(xmin + 0.5 * sz_fnt.x) : (float)(xmax - 0.5 * sz_fnt.x));
+	hclose = potri->add(clr, pos, (left ? 0.0f : (float)(PI)), (float)(sz_fnt.x * 0.5));
 
 	// appearance setting
 	porect->config_border(hbox, true, 1.0);
@@ -2007,16 +2035,16 @@ bool c_view_mode_box::init(const int handle, const glm::vec4 & _clr, const glm::
 	bkgclr = _bkgclr;
 	clr = _clr;
 
-	float xmax = (float)(0.5 * sz_scrn.x), xmin = -xmax,
-		ymax = (float)(0.5 * sz_scrn.y), ymin = -ymax;
+	float xmax = (float)(0.5 * sz_scrn.x), xmin = (float)(-xmax),
+		ymax = (float)(0.5 * sz_scrn.y), ymin = (float)(-ymax);
 
 	glm::vec2 pos, sz_btn, sz_box;
-	pos.x = -sz_scrn.x * 0.5;
+	pos.x = (float)(-sz_scrn.x * 0.5);
 	pos.y = y;
-	sz_btn.x = 4 * sz_fnt.x;
-	sz_btn.y = 1.5 * sz_fnt.y;
+	sz_btn.x = (float)(4 * sz_fnt.x);
+	sz_btn.y = (float)(1.5 * sz_fnt.y);
 	sz_box.x = sz_btn.x;
-	sz_box.y = sz_btn.y * (float)nul;
+	sz_box.y = (float)(sz_btn.y * (float)nul);
 
 	pos.x = xmin;
 	pos.y = y;
@@ -2144,14 +2172,14 @@ bool c_ctrl_mode_box::init(const int handle, const glm::vec4 & _clr, const glm::
 	bkgclr = _bkgclr;
 	clr = _clr;
 
-	float xmax = (float)(0.5 * sz_scrn.x), xmin = -xmax,
-		ymax = (float)(0.5 * sz_scrn.y), ymin = -ymax;
+	float xmax = (float)(0.5 * sz_scrn.x), xmin = (float)(-xmax),
+		ymax = (float)(0.5 * sz_scrn.y), ymin = (float)(-ymax);
 
 	glm::vec2 pos, sz_btn, sz_box;
-	pos.x = -sz_scrn.x * 0.5;
+	pos.x = (float)(-sz_scrn.x * 0.5);
 	pos.y = y;
-	sz_btn.x = 4 * sz_fnt.x;
-	sz_btn.y = 1.5 * sz_fnt.y;
+	sz_btn.x = (float)(4 * sz_fnt.x);
+	sz_btn.y = (float)(1.5 * sz_fnt.y);
 	sz_box.x = sz_btn.x;
 	sz_box.y = sz_btn.y * (float)nul;
 
@@ -2284,15 +2312,15 @@ bool c_obj_cfg_box::init(const int handle, const glm::vec4 & _clr, const glm::ve
 	bkgclr = _bkgclr;
 	clr = _clr;
 
-	float xmax = (float)(0.5 * sz_scrn.x), xmin = -xmax, 
-		ymax = (float)(0.5 * sz_scrn.y), ymin = -ymax;
+	float xmax = (float)(0.5 * sz_scrn.x), xmin = (float)(-xmax),
+		ymax = (float)(0.5 * sz_scrn.y), ymin = (float)(-ymax);
 
 	glm::vec2 sz_btn, sz_box, sz_udbtn;
 	int rows = nul / 3 + (nul % 3 ? 1 : 0);
-	sz_btn.x = 4 * sz_fnt.x;
-	sz_btn.y = 1.5 * sz_fnt.y;
-	sz_udbtn.x = 2 * sz_fnt.x;
-	sz_udbtn.y = 1.5 * sz_fnt.y;
+	sz_btn.x = (float)(4 * sz_fnt.x);
+	sz_btn.y = (float)(1.5 * sz_fnt.y);
+	sz_udbtn.x = (float)(2 * sz_fnt.x);
+	sz_udbtn.y = (float)(1.5 * sz_fnt.y);
 
 	sz_box.x = (float)(sz_btn.x * 3);
 	sz_box.y = (float)(sz_btn.y * (rows + 1));
@@ -2463,13 +2491,13 @@ bool c_route_cfg_box::init(const int handle, const glm::vec4 & _clr, const glm::
 	bkgclr = _bkgclr;
 	clr = _clr;
 
-	float xmax = (float)(0.5 * sz_scrn.x), xmin = -xmax,
-		ymax = (float)(0.5 * sz_scrn.y), ymin = -ymax;
+	float xmax = (float)(0.5 * sz_scrn.x), xmin = (float)(-xmax),
+		ymax = (float)(0.5 * sz_scrn.y), ymin = (float)(-ymax);
 
 	glm::vec2 sz_btn, sz_box, sz_udbtn;
-	sz_btn.x = 5 * sz_fnt.x;
-	sz_btn.y = sz_udbtn.y = 1.5 * sz_fnt.y;
-	sz_udbtn.x = 2 * sz_fnt.x;
+	sz_btn.x = (float)(5 * sz_fnt.x);
+	sz_btn.y = sz_udbtn.y = (float)(1.5 * sz_fnt.y);
+	sz_udbtn.x = (float)(2 * sz_fnt.x);
 
 	sz_box.x = (float)(sz_btn.x * 2);
 	sz_box.y = (float)(sz_btn.y * 5);
@@ -2612,7 +2640,7 @@ bool c_route_cfg_box::proc(const bool bpushed, const bool breleased)
 
 /////////////////////////////////////////////////////////////////// c_indicator
 c_indicator::c_indicator() : porect(NULL), potri(NULL), poline(NULL), potxt(NULL),
-meng(127), seng(127), rud(0), cog(0.1), sog(10), yaw(0.05), pitch(0.5), roll(0.5),
+meng(127), seng(127), rud(0), cog(0.1f), sog(10), yaw(0.05f), pitch(0.5f), roll(0.5f),
 veng_n(0x7f), veng_nf(0x7f + 0x19), veng_nb(0x7f - 0x19), dir_cam(0.f), mode(im_fpv)
 {
 
@@ -2721,22 +2749,22 @@ void c_indicator::create_rudder_indicator(glm::vec2 & pos, const glm::vec2 & sz_
 	
 	pos_rud_in.x = pos.x;
 	pos_rud_in.y = pos.y;
-	pos_rud_out.x = pos.x - scl_rud_out.x * 0.5;
+	pos_rud_out.x = (float)(pos.x - scl_rud_out.x * 0.5);
 	pos_rud_out.y = pos.y;
 
 	hrud_in = porect->add(clr, pos_rud_in, 0.f, 1.f);
 	porect->config_scale(hrud_in, scl_rud_in);
 	porect->config_border(hrud_in, false, 1.f);
-	porect->config_depth(hrud_in, 0.f);
+	porect->config_depth(hrud_in, 0);
 	hrud_out = porect->add(clr, pos_rud_out, 0.f, 1.f);
 	porect->config_scale(hrud_out, scl_rud_out);
 	porect->config_border(hrud_out, true, 1.f);
-	porect->config_depth(hrud_out, 0.f);
+	porect->config_depth(hrud_out, 0);
 }
 
 void c_indicator::update_rudder_indicator()
 {
-	int srud = (int) rud - (int) 127;
+	int srud = -(int) rud + (int) 127;
 	
 	glm::vec2 scl(scl_rud.x * abs(srud) * (1.0f / 255.0f), scl_rud.y);
 	glm::vec2 pos;
@@ -2772,8 +2800,8 @@ void c_indicator::create_sog_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt
 			float th = (float)(i * ths);
 			c = cos(th);
 			s = sin(th);
-			pts[i].x = c * sz_fnt.x * RAD_SOG_ARC;
-			pts[i].y = s * sz_fnt.y * RAD_SOG_ARC;
+			pts[i].x = (float)(c * sz_fnt.x * RAD_SOG_ARC);
+			pts[i].y = (float)(s * sz_fnt.y * RAD_SOG_ARC);
 		}
 
 		hsog_arc = poline->add(NUM_SOG_ARC_PTS, (float*)pts);
@@ -2781,7 +2809,7 @@ void c_indicator::create_sog_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt
 		poline->config_rotation(hsog_arc, 0);
 		poline->config_width(hsog_arc, 1.0);
 		poline->config_color(hsog_arc, clr);
-		poline->config_depth(hsog_arc, 0.0);
+		poline->config_depth(hsog_arc, 0);
 	}
 
 	// scale
@@ -2797,7 +2825,7 @@ void c_indicator::create_sog_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt
 			s_vertex & vtx1 = pts[2 * i + 1];
 			vtx0.x = (float)(c * RAD_SOG_ARC);
 			vtx0.y = (float)(s * RAD_SOG_ARC);
-			float rscl = (i % 2 == 0 ? RAD_SOG_ARC - 0.5 : RAD_SOG_ARC - 0.25);
+			float rscl = (i % 2 == 0 ? (float)(RAD_SOG_ARC - 0.5) : (float)(RAD_SOG_ARC - 0.25));
 			vtx1.x = (float)(c * rscl);
 			vtx1.y = (float)(s * rscl);
 
@@ -2870,10 +2898,10 @@ void c_indicator::create_rp_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
 
 	{
 		s_vertex pts[5] = {
-			{ -sz_fnt.x, 0 },
-			{ -0.5 * sz_fnt.x , 0 },
+			{ (float)(-sz_fnt.x), 0 },
+			{ (float)(-0.5 * sz_fnt.x), 0 },
 			{ 0, (float)(- sz_fnt.y) },
-			{ 0.5 * sz_fnt.x, 0 },
+			{ (float)(0.5 * sz_fnt.x), 0 },
 			{ sz_fnt.x, 0 }
 		};
 		hpptr = poline->add(5, (float*)pts);
@@ -2891,7 +2919,7 @@ void c_indicator::create_rp_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
 		for (int i = 0, ip = PITCH_STEP - 1; i < PITCH_STEP * 2 - 1; i++){
 			s_vertex & pt0 = pts[i * 2];
 			s_vertex & pt1 = pts[i * 2 + 1];
-			float l = (i % 2 == 0 ? 0.5 * sz_fnt.x : 0.25 * sz_fnt.y);
+			float l = (i % 2 == 0 ? (float)(0.5 * sz_fnt.x) : (float)(0.25 * sz_fnt.y));
 			pt0.x = ptstart.x;
 			pt1.x = (float)(pt0.x + l);
 			pt0.y = pt1.y = (float)(ptstart.y - sstep * i);
@@ -2936,7 +2964,7 @@ void c_indicator::create_rp_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
 		poline->config_rotation(hrarc, 0);
 		poline->config_width(hrarc, 1.0);
 		poline->config_color(hrarc, clr);
-		poline->config_depth(hrarc, 0.0);
+		poline->config_depth(hrarc, 0);
 	}
 #define NUM_RSCL_PTS ((ROLL_STEP-1)*2+1)
 	// roll scale
@@ -2952,7 +2980,7 @@ void c_indicator::create_rp_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
 			s_vertex & pt1 = pts[i * 2 + 1];
 			pt0.x = (float)(c * RAD_RARC);
 			pt0.y = (float)(s * RAD_RARC);
-			rr = (i % 2 == 0? RAD_RARC + 0.5 : RAD_RARC + 0.25);
+			rr = (i % 2 == 0? (float)(RAD_RARC + 0.5) : (float)(RAD_RARC + 0.25));
 			pt1.x = (float)(c * rr);
 			pt1.y = (float)(s * rr);
 			if (i % 2 == 0){
@@ -2972,7 +3000,7 @@ void c_indicator::create_rp_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
 		poline->config_rotation(hrscale, 0);
 		poline->config_width(hrscale, 1.0);
 		poline->config_color(hrscale, clr);
-		poline->config_depth(hrscale, 0.0);
+		poline->config_depth(hrscale, 0);
 	}
 }
 
@@ -3022,7 +3050,7 @@ void c_indicator::create_hc_indicator(const float fov,
 		poline->config_rotation(hhlzn, 0);
 		poline->config_width(hhlzn, 1.0);
 		poline->config_color(hhlzn, clr);
-		poline->config_depth(hhlzn, 0.0);
+		poline->config_depth(hhlzn, 0);
 
 		vtx[0].x = vtx[1].x = pos_str.x = pos_ptr.x = 0;
 		vtx[0].y = 0;
@@ -3046,7 +3074,7 @@ void c_indicator::create_hc_indicator(const float fov,
 			poline->config_rotation(hyscale[i], 0);
 			poline->config_width(hyscale[i], 1.0);
 			poline->config_color(hyscale[i], clr);
-			poline->config_depth(hyscale[i], 0.0);
+			poline->config_depth(hyscale[i], 0);
 			pos_yscl[i].x = sin((float)(ths * i));
 			pos_yscl[i].y = cos((float)(ths * i));
 		}
@@ -3289,8 +3317,8 @@ void c_ui_waypoint_obj::update_drawings()
 		}
 
 		glm::vec2 pos_inf = pos1;
-		pos_inf.x += 2.0 * rmark;
-		pos_inf.y += 2.0 * rmark;
+		pos_inf.x += (float)(2.0 * rmark);
+		pos_inf.y += (float)(2.0 * rmark);
 		if (iwp == next){
 			snprintf(buf, 20, "WP%03d\nD%4.0f\nC%3.1f", iwp, dist, crs);
 		}
@@ -3410,7 +3438,7 @@ void c_ui_ais_obj::update_ais_obj(const int iobj, const c_ais_obj & ais_obj)
 
 void c_ui_ais_obj::update_drawings()
 {
-	char buf[20];
+	char buf[64];
 	for (int iobj = 0; iobj < nmax_objs; iobj++){
 		if (!porect->is_enabled(hmarks[iobj].hmark)){
 			poline->disable(hmarks[iobj].hline_inf);
@@ -3428,13 +3456,9 @@ void c_ui_ais_obj::update_drawings()
 		float x, y, z, rx, ry, rz, rxf, ryf, rzf;
 		obj.get_pos_ecef(x, y, z);
 		eceftowrld(Rmap, xmap, ymap, zmap, x, y, z, rx, ry, rz);
-		glm::vec2 pos, pos_future;
-		porect->config_position(hmarks[iobj].hmark, pos);
-		glm::vec2 pos_inf = pos;
-		pos_inf.y += sz_rect.y;
 
 		unsigned int mmsi = obj.get_mmsi();
-		float bear, dist, tcpa, dcpa, vel, nvx, nvy, vxr, vyr, vzr, cog, sog;
+		float bear, dist, tcpa, dcpa, nvx, nvy, vxr, vyr, vzr, cog, sog;
 		obj.get_pos_bd(bear, dist);
 		obj.get_tdcpa(tcpa, dcpa);
 		obj.get_vel_rel(vxr, vyr, vzr);
@@ -3445,6 +3469,7 @@ void c_ui_ais_obj::update_drawings()
 		ryf = ry + vyr * tvel;
 		rzf = rz + vzr * tvel;
 
+		glm::vec2 pos, pos_future;
 		if (bvm_map){
 			pos = calc_map_pos(rx, ry, rz);
 			pos_future = calc_map_pos(rxf, ryf, rzf);
@@ -3453,6 +3478,10 @@ void c_ui_ais_obj::update_drawings()
 			pos = calc_fpv_pos(rx, ry, rz);
 			pos_future = calc_map_pos(rxf, ryf, rzf);
 		}
+
+		porect->config_position(hmarks[iobj].hmark, pos);
+		glm::vec2 pos_inf = pos;
+		pos_inf.y += sz_rect.y;
 
 		if (iobj == focus){
 			snprintf(buf, 64, "AIS%09u\nD%4.0f V%02.1f\nCPA T%04.0f D%04.0f", 
@@ -3467,6 +3496,7 @@ void c_ui_ais_obj::update_drawings()
 		potxt->set(hmarks[iobj].hstr, buf);
 		potxt->config_position(hmarks[iobj].hstr, pos_inf);
 		poline->config_position(hmarks[iobj].hline_inf, pos);
+		porect->config_position(hmarks[iobj].hmark, pos);
 
 		float pts[4] = { pos.x, pos.y, pos_future.x, pos_future.y };
 		poline->config_points(hmarks[iobj].hline_vel, pts);
@@ -3489,7 +3519,7 @@ void c_ui_ais_obj::disable(const int iobj)
 
 void c_ui_ais_obj::disable()
 {
-	for (int iobj = 0; iobj < nmax_objs; iobj)
+	for (int iobj = 0; iobj < nmax_objs; iobj++)
 	{
 		disable(iobj);
 	}
@@ -3515,6 +3545,7 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
 	hline_vel = poline->add(2, pts);
 	poline->config_color(clr);
 	poline->config_depth(hline_vel, 0);
+	return true;
 }
 
 void c_own_ship::enable()
@@ -3552,10 +3583,10 @@ bool c_cursor::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
 
 
 	s_vertex arrow[8] = {
-		{sz.x * 0.25, sz.y * 0.25}, {sz.x * 0.5, sz.y * 0.5},
-		{-sz.x * 0.25, sz.y * 0.25}, {-sz.x * 0.5, sz.y * 0.5},
-		{-sz.x * 0.25, -sz.y * 0.25}, {-sz.x * 0.5,-sz.y * 0.5},
-		{sz.x * 0.25, -sz.y * 0.25}, {sz.x * 0.5, -sz.y * 0.5}
+		{(float)(sz.x * 0.25), (float)(sz.y * 0.25)}, { (float)(sz.x * 0.5), (float)(sz.y * 0.5)},
+		{ (float)(-sz.x * 0.25), (float)(sz.y * 0.25)}, { (float)(-sz.x * 0.5), (float)(sz.y * 0.5)},
+		{ (float)(-sz.x * 0.25), (float)(-sz.y * 0.25)}, { (float)(-sz.x * 0.5),(float)(-sz.y * 0.5)},
+		{ (float)(sz.x * 0.25), (float)(-sz.y * 0.25)}, { (float)(sz.x * 0.5), (float)(-sz.y * 0.5)}
 	};
 	harrow = poline->add(8, (float*)arrow, true);
 	poline->config_color(harrow, clr);
@@ -3564,7 +3595,7 @@ bool c_cursor::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
 
 
 	s_vertex pos[3] = {
-		{ 0, 0 }, { -sz.x, sz.y }, {-sz.x * 1.5, sz.y}
+		{ 0, 0 }, { (float)(-sz.x), sz.y }, {(float)(-sz.x * 1.5), sz.y}
 	};
 
 	hpos = poline->add(3, (float*)pos, false);
@@ -3588,6 +3619,9 @@ void c_cursor::set_cursor_position(const glm::vec2 & _pos_mouse, const glm::vec2
 	potxt->config_position(hpos_str, pos);
 	poline->config_position(hpos, _pos_mouse);
 	poline->config_position(harrow, _pos_mouse);
+	char buf[64];
+	snprintf(buf, 64, "%3.8f\n%3.8f\n", _pos_bih.x * 180.f / PI, _pos_bih.y * 180.0f / PI);
+	potxt->set(hpos_str, buf);
 }
 
 void c_cursor::enable_arrow()
@@ -3606,8 +3640,8 @@ void c_cursor::enable_pos()
 
 void c_cursor::disable()
 {
+	potxt->disable(hpos_str);
 	poline->disable(hpos);
-	poline->enable(harrow);
 	poline->disable(harrow);
 }
 

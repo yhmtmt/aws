@@ -50,11 +50,12 @@ int main(int argc, char ** argv)
 	c_aws aws(argc, argv);
 	
 	// invoke command thread
-	pthread_t th_cmd;
-	pthread_create(&th_cmd, NULL, cmd_proc, &aws);
+//	thread th_cmd(cmd_proc, &aws);
+//	pthread_t th_cmd;
+//	pthread_create(&th_cmd, NULL, cmd_proc, &aws);
 
 	aws.run();
 	g_kill = true;
-
+//	th_cmd.join();
 	return 0;
 }

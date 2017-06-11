@@ -55,13 +55,11 @@ bool proc_script(const char * fname, c_aws & aws)
 	return false;
 }
 
-void * cmd_proc(void * paws)
-{
+void cmd_proc(void * paws)
+{ 
 	c_aws & aws = *((c_aws*) paws);
 
 	cmd_proc_loop("aws", aws, cin);
-
-	return NULL;
 }
 
 void cmd_proc_loop(const char * prompt, c_aws & aws, istream & in)
@@ -176,9 +174,9 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 	ch_base::init();
 
 	// mutex for main thread and command thread
-	pthread_mutex_init(&m_mtx, NULL);
-	pthread_cond_init(&m_cnd_ret, NULL);
-	pthread_cond_init(&m_cnd_none, NULL);
+//	pthread_mutex_init(&m_mtx, NULL);
+//	pthread_cond_init(&m_cnd_ret, NULL);
+//	pthread_cond_init(&m_cnd_none, NULL);
 
 #ifdef _WIN32
 	// initialize winsock2
@@ -203,9 +201,9 @@ c_aws::~c_aws()
 	WSACleanup();
 #endif
 
-	pthread_mutex_destroy(&m_mtx);
-	pthread_cond_destroy(&m_cnd_ret);
-	pthread_cond_destroy(&m_cnd_none);
+//	pthread_mutex_destroy(&m_mtx);
+//	pthread_cond_destroy(&m_cnd_ret);
+//	pthread_cond_destroy(&m_cnd_none);
 }
 
 
@@ -222,15 +220,16 @@ void c_aws::clear()
 	m_channels.clear();
 }
 
-bool c_aws::push_command(const char * cmd_str, char * ret_str, 
-	bool & ret_stat){
-	pthread_mutex_lock(&m_mtx);
-//	pthread_lock lock(m_mtx);
-	/*
-	while(m_cmd.stat != CS_NONE){
-		pthread_cond_wait(&m_cnd_none, &m_mtx);
-	}
-	*/
+bool c_aws::push_command(const char * cmd_str, char * ret_str,
+	bool & ret_stat) {
+	unique_lock<mutex> lock(m_mtx);
+	//	pthread_mutex_lock(&m_mtx);
+	//	pthread_lock lock(m_mtx);
+		/*
+		while(m_cmd.stat != CS_NONE){
+			pthread_cond_wait(&m_cnd_none, &m_mtx);
+		}
+		*/
 	s_cmd & cmd = m_cmd;
 	memset(m_cmd.ret, 0, RET_LEN);
 
@@ -240,23 +239,25 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 	const char * ptr0 = cmd_str;
 	char * ptr1 = m_cmd.mem;
 
-	while(itok < CMD_ARGS){
+	while (itok < CMD_ARGS) {
 		m_cmd.args[itok] = ptr1;
-		while(*ptr0 == ' ' || *ptr0 == '\t') // skipping space
+		while (*ptr0 == ' ' || *ptr0 == '\t') // skipping space
 			ptr0++;
 
 		int len = 0;
 		int bq = 0;
-		while(bq || *ptr0 != ' ' && *ptr0 != '\t' && *ptr0 != '\0'){ 
-			if(*ptr0 == '['){
+		while (bq || *ptr0 != ' ' && *ptr0 != '\t' && *ptr0 != '\0') {
+			if (*ptr0 == '[') {
 				bq++;
-			}else if(*ptr0 == ']'){
+			}
+			else if (*ptr0 == ']') {
 				bq--;
 			}
 
-			if(total_len == CMD_LEN){
+			if (total_len == CMD_LEN) {
 				ret_stat = false;
-				pthread_mutex_unlock(&m_mtx);
+				//lock.unlock();
+				//				pthread_mutex_unlock(&m_mtx);
 				return false;
 			}
 
@@ -267,10 +268,11 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 			len++;
 		}
 
-		if(len !=  0){
-			if(total_len == CMD_LEN){
+		if (len != 0) {
+			if (total_len == CMD_LEN) {
 				ret_stat = false;
-				pthread_mutex_unlock(&m_mtx);
+				//lock.unlock();
+				//				pthread_mutex_unlock(&m_mtx);
 				return false;
 			}
 
@@ -280,31 +282,37 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 			itok++;
 		}
 
-		if(*ptr0 == '\0') // break if the command string ends
+		if (*ptr0 == '\0') // break if the command string ends
 			break;
 		ptr0++;
 	}
-             
-	if (itok == 0){ // no token.
+
+	if (itok == 0) { // no token.
 		ret_stat = true;
-		pthread_mutex_unlock(&m_mtx);
+		//lock.unlock();
+		//		pthread_mutex_unlock(&m_mtx);
 		return true;
 	}
 	cmd.num_args = itok;
 
 	// decoding command type
 	cmd.type = cmd_str_to_id(m_cmd.args[0]);
-	if(cmd.type == CMD_UNKNOWN){
+	if (cmd.type == CMD_UNKNOWN) {
 		cerr << "Unknown command." << endl;
-		pthread_mutex_unlock(&m_mtx);
+		//lock.unlock();
+		//		pthread_mutex_unlock(&m_mtx);
 		return false;
 	}
 
 	// waiting for the command processed
 	m_cmd.stat = CS_SET;
-	while(m_cmd.stat != CS_RET && m_cmd.stat != CS_ERR){
-		pthread_cond_wait(&m_cnd_ret, &m_mtx);
+	{
+		e_cmd_stat & stat = m_cmd.stat;
+		m_cnd_ret.wait(lock, [&stat] {return stat == CS_RET || stat == CS_ERR; });
 	}
+//	while(m_cmd.stat != CS_RET && m_cmd.stat != CS_ERR){
+//		pthread_cond_wait(&m_cnd_ret, &m_mtx);
+//	}
 
 	memcpy(ret_str, m_cmd.ret, RET_LEN);
 
@@ -316,7 +324,8 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 	m_cmd.stat = CS_NONE;
 
 //pthread_cond_signal(&m_cnd_none);
-	pthread_mutex_unlock(&m_mtx);
+//	lock.unlock();
+//	pthread_mutex_unlock(&m_mtx);
 	return true;
 }
 
@@ -341,7 +350,6 @@ bool c_aws::handle_stop()
 			(*fitr)->runstat();
 	}
 
-	
 	return true;
 }
 
@@ -767,7 +775,7 @@ bool c_aws::handle_run(s_cmd & cmd)
 			return false;
 		}
 	}
-
+	
 	return true;
 }
 
@@ -822,12 +830,14 @@ void c_aws::proc_command()
 
 	if (m_cmd.stat != CS_SET){
 		// no command
-		pthread_cond_signal(&m_cnd_ret);
+		m_cnd_ret.notify_all();
+//		pthread_cond_signal(&m_cnd_ret);
 		return;
 	}
 
 	{
-		pthread_mutex_lock(&m_mtx);
+		unique_lock<mutex> lock(m_mtx);
+//		pthread_mutex_lock(&m_mtx);
 		//pthread_lock lock(m_mtx);
 		
 		s_cmd & cmd = m_cmd;
@@ -927,8 +937,12 @@ void c_aws::proc_command()
 		}
 
 		m_cmd.set_ret_stat(result);
-		pthread_cond_signal(&m_cnd_ret);
-		pthread_mutex_unlock(&m_mtx);
+
+		lock.unlock();
+		m_cnd_ret.notify_all();
+
+		//pthread_cond_signal(&m_cnd_ret);
+		//pthread_mutex_unlock(&m_mtx);
 	}
 }
 
@@ -1011,7 +1025,6 @@ bool c_aws::add_filter(s_cmd & cmd){
 	  }
 	}catch(char *){
 		delete pfilter;
-		pthread_mutex_unlock(&m_mtx);
 		return false;
 	}
 
@@ -1034,7 +1047,6 @@ bool c_aws::check_graph()
 }
 
 bool c_aws::main(){
-
 	c_rcmd * prcmd = new c_rcmd(this, m_cmd_port);
 	if(!prcmd->is_exit())
 		m_rcmds.push_back(prcmd);
@@ -1096,12 +1108,11 @@ bool c_aws::main(){
 		delete m_rcmds[i];
 	}
 	m_rcmds.clear();
-
 	return true;
 }
 
 //////////////////////////////////////////////////////// class c_rcmd member
-c_rcmd::c_rcmd(c_aws * paws, unsigned short port):m_paws(paws){
+c_rcmd::c_rcmd(c_aws * paws, unsigned short port):m_paws(paws), m_th_rcmd(NULL){
 	m_to.tv_sec = 5;
 	m_to.tv_usec = 0;
 	m_exit = true;
@@ -1141,13 +1152,16 @@ c_rcmd::c_rcmd(c_aws * paws, unsigned short port):m_paws(paws){
 
 	m_exit = false;
 
-	pthread_create(&m_th_rcmd, NULL, thrcmd, (void*)this);
+	m_th_rcmd = new thread(thrcmd, this);
+	//pthread_create(&m_th_rcmd, NULL, thrcmd, (void*)this);
 }
 
 c_rcmd::~c_rcmd(){
 	if(!m_exit){
 		m_exit = true;
-		pthread_join(m_th_rcmd, NULL);
+		m_th_rcmd->join();
+		delete m_th_rcmd;
+		m_th_rcmd = NULL;
 	}
 	if(m_svr_sock != SOCKET_ERROR && m_svr_sock != -1)
 		closesocket(m_svr_sock);
@@ -1245,10 +1259,8 @@ bool c_rcmd::wait_send(SOCKET & s, char * buf){
 // sender, 2. receiving the command, 3. processing the command in aws, 4. 
 // returning the resulting return value. This thread is invoked in the constructor,
 // and terminated in the destructor.
-void * c_rcmd::thrcmd(void * ptr)
+void c_rcmd::thrcmd(c_rcmd * prcmd)
 {
-	c_rcmd * prcmd = (c_rcmd*) ptr;
-
 	while(!prcmd->is_exit()){
 		SOCKET s;
 		if(!prcmd->wait_connection(s)){
@@ -1276,8 +1288,6 @@ void * c_rcmd::thrcmd(void * ptr)
 		}
 		closesocket(s);
 	}
-
-	return NULL;
 }
 
 bool c_rcmd::is_exit(){

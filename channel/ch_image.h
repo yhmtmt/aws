@@ -40,7 +40,8 @@ protected:
 	long long m_ifrm[2]; // frame index (if available.)
 	long long m_tfile;	 // time fwrite called
 
-	pthread_mutex_t m_mtx_bk, m_mtx_fr;
+	mutex m_mtx_bk, m_mtx_fr;
+//	pthread_mutex_t m_mtx_bk, m_mtx_fr;
 	bool m_bfisheye;
 	bool m_bparam[ECP_K6+1];
 	double m_param[ECP_K6+1];
@@ -61,13 +62,13 @@ public:
 		for(int i = 0; i < ECP_K6 + 1; i++){
 			m_bparam[i] = false;
 		}
-		pthread_mutex_init(&m_mtx_bk, NULL);
-		pthread_mutex_init(&m_mtx_fr, NULL);
+//		pthread_mutex_init(&m_mtx_bk, NULL);
+//		pthread_mutex_init(&m_mtx_fr, NULL);
 	}
 	virtual ~ch_image()
 	{
-		pthread_mutex_destroy(&m_mtx_bk);
-		pthread_mutex_destroy(&m_mtx_fr);
+//		pthread_mutex_destroy(&m_mtx_bk);
+//		pthread_mutex_destroy(&m_mtx_fr);
 	}
 
 	bool is_new(const long long t)
@@ -183,11 +184,6 @@ public:
 		return r;
 	}
 
-	void lock_fr(){pthread_mutex_lock(&m_mtx_fr);};
-	void unlock_fr(){pthread_mutex_unlock(&m_mtx_fr);};
-	void lock_bk(){pthread_mutex_lock(&m_mtx_bk);};
-	void unlock_bk(){pthread_mutex_unlock(&m_mtx_bk);};
-
 	virtual Mat get_img(long long & t) = 0;
 	virtual Mat get_img(long long & t, long long & ifrm) = 0;
 	virtual void set_img(Mat & img, long long t) = 0;
@@ -216,56 +212,50 @@ public:
 
 	virtual Mat get_img(long long & t){
 		Mat img;
-		lock_fr();
+		unique_lock<mutex> lock(m_mtx_fr);
 		if(m_img[m_front].empty()){
-			unlock_fr();
 			return img;
 		}
 
 		img = m_img[m_front].clone();
 		t = m_time[m_front];
-		unlock_fr();
 		return img;
 	}
 
 	virtual Mat get_img(long long & t, long long & ifrm){
 		Mat img;
-		lock_fr();
+		unique_lock<mutex> lock(m_mtx_bk);
 		if(m_img[m_front].empty()){
-			unlock_fr();
 			return img;
 		}
 
 		img = m_img[m_front].clone();
 		t = m_time[m_front];
 		ifrm = m_ifrm[m_front];
-		unlock_fr();
 		return img;
 	}
 
 	virtual void set_img(Mat & img, long long t){
-		lock_bk();
+		unique_lock<mutex> lock_bk(m_mtx_bk);
 		m_img[m_back] = img;
 		m_time[m_back] = t;
-		lock_fr();
+		unique_lock<mutex> lock_fr(m_mtx_fr);
 		int tmp = m_front;
 		m_front = m_back;
 		m_back = tmp;
-		unlock_fr();
-		unlock_bk();
+		lock_fr.unlock();
 	}
 
 	virtual void set_img(Mat & img, long long t, long long ifrm){
-		lock_bk();
+		unique_lock<mutex> lock_bk(m_mtx_bk);
 		m_img[m_back] = img;
 		m_time[m_back] = t;
 		m_ifrm[m_back] = ifrm;
-		lock_fr();
+		unique_lock<mutex> lock_fr(m_mtx_fr);
 		int tmp = m_front;
 		m_front = m_back;
 		m_back = tmp;
-		unlock_fr();
-		unlock_bk();
+		lock_fr.unlock();
 	}
 };
 
@@ -282,46 +272,42 @@ public:
 	}
 
 	virtual Mat get_img(long long & t){
-		lock_fr();
+		unique_lock<mutex> lock(m_mtx_fr);
 		Mat img = m_img[m_front];
 		t = m_time[m_front];
-		unlock_fr();
 		return img;
 	}
 
 	virtual Mat get_img(long long & t, long long & ifrm){
-		lock_fr();
+		unique_lock<mutex> lock(m_mtx_fr);
 		Mat img = m_img[m_front];
 		t = m_time[m_front];
 		ifrm = m_ifrm[m_front];
-		unlock_fr();
 		return img;
 	}
 
 	virtual void set_img(Mat & img, long long t){
-		lock_bk();
+		unique_lock<mutex> lock_bk(m_mtx_bk);
 		m_img[m_back] = img;
 		m_time[m_back] = t;
-		lock_fr();
+		unique_lock<mutex> lock_fr(m_mtx_fr);
 		int tmp = m_front;
 		m_front = m_back;
 		m_back = tmp;
-		unlock_fr();
-		unlock_bk();
+		lock_fr.unlock();
 	}
 
 	virtual void set_img(Mat & img, long long t, long long ifrm){
-		lock_bk();
+		unique_lock<mutex> lock_bk(m_mtx_bk);
 		m_img[m_back] = img;
 		m_time[m_back] = t;
 		m_ifrm[m_back] = ifrm;
-		lock_fr();
+		unique_lock<mutex> lock_fr(m_mtx_fr);
 		int tmp = m_front;
 		m_front = m_back;
 		m_back = tmp;
-		unlock_fr();
-		unlock_bk();
-	}	
+		lock_fr.unlock();
+	}
 };
 
 #endif

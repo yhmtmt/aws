@@ -17,6 +17,8 @@
 #ifndef _AWS_THREAD_H_
 #define _AWS_THREAD_H_
 #define HAVE_STRUCT_TIMESPEC
+
+/*
 #include <pthread.h>
 
 class pthread_lock{
@@ -30,5 +32,10 @@ public:
 		pthread_mutex_unlock(pmtx);
 	}
 };
+*/
+
+#include <thread>
+#include <mutex>
+#include <condition_variable>
 
 #endif

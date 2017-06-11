@@ -708,11 +708,21 @@ bool c_gl_text_obj::init(const char * ftex, const char * finf, GLuint _modeloc,
 const int c_gl_text_obj::reserv(const unsigned int len)
 {
 	int isbis = -1;
+	int num_chars = len;
 	for (int i = 0; i < sbis.size(); i++){
 		if (!sbis[i].bvalid){
 			isbis = i;
 		}
+		else {
+			num_chars += sbis[i].length;
+		}
 	}
+
+	if (num_chars >= sz_buf) {
+		cerr << "c_gl_text_obj::reserv cannot allocate sufficient size for buffer. Buffer size should be increased in initialization phase. " << endl;
+		return -1;
+	}
+
 	if (isbis < 0){
 		sbis.push_back(s_string_buffer_inf());
 		isbis =(int)(sbis.size() - 1);
@@ -1076,9 +1086,10 @@ bool c_gl_line_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _Mmvploc, GLuin
 
 int c_gl_line_obj::add(const int npts, const float * pts)
 {
-	if (num_total_vertices + npts >= buffer_size)
+	if (num_total_vertices + npts >= buffer_size){
+		cerr << "c_gl_line_obj::add cannot assign sufficient size of buffer. Buffer size should be increased in initialization phase." << endl;
 		return -1;
-
+	}
 	int handle = -1;
 	for (int ih = 0; ih < lbis.size(); ih++)
 	{
@@ -1298,8 +1309,10 @@ bool c_gl_2d_line_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLu
 
 int c_gl_2d_line_obj::add(const int npts, const float * pts, bool blines)
 {
-	if (num_total_vertices + npts >= buffer_size)
+	if (num_total_vertices + npts >= buffer_size) {
+		cerr << "c_gl_2d_line_obj::add cannot assign sufficient size of buffer. Buffer size should be extended in initialization phase." << endl;
 		return -1;
+	}
 
 	int handle = -1;
 	for (int ih = 0; ih < lbis.size(); ih++)
@@ -1464,7 +1477,7 @@ void c_gl_2d_obj::destroy()
 }
 
 bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
-	const glm::vec2 & plb, glm::vec2 & sz, const unsigned int buffer_size)
+	const glm::vec2 & plb, glm::vec2 & sz, const unsigned int _buffer_size)
 {
 	type = rectangle;
 
@@ -1472,6 +1485,8 @@ bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc
 	posloc = _posloc;
 	clrloc = _clrloc;
 	depthloc = _depthloc;
+
+	buffer_size = _buffer_size;
 
 	int depth;
 	glGetIntegerv(GL_DEPTH_BITS, &depth);
@@ -1517,7 +1532,7 @@ bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc
 }
 
 bool c_gl_2d_obj::init_circle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
-	const unsigned int npts, const float rx, const float ry, const unsigned int buffer_size)
+	const unsigned int npts, const float rx, const float ry, const unsigned int _buffer_size)
 {
 	type = circle;
 
@@ -1525,6 +1540,8 @@ bool c_gl_2d_obj::init_circle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, G
 	posloc = _posloc;
 	clrloc = _clrloc;
 	depthloc = _depthloc;
+
+	buffer_size = _buffer_size;
 
 	int depth;
 	glGetIntegerv(GL_DEPTH_BITS, &depth);
@@ -1584,6 +1601,8 @@ bool c_gl_2d_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _
 	posloc = _posloc;
 	clrloc = _clrloc;
 	depthloc = _depthloc;
+
+	buffer_size = _buffer_size;
 
 	int depth;
 	glGetIntegerv(GL_DEPTH_BITS, &depth);
@@ -1686,6 +1705,11 @@ int c_gl_2d_obj::add(const glm::vec4 & clr, const glm::vec2 & pos,
 	const float rot, const glm::vec2 & scale)
 {
 	int handle = -1;
+	if (buffer_size == iis.size()){
+		cerr << "c_gl_2d_obj::add run out of buffer. The buffer size should be larger in initialization." << endl;
+		return handle;
+	}
+
 	for (int i = 0; i < iis.size(); i++)
 	{
 		if (!iis[i].bvalid){
