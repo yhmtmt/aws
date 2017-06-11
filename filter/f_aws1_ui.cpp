@@ -203,7 +203,7 @@ bool f_aws1_ui::init_run()
   // calculating horizon related parameters 
   iRE = (float)(1.0 / RE);
   height_cam_ec = (float)(RE + height_cam);
-  dhorizon_cam = (float)sqrt(RE * RE + height_cam_ec * height_cam_ec);
+  dhorizon_cam = (float)sqrt(-RE * RE + height_cam_ec * height_cam_ec);
   th_horizon_arc = acos(RE / height_cam_ec);
   dhorizon_arc = (float)(RE * th_horizon_arc);
   zhorizon = dhorizon_cam * height_cam_ec * iRE;
