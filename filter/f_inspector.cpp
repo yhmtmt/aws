@@ -482,7 +482,8 @@ bool f_inspector::new_frame(Mat & img, long long & timg)
 bool f_inspector::proc()
 {
 	m_bnew_frm = false;
-	pthread_lock lock(&m_d3d_mtx);
+	unique_lock<mutex> lock(m_d3d_mtx);
+	//pthread_lock lock(&m_d3d_mtx);
 
 	////////////////// updating pvt information ///////////////////////
 	long long timg;	

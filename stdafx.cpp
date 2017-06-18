@@ -296,6 +296,13 @@
 #pragma comment(lib, "PvAPI.lib")
 #endif
 
+#ifdef AVT_VMB_CAM
+#ifdef _DEBUG
+#pragma comment(lib, "VimbaCPP.lib")
+#else
+$pragma comment(lib, "VimbaCPP.lib")
+#endif
+#endif
 #ifdef GLFW_WINDOW
 #pragma comment(lib, "OpenGL32.lib")
 #pragma comment(lib, "glfw3.lib")

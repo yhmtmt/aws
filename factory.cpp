@@ -206,6 +206,10 @@ void ch_base::register_factory()
 #include "filter/f_avt_stereo.h"
 #include "filter/f_avt_mono.h"
 #endif
+#ifdef AVT_VMB_CAM
+#include "filter/f_avt_vmb_cam.h"
+#endif
+
 #ifdef SANYO_HD5400
 #include "filter/f_netcam.h"
 #endif
@@ -382,6 +386,11 @@ void f_base::register_factory()
 	register_factory<f_avt_stereo>("avtstereo");
 	register_factory<f_avt_mono>("avtmono");
 #endif
+
+#ifdef AVT_VMB_CAM
+	register_factory<avt_vmb_cam::f_avt_vmb_cam_impl<1>>("vmbmono");
+#endif
+
 #ifdef UVC_CAM
 	register_factory<f_uvc_cam>("uvcam");
 #endif
