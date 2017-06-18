@@ -377,7 +377,6 @@ bool f_ptz_window::check()
 bool f_ptz_window::proc()
 {
 	unique_lock<mutex> lock(m_d3d_mtx);
-//	pthread_lock lock(&m_d3d_mtx);
 
 	float dt = (float) ((m_cur_time - m_prev_time) * 1e-7);
 	m_avg_cycle_time = ALPHA * dt + (1 - ALPHA) * m_avg_cycle_time;

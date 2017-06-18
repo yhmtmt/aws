@@ -43,16 +43,16 @@ enum e_cfg_cam_params{
 class f_netcam :public f_cam
 {
 protected:
-	pthread_mutex_t m_cm_mt;
+	mutex m_cm_mt;
 	Mat m_frm_back;
 	void lock_cm()
 	{
-		pthread_mutex_lock(&m_cm_mt);
+		m_cm_mt.lock();
 	}
 
 	void unlock_cm()
 	{
-		pthread_mutex_unlock(&m_cm_mt);
+		m_cm_mt.unlock();
 	}
 
 	unsigned char m_y, m_mt, m_d, m_h, m_mn, m_s;
@@ -115,7 +115,7 @@ protected:
 	ch_ptz * m_pptzout;
 
 	bool m_bgrabbing;
-	pthread_t m_grab_th;
+	thread * m_grab_th;
 public:
 	f_netcam(const char * name);
 	virtual ~f_netcam();
@@ -172,7 +172,7 @@ public:
 	{return m_z;};
 
 	virtual bool grab(Mat & img);
-	static void * async_grab(void * pncam);
+	static void async_grab(f_netcam * pncam);
 
 	virtual bool cmd_proc(s_cmd & cmd);
 	bool cmdp_pan(char ** args, int num_args);
@@ -199,9 +199,12 @@ public:
 			}
 		}
 		
-		if(!m_bgrabbing)
-			pthread_create(&m_grab_th, NULL, async_grab, (void*) this);
-		
+		if (!m_bgrabbing){
+			if (m_grab_th)
+				delete m_grab_th;
+			m_grab_th = NULL;
+			m_grab_th = new thread(async_grab, this);
+		}
 		return true;
 	}
 };

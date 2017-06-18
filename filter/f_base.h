@@ -302,7 +302,6 @@ protected:
 	////////////////////////////////////////////////////////////// main thread 
 protected:
 	// thread object.
-//	pthread_t m_fthread;
 	thread * m_fthread;
 	// thread body. called with m_fthread
 	static void sfthread(f_base * filter);
@@ -319,9 +318,6 @@ protected:
 	// mutex and signal for clocking
 	static mutex m_mutex;
 	static condition_variable m_cond;
-//	static pthread_mutex_t m_mutex; 
-//	static pthread_cond_t m_cond;	
-
 
 	virtual bool seek(long long seek_time)
 	{
@@ -364,7 +360,6 @@ public:
 		m_count_pre = m_count_post = m_count_clock;
 		if (!is_main_thread())
 			m_fthread = new thread(sfthread, this);
-			//pthread_create(&m_fthread, NULL, fthread, (void*) this);
 		return true;
 	}
 
@@ -448,10 +443,6 @@ protected:
 	void clock_wait(){
 		unique_lock<mutex> lock(m_mutex);
 		m_cond.wait(lock);
-
-//		pthread_mutex_lock(&m_mutex);
-//		pthread_cond_wait(&m_cond, &m_mutex);
-//		pthread_mutex_unlock(&m_mutex);
 	}
 
 public:
@@ -494,7 +485,6 @@ public:
 	static void send_clock_signal()
 	{
 		m_cond.notify_all();
-//		pthread_cond_broadcast(&m_cond);
 	}
 
 	static void init_run_all(){
@@ -507,10 +497,8 @@ public:
 
 	static long long get_time(){
 		long long t;
-//		pthread_mutex_lock(&m_mutex);
 		unique_lock<mutex> lock(m_mutex);
 		t = m_cur_time;
-//		pthread_mutex_unlock(&m_mutex);
 	  return t;
 	}
 	
@@ -583,7 +571,6 @@ protected:
 	static int m_err_head;
 	static int m_err_tail;
 	static mutex m_err_mtx;
-//	static pthread_mutex_t m_err_mtx;
 
 	static void send_err(f_base * ptr, const char * fname, int line, int code);
 public:
@@ -601,9 +588,6 @@ protected:
 	// mutex for command processing
 	mutex m_mutex_cmd;
 	condition_variable m_cnd_cmd;
-	unique_lock<mutex> m_lock_cmd;
-//	pthread_mutex_t m_mutex_cmd;
-//	pthread_cond_t m_cnd_cmd;
 	bool m_cmd;
 public:
 	// lock for command processing mutex
@@ -612,32 +596,13 @@ public:
 		if(bcmd)
 			m_cmd = true;
 
-//		pthread_mutex_lock(&m_mutex_cmd);
-		{
-			bool & r_m_cmd = m_cmd;
-			bool & r_bcmd = bcmd;
-			m_mutex_cmd.lock();
-//			m_lock_cmd.lock();
-			
-			
-//			while(m_cmd && !bcmd){
-//				m_cnd_cmd.wait(m_lock_cmd);
-			//			pthread_cond_wait(&m_cnd_cmd, &m_mutex_cmd);
-	//		}
-		}
+		m_mutex_cmd.lock();
 	}
 
 	// unlock for command processing mutex
 	void unlock_cmd(bool bcmd = false)
 	{
 		m_mutex_cmd.unlock();
-///		m_lock_cmd.unlock();
-//		pthread_mutex_unlock(&m_mutex_cmd);
-//		if(bcmd){
-//			m_cnd_cmd.notify_one();
-//			pthread_cond_signal(&m_cnd_cmd);
-//			m_cmd = false;
-//		}
 	}
 
 	// interface for original command in each child class

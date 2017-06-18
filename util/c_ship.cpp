@@ -66,7 +66,6 @@ void c_ship::init()
 #ifdef _WIN32
 	m_ship_own.m_clr = D3DCOLOR_RGBA(0, 255, 0, 255);
 #endif
-	//pthread_mutex_init(&m_list_mtx, NULL);
 	memset(m_htbl, 0, sizeof(c_ship*) * m_htbl_size);
 	m_lock_list.unlock();
 	m_ship_list_recent.resize(m_max_slrpv, NULL);
@@ -88,8 +87,7 @@ void c_ship::destroy()
 	if(m_ship_pool){
 		delete m_ship_pool;
 		m_ship_pool = NULL;
-	}
-	//pthread_mutex_destroy(&m_list_mtx);
+	}	
 }
 
 void c_ship::list_lock()

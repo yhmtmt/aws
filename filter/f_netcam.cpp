@@ -92,11 +92,9 @@ f_netcam::f_netcam(const char * name):f_cam(name), m_cmd(NULL), m_cmd_foot(NULL)
 	m_base_url(NULL), 
 	m_usrpswd(NULL), m_cookie_file("cookie.txt"), m_header_file("header.out"),
 	m_body_file("body.out"), m_header(NULL), m_body(NULL), m_curl(NULL), 
-	m_img_line(NULL), m_pfill_data(NULL), m_ejd_stat(EJD_INIT), m_bgrabbing(false)
+	m_img_line(NULL), m_pfill_data(NULL), m_ejd_stat(EJD_INIT), m_bgrabbing(false),
+	m_grab_th(NULL)
 {
-	// initialize mutex
-	pthread_mutex_init(&m_cm_mt, NULL);
-
 	m_cam_mat = Mat::eye(3, 3, CV_64F);
 	m_dist_coeff = Mat::zeros(8, 1, CV_64F);
 }
@@ -105,8 +103,6 @@ f_netcam::~f_netcam()
 {
 	close();
 
-	// free mutex
-	pthread_mutex_destroy(&m_cm_mt);
 }
 
 bool f_netcam::open(const char * base_url, const char * usrpswd)
@@ -239,9 +235,8 @@ bool f_netcam::grab(Mat & img)
 }
 
 
-void * f_netcam::async_grab(void * pncam)
+void f_netcam::async_grab(f_netcam * pcam)
 {
-	f_netcam * pcam = (f_netcam*) pncam;
 	pcam->m_bgrabbing = true;
 
 	ch_image * pout = dynamic_cast<ch_image*>(pcam->m_chout[0]);

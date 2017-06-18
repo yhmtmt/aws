@@ -142,7 +142,6 @@
 #pragma comment(lib, "libjpegd.lib")
 #pragma comment(lib, "libcurld_imp.lib")
 #endif
-#pragma comment(lib, "pthreadVC2.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Strmiids.lib")
 #pragma comment(lib, "Quartz.lib")
@@ -282,7 +281,6 @@
 #pragma comment(lib, "libcurl_imp.lib")
 #pragma comment(lib, "libjpeg.lib")
 #endif
-#pragma comment(lib, "pthreadVC2.lib")
 #pragma comment(lib, "ws2_32.lib")
 #pragma comment(lib, "Strmiids.lib")
 #pragma comment(lib, "Quartz.lib")

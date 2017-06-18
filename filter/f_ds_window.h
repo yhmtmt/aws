@@ -32,7 +32,6 @@ class f_ds_window:public f_base
 {
 protected:
 	thread * m_th_msg;
-	//pthread_t m_th_msg;
 
 	int m_Hfull, m_Vfull;
 	void fit_full_mode();
@@ -59,7 +58,6 @@ protected:
 	bool m_blost;		// flag for device lost
 	bool m_bwin;	// flag for window mode (false if fullscreen)
 	mutex m_d3d_mtx;
-	//pthread_mutex_t m_d3d_mtx;
 
 	LPDIRECT3D9 m_pd3d; // direct3d object
 	D3DPRESENT_PARAMETERS m_d3dppfull, m_d3dppwin; // creation parameter of direct3d (one for window mode, another for fullscreen)
@@ -168,7 +166,6 @@ public:
 	virtual void handle_keyup(WPARAM wParam, LPARAM lParam){};
 	virtual void handle_char(WPARAM wParam, LPARAM lParam){};
 	virtual bool init_run(){
-//		pthread_mutex_init(&m_d3d_mtx, NULL); 
 		if(!create_wnd()){
 			cerr << "failed to create window." << endl;
 			return false;
@@ -197,7 +194,6 @@ public:
 		if(m_hwnd == NULL)
 			return;
 
-//		pthread_mutex_destroy(&m_d3d_mtx);
 		delete[] m_name_t;
 		m_name_t = NULL;
 		release_d3dres();

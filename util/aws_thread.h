@@ -1,5 +1,4 @@
-// Copyright(c) 2014 Yohei Matsumoto, Tokyo University of Marine
-// Science and Technology, All right reserved. 
+// Copyright(c) 2016 Yohei Matsumoto, All right reserved. 
 
 // aws_thread.h is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Publica License as published by
@@ -17,22 +16,6 @@
 #ifndef _AWS_THREAD_H_
 #define _AWS_THREAD_H_
 #define HAVE_STRUCT_TIMESPEC
-
-/*
-#include <pthread.h>
-
-class pthread_lock{
-	pthread_mutex_t * pmtx;
-public:
-	pthread_lock(pthread_mutex_t * p):pmtx(p){
-		pthread_mutex_lock(p);
-	}
-
-	~pthread_lock(){
-		pthread_mutex_unlock(pmtx);
-	}
-};
-*/
 
 #include <thread>
 #include <mutex>

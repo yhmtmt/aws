@@ -422,7 +422,6 @@ bool f_ds_vfile::run(long long start_time, long long end_time)
 	m_count_pre = m_count_post = m_count_clock;
 
 	m_fthread = new thread(sfthread, this);
-//	pthread_create(&m_fthread, NULL, fthread, (void*) this);
 	return true;
 }
 

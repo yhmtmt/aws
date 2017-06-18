@@ -281,9 +281,6 @@ void ch_base::register_factory()
 // initialization code here.
 void f_base::init(c_aws * paws){
 	// initializing basic members of the filter graph.
-//	pthread_mutex_init(&m_mutex, NULL);
-//	pthread_cond_init(&m_cond,  NULL);
-//	pthread_mutex_init(&m_err_mtx, NULL);
 	m_err_head = 0;
 	m_err_tail = 0;
 	m_file_err.open(FILE_FERR_LOG);
@@ -313,10 +310,6 @@ void f_base::uninit()
 
 	flush_err_buf();
 	m_file_err.close();
-
-//	pthread_mutex_destroy(&m_mutex);
-//	pthread_cond_destroy(&m_cond);
-//	pthread_mutex_destroy(&m_err_mtx);
 }
 
 // Registration function.

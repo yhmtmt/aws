@@ -27,11 +27,6 @@ protected:
 	s_cmd m_cmd;
 	mutex m_mtx;
 	condition_variable m_cnd_ret, m_cnd_none;
-	/*
-	pthread_mutex_t m_mtx;
-	pthread_cond_t m_cnd_ret;
-	pthread_cond_t m_cnd_none;
-	*/
 
 	int m_cmd_port;
 	char * m_working_path;
@@ -138,7 +133,7 @@ private:
 	sockaddr_in m_svr_addr; // server address initiating socket
 	sockaddr_in m_client;	// client address initiating socket
 	thread * m_th_rcmd;
-	//pthread_t m_th_rcmd;	// command processing thread
+
 	fd_set m_fdread;		// for use select() in recieving command
 	fd_set m_fdwrite;		// for use select() in transmitting return value
 	fd_set m_fderr;			// for use select() 
@@ -160,8 +155,6 @@ public:
 
 	bool is_exit();
 };
-
-void cmd_proc(void * paws);
 
 extern bool g_kill;
 

@@ -41,7 +41,6 @@ protected:
 	long long m_tfile;	 // time fwrite called
 
 	mutex m_mtx_bk, m_mtx_fr;
-//	pthread_mutex_t m_mtx_bk, m_mtx_fr;
 	bool m_bfisheye;
 	bool m_bparam[ECP_K6+1];
 	double m_param[ECP_K6+1];
@@ -62,13 +61,9 @@ public:
 		for(int i = 0; i < ECP_K6 + 1; i++){
 			m_bparam[i] = false;
 		}
-//		pthread_mutex_init(&m_mtx_bk, NULL);
-//		pthread_mutex_init(&m_mtx_fr, NULL);
 	}
 	virtual ~ch_image()
 	{
-//		pthread_mutex_destroy(&m_mtx_bk);
-//		pthread_mutex_destroy(&m_mtx_fr);
 	}
 
 	bool is_new(const long long t)

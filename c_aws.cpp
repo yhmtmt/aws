@@ -55,13 +55,6 @@ bool proc_script(const char * fname, c_aws & aws)
 	return false;
 }
 
-void cmd_proc(void * paws)
-{ 
-	c_aws & aws = *((c_aws*) paws);
-
-	cmd_proc_loop("aws", aws, cin);
-}
-
 void cmd_proc_loop(const char * prompt, c_aws & aws, istream & in)
 {
 	// invoke capturing threads for each cam
@@ -173,11 +166,6 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 	// Initializing channel globals
 	ch_base::init();
 
-	// mutex for main thread and command thread
-//	pthread_mutex_init(&m_mtx, NULL);
-//	pthread_cond_init(&m_cnd_ret, NULL);
-//	pthread_cond_init(&m_cnd_none, NULL);
-
 #ifdef _WIN32
 	// initialize winsock2
 	WSAStartup(MAKEWORD(2, 0), &m_wsad);
@@ -200,10 +188,6 @@ c_aws::~c_aws()
 	CoUninitialize();
 	WSACleanup();
 #endif
-
-//	pthread_mutex_destroy(&m_mtx);
-//	pthread_cond_destroy(&m_cnd_ret);
-//	pthread_cond_destroy(&m_cnd_none);
 }
 
 
@@ -223,13 +207,6 @@ void c_aws::clear()
 bool c_aws::push_command(const char * cmd_str, char * ret_str,
 	bool & ret_stat) {
 	unique_lock<mutex> lock(m_mtx);
-	//	pthread_mutex_lock(&m_mtx);
-	//	pthread_lock lock(m_mtx);
-		/*
-		while(m_cmd.stat != CS_NONE){
-			pthread_cond_wait(&m_cnd_none, &m_mtx);
-		}
-		*/
 	s_cmd & cmd = m_cmd;
 	memset(m_cmd.ret, 0, RET_LEN);
 
@@ -256,8 +233,6 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 
 			if (total_len == CMD_LEN) {
 				ret_stat = false;
-				//lock.unlock();
-				//				pthread_mutex_unlock(&m_mtx);
 				return false;
 			}
 
@@ -271,8 +246,6 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 		if (len != 0) {
 			if (total_len == CMD_LEN) {
 				ret_stat = false;
-				//lock.unlock();
-				//				pthread_mutex_unlock(&m_mtx);
 				return false;
 			}
 
@@ -289,8 +262,6 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 
 	if (itok == 0) { // no token.
 		ret_stat = true;
-		//lock.unlock();
-		//		pthread_mutex_unlock(&m_mtx);
 		return true;
 	}
 	cmd.num_args = itok;
@@ -299,8 +270,6 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 	cmd.type = cmd_str_to_id(m_cmd.args[0]);
 	if (cmd.type == CMD_UNKNOWN) {
 		cerr << "Unknown command." << endl;
-		//lock.unlock();
-		//		pthread_mutex_unlock(&m_mtx);
 		return false;
 	}
 
@@ -310,9 +279,6 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 		e_cmd_stat & stat = m_cmd.stat;
 		m_cnd_ret.wait(lock, [&stat] {return stat == CS_RET || stat == CS_ERR; });
 	}
-//	while(m_cmd.stat != CS_RET && m_cmd.stat != CS_ERR){
-//		pthread_cond_wait(&m_cnd_ret, &m_mtx);
-//	}
 
 	memcpy(ret_str, m_cmd.ret, RET_LEN);
 
@@ -323,9 +289,6 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 
 	m_cmd.stat = CS_NONE;
 
-//pthread_cond_signal(&m_cnd_none);
-//	lock.unlock();
-//	pthread_mutex_unlock(&m_mtx);
 	return true;
 }
 
@@ -831,14 +794,11 @@ void c_aws::proc_command()
 	if (m_cmd.stat != CS_SET){
 		// no command
 		m_cnd_ret.notify_all();
-//		pthread_cond_signal(&m_cnd_ret);
 		return;
 	}
 
 	{
 		unique_lock<mutex> lock(m_mtx);
-//		pthread_mutex_lock(&m_mtx);
-		//pthread_lock lock(m_mtx);
 		
 		s_cmd & cmd = m_cmd;
 		bool result = false;
@@ -940,9 +900,6 @@ void c_aws::proc_command()
 
 		lock.unlock();
 		m_cnd_ret.notify_all();
-
-		//pthread_cond_signal(&m_cnd_ret);
-		//pthread_mutex_unlock(&m_mtx);
 	}
 }
 
@@ -1153,7 +1110,6 @@ c_rcmd::c_rcmd(c_aws * paws, unsigned short port):m_paws(paws), m_th_rcmd(NULL){
 	m_exit = false;
 
 	m_th_rcmd = new thread(thrcmd, this);
-	//pthread_create(&m_th_rcmd, NULL, thrcmd, (void*)this);
 }
 
 c_rcmd::~c_rcmd(){

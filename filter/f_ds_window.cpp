@@ -322,7 +322,6 @@ bool f_ds_window::is_active()
 			return true;
 		}
 		unique_lock<mutex> lock(m_d3d_mtx);
-///		pthread_lock lock(&m_d3d_mtx);
 		if(!reset_d3dev())
 			return m_bactive = false;
 		m_blost = false;
@@ -349,10 +348,8 @@ void f_ds_window::change_dispmode()
 {
 	m_bwin = !m_bwin;
 	unique_lock<mutex> lock(m_d3d_mtx);
-//	pthread_mutex_lock(&m_d3d_mtx);
 	if(!reset_d3dev())
 		cerr << "Failed to change display mode." << endl;
-//	pthread_mutex_unlock(&m_d3d_mtx);
 }
 
 bool f_ds_window::reset_d3dev()
@@ -429,7 +426,6 @@ bool f_ds_window::cmd_proc(s_cmd & cmd)
 
 bool f_ds_window::proc()
 {
-//	pthread_lock lock(&m_d3d_mtx);
 	unique_lock<mutex> lock(m_d3d_mtx);
 	////////////////// updating pvt information ///////////////////////
 	ch_image * pin = dynamic_cast<ch_image*>(m_chin[0]);

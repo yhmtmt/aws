@@ -41,21 +41,11 @@ using namespace cv;
 #include "c_aws.h"
 
 bool g_kill;
-//#ifdef _WIN32
-//int _tmain(int argc, _TCHAR* argv[])
-//#else
 int main(int argc, char ** argv)
-//#endif
 {
 	c_aws aws(argc, argv);
-	
-	// invoke command thread
-//	thread th_cmd(cmd_proc, &aws);
-//	pthread_t th_cmd;
-//	pthread_create(&th_cmd, NULL, cmd_proc, &aws);
 
 	aws.run();
 	g_kill = true;
-//	th_cmd.join();
 	return 0;
 }

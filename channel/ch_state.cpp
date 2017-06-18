@@ -196,7 +196,7 @@ bool ch_estate::get_vel(const long long t, const Mat & Qv, float & u, float & v,
 		float dt = (float)((v.t - t) * (1. / (double)SEC));
 		Pvb = v.Pv + dt * Qv;
 		ub = v.u;
-		uf = v.v;
+		vb = v.v;
 	}
 
 	if (both && ivel_new >= 0 && ivel_old >= 0){
