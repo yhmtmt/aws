@@ -1,0 +1,34 @@
+#!/bin/sh
+
+channel imgr bayer
+channel imgr clr
+filter vmbmono cam -i -o
+fset cam channel bayer
+fset cam addr 172.18.2.9
+fset cam PixelFormat Bayer8
+fset cam ReverseX yes
+fset cam ReverseY no
+fset cam GevSCPSPacketSize 1477
+fset cam StreamBytesPerSecond 10000000
+filter debayer deb -i bayer -o clr
+fset deb bayer GR8
+
+# for windows dswin shows the images
+#filter dswin win -i clr -o 
+#fset win wmd yes
+#fset win Hwin 1376 Vwin 1100
+
+# for transfering via tcp network
+#filter imwrite iw -i clr -o 
+#fset iw type jpg
+#fset iw qjpg 20
+
+# for OpenGL version
+filter glimv win -i clr -o 
+fset win width 640 height 480
+cyc 0.1
+go
+
+
+
+
