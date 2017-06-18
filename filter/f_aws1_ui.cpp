@@ -3030,7 +3030,7 @@ void c_indicator::update_rp_indicator()
 void c_indicator::create_hc_indicator(const float fov, 
 	const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const glm::vec4 & clr)
 {
-	fxcam = (float)(0.5 * cos(0.5 * fov * PI / 180.f) * sz_scrn.x);
+	fxcam = (float)(0.5 * sz_scrn.x / tan(0.5 * fov * PI / 180.f));
 	float xmin = (float)(-sz_scrn.x * 0.5), xmax = -xmin,
 		ymin = (float)(-sz_scrn.y * 0.5), ymax = -ymin;
 
@@ -3075,6 +3075,8 @@ void c_indicator::create_hc_indicator(const float fov,
 			poline->config_width(hyscale[i], 1.0);
 			poline->config_color(hyscale[i], clr);
 			poline->config_depth(hyscale[i], 0);
+
+			// here pos_yscl has the normalized circular vector for the yaw direction.
 			pos_yscl[i].x = sin((float)(ths * i));
 			pos_yscl[i].y = cos((float)(ths * i));
 		}
@@ -3093,15 +3095,23 @@ void c_indicator::create_hc_indicator(const float fov,
 void c_indicator::update_hc_indicator()
 {
 	float dir_cam_abs = yaw + dir_cam;
+
+	// unit vectors are calculated ( all of them are defined in the ENU world coordinate)
+	// pos_cam : camera direction vector
+	// pos_crs : course direction vector
+	// pos_yaw : heding vector
 	glm::vec2 pos_cam((float)sin(dir_cam_abs), (float)cos(dir_cam_abs));
 	glm::vec2 pos_crs((float)sin(cog), (float)cos(cog));
 	glm::vec2 pos_yaw((float)sin(yaw), (float)cos(yaw));
 
-	if (mode == im_fpv){
+	
+	if (mode == im_fpv){// calculating hc indicator for first person view mode
+		// converting the course vector to the camera coordinate
 		glm::vec2 pos_crs_tmp(
 			(float)(pos_cam.y * pos_crs.x - pos_cam.x * pos_crs.y),
 			(float)(pos_cam.x * pos_crs.x + pos_cam.y * pos_crs.y));
-		if (pos_crs_tmp.y > 0){
+		if (pos_crs_tmp.y > 0){ // don't calculate if the indicator is not in the camera direction
+			// projecting the vector's x position using the focal length fxcam given in the initialization.
 			pos_crs_tmp.y /= pos_crs_tmp.x;
 			pos_crs_tmp.x *= fxcam;
 			pos_crs_tmp.y = pos_yptr;
@@ -3112,10 +3122,13 @@ void c_indicator::update_hc_indicator()
 			potri->disable(hcptr);
 		}
 
+		// converting the heding vector to the camera coordinate
 		glm::vec2 pos_yaw_tmp(
-			pos_cam.y * pos_yaw.x - pos_cam.x * pos_yaw.y,
-			pos_cam.x * pos_yaw.x + pos_cam.y * pos_yaw.y);
-		if (pos_yaw_tmp.y > 0){
+			(float)(pos_cam.y * pos_yaw.x - pos_cam.x * pos_yaw.y),
+			(float)(pos_cam.x * pos_yaw.x + pos_cam.y * pos_yaw.y));
+
+		if (pos_yaw_tmp.y > 0){ // don't calculate if the indicator is not in the camera direction
+			// projecting the vector's x position using the focal length fxcam given in the initialization.
 			pos_yaw_tmp.x /= pos_yaw_tmp.y;
 			pos_yaw_tmp.x *= fxcam;
 			pos_yaw_tmp.y = pos_yptr;
@@ -3127,17 +3140,18 @@ void c_indicator::update_hc_indicator()
 		}
 
 		for (int i = 0; i < YAW_STEP; i++){
-			pos_yscl_tmp[i].x = pos_cam.y * pos_yscl[i].x - pos_cam.x * pos_yscl[i].y;
-			pos_yscl_tmp[i].y = pos_cam.x * pos_yscl[i].x + pos_cam.y * pos_yscl[i].y;
+			// projectig the scale vectors in the camera coordinate
+			pos_yscl_tmp[i].x = (float)(pos_cam.y * pos_yscl[i].x - pos_cam.x * pos_yscl[i].y);
+			pos_yscl_tmp[i].y = (float)(pos_cam.x * pos_yscl[i].x + pos_cam.y * pos_yscl[i].y);
 			pos_yscl_tmp[i].x /= pos_yscl_tmp[i].y;
 			pos_yscl_tmp[i].x *= fxcam;
-			if (pos_yscl_tmp[i].y < 0){
+			if (pos_yscl_tmp[i].y < 0){ // back side of the camera is not calculated.
 				poline->disable(hyscale[i]);
 				potxt->disable(hstr_yscale[i]);
 			}
 			else{
 				poline->enable(hyscale[i]);
-				pos_yscl_tmp[i].y = 0;
+				pos_yscl_tmp[i].y = 0; // scale is always rendered in the center of the display.
 				poline->config_position(hyscale[i], pos_yscl_tmp[i]);
 				potxt->enable(hstr_yscale[i]);
 				pos_yscl_tmp[i].y = pos_ystr;
@@ -3145,7 +3159,7 @@ void c_indicator::update_hc_indicator()
 			}
 		}
 	}
-	else{
+	else{ // for map mode, simply disable the indicator, in this implementaion.
 		potri->disable(hhptr);
 		potri->disable(hcptr);
 		for (int i = 0; i < YAW_STEP; i++){

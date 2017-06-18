@@ -397,7 +397,7 @@ private:
 
 	const unsigned char veng_n, veng_nf, veng_nb;
 	unsigned char meng, seng, rud;
-	float cog, sog, yaw, pitch, roll;
+	float cog /*radian*/, sog, yaw /*radian*/, pitch /*radian*/, roll /*radian*/;
 
 	int hmeng_in, hmeng_out, hseng_in, hseng_out, hrud_in, hrud_out;
 	int hmeng_n, hmeng_f, hmeng_b, hseng_n, hseng_f, hseng_b;
@@ -444,8 +444,8 @@ public:
 
 	void set_param(
 		const unsigned char _meng, const unsigned char _seng, const unsigned char _rud,
-		const float _cog, const float _sog,
-		const float _yaw, const float _pitch, const float _roll);
+		const float _cog /*radian*/, const float _sog,
+		const float _yaw /*radian*/, const float _pitch/*radian*/, const float _roll/*radian*/);
 
 	void set_dir_cam(const float _dir_cam)
 	{
