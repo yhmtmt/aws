@@ -49,6 +49,7 @@ void Optimizer::GlobalBundleAdjustemnt(Map* pMap, int nIterations, bool* pbStopF
 void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<MapPoint *> &vpMP,
                                  int nIterations, bool* pbStopFlag, const unsigned long nLoopKF, const bool bRobust)
 {
+  /*
     vector<bool> vbNotIncludedMP;
     vbNotIncludedMP.resize(vpMP.size());
 
@@ -233,11 +234,12 @@ void Optimizer::BundleAdjustment(const vector<KeyFrame *> &vpKFs, const vector<M
             pMP->mnBAGlobalForKF = nLoopKF;
         }
     }
-
+  */
 }
 
 int Optimizer::PoseOptimization(Frame *pFrame)
 {
+  /*
     g2o::SparseOptimizer optimizer;
     g2o::BlockSolver_6_3::LinearSolverType * linearSolver;
 
@@ -448,10 +450,13 @@ int Optimizer::PoseOptimization(Frame *pFrame)
     pFrame->SetPose(pose);
 
     return nInitialCorrespondences-nBad;
+  */
+  return 0;
 }
 
 void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap)
-{    
+{
+  /*
     // Local KeyFrames: First Breath Search from Current Keyframe
     list<KeyFrame*> lLocalKeyFrames;
 
@@ -775,6 +780,7 @@ void Optimizer::LocalBundleAdjustment(KeyFrame *pKF, bool* pbStopFlag, Map* pMap
         pMP->SetWorldPos(Converter::toCvMat(vPoint->estimate()));
         pMP->UpdateNormalAndDepth();
     }
+  */
 }
 
 
@@ -788,7 +794,9 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
     optimizer.setVerbose(false);
     g2o::BlockSolver_7_3::LinearSolverType * linearSolver =
            new g2o::LinearSolverEigen<g2o::BlockSolver_7_3::PoseMatrixType>();
+    /*
     g2o::BlockSolver_7_3 * solver_ptr= new g2o::BlockSolver_7_3(linearSolver);
+
     g2o::OptimizationAlgorithmLevenberg* solver = new g2o::OptimizationAlgorithmLevenberg(solver_ptr);
 
     solver->setUserLambdaInit(1e-16);
@@ -1008,7 +1016,6 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
 
         pKFi->SetPose(Tiw);
     }
-
     // Correct points. Transform to "non-optimized" reference keyframe pose and transform back with optimized pose
     for(size_t i=0, iend=vpMPs.size(); i<iend; i++)
     {
@@ -1041,6 +1048,7 @@ void Optimizer::OptimizeEssentialGraph(Map* pMap, KeyFrame* pLoopKF, KeyFrame* p
 
         pMP->UpdateNormalAndDepth();
     }
+  */
 }
 
 int Optimizer::OptimizeSim3(KeyFrame *pKF1, KeyFrame *pKF2, vector<MapPoint *> &vpMatches1, g2o::Sim3 &g2oS12, const float th2, const bool bFixScale)

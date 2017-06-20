@@ -257,7 +257,7 @@ public:
 	void set_params(const float _range, vector<bool> _check)
 	{
 		range = _range;
-		snprintf(range_str, "%6.1f", range);
+		snprintf(range_str, 8, "%6.1f", range);
 		potxt->set(hstr_range, range_str);
 
 		for (int ibtn = 0; ibtn < range_down; ibtn++){
