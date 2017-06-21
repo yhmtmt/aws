@@ -204,8 +204,8 @@ bool f_aws1_ui::init_run()
   iRE = (float)(1.0 / RE);
   height_cam_ec = (float)(RE + height_cam);
   dhorizon_cam = (float)sqrt(-RE * RE + height_cam_ec * height_cam_ec);
-  th_horizon_arc = acos(RE / height_cam_ec);
-  dhorizon_arc = (float)(RE * th_horizon_arc);
+  th_horizon = (float) acos(RE / height_cam_ec); // angle of the arc to the horizon
+  dhorizon_arc = (float)(RE * th_horizon);
   zhorizon = dhorizon_cam * height_cam_ec * iRE;
 
   recalc_range();
@@ -1288,35 +1288,38 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 		pt_map_center_bih.y = lon;
 		Rmap = Rown;
 
-		float x, y;
-		if (pt_mouse.y > 0){ // pointing to sky
-			x = zhorizon * pt_mouse.x * ifcam;
-			y = dhorizon_arc;
+		glm::vec2 phi(atan2(pt_mouse.x, fcam), atan2(-pt_mouse.y, fcam));
+		float th, RE_sin_th;
+		if (phi.y > th_horizon) {
+			phi.y = th_horizon;
+			th = th_horizon;
 		}
-		else{
-			float th_cam_surface = (float)atan(-pt_mouse.y * ifcam);
-			float th_surface_arc = (float)(th_cam_surface - acos(cos(th_cam_surface) * height_cam_ec * iRE));
-			float dsurface_arc = (float)(RE * th_surface_arc);
-			float zsurface = (float)(tan(th_surface_arc) * height_cam_ec);
-			x = zsurface * pt_mouse.x / fcam;
-			y = dsurface_arc;
+		else {
+			th = (float)(phi.y - asin((height_cam_ec * iRE) * cos(phi.y)) - 0.5 * PI);
 		}
+		RE_sin_th = (float)(RE * sin(th));
+		glm::vec3 pcam(
+			(float)(RE_sin_th * sin(phi.x)),
+			(float)(RE_sin_th * (-pt_mouse.y * ifcam)),
+			(float)(RE_sin_th * cos(phi.x))
+		);
+
 		float c, s, th = (PI / 180.0) * (yaw + dir_cam_hdg);
 		c = (float)cos(th);
 		s = (float)sin(th);
 
-		pt_mouse_enu.x = (float)(c * x + s * y);
-		pt_mouse_enu.y = (float)(-s * x + c * y);
+		pt_mouse_enu.x = (float)(c * pcam.x + s * pcam.y);
+		pt_mouse_enu.y = (float)(-s * pcam.x + c * pcam.y);
+		pt_mouse_enu.z = (float)(pcam.z - height_cam);
 	}
 
 	float alt = 0;
 	wrldtoecef(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
-		pt_mouse_enu.x, pt_mouse_enu.y, 0.f,
+		pt_mouse_enu.x, pt_mouse_enu.y, pt_mouse_enu.z,
 		pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z);
 	eceftobih(pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z,
 		pt_mouse_bih.x, pt_mouse_bih.y, alt);
 }
-
 
 void f_aws1_ui::add_waypoint(c_route_cfg_box * prc_box)
 {

@@ -746,7 +746,7 @@ public:
 	  loc_Mmvp, loc_Mm, loc_Lpar, loc_sampler, 
 	  loc_depth2d, loc_position, loc_normal, loc_texcoord;
   float inv_sz_half_scrn[2], fov_cam, fcam, ifcam, height_cam, dir_cam_hdg;
-  float iRE, height_cam_ec, dhorizon_cam, th_horizon_arc, dhorizon_arc, zhorizon;
+  float iRE, height_cam_ec, dhorizon_cam, dhorizon_arc, zhorizon, th_horizon;
   bool setup_shader();
 
   // visual elements
@@ -799,8 +799,8 @@ public:
   void handle_ctrl_csr(); // cursor mode: follows cursor position 
 
   // mouse related members
-  glm::vec2 pt_mouse, pt_mouse_drag_begin, pt_mouse_enu, pt_mouse_drag_begin_enu, pt_mouse_bih;
-  glm::vec3 pt_mouse_ecef;
+  glm::vec2 pt_mouse, pt_mouse_drag_begin, pt_mouse_bih;
+  glm::vec3 pt_mouse_ecef, pt_mouse_enu, pt_mouse_drag_begin_enu;
   int mouse_button, mouse_action, mouse_mods;
   s_obj obj_mouse_on;
 
