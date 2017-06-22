@@ -386,7 +386,7 @@ protected:
 	}
 public:
 	f_glfw_test3d(const char * name);
-	~f_glfw_test3d();
+	virtual ~f_glfw_test3d();
 	virtual bool init_run();
 	virtual void destroy_run();
 	virtual bool proc();

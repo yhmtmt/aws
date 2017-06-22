@@ -17,14 +17,14 @@ INST_DIR = ./bin
 OFLAGS = -O3
 
 # Platform specification
-#BOARD = jtx
+BOARD = jtx
 #BOARD = jtk
 #BOARD = zed
-BOARD = pc
+#BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
-#CPU	= arm
-CPU	= x64
+CPU	= arm
+#CPU	= x64
 #CPU	= x86
 
 #operating system (currently only for LINUX)
@@ -53,10 +53,10 @@ INC_CV_DIR = /usr/local/opencv/include
 LIB_CV_DIR = /usr/local/opencv/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
-INC_VMB_DIR = $(CUR_DIR)/Vimba/include
-LIB_VMB_DIR = $(CUR_DIR)/Vimba/lib
-INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
-LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
+INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
+LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_64bit
+INC_GLFW_DIR = /usr/include/GLFW
+LIB_GLFW_DIR = /usr/lib/aarch64-linux-gnu
 INC_EIGEN_DIR = /usr/include/eigen3
 INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
 INC_GST = /usr/include/gstreamer-1.0
@@ -114,6 +114,7 @@ endif
 
 ifeq ($(BOARD), jtx)
 	CPU 	= arm
+	INC += -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -I/usr/lib/aarch64-linux-gnu/gstreamer-1.0/include
 	INC_CV_DIR = /usr/local/include
 	LIB_CV_DIR = /usr/local/lib
 	INC_EIGEN_DIR = /usr/local/include/eigen3
@@ -141,11 +142,10 @@ ifeq ($(BOARD), jtk)
 	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr
 	FILTER += f_glfw_window  f_glfw_stereo_view 
 endif # jtk
-else
+else # cpu is not arm
 	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lGLU -lglut 
-endif # cpu is not arm
+endif 
 	DEFS += -DGLFW_WINDOW 
-	FILTER += f_glfw_window  f_glfw_stereo_view 
 	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev f_aws3_ui f_state_estimator
 	OFLAGS += -fopenmp
 endif
