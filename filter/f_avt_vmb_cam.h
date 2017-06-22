@@ -413,6 +413,7 @@ namespace avt_vmb_cam{
 
 			FramePtrVector frmbuf;
 			IFrameObserverPtr pObserver;
+		  bool bopened;
 			s_cam_params(int _icam = -1);
 			~s_cam_params();
 		};
@@ -609,9 +610,11 @@ namespace avt_vmb_cam{
 			for (int icam = 0; icam < ncam; icam++){
 				if (VmbErrorSuccess == psys->OpenCameraByID(pcam_pars[icam]->addr, VmbAccessModeFull, pcam_pars[icam]->pcam)){
 					cout << icam << "th camera at " << pcam_pars[icam]->addr << " is opened." << endl;
+				  pcam_pars[icam]->bopened = true;					
 				}
 				else{
-					cout << icam << "th camera at " << pcam_pars[icam]->addr << " cannot be opened." << endl;
+				  cout << icam << "th camera at " << pcam_pars[icam]->addr << " cannot be opened." << endl;
+
 					return false;
 				}
 
@@ -644,6 +647,8 @@ namespace avt_vmb_cam{
 		virtual void destroy_run()
 		{
 			for (int icam = 0; icam < ncam; icam++){
+				if(!pcam_pars[icam]->bopened)
+				  continue;
 				FeaturePtr pFeature;
 				pcam_pars[icam]->pcam->GetFeatureByName("AcquisitionStop", pFeature);
 				pFeature->RunCommand();

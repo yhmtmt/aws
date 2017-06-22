@@ -36,7 +36,7 @@ DEFS = -D_$(CPU) -D_$(OS)
 # module switch setting
 SANYO_HD5400 = n
 AVT_CAM = n
-AVT_VMB_CAM = y
+VMB_CAM = y
 UVC_CAM = y
 GST_CAM = y
 FWINDOW = n
@@ -202,7 +202,7 @@ endif
 ifeq ($(VMB_CAM),y)
 	INC += -I$(INC_VMB_DIR)
 	LIB += -L$(LIB_VMB_DIR) -lVimbaC -lVimbaCPP
-	FILTERS += f_avt_vmb_cam
+	FILTER += f_avt_vmb_cam
 	DEFS += -DAVT_VMB_CAM
 endif
 
