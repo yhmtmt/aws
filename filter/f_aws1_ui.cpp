@@ -63,7 +63,8 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					 m_img_x_flip(false), m_img_y_flip(false), m_img2_x_flip(false), m_img2_y_flip(false),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
 					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.), m_bsvw(false), m_bss(false),
-					 fov_cam(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), num_max_wps(100), num_max_ais(100),
+					 fov_cam(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
+	num_max_wps(100), num_max_ais(100),
 					 map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
 					 pt_map_center_enu(0, 0), bmap_center_free(false)
 {
@@ -924,7 +925,7 @@ void f_aws1_ui::write_screen()
 void f_aws1_ui::update_route()
 {
 	owp.disable();
-
+	
 	m_ch_wp->lock();
 	int iwp = 0;
 	for (m_ch_wp->begin(); !m_ch_wp->is_end(); m_ch_wp->next())
@@ -946,6 +947,8 @@ void f_aws1_ui::update_route()
 		owp.set_focus(obj_mouse_on.handle);
 		if (obj_mouse_on.handle != m_ch_wp->get_focus())
 			m_ch_wp->set_focus(obj_mouse_on.handle);
+		obj_mouse_on.type = ot_nul;
+		obj_mouse_on.handle = -1;
 	}
 	else{
 		owp.set_focus(-1);
@@ -1102,13 +1105,13 @@ bool f_aws1_ui::proc()
 	}
 
 	if(pvm_box->get_mode() == c_view_mode_box::fpv){ // calculating projection matrix
-		float c, s, th = (float)((dir_cam_hdg + yaw) * PI / 180.);
+		float c, s, th = (float)((dir_cam_hdg + dir_cam_hdg_drag + yaw) * PI / 180.);
 		c = (float)cos(th);
 		s = (float)sin(th);
 
 		float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
 		pm = glm::perspective(fov_cam, ratio, 1.f, 30e6f);
-		vm = glm::lookAt(glm::vec3(s, 0, c), glm::vec3(0, height_cam, 0), glm::vec3(0, 1, 0));
+		vm = glm::lookAt(glm::vec3(0, height_cam, 0), glm::vec3(s, height_cam, c), glm::vec3(0, 1, 0));
 		pvm = pm * vm;
 		own_ship.disable();
 	}
@@ -1122,7 +1125,7 @@ bool f_aws1_ui::proc()
 	// updating indicator
 	ind.set_param(m_stat.meng, m_stat.seng, m_stat.rud, (float)(cog * (PI / 180.f)), sog,
 		(float)(yaw * (PI / 180.f)), (float)(pitch* (PI / 180.f)), (float)(roll* (PI / 180.f)));
-	ind.set_dir_cam(dir_cam_hdg);
+	ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
 
 	// update route object
 	update_route();
@@ -1259,11 +1262,11 @@ void f_aws1_ui::rcv_ctrl_stat()
 
 
 void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
-	c_view_mode_box::e_btn vm, Mat & Rown,
+	e_ui_mode vm, Mat & Rown,
 	const float lat, const float lon,
 	const float xown, const float yown, const float zown, const float yaw)
 {
-	if (vm == c_view_mode_box::map)
+	if (vm == ui_mode_map)
 	{
 		if (!bmap_center_free){
 			pt_map_center_enu.x = pt_map_center_enu.y = 0;
@@ -1278,7 +1281,7 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 		pt_mouse_enu.x = pt_mouse.x * meter_per_pix;
 		pt_mouse_enu.y = pt_mouse.y * meter_per_pix;
 	}
-	else if (vm == c_view_mode_box::fpv)
+	else if (vm == ui_mode_fpv)
 	{
 		pt_map_center_enu.x = pt_map_center_enu.y = 0;
 		pt_map_center_ecef.x = xown;
@@ -1357,9 +1360,9 @@ void f_aws1_ui::drag_map()
 
 void f_aws1_ui::drag_cam_dir()
 {
-	float th0 = (float) atan2(pt_mouse_enu.y, pt_mouse_enu.x);
-	float th1 = (float) atan2(pt_mouse_drag_begin_enu.y, pt_mouse_drag_begin_enu.x);
-	dir_cam_hdg = (float)((th1 - th0) * 180.0f / PI);
+	float th0 = (float) atan2(pt_mouse.x, fcam);
+	float th1 = (float) atan2(pt_mouse_drag_begin.x,fcam);
+	dir_cam_hdg_drag = (float)(th1 - th0);
 }
 
 void f_aws1_ui::det_obj_collision()
@@ -1410,6 +1413,8 @@ void f_aws1_ui::handle_mouse_lbtn_up(c_view_mode_box * pvm_box, c_ctrl_mode_box 
 		break;
 	case ms_drag:
 		handle_mouse_drag(pvm_box, obj_tmp);
+		dir_cam_hdg += dir_cam_hdg_drag;
+		dir_cam_hdg_drag = 0.f;
 		mouse_state = ms_normal;
 		break;
 	case ms_normal:
@@ -1445,7 +1450,9 @@ void f_aws1_ui::handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp)
 
 void f_aws1_ui::update_view_mode_box(c_view_mode_box * pvm_box)
 {
-	ind.set_mode((c_indicator::e_ind_mode)pvm_box->get_mode());
+	ind.set_mode(pvm_box->get_mode());
+	owp.set_ui_mode(pvm_box->get_mode());
+	oais.set_ui_mode(pvm_box->get_mode());
 }
 
 void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
@@ -2644,7 +2651,7 @@ bool c_route_cfg_box::proc(const bool bpushed, const bool breleased)
 /////////////////////////////////////////////////////////////////// c_indicator
 c_indicator::c_indicator() : porect(NULL), potri(NULL), poline(NULL), potxt(NULL),
 meng(127), seng(127), rud(0), cog(0.1f), sog(10), yaw(0.05f), pitch(0.5f), roll(0.5f),
-veng_n(0x7f), veng_nf(0x7f + 0x19), veng_nb(0x7f - 0x19), dir_cam(0.f), mode(im_fpv)
+veng_n(0x7f), veng_nf(0x7f + 0x19), veng_nb(0x7f - 0x19), dir_cam(0.f), mode(ui_mode_fpv)
 {
 
 }
@@ -3108,7 +3115,8 @@ void c_indicator::update_hc_indicator()
 	glm::vec2 pos_yaw((float)sin(yaw), (float)cos(yaw));
 
 	
-	if (mode == im_fpv){// calculating hc indicator for first person view mode
+	if (mode == ui_mode_fpv){// calculating hc indicator for first person view mode
+		poline->enable(hhlzn);
 		// converting the course vector to the camera coordinate
 		glm::vec2 pos_crs_tmp(
 			(float)(pos_cam.y * pos_crs.x - pos_cam.x * pos_crs.y),
@@ -3163,6 +3171,7 @@ void c_indicator::update_hc_indicator()
 		}
 	}
 	else{ // for map mode, simply disable the indicator, in this implementaion.
+		poline->disable(hhlzn);
 		potri->disable(hhptr);
 		potri->disable(hcptr);
 		for (int i = 0; i < YAW_STEP; i++){
@@ -3296,6 +3305,16 @@ void c_ui_waypoint_obj::update_wps(const int iwp, const s_wp & wp)
 
 void c_ui_waypoint_obj::update_drawings()
 {
+	if (mode == ui_mode_sys) {
+		for (int iwp = 0; iwp < nmaxwps; iwp++) {
+			pocirc->disable(hmarks[iwp].hmark);
+			poline->disable(hmarks[iwp].hline_next);
+			poline->disable(hmarks[iwp].hline_inf);
+			poline->disable(hmarks[iwp].hstr);
+		}
+		return;
+	}
+
 	char buf[20];
 	glm::vec2 pos0, pos1;
 	for (int iwp = 0; iwp < nmaxwps; iwp++){
@@ -3313,10 +3332,10 @@ void c_ui_waypoint_obj::update_drawings()
 
 		s_wp & wp = wps[iwp];
 
-		if (bvm_map){
+		if (mode == ui_mode_map){
 			pos1 = calc_map_pos(wp.rx, wp.ry, wp.rz);
 		}
-		else{
+		else if(mode == ui_mode_fpv){
 			pos1 = calc_fpv_pos(wp.rx, wp.ry, wp.rz);
 		}
 
@@ -3455,6 +3474,16 @@ void c_ui_ais_obj::update_ais_obj(const int iobj, const c_ais_obj & ais_obj)
 
 void c_ui_ais_obj::update_drawings()
 {
+	if (mode == ui_mode_sys) {
+		for (int iobj = 0; iobj < nmax_objs; iobj++) {
+			porect->disable(hmarks[iobj].hmark);
+			poline->disable(hmarks[iobj].hline_inf);
+			poline->disable(hmarks[iobj].hline_vel);
+			potxt->disable(hmarks[iobj].hstr);
+		}
+		return;
+	}
+
 	char buf[64];
 	for (int iobj = 0; iobj < nmax_objs; iobj++){
 		if (!porect->is_enabled(hmarks[iobj].hmark)){
@@ -3487,11 +3516,11 @@ void c_ui_ais_obj::update_drawings()
 		rzf = rz + vzr * tvel;
 
 		glm::vec2 pos, pos_future;
-		if (bvm_map){
+		if (mode == ui_mode_map){
 			pos = calc_map_pos(rx, ry, rz);
 			pos_future = calc_map_pos(rxf, ryf, rzf);
 		}
-		else{
+		else if(mode == ui_mode_fpv){
 			pos = calc_fpv_pos(rx, ry, rz);
 			pos_future = calc_map_pos(rxf, ryf, rzf);
 		}

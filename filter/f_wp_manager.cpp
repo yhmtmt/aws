@@ -152,7 +152,7 @@ void f_wp_manager::load(const int id)
 		}
 	}
 	else{
-		cerr << "Failed to save route file " << fname << "." << endl;
+		cerr << "Failed to load route file " << fname << "." << endl;
 		return;
 	}
 fail_and_close:

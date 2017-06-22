@@ -33,6 +33,10 @@
 
 #include "c_aws1_ui_core.h"
 
+enum e_ui_mode {
+	ui_mode_fpv, ui_mode_map, ui_mode_sys, ui_mode_undef
+};
+
 class c_aws_ui_box
 {
 protected:
@@ -140,8 +144,16 @@ public:
 		mode = _mode;
 	}
 
-	e_btn get_mode(){
-		return mode;
+	e_ui_mode get_mode(){
+		switch (mode) {
+		case fpv:
+			return ui_mode_fpv;
+		case map:
+			return ui_mode_map;
+		case sys:
+			return ui_mode_sys;
+		}
+		return ui_mode_undef;
 	}
 };
 
@@ -380,17 +392,13 @@ public:
 class c_indicator
 {
 public:
-	enum e_ind_mode{
-		im_fpv = 0, im_map, im_sys
-	};
-
 	// main/sub engine throttle
 	// main/sub engine gear
 	// rudder 
 	// roll/pitch/yaw
 	// cog/sog
 private:
-	e_ind_mode mode;
+	e_ui_mode mode;
 	c_gl_2d_obj * porect, * potri;
 	c_gl_2d_line_obj * poline;
 	c_gl_text_obj * potxt;
@@ -452,7 +460,7 @@ public:
 		dir_cam = _dir_cam;
 	}
 
-	void set_mode(e_ind_mode _mode = im_fpv)
+	void set_mode(e_ui_mode _mode = ui_mode_fpv)
 	{
 		mode = _mode;
 	}
@@ -461,7 +469,7 @@ public:
 class c_ui_obj
 {
 protected:
-	bool bvm_map;
+	e_ui_mode mode;
 	glm::mat4 pv;
 	glm::vec2 sz_scrn;
 	float pix_per_meter;
@@ -472,7 +480,7 @@ protected:
 	glm::vec2 calc_fpv_pos(const float rx, const float ry, const float rz)
 	{
 		glm::vec2 pos;
-		glm::vec4 x(rx, ry, rz, 1), xprj;
+		glm::vec4 x(rx, rz, ry, 1), xprj;
 		xprj = pv * x;
 		float iw = (float)(1.0 / xprj.w);
 		pos.x = xprj.x * iw * sz_scrn.x;
@@ -488,20 +496,15 @@ protected:
 		return pos;
 	}
 public:
-	c_ui_obj() :bvm_map(false)
+	c_ui_obj() :mode(ui_mode_fpv)
 	{
 	}
 
 	virtual int collision(const glm::vec2 pos) = 0;
 
-	void set_vm_fpv()
+	void set_ui_mode(e_ui_mode _mode = ui_mode_fpv)
 	{
-		bvm_map = false;
-	}
-
-	void set_vm_map()
-	{
-		bvm_map = true;
+		mode = _mode;
 	}
 
 	void set_fpv_param(
@@ -745,7 +748,7 @@ public:
   GLuint loc_mode, loc_gcolor, loc_gcolorb, loc_pos2d, loc_inv_sz_half_scrn,
 	  loc_Mmvp, loc_Mm, loc_Lpar, loc_sampler, 
 	  loc_depth2d, loc_position, loc_normal, loc_texcoord;
-  float inv_sz_half_scrn[2], fov_cam, fcam, ifcam, height_cam, dir_cam_hdg;
+  float inv_sz_half_scrn[2], fov_cam, fcam, ifcam, height_cam, dir_cam_hdg, dir_cam_hdg_drag;
   float iRE, height_cam_ec, dhorizon_cam, dhorizon_arc, zhorizon, th_horizon;
   bool setup_shader();
 
@@ -804,7 +807,7 @@ public:
   int mouse_button, mouse_action, mouse_mods;
   s_obj obj_mouse_on;
 
-  void calc_mouse_enu_and_ecef_pos(c_view_mode_box::e_btn vm, Mat & Rown,
+  void calc_mouse_enu_and_ecef_pos(e_ui_mode vm, Mat & Rown,
 	  const float lat, const float lon, 
 	  const float xown, const float yown, const float zown, const float yaw);
   void handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
