@@ -1554,12 +1554,16 @@ void f_aws1_ui::update_obj_cfg_box(c_obj_cfg_box * poc_box)
 	switch (poc_box->get_command())
 	{
 	case c_obj_cfg_box::range_up:
-		map_range *= 10.f;
-		recalc_range();
+		if(map_range < 10000000){
+			map_range *= 10.f;
+			recalc_range();
+		}
 		break;
 	case c_obj_cfg_box::range_down:
-		map_range *= 0.1f;
-		recalc_range();
+		if(map_range > 100){
+			map_range *= 0.1f;
+			recalc_range();
+		}
 		break;
 	}
 	poc_box->set_params(map_range, visible_obj);

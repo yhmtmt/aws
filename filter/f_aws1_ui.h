@@ -269,7 +269,12 @@ public:
 	void set_params(const float _range, vector<bool> _check)
 	{
 		range = _range;
-		snprintf(range_str, 8, "%6.1f", range);
+		if(range > 1000000)
+			snprintf(range_str, 8, "%dM", (int)(range * 0.000001));
+		else if (range > 1000)
+			snprintf(range_str, 8, "%dK", (int)(range * 0.001));
+		else
+			snprintf(range_str, 8, "%d", (int)(range));
 		potxt->set(hstr_range, range_str);
 
 		for (int ibtn = 0; ibtn < range_down; ibtn++){
