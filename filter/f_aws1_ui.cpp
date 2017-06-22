@@ -1304,9 +1304,9 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 			(float)(RE_sin_th * cos(phi.x))
 		);
 
-		float c, s, th = (PI / 180.0) * (yaw + dir_cam_hdg);
-		c = (float)cos(th);
-		s = (float)sin(th);
+		float c, s, thcam = (PI / 180.0) * (yaw + dir_cam_hdg);
+		c = (float)cos(thcam);
+		s = (float)sin(thcam);
 
 		pt_mouse_enu.x = (float)(c * pcam.x + s * pcam.y);
 		pt_mouse_enu.y = (float)(-s * pcam.x + c * pcam.y);
