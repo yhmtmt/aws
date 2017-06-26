@@ -482,14 +482,15 @@ protected:
 	Mat Rmap;
 	float xmap, ymap, zmap;
 
-	glm::vec2 calc_fpv_pos(const float rx, const float ry, const float rz)
+	glm::vec3 calc_fpv_pos(const float rx, const float ry, const float rz)
 	{
-		glm::vec2 pos;
+		glm::vec3 pos;
 		glm::vec4 x(rx, rz, ry, 1), xprj;
 		xprj = pv * x;
 		float iw = (float)(1.0 / xprj.w);
 		pos.x = xprj.x * iw * sz_scrn.x;
 		pos.y = xprj.y * iw * sz_scrn.y;
+		pos.z = xprj.z * iw;
 		return pos;
 	}
 

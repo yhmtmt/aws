@@ -240,7 +240,7 @@ bool f_aws1_ui::init_run()
 	  return false;
   if (!oais.init(&orect, &otxt, &oline, clr, sz_fnt_small, sz_mark_xy, num_max_ais))
 	  return false;
-  if (!own_ship.init(&otri, &oline, clr, sz_fnt))
+  if (!own_ship.init(&otri, &oline, clr, glm::vec2(sz_fnt.x, (float)(sz_fnt.y * 0.5))))
 	  return false;
   if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
 	  return false;
@@ -1105,7 +1105,7 @@ bool f_aws1_ui::proc()
 	}
 
 	if(pvm_box->get_mode() == c_view_mode_box::fpv){ // calculating projection matrix
-		float c, s, th = (float)((dir_cam_hdg + dir_cam_hdg_drag + yaw) * PI / 180.);
+		float c, s, th = (float)(dir_cam_hdg + dir_cam_hdg_drag + yaw * PI / 180.);
 		c = (float)cos(th);
 		s = (float)sin(th);
 
@@ -1639,7 +1639,8 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
 	}
 
 	wp = m_ch_wp->get_focus();
-	if (!bno_focused_wp)
+
+	if (!bno_focused_wp && wp != m_ch_wp->get_num_wps() && wp < 0)
 		m_ch_wp->get_focused_wp() = fwp;
 	spd = (unsigned int)fwp.v;
 	prc_box->set_params(wp, spd, rt);
@@ -3311,10 +3312,7 @@ void c_ui_waypoint_obj::update_drawings()
 {
 	if (mode == ui_mode_sys) {
 		for (int iwp = 0; iwp < nmaxwps; iwp++) {
-			pocirc->disable(hmarks[iwp].hmark);
-			poline->disable(hmarks[iwp].hline_next);
-			poline->disable(hmarks[iwp].hline_inf);
-			poline->disable(hmarks[iwp].hstr);
+			disable(iwp);
 		}
 		return;
 	}
@@ -3323,15 +3321,7 @@ void c_ui_waypoint_obj::update_drawings()
 	glm::vec2 pos0, pos1;
 	for (int iwp = 0; iwp < nmaxwps; iwp++){
 		if (!pocirc->is_enabled(hmarks[iwp].hmark)){
-			poline->disable(hmarks[iwp].hline_next);
-			poline->disable(hmarks[iwp].hline_inf);
-			potxt->disable(hmarks[iwp].hstr);
 			continue;
-		}
-		else{
-			poline->enable(hmarks[iwp].hline_next);
-			poline->enable(hmarks[iwp].hline_inf);
-			potxt->enable(hmarks[iwp].hstr);
 		}
 
 		s_wp & wp = wps[iwp];
@@ -3340,7 +3330,13 @@ void c_ui_waypoint_obj::update_drawings()
 			pos1 = calc_map_pos(wp.rx, wp.ry, wp.rz);
 		}
 		else if(mode == ui_mode_fpv){
-			pos1 = calc_fpv_pos(wp.rx, wp.ry, wp.rz);
+			glm::vec3 pos_tmp = calc_fpv_pos(wp.rx, wp.ry, wp.rz);
+			if (pos_tmp.z < -1.0) { // back side
+				disable(iwp);
+				continue;
+			}
+			pos1.x = pos_tmp.x;
+			pos1.y = pos_tmp.y;
 		}
 
 		pocirc->config_position(hmarks[iwp].hmark, pos1);
@@ -3353,7 +3349,7 @@ void c_ui_waypoint_obj::update_drawings()
 			pocirc->config_border(hmarks[iwp].hmark, false, 2.0);
 		}
 		else{
-			pocirc->config_border(hmarks[iwp].hmark, false, 1.0);
+			pocirc->config_border(hmarks[iwp].hmark, true, 1.0);
 		}
 
 		glm::vec2 pos_inf = pos1;
@@ -3375,16 +3371,18 @@ void c_ui_waypoint_obj::update_drawings()
 
 void c_ui_waypoint_obj::enable(const int iwp)
 {
-	if (iwp < nmaxwps){
-		pocirc->enable(hmarks[iwp].hmark);
-	}
+	pocirc->enable(hmarks[iwp].hmark);
+	poline->enable(hmarks[iwp].hline_next);
+	poline->enable(hmarks[iwp].hline_inf);
+	potxt->enable(hmarks[iwp].hstr);
 }
 
 void c_ui_waypoint_obj::disable(const int iwp)
 {
-	if (iwp < nmaxwps){
-		pocirc->disable(hmarks[iwp].hmark);
-	}
+	pocirc->disable(hmarks[iwp].hmark);
+	poline->disable(hmarks[iwp].hline_next);
+	poline->disable(hmarks[iwp].hline_inf);
+	poline->disable(hmarks[iwp].hstr);
 }
 
 void c_ui_waypoint_obj::disable()
@@ -3480,10 +3478,7 @@ void c_ui_ais_obj::update_drawings()
 {
 	if (mode == ui_mode_sys) {
 		for (int iobj = 0; iobj < nmax_objs; iobj++) {
-			porect->disable(hmarks[iobj].hmark);
-			poline->disable(hmarks[iobj].hline_inf);
-			poline->disable(hmarks[iobj].hline_vel);
-			potxt->disable(hmarks[iobj].hstr);
+			disable(iobj);
 		}
 		return;
 	}
@@ -3491,15 +3486,7 @@ void c_ui_ais_obj::update_drawings()
 	char buf[64];
 	for (int iobj = 0; iobj < nmax_objs; iobj++){
 		if (!porect->is_enabled(hmarks[iobj].hmark)){
-			poline->disable(hmarks[iobj].hline_inf);
-			poline->disable(hmarks[iobj].hline_vel);
-			potxt->disable(hmarks[iobj].hstr);
 			continue;
-		}
-		else{
-			poline->enable(hmarks[iobj].hline_inf);
-			poline->enable(hmarks[iobj].hline_vel);
-			potxt->enable(hmarks[iobj].hstr);
 		}
 
 		c_ais_obj & obj = objs[iobj];
@@ -3525,9 +3512,17 @@ void c_ui_ais_obj::update_drawings()
 			pos_future = calc_map_pos(rxf, ryf, rzf);
 		}
 		else if(mode == ui_mode_fpv){
-			pos = calc_fpv_pos(rx, ry, rz);
-			pos_future = calc_map_pos(rxf, ryf, rzf);
+			glm::vec3 pos_tmp = calc_fpv_pos(rx, ry, rz);
+			glm::vec3 pos_future_tmp = calc_fpv_pos(rxf, ryf, rzf);
+			if (pos_tmp.z < -1.0) {
+				disable(iobj);
+			}
+			pos.x = pos_tmp.x;
+			pos.y = pos_tmp.y;
+			pos_future.x = pos_future_tmp.x;
+			pos_future.y = pos_future_tmp.y;
 		}
+		glm::vec2 pos_rect((float)(pos.x - 0.5 * sz_rect.x), (float)(pos.y - 0.5 * sz_rect.y));
 
 		porect->config_position(hmarks[iobj].hmark, pos);
 		glm::vec2 pos_inf = pos;
@@ -3540,7 +3535,7 @@ void c_ui_ais_obj::update_drawings()
 		}
 		else{
 			snprintf(buf, 64, "D%4.0f", dist);
-			porect->config_border(hmarks[iobj].hmark, false, 1.0);
+			porect->config_border(hmarks[iobj].hmark, true, 1.0);
 		}
 
 		potxt->set(hmarks[iobj].hstr, buf);
@@ -3555,16 +3550,18 @@ void c_ui_ais_obj::update_drawings()
 
 void c_ui_ais_obj::enable(const int iobj)
 {
-	if (objs.size() > iobj && iobj >= 0){
-		porect->enable(hmarks[iobj].hmark);
-	}
+	porect->enable(hmarks[iobj].hmark);
+	poline->enable(hmarks[iobj].hline_inf);
+	poline->enable(hmarks[iobj].hline_vel);
+	potxt->enable(hmarks[iobj].hstr);
 }
 
 void c_ui_ais_obj::disable(const int iobj)
 {
-	if (objs.size() > iobj && iobj >= 0){
-		porect->disable(hmarks[iobj].hmark);
-	}
+	porect->disable(hmarks[iobj].hmark);
+	poline->disable(hmarks[iobj].hline_inf);
+	poline->disable(hmarks[iobj].hline_vel);
+	potxt->disable(hmarks[iobj].hstr);
 }
 
 void c_ui_ais_obj::disable()
@@ -3589,7 +3586,7 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
 	glm::vec2 pos(0, 0);
 	hship = potri->add(clr, pos, 0, sz);
 	potri->config_depth(hship, 0);
-	potri->config_border(hship, false, 1.0);
+	potri->config_border(hship, true, 1.0);
 
 	float pts[4] = { 0, 0, 1, 1 };
 	hline_vel = poline->add(2, pts);
