@@ -754,7 +754,7 @@ public:
   GLuint loc_mode, loc_gcolor, loc_gcolorb, loc_pos2d, loc_inv_sz_half_scrn,
 	  loc_Mmvp, loc_Mm, loc_Lpar, loc_sampler, 
 	  loc_depth2d, loc_position, loc_normal, loc_texcoord;
-  float inv_sz_half_scrn[2], fov_cam, fcam, ifcam, height_cam, dir_cam_hdg, dir_cam_hdg_drag;
+  float inv_sz_half_scrn[2], fov_cam_x, fov_cam_y, fcam, ifcam, height_cam, dir_cam_hdg, dir_cam_hdg_drag;
   float iRE, height_cam_ec, dhorizon_cam, dhorizon_arc, zhorizon, th_horizon;
   bool setup_shader();
 

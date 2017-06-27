@@ -63,7 +63,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					 m_img_x_flip(false), m_img_y_flip(false), m_img2_x_flip(false), m_img2_y_flip(false),
 					 m_mode(AUM_NORMAL), m_ui_menu(false), m_menu_focus(0),
 					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.), m_bsvw(false), m_bss(false),
-					 fov_cam(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
+					 fov_cam_x(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
 	num_max_wps(100), num_max_ais(100),
 					 map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
 					 pt_map_center_enu(0, 0), bmap_center_free(false)
@@ -113,7 +113,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("nais", &num_max_ais, "Maximum number of ais objects.");
   register_fpar("sz_mark", &sz_mark, "Radius of the waypoint marker.");
 
-  register_fpar("fov", &fov_cam, "Field of view in FPV mode.");
+  register_fpar("fov", &fov_cam_x, "Field of view in FPV mode.");
   register_fpar("fcam", &fcam, "Focal length of the camera assumed in FPV mode in pixel(calculated from fov if not given).");
 
   register_fpar("height_cam", &height_cam, "Camera height in FPV mode");
@@ -193,13 +193,14 @@ bool f_aws1_ui::init_run()
   inv_sz_half_scrn[0] = (float)(2. / (float)m_sz_win.width);
   inv_sz_half_scrn[1] = (float)(2. / (float)m_sz_win.height);
   if (fcam == 0.0f){
-	  fcam = (float)((float)(m_sz_win.width >> 1) / tan(fov_cam * (0.5 *  PI / 180.0f)));
+	  fcam = (float)((float)(m_sz_win.width >> 1) / tan(fov_cam_x * (0.5 *  PI / 180.0f)));
 	  ifcam = (float)(1.0 / fcam);
   }
   else{ // fov is overriden
 	  ifcam = (float)(1.0 / fcam);
-	  fov_cam = (float)(2.0 * atan((m_sz_win.width >> 1) * ifcam) * 180.0f / PI);
+	  fov_cam_x = (float)(2.0 * atan((m_sz_win.width >> 1) * ifcam) * 180.0f / PI);
   }
+  fov_cam_y = (float)(2.0 * atan((m_sz_win.height >> 1) * ifcam) * 180.0f / PI);
 
   // calculating horizon related parameters 
   iRE = (float)(1.0 / RE);
@@ -232,9 +233,9 @@ bool f_aws1_ui::init_run()
   glm::vec2 sz_scrn(m_sz_win.width, m_sz_win.height);
   glm::vec2 sz_mark_xy(sz_mark, sz_mark);
   uim.init(&orect, &otri, &otxt, &oline, 
-	  clr, clrb, sz_fnt, fov_cam, sz_scrn);
+	  clr, clrb, sz_fnt, fov_cam_x, sz_scrn);
 
-  if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr, fov_cam, sz_scrn))
+  if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr, fov_cam_x, sz_scrn))
 	  return false;
   if (!owp.init(&ocirc, &otxt, &oline, clr, sz_fnt_small, sz_mark, num_max_wps))
 	  return false;
@@ -1110,8 +1111,8 @@ bool f_aws1_ui::proc()
 		s = (float)sin(th);
 
 		float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
-		pm = glm::perspective(fov_cam, ratio, 1.f, 30e6f);
-		vm = glm::lookAt(glm::vec3(0, height_cam, 0), glm::vec3(s, height_cam, c), glm::vec3(0, 1, 0));
+		pm = glm::perspective((float)(fov_cam_y * PI / 180.0f), ratio, 1.f, 30e6f);
+		vm = glm::lookAt(glm::vec3(0, height_cam, 0), glm::vec3(s, height_cam, c), glm::vec3(0, -1, 0));
 		pvm = pm * vm;
 		own_ship.disable();
 	}
@@ -3524,7 +3525,7 @@ void c_ui_ais_obj::update_drawings()
 		}
 		glm::vec2 pos_rect((float)(pos.x - 0.5 * sz_rect.x), (float)(pos.y - 0.5 * sz_rect.y));
 
-		porect->config_position(hmarks[iobj].hmark, pos);
+		porect->config_position(hmarks[iobj].hmark, pos_rect);
 		glm::vec2 pos_inf = pos;
 		pos_inf.y += sz_rect.y;
 
