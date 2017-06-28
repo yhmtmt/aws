@@ -618,6 +618,11 @@ namespace avt_vmb_cam{
 					return false;
 				}
 
+				FeaturePtr pFeature;
+				if (pcam_pars[icam]->GevSCPSPacketSize == INT_MIN){ // if packet size is not specified
+					pcam_pars[icam]->pcam->GetFeatureByName("GVSPAdjustPacketSize", pFeature);
+					pFeature->RunCommand();
+				}
 				if (config_static_params(*pcam_pars[icam]) == false){
 					return false;
 				}
@@ -680,6 +685,13 @@ namespace avt_vmb_cam{
 					(**itr).RunCommand();
 
 				ttrig_prev = m_cur_time;
+			}
+
+			for (int icam = 0; icam < ncam; icam++){
+				if (pcam_pars[icam]->update){
+					config_dynamic_params(*pcam_pars[icam]);
+					pcam_pars[icam]->update = false;
+				}
 			}
 			return true;
 		}
