@@ -9,9 +9,11 @@ fset cam PixelFormat Bayer8
 fset cam ReverseX yes
 fset cam ReverseY no
 fset cam GevSCPSPacketSize 1477
-fset cam StreamBytesPerSecond 10000000
+fset cam TriggerSource Software
+fset cam StreamBytesPerSecond 50000000
+fset cam ttrig 10000000
 filter debayer deb -i bayer -o clr
-fset deb bayer GR8
+fset deb bayer RG8
 
 # for windows dswin shows the images
 #filter dswin win -i clr -o 
