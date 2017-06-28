@@ -132,11 +132,11 @@ namespace avt_vmb_cam{
 		"The starting column of the readout region.", 
 		"The starting row of the readout region", 
 		"PixelFormat", 
-		"The width of the image"
+		"The width of the image",
 		"Flip the image sent by camera horizontally", 
 		"Flip the image sent by camera vertically",
 		"Payload size",
-		"Number of frames in queue."
+		"Number of frames in queue.",
 		"IP address of the camera",
 		"Updates dynamic parameters",
 		"Image channel"
@@ -209,33 +209,42 @@ namespace avt_vmb_cam{
 
 	bool f_avt_vmb_cam::init_interface()
 	{
+	  cout << "Initializing Vimba interface ";
 		if (psys == NULL){
 			psys = &VimbaSystem::GetInstance();
 		}
 		psys->Startup();
+		cout << " ... done" << endl;
 		return true;
 	}
 
 	void f_avt_vmb_cam::destroy_interface()
 	{
+	  cout << "Shutting down Vimba interface ";
 		psys->Shutdown();
 		psys = NULL;
+		cout << " ... done" << endl;
 	}
 
 	f_avt_vmb_cam::f_avt_vmb_cam(const char * name) : f_base(name)
 	{
+	  cout << "Creating " << name;
 		if (m_num_avt_vmb_cams == 0){
 			init_interface();
 		}
 		m_num_avt_vmb_cams++;
+		cout << " ... done." << endl;
 	}
 
 	f_avt_vmb_cam::~f_avt_vmb_cam()
 	{
+	  cout << "Destructing " << m_name;
 		m_num_avt_vmb_cams--;
 		if (m_num_avt_vmb_cams == 0){
+		  
 			destroy_interface();
 		}
+		cout << " ... done." << endl;
 	}
 
 	void f_avt_vmb_cam::register_params(s_cam_params & par)
@@ -345,7 +354,8 @@ namespace avt_vmb_cam{
 		ReverseX(false),
 		ReverseY(false),
 		PayloadSize(INT_MIN),
-		nfrmbuf(3)
+							       nfrmbuf(3),
+							       bopened(false)
 	{
 		// creating parameter string
 		if (icam > 1000){

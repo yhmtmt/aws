@@ -180,7 +180,7 @@ class LinearSolverEigen: public LinearSolver<MatrixType>
         assert(rows == A.cols() && "Matrix A is not square");
 
         // Adapt the block permutation to the scalar matrix
-        PermutationMatrix scalarP;
+	Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> scalarP;
         scalarP.resize(rows);
         int scalarIdx = 0;
         for (int i = 0; i < blockP.size(); ++i) {
@@ -198,6 +198,7 @@ class LinearSolverEigen: public LinearSolver<MatrixType>
       G2OBatchStatistics* globalStats = G2OBatchStatistics::globalStats();
       if (globalStats)
         globalStats->timeSymbolicDecomposition = get_monotonic_time() - t;
+
     }
 
     void fillSparseMatrix(const SparseBlockMatrix<MatrixType>& A, bool onlyValues)

@@ -17,9 +17,9 @@ INST_DIR = ./bin
 OFLAGS = -O3
 
 # Platform specification
-#BOARD = jtx
+BOARD = jtx
 #BOARD = jtk
-BOARD = zed
+#BOARD = zed
 #BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
@@ -35,7 +35,8 @@ DEFS = -D_$(CPU) -D_$(OS)
 
 # module switch setting
 SANYO_HD5400 = n
-AVT_CAM = y
+AVT_CAM = n
+VMB_CAM = y
 UVC_CAM = y
 GST_CAM = y
 FWINDOW = n
@@ -48,19 +49,22 @@ FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
 RCMD_DIR = $(CUR_DIR)/rcmd
-INC_CV_DIR = $(CUR_DIR)/opencv/include
-LIB_CV_DIR = $(CUR_DIR)/opencv/lib
+INC_CV_DIR = /usr/local/opencv/include
+LIB_CV_DIR = /usr/local/opencv/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
-INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
-LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
-INC_EIGEN_DIR = /usr/local/include/eigen3
+INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
+LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_64bit
+INC_GLFW_DIR = /usr/include/GLFW
+LIB_GLFW_DIR = /usr/lib/aarch64-linux-gnu
+INC_EIGEN_DIR = /usr/include/eigen3
 INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
 INC_GST = /usr/include/gstreamer-1.0
 LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
 INC_GLIB = /usr/include/glib-2.0
 INC_GLIB_CONFIG = /usr/lib/arm-linux-gnueabihf/glib-2.0/include
-INC_GLM = $(CUR_DIR)/glm
+#INC_GLM = $(CUR_DIR)/glm
+INC_GLM = /usr/include/glm
 
 # modules
 MODS = filter channel util
@@ -110,6 +114,7 @@ endif
 
 ifeq ($(BOARD), jtx)
 	CPU 	= arm
+	INC += -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -I/usr/lib/aarch64-linux-gnu/gstreamer-1.0/include
 	INC_CV_DIR = /usr/local/include
 	LIB_CV_DIR = /usr/local/lib
 	INC_EIGEN_DIR = /usr/local/include/eigen3
@@ -137,11 +142,10 @@ ifeq ($(BOARD), jtk)
 	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr
 	FILTER += f_glfw_window  f_glfw_stereo_view 
 endif # jtk
-else
-	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lglut 
-endif # cpu is not arm
+else # cpu is not arm
+	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lGLU -lglut 
+endif 
 	DEFS += -DGLFW_WINDOW 
-	FILTER += f_glfw_window  f_glfw_stereo_view 
 	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev f_aws3_ui f_state_estimator
 	OFLAGS += -fopenmp
 endif
@@ -192,6 +196,14 @@ ifeq ($(AVT_CAM),y)
 	LIB += -L$(LIB_PVAPI_DIR) -lPvAPI
 	FILTER += f_avt_cam f_avt_mono f_avt_stereo
 	DEFS += -DAVT_CAM
+endif
+
+################################################## f_avt_vmb_cam configuration
+ifeq ($(VMB_CAM),y)
+	INC += -I$(INC_VMB_DIR)
+	LIB += -L$(LIB_VMB_DIR) -lVimbaC -lVimbaCPP
+	FILTER += f_avt_vmb_cam
+	DEFS += -DAVT_VMB_CAM
 endif
 
 ###################################################### f_uvc_cam configuration
