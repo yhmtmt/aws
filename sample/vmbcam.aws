@@ -10,7 +10,17 @@ fset cam PixelFormat Mono8
 fset cam ReverseX yes
 fset cam ReverseY no
 fset cam GevSCPSPacketSize 1477
-fset cam StreamBytesPerSecond 10000000
+fset cam TriggerSource Software
+fset cam StreamBytesPerSecond 50000000
+fset cam ttrig 10000000
+filter debayer deb -i bayer -o clr
+fset deb bayer RG8
+
+# for transfering via tcp network
+#filter imwrite iw -i clr -o 
+#fset iw type jpg
+#fset iw qjpg 20
+
 #filter debayer deb -i bayer -o clr
 #fset deb bayer GR8
 
