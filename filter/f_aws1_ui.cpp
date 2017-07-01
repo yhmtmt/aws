@@ -66,7 +66,7 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 					 fov_cam_x(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
 	num_max_wps(100), num_max_ais(100),
 					 map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
-					 pt_map_center_enu(0, 0), bmap_center_free(false)
+					 bmap_center_free(false)
 {
 	m_path_storage[0] = '.';m_path_storage[1] = '\0';
 
@@ -231,7 +231,7 @@ bool f_aws1_ui::init_run()
   glm::vec4 clrb(0, 0, 0, 0);
   glm::vec2 sz_fnt(20, 20), sz_fnt_small(10, 10);
   glm::vec2 sz_scrn(m_sz_win.width, m_sz_win.height);
-  glm::vec2 sz_mark_xy(sz_mark, sz_mark);
+  glm::vec2 sz_mark_xy((float)(2.0 * sz_mark), (float)(2.0 * sz_mark));
   uim.init(&orect, &otri, &otxt, &oline, 
 	  clr, clrb, sz_fnt, fov_cam_x, sz_scrn);
 
@@ -1112,7 +1112,7 @@ bool f_aws1_ui::proc()
 
 		float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
 		pm = glm::perspective((float)(fov_cam_y * PI / 180.0f), ratio, 1.f, 30e6f);
-		vm = glm::lookAt(glm::vec3(0, height_cam, 0), glm::vec3(s, height_cam, c), glm::vec3(0, -1, 0));
+		vm = glm::lookAt(glm::vec3(0, height_cam, 0), glm::vec3(s, height_cam, -c), glm::vec3(0, 1, 0));
 		pvm = pm * vm;
 		own_ship.disable();
 	}
@@ -1270,21 +1270,25 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 	if (vm == ui_mode_map)
 	{
 		if (!bmap_center_free){
-			pt_map_center_enu.x = pt_map_center_enu.y = 0;
 			pt_map_center_ecef.x = xown;
 			pt_map_center_ecef.y = yown;
 			pt_map_center_ecef.z = zown;
-			pt_map_center_bih.x = lat;
-			pt_map_center_bih.y = lon;
+			pt_map_center_bih.x = lat * PI / 180.0f;
+			pt_map_center_bih.y = lon * PI / 180.0f;
 			Rmap = Rown;
 		}
-
 		pt_mouse_enu.x = pt_mouse.x * meter_per_pix;
 		pt_mouse_enu.y = pt_mouse.y * meter_per_pix;
+		pt_mouse_enu.z = 0.f;
+		float alt = 0;
+		wrldtoecef(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
+			pt_mouse_enu.x, pt_mouse_enu.y, pt_mouse_enu.z,
+			pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z);
+		eceftobih(pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z,
+			pt_mouse_bih.x, pt_mouse_bih.y, alt);
 	}
 	else if (vm == ui_mode_fpv)
 	{
-		pt_map_center_enu.x = pt_map_center_enu.y = 0;
 		pt_map_center_ecef.x = xown;
 		pt_map_center_ecef.y = yown;
 		pt_map_center_ecef.z = zown;
@@ -1315,14 +1319,14 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 		pt_mouse_enu.x = (float)(c * pcam.x + s * pcam.y);
 		pt_mouse_enu.y = (float)(-s * pcam.x + c * pcam.y);
 		pt_mouse_enu.z = (float)(pcam.z - height_cam);
-	}
 
-	float alt = 0;
-	wrldtoecef(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
-		pt_mouse_enu.x, pt_mouse_enu.y, pt_mouse_enu.z,
-		pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z);
-	eceftobih(pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z,
-		pt_mouse_bih.x, pt_mouse_bih.y, alt);
+		float alt = 0;
+		wrldtoecef(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
+			pt_mouse_enu.x, pt_mouse_enu.y, pt_mouse_enu.z,
+			pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z);
+		eceftobih(pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z,
+			pt_mouse_bih.x, pt_mouse_bih.y, alt);
+	}
 }
 
 void f_aws1_ui::add_waypoint(c_route_cfg_box * prc_box)
@@ -1348,15 +1352,25 @@ void f_aws1_ui::drag_waypoint()
 
 void f_aws1_ui::drag_map()
 {
-	if (bmap_center_free){
+	if (!bmap_center_free){
 		bmap_center_free = true;
 	}
 	// change map center
-	pt_map_center_bih = pt_mouse_bih;
-	bihtoecef(pt_mouse_bih.x, pt_mouse_bih.y, 0.0f,
-		pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
-	pt_map_center_enu.x = pt_map_center_enu.y = 0;
-	getwrldrotf(pt_map_center_ecef.x, pt_map_center_ecef.y, Rmap);
+	glm::vec2 d_pt_mouse = pt_mouse_drag_begin - pt_mouse;
+	d_pt_mouse.x *= meter_per_pix;
+	d_pt_mouse.y *= meter_per_pix;
+	glm::vec3 pt_map_center_ecef_new;
+	float alt;
+	wrldtoecef(Rmap, 
+		pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
+		d_pt_mouse.x, d_pt_mouse.y, 0.,
+		pt_map_center_ecef_new.x, pt_map_center_ecef_new.y, pt_map_center_ecef_new.z);
+	pt_map_center_ecef = pt_map_center_ecef_new;
+
+	eceftobih(pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
+		pt_map_center_bih.x, pt_map_center_bih.y, alt);
+	getwrldrot(pt_map_center_bih.x, pt_map_center_bih.y, Rmap);
+	pt_mouse_drag_begin = pt_mouse;
 }
 
 void f_aws1_ui::drag_cam_dir()
@@ -1392,7 +1406,6 @@ void f_aws1_ui::handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_bo
 	switch (mouse_state){
 	case ms_normal:
 		pt_mouse_drag_begin = pt_mouse;
-		pt_mouse_drag_begin_enu = pt_mouse_enu;
 		mouse_state = ms_drag;
 		break;
 	}
@@ -3332,7 +3345,7 @@ void c_ui_waypoint_obj::update_drawings()
 		}
 		else if(mode == ui_mode_fpv){
 			glm::vec3 pos_tmp = calc_fpv_pos(wp.rx, wp.ry, wp.rz);
-			if (pos_tmp.z < -1.0) { // back side
+			if (pos_tmp.z > 1.0) { // back side
 				disable(iwp);
 				continue;
 			}
@@ -3515,7 +3528,7 @@ void c_ui_ais_obj::update_drawings()
 		else if(mode == ui_mode_fpv){
 			glm::vec3 pos_tmp = calc_fpv_pos(rx, ry, rz);
 			glm::vec3 pos_future_tmp = calc_fpv_pos(rxf, ryf, rzf);
-			if (pos_tmp.z < -1.0) {
+			if (pos_tmp.z > 1.0) {
 				disable(iobj);
 			}
 			pos.x = pos_tmp.x;
@@ -3524,8 +3537,6 @@ void c_ui_ais_obj::update_drawings()
 			pos_future.y = pos_future_tmp.y;
 		}
 		glm::vec2 pos_rect((float)(pos.x - 0.5 * sz_rect.x), (float)(pos.y - 0.5 * sz_rect.y));
-
-		porect->config_position(hmarks[iobj].hmark, pos_rect);
 		glm::vec2 pos_inf = pos;
 		pos_inf.y += sz_rect.y;
 
@@ -3542,7 +3553,7 @@ void c_ui_ais_obj::update_drawings()
 		potxt->set(hmarks[iobj].hstr, buf);
 		potxt->config_position(hmarks[iobj].hstr, pos_inf);
 		poline->config_position(hmarks[iobj].hline_inf, pos);
-		porect->config_position(hmarks[iobj].hmark, pos);
+		porect->config_position(hmarks[iobj].hmark, pos_rect);
 
 		float pts[4] = { pos.x, pos.y, pos_future.x, pos_future.y };
 		poline->config_points(hmarks[iobj].hline_vel, pts);

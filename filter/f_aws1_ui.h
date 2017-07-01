@@ -497,8 +497,8 @@ protected:
 	glm::vec2 calc_map_pos(const float rx, const float ry, const float rz)
 	{
 		glm::vec2 pos;
-		pos.x = meter_per_pix * rx;
-		pos.y = meter_per_pix * ry;
+		pos.x = pix_per_meter * rx;
+		pos.y = pix_per_meter * ry;
 		return pos;
 	}
 public:
@@ -809,7 +809,7 @@ public:
 
   // mouse related members
   glm::vec2 pt_mouse, pt_mouse_drag_begin, pt_mouse_bih;
-  glm::vec3 pt_mouse_ecef, pt_mouse_enu, pt_mouse_drag_begin_enu;
+  glm::vec3 pt_mouse_ecef, pt_mouse_enu;
   int mouse_button, mouse_action, mouse_mods;
   s_obj obj_mouse_on;
 
@@ -832,7 +832,7 @@ public:
   // map related members
   bool bmap_center_free;
   Mat Rmap;
-  glm::vec2 pt_map_center_enu, pt_map_center_bih;
+  glm::vec2 pt_map_center_bih;
   glm::vec3 pt_map_center_ecef;
   float map_range, meter_per_pix, pix_per_meter;
   void recalc_range()
