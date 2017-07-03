@@ -1273,7 +1273,7 @@ void c_gl_2d_line_obj::config_depth(const int handle, const int depth)
 {
 	if (handle < lbis.size())
 	{
-		lbis[handle].z = -1.0 + (float)(depth * zstep);
+		lbis[handle].z = 1.0 - (float)(depth * zstep);
 	}
 }
 
@@ -1906,7 +1906,7 @@ void c_gl_2d_obj::config_depth(const int handle, const int depth)
 {
 	if (handle < iis.size())
 	{
-		iis[handle].z = -1.0 + (float)(depth * zstep);
+		iis[handle].z = 1.0 - (float)(depth * zstep);
 		reorder(handle);
 	}
 }
@@ -1918,7 +1918,7 @@ void c_gl_2d_obj::reorder(const int handle)
 	s_inst_inf & ii1 = iis[handle];
 	for (int iorder = order + 1; iorder < iis_sorted_by_depth.size(); iorder++){
 		s_inst_inf & ii2 = iis[iis_sorted_by_depth[iorder]];
-		if (ii1.z > ii2.z){
+		if (ii1.z < ii2.z){
 			int handle2 = iis_sorted_by_depth[iorder];
 			iis_sorted_by_depth[iorder] = handle;
 			iis_sorted_by_depth[iorder - 1] = handle2;
@@ -1933,7 +1933,7 @@ void c_gl_2d_obj::reorder(const int handle)
 
 	for (int iorder = order - 1; iorder >= 0; iorder--){
 		s_inst_inf & ii2 = iis[iis_sorted_by_depth[iorder]];
-		if (ii1.z < ii2.z){
+		if (ii1.z > ii2.z){
 			int handle2 = iis_sorted_by_depth[iorder];
 			iis_sorted_by_depth[iorder] = handle;
 			iis_sorted_by_depth[iorder + 1] = handle2;

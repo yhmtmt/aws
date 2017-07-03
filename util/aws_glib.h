@@ -425,7 +425,7 @@ class c_gl_2d_line_obj{
 		glm::mat2 R;
 		unsigned int offset;
 		unsigned int npts;
-		s_line_buffer_inf() :offset(0), npts(0), vtx(NULL), bvalid(false), bactive(false), bupdated(false)
+		s_line_buffer_inf() :offset(0), npts(0), vtx(NULL), bvalid(false), bactive(false), bupdated(false), w(1.0), z(1.0), rot(0.f)
 		{}
 	};
 
@@ -460,8 +460,6 @@ public:
 			lbis[handle].bactive = false;
 		}
 	}
-
-
 
 	void config_color(const glm::vec4 & _clr)
 	{
@@ -610,7 +608,7 @@ private:
 		float z;		// depth
 		unsigned int vtxoffset;
 		unsigned int idxtoffset, idxsoffset;
-		s_inst_inf() :bvalid(false), bactive(false), bupdated(false), bborder(false), binlst(false), z(-1.)
+		s_inst_inf() :bvalid(false), bactive(false), bupdated(false), bborder(false), binlst(false), z(1.), w(1.0)
 		{}
 	};
 

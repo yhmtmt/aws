@@ -485,7 +485,7 @@ protected:
 	glm::vec3 calc_fpv_pos(const float rx, const float ry, const float rz)
 	{
 		glm::vec3 pos;
-		glm::vec4 x(rx, rz, ry, 1), xprj;
+		glm::vec4 x(rx, ry, rz, 1), xprj;
 		xprj = pv * x;
 		float iw = (float)(1.0 / xprj.w);
 		pos.x = xprj.x * iw * sz_scrn.x;

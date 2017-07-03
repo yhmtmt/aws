@@ -1113,7 +1113,7 @@ bool f_aws1_ui::proc()
 
 		float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
 		pm = glm::perspective((float)(fov_cam_y * PI / 180.0f), ratio, 1.f, 30e6f);
-		vm = glm::lookAt(glm::vec3(0, height_cam, 0), glm::vec3(s, height_cam, -c), glm::vec3(0, 1, 0));
+		vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(s, c, height_cam), glm::vec3(0, 0, 1));
 		pvm = pm * vm;
 		own_ship.disable();
 	}
@@ -3337,17 +3337,19 @@ void c_ui_waypoint_obj::update_drawings()
 
 	char buf[20];
 	glm::vec2 pos0, pos1;
-	for (int iwp = 0; iwp < nmaxwps; iwp++){
-		if (!pocirc->is_enabled(hmarks[iwp].hmark)){
-			continue;
+	int iwp_last = 0;
+	for (int iwp = 0; iwp < nmaxwps; iwp++) {
+		if (!pocirc->is_enabled(hmarks[iwp].hmark)) {
+			break;
 		}
+		iwp_last = iwp;
 
 		s_wp & wp = wps[iwp];
 
-		if (mode == ui_mode_map){
+		if (mode == ui_mode_map) {
 			pos1 = calc_map_pos(wp.rx, wp.ry, wp.rz);
 		}
-		else if(mode == ui_mode_fpv){
+		else if (mode == ui_mode_fpv) {
 			glm::vec3 pos_tmp = calc_fpv_pos(wp.rx, wp.ry, wp.rz);
 			if (pos_tmp.z > 1.0) { // back side
 				disable(iwp);
@@ -3358,25 +3360,28 @@ void c_ui_waypoint_obj::update_drawings()
 		}
 
 		pocirc->config_position(hmarks[iwp].hmark, pos1);
-		if (iwp > 0){
+		if (iwp > 0) {
 			float x[4] = { pos0.x, pos0.y, pos1.x, pos1.y };
 			poline->config_points(hmarks[iwp].hline_next, x);
 		}
-
-		if (iwp == focus){
-			pocirc->config_border(hmarks[iwp].hmark, false, 2.0);
+		else {
+			poline->disable(hmarks[iwp].hline_next);
 		}
-		else{
+
+		if (iwp == focus) {
+			pocirc->config_border(hmarks[iwp].hmark, true, 2.0);
+		}
+		else {
 			pocirc->config_border(hmarks[iwp].hmark, true, 1.0);
 		}
 
 		glm::vec2 pos_inf = pos1;
 		pos_inf.x += (float)(2.0 * rmark);
 		pos_inf.y += (float)(2.0 * rmark);
-		if (iwp == next){
+		if (iwp == next) {
 			snprintf(buf, 20, "WP%03d\nD%4.0f\nC%3.1f", iwp, dist, crs);
 		}
-		else{
+		else {
 			snprintf(buf, 20, "WP%03d", iwp);
 		}
 		potxt->set(hmarks[iwp].hstr, buf);
