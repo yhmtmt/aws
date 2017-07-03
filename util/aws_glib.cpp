@@ -1844,6 +1844,7 @@ void c_gl_2d_obj::config_rotation(const int handle, const float rot)
 	}
 }
 
+
 void c_gl_2d_obj::config_scale(const int handle, const float scale)
 {
 	if (handle < iis.size())

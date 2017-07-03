@@ -217,7 +217,7 @@ bool f_aws1_ui::init_run()
 	  glm::vec2 sz(1, 1);
 	  if (!orect.init_rectangle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, lb, sz, 256))
 		  return false;
-	  if (!otri.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 3, 1, 1, 16))
+	  if (!otri.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 3, 1, 1, 256))
 		  return false;
 	  if (!ocirc.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 10, 1, 1, 256))
 		  return false;
@@ -232,20 +232,23 @@ bool f_aws1_ui::init_run()
   glm::vec2 sz_fnt(20, 20), sz_fnt_small(10, 10);
   glm::vec2 sz_scrn(m_sz_win.width, m_sz_win.height);
   glm::vec2 sz_mark_xy((float)(2.0 * sz_mark), (float)(2.0 * sz_mark));
+  glm::vec2 sz_ship2d(sz_fnt.x, (float)(sz_fnt.y * 0.5));
+
   uim.init(&orect, &otri, &otxt, &oline, 
 	  clr, clrb, sz_fnt, fov_cam_x, sz_scrn);
 
-  
   if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr, fov_cam_x, sz_scrn))
 	  return false;
  
   if (!owp.init(&ocirc, &otxt, &oline, clr, sz_fnt_small, sz_mark, num_max_wps))
 	  return false;
 
-  if (!oais.init(&orect, &otxt, &oline, clr, sz_fnt_small, sz_mark_xy, num_max_ais))
+  if (!oais.init(&orect, &otri, &otxt, &oline, clr, sz_fnt_small, sz_mark_xy, num_max_ais))
 	  return false;
-  if (!own_ship.init(&otri, &oline, clr, glm::vec2(sz_fnt.x, (float)(sz_fnt.y * 0.5))))
+
+  if (!own_ship.init(&otri, &oline, clr, sz_ship2d))
 	  return false;
+
   if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
 	  return false;
 
@@ -3439,19 +3442,22 @@ int c_ui_waypoint_obj::collision(const glm::vec2 pos)
 }
 
 /////////////////////////////////////////////////////////////////// c_ais_obj
-bool c_ui_ais_obj::init(c_gl_2d_obj * _porect,
+bool c_ui_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
 	c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline,
 	const glm::vec4 & _clr, const glm::vec2 & sz_fnt, 
 	const glm::vec2 & _sz_rect, const unsigned int _nmax_objs)
 {
 	nmax_objs = _nmax_objs;
 	porect = _porect;
+	potri = _potri;
 	potxt = _potxt;
 	poline = _poline;
 
 	sz_rect = _sz_rect;
 	clr = _clr;
 	glm::vec2 pos(0.f, 0.f), mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y);
+	glm::vec2 sz_ship2d(sz_fnt.x, (float)(sz_fnt.y * 0.5));
+
 	hmarks.resize(nmax_objs);
 	objs.resize(nmax_objs);
 	for (int i = 0; i < nmax_objs; i++){
@@ -3459,6 +3465,12 @@ bool c_ui_ais_obj::init(c_gl_2d_obj * _porect,
 		porect->config_border(hmarks[i].hmark, true, 1.0);
 		porect->config_depth(hmarks[i].hmark, 0);
 		porect->disable(hmarks[i].hmark);
+
+		hmarks[i].hship2d = potri->add(clr, pos, 0.0f, sz_ship2d);
+		potri->config_border(hmarks[i].hship2d, false, 1.0);
+		potri->config_depth(hmarks[i].hship2d, 1);
+		potri->disable(hmarks[i].hship2d);
+
 		hmarks[i].hstr = potxt->reserv(64);
 		potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), 
 			sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, 0);
@@ -3518,12 +3530,13 @@ void c_ui_ais_obj::update_drawings()
 		eceftowrld(Rmap, xmap, ymap, zmap, x, y, z, rx, ry, rz);
 
 		unsigned int mmsi = obj.get_mmsi();
-		float bear, dist, tcpa, dcpa, nvx, nvy, vxr, vyr, vzr, cog, sog;
+		float bear, dist, tcpa, dcpa, nvx, nvy, vxr, vyr, vzr, cog, sog, roll, pitch, yaw;
 		obj.get_pos_bd(bear, dist);
 		obj.get_tdcpa(tcpa, dcpa);
 		obj.get_vel_rel(vxr, vyr, vzr);
 		obj.get_vel_vec2d(nvx, nvy);
 		obj.get_vel_bih(cog, sog);
+		obj.get_att(roll, pitch, yaw);
 
 		rxf = rx + vxr * tvel;
 		ryf = ry + vyr * tvel;
@@ -3531,10 +3544,15 @@ void c_ui_ais_obj::update_drawings()
 
 		glm::vec2 pos, pos_future;
 		if (mode == ui_mode_map){
+			potri->config_rotation(hmarks[iobj].hship2d, (float)((90.0f - yaw) * PI / 180.));
+			potri->enable(hmarks[iobj].hship2d);
+
 			pos = calc_map_pos(rx, ry, rz);
 			pos_future = calc_map_pos(rxf, ryf, rzf);
+			potri->config_position(hmarks[iobj].hship2d, pos);
 		}
 		else if(mode == ui_mode_fpv){
+			potri->disable(hmarks[iobj].hship2d);
 			glm::vec3 pos_tmp = calc_fpv_pos(rx, ry, rz);
 			glm::vec3 pos_future_tmp = calc_fpv_pos(rxf, ryf, rzf);
 			if (pos_tmp.z > 1.0) {
@@ -3579,6 +3597,7 @@ void c_ui_ais_obj::enable(const int iobj)
 
 void c_ui_ais_obj::disable(const int iobj)
 {
+	potri->disable(hmarks[iobj].hship2d);
 	porect->disable(hmarks[iobj].hmark);
 	poline->disable(hmarks[iobj].hline_inf);
 	poline->disable(hmarks[iobj].hline_vel);

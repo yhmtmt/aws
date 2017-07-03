@@ -568,13 +568,14 @@ public:
 class c_ui_ais_obj : public c_ui_obj
 {
 private:
-	c_gl_2d_obj * porect;
+	c_gl_2d_obj * porect, * potri;
 	c_gl_text_obj * potxt;
 	c_gl_2d_line_obj * poline;
+
 	glm::vec2 sz_rect;
 	glm::vec4 clr;
 	struct s_marker{
-		int hmark, hstr, hline_inf, hline_vel;
+		int hmark, hship2d, hstr, hline_inf, hline_vel;
 	};
 	vector<s_marker> hmarks;
 	vector<c_ais_obj> objs;
@@ -586,7 +587,7 @@ public:
 	{
 	}
 
-	bool init(c_gl_2d_obj * porect, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
+	bool init(c_gl_2d_obj * porect, c_gl_2d_obj * potri, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
 		const glm::vec4 & clr, const glm::vec2 & sz_fnt, const glm::vec2 & sz_rect,
 		const unsigned int _nmax_objs = 100);
 	void update_ais_obj(const int iobj, const c_ais_obj & ais_obj);
