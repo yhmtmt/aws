@@ -235,10 +235,13 @@ bool f_aws1_ui::init_run()
   uim.init(&orect, &otri, &otxt, &oline, 
 	  clr, clrb, sz_fnt, fov_cam_x, sz_scrn);
 
+  
   if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr, fov_cam_x, sz_scrn))
 	  return false;
+ 
   if (!owp.init(&ocirc, &otxt, &oline, clr, sz_fnt_small, sz_mark, num_max_wps))
 	  return false;
+
   if (!oais.init(&orect, &otxt, &oline, clr, sz_fnt_small, sz_mark_xy, num_max_ais))
 	  return false;
   if (!own_ship.init(&otri, &oline, clr, glm::vec2(sz_fnt.x, (float)(sz_fnt.y * 0.5))))
@@ -939,10 +942,10 @@ void f_aws1_ui::update_route()
 
 		iwp++;
 	}
-	owp.set_focus(iwp);
+
 	float ddiff, cdiff;
 	m_ch_wp->get_diff(ddiff, cdiff);
-	owp.set_next(m_ch_wp->get_cmd(), ddiff, cdiff);
+	owp.set_next(m_ch_wp->get_next(), ddiff, cdiff);
 
 	if (obj_mouse_on.type == ot_wp){
 		owp.set_focus(obj_mouse_on.handle);
@@ -951,9 +954,7 @@ void f_aws1_ui::update_route()
 		obj_mouse_on.type = ot_nul;
 		obj_mouse_on.handle = -1;
 	}
-	else{
-		owp.set_focus(-1);
-	}
+	owp.set_focus(m_ch_wp->get_focus());
 
 	m_ch_wp->unlock();
 	owp.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
@@ -2639,9 +2640,9 @@ bool c_route_cfg_box::proc(const bool bpushed, const bool breleased)
 			if (btn_released == btn_pushed){
 				command = btn_pushed;
 				if (command == wp_add)
-					set_checked_color(btn_pushed, hstr[btn_pushed]);
+					set_checked_color(hbtn[btn_pushed], hstr[btn_pushed]);
 				else
-					set_normal_color(btn_pushed, hstr[btn_pushed]);
+					set_normal_color(hbtn[btn_pushed], hstr[btn_pushed]);
 				btn_released = btn_pushed = nul;
 			}
 			return true;
@@ -3300,17 +3301,20 @@ bool c_ui_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt, c_gl
 		pocirc->disable(hmarks[i].hmark);
 		hmarks[i].hstr = potxt->reserv(20);
 		potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos, 0, 0);
+		potxt->disable(hmarks[i].hstr);
 
 		float pts[4] = { 0, 0, 0, (float)(rmark * 2.0)};
 		hmarks[i].hline_next = poline->add(2, pts);
 		poline->config_color(hmarks[i].hline_next, clr);
 		poline->config_depth(hmarks[i].hline_next);
 		poline->config_position(hmarks[i].hline_next, pos);
+		poline->disable(hmarks[i].hline_next);
 
 		hmarks[i].hline_inf = poline->add(2, pts);
 		poline->config_color(hmarks[i].hline_inf, clr);
 		poline->config_depth(hmarks[i].hline_inf);
 		poline->config_position(hmarks[i].hline_inf, pos);
+		poline->disable(hmarks[i].hline_inf);
 	}
 	return true;
 }
@@ -3402,7 +3406,7 @@ void c_ui_waypoint_obj::disable(const int iwp)
 void c_ui_waypoint_obj::disable()
 {
 	for (int i = 0; i < nmaxwps; i++){
-		pocirc->disable(hmarks[i].hmark);
+		disable(i);
 	}
 }
 
@@ -3625,8 +3629,10 @@ void c_own_ship::set_param(const float rx, const float ry, const float rz, const
 	potri->config_rotation(hship, th);
 	float pts[4] = {
 		(float)(rx * pix_per_meter), (float)(ry * pix_per_meter),
-		(float)((rx + vx) * pix_per_meter), (float)((ry + vy) * pix_per_meter)
+		(float)((rx + vx * tvel) * pix_per_meter), (float)((ry + vy * tvel) * pix_per_meter)
 	};
+	glm::vec2 pos(pts[0], pts[1]);
+	potri->config_position(hship, pos);
 	poline->config_points(hline_vel, pts);
 }
 

@@ -1742,6 +1742,17 @@ int c_gl_2d_obj::add(const glm::vec4 & clr, const glm::vec2 & pos,
 	iis[handle].r = glm::mat2(c, -s, s, c);
 	iis[handle].sr = iis[handle].r * glm::mat2(scale.x, 0, 0, scale.y);
 
+	if (type == circle) {
+		glm::vec2 & scale = iis[handle].scale;
+		glm::vec2 & r = prottype.r;
+		glm::vec2 & relps2inv = iis[handle].relps2inv;
+		relps2inv.x = (float)(scale.x * r.x);
+		relps2inv.y = (float)(scale.y * r.y);
+		relps2inv.x *= relps2inv.x;
+		relps2inv.y *= relps2inv.y;
+		relps2inv.x = (float)(1.0 / relps2inv.x);
+		relps2inv.y = (float)(1.0 / relps2inv.y);
+	}
 	return handle;
 }
 
@@ -1828,7 +1839,7 @@ void c_gl_2d_obj::config_rotation(const int handle, const float rot)
 		float s = (float)(sin(rot)), c = (float)(cos(rot));
 		iis[handle].r = glm::mat2((float)(c), (float)(-s),
 			(float)(s), (float)(c));
-		iis[handle].sr = iis[handle].r * glm::mat2(scalex, 0, 0, scaley);
+		iis[handle].sr = glm::mat2(scalex, 0, 0, scaley) * iis[handle].r;
 		iis[handle].bupdated = false;
 	}
 }
@@ -1841,7 +1852,7 @@ void c_gl_2d_obj::config_scale(const int handle, const float scale)
 		iis[handle].scale.y = scale;
 		float rot = iis[handle].rot;
 		float s = (float)(sin(rot)), c = (float)(cos(rot));
-		iis[handle].sr = iis[handle].r * glm::mat2(scale, 0, 0, scale);
+		iis[handle].sr = glm::mat2(scale, 0, 0, scale) * iis[handle].r;
 		iis[handle].bupdated = false;
 		if (type == circle){
 			glm::vec2 & scale = iis[handle].scale;
@@ -2145,7 +2156,6 @@ void c_gl_2d_obj::update_vertices()
 
 		glm::mat2 sr = iis[ih].sr;
 		glm::vec2 pos = iis[ih].pos;
-		
 		for (int iv = 0; iv < prottype.nvtx; iv++){
 			s_vertex & v = prottype.vtx[iv];
 			vtx[iv].x = v.x * sr[0][0] + v.y * sr[0][1] + pos.x;

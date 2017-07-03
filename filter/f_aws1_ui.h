@@ -367,7 +367,7 @@ public:
 	{
 		if (_command != nul)
 		{
-			set_normal_color(hbtn[command], hstr[command]);
+			set_normal_color(hbtn[_command], hstr[_command]);
 		}
 	}
 
@@ -616,7 +616,9 @@ public:
 		const glm::vec4 & clr, const glm::vec2 & sz);
 	void set_param(const float rx, const float ry, const float rz,
 		const float hdg, const float vx, const float vy, const float pix_per_meter);
-	void set_vel_len(const float t = 300);
+	void set_vel_len(const float t = 300) {
+		tvel = t;
+	}
 	void enable();
 	void disable();
 };
