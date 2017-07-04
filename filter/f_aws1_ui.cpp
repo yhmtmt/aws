@@ -1605,17 +1605,23 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
 	{
 	case c_route_cfg_box::wp_prev:
 		m_ch_wp->prev_focus();
-		owp.set_focus(m_ch_wp->get_focus());
+		wp = m_ch_wp->get_focus();
+		owp.set_focus(wp);	
+		fwp = m_ch_wp->get_focused_wp();
 		break;
 	case c_route_cfg_box::wp_next:
 		m_ch_wp->next_focus();
-		owp.set_focus(m_ch_wp->get_focus());
+		wp = m_ch_wp->get_focus();
+		owp.set_focus(wp);
+		bno_focused_wp = wp == m_ch_wp->get_num_wps();
+		if (!bno_focused_wp)
+			fwp = m_ch_wp->get_focused_wp();
 		break;
-	case c_route_cfg_box::wp_spd_down:
+	case c_route_cfg_box::wp_spd_up:
 		fwp.v += 1.0;
 		fwp.v = min(fwp.v, 40.0f);
 		break;
-	case c_route_cfg_box::wp_spd_up:
+	case c_route_cfg_box::wp_spd_down:
 		fwp.v -= 1.0;
 		fwp.v = max(fwp.v, 0.0f);
 		break;
@@ -1658,7 +1664,7 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
 
 	wp = m_ch_wp->get_focus();
 
-	if (!bno_focused_wp && wp != m_ch_wp->get_num_wps() && wp < 0)
+	if (!bno_focused_wp && wp < m_ch_wp->get_num_wps() && wp >= 0)
 		m_ch_wp->get_focused_wp() = fwp;
 	spd = (unsigned int)fwp.v;
 	prc_box->set_params(wp, spd, rt);
@@ -3354,10 +3360,12 @@ void c_ui_waypoint_obj::update_drawings()
 		}
 		else if (mode == ui_mode_fpv) {
 			glm::vec3 pos_tmp = calc_fpv_pos(wp.rx, wp.ry, wp.rz);
+			/*
 			if (pos_tmp.z > 1.0) { // back side
 				disable(iwp);
 				continue;
 			}
+			*/
 			pos1.x = pos_tmp.x;
 			pos1.y = pos_tmp.y;
 		}

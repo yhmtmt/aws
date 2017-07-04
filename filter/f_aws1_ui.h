@@ -332,7 +332,7 @@ private:
 	virtual bool handle_left_push(const glm::vec2 & pt);
 	virtual bool handle_left_release(const glm::vec2 & pt);
 public:
-	c_route_cfg_box() :c_aws_ui_box(), wp(0), rt(0), btn_pushed(nul), btn_released(nul), command(nul)
+	c_route_cfg_box() :c_aws_ui_box(), wp(0), spd(0), rt(0), btn_pushed(nul), btn_released(nul), command(nul)
 	{
 		hstr.resize(nul);
 		hbtn.resize(nul);
@@ -389,7 +389,7 @@ public:
 	void get_params(unsigned int & _wp, unsigned int & _spd, unsigned int & _rt)
 	{
 		_wp = wp;
-		_spd = wp;
+		_spd = spd;
 		_rt = rt;
 	}
 };

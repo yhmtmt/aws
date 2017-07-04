@@ -169,7 +169,7 @@ void f_wp_manager::save(const int id)
 		fprintf(pf, "%s\n", m_aws1_waypoint_file_version);
 
 		fprintf(pf, "%d\n", m_wp->get_num_wps());
-		m_wp->lock();
+
 		int i = 0;
 		for (m_wp->begin(); !m_wp->is_end(); m_wp->next()){
 			s_wp & wp = m_wp->cur();
@@ -177,7 +177,6 @@ void f_wp_manager::save(const int id)
 				(float)(wp.lon * (180 / PI)), wp.rarv);
 			i++;
 		}
-		m_wp->unlock();
 		fclose(pf);
 	}
 	else{
