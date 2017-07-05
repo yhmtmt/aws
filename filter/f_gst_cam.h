@@ -19,7 +19,7 @@
 #include "f_base.h"
 #include <gst/gst.h>
 #include <gst/app/gstappsink.h>
-
+#include <gst/app/gstappsrc.h>
 #include "../channel/ch_image.h"
 
 bool cnv_imf(const Mat & src, Mat & dst, const e_imfmt & fmt_in, const e_imfmt & fmt_out);

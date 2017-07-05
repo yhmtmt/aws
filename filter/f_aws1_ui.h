@@ -31,7 +31,7 @@
 
 #include "../util/aws_jpad.h"
 
-#include "c_aws1_ui_core.h"
+#define MAX_RT_FILES 10
 
 enum e_ui_mode {
 	ui_mode_fpv, ui_mode_map, ui_mode_sys, ui_mode_undef
@@ -705,11 +705,6 @@ public:
 	 bool m_img_x_flip, m_img_y_flip;
 	 bool m_img2_x_flip, m_img2_y_flip;
 	 void cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy);
-	 enum e_imv{
-		 IMV_IMG1, IMV_IMG2, IMV_DISP, IMV_IMG12, IMV_IMG12D, IMV_UNDEF
-	 } m_imv;
-	 static const char * m_str_imv[IMV_UNDEF];
-
 	 s_aws1_ctrl_inst m_inst;
 	 s_aws1_ctrl_stat m_stat;
 
@@ -719,14 +714,6 @@ public:
 	 void rcv_ctrl_stat();
 	 double m_mx, m_my;
 	 float m_xscale, m_yscale, m_ixscale, m_iyscale;
-
-	 // User interface mode sets
-	 enum e_aws1_ui_mode {
-		 AUM_NORMAL, AUM_MAP, AUM_DEV, AUM_UNDEF
-	 } m_mode;
-
-	 static const  char * m_str_aws1_ui_mode[AUM_UNDEF];
-	 c_aws1_ui_core * m_ui[AUM_UNDEF];
 
 	 // Main image view related parameters
 	 // Main image view shows an image from m_ch_img, the focal length and the principal point are defined as follows.
@@ -870,26 +857,8 @@ public:
   virtual bool proc();
 
   // If LT+LB+RT+RB is detected, the system forces the controls to be nutral state. Called by default.
-  void ui_force_ctrl_stop();
-
-  void ui_show_img();
-  void ui_show_rudder();
-  void ui_show_meng();
-  void ui_show_seng();
-  void ui_show_state();
-  void ui_show_sys_state();
-  void ui_show_attitude();
-
-  bool m_ui_menu;
-  
-  int m_menu_focus;
-  e_aws1_ctrl_src m_menu_acs;
-  e_aws1_ui_mode m_menu_mode;
-  e_ap_mode m_menu_ap_mode;
-
+  void ui_force_ctrl_stop(c_ctrl_mode_box * pcm_box);
   bool m_quit;
-  void ui_show_menu();
-  void ui_handle_menu();
 };
 
 // helps f_aws1_ui::ui_show_meng and ui_show_seng 

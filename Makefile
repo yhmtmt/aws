@@ -146,7 +146,7 @@ else # cpu is not arm
 	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lGLU -lglut 
 endif 
 	DEFS += -DGLFW_WINDOW 
-	FILTER += f_aws1_ui c_aws1_ui_normal c_aws1_ui_map c_aws1_ui_dev f_aws3_ui f_state_estimator
+	FILTER += f_aws1_ui f_aws3_ui f_state_estimator
 	OFLAGS += -fopenmp
 endif
 

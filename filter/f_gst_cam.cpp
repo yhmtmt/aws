@@ -48,18 +48,18 @@ inline bool cnv_imf(const Mat & src, Mat & dst, const e_imfmt & fmt_in, const e_
   }
   
   switch(fmt_in){
-  case FMT_NV12:
+  case IMF_NV12:
     switch(fmt_out){
-    case FMT_BGR8:
+    case IMF_BGR8:
       cvtColor(src, dst, COLOR_YUV2BGR_NV12);
       return true;
-    case FMT_I420:
+    case IMF_I420:
       cvtColor(src, dst, COLOR_YUV2BGR_I420);
       return true;
     }
-  case FMT_BGR8:
+  case IMF_BGR8:
     switch(fmt_out){
-    case FMT_I420:
+    case IMF_I420:
       cvtColor(src, dst, COLOR_BGR2YUV_I420);
       return true;
     }
@@ -105,7 +105,7 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
 
   // assuming input is nv12. converting it to bgr
   Mat src;
-  switch(fmt_in){
+  switch(pcam->fmt_in){
   case IMF_NV12:
   case IMF_I420:
     src = Mat(sz.height + sz.height / 2, sz.width, CV_8UC1, map.data);
@@ -120,8 +120,8 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
   }
   
   Mat dst;
-  if(cnv_imf(src, dst, fmt_in, fmt_out)){
-    pcam->set_img(img);
+  if(cnv_imf(src, dst, pcam->fmt_in, pcam->fmt_out)){
+    pcam->set_img(dst);
   }
   
   gst_buffer_unmap(buffer, &map);
@@ -154,15 +154,15 @@ gboolean f_gst_cam::bus_callback(GstBus * bus, GstMessage * message, gpointer da
     return true;
 }
 
-f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_sink(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), m_fmt_in(IMF_Undef), m_fmt_out(IMF_Undef)
+f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_sink(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef)
 {
   m_fppl[0] = '\0';
   register_fpar("ch_out", (ch_base**)&m_ch_out, typeid(ch_image_ref).name(), "Channel for image output.");
   register_fpar("width", &m_sz.width, "Width of the image.");
   register_fpar("height", &m_sz.height, "Height of the image.");
   register_fpar("fppl", m_fppl, 1024, "File describes pipe line composition.");
-    register_fpar("fmt_in", (int*)&m_fmt_in, (int)IMF_Undef, str_imfmt, "Input image format.");
-  register_fpar("fmt_out", (int*)&m_fmt_out, (int)IMF_Undef, str_imfmt, "Output image format.");
+    register_fpar("fmt_in", (int*)&fmt_in, (int)IMF_Undef, str_imfmt, "Input image format.");
+  register_fpar("fmt_out", (int*)&fmt_out, (int)IMF_Undef, str_imfmt, "Output image format.");
 
 }
 
@@ -218,7 +218,7 @@ bool f_gst_cam::init_run()
 void f_gst_cam::destroy_run()
 {
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_NULL);
-  gst_object_unref(m_src); 
+  gst_object_unref(m_sink); 
   gst_object_unref(GST_OBJECT(m_ppl));
 }
 
@@ -268,13 +268,13 @@ gboolean f_gst_enc::bus_callback(GstBus * bus, GstMessage * message, gpointer da
     return true;  
 }
 
-f_gst_enc::f_gst_enc(const char * name):m_ch_in(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_src(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), m_fmt_in(IMF_Undef), m_fmt_out(IMF_Undef)
+f_gst_enc::f_gst_enc(const char * name):f_base(name), m_ch_in(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_src(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef)
 {
   m_fppl[0] = '\0';
   register_fpar("ch_in", (ch_base**)&m_ch_in, typeid(ch_image_ref).name(), "Channel for image input.");
   register_fpar("fppl", m_fppl, 1024, "File describes pipe line composition.");
-  register_fpar("fmt_in", (int*)&m_fmt_in, (int)IMF_Undef, str_imfmt, "Input image format.");
-  register_fpar("fmt_out", (int*)&m_fmt_out, (int)IMF_Undef, str_imfmt, "Output image format.");
+  register_fpar("fmt_in", (int*)&fmt_in, (int)IMF_Undef, str_imfmt, "Input image format.");
+  register_fpar("fmt_out", (int*)&fmt_out, (int)IMF_Undef, str_imfmt, "Output image format.");
   register_fpar("width", &m_sz.width, "Width of the image.");
   register_fpar("height", &m_sz.height, "Height of the image.");
   register_fpar("fps", &m_fps, "Frame per second.");
@@ -329,19 +329,19 @@ bool f_gst_enc::init_run()
   }
   GstCaps * caps = gst_caps_new_simple("video/x-raw",
 				       "format", G_TYPE_STRING, sfmt,
-				       "framerate", GST_TYPE_FRACTION, fps, 1,
+				       "framerate", GST_TYPE_FRACTION, m_fps, 1,
 				       "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
-				       "width", GTYPE_INT, m_sz.width,
-				       "height", GTYPE_INT, m_sz.height);
+				       "width", G_TYPE_INT, m_sz.width,
+				       "height", G_TYPE_INT, m_sz.height);
 
   gst_app_src_set_caps(GST_APP_SRC(m_src), caps);
   
-  GstAppSrcCallbacks callbacks = {nejed_data, enough_data, seek_data};
+  GstAppSrcCallbacks callbacks = {need_data, enough_data, seek_data};
   gst_app_src_set_callbacks(GST_APP_SRC(m_src), &callbacks, (gpointer)this, NULL);
   
-  m_bus = gst_pipeline_get_buf(GST_PIPELINE(m_ppl));
+  m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_ppl));
   m_bus_watch_id = gst_bus_add_watch(m_bus, bus_callback, (gpointer)this);
-  gst_obj_unref(m_bus);
+  gst_object_unref(m_bus);
 
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PLAYING);
   
@@ -350,7 +350,7 @@ bool f_gst_enc::init_run()
 
 void f_gst_enc::destroy_run()
 {
-  gst_app_src_end_of_stream(m_src);
+  gst_app_src_end_of_stream(GST_APP_SRC(m_src));
 
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_NULL);
   gst_object_unref(GST_OBJECT(m_src));  
@@ -365,23 +365,24 @@ bool f_gst_enc::proc()
 void f_gst_enc::need_data(GstAppSrc * src, guint length)
 {
   
-  Mat src, dst;
-  m_ch_in->get_img(src);
-  if(src.empty())
+  Mat imsrc, imdst;
+  long long t;
+  imsrc = m_ch_in->get_img(t);
+  if(imsrc.empty())
     return ;
 
-  if(!cnv_imf(src, dst, fmt_in, fmt_out)){
+  if(!cnv_imf(imsrc, imdst, fmt_in, fmt_out)){
     return;
   }
 
-  size_t sz_mem = dst.cols * dst.rows * dst.channels();
-  GstBuffer * buf = gst_buffer_new_allocate(Null, sz_mem, NULL);
+  size_t sz_mem = imdst.cols * imdst.rows * imdst.channels();
+  GstBuffer * buf = gst_buffer_new_allocate(NULL, sz_mem, NULL);
   GstMapInfo map;
   
   gst_buffer_map(buf, &map, GST_MAP_WRITE);
   
   // copy buffer data
-  memcpy(map.data, dst.data, sz_mem);
+  memcpy(map.data, imdst.data, sz_mem);
   
   gst_buffer_unmap(buf, &map);
 
