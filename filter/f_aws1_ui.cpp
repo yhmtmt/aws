@@ -47,18 +47,14 @@ using namespace cv;
 
 
 f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
-					m_state(NULL), m_ch_sys(NULL),
-					 m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL),
-					 m_ch_map(NULL),
-					 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL), m_ch_img2(NULL), m_ch_disp(NULL),
-					 m_ch_obst(NULL), m_ch_ap_inst(NULL),
-					 m_js_id(0),
-					 m_img_x_flip(false), m_img_y_flip(false), m_img2_x_flip(false), m_img2_y_flip(false),
-					 m_fx(0.), m_fy(0.), m_cx(0.), m_cy(0.), m_bsvw(false), m_bss(false),
-					 fov_cam_x(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
-	num_max_wps(100), num_max_ais(100),
-					 map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
-					 bmap_center_free(false)
+m_state(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL), 
+m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_img(NULL), m_ch_img2(NULL), m_ch_disp(NULL), m_ch_obst(NULL), 
+m_ch_ap_inst(NULL),
+m_js_id(0), m_bsvw(false), m_bss(false),
+fov_cam_x(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
+num_max_wps(100), num_max_ais(100),
+map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
+bmap_center_free(false)
 {
 	m_path_storage[0] = '.';m_path_storage[1] = '\0';
 
@@ -75,10 +71,6 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   register_fpar("ch_disp", (ch_base**)&m_ch_disp, typeid(ch_image_ref).name(), "Disparity image between ch_img and ch_img2");
   register_fpar("ch_obst", (ch_base**)&m_ch_obst, typeid(ch_obst).name(), "Obstacle channel.");
   register_fpar("ch_ap_inst", (ch_base**)&m_ch_ap_inst, typeid(ch_aws1_ap_inst).name(), "Autopilot instruction channel");
-  register_fpar("flip_img_x", &m_img_x_flip, "Image in ch_img is fliped in x direction.");
-  register_fpar("flip_img_y", &m_img_y_flip, "Image in ch_img is fliped in y direction.");
-  register_fpar("flip_img2_x", &m_img2_x_flip, "Image in ch_img is fliped in x direction.");
-  register_fpar("flip_img2_y", &m_img2_y_flip, "Image in ch_img is fliped in y direction.");
 
   fvs[0] = ffs[0] = '\0';
   register_fpar("fvs", fvs, 1024, "File path to the vertex shader program.");
@@ -93,7 +85,6 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
   
   register_fpar("js", &m_js_id, "Joystick id");
 
-
   register_fpar("nwps", &num_max_wps, "Maximum number of waypoints.");
   register_fpar("nais", &num_max_ais, "Maximum number of ais objects.");
   register_fpar("sz_mark", &sz_mark, "Radius of the waypoint marker.");
@@ -106,11 +97,6 @@ f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name),
 
   register_fpar("free_map_center", &bmap_center_free, "Free map center.");
   register_fpar("map_range", &map_range, "Range of the map (Radius in meter).");
-
-  register_fpar("fx", &m_fx, "Focal length in x direction.");
-  register_fpar("fy", &m_fy, "Focal length in y direction.");
-  register_fpar("cx", &m_cx, "Principal point in x direction.");
-  register_fpar("cy", &m_cy, "Principal point in y direction.");
 
   register_fpar("ss", &m_bss, "Screen shot now.");
   register_fpar("svw", &m_bsvw, "Screen video write.");
@@ -568,58 +554,6 @@ bool f_aws1_ui::proc()
 	return true;
 }
 
-void drawGlEngineIndicator(const char * title,
-			   float xorg, float yorg, float w, float h,
-			   float wflont, float hfont, 
-			   float lw, float val_inst, float val_cur)
-{
-  float x1, y1, x2, y2, xtxt;
-  x1 = xorg;
-  y1 = yorg;
-  x2 = (float) (x1 + w);
-  y2 = (float) (y1 - h);
-  xtxt = (float)(x2 + 0.1 * w);  
-
-  // draw title
-  drawGlText(xorg, (float)(yorg + 0.5 * hfont), title, 
-	     0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-
-  // indicator box
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 0, 0, 1);
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
-
-  // current value
-  x2 = (float)(x1 + 0.666 * w);
-  y1 = (float)(yorg + val_cur - h);
-  y2 = (float)(yorg - 0.5 * h);
-  drawGlSquare2Df(x1, y1, x2, y2, 0, 1, 0, 1);
-
-  // current instructed value
-  y1 = (float) (yorg - h + val_inst);
-  drawGlLine2Df(x1, y1, x2, y1, 0, 1, 0, 1, lw);
-
-  // neutral
-  float dhfont = (float)(-0.5 * hfont);
-  x1 = xorg;
-  x2 = (float)(xorg + w);
-  y1 = y2 = (float) (yorg - 0.5 * h);
-  drawGlLine2Df(x1, y1, x2, y2, 0, 1, 0, 1, lw);
-  drawGlText(xtxt, (float)(y1 + dhfont), 
-	     "N", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-
-  // neutral forward
-  y2 = (float)(y1 + (25. / 255.) * h);
-  drawGlLine2Df(x1, y2, x2, y2, 0, 1, 0, 1, lw);
-  drawGlText(xtxt, (float)(y2), 
-	     "F", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-
-  // neutral backward
-  y2 = (float)(y1 - (25. / 255.) * h);
-  drawGlLine2Df(x1, y2, x2, y2, 0, 1, 0, 1, lw);
-  drawGlText(xtxt, (float)(y2 - hfont), 
-	     "B", 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
-}
-
 void f_aws1_ui::snd_ctrl_inst()
 {
   if(m_ch_ctrl_inst){
@@ -696,8 +630,8 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 			pt_map_center_ecef.x = xown;
 			pt_map_center_ecef.y = yown;
 			pt_map_center_ecef.z = zown;
-			pt_map_center_bih.x = lat * PI / 180.0f;
-			pt_map_center_bih.y = lon * PI / 180.0f;
+			pt_map_center_bih.x = (float)(lat * PI / 180.0f);
+			pt_map_center_bih.y = (float)(lon * PI / 180.0f);
 			Rmap = Rown;
 		}
 		pt_mouse_enu.x = pt_mouse.x * meter_per_pix;
@@ -735,7 +669,7 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 			(float)(RE_sin_th * cos(phi.x))
 		);
 
-		float c, s, thcam = (PI / 180.0) * (yaw + dir_cam_hdg);
+		float c, s, thcam = (float)((PI / 180.0) * (yaw + dir_cam_hdg));
 		c = (float)cos(thcam);
 		s = (float)sin(thcam);
 
@@ -758,7 +692,7 @@ void f_aws1_ui::add_waypoint(c_route_cfg_box * prc_box)
 	prc_box->get_params(wp, spd, rt);
 	// set current cursor position as the new waypoint
 	m_ch_wp->lock();
-	m_ch_wp->ins(pt_mouse_bih.x, pt_mouse_bih.y, 10.0, spd);
+	m_ch_wp->ins(pt_mouse_bih.x, pt_mouse_bih.y, 10.0, (float)spd);
 	m_ch_wp->unlock();
 }
 
@@ -1017,7 +951,7 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
 	if (!bno_focused_wp)
 		fwp = m_ch_wp->get_focused_wp();
 	else{
-		fwp.v = spd;	
+		fwp.v = (float)spd;	
 	}
 
 	switch (prc_box->get_command())
@@ -1083,7 +1017,7 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
 
 	wp = m_ch_wp->get_focus();
 
-	if (!bno_focused_wp && wp < m_ch_wp->get_num_wps() && wp >= 0)
+	if (!bno_focused_wp && wp < (unsigned int) m_ch_wp->get_num_wps() && wp >= 0)
 		m_ch_wp->get_focused_wp() = fwp;
 	spd = (unsigned int)fwp.v;
 	prc_box->set_params(wp, spd, rt);
@@ -1095,8 +1029,6 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
 void f_aws1_ui::_cursor_position_callback(double xpos, double ypos){
 	pt_mouse.x = (float)(xpos - (double)(m_sz_win.width >> 1));
 	pt_mouse.y = (float)((double)(m_sz_win.height >> 1) - ypos);
-	m_mx = xpos;
-	m_my = ypos;
 }
 
 void f_aws1_ui::_mouse_button_callback(int button, int action, int mods)
@@ -1265,10 +1197,10 @@ void c_aws_ui_box::add_btn(int & hbtn, int & hstr, const char * str,
 	const glm::vec2 & pos, const glm::vec2 & sz_btn, const glm::vec2 & sz_fnt)
 {
 	hbtn = porect->add(clr, pos, 0, sz_btn);
-	porect->config_border(hbtn, true, 1.0);
-	porect->config_depth(hbtn, 1.0);
+	porect->config_border(hbtn, true, 1.0f);
+	porect->config_depth(hbtn, 1);
 
-	hstr = potxt->reserv(strlen(str) + 1);
+	hstr = potxt->reserv((unsigned int)(strlen(str) + 1));
 	potxt->set(hstr, str);
 	glm::vec2 pos_txt((float)(pos.x + sz_btn.x * 0.5), (float)(pos.y + sz_btn.y * 0.5));
 	potxt->config(hstr, clr, bkgclr, sz_fnt, sz_fnt, c_gl_text_obj::an_cc, pos_txt, 0.0);

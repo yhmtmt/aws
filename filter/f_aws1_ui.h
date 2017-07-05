@@ -194,10 +194,10 @@ public:
 	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
 	{
 		glm::vec2 pos, sz_btn, sz_box;
-		sz_btn.x = 4 * sz_fnt.x;
-		sz_btn.y = 1.5 * sz_fnt.y;
+		sz_btn.x = (float)(4 * sz_fnt.x);
+		sz_btn.y = (float)(1.5 * sz_fnt.y);
 		sz_box.x = sz_btn.x;
-		sz_box.y = sz_btn.y * (float)nul;
+		sz_box.y = (float)(sz_btn.y * (float)nul);
 		return sz_box;
 	}
 
@@ -257,8 +257,8 @@ public:
 	{
 		glm::vec2 sz_btn, sz_box;
 		int rows = nul / 3 + (nul % 3 ? 1 : 0);
-		sz_btn.x = 4 * sz_fnt.x;
-		sz_btn.y = 1.5 * sz_fnt.y;
+		sz_btn.x = (float)(4 * sz_fnt.x);
+		sz_btn.y = (float)(1.5 * sz_fnt.y);
 		sz_box.x = (float)(sz_btn.x * 3);
 		sz_box.y = (float)(sz_btn.y * (rows + 1));
 		return sz_box;
@@ -344,8 +344,8 @@ public:
 	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
 	{
 		glm::vec2 sz_btn, sz_box;
-		sz_btn.x = 5 * sz_fnt.x;
-		sz_btn.y = 1.5 * sz_fnt.y;
+		sz_btn.x = (float)(5 * sz_fnt.x);
+		sz_btn.y = (float)(1.5 * sz_fnt.y);
 
 		sz_box.x = (float)(sz_btn.x * 2);
 		sz_box.y = (float)(sz_btn.y * 5);
@@ -671,7 +671,6 @@ public:
 
 	bool set_mouse_event(const glm::vec2 & pt, const int button, const int action, const int modifier);
 
-	bool set_ui_params();
 	c_aws_ui_box * get_ui_box(const e_box & box)
 	{
 		return pboxes[box];
@@ -701,9 +700,6 @@ public:
 	} mouse_state;
 
  private:
-	// old members
-	 bool m_img_x_flip, m_img_y_flip;
-	 bool m_img2_x_flip, m_img2_y_flip;
 	 void cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy);
 	 s_aws1_ctrl_inst m_inst;
 	 s_aws1_ctrl_stat m_stat;
@@ -712,16 +708,6 @@ public:
 	 void snd_ctrl_inst();
 	 // Recive control state (rudder angle) from m_acd_socket or m_ch_ctrl_in.
 	 void rcv_ctrl_stat();
-	 double m_mx, m_my;
-	 float m_xscale, m_yscale, m_ixscale, m_iyscale;
-
-	 // Main image view related parameters
-	 // Main image view shows an image from m_ch_img, the focal length and the principal point are defined as follows.
-	 float m_fx, m_fy; // focal length of the main image view
-	 float m_cx, m_cy; // principal point of the main image view
-	 // Note that image in m_ch_img should be the undistorted image.
-
-	 friend class c_aws1_ui_core;
 
 	 ////////////////////////////////////////// current version
   ch_state * m_state;
@@ -763,12 +749,7 @@ public:
 
   // ui elements
   c_aws_ui_box_manager uim;
-  void update_view_mode_box(c_view_mode_box * pvm_box);
-  void update_ctrl_mode_box(c_ctrl_mode_box * pcm_box);
-  void update_obj_cfg_box(c_obj_cfg_box * poc_box);
-  void update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new);
   c_indicator ind;
-
   float sz_mark;
   c_ui_waypoint_obj owp;
   int num_max_wps;
@@ -778,10 +759,13 @@ public:
   int num_max_ais;
   void update_ais_objs();
   vector<bool> visible_obj;
-
   c_own_ship own_ship;
-
   c_cursor ocsr;
+
+  void update_view_mode_box(c_view_mode_box * pvm_box);
+  void update_ctrl_mode_box(c_ctrl_mode_box * pcm_box);
+  void update_obj_cfg_box(c_obj_cfg_box * poc_box);
+  void update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new);
 
   // joypad related members
   bool m_verb;
@@ -860,12 +844,6 @@ public:
   void ui_force_ctrl_stop(c_ctrl_mode_box * pcm_box);
   bool m_quit;
 };
-
-// helps f_aws1_ui::ui_show_meng and ui_show_seng 
-void drawGlEngineIndicator(const char * title, 
-			   float xorg, float yorg, float w, float h, 
-			   float wfont, float hfont,
-			   float lw, float val_inst, float val_cur);
 
 //////////////////////////////////////////////////////// f_aws1_ui_test
 // This class is a test class interfacing only with f_aws1_ui via the compatible channel set.

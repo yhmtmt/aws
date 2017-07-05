@@ -32,13 +32,7 @@ struct s_pos_opt{
 		Penu = p.Penu.clone();
 		Pecef = p.Pecef.clone();
 	}
-	s_pos_opt(s_pos_opt & p) :t(p.t), lat(p.lat), lon(p.lon), alt(p.alt),
-		xecef(p.xecef), yecef(p.yecef), zecef(p.zecef)
-	{
-		Renu = p.Renu.clone();
-		Penu = p.Penu.clone();
-		Pecef = p.Pecef.clone();
-	}
+
 };
 
 struct s_vel_opt{
@@ -47,10 +41,6 @@ struct s_vel_opt{
 	Mat Pv;
 	s_vel_opt():t(0), u(0), v(0), cog(0), sog(0), Pv(){}
 	s_vel_opt(const s_vel_opt & _v) :t(_v.t), u(_v.u), v(_v.v), cog(_v.cog), sog(_v.sog)
-	{
-		Pv = _v.Pv.clone();
-	}
-	s_vel_opt(s_vel_opt & _v) :t(_v.t), u(_v.u), v(_v.v), cog(_v.cog), sog(_v.sog)
 	{
 		Pv = _v.Pv.clone();
 	}
@@ -119,8 +109,8 @@ public:
 		lock();
 		_pos_opt.resize(num_pos_opt);
 	
-		for (int i = 0, ipos = (cur_pos_opt + pos_opt.size() - 1) % pos_opt.size();
-			i < num_pos_opt; i++, ipos = (ipos + pos_opt.size() - 1) % pos_opt.size()){
+		for (int i = 0, ipos = (int)((cur_pos_opt + pos_opt.size() - 1) % pos_opt.size());
+			i < num_pos_opt; i++, ipos = (int)((ipos + pos_opt.size() - 1) % pos_opt.size())){
 			_pos_opt[i].t = pos_opt[ipos].t;
 			_pos_opt[i].alt = pos_opt[ipos].alt;
 			_pos_opt[i].lat = pos_opt[ipos].lat;
@@ -308,10 +298,10 @@ class ch_state: public ch_base
 	  tvel = _tvel;
 	  cog = _cog;
 	  sog = _sog;
-	  float th = cog * (PI / 180.);
+	  float th = (float)(cog * (PI / 180.));
 	  nvx = (float)sin(th);
 	  nvy = (float)cos(th);
-	  float mps = sog * KNOT;
+	  float mps = (float)(sog * KNOT);
 	  vx = (float)(mps * nvx);
 	  vy = (float)(mps * nvy);
 

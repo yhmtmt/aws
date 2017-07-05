@@ -216,7 +216,7 @@ const float f_aws1_ap::calc_course_change_for_ais_ship(const float crs)
 			float ro2 = (float)(1.0 / (iwo2 * cro * cro + ilo2 * sro * sro));
 			float r2 = (float)(1.0 / (iwais2 * cr * ilais2 * sr));
 			float ro = (float)sqrt(ro2);
-			float r = (float)sqrt(r);
+			float r = (float)sqrt(r2);
 			float rcol = (float)(r + ro);
 			float rav = (float)(rcol * m_Rav);
 

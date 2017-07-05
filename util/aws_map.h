@@ -105,7 +105,7 @@ public:
 		for (int iline = 0; iline < (int) lines.size(); iline++){
 			sz += sizeof(lines[iline].bclosed); /* closed flag */
 			sz += sizeof(unsigned int); /* number of points */
-			sz += lines[iline].points.size() * sizeof(Point3f); /* points */
+			sz += (unsigned int)(lines[iline].points.size() * sizeof(Point3f)); /* points */
 		}
 		return sz;
 	}
@@ -164,7 +164,7 @@ inline unsigned char * gen_id(int ilv, int inode,
 	vector<vector<int>> & unl, vector<vector<unsigned char>> & tidl)
 {
 	unsigned char * id = new unsigned char[unl.size() - ilv + 1];
-	unsigned char iid = unl.size() - ilv;
+	unsigned char iid = (unsigned char)(unl.size() - ilv);
 	id[iid] = 0; iid--;
 
 	while (ilv < unl.size()){

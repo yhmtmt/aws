@@ -262,7 +262,7 @@ public:
 	bool get_vel_vec2d(float & nvxr, float &nvyr){
 		nvxr = m_nvxr;
 		nvyr = m_nvyr;
-		return (m_dtype & EOD_VEL_BIH);
+		return (m_dtype & EOD_VEL_BIH) != 0;
 	}
 
 	void set_vel_rel_from_ecef(const Mat & Rorg)
@@ -372,7 +372,7 @@ public:
 			float xr = (float)(vrx * dt + m_xr);
 			float yr = (float)(vry * dt + m_yr);
 			float D2 = (float)(xr * xr + yr * yr);
-			if (m_dtype & EOD_POS_BD == 0){
+			if ((m_dtype & EOD_POS_BD) == 0){
 				m_bear = (float)atan2(m_xr, m_yr);
 				m_dist = (float)sqrt(D2);
 				m_dtype = (e_obj_data_type)(m_dtype | EOD_POS_BD);
@@ -406,7 +406,7 @@ public:
 
 	bool get_prediction(const long long t, float & x, float & y, float & s)
 	{
-		if (m_dtype & EOD_TDCPA == 0)
+		if ((m_dtype & EOD_TDCPA) == 0)
 			return false;
 
 		float dt = (float)((t - m_t) * (1.0 / (double)SEC));

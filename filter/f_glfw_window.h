@@ -408,7 +408,7 @@ inline void mult4x4(float * a, float * b) // a = axb
 		for (int j = 0; j < 4; ++j) {
 			m[j * 4 + i] = 0.0f;
 			for (int k = 0; k < 4; ++k) {
-				m[j * 4 + i] += a[k * 4 + i] * b[j * 4 + k];
+				m[j * 4 + i] += (float)(a[k * 4 + i] * b[j * 4 + k]);
 			}
 		}
 	}
@@ -425,28 +425,28 @@ inline void set_tran(float * m, float x, float y, float z)
 
 inline void set_pm(float * m, float fov, float ratio, float nearP, float farP)
 {
-	float f = 1.0f / tan(fov * (PI / 360.0));
+	float f = (float)(1.0f / tan(fov * (PI / 360.0)));
 
 	set_identity4x4(m);
 
-	m[0] = f / ratio;
+	m[0] =(float)(f / ratio);
 	m[1 * 4 + 1] = f;
-	m[2 * 4 + 2] = (farP + nearP) / (nearP - farP);
-	m[3 * 4 + 2] = (2.0f * farP * nearP) / (nearP - farP);
-	m[2 * 4 + 3] = -1.0f;
+	m[2 * 4 + 2] = (float)((farP + nearP) / (nearP - farP));
+	m[3 * 4 + 2] = (float)((2.0f * farP * nearP) / (nearP - farP));
+	m[2 * 4 + 3] = (float)(-1.0f);
 	m[3 * 4 + 3] = 0.0f;
 }
 
 inline void xproduct(float * a, float * b, float * res)
 {
-	res[0] = a[1] * b[2] - b[1] * a[2];
-	res[1] = a[2] * b[0] - b[2] * a[0];
-	res[2] = a[0] * b[1] - b[0] * a[1];
+	res[0] = (float)(a[1] * b[2] - b[1] * a[2]);
+	res[1] = (float)(a[2] * b[0] - b[2] * a[0]);
+	res[2] = (float)(a[0] * b[1] - b[0] * a[1]);
 }
 
 inline void norm(float * a)
 {
-	float imag = 1.0 / sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]);
+	float imag = (float)(1.0 / sqrt(a[0] * a[0] + a[1] * a[1] + a[2] * a[2]));
 
 	a[0] *= imag;
 	a[1] *= imag;
