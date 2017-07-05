@@ -107,7 +107,7 @@ void c_aws1_ui_map::js(const s_jc_u3613m & js)
 	if(js.elst & s_jc_u3613m::EB_STDOWN){ // back to the own ship 
 		m_map_pos.x = m_map_pos.y = 0.;
 	}
-
+	CV_YUV2BGR_NV12
 	// calculating the map center positioin in three coordinate
 	wrldtoecef(Rorg, Porg.x, Porg.y, Porg.z, m_map_pos.x, m_map_pos.y, 0.f, mp_x, mp_y, mp_z);
 	eceftobih(mp_x, mp_y, mp_z, mp_lat, mp_lon, mp_alt);

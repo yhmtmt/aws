@@ -64,12 +64,101 @@ namespace avt_vmb_cam{
 					pFrame->GetPixelFormat(pixelFormat);
 					switch (pixelFormat){
 					case VmbPixelFormatMono8:
+						pch->set_fmt(IMF_GRAY8);
+						break;
+					case VmbPixelFormatBayerBG8:
+						pch->set_fmt(IMF_BayerBG8);
+						break;
+					case VmbPixelFormatBayerGB8:
+						pch->set_fmt(IMF_BayerGB8);
+						break;
+					case VmbPixelFormatBayerGR8:
+						pch->set_fmt(IMF_BayerGR8);
+						break;
+					case VmbPixelFormatBayerRG8:
+						pch->set_fmt(IMF_BayerRG8);
+						break;
+					case VmbPixelFormatMono10:
+						pch->set_fmt(IMF_GRAY10);
+						break;
+					case VmbPixelFormatMono12:
+						pch->set_fmt(IMF_GRAY12);
+						break;
+					case VmbPixelFormatMono14:
+						pch->set_fmt(IMF_GRAY14);
+						break;
+					case VmbPixelFormatMono16:
+						pch->set_fmt(IMF_GRAY16);
+						break;
+					case VmbPixelFormatBayerBG10:
+						pch->set_fmt(IMF_BayerBG10);
+						break;
+					case VmbPixelFormatBayerBG12:
+						pch->set_fmt(IMF_BayerBG12);
+						break;
+					case VmbPixelFormatBayerGB10:
+						pch->set_fmt(IMF_BayerGB10);
+						break;
+					case VmbPixelFormatBayerGB12:
+						pch->set_fmt(IMF_BayerGB12);
+						break;
+					case VmbPixelFormatBayerGR10:
+						pch->set_fmt(IMF_BayerGR10);
+						break;
+					case VmbPixelFormatBayerGR12:
+						pch->set_fmt(IMF_BayerGR12);
+						break;
+					case VmbPixelFormatBayerRG10:
+						pch->set_fmt(IMF_BayerRG10);
+						break;
+					case VmbPixelFormatBayerRG12:
+						pch->set_fmt(IMF_BayerRG10);
+						break;
+					case VmbPixelFormatBgr8:
+						pch->set_fmt(IMF_BGR8);
+						break;
+					case VmbPixelFormatRgb8:
+						pch->set_fmt(IMF_RGB8);
+						break;
+					case VmbPixelFormatBgr10:
+						pch->set_fmt(IMF_BGR10);
+						break;
+					case VmbPixelFormatBgr12:
+						pch->set_fmt(IMF_BGR12);
+						break;
+					case VmbPixelFormatBgr14:
+						pch->set_fmt(IMF_BGR14);
+						break;
+					case VmbPixelFormatBgr16:
+						pch->set_fmt(IMF_BGR16);
+						break;
+					case VmbPixelFormatRgb10:
+						pch->set_fmt(IMF_RGB10);
+						break;
+					case VmbPixelFormatRgb12:
+						pch->set_fmt(IMF_RGB12);
+						break;
+					case VmbPixelFormatRgb14:
+						pch->set_fmt(IMF_RGB14);
+						break;
+					case VmbPixelFormatRgb16:
+						pch->set_fmt(IMF_RGB16);
+						break;
+					}
+					
+					switch (pixelFormat){
+					case VmbPixelFormatMono8:
+
 					case VmbPixelFormatBayerBG8:
 					case VmbPixelFormatBayerGB8:
 					case VmbPixelFormatBayerGR8:
 					case VmbPixelFormatBayerRG8:
 						img = Mat(Height, Width, CV_8UC1, pBuffer);
 						break;
+					case VmbPixelFormatMono10:
+					case VmbPixelFormatMono12:
+					case VmbPixelFormatMono14:
+					case VmbPixelFormatMono16:
 					case VmbPixelFormatBayerBG10:
 					case VmbPixelFormatBayerBG12:
 					case VmbPixelFormatBayerGB10:

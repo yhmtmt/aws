@@ -18,6 +18,18 @@
 
 #include "ch_base.h"
 
+enum e_imfmt{
+	IMF_GRAY8, IMF_GRAY10, IMF_GRAY12, IMF_GRAY14, IMF_GRAY16,
+	IMF_RGB8, IMF_RGB10, IMF_RGB12, IMF_RGB14, IMF_RGB16,
+	IMF_BGR8, IMF_BGR10, IMF_BGR12, IMF_BGR14, IMF_BGR16,
+	IMF_BayerBG8, IMF_BayerGB8, IMF_BayerGR8, IMF_BayerRG8,
+	IMF_BayerBG10, IMF_BayerGB10, IMF_BayerGR10, IMF_BayerRG10,
+	IMF_BayerBG12, IMF_BayerGB12, IMF_BayerGR12, IMF_BayerRG12,
+	IMF_NV12, IMF_I420, IMF_Undef
+};
+
+extern const char* str_imfmt[IMF_Undef];
+
 enum e_campar{
 	ECP_FX = 0, ECP_FY, ECP_CX, ECP_CY, ECP_K1, ECP_K2, ECP_P1, ECP_P2, ECP_K3, ECP_K4, ECP_K5, ECP_K6
 };
@@ -30,6 +42,7 @@ enum e_campar_fish
 class ch_image: public ch_base
 {
 protected:
+	e_imfmt fmt;
 	int m_back, m_front;
 	
 	Point2i m_offset;
@@ -53,7 +66,7 @@ protected:
 	double tvec[3];
 	
 public:
- ch_image(const char * name):ch_base(name), m_bfisheye(false), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0), m_offset(0, 0), m_sz_sensor(0, 0)
+	ch_image(const char * name) :ch_base(name), m_bfisheye(false), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0), m_offset(0, 0), m_sz_sensor(0, 0), fmt(IMF_Undef)
 	{
 		m_time[0] = m_time[1] = 0;
 		m_ifrm[0] = m_ifrm[1] = -1;
@@ -183,6 +196,18 @@ public:
 	virtual Mat get_img(long long & t, long long & ifrm) = 0;
 	virtual void set_img(Mat & img, long long t) = 0;
 	virtual void set_img(Mat & img, long long t, long long ifrm) = 0;
+
+	void set_fmt(const e_imfmt & _fmt)
+	{
+		lock();
+		fmt = _fmt;
+		unlock();
+	}
+
+	const e_imfmt get_fmt()
+	{
+		return fmt;
+	}
 
 	// file writer method
 	virtual int write(FILE * pf, long long tcur);

@@ -31,6 +31,17 @@ using namespace std;
 using namespace cv;
 #include "../util/aws_thread.h"
 #include "ch_image.h"
+
+const char * str_imfmt[IMF_Undef] = 
+{
+	"GRAY8", "GRAY10", "GRAY12", "GRAY14", "GRAY16",
+	"RGB8", "RGB10", "RGB12", "RGB14", "RGB16",
+	"BGR8", "BGR10", "BGR12", "BGR14", "BGR16",
+	"BayerBG10", "BayerGB10", "BayerGR10", "BayerRG10",
+	"BayerBG12", "BayerGB12", "BayerGR12", "BayerRG12",
+	"NV12", "I420"
+};
+
 #define TIME_VERSION_1_00 14663001811536897L
  
 int ch_image::write(FILE * pf, long long tcur)
