@@ -17,8 +17,8 @@ INST_DIR = ./bin
 OFLAGS = -O3
 
 # Platform specification
-BOARD = jtx
-#BOARD = jtk
+#BOARD = jtx
+BOARD = jtk
 #BOARD = zed
 #BOARD = pc
 
@@ -54,9 +54,9 @@ LIB_CV_DIR = /usr/local/opencv/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
-LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_64bit
-INC_GLFW_DIR = /usr/include/GLFW
-LIB_GLFW_DIR = /usr/lib/aarch64-linux-gnu
+LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_32bit
+INC_GLFW_DIR = /usr/local/include/GLFW
+LIB_GLFW_DIR = /usr/local/lib
 INC_EIGEN_DIR = /usr/include/eigen3
 INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
 INC_GST = /usr/include/gstreamer-1.0
@@ -139,7 +139,7 @@ ifeq ($(BOARD), jtx)
 	FILTER += f_glfw_window  f_glfw_stereo_view 	
 endif # jtx
 ifeq ($(BOARD), jtk)
-	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -lrt -lXi -lXrandr
+	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor
 	FILTER += f_glfw_window  f_glfw_stereo_view 
 endif # jtk
 else # cpu is not arm
