@@ -181,6 +181,11 @@ bool f_serial::proc()
 		}
 
 		if(m_head_rbuf < m_tail_rbuf){
+		  if(m_verb){
+		    cout << "out<";
+		    cout.write(m_rbuf, m_tail_rbuf - m_head_rbuf);
+		    cout << endl;
+		  }
 			m_head_rbuf += m_pout->write(m_rbuf + m_head_rbuf, m_tail_rbuf - m_head_rbuf);
 		}
 
@@ -196,6 +201,11 @@ bool f_serial::proc()
 		}
 
 		if(m_head_wbuf < m_tail_wbuf){
+		  if(m_verb){
+		    cout << "in>";
+		    cout.write(m_wbuf + m_head_wbuf, m_tail_wbuf - m_head_wbuf);
+		    cout << endl;
+		  }
 			m_head_wbuf += write_serial(m_hserial, m_wbuf + m_head_wbuf, m_tail_wbuf - m_head_wbuf);
 		}
 

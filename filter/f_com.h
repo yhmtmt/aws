@@ -158,15 +158,17 @@ private:
 	int m_head_rbuf, m_head_wbuf;
 	int m_tail_rbuf, m_tail_wbuf;
 	int m_len_buf;
+	bool m_verb;
 public:
 	f_serial(const char *fname):f_base(fname), m_hserial(NULL_SERIAL), m_pin(NULL), m_pout(NULL), m_port(1),
 		m_br(9600), m_frm_len(256), m_rbuf(NULL), m_wbuf(NULL), m_head_rbuf(0), m_head_wbuf(0), m_tail_rbuf(0),
-		m_tail_wbuf(0), m_len_buf(0)
+	  m_tail_wbuf(0), m_len_buf(0), m_verb(false)
 	{
 		m_dname[0] = '\0';
 		register_fpar("dev", m_dname, 1024, "Device file path of the serial port to be opened.");
 		register_fpar("port", &m_port, "Port number of the serial port to be opened. (for Windows)");
 		register_fpar("br", &m_br, "Baud rate.");
+		register_fpar("verb", &m_verb, "Verbose mode.");
 	}
 
 	virtual ~f_serial()
