@@ -17,150 +17,6 @@
 #define _AWS_VLIB_H_
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////// AWSLevMarq
-// AWSLevMarq is the extension of CvLevMarq.
-// Because we need to evaluate Hessian inverse of the last iteration, the 
-class AWSLevMarq: public CvLevMarq
-{
-public:
-	AWSLevMarq():CvLevMarq()
-	{
-		Cov = Ptr<CvMat>();
-	}
-
-	AWSLevMarq(int nparams, int nerrs, CvTermCriteria criteria0 =
-              cvTermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER,30,DBL_EPSILON), 
-			  bool _completeSymmFlag = false):CvLevMarq()
-	{
-		Cov = Ptr<CvMat>();
-		initEx(nparams, nerrs, criteria0, _completeSymmFlag);
-	}
-
-	~AWSLevMarq()
-	{
-		clearEx();
-	}
-
-	cv::Ptr<CvMat> Cov;
-
-	void initEx(int nparams, int nerrs, CvTermCriteria criteria0 =
-              cvTermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER,30,DBL_EPSILON), 
-			  bool _completeSymmFlag = false)
-	{
-		init(nparams, nerrs, criteria0, _completeSymmFlag);
-		Cov = cvCreateMat(nparams, nparams, CV_64F);
-	}
-
-    void clearEx();
-
-	bool updateAltEx( const CvMat*& param, CvMat*& JtJ, CvMat*& JtErr, double*& errNorm );
-
-	// call immediately after the iteration terminated.
-	void calcCov();
-};
-
-inline double rerr(double a, double b){
-	return fabs((a - b) / max(fabs(b), (double)1e-12));
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking 
-#define DEBUG_MODELTRACK
-
-// 1. set initial parameter p = (r, t), and transformation T(p) 
-// 2. calculate point matching error, jacobian, hessian inverse, and delta_p  
-// 3. set new transformation T(p) = T(delta_p)T(p)
-class ModelTrack
-{
-private:
-	AWSLevMarq solver;	// LM solver
-	CvTermCriteria tc;
-
-	// Rini and tini are the initial transformation (Rotation and Translation)
-	// If the parameter is not given (means empty) initialized as an identity matrix and a zero vector.
-	Mat Rini, tini; 
-
-	// Rnew ant tnew are the current transformation in the iteration. 
-	// It contains the component given in Rini and tini. Therefore, they are initialized by Rini and tini.
-	Mat Rnew, tnew;
-	double * pRnew, * ptnew;
-
-	// Racc and tacc are the transformation component accumulating all the update.
-	// Note that these do not include Rini and tini, and are initialized with an identity matrix and a zero vector.
-	// These are required to calculate the move of pixels around points approximated as planer in the previous frame.
-	Mat Racc, tacc; 
-	double * pRacc, * ptacc;
-
-	// Rdelta and tdelta are the update of the transformation in each iteration.
-	// They are multiplied to both [Rnew|tnew] and [Racc|tacc] from their left side.
-	// For multiplication with [Rnew|tnew], because CvLevMarq requires convergence check, temporalily we need 
-	// to treate new transformation as temporal value, and rewind it to the original if the error was not reduced.
-	// For the purpose, Rtmp and ttmp are prepared below.
-	Mat Rdelta, tdelta;
-	double * pRdelta, *ptdelta;
-
-	// Rtmp and ttmp are the temporal variables for Rnew and tnew during error checking phase.
-	Mat Rtmp, ttmp;
-	double * pRtmp, *pttmp;
-
-	// Racctmp and tacctmp are the temporal variables for Racc and tacc during error checking phsase. 
-	Mat Racctmp, tacctmp;
-	double * pRacctmp, * ptacctmp;
-
-	// building point patch pyramid and its derivative
-	// Ppyr is the pyramid image of the point patch. 
-	// (We use rectangler region around the object points as point patch to be tracked."
-	vector<vector<Mat>> Ppyr;
-	vector<double> Pssd;
-
-	Mat JRtrt0acc;
-	Mat JUrt0acc;
-	Mat J, E;
-
-	// Differential filter kernel.
-	// dxr and dxc are the row and column filter for x derivative.
-	// dyr and dyc are those for y derivative.
-	Mat dxr, dxc, dyr, dyc; 
-
-	void reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
-		double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
-		vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid, 
-		vector<Point3f> & Mc, double * pIx, double * pIy, double * pJ, CvMat * _JtJ, CvMat * _JtErr);
-
-	void reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
-		double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
-		vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid);
-
-	// debug method
-	// saves reprojected area 
-#ifdef DEBUG_MODELTRACK
-	char fsmpl[128];
-	vector<vector<Mat>> Pyrsmpl;
-	vector<vector<Mat>> Pyrsmplx;
-	vector<vector<Mat>> Pyrsmply;
-#endif
-public:
-	ModelTrack()
-	{
-		tc.epsilon = FLT_EPSILON;
-		tc.max_iter = 30;
-		tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
-
-		// preparing differential filter kernel
-		getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
-		getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
-	}
-
-	// Ipyr is the grayscaled Image pyramid.
-	// P is the set of image patches around model points.
-	// D is the set of depth maps corresponding to patches in P.
-	// M is the set of 3D points in the model.
-	// T is the initial value of the transformation, and the resulting transformation.
-	// m is tracked points. 
-	bool align(const vector<Mat> & Ipyr, const vector<Point3f> & M, vector<int> & valid, 
-		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m, int & miss);
-};
-
-
 /////////////////////////////////////////////////////////////////////// extracting Euler angles from Rotation matrix
 // these codes are partially from OpenCV calibrate.cpp
 // angleRxyz decompose it assuming R=RxRyRz
@@ -250,7 +106,7 @@ inline void log_so3(const double * R, double * r)
 
 inline void exp_so3(const double * r, 
 	double * R /* 3x3 matrix */, 
-	double * J /* 9x3 matrix */)
+	double * J/* 9x3 matrix */)
 {
 	double rx = r[0], ry = r[1], rz = r[2];
 	double theta = sqrt(rx*rx + ry*ry + rz*rz);
@@ -258,6 +114,9 @@ inline void exp_so3(const double * r,
 		memset((void*) R, 0, sizeof(double) * 9);
 		memset((void*) J, 0, sizeof(double) * 27);
 		R[0] = R[4] = R[8] = 1.0;
+		if(J ==NULL)
+		  return;
+
 		J[5] = J[15] = J[19] = -1.0;
 		J[7] = J[11] = J[21] = 1.0;
 		return;
@@ -305,6 +164,8 @@ inline void exp_so3(const double * r,
 	R[3] = icrxry + srz; R[4] = ic * ry2 + c; R[5] = icryrz - srx;
 	R[6] = icrxrz - sry; R[7] = icryrz + srx; R[8] = ic * rz2 +  c;
 
+	if(J == NULL)
+	  return;
 	double rx3 = rx2 * rx, ry3 = ry2 * ry, rz3 = rz2 * rz;
 	double dC1drx, dC2drx, dC3drx;
 	double dC1dry, dC2dry, dC3dry;	
@@ -650,8 +511,9 @@ inline void prjPt(const Point3f & M, Point2f & m,
 	const Mat & rvec, const Mat & tvec)
 {
 	const double * R, * t, * k;
-	Mat _R;
-	Rodrigues(rvec, _R);
+	Mat _R = Mat(3, 3, CV_64FC1);
+	exp_so3(rvec.ptr<double>(), _R.ptr<double>());
+	//	Rodrigues(rvec, _R);
 	R = _R.ptr<double>();
 	t = tvec.ptr<double>();
 	k = camdist.ptr<double>();
@@ -717,8 +579,9 @@ inline void prjPt(const Point3f & M, Point2f & m,
 	const Mat & camint,	const Mat & rvec, const Mat & tvec)
 {
 	const double * R, * t;
-	Mat _R;
-	Rodrigues(rvec, _R);
+	Mat _R = Mat(3, 3, CV_64FC1);
+	exp_so3(rvec.ptr<double>(), _R.ptr<double>());
+	//	Rodrigues(rvec, _R);
 	R = _R.ptr<double>();
 	t = tvec.ptr<double>();
 	const double fx = camint.at<double>(0,0), fy = camint.at<double>(1,1),

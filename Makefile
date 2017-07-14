@@ -18,8 +18,8 @@ OFLAGS = -O3
 
 # Platform specification
 #BOARD = jtx
-BOARD = jtk
-#BOARD = zed
+#BOARD = jtk
+BOARD = zed
 #BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
@@ -34,14 +34,31 @@ OS	= LINUX
 DEFS = -D_$(CPU) -D_$(OS) 
 
 # module switch setting
-SANYO_HD5400 = n
-AVT_CAM = n
-VMB_CAM = y
-UVC_CAM = y
-GST_CAM = y
+
+# n: disable all the window filter later
+WINDOW = n	
 FWINDOW = n
-GLFW_WINDOW = y
-F_ORB_SLAM = y
+GLFW_WINDOW = n
+
+# n: disable all the imaging and image processing filter later
+IMGPROC = n	
+AVT_CAM = n
+VMB_CAM = n
+UVC_CAM = n
+GST_CAM = y
+SANYO_HD5400 = n	
+ORB_SLAM = y
+STEREO = n
+CAMCALIB = n
+STABILIZER = n
+MISC = y
+
+ifeq ($(WINDOW), n)
+	FWINDOW = n
+	GLFW_WINDOW = n
+endif
+
+
 
 ############################################################ Path configuration
 CUR_DIR = $(shell pwd)
@@ -49,8 +66,8 @@ FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
 RCMD_DIR = $(CUR_DIR)/rcmd
-INC_CV_DIR = /usr/local/opencv/include
-LIB_CV_DIR = /usr/local/opencv/lib
+INC_CV_DIR = $(CUR_DIR)/../opencv3/include
+LIB_CV_DIR = $(CUR_DIR)/../opencv3/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
@@ -75,16 +92,16 @@ INC = -I$(INC_CV_DIR) -I$(INC_EIGEN_DIR) -I$(INC_GLM) -I$(INC_MAVLINK)
 LIB = -lrt -lpthread
 
 # listing filters
-FILTER = f_base f_nmea f_cam f_camcalib f_imgshk f_misc \
-	f_shioji f_ship_detector f_stabilizer f_com f_uvc_cam f_event f_fep01 f_time \
+FILTER = f_base f_nmea \
+	f_shioji f_com f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map f_obj_manager \
-	f_wp_manager f_stereo f_aws3_com
+	f_wp_manager f_aws3_com
 
 # listing channels
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state
 
 # listing utilities
-UTIL =  c_clock c_imgalign aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_vobj aws_vlib aws_stdlib aws_map
+UTIL =  c_clock  aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_stdlib aws_map
 
 # for debug mode
 ifeq ($(DEBUG), y)
@@ -99,13 +116,13 @@ ifeq ($(BOARD), zed)
 	SANYO_HD5400 = n
 	FWINDOW = n
 	GLFW_WINDOW = n
-	F_ORB_SLAM = n
+	ORB_SLAM = n
 	GST_CAM = n
 	#OFLAGS += -mfloat-abi=hard
 endif
 
 ifeq ($(BOARD), jtk)
-	F_ORB_SLAM = n
+	ORB_SLAM = n
 	CPU 	= arm
 	INC_CV_DIR = /usr/local/include
 	LIB_CV_DIR = /usr/local/lib
@@ -129,8 +146,71 @@ ifeq ($(CPU), x86)
 	CC = $(CC) -m32
 endif
 
+################################################# Image processing configuration
+ifeq ($(IMGPROC),y)
+	UTIL += aws_vlib aws_vobj c_imgalign 
+	FILTER += f_cam
+else	
+	AVT_CAM = n
+	VMB_CAM = n
+	UVC_CAM = n
+	GST_CAM = n
+	SANYO_HD5400 = n	
+	ORB_SLAM = n
+	STEREO = n
+	CAMCALIB = n
+	STABILIZER = n
+	MISC = n
+	DEFS += -D_C_IMG_ALIGHN_H_
+	DEFS += -D_AWS_VLIB_H_
+	DEFS += -D_AWS_VOBJ_H_
+	DEFS += -D_F_CAM_H
+endif
+
+################################################## f_misc configuration
+ifeq ($(MISC),y)
+	FILTER += f_misc f_imgshk
+	DEFS += -DMISC -DIMGSHK
+else
+	DEFS += -D_F_MISC_H_
+	DEFS += -D_F_IMGSHK_H_
+endif
+
+################################################## f_stabilizer
+ifeq ($(STABILIZER),y)
+	FILTER += f_stabilizer
+	DEFS += -DSTABILIZER
+else
+	DEFS += -D_F_STABILIZER_H_
+endif
+
+################################################## f_stabilizer
+ifeq ($(SHIP_DETECTOR),y)
+	FILTERS += f_ship_detector
+	DEFS += -DSHIP_DETECTOR
+else
+	DEFS += -D_F_SHIP_DETECTOR_H_
+endif
+
+
+################################################## f_camcalib configuration
+ifeq ($(CAMCALIB),y)
+	FILTER += f_camcalib
+	DEFS += -DCAMCALIB
+else
+	DEFS += -D_F_CAMCALIB_H_
+endif
+
+################################################## f_stereo configuration
+ifeq ($(STEREO),y)
+	FILTER += f_stereo
+	DEFS += -DSTEREO
+else
+	DEFS += -D_F_STEREO_H_
+endif
+
 ################################################## f_glfw_window configuration
-ifeq ($(GLFW_WINDOW), y)
+ifeq ($(GLFW_WINDOW),y)
 	INC += -I$(INC_GLFW_DIR)
 	UTIL += aws_glib
 ifeq ($(CPU), arm)
@@ -151,7 +231,7 @@ endif
 endif
 
 ###################################################### f_orb_slam configuration
-ifeq ($(F_ORB_SLAM), y)
+ifeq ($(ORB_SLAM), y)
 	FILTER += f_orb_slam
 	MODS += orb_slam g2o DBoW2
 	ORB_SLAM_OBJS = $(addprefix $(ORB_SLAM_DIR)/, $(addsuffix .o,$(ORB_SLAM)))
@@ -209,6 +289,7 @@ endif
 ###################################################### f_uvc_cam configuration
 ifeq ($(UVC_CAM),y)
 	DEFS += -DUVC_CAM
+	FILTER += f_uvc_cam
 endif
 
 ifeq ($(GST_CAM),y)

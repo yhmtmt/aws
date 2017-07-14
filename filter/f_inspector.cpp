@@ -43,6 +43,1083 @@ using namespace cv;
 
 #include "f_inspector.h"
 
+///////////////////////////////////////////////////////////////////////////////////////////////// AWSLevMarq
+void AWSLevMarq::clearEx()
+{
+	Cov.release();
+}
+
+// The codes are almost from OpenCV's CVLevMarq::updateAlt. I only added a line for covariance calculation.
+bool AWSLevMarq::updateAltEx( const CvMat*& _param, CvMat*& _JtJ, CvMat*& _JtErr, double*& _errNorm)
+{
+    double change;
+
+    CV_Assert( err.empty() );
+    if( state == DONE )
+    {
+        _param = param;
+        return false;
+    }
+
+    if( state == STARTED )
+    {
+        _param = param;
+        cvZero( JtJ );
+        cvZero( JtErr );
+        errNorm = 0;
+        _JtJ = JtJ;
+        _JtErr = JtErr;
+        _errNorm = &errNorm;
+        state = CALC_J;
+        return true;
+    }
+
+    if( state == CALC_J )
+    {
+        cvCopy( param, prevParam );
+        step();
+        _param = param;
+        prevErrNorm = errNorm;
+        errNorm = 0;
+        _errNorm = &errNorm;
+        state = CHECK_ERR;
+        return true;
+    }
+
+    assert( state == CHECK_ERR );
+    if( errNorm > prevErrNorm )
+    {
+        if( ++lambdaLg10 <= 16 )
+        {
+            step();
+            _param = param;
+            errNorm = 0;
+            _errNorm = &errNorm;
+            state = CHECK_ERR;
+            return true;
+        }
+    }
+
+    lambdaLg10 = MAX(lambdaLg10-1, -16);
+    if( ++iters >= criteria.max_iter ||
+        (change = cvNorm(param, prevParam, CV_RELATIVE_L2)) < criteria.epsilon )
+    {
+        _param = param;
+		calcCov();
+        state = DONE;
+        return false;
+    }
+
+    prevErrNorm = errNorm;
+    cvZero( JtJ );
+    cvZero( JtErr );
+    _param = param;
+    _JtJ = JtJ;
+    _JtErr = JtErr;
+    state = CALC_J;
+    return true;
+}
+
+void AWSLevMarq::calcCov()
+{		
+	double sum = 0.0;
+	int nparams = param->rows;
+	for(int i = 0; i < nparams; i++)
+		sum += JtJW->data.db[i];
+	// Note that cvSVD is called with CV_SVD_V_T in step(). 
+	// So we now assume, JtJV is transpose of V
+	// And calculating JtJV^t * (W^-1 * JtJV)
+
+	// Now JtJN is used as temporal variable for (W^-1 * JtJV)
+	double * ptr0, * ptr1;
+	ptr0 = JtJV->data.db;
+	ptr1 = JtJN->data.db;
+
+	for(int i = 0; i < nparams; i++){
+		double iw = JtJW->data.db[i];
+		if(iw < sum * 1e-10){
+			iw = 0;
+		}else{
+			iw = 1.0 / iw;
+		}
+
+		for(int j = 0; j < nparams; j++, ptr0++, ptr1++){
+			*ptr1 = *ptr0 * iw;
+		}
+	}
+
+	cvGEMM(JtJV, JtJN, 1.0, NULL, 1.0, Cov, CV_GEMM_A_T);
+}
+
+
+
+//////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking
+// Ipyr: The gray scale image pyramid of the current frame.
+// Mo: Object points in the object coordinate.
+// valid: Flag assigned for each object point, represents the image patch for the point is aviailable in the previous frame.
+// P: Image patches correspoinding to the object points.
+// camint: Camera intrinsic parameters (actually 3x3 matrix)
+// [R|t]: Rotation and translation. Initially the given values are used as the initial value. And the resulting transformation is returned to the arguments.
+// m: Projected object points. The argument is used to return resulting reprojection with returned [R|t].
+//    m always holds the recent projection of Mo.
+bool ModelTrack::align(const vector<Mat> & Ipyr, const vector<Point3f> & Mo, vector<int> & valid, 
+		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m, int & miss)
+{
+	if(R.empty())
+		Rini = Mat::eye(3, 3, CV_64FC1);
+	else
+		Rini = R.clone();
+	if(t.empty())
+		tini = Mat::zeros(3, 1, CV_64FC1);
+	else 
+		tini = t.clone();
+
+	Rini.copyTo(Rnew);
+	tini.copyTo(tnew);
+
+	pRnew = Rnew.ptr<double>();
+	ptnew = tnew.ptr<double>();
+
+	Racc = Mat::eye(3, 3, CV_64FC1);
+	tacc = Mat::zeros(3, 1, CV_64FC1);
+	pRacc = Racc.ptr<double>();
+	ptacc = tacc.ptr<double>();
+
+	Rdelta = Mat::eye(3, 3, CV_64FC1);
+	tdelta = Mat::zeros(3, 1, CV_64FC1);
+	pRdelta = Rdelta.ptr<double>();
+	ptdelta = tdelta.ptr<double>();
+
+	Rtmp = Mat::eye(3, 3, CV_64FC1);
+	ttmp = Mat::zeros(3, 1, CV_64FC1);
+	pRtmp = Rtmp.ptr<double>();
+	pttmp = ttmp.ptr<double>();
+
+	Racctmp = Mat::eye(3, 3, CV_64FC1);
+	tacctmp = Mat::zeros(3, 1, CV_64FC1);
+	pRacctmp = Racctmp.ptr<double>();
+	ptacctmp = tacctmp.ptr<double>();
+
+
+	Ppyr.resize(P.size());
+	Pssd.resize(P.size());
+
+	// dIpyrdx and dIpyrdy is the derivative of the image pyramid Ipyr given as the argument.
+	vector<Mat> dIpyrdx;
+	vector<Mat> dIpyrdy;
+	dIpyrdx.resize(Ipyr.size());
+	dIpyrdy.resize(Ipyr.size());
+
+	// for every point patches, pyramids are built.
+	for(int ipt = 0; ipt < P.size(); ipt++){
+		if(!valid[ipt]){
+			continue;
+		}
+		buildPyramid(P[ipt], Ppyr[ipt], (int) Ipyr.size() - 1);
+	}
+
+	// for every pyramid level, the derivatives are calcurated.
+	for(int ilv = 0; ilv < Ipyr.size(); ilv++){
+		sepFilter2D(Ipyr[ilv], dIpyrdx[ilv], CV_64F, dxr, dxc);
+		sepFilter2D(Ipyr[ilv], dIpyrdy[ilv], CV_64F, dyr, dyc);
+	}
+
+#ifdef DEBUG_MODELTRACK
+	cout << "Starting model tracking" << endl;
+	cout << "Rinit = " << endl << R << endl;
+	cout << "tinit = " << endl << t << endl;
+	Mat img;
+	Mat out;
+	char buf[128]; 
+
+	layoutPyramid(dIpyrdx, img);
+	cnv64FC1to8UC1(img, out);
+	imwrite("dIpyrdx.png", out);
+
+	layoutPyramid(dIpyrdy, img);
+	cnv64FC1to8UC1(img, out);
+	imwrite("dIpyrdy.png", out);
+
+	layoutPyramid(Ipyr, out);
+	imwrite("Ipyr.png", out);
+	
+	Pyrsmpl.resize(Mo.size());
+	Pyrsmplx.resize(Mo.size());
+	Pyrsmply.resize(Mo.size());
+
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		if(!valid[ipt])
+			continue;
+		layoutPyramid(Ppyr[ipt], out);
+		sprintf(buf, "Ppyr%03d.png", ipt);
+		imwrite(buf, out);
+		Pyrsmpl[ipt].resize(Ipyr.size());
+		Pyrsmplx[ipt].resize(Ipyr.size());
+		Pyrsmply[ipt].resize(Ipyr.size());
+		for(int ilv = 0; ilv < Ipyr.size(); ilv++){
+			int sy = Ppyr[ipt][ilv].rows, sx = Ppyr[ipt][ilv].cols;
+			Pyrsmpl[ipt][ilv] = Mat::zeros(sy, sx, CV_8UC1);
+			Pyrsmplx[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
+			Pyrsmply[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
+		}
+	}
+#endif
+
+	// Preparing previous frame's model points in camera's coordinate
+	vector<Point3f> Mcold, Mc;
+
+	trnPts(Mo, Mcold, valid, R, t);
+	Mc.resize(Mcold.size());
+
+	// calculate center of the image patch (we do not check all the point patches.)
+	double ox = 0, oy = 0;
+	int sx = 0, sy = 0;
+
+	///////// parameter optimization for each pyramid level.
+	for(int ilv = (int) Ipyr.size() - 1; ilv >= 0; ilv--){
+		const Mat & I = Ipyr[ilv];
+		Mat & Ix = dIpyrdx[ilv];
+		Mat & Iy = dIpyrdy[ilv];
+		const uchar * pI = I.ptr<uchar>();
+		double * pIx = Ix.ptr<double>(), * pIy = Iy.ptr<double>();
+
+		int w = I.cols, h = I.rows;
+
+		// Set fx, fy, cx, cy as 2^{-ilv} times the original.
+		double iscale = (1 << ilv);
+		double scale = 1.0 / iscale;
+		double fx = camint.at<double>(0, 0) * scale, fy = camint.at<double>(1, 1) * scale;
+		double cx = camint.at<double>(0, 2) * scale, cy = camint.at<double>(1, 2) * scale;
+		double ifx = 1.0 / fx, ify = 1.0 / fy;
+
+		// counting equations in this level. 
+		// Equations are built for all pixels of point patches.
+		int neq = 0;
+		for(int ipt = 0; ipt < Mo.size(); ipt++){
+			if(!valid[ipt]){
+				continue;
+			}
+
+			Mat & Patch = Ppyr[ipt][ilv];
+			sx = Patch.cols;
+			sy = Patch.rows;
+
+			neq += sx * sy;
+		}
+
+		J = Mat::zeros(neq, 6, CV_64FC1);
+		E = Mat::zeros(neq, 1, CV_64FC1);
+		double * pJ = J.ptr<double>();
+		double * pE = E.ptr<double>();
+
+		// Initialize LM solver.
+		solver.initEx(6, 0, tc);
+		memset((void*) solver.param->data.db, 0, sizeof(double) * 6);
+
+		// _param is the parameter update obtained by calling CvLevMarqEx::updateAltEx
+		//    Actually the contents of _param is CvLevMarqEx::param. param defined here is 
+		//    for storing the pointer pointing to the data memory.
+		const CvMat * _param = NULL;
+		double * param = NULL;
+		int itr = 0;
+		// LM iteration.
+		while(1){
+			double * errNorm = NULL;
+			CvMat * _JtJ = NULL, *_JtErr = NULL;
+
+			bool proceed = solver.updateAltEx(_param, _JtJ, _JtErr, errNorm);
+			if(!proceed)
+				break;
+
+			param = solver.param->data.db;
+
+			// Note: CvLevMarq returns _JtJ and _JtErr when in the calculation step. 
+			//       If not, we don't need to calculate Jacobian.
+			bool updateJ = _JtJ != NULL && _JtErr != NULL;
+
+			// Update transformation assuming first 3 of the param are the rotation vector,
+			//   and the second 3 of the param are the translation vector.
+			exp_so3(param, pRdelta);
+			ptdelta[0] = param[3]; ptdelta[1] = param[4]; ptdelta[2] = param[5];
+
+			// The transformation above calculated is composed with the transformation in the previous iteration.
+			//    But we should be aware of the iteration could be the error checking phase. We need to prepare the
+			//    composed transformation as the temporal variable.
+			compRt(pRdelta, ptdelta, pRnew, ptnew, pRtmp, pttmp);
+			compRt(pRdelta, ptdelta, pRacc, ptacc, pRacctmp, ptacctmp);
+
+			// Calculating new transformation and projection
+			trnPts(Mo, Mc, valid, Rtmp, ttmp);
+			prjPts(Mc, m, valid, fx, fy, cx, cy);
+
+#ifdef DEBUG_MODELTRACK
+			cout << itr << "th iteration." << endl;
+			cout << "Update Jacobian" << (updateJ ? "yes":"no") << endl;
+			cout << "Rdelta = " << endl << Rdelta << endl;
+			cout << "tdelta = " << endl << tdelta << endl;
+			cout << "Racctmp = " << endl << Racctmp << endl;
+			cout << "tacctmp = " << endl << tacctmp << endl;
+			cout << "Rtmp = " << endl << Rtmp << endl;
+			cout << "ttmp = " << endl << ttmp << endl;
+#endif
+			double ssd = 0.;
+			if(updateJ){
+				// resetting parameters. 
+				memset((void*)param, 0, sizeof(double) * 6);
+
+				reprj(ilv, pI, w, h, sx, sy, ox, oy, fx, fy,
+					ifx, ify, cx, cy, Mo, Mcold, m, neq, pE, valid,
+					Mc, pIx, pIy, pJ, _JtJ, _JtErr);
+				itr++;
+#ifdef DEBUG_MODELTRACK
+				for(int ipt = 0; ipt < Mo.size(); ipt++){
+					if(!valid[ipt])
+						continue;
+
+					Mat out;
+					layoutPyramid(Pyrsmpl[ipt], out);
+					sprintf(buf, "Pyrsmpl_lv%02d_pt%02d_itr%02d.png", ilv, ipt, itr);
+					imwrite(buf, out);
+
+					Mat tmp;
+					layoutPyramid(Pyrsmplx[ipt], tmp);
+					cnv64FC1to8UC1(tmp, out);
+					sprintf(buf, "Pyrsmplx_lv%02d_pt%02d_itr%02d.png", ilv, ipt, itr);
+					imwrite(buf, out);
+
+					layoutPyramid(Pyrsmply[ipt], tmp);
+					cnv64FC1to8UC1(tmp, out);
+					sprintf(buf, "Pyrsmply_lv%02d_pt%02d_itr%02d.png", ilv, ipt, itr);
+					imwrite(buf, out);
+				}
+#endif
+
+			}else{ // calculate only error.
+				reprjNoJ(ilv, pI, w, h, sx, sy, ox, oy, fx, fy,
+					ifx, ify, cx, cy, Mo, Mcold, m, neq, pE, valid);
+			}
+
+			if(errNorm){
+				for(int ipt = 0; ipt < Mo.size(); ipt++)
+					ssd += Pssd[ipt];
+
+				*errNorm = sqrt(ssd);
+#ifdef DEBUG_MODETRACK
+				cout << "Error " << *errNorm << endl;
+#endif
+			}
+		}
+
+#ifdef DEBUG_MODELTRACK
+		for(int ipt = 0; ipt < Mo.size(); ipt++){
+			if(!valid[ipt])
+				continue;
+
+			Mat out;
+			layoutPyramid(Pyrsmpl[ipt], out);
+			sprintf(buf, "Pyrsmpl_lv%02d_pt%02d.png", ilv, ipt);
+			imwrite(buf, out);
+
+			Mat tmp;
+			layoutPyramid(Pyrsmplx[ipt], tmp);
+			cnv64FC1to8UC1(tmp, out);
+			sprintf(buf, "Pyrsmplx_lv%02d_pt%02d.png", ilv, ipt);
+			imwrite(buf, out);
+
+			layoutPyramid(Pyrsmply[ipt], tmp);
+			cnv64FC1to8UC1(tmp, out);
+			sprintf(buf, "Pyrsmply_lv%02d_pt%02d.png", ilv, ipt);
+			imwrite(buf, out);
+		}
+#endif
+	}
+
+#ifdef DEBUG_MODELTRACK
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		if(!valid[ipt])
+			continue;
+
+		Mat out;
+		layoutPyramid(Pyrsmpl[ipt], out);
+		sprintf(buf, "Pyrsmpl_pt%02d.png", ipt);
+		imwrite(buf, out);
+
+		Mat tmp;
+		layoutPyramid(Pyrsmplx[ipt], tmp);
+		cnv64FC1to8UC1(tmp, out);
+		sprintf(buf, "Pyrsmplx_pt%02d.png", ipt);
+		imwrite(buf, out);
+
+		layoutPyramid(Pyrsmply[ipt], tmp);
+		cnv64FC1to8UC1(tmp, out);
+		sprintf(buf, "Pyrsmply_pt%02d.png", ipt);
+		imwrite(buf, out);
+	}
+#endif
+
+	// Evaluating alignment errors of point patches. If the errors are over 90% of the maximum, the virtices are 
+	// invalidated.
+	double avg_err = 0.;
+	double max_err = 0.;
+	double min_err = DBL_MAX;
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		if(!valid[ipt])
+			continue;
+
+		int area = P[ipt].cols * P[ipt].rows;
+		Pssd[ipt] = Pssd[ipt] / (double) area;
+		avg_err += Pssd[ipt];
+		if(Pssd[ipt] > max_err){
+			max_err = Pssd[ipt];
+		}
+		if(Pssd[ipt] < min_err){
+			min_err = Pssd[ipt];
+		}
+	}
+
+	avg_err /= (double) Mo.size();
+
+	double norm = 1. / (max_err - min_err);
+	miss = 0;
+	for(int ipt = 0; ipt < Mo.size(); ipt++){		
+		if(!valid[ipt])
+			continue;
+
+		if((max_err - Pssd[ipt]) * norm > 0.9){
+			valid[ipt] = false;
+			miss++;
+		}
+	}
+
+	Rnew.copyTo(R);
+	tnew.copyTo(t);
+
+	return true;
+}
+
+void ModelTrack::reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
+	double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+	vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid, 
+	vector<Point3f> & Mc, double * pIx, double * pIy, double * pJ, CvMat * _JtJ, CvMat * _JtErr)
+{
+	// updating transformation.
+	Rtmp.copyTo(Rnew);
+	ttmp.copyTo(tnew);
+	Racctmp.copyTo(Racc);
+	tacctmp.copyTo(tacc);
+
+#ifdef DEBUG_MODELTRACK
+	{
+		Mat Rnew2 = Rnew.clone(), tnew2 = tnew.clone();
+		double * pRnew2 = Rnew2.ptr<double>(), * ptnew2 = tnew2.ptr<double>();
+
+		compRt(pRacc, ptacc, Rini.ptr<double>(), tini.ptr<double>(), pRnew2, ptnew2);
+		for(int i = 0; i < 9; i++){
+			if(rerr(pRnew2[i], pRnew[i]) > 0.01)
+				cerr << i << "th element of Rotation is wrong." << endl;
+		}
+
+		for(int i = 0; i < 3; i++){
+			if(rerr(ptnew2[i], ptnew[i]) > 0.01)
+				cerr << i << "th element of translation is wrong." << endl;
+		}
+	}
+#endif
+	// Jacobian to be calculated is dI/dm dm/dU dU/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
+	// Calcurating dU/d(rdelta,tdelta) = 
+	//                   dT(rdelta,tdelta)T(racc, tacc)U/dT(rdelta,tdelta)T(racc, tacc) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta)
+	// 
+	//		where U = T(racc, tacc) Uold, and Uold is Zcold [ (x + u - cx) / fx, (y + v - cx) / fy, 1]
+	//		(u, v) is the vector such that -0.5sx < u < 0.5sx, -0.5 < v < 0.5 sy
+	//		Note that Uold is in the camera coordinate at the previous frame, and U is in that of the current frame.
+
+	// calculating dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) at (rdelta,tdelta) = (0,0)
+	calc_dR0t0Rtdrt(JRtrt0acc, pRacc, ptacc);
+#ifdef DEBUG_MODELTRACK
+	{
+		Mat JRtrt0acc2;
+		calcn_dR0t0Rtdrt(JRtrt0acc2, pRacc, ptacc);
+		double * p1 = JRtrt0acc.ptr<double>();
+		double * p2 = JRtrt0acc2.ptr<double>();
+		for(int i = 0; i < 6*12; i++){
+			if(rerr(p1[i], p2[i]) > 0.01)
+				cerr << "JRtrt0acc is erroneous in " << i << "th element." << endl;
+		}
+	}
+#endif
+
+	// For each point patches, photometric error and the Jacobian is calculated.
+	// Note: In this model tracker I assume that pixels near by a projected object point are at 
+	//      the same depth as the point in camera coordinate. (I call this as planer point aproximation.)
+	//      Image patches around 2D points in the previous frame matched to the object points are sampled 
+	//      and given as an argument of this function. The image patches are assumed to have same depth 
+	//      as the point centered at the image patches. Then we need to calculate the projection of the image
+	//      patches to the current frame; this is given as mnew in the following loop. Moreover, we need
+	//      to calculate the Jacobian dm/dMc, where m is the projected point and Mc is a point in the 
+	//      camera coordinate, evaluated at Mcnew a point in the camera coordinate projected into mnew.
+	int ieq = 0;
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		Pssd[ipt] = 0.0;
+
+		if(!valid[ipt])
+			continue;
+
+		Mat & Patch = Ppyr[ipt][ilv];
+		uchar * pPatch = Patch.ptr<uchar>();
+
+		sx = Patch.cols;
+		sy = Patch.rows;
+		ox = (double) sx / 2.;
+		oy = (double) sy / 2.;
+
+#ifdef DEBUG_MODELTRACK
+		Pyrsmpl[ipt][ilv] = Mat::zeros(sy, sx, CV_8UC1);
+		Pyrsmplx[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);
+		Pyrsmply[ipt][ilv] = Mat::zeros(sy, sx, CV_64FC1);		
+		double * px = Pyrsmplx[ipt][ilv].ptr<double>(), * py = Pyrsmply[ipt][ilv].ptr<double>();
+		uchar * pu = Pyrsmpl[ipt][ilv].ptr<uchar>();
+#endif
+
+		Point3f U, Uold;
+		Point2f mnew, morg = m[ipt];
+		
+		float x_old = Mcold[ipt].x;
+		float y_old = Mcold[ipt].y;
+		float z_old = Mcold[ipt].z;
+		float ifx_z_old = (float)(z_old * ifx);
+		float ify_z_old = (float)(z_old * ify);
+		for(int u = 0; u < sx; u++){
+			for(int v = 0; v < sy; v++){
+				Uold.x = (float)(x_old + ((double) u - ox) * ifx_z_old);
+				Uold.y = (float)(y_old + ((double) v - oy) * ify_z_old);
+				Uold.z = z_old;
+
+				// Calculating dT(rdelta,tdelta)T(rnew, tnew)U/dT(rdelta,tdelta)T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta)
+				//    T(rnew, tnew) dT(rdelta,tdelta)T(racc, tacc)/d(rdelta,tdelta) is calculated as JRtrt0acc previously.
+				calcJMcrt0_SE3(JUrt0acc, Uold, JRtrt0acc);
+
+				// U = T(racc, tacc) Uold
+				trnPt(Uold, U, pRacc, ptacc);
+
+				{
+					double iUz = 1.0 / U.z;
+					mnew.x = (float)(U.x * fx * iUz + cx);
+					mnew.y = (float)(U.y * fy * iUz + cy);
+				}
+
+				double dx, dy;
+				uchar vpix;
+
+				if(mnew.x < w && mnew.x >= 0 && mnew.y < h && mnew.y >= 0){
+					dx = sampleBL(pIx, w, h,  mnew.x, mnew.y);
+					dy = sampleBL(pIy, w, h,  mnew.x, mnew.y); 
+					vpix = sampleBL(pI, w, h, mnew.x, mnew.y);
+				}else{
+					vpix = 0;
+					dx = 0.;
+					dy = 0.;
+#ifdef DEBUG_MODELTRACK
+					cerr << "The projected pixel is out of image." << endl;
+#endif
+				}
+
+				// Calculating dI/dm dm/dU dU/d(rdelta,tdelta) 
+				//     Note that dMc/d(rdelta,tdelta) is afore mentioned JMcrt0acc.
+				//     This is the final product for a pixel in a point patch.
+				calcJI(
+					dx, dy,
+					U, fx, fy, JUrt0acc.ptr<double>(), pJ + ieq * 6);
+
+				// Calculating photometric error in this pixel. From current frame, 
+				// mnew is the point projected from (u, v) in the image patch.
+				pE[ieq] = (double)((int) vpix - (int) *(pPatch + u + v * sx));
+
+				// I use L2 norm
+				pE[ieq] *= pE[ieq]; //L2 norm
+
+				Pssd[ipt] += pE[ieq];
+
+#ifdef DEBUG_MODELTRACK
+				pu[u + v * sx] = vpix;
+				px[u + v * sx] = dx;
+				py[u + v * sx] = dy;
+#endif
+				ieq++;
+			}
+		}
+	}
+
+	// calculating JtJ and JtE
+	double * pJtJ = _JtJ->data.db;
+	double * pJtErr = _JtErr->data.db;
+	calcAtA(pJ, neq, 6, pJtJ);
+	calcAtV(pJ, pE, neq, 6, pJtErr);
+}
+
+void ModelTrack::reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
+	double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+	vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid)
+{
+	// This block is almost same as the above other than the calcuration of the Jacobian is omitted.
+
+	int ieq = 0;
+	for(int ipt = 0; ipt < Mo.size(); ipt++){
+		Pssd[ipt] = 0.0;
+
+		if(!valid[ipt])
+			continue;
+
+		Mat & Patch = Ppyr[ipt][ilv];
+		uchar * pPatch = Patch.ptr<uchar>();
+
+		sx = Patch.cols;
+		sy = Patch.rows;
+		ox = (double) sx / 2.;
+		oy = (double) sy / 2.;
+
+		Point3f U, Uold;
+		Point2f mnew, morg = m[ipt];;
+		U.z = 0.;
+
+		float x_old = Mcold[ipt].x;
+		float y_old = Mcold[ipt].y;
+		float z_old = Mcold[ipt].z;
+		float ifx_z_old = (float)(z_old * ifx);
+		float ify_z_old = (float)(z_old * ify);
+		for(int u = 0; u < sx; u++){
+			for(int v = 0; v < sy; v++){
+				Uold.x = (float)(x_old + ((double) u - ox) * ifx_z_old);
+				Uold.y = (float)(y_old + ((double) v - oy) * ify_z_old);
+				Uold.z = z_old;
+
+				trnPt(Uold, U, pRacctmp, ptacctmp);
+
+				{
+					double iUz = 1.0 / U.z;
+					mnew.x = (float)(U.x * fx * iUz + cx);
+					mnew.y = (float)(U.y * fy * iUz + cy);
+				}
+
+				uchar vpix;
+				if(mnew.x < w && mnew.x >= 0 && mnew.y < h && mnew.y >= 0)
+					vpix = sampleBL(pI, w, h, mnew.x, mnew.y);
+				else{
+					vpix = 0;
+#ifdef DEBUG_MODELTRACK
+					cerr << "The projected pixel is out of image." << endl;
+#endif
+				}
+
+				pE[ieq] = (double)((int) vpix 
+					- (int) *(pPatch + u + v * sx));
+				pE[ieq] *= pE[ieq]; //L2 norm
+				Pssd[ipt] += pE[ieq];
+				ieq++;
+			}
+		}
+	}
+}
+
+//////////////////////////////////////////////////////////////////// s_frame
+s_frame * s_frame::pool = NULL;
+
+bool s_frame::init(const long long atfrm, 
+	s_frame * pfobj0, s_frame * pfobj1, 
+	vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks)
+{
+	tfrm = atfrm;
+	vector<s_obj*> & objs_prev = pfobj0->objs;
+	objs.resize(objs_prev.size());
+	for(int i = 0; i < objs.size(); i++){
+		s_obj * pobj = new s_obj();
+		if(!pobj->init(*objs_prev[i])){
+			delete pobj;
+			i--;
+			for(; i >= 0; i--)
+				delete objs[i];
+			return false;
+		}
+		objs[i] = pobj;
+	}
+	pfobj0->camint.copyTo(camint);
+	pfobj0->camdist.copyTo(camdist);
+
+	// tracking points
+	vector<Mat> tmplpyr;
+	Rect roi;
+	Mat Warp, I;
+	I = Mat::eye(3, 3, CV_64FC1);
+	miss_tracks = 0;
+	//ia.set_wt(EWT_RGD);
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		vector<Point2f> & pt2d = objs[iobj]->pt2d;
+		vector<Point2f> & pt2d_prev = objs_prev[iobj]->pt2d;
+		vector<int> & visible = objs[iobj]->visible;
+		vector<int> & visible_prev = objs_prev[iobj]->visible;
+		vector<Mat> & tmpl = objs_prev[iobj]->ptx_tmpl;
+		for(int ipt = 0; ipt < pt2d.size(); ipt++){
+			if(!visible_prev[ipt]){
+				visible[ipt] = 0;
+				continue;
+			}
+			
+			Point2f & pt_prev = pt2d_prev[ipt];
+
+			//char buf[128];
+			Point2f & pt = pt2d[ipt];
+			if(pfobj1){
+				Point2f & pt_next = pfobj1->objs[iobj]->pt2d[ipt];
+				long long tprev, tnext;
+				tprev = pfobj0->tfrm;
+				tnext = pfobj1->tfrm;
+				double fac = abs((double) (tfrm - tprev) / (double)(tnext - tprev));
+
+				// linear interpolation
+				pt.x = (float)(fac * pt_prev.x + (1.0 - fac) * pt_next.x);
+				pt.y = (float)(fac * pt_prev.y + (1.0 - fac) * pt_next.y);
+			}
+
+			if(pia && tmpl.size() != 0 && !tmpl[ipt].empty()){
+				//snprintf(buf, 128, "t%d.png", ipt);
+				//imwrite(buf, tmpl[ipt]);
+				buildPyramid(tmpl[ipt], tmplpyr, (int) impyr.size() - 1);
+				roi.width = tmpl[ipt].cols;
+				roi.height = tmpl[ipt].rows;
+				roi.x = (int)(pt_prev.x + 0.5) - (roi.width >> 1);
+				roi.y = (int)(pt_prev.y + 0.5) - (roi.height >> 1);
+				//snprintf(buf, 128, "r%d.png", ipt);
+				//imwrite(buf, impyr[0](roi));
+				//cout << roi << endl;
+				Warp = pia->calc_warp(tmplpyr, impyr, roi, I);
+				if(!pia->is_conv()){
+					cerr << "Tracker does not converged." << endl;
+					miss_tracks++;
+				}
+				afn(Warp, pt_prev, pt);
+			}			
+		}
+		tmpl.clear();
+	}
+	return true;
+}
+
+bool s_frame::init(const long long atfrm, 
+	s_frame * pfobj0, vector<Mat> & impyr, ModelTrack * pmdlTrck, int & miss_tracks)
+{
+	tfrm = atfrm;
+	vector<s_obj*> & objs_prev = pfobj0->objs;
+	objs.resize(objs_prev.size());
+	for(int i = 0; i < objs.size(); i++){
+		s_obj * pobj = new s_obj();
+		if(!pobj->init(*objs_prev[i])){
+			delete pobj;
+			i--;
+			for(; i >= 0; i--)
+				delete objs[i];
+			return false;
+		}
+		objs[i] = pobj;
+	}
+	pfobj0->camint.copyTo(camint);
+	pfobj0->camdist.copyTo(camdist);
+
+	// tracking points
+	miss_tracks = 0;
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		if(pmdlTrck){
+			objs[iobj]->calc_part_deformation();
+			pmdlTrck->align(impyr, objs[iobj]->pmdl->pts_deformed, objs[iobj]->visible,
+				objs_prev[iobj]->ptx_tmpl, camint, objs[iobj]->R, objs[iobj]->tvec, objs[iobj]->pt2d, miss_tracks);
+		}
+		objs_prev[iobj]->ptx_tmpl.clear();
+	}
+
+	return true;
+}
+
+bool s_frame::save(const char * aname)
+{
+	char buf[1024];
+	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
+	FileStorage fs(buf, FileStorage::WRITE);
+	if(!fs.isOpened())
+		return false;
+	// save number of objects
+	fs << "NumObjs" << (int) objs.size();
+
+	// save camera parameters
+	fs << "CamInt" << camint;
+	fs << "CamDist" << camdist;
+
+	// save objects
+	fs << "Objs" << "{";
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		snprintf(buf, 1024, "Obj%03d", iobj);
+		fs << buf << "{";
+		objs[iobj]->save(fs);
+		fs << "}";
+	}
+	fs << "}";
+
+	fs << "KeyFrame" << kfrm;
+	if(kfrm && !img.empty()){
+		snprintf(buf, 1024, "%s_%lld.png", aname, tfrm);
+		imwrite(buf, img);
+		fs << "ImageFile" << buf;
+	}
+	return true;
+}
+
+bool s_frame::load(const char * aname, long long atfrm, vector<s_model*> & mdls)
+{
+	tfrm = atfrm;
+
+	char buf[1024];
+	snprintf(buf, 1024, "%s_%lld.yml", aname, tfrm);
+	FileStorage fs;
+	try{
+		fs.open(buf, FileStorage::READ);
+	}catch(...){
+		return false;
+	}
+
+	if(!fs.isOpened())
+		return false;
+
+	FileNode fn;
+	int num_objs;
+	// load number of objects
+	fn = fs["NumObjs"];
+	if(fn.empty())
+		return false;
+	fn >> num_objs;
+	// load camera parameters
+	fn = fs["CamInt"];
+	if(fn.empty())
+		return false;
+	fn >> camint;
+
+	fn = fs["CamDist"];
+	if(fn.empty())
+		return false;
+	fn >> camdist;
+
+	// allocate objects
+	objs.resize(num_objs);
+
+	// load objects
+	fn = fs["Objs"];
+	if(fn.empty())
+		return false;
+	
+	FileNode fnobj;
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		snprintf(buf, 1024, "Obj%03d", iobj);
+		fnobj = fn[(const char*)buf];
+		s_obj * pobj = new s_obj;
+		objs[iobj] = pobj;
+		if(!pobj->load(fnobj, mdls)){
+			for(; iobj >= 0; iobj--){
+				delete objs[iobj];
+			}
+			objs.clear();
+			return false;
+		}
+	}
+
+	fn = fs["KeyFrame"];
+	if(!fn.empty()){
+		fn >> kfrm;
+	}
+
+	fn = fs["ImageFile"];
+	string imgpath;
+	if(kfrm && !fn.empty()){
+		fn >> imgpath;
+		img = imread(imgpath);
+		if(img.empty())
+			return false;
+	}
+
+	update = false;
+
+	return true;
+}
+
+
+void s_frame::proj_objs(bool bjacobian, bool fix_aspect_ratio)
+{
+	ssd = 0.0;
+	for(int iobj = 0; iobj < objs.size(); iobj++){
+		s_obj & obj = *objs[iobj];
+		if(update && obj.update)
+			continue;
+		obj.proj(camint, camdist, bjacobian, fix_aspect_ratio);
+	
+		ssd += obj.ssd;
+	}
+}
+
+// calc_rpy calculates roll pitch yaw serge sway heave of the objects relative to the base_obj.
+void s_frame::calc_rpy(int base_obj, bool xyz)
+{
+	if(update)
+		return;
+
+	if(base_obj >= 0 && base_obj < objs.size()){
+		Mat Rorg, R, T;
+		Mat & Torg = objs[base_obj]->tvec;
+		Rodrigues(objs[base_obj]->rvec, Rorg);
+		Rorg = Rorg.t();
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = *objs[iobj];
+
+			if(iobj == base_obj){
+				obj.roll = obj.pitch = obj.yaw = 0.;
+				obj.pos.x = obj.pos.y = obj.pos.z = 0.;
+				continue;
+			}
+
+			double * p0;
+			Rodrigues(obj.rvec, R);
+			obj.tvec.copyTo(T);
+
+			// translation Relative to the base_obj in the camera coordinate frame
+			T -= Torg;
+
+			// projection to the object's coordinate frame
+			T = Rorg * T;
+
+			p0 = T.ptr<double>();
+			obj.pos.x = (float)(p0[0]);
+			obj.pos.y = (float)(p0[1]);
+			obj.pos.z = (float)(p0[2]);
+
+			// Calculate relative rotation to the base_obj as R
+ 			R = Rorg * R;
+			p0 = R.ptr<double>();
+			if(xyz)
+				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
+			else
+				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
+		}
+	}
+}
+
+// in the basis of coordinate system of base_obj,
+// pts: transformed object points
+// Rcam: transformed camera coordinate
+// Tcam: transformed camera coordinate
+// acam: The angle of the object's axes to the camera's z axis.
+void s_frame::calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat & Tcam, 
+							   vector<Point3f> & acam, int base_obj, bool xyz)
+{
+	if(update)
+		return;
+
+	if(base_obj >= 0 && base_obj < objs.size()){
+		// coordinate system is now based on base_obj.
+		Mat Rorg, R, T;
+		Mat & Torg = objs[base_obj]->tvec;
+		Rodrigues(objs[base_obj]->rvec, Rorg);
+		Rorg = Rorg.t();
+
+		pts.resize(objs.size());
+		acam.resize(objs.size());
+
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = *objs[iobj];
+			pts[iobj].resize(obj.pmdl->pts.size());
+			obj.calc_part_deformation();
+
+			double * p0;
+			Rodrigues(obj.rvec, R);
+			p0 = R.ptr<double>();
+			acam[iobj].x = (float) acos(p0[6]);
+			acam[iobj].y = (float) acos(p0[7]);
+			acam[iobj].z = (float) acos(p0[8]);
+
+			Point3f Merr((float)obj.delta_Tx_rmax, (float)obj.delta_Ty_rmax, (float)obj.delta_Tz_rmax);
+			Point3f Merrtrn;
+			Mat T0 = Mat::zeros(1, 3, CV_64FC1);
+			trnPt(Merr, Merrtrn, Rorg.ptr<double>(), T0.ptr<double>());
+			obj.delta_Tx_rmax_trn =abs(Merrtrn.x);
+			obj.delta_Ty_rmax_trn = abs(Merrtrn.y);
+			obj.delta_Tz_rmax_trn = abs(Merrtrn.z);
+
+			if(iobj == base_obj){
+				obj.roll = obj.pitch = obj.yaw = 0.;
+				obj.pos.x = obj.pos.y = obj.pos.z = 0.;
+				pts[iobj] = obj.pmdl->pts_deformed;
+				continue;
+			}
+
+			obj.tvec.copyTo(T);
+
+			// translation Relative to the base_obj in the camera coordinate frame
+			T -= Torg;
+
+			// projection to the object's coordinate frame
+			T = Rorg * T;
+
+			p0 = T.ptr<double>();
+			obj.pos.x = (float)(p0[0]);
+			obj.pos.y = (float)(p0[1]);
+			obj.pos.z = (float)(p0[2]);
+
+			// Calculate relative rotation to the base_obj as R
+ 			R = Rorg * R;
+			p0 = R.ptr<double>();
+		
+			trnPts(obj.pmdl->pts_deformed, pts[iobj], R, T);			
+			if(xyz)
+				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
+			else
+				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
+		}
+
+		Tcam = Rorg * (-Torg);
+		Rorg.copyTo(Rcam);
+	}else{
+		Mat R, T;
+		pts.resize(objs.size());
+		acam.resize(objs.size());
+
+		for(int iobj = 0; iobj < objs.size(); iobj++){
+			s_obj & obj = *objs[iobj];
+			pts[iobj].resize(obj.pmdl->pts.size());
+			obj.calc_part_deformation();
+
+			obj.delta_Tx_rmax_trn = obj.delta_Tx_rmax;
+			obj.delta_Ty_rmax_trn = obj.delta_Ty_rmax;
+			obj.delta_Tz_rmax_trn = obj.delta_Tz_rmax;
+
+			obj.tvec.copyTo(T);
+			double * p0 = T.ptr<double>();
+			obj.pos.x = (float)(p0[0]);
+			obj.pos.y = (float)(p0[1]);
+			obj.pos.z = (float)(p0[2]);
+			
+			Rodrigues(obj.rvec, R);
+			p0 = R.ptr<double>();
+			acam[iobj].x = (float) acos(p0[6]);
+			acam[iobj].y = (float) acos(p0[7]);
+			acam[iobj].z = (float) acos(p0[8]);
+
+			trnPts(obj.pmdl->pts_deformed, pts[iobj], R, T);
+			if(xyz)
+				angleRxyz(p0, obj.roll, obj.pitch, obj.yaw);
+			else
+				angleRzyx(p0, obj.roll, obj.pitch, obj.yaw);
+
+		}
+
+		Tcam = Mat::zeros(1, 3, CV_64FC1);
+		Rcam = Mat::eye(3, 3, CV_64FC1);
+	}
+}
+
+
 const DWORD ModelVertex::FVF = D3DFVF_XYZ | D3DFVF_NORMAL | D3DFVF_TEX1;  
 
 

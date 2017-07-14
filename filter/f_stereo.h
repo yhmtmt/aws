@@ -12,6 +12,8 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_stereo.  If not, see <http://www.gnu.org/licenses/>. 
+#ifndef _F_STEREO_H_
+#define _F_STEREO_H_
 
 #include "../util/aws_sock.h"
 #include "../util/aws_vlib.h"
@@ -87,3 +89,5 @@ public:
 	virtual void destroy_run();
 	virtual bool proc();
 };
+
+#endif

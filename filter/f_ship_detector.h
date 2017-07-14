@@ -16,8 +16,8 @@
 
 #define DEBUG_SD
 
-#ifndef _F_SHIP_DETECTOR_H
-#define _F_SHIP_DETECTOR_H
+#ifndef _F_SHIP_DETECTOR_H_
+#define _F_SHIP_DETECTOR_H_
 
 #include "../util/aws_sock.h"
 

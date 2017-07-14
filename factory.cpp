@@ -198,7 +198,9 @@ void ch_base::register_factory()
 #include "filter/f_base.h"
 #include "filter/f_sample.h"
 #include "filter/f_misc.h"
+#ifdef STEREO
 #include "filter/f_stereo.h"
+#endif
 #include "filter/f_stabilizer.h"
 #include "filter/f_cam.h"
 #ifdef AVT_CAM
@@ -253,7 +255,9 @@ void ch_base::register_factory()
 #include "filter/f_aws1_ctrl.h"
 #include "filter/f_shioji.h"
 #include "filter/f_ship_detector.h"
+#ifdef CAMCALIB
 #include "filter/f_camcalib.h"
+#endif
 #include "filter/f_com.h"
 #include "filter/f_event.h"
 #include "filter/f_fep01.h"
@@ -326,7 +330,10 @@ void f_base::register_factory()
 #endif
 
 	// image processing
+#ifdef IMGSHK
 	register_factory<f_imgshk>("imgshk");
+#endif
+#ifdef MISC
 	register_factory<f_debayer>("debayer");
 	register_factory<f_gry>("gry");
 	register_factory<f_edge>("edge");
@@ -335,14 +342,24 @@ void f_base::register_factory()
 	register_factory<f_houghp>("hough");
 	register_factory<f_gauss>("gauss");
 	register_factory<f_clip>("clip");
-	register_factory<f_stabilizer>("stab");
-	register_factory<f_ship_detector>("shipdet");
-	register_factory<f_camcalib>("camcalib");
-	register_factory<f_stereo>("stereod");
 	register_factory<f_imwrite>("imwrite");
 	register_factory<f_imread>("imread");
 	register_factory<f_lcc>("lcc");
 	register_factory<f_bkg_mask>("bkgmsk");
+#endif
+#ifdef STABILIZER
+	register_factory<f_stabilizer>("stab");
+#endif
+#ifdef SHIP_DETECTOR
+	register_factory<f_ship_detector>("shipdet");
+#endif
+
+#ifdef CAMCALIB
+	register_factory<f_camcalib>("camcalib");
+#endif
+#ifdef STEREO
+	register_factory<f_stereo>("stereod");
+#endif
 
 	// windows
 #ifdef FWINDOW
