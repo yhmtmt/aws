@@ -18,29 +18,28 @@
 #include "f_base.h"
 #include "ch_state"
 
-#define MLB_BUF
+#define MLB_BUF 1024
 
 class f_env_sensor: public f_base
 {
  protected:
-  ch_env * chan;
+  ch_env * m_chan;
+  char m_dname[1024];
+  unsigned short m_port;
+  unsigned int m_br;
+  char m_rbuf[MLB_BUF];
+  AWS_SERIAL m_hserial;
+
+  int m_rbuf_head, m_rbuf_tail;
+  bool m_verb;
  public:
   f_env_sensor(const char * name);
   virtual ~f_env_sensor();
 
-  virtual bool init_run()
-  {
-    return true;
-  }
+  virtual bool init_run();
 
-  virtual void destroy_run()
-  {
-    return;
-  }
+  virtual void destroy_run();
 
-  virtual bool proc()
-  {
-    return true;
-  }
+  virtual bool proc();
 
 };

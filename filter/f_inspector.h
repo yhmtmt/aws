@@ -30,6 +30,254 @@
 
 #include "f_ds_window.h"
 
+///////////////////////////////////////////////////////////////////////////////////////////////// AWSLevMarq
+// AWSLevMarq is the extension of CvLevMarq.
+// Because we need to evaluate Hessian inverse of the last iteration, the 
+class AWSLevMarq: public CvLevMarq
+{
+public:
+	AWSLevMarq():CvLevMarq()
+	{
+		Cov = Ptr<CvMat>();
+	}
+
+	AWSLevMarq(int nparams, int nerrs, CvTermCriteria criteria0 =
+              cvTermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER,30,DBL_EPSILON), 
+			  bool _completeSymmFlag = false):CvLevMarq()
+	{
+		Cov = Ptr<CvMat>();
+		initEx(nparams, nerrs, criteria0, _completeSymmFlag);
+	}
+
+	~AWSLevMarq()
+	{
+		clearEx();
+	}
+
+	cv::Ptr<CvMat> Cov;
+
+	void initEx(int nparams, int nerrs, CvTermCriteria criteria0 =
+              cvTermCriteria(CV_TERMCRIT_EPS+CV_TERMCRIT_ITER,30,DBL_EPSILON), 
+			  bool _completeSymmFlag = false)
+	{
+		init(nparams, nerrs, criteria0, _completeSymmFlag);
+		Cov = cvCreateMat(nparams, nparams, CV_64F);
+	}
+
+    void clearEx();
+
+	bool updateAltEx( const CvMat*& param, CvMat*& JtJ, CvMat*& JtErr, double*& errNorm );
+
+	// call immediately after the iteration terminated.
+	void calcCov();
+};
+
+////////////////////////////////////////////////////////////////////////////////////////////////// 3D model tracking 
+#define DEBUG_MODELTRACK
+
+// 1. set initial parameter p = (r, t), and transformation T(p) 
+// 2. calculate point matching error, jacobian, hessian inverse, and delta_p  
+// 3. set new transformation T(p) = T(delta_p)T(p)
+class ModelTrack
+{
+private:
+	AWSLevMarq solver;	// LM solver
+	CvTermCriteria tc;
+
+	// Rini and tini are the initial transformation (Rotation and Translation)
+	// If the parameter is not given (means empty) initialized as an identity matrix and a zero vector.
+	Mat Rini, tini; 
+
+	// Rnew ant tnew are the current transformation in the iteration. 
+	// It contains the component given in Rini and tini. Therefore, they are initialized by Rini and tini.
+	Mat Rnew, tnew;
+	double * pRnew, * ptnew;
+
+	// Racc and tacc are the transformation component accumulating all the update.
+	// Note that these do not include Rini and tini, and are initialized with an identity matrix and a zero vector.
+	// These are required to calculate the move of pixels around points approximated as planer in the previous frame.
+	Mat Racc, tacc; 
+	double * pRacc, * ptacc;
+
+	// Rdelta and tdelta are the update of the transformation in each iteration.
+	// They are multiplied to both [Rnew|tnew] and [Racc|tacc] from their left side.
+	// For multiplication with [Rnew|tnew], because CvLevMarq requires convergence check, temporalily we need 
+	// to treate new transformation as temporal value, and rewind it to the original if the error was not reduced.
+	// For the purpose, Rtmp and ttmp are prepared below.
+	Mat Rdelta, tdelta;
+	double * pRdelta, *ptdelta;
+
+	// Rtmp and ttmp are the temporal variables for Rnew and tnew during error checking phase.
+	Mat Rtmp, ttmp;
+	double * pRtmp, *pttmp;
+
+	// Racctmp and tacctmp are the temporal variables for Racc and tacc during error checking phsase. 
+	Mat Racctmp, tacctmp;
+	double * pRacctmp, * ptacctmp;
+
+	// building point patch pyramid and its derivative
+	// Ppyr is the pyramid image of the point patch. 
+	// (We use rectangler region around the object points as point patch to be tracked."
+	vector<vector<Mat>> Ppyr;
+	vector<double> Pssd;
+
+	Mat JRtrt0acc;
+	Mat JUrt0acc;
+	Mat J, E;
+
+	// Differential filter kernel.
+	// dxr and dxc are the row and column filter for x derivative.
+	// dyr and dyc are those for y derivative.
+	Mat dxr, dxc, dyr, dyc; 
+
+	void reprj(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
+		double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+		vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid, 
+		vector<Point3f> & Mc, double * pIx, double * pIy, double * pJ, CvMat * _JtJ, CvMat * _JtErr);
+
+	void reprjNoJ(int ilv, const uchar * pI, int w, int h, int sx, int sy, double ox, double oy, 
+		double fx, double fy, double ifx, double ify, double cx, double cy, const vector<Point3f> & Mo, 
+		vector<Point3f> & Mcold, vector<Point2f> & m, int neq, double * pE, vector<int> & valid);
+
+	// debug method
+	// saves reprojected area 
+#ifdef DEBUG_MODELTRACK
+	char fsmpl[128];
+	vector<vector<Mat>> Pyrsmpl;
+	vector<vector<Mat>> Pyrsmplx;
+	vector<vector<Mat>> Pyrsmply;
+#endif
+public:
+	ModelTrack()
+	{
+		tc.epsilon = FLT_EPSILON;
+		tc.max_iter = 30;
+		tc.type = CV_TERMCRIT_EPS + CV_TERMCRIT_ITER;
+
+		// preparing differential filter kernel
+		getDerivKernels(dxr, dxc, 1, 0, 3, true, CV_64F);
+		getDerivKernels(dyr, dyc, 0, 1, 3, true, CV_64F);
+	}
+
+	// Ipyr is the grayscaled Image pyramid.
+	// P is the set of image patches around model points.
+	// D is the set of depth maps corresponding to patches in P.
+	// M is the set of 3D points in the model.
+	// T is the initial value of the transformation, and the resulting transformation.
+	// m is tracked points. 
+	bool align(const vector<Mat> & Ipyr, const vector<Point3f> & M, vector<int> & valid, 
+		const vector<Mat> & P, Mat & camint, Mat & R, Mat & t, vector<Point2f> & m, int & miss);
+};
+
+
+inline double rerr(double a, double b){
+	return fabs((a - b) / max(fabs(b), (double)1e-12));
+}
+
+///////////////////////////////////////////////////////////////// s_frame
+struct s_frame{
+	bool kfrm;
+	Mat img; // Image data. This field is used only for key frame
+
+	union {
+		long long tfrm;
+		s_frame * ptr;
+	};
+
+	double ssd; // sum of square projection errors
+	vector<s_obj*> objs;
+	Mat camint, camdist;
+
+	// Other possible frame objects
+	// key points and the descriptors, coners, edges, something like that.
+	// gray image, differential image, image pyramid, 
+	bool update;
+
+	s_frame():update(false), kfrm(false)
+	{
+	}
+
+	~s_frame()
+	{
+		release();
+	}
+
+	void proj_objs(bool bjacobian = true, bool fix_aspect_ratio = true);
+	void calc_rpy(int base_obj = 0, bool xyz = true);
+	void calc_rpy_and_pts(vector<vector<Point3f> > & pts, Mat & Rcam, Mat & Tcam, vector<Point3f> & acam, int base_obj = 0, bool xyz = true);
+	void sample_tmpl(Mat & img, Size & sz)
+	{
+		for(int i = 0; i < objs.size(); i++){
+			objs[i]->sample_tmpl(img, sz);
+		}
+	}
+
+	void free_tmpl(){
+		for(int i = 0; i < objs.size(); i++){
+			objs[i]->free_tmpl();
+		}
+	}
+
+	void release()
+	{
+		update = false;
+		kfrm = false;
+		for (int i = 0; i < objs.size(); i++)
+			delete objs[i];
+		objs.clear();
+		img.release();
+	}
+
+	bool init(const long long atfrm, s_frame * pfobj0, s_frame * pfobj1, 
+		vector<Mat> & impyr, c_imgalign * pia, int & miss_tracks);
+	bool init(const long long atfrm, s_frame * pfobj0, 
+		vector<Mat> & impyr, ModelTrack * pmdlTrck, int & miss_tracks);
+
+	bool init(const long long atfrm, Mat & acamint, Mat & acamdist)
+	{
+		tfrm = atfrm;
+		acamint.copyTo(camint);
+		acamdist.copyTo(camdist);
+		return true;
+	}
+
+	bool save(const char * aname);
+	bool load(const char * aname, long long atfrm, vector<s_model*> & mdls);
+
+	void set_update()
+	{
+		update = true;
+	}
+
+	void set_as_key(Mat & _img){
+		kfrm = true;
+		img = _img.clone();
+	}
+
+	// memory pool for frame object
+	static s_frame * pool;
+	static void free(s_frame * pfobj)
+	{
+		if(pfobj == NULL)
+			return;
+		
+		pfobj->release();
+		pfobj->ptr = pool;
+		pool = pfobj;
+	}
+
+	static s_frame * alloc(){
+		if(pool != NULL){
+			s_frame * pfobj = pool;
+			pool = pool->ptr;
+			return pfobj;
+		}
+
+		return new s_frame;
+	}
+
+};
+
 bool is_equal(Mat & a, Mat & b);
 void mat2csv(ofstream & out, Mat & m);
 

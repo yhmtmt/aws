@@ -428,4 +428,45 @@ class ch_state: public ch_base
   virtual bool log2txt(FILE * pbf, FILE * ptf);
 };
 
+
+class ch_env: public ch_base 
+{
+ private:
+  long long t, tf;
+  float baro, barof; // barometer
+  float temp, tempf; // temperature
+  float humd, humdf; // humidity
+  float ilum, ilumf; // illuminance
+  
+ public:
+ ch_env(const char * name):ch_base(name), t(0), tf(0), baro(0.f), temp(0.f), humd(0.f), ilum(0.f){}
+  virtual ~ch_env(){}
+
+  void set(const long long _t, const float _baro, const float _temp, 
+	   const float _humd, const float _ilum){
+    lock();
+    t = _t;
+    baro = _baro;
+    temp = _temp;
+    humd = _humd;
+    ilum = _ilum;
+    unlock();
+  };
+
+  void get(long long & _t, float & _baro, float & _temp, float & _humd, float &_ilum)
+  {
+    _t = 
+  }
+
+  virtual size_t get_dsize(){
+    return sizeof(long long) + sizeof(float) * 4;
+  }
+  virtual size_t write_buf(const char * buf);
+  virtual size_t read_buf(char * buf);
+  virtual int write(FILE * pf, long long tcur);
+  virtual int read(FILE * Pf, long long tcur);
+  virtual void print(ostream & out);
+  virtual bool log2txt(FILE * pbf, FILE * ptf);
+};
+
 #endif
