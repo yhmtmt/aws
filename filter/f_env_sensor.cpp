@@ -66,5 +66,63 @@ void f_env_sensor::destroy_run()
 
 bool f_env_sensor::proc()
 {
+  m_rbuf_tail += 
+    read_serial(m_hserial, m_rbuf + m_rbuf_tail, MLB_BUF - m_rbuf_tail);
+  int dat_start = -1, dat_end = -1;
+  for(int i = m_rbuf_head; i < m_rbuf_tail; i++){
+    if(m_rbuf[i] == 'm' && m_rbuf[i+1] == 'l' && m_rbuf[i+2] == 'b'){
+      dat_start = i;
+      break;
+    }
+  }
+
+  if(dat_start < 0){
+    return true;
+  }else{
+    for(int i = dat_start; i < m_rbuf_tail; i++){
+      if(m_rbuf[i] == '¥n'){
+	m_rbuf[i] = '¥0';
+	dat_end = i;
+	break;
+      }
+    }
+  }
+
+  if(dat_start >= 0 && dat_end >= 0){
+    int i = 3 + dat_start;
+    int j = i;
+    int ipar = 0;
+    for(; j < dat_end; j++){
+      if(m_rbuf[j] == ','){
+	m_rbuf[j] = '¥0';
+	switch(ipar){
+	case 0:
+	  temp = atof(m_rbuf[i]);
+	  break;
+	case 1:
+	  baro = atof(m_rbuf[i]);
+	  break;
+	case 2:
+	  humd = atof(m_rbuf[i]);
+	  break;
+	case 3:
+	  ilum = atof(m_rbuf[i]);
+	  break;
+	}
+	ipar++;
+	j++;
+	i = j;
+      }
+    }
+    m_chan->set(get_time(), baro, temp, humd, ilum);
+
+    // repacking buffer
+    for(i = 0, j = dat_end + 1; j < m_rbuf_tail;  i++, j++){
+      m_rbuf[i] = m_rbuf[j];
+    }
+    m_rbuf_head = 0;
+    m_rbuf_tail = i;
+  }
+
   return true;
 }
