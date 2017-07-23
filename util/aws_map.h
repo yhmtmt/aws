@@ -16,6 +16,190 @@
 // You should have received a copy of the GNU General Public License
 // along with aws_map.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+// Usage
+// Adding New Layer data to the map
+// 1. Loading the layerData from files with their specific format
+// 2. Insert it to the MapDB, then the layerData splits data into Nodes by it self do not exceed the limit
+//
+// Loading Map on ceartain area, and resolution (in meter).
+// 1. request layerData for the area
+// 2. corresponding layerData is collected from the quad trees of the Nodes feature length is larger  than  specified resolution
+// 
+// Deleting 
+
+// Policy
+// * The size of a layerData file is restricted, and automatically splitted into four if the size exceeded the limit
+// * Requested layer data is loaded using catalog files conforms quad tree within some log time.
+// * At the leaf node,  the finest information is stored. The resolution is determined as the minimum distance of the features in the LayerData.
+// * At the intermediate node, the lower resolution LayerData is stored. the resolution is reduced to half in the upper node.
+// * 
+
+// Files
+// catalog file: for each 4th division, catalog file is generated as the replace to the layerData enumerateion (4 level quad tree, 64 leaf triangles at the maximum)
+//			Data Description:
+//				- data size under the catalog
+//				- list of DataType included
+//			Triangle Description: 
+//				- three points (lat0, lon0), (lat1, lon1), (lat2, lon2)
+//				- list of layerData files
+//				- catalog file
+
+// layerData file: for each leaf triangle, layerData file is generated for each layerType
+//		DataType
+//		Number of Objects
+//		Size of Data
+//		Updated Time
+//		List of Data Object
+//			Data Object:
+//				- Object index and Object Data
+
+// Map database
+// Data
+//	Node[20]
+// 
+// Methods
+//  request(area, resolution, layerTypes) -> layerData
+//	insert(location, layerType, layerData)
+//		- insert layerData to the corresponding leaf Node
+//		- update intermediate node(mip map)
+//	erase(location, layerType, layerData)
+
+// Node
+// Data
+//	Vertex[3]
+//	LayerDataList
+//  DownLink[4]
+// Methods
+//  collision(location) -> Node
+//		* Test if the location is in the triagle defined by the vertex[3]
+//		* The location is inside the triangle, recursively test the Downlink[4].
+//		* finally returns the leaf Node
+//	getLayerData(layerType) -> layerData
+//  addLayerData(layerData)
+
+// LayerData 
+// Data
+//  Node
+//
+// Methods
+//	save(fname) 
+//	load(fname)
+//	size
+//  resolution
+//	split(NodeList)
+//		- The ways to split data into Nodes are responsible for the LayerType
+
+namespace AWSMap2 {
+	enum {
+		MAX_PATH_LEN=1024
+	};
+
+	enum LayerType {
+		lt_coast_line, lt_undef
+	};
+	extern const char * strLayerType[lt_undef];
+	LayerType getLayerType(const char * str);
+	class Node;
+	class LayerData;
+
+	class MapDataBase
+	{
+	private:
+		Node * pNodes[20]; // 20 triangles of the first icosahedron
+		static char * path;
+	public:
+		static void setPath(const char * path);
+		static const char * getPath();
+
+		MapDataBase();
+		~MapDataBase();
+		const LayerData* request(const Point3f & location, const float radius, 
+			const LayerType & layerType, const float resolution = 0);
+		vector<const LayerData*> request(const Point3f & location, const float radius, 
+			const vector<LayerType> & layerTypes, const float resolution = 0);
+
+		bool insert(const Point3f & location, const LayerData * layerData);
+		bool erase(const LayerData * layerData);
+	};
+
+	class Node
+	{
+	private:
+		unsigned char id;
+		Node * upLink;
+		Node * downLink[4];
+		Point3f vertex[3];
+		map<LayerType, LayerData*> layerDataList;
+	public:
+		Node();
+		virtual ~Node();
+		bool save();
+		bool load();
+
+		const Node * collision(const Point3f & location);
+		const LayerData * getLayerData(const LayerType layerType);
+		bool addLayerData(const LayerData & layerData, const size_t sz_node_data_lim = 0x4FFFFF /* 4MB */);
+	};
+
+	class LayerData
+	{
+	protected:
+		Node * pNode;
+	public:
+		LayerData() : pNode(NULL) {};
+		virtual ~LayerData() {};
+		void setNode(Node * _pNode) { pNode = _pNode; };
+		const Node * getNode() { return pNode; };
+
+		virtual LayerType getLayerType() = 0;
+
+		virtual bool save() = 0; // save file 
+		virtual bool load() = 0;
+		virtual bool split(list<Node*> & nodes) = 0; // 
+		virtual size_t size() = 0;
+		virtual float resolution() = 0; // returns minimum distance between objects in meter
+		
+		virtual float radius() = 0; // returns radius of the object's distribution in meter
+		virtual Point3f center() = 0; // returns center of the object's distribution
+	};
+
+
+	class CoastLine : public LayerData
+	{
+	protected:
+		struct s_line {
+			unsigned int id;
+			vector<Point2f> pts;
+			vector<Point3f> pts_ecef;
+
+			size_t size() {
+				return sizeof(unsigned int) + (sizeof(Point2f) + sizeof(Point3f)) * pts.size();
+			}
+		};
+		size_t total_size;
+		float dist_min;
+		vector<s_line*> lines;
+		void add(list<Point2f> & line);
+	public:
+		CoastLine();
+		virtual ~CoastLine();
+
+		virtual LayerType getLayerType() { return lt_coast_line; };
+
+		virtual bool save();
+		virtual bool load();
+
+		virtual bool split(list<Node*> & nodes);
+		virtual size_t size();
+		virtual float resolution();
+
+		virtual float radius(); // returns radius of the object's distribution in meter
+		virtual Point3f center(); // returns center of the object's distribution
+
+		bool loadJPJIS(const char * fname);
+	};
+};
+
 namespace AWSMap{
 class Node;
 class Lv;

@@ -30,6 +30,265 @@ using namespace cv;
 #include "aws_map.h"
 
 
+namespace AWSMap2 {
+	LayerType getLayerType(const char * str) {
+		for (int lt = 0; lt < (int)lt_undef; lt++) {
+			if (strcmp(strLayerType[lt], str) == 0)
+				return (LayerType)lt;
+		}
+
+		return lt_undef;
+	}
+
+	////////////////////////////////////////////////////////////// MapDataBase
+	char * MapDataBase::path = NULL;
+
+	void MapDataBase::setPath(const char * _path)
+	{
+		if (path) {
+			delete[] path;
+			path = NULL;
+		}
+
+		path = new char[strnlen(_path, MAX_PATH_LEN - 1) + 1];
+		strcpy(path, _path);
+	}
+
+	const char * MapDataBase::getPath()
+	{
+		return path;
+	}
+
+
+	MapDataBase::MapDataBase()
+	{
+	}
+
+	MapDataBase::~MapDataBase()
+	{
+	}
+
+	const LayerData * MapDataBase::request(const Point3f & location, const float radius,
+		const LayerType & layerType, const float resolution)
+	{
+
+		return NULL;
+	}
+
+	vector<const LayerData*> MapDataBase::request(const Point3f & location, const float radius,
+		const vector<LayerType> & layerTypes, const float resolution)
+	{
+
+	}
+
+	bool MapDataBase::insert(const Point3f & location, const LayerData * layerData)
+	{
+		return true;
+	}
+
+	bool MapDataBase::erase(const LayerData * layerData)
+	{
+		return true;
+	}
+
+	///////////////////////////////////////////////////////////////////// Node
+Node::Node() : upLink(NULL)
+{
+	downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
+}
+
+Node::~Node()
+{
+	for (int i = 0; i < 4; i++) {
+		if (downLink[i])
+			delete downLink[i];
+		downLink[i] = NULL;
+	}
+}
+
+bool Node::save()
+{
+	return true;
+}
+
+bool Node::load()
+{
+	return true;
+}
+
+const Node * Node::collision(const Point3f & location)
+{
+	return NULL;
+}
+
+const LayerData * Node::getLayerData(const LayerType layerType)
+{
+	return NULL;
+}
+
+bool Node::addLayerData(const LayerData & layerData, const size_t sz_node_data_lim = 0x4FFFFF /* 4MB */)
+{
+	// seeks nodeList to be added
+	// call split method of the layerData with nodeList
+
+	return true;
+}
+
+///////////////////////////////////////////////////////////////////// LayerData
+
+CoastLine::CoastLine() :dist_min(FLT_MAX)
+{
+}
+
+CoastLine::~CoastLine()
+{
+}
+
+bool CoastLine::save()
+{
+	return true;
+}
+
+bool CoastLine::load()
+{
+	return true;
+}
+
+size_t CoastLine::size()
+{
+	return total_size;
+}
+
+float CoastLine::resolution()
+{
+	return dist_min;
+}
+
+float CoastLine::radius()
+{
+	return 0;
+}
+
+Point3f CoastLine::center()
+{
+	return Point3f();
+}
+
+bool CoastLine::split(list<Node*> & nodes)
+{
+	vector<CoastLine*> cls(nodes.size(), NULL);
+	list<Point2f> line_new;
+	int inode_line_new = 0;
+	Node * pNode_line_new = NULL;
+	for (int iline = 0; iline < lines.size(); iline++) {
+
+		vector<Point3f> & pts = lines[iline]->pts_ecef;
+		for (int ipt = 0; ipt < pts.size(); ipt++) {
+			if (pNode_line_new != NULL) {
+				line_new.push_back(lines[iline]->pts[ipt]);
+				if (!pNode_line_new->collision(pts[ipt])) {
+					if (cls[inode_line_new] == NULL) {
+						cls[inode_line_new] = new CoastLine;
+					}
+					cls[inode_line_new]->add(line_new);
+					pNode_line_new = NULL;
+					line_new.clear();
+				}
+			}
+			else {
+				inode_line_new = 0;
+				for (list<Node*>::iterator itr = nodes.begin(); itr != nodes.end(); itr++) {
+					Node * pNode = *itr;
+					if (pNode->collision(pts[ipt])) {
+						if (pNode_line_new == NULL) {
+							line_new.push_back(lines[iline]->pts[ipt]);
+							pNode_line_new = pNode;
+							break;
+						}
+					}
+					inode_line_new++;
+				}
+			}
+		}
+	}
+	int inode = 0;
+	for (list<Node*>::iterator itr = nodes.begin(); itr != nodes.end(); itr++) {
+		(*itr)->addLayerData(*cls[inode]);
+		inode++;
+	}
+
+	return true;
+}
+
+	void CoastLine::add(list<Point2f> & line)
+	{
+		s_line * pline = new s_line;
+
+		pline->id = lines.size();
+		pline->pts.resize(line.size());
+		pline->pts_ecef.resize(line.size());
+		list<Point2f>::iterator itr_src = line.begin();
+		vector<Point2f>::iterator itr_dst = pline->pts.begin();
+		vector<Point3f>::iterator itr_dst_ecef = pline->pts_ecef.begin();
+		for (; itr_src != line.end(); itr_src++, itr_dst++) {
+			*itr_dst = *itr_src;
+			bihtoecef(itr_dst->x, itr_dst->y, 0., itr_dst_ecef->x, itr_dst_ecef->y, itr_dst_ecef->z);
+		}
+		lines.push_back(pline);
+
+		// calculating resolution and size
+		vector<Point3f> & pts = pline->pts_ecef;
+		for (int i = 1; i < pts.size(); i++) {
+			Point3f & pt0 = pts[i - 1];
+			Point3f & pt1 = pts[i];
+			dist_min = min(dist_min, (float)norm(pt0 - pt1));
+			total_size += pline->size();
+		}
+	}
+
+	bool CoastLine::loadJPJIS(const char * fname)
+	{
+		ifstream fjpgis(fname);
+		if (!fjpgis.is_open()) {
+			cerr << "Failed to open file " << fname << "." << endl;
+			return false;
+		}
+
+		char buf[1024];
+		bool bline = false;
+		list<Point2f> line;
+		while (!fjpgis.eof())
+		{
+			fjpgis.getline(buf, 1024);
+			if (!bline) {
+				if (strcmp(buf, "\t\t\t<gml:posList>") == 0) {
+					bline = true;
+				}
+			}
+			else {
+				if (strcmp(buf, "\t\t\t</gml:posList>") == 0) {
+					add(line);
+					line.clear();
+					break;
+				}
+
+				Point2f pt;
+				char * p;
+				for (p = buf; *p != ' ' && *p != '\0'; p++);
+				*p = '\0';
+				p++;
+				pt.x = (float)(atof(buf) * PI / 180.);
+				pt.y = (float)(atof(p) * PI / 180.);
+				line.push_back(pt);
+			}
+		}
+
+		return true;
+	}
+
+
+}
+
 using namespace AWSMap;
 
 const char * LayerStr[amlc_undef] = {

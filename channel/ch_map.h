@@ -25,7 +25,8 @@ class ch_map: public ch_base
 {
 protected:
 	float m_range;
-	Point3f m_cecef;
+	Point3f m_cecef; // x, y, z
+	Point3f m_bih; // lat, lon, alt
 	vector<list<const vector<Point3f>*>> m_cls;
 public:
 	ch_map(const char * name):ch_base(name), m_range(10000), m_cecef()
@@ -63,12 +64,30 @@ public:
 		unlock();
 	}
 
+	void set_center_bih(const float lat, const float lon, const float alt)
+	{
+		lock();
+		m_bih.x = lat;
+		m_bih.y = lon;
+		m_bih.z = alt;
+		unlock();
+	}
+
 	void get_center(float & x, float & y, float & z)
 	{
 		lock();
 		x = m_cecef.x;
 		y = m_cecef.y;
 		z = m_cecef.z;
+		unlock();
+	}
+
+	void get_center_bih(float & lat, float & lon, float & alt)
+	{
+		lock();
+		lat = m_bih.x;
+		lon = m_bih.y;
+		alt = m_bih.z;
 		unlock();
 	}
 
