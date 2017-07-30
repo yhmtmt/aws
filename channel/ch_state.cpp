@@ -574,7 +574,7 @@ size_t ch_env::write_buf(const char * buf)
   return get_dsize();
 }
 
-size_t ch_env::read_buf(const char * buf)
+size_t ch_env::read_buf(char * buf)
 {
   lock();
   long long * lptr = (long long*)buf;
@@ -643,16 +643,16 @@ int ch_env::read(FILE * pf, long long tcur)
   return 0;
 }
 
-bool ch_env::log2_txt(FILE * pbf, FILE * ptf)
+bool ch_env::log2txt(FILE * pbf, FILE * ptf)
 {
   fprintf(ptf, "trec, tsens, baro, temp, humd, ilum¥n");
   while(!feof(pbf)){
-    fread((void*)&tf, sizeof(long long), 1, pf); // the time the data written is ignored (this line is only required to proceed file pointer.)
-    fread((void*)&t, sizeof(long long), 1, pf); 
-    fread((void*)&baro, sizeof(float), 1, pf);
-    fread((void*)&temp, sizeof(float), 1, pf);
-    fread((void*)&humd, sizeof(float), 1, pf);
-    fread((void*)&ilum, sizeof(float), 1, pf);
+    fread((void*)&tf, sizeof(long long), 1, pbf); // the time the data written is ignored (this line is only required to proceed file pointer.)
+    fread((void*)&t, sizeof(long long), 1, pbf); 
+    fread((void*)&baro, sizeof(float), 1, pbf);
+    fread((void*)&temp, sizeof(float), 1, pbf);
+    fread((void*)&humd, sizeof(float), 1, pbf);
+    fread((void*)&ilum, sizeof(float), 1, pbf);
     fprintf(ptf, "%lld, %lld, %06.1f, %03.1f, %03.1f, %05.1f¥n", tf, t, baro, temp, humd, ilum);
   }
   return true;

@@ -30,7 +30,13 @@ using namespace cv;
 #include "aws_map.h"
 
 
+
 namespace AWSMap2 {
+  const char * strLayerType[lt_undef] =
+    {
+      "coast_line"
+    };
+
 	LayerType getLayerType(const char * str) {
 		for (int lt = 0; lt < (int)lt_undef; lt++) {
 			if (strcmp(strLayerType[lt], str) == 0)
@@ -126,7 +132,8 @@ const LayerData * Node::getLayerData(const LayerType layerType)
 	return NULL;
 }
 
-bool Node::addLayerData(const LayerData & layerData, const size_t sz_node_data_lim = 0x4FFFFF /* 4MB */)
+bool Node::addLayerData(const LayerData & layerData, 
+			const size_t sz_node_data_lim)
 {
 	// seeks nodeList to be added
 	// call split method of the layerData with nodeList
@@ -385,7 +392,7 @@ c_coast_line * c_coast_line::convertFromJPGIS(const char * fname)
 	ifstream fjpgis(fname);
 	if (!fjpgis.is_open()){
 		cerr << "Failed to open file " << fname << "." << endl;
-		return false;
+		return NULL;
 	}
 
 	char buf[1024];
@@ -604,7 +611,7 @@ bool c_coast_line::distribute(Lv & ml)
 			for (int ipt = 1; ipt < pts.size(); ipt++){
 				newLine.points.push_back(pts[ipt]);
 				if (nn[ipt] != inode){
-					c_coast_line * pCL = dynamic_cast<c_coast_line*>(candidates[inode]->getLayer(amlc_coast_line));
+					c_coast_line * pCL = dynamic_cast<c_coast_line*>(candidates[inode]->getLaye(ramlc_coast_line));
 					pCL->addLine(newLine);
 					newLine.points.clear();
 					newLine.points.push_back(pts[ipt]);
@@ -993,7 +1000,7 @@ bool s_node::init_grph(vector<list<unsigned int>> & grph)
 bool s_node::save(ofstream & fgrp, unsigned short sz_edge_max)
 {
 	unsigned int num_child_nodes = count_child_nodes();
-	fgrp.write((const char*)num_child_nodes, sizeof(num_child_nodes));
+	fgrp.write((const char*)&num_child_nodes, sizeof(num_child_nodes));
 	unsigned char idl = get_last_id(id);
 	fgrp.write((const char*)&idl, sizeof(idl));
 
@@ -1002,9 +1009,9 @@ bool s_node::save(ofstream & fgrp, unsigned short sz_edge_max)
 	fgrp.write((const char *)&z, sizeof(z));
 	fgrp.write((const char*)&lv, sizeof(lv));
 	fgrp.write((const char*)&szlns, sizeof(szlns));
-	fgrp.write((const char*)offset, sizeof(unsigned int)* (int)amlc_undef);
-	fgrp.write((const char*)size, sizeof(unsigned int)* (int)amlc_undef);
-	fgrp.write((const char*)szedge, sizeof(szedge));
+	fgrp.write((const char*)&offset, sizeof(unsigned int)* (int)amlc_undef);
+	fgrp.write((const char*)&size, sizeof(unsigned int)* (int)amlc_undef);
+	fgrp.write((const char*)&szedge, sizeof(szedge));
 	unsigned char * edge_tmp = new unsigned char[sz_edge_max];
 	memset((void*)edge_tmp, 0, sz_edge_max);
 	memcpy((void*)edge_tmp, (void*)edge, szedge);
@@ -1355,7 +1362,7 @@ bool c_map::init(const int _nLevels, const double _minMeterPerPix, const double 
 					char fname[1024];
 					snprintf(fname, 1024, "%s/%d.grp", path, cgrid[ilat][ilon]);
 					ofstream ofile(fname);
-					ofile.write((const char*)sz_edge_max, sizeof(sz_edge_max));
+					ofile.write((const char*)&sz_edge_max, sizeof(sz_edge_max));
 					root.save_grph(ofile, sz_edge_max);
 					root.save(ofile, sz_edge_max);
 					root.release();

@@ -455,7 +455,13 @@ class ch_env: public ch_base
 
   void get(long long & _t, float & _baro, float & _temp, float & _humd, float &_ilum)
   {
-    _t = 
+    lock();
+    _t = t;
+    _baro = baro;
+    _temp = temp;
+    _humd = humd;
+    _ilum = ilum;
+    unlock();
   }
 
   virtual size_t get_dsize(){

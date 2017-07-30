@@ -19,12 +19,12 @@ OFLAGS = -O3
 # Platform specification
 #BOARD = jtx
 #BOARD = jtk
-BOARD = zed
-#BOARD = pc
+#BOARD = zed
+BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
-CPU	= arm
-#CPU	= x64
+#CPU	= arm
+CPU	= x64
 #CPU	= x86
 
 #operating system (currently only for LINUX)
@@ -319,7 +319,8 @@ ifeq ($(BOARD), zed)
 endif
 
 ifeq ($(BOARD), pc)
-	LIB += -L$(LIB_CV_DIR) -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
+	LIB += -L$(LIB_CV_DIR) -lopencv_world
+#-lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
 endif
 
 ################################################################# Object lists

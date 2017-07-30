@@ -95,7 +95,7 @@ namespace AWSMap2 {
 	};
 
 	enum LayerType {
-		lt_coast_line, lt_undef
+		lt_coast_line=0, lt_undef
 	};
 	extern const char * strLayerType[lt_undef];
 	LayerType getLayerType(const char * str);
@@ -138,7 +138,8 @@ namespace AWSMap2 {
 
 		const Node * collision(const Point3f & location);
 		const LayerData * getLayerData(const LayerType layerType);
-		bool addLayerData(const LayerData & layerData, const size_t sz_node_data_lim = 0x4FFFFF /* 4MB */);
+		bool addLayerData(const LayerData & layerData, 
+				  const size_t sz_node_data_lim = 0x4FFFFF /* 4MB */);
 	};
 
 	class LayerData
@@ -185,7 +186,6 @@ namespace AWSMap2 {
 		virtual ~CoastLine();
 
 		virtual LayerType getLayerType() { return lt_coast_line; };
-
 		virtual bool save();
 		virtual bool load();
 
@@ -195,7 +195,6 @@ namespace AWSMap2 {
 
 		virtual float radius(); // returns radius of the object's distribution in meter
 		virtual Point3f center(); // returns center of the object's distribution
-
 		bool loadJPJIS(const char * fname);
 	};
 };
