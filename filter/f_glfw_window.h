@@ -331,7 +331,6 @@ public:
 };
 
 #include "../util/aws_map.h"
-using namespace AWSMap;
 
 class f_glfw_test3d : public f_glfw_window
 {

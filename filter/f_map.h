@@ -16,7 +16,7 @@
 // along with f_map.h.  If not, see <http://www.gnu.org/licenses/>. 
 
 #include "f_base.h"
-
+#include "../util/aws_map.h"
 #include "../channel/ch_state.h"
 #include "../channel/ch_map.h"
 
@@ -25,33 +25,30 @@
 class f_map: public f_base
 {
 protected:
-	enum e_map_cmd {
-		emc_normal, emc_add, emc_release, emc_none
-	} m_cmd;
 
-	enum e_map_dtype {
-		emd_jpgis, emd_none
-	} m_dtype;
-
-	static const char * m_cmd_str[emc_none];
-	static const char * m_mdt_str[emd_none];
-
-	// map's graph parameters
-	int m_num_levels;
-	double m_min_meter_per_pix;
-	double m_min_step;
-	double m_scale;
-	unsigned int m_ncache;
-	char m_fdata[1024];
+	AWSMap2::MapDataBase m_db;
 	char m_path[1024];
-	ch_map * m_ch_map;
 
-	bool proc_normal();
-	float m_range;
-	Point3f m_point_prev;
+	char m_fdata[1024];
 	
-	bool proc_add();
-	bool proc_release();
+	enum e_dat_type{
+		edt_jpjis = 0, edt_undef
+	} m_dtype;
+	static const char * m_str_dtype[edt_undef];
+
+	enum e_map_cmd{
+		emc_update = 0, emc_add_data, emc_undef
+	} m_cmd;
+	static const char * m_str_cmd[emc_undef];
+
+	ch_map * m_ch_map;
+	unsigned int m_max_num_nodes;
+	unsigned int m_max_total_size_layer_data;
+	unsigned int m_max_size_layer_data[AWSMap2::lt_undef];
+
+	bool update_channel();
+	bool add_data();
+	AWSMap2::LayerData * load_jpjis();
 public:
 	f_map(const char * name);
 	virtual ~f_map();

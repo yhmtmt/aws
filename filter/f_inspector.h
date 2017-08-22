@@ -170,10 +170,6 @@ public:
 };
 
 
-inline double rerr(double a, double b){
-	return fabs((a - b) / max(fabs(b), (double)1e-12));
-}
-
 ///////////////////////////////////////////////////////////////// s_frame
 struct s_frame{
 	bool kfrm;

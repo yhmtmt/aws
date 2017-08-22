@@ -17,6 +17,12 @@
 #define _AWS_VLIB_H_
 
 
+
+inline double rerr(double a, double b){
+	return fabs((a - b) / max(fabs(b), (double)1e-12));
+}
+
+
 /////////////////////////////////////////////////////////////////////// extracting Euler angles from Rotation matrix
 // these codes are partially from OpenCV calibrate.cpp
 // angleRxyz decompose it assuming R=RxRyRz

@@ -32,7 +32,12 @@ struct s_rotpar
 };
 
 void bihtoecef(const float lat, const float lon, const float alt, float & x, float & y, float & z);
+void bihtoecef(const double lat, const double lon, const double alt,
+	double & x, double & y, double & z);
+
 void eceftobih(const float x, const float y, const float z, float & lat, float & lon, float & alt);
+void eceftobih(const double x, const double y, const double z, double & lat, double & lon, double & alt);
+
 void wrldtoecef(const Mat & Rrot, 
 				const float xorg, const float yorg, const float zorg, 
 				const float xwrld, const float ywrld, const float zwrld,

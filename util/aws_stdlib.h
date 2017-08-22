@@ -61,4 +61,11 @@ inline double gauss(double u, double s, double x){
 // Returns rate of the drive used
  float getDrvUse(const char * path);
 
+ inline int aws_mkdir(const char * path)
+ {
+	 char cmd[2048];
+	 snprintf(cmd, 2048, "mkdir %s", path);
+	 return system(cmd);
+ }
+
 #endif

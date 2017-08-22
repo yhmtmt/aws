@@ -30,8 +30,121 @@ using namespace cv;
 #include "aws_map.h"
 
 
-
+// line and sphere collision
+// V0, V1 : terminal points of the line
+// S: the central point of the sphere
+// R: Radius of the sphere
+// |V0-S| < R or |V1 - S| < R
+// other wise
+// s = n(V1-V0)* (S - V0)
+// L = t(V1-V0) + V0 
+// 0 < t < 1 and |S - L| < R
 namespace AWSMap2 {
+
+	inline bool det_collision_line_and_sphere_mid(const vec3 & v0, const vec3 & v1, const vec3 & s, const float r2)
+	{
+		double n = (l2Norm(v1, v0));
+		double invn = (1.0 / n);
+
+		vec3 d = (v1 - v0) * invn;
+
+		double t =  dot(d, s - v0);
+
+		if (t < 0.f || t > n){
+			return false;
+		}
+
+		d *= t;
+		d += v0;
+		if (l2Norm2(d, s) < r2)
+			return true;
+
+		return false;
+	}
+
+	inline bool det_collision_line_and_sphere(const vec3 & v0, const vec3 & v1, const vec3 & s, const float r2)
+	{
+		if (l2Norm2(v0, s) < r2)
+			return true;
+
+		if (l2Norm2(v1, s) < r2)
+			return true;
+
+		return det_collision_line_and_sphere_mid(v0, v1, s, r2);
+	}
+
+	inline bool det_collision_tri_and_sphere(const vec3 & v0, const vec3 & v1, const vec3 & v2, const vec3 & s, const float r2)
+	{
+		if (l2Norm2(v0, s) < r2)
+			return true;
+
+		if (l2Norm2(v1, s) < r2)
+			return true;
+
+		if (l2Norm2(v2, s) < r2)
+			return true;
+
+		if (det_collision_line_and_sphere_mid(v0, v1, s, r2))
+			return true;
+
+		if (det_collision_line_and_sphere_mid(v1, v2, s, r2))
+			return true;
+
+		if (det_collision_line_and_sphere_mid(v2, v0, s, r2))
+			return true;
+
+		return false;
+	}
+
+	inline double det(const vec3 & a0, const vec3 & a1, const vec3 & a2)
+	{
+		// a0.x a1.x a2.x
+		// a0.y a1.y a2.y
+		// a0.z a1.z a2.z
+
+		double d = a0.x * a1.y * a2.z + a0.z * a1.x * a2.y + a0.y * a1.z * a2.x
+			- a0.z * a1.y * a2.x - a0.x * a1.z * a2.y - a0.y * a1.x * a2.z;
+		return d;
+	}
+
+	inline bool det_collision(const vec3 & t2, const vec3 & t1, const vec3 & t0,
+		const vec3 & l1, const vec3 & l0 = vec3(0, 0, 0))
+	{
+		vec3 e1 = t1 - t0;
+		vec3 e2 = t2 - t0;
+		vec3 me3 = l0 - l1; // -e3
+		vec3 e4 = l0 - t0;
+		// u e1 + v e2 + t0 = w e3 + l0
+		//   -> u e1 + v e2 - w e3 = l0 - t0
+		//   -> u e1 + v e2 + w me3 = e4
+
+		double invD = 1.0 / det(e1, e2, me3);
+		// invD = 1.0 / |e1 e2 me3|
+
+		double u = det(e4, e2, me3) * invD;
+		// u = |e4 e2 me3| * invD, v = |e1 e4 me3| * invD, w = |e1 e2 e4| * invD 
+
+		// 0 < u < 1
+		if (u < 0 || u > 1)
+			return false;
+
+		double v = det(e1, e4, me3) * invD;
+		// 0 < v < 1
+		if (v < 0 || v > 1)
+			return false;
+
+		if (u + v > 1)
+			return false;
+
+		double t = det(e1, e2, e4) * invD;
+		// t > 0
+		if (t < 0)
+			return false;
+
+		return true;
+	}
+
+
   const char * strLayerType[lt_undef] =
     {
       "coast_line"
@@ -47,6 +160,13 @@ namespace AWSMap2 {
 	}
 
 	////////////////////////////////////////////////////////////// MapDataBase
+	unsigned int MapDataBase::maxSizeLayerData[lt_undef] =
+	{
+		0x4FFFFF
+	};
+	unsigned int MapDataBase::maxNumNodes = 64;
+	unsigned int MapDataBase::maxTotalSizeLayerData = 0x4FFFFF0;
+
 	char * MapDataBase::path = NULL;
 
 	void MapDataBase::setPath(const char * _path)
@@ -66,45 +186,253 @@ namespace AWSMap2 {
 	}
 
 
+
 	MapDataBase::MapDataBase()
 	{
+		bool bloaded = true;
+		for (unsigned int id = 0; id < 20; id++){
+			pNodes[id] = Node::load(NULL, id);
+			if (!pNodes[id])
+				bloaded = false;
+		}
+
+		if (bloaded)
+			return;
+
+		for (unsigned int id = 0; id < 20; id++){
+			if (pNodes[id])
+				delete pNodes[id];
+		}
+
+		vec2 * q = new vec2[12];
+		vec3 * v = new vec3[12];
+		unsigned int ** f = new unsigned int*[20];
+
+		float lat0 = (float)atan2(GR, 1), lat1 = (float)atan2(1, GR);
+		float lon = (float)atan2(GR, 1);
+
+		q[0] = vec2(lat0, 0.5 * PI);
+		q[1] = vec2(lat0, -0.5 * PI);
+		q[2] = vec2(-lat0, 0.5 * PI);
+		q[3] = vec2(-lat0, -0.5 * PI);
+
+		q[4] = vec2(0, atan2(GR, 1));
+		q[5] = vec2(0, atan2(GR, -1));
+		q[6] = vec2(0, atan2(-GR, 1));
+		q[7] = vec2(0, atan2(-GR, -1));
+
+		q[8] = vec2(lat1, 0);
+		q[9] = vec2(-lat1, 0);
+		q[10] = vec2(lat1, PI);
+		q[11] = vec2(-lat1, PI);
+
+
+		pNodes[0] = new Node(q[0], q[1], q[8]);
+		pNodes[1] = new Node(q[1], q[0], q[10]);
+		pNodes[2] = new Node(q[2], q[3], q[11]);
+		pNodes[3] = new Node(q[3], q[2], q[9]);
+		pNodes[4] = new Node(q[0], q[4], q[5]);
+		pNodes[5] = new Node(q[1], q[7], q[6]);
+		pNodes[6] = new Node(q[2], q[5], q[4]);
+		pNodes[7] = new Node(q[3], q[6], q[7]);
+		pNodes[8] = new Node(q[0], q[8], q[4]);
+		pNodes[9] = new Node(q[1], q[10], q[7]);
+		pNodes[10] = new Node(q[2], q[11], q[5]);
+		pNodes[11] = new Node(q[3], q[9], q[6]);
+		pNodes[12] = new Node(q[0], q[5], q[10]);
+		pNodes[13] = new Node(q[1], q[6], q[8]);
+		pNodes[14] = new Node(q[2], q[4], q[9]);
+		pNodes[15] = new Node(q[3], q[7], q[11]);
+		pNodes[16] = new Node(q[4], q[8], q[9]);
+		pNodes[17] = new Node(q[5], q[11], q[10]);
+		pNodes[18] = new Node(q[6], q[9], q[8]);
+		pNodes[19] = new Node(q[7], q[10], q[11]);
+
+		for (unsigned int id = 0; id < 20; id++){
+			pNodes[id]->setId((unsigned char)id);
+		}
 	}
 
 	MapDataBase::~MapDataBase()
 	{
+		for (int i = 0; i < 12; i++)
+			delete pNodes[i];
 	}
 
-	const LayerData * MapDataBase::request(const Point3f & location, const float radius,
-		const LayerType & layerType, const float resolution)
+	void MapDataBase::request(list<list<const LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
+		const vec3 & center, const float radius,  const float resolution)
 	{
-
-		return NULL;
+		for (int iface = 0; iface < 20; iface++)
+		{
+			pNodes[iface]->getLayerData(layerDatum, layerTypes, center, radius, resolution);
+		}
+		for (auto itrType = layerDatum.begin(); itrType != layerDatum.end(); itrType++){
+			for (auto itrData = itrType->begin(); itrData != itrType->end(); itrData++)
+				LayerData::accessed(const_cast<LayerData*>(*itrData));
+		}			
 	}
 
-	vector<const LayerData*> MapDataBase::request(const Point3f & location, const float radius,
-		const vector<LayerType> & layerTypes, const float resolution)
+	bool MapDataBase::insert(const LayerData * layerData)
 	{
+		list<Node*> nodes;
+		for (int iface = 0; iface < 20; iface++){
+			if (!pNodes[iface]->collision(layerData->center(), layerData->radius()))
+				continue;
+			nodes.push_back(pNodes[iface]);
+		}
 
-	}
-
-	bool MapDataBase::insert(const Point3f & location, const LayerData * layerData)
-	{
+		layerData->split(nodes);
 		return true;
 	}
 
 	bool MapDataBase::erase(const LayerData * layerData)
 	{
+		if (!layerData){
+			return false;
+		}
+
+		Node * pNode = layerData->getNode();
+
+		pNode->deleteLayerData(layerData);
+
 		return true;
 	}
 
+	void MapDataBase::restruct()
+	{
+		LayerData::restruct();
+		Node::restruct();
+	}
+
+	bool MapDataBase::save()
+	{
+		bool result = true;
+		for (int iface = 0; iface < 20; iface++){
+			result &= pNodes[iface]->save();
+		}
+
+		return result;
+	}
+
 	///////////////////////////////////////////////////////////////////// Node
-Node::Node() : upLink(NULL)
+	Node * Node::head = NULL;
+	Node * Node::tail = NULL;
+	unsigned int Node::numNodesAlive = 0;
+
+	void Node::insert(Node * pNode)
+	{
+		if (numNodesAlive >= MapDataBase::getMaxNumNodes())
+			restruct();
+
+		numNodesAlive++;
+		if (head == NULL && tail == NULL){
+			pNode->next = pNode->prev = NULL;
+			head = tail = pNode;
+			return;
+		}
+		pNode->next = NULL;
+		pNode->prev = tail;
+		tail->next = pNode;
+		tail = tail->next;
+	}
+
+	void Node::pop(Node * pNode)
+	{
+		Node * prev = pNode->prev, *next = pNode->next;
+
+		if (next == NULL){
+			prev->next = NULL;
+			tail = prev;
+		}
+
+		// reconnect 
+		if (prev == NULL){
+			head = next;
+		}
+		else{
+			prev->next = next;
+		}
+		next->prev = prev;
+		numNodesAlive--;
+	}
+
+	void Node::accessed(Node * pNode)
+	{
+		pop(pNode);
+		insert(pNode);
+	}
+
+	void Node::restruct()
+	{
+		while (numNodesAlive >= MapDataBase::getMaxNumNodes())
+		{
+			Node * itr = head;
+			for (; itr != NULL; itr = itr->next){
+				if (!itr->bdownLink ||
+					(itr->downLink[0] == NULL &&
+					itr->downLink[1] == NULL &&
+					itr->downLink[2] == NULL &&
+					itr->downLink[3] == NULL)){
+					break;
+				}
+			}
+
+			if (itr != NULL){
+				itr->releaseLayerData();
+				pop(itr);
+				delete itr;
+			}
+		}
+	}
+
+	bool Node::deleteLayerData(const LayerData * layerData)
+	{
+		bupdate = true;
+		auto itr = layerDataList.find(layerData->getLayerType());
+		if (itr == layerDataList.end())
+			return false;
+		itr->second->release();
+		delete itr->second;
+
+		layerDataList.erase(itr);
+		return true;
+	}
+
+	void Node::releaseLayerData()
+	{
+		for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++){
+			itr->second->release();
+			delete itr->second;
+		}
+		layerDataList.clear();
+	}
+
+Node::Node() : prev(NULL), next(NULL), upLink(NULL), bdownLink(false), bupdate(true)
 {
 	downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
 }
 
+Node::Node(const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2) : prev(NULL), next(NULL), upLink(NULL),bupdate(true), bdownLink(false)
+{
+		downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
+		vtx_bih[0] = vtx_bih0;
+		vtx_bih[1] = vtx_bih1;
+		vtx_bih[2] = vtx_bih2;
+
+		for (int i = 0; i < 3; i++){
+			bihtoecef(vtx_bih[i].x, vtx_bih[i].y, 0.0f, vtx_ecef[i].x, vtx_ecef[i].y, vtx_ecef[i].z);
+		}
+}
+
 Node::~Node()
 {
+	save();
+
+	for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++){
+		itr->second->release();
+		delete itr->second;
+	}
+
 	for (int i = 0; i < 4; i++) {
 		if (downLink[i])
 			delete downLink[i];
@@ -114,35 +442,450 @@ Node::~Node()
 
 bool Node::save()
 {
+	if (!bupdate){
+		return true;
+	}
+
+	char path[2048];
+	char fname[2048];
+	getPath(path, 2048);
+	snprintf(fname, 2048, "%s/%N02d.index", path, (int)id);
+
+	ofstream ofile;
+
+	ofile.open(fname, ios::binary);
+	if (!ofile.is_open()){
+		aws_mkdir(path);
+		ofile.clear();
+		ofile.open(fname, ios::binary);
+		if (!ofile.is_open())
+			return false;
+	}
+
+	bool result = true;
+
+	ofile.write((const char*)&bdownLink, sizeof(bool));
+	ofile.write((const char*)&vtx_bih, sizeof(vec2) * 3);
+	
+	for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++){
+		LayerType layerType = itr->first;
+		ofile.write((const char*)&layerType, sizeof(LayerType));
+	}
+
+	ofile.close();
+
+	// save layer data
+	for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++){
+		result &= itr->second->save();
+	}
+
+	if (bdownLink){
+		for (int idown = 0; idown < 4; idown++){
+			if (downLink[idown])
+				result &= downLink[idown]->save();
+		}
+	}
+
+	return result;
+}
+
+Node * Node::load(Node * pNodeUp, unsigned int idChild)
+{
+	char fname[2048];
+
+	if (pNodeUp == NULL){
+		if (idChild < 20)
+			return NULL;
+
+		// the top 20 nodes
+		const char * path = MapDataBase::getPath();
+		char fname[2048];
+		snprintf(fname, 2048, "%s/N%02d/N%02d.index", idChild, idChild);
+	}
+	else{
+		char path[2048];
+		pNodeUp->getPath(path, 2048);
+		snprintf(fname, 2048, "%s/N%02d/N%02d.index", idChild, idChild);
+	}
+
+	ifstream findex(fname, ios::binary);
+	if (!findex.is_open()){
+		return NULL;
+	}
+
+	Node * pNode = new Node();
+	pNode->upLink = pNodeUp;
+	pNode->id = idChild;
+	////////////////////// loading index file to the Node
+	findex.read((char*)&(pNode->bdownLink), sizeof(bool));
+	findex.read((char*)(pNode->vtx_bih), sizeof(vec2) * 3);
+	for (int ivtx = 0; ivtx < 3; ivtx++){
+		bihtoecef(pNode->vtx_bih[ivtx].x, pNode->vtx_bih[ivtx].y, 0.0f,
+			pNode->vtx_ecef[ivtx].x, pNode->vtx_ecef[ivtx].y, pNode->vtx_ecef[ivtx].z);
+	}
+
+	while (!findex.eof()){
+		LayerType layerType;
+		findex.read((char*)&layerType, sizeof(LayerType));
+		LayerData * layerData = LayerData::create(layerType);
+		layerData->setNode(pNode);
+		if (layerData){
+			pNode->insertLayerData(layerType, layerData);
+		}
+	}
+
+	return pNode;
+}
+
+bool Node::createDownLink()
+{
+	vec3 vtx_ecef_mid[3];
+	vec2 vtx_bih_mid[3];
+	double alt;
+	vtx_ecef_mid[0] = (vtx_ecef[0] + vtx_ecef[1]) * 0.5;
+	vtx_ecef_mid[1] = (vtx_ecef[1] + vtx_ecef[2]) * 0.5;
+	vtx_ecef_mid[2] = (vtx_ecef[2] + vtx_ecef[0]) * 0.5;
+	for (int i = 0; i < 3; i++)
+		eceftobih(vtx_ecef_mid[i].x, vtx_ecef_mid[i].y, vtx_ecef_mid[i].z, vtx_bih_mid[i].x, vtx_bih_mid[i].y, alt);
+
+	downLink[0] = new Node(vtx_bih[0], vtx_bih_mid[0], vtx_bih_mid[2]);
+	downLink[0]->upLink = this;
+	downLink[0]->id = 0;
+
+	downLink[1] = new Node(vtx_bih[1], vtx_bih_mid[1], vtx_bih_mid[0]);
+	downLink[1]->upLink = this;
+	downLink[1]->id = 1;
+
+	downLink[2] = new Node(vtx_bih[2], vtx_bih_mid[2], vtx_bih_mid[1]);
+	downLink[2]->upLink = this;
+	downLink[2]->id = 2;
+
+	downLink[3] = new Node(vtx_bih_mid[0], vtx_bih_mid[1], vtx_bih_mid[2]);
+	downLink[3]->upLink = this;
+	downLink[3]->id = 3;
+
+	list<Node*> nodes;
+	for (int idown = 0; idown < 4; idown++){
+		nodes.push_back(downLink[idown]);
+	}
+
+	for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++){
+		itr->second->split(nodes);
+	}
+
+	bdownLink = true;
 	return true;
 }
 
-bool Node::load()
+void Node::getPath(char * path, unsigned int maxlen)
 {
+	list<unsigned char> path_id;
+
+	getPath(path_id);
+	unsigned int len = 0;
+	len = snprintf(path + len, maxlen - len, "%s", MapDataBase::getPath());
+
+	for (auto itr = path_id.begin(); itr != path_id.end(); itr++){
+		if (len + 3 > maxlen)
+			return;
+		len += snprintf(path + len, maxlen - len, "/N%02d", (int)id);
+	}
+}
+
+void Node::getPath(list<unsigned char> & path_id)
+{
+	if (upLink == NULL){
+		path_id.push_back(id);
+		return;
+	}
+
+	upLink->getPath(path_id);
+	path_id.push_back(id);
+}
+
+bool Node::distributeLayerData(const LayerData & layerData)
+{
+	if (!bdownLink)
+		return true;
+	
+	list<Node*> nodes;
+	for (int idown = 0; idown < 4; idown++){
+		if (!downLink[idown]){
+			downLink[idown] = Node::load(this, idown);
+		}
+		nodes.push_back(downLink[idown]);
+	}
+	layerData.split(nodes);
+
 	return true;
 }
 
-const Node * Node::collision(const Point3f & location)
+const bool Node::collision(const vec3 & location)
 {
-	return NULL;
+	return det_collision(vtx_ecef[0], vtx_ecef[1], vtx_ecef[2], location);
+}
+
+const bool Node::collision(const vec3 & center, const float radius)
+{
+	return det_collision_tri_and_sphere(vtx_ecef[0], vtx_ecef[1], vtx_ecef[2], center, radius * radius);
+}
+
+
+const void Node::getLayerData(
+	list<list<const LayerData*>> & layerData, const list<LayerType> & layerType, 
+	const vec3 & center, const float radius, const float resolution)
+{
+	if (!collision(center, radius))
+		return;
+
+	if (layerData.size() != layerType.size()){
+		layerData.resize(layerType.size());
+	}
+
+	// retrieving more detailed data than this node
+	list<list<const LayerData*>> detailedLayerData;
+	for (int idown = 0; idown < 4; idown++){
+		downLink[idown]->getLayerData(detailedLayerData, layerType, center, radius, resolution);
+	}
+
+	auto itrType = layerData.begin();
+	auto itrTypeVal = layerType.begin();
+	for (auto itrTypeLow = detailedLayerData.begin();
+		itrTypeLow != detailedLayerData.end(); itrTypeLow++, itrType++, itrTypeVal++){
+		const LayerData * data = getLayerData(*itrTypeVal);
+		if (data->resolution() < resolution)
+			continue;
+
+		float min_res = FLT_MAX;
+		for (auto itrData = itrTypeLow->begin(); itrData != itrTypeLow->end(); itrData++){
+			min_res = min((*itrData)->resolution(), min_res);
+		}
+
+		if (min_res < resolution){
+			itrType->push_back(data);
+		}
+		else{
+			for (auto itrData = itrTypeLow->begin(); itrData != itrTypeLow->end(); itrData++){
+				itrType->push_back((*itrData));
+			}
+		}
+	}
 }
 
 const LayerData * Node::getLayerData(const LayerType layerType)
 {
-	return NULL;
+	auto itrLayerData = layerDataList.find(layerType);
+	if (itrLayerData == layerDataList.end())
+		return NULL;
+	
+	LayerData * layerData = itrLayerData->second;
+	if (!layerData->isActive())
+		layerData->load();
+
+	LayerData::accessed(layerData);
+	return layerData;
 }
 
 bool Node::addLayerData(const LayerData & layerData, 
 			const size_t sz_node_data_lim)
 {
-	// seeks nodeList to be added
-	// call split method of the layerData with nodeList
+	bupdate = true;
+	auto itrDstLayerData = layerDataList.find(layerData.getLayerType());
+	LayerData * pDstLayerData = NULL;
+
+	if (itrDstLayerData != layerDataList.end()){
+		pDstLayerData = itrDstLayerData->second;
+		if (!pDstLayerData->isActive())
+			pDstLayerData->load();
+	}
+	else{ // create LayerData instance
+		pDstLayerData = LayerData::create(layerData.getLayerType());
+		pDstLayerData->setNode(this);
+		pDstLayerData->setActive();
+		insertLayerData(layerData.getLayerType(), pDstLayerData);
+	}
+	vec3 vec;
+
+	if (bdownLink){
+		distributeLayerData(layerData);
+		list<Node*> nodes;
+		for (int idown = 0; idown < 4; idown++)
+			nodes.push_back(downLink[idown]);
+		layerData.split(nodes);
+
+		if (pDstLayerData){
+			for (int idown = 0; idown < 4; idown++){
+				pDstLayerData->merge(*downLink[idown]->getLayerData(layerData.getLayerType()));
+			}
+			
+			pDstLayerData->reduce(sz_node_data_lim);
+		}
+
+		return true;
+	}
+
+	if (pDstLayerData){
+		pDstLayerData->merge(layerData);
+		if (pDstLayerData->size() > sz_node_data_lim){
+
+			if (!bdownLink)
+				createDownLink();
+
+			distributeLayerData(layerData);
+
+			pDstLayerData->reduce(sz_node_data_lim);
+		}
+		return true;
+	}
+
+	return false;
+}
+
+///////////////////////////////////////////////////////////////////// LayerData
+LayerData * LayerData::head = NULL;
+LayerData * LayerData::tail = NULL;
+unsigned int LayerData::totalSize = 0;
+
+void LayerData::insert(LayerData * pLayerData)
+{
+
+	if (pLayerData->next != NULL || pLayerData->prev != NULL)
+		return; // the instance has already been loaded
+
+	if (totalSize >= MapDataBase::getMaxTotalSizeLayerData())
+		restruct();
+
+	totalSize = (unsigned int) pLayerData->size();
+
+	if (head == NULL && tail == NULL){
+		pLayerData->next = pLayerData->prev = NULL;
+		head = tail = pLayerData;
+		return;
+	}
+	pLayerData->next = NULL;
+	pLayerData->prev = tail;
+	tail->next = pLayerData;
+	tail = tail->next;
+}
+
+void LayerData::pop(LayerData * pLayerData)
+{
+	LayerData * prev = pLayerData->prev, *next = pLayerData->next;
+
+	pLayerData->prev = pLayerData->next = NULL;
+
+	if (next == NULL){
+		prev->next = NULL;
+		tail = prev;
+	}
+
+	// reconnect 
+	if (prev == NULL){
+		head = next;
+	}
+	else{
+		prev->next = next;
+	}
+	next->prev = prev;
+	totalSize -= (unsigned int) pLayerData->size();
+}
+
+void LayerData::accessed(LayerData * pLayerData)
+{
+	if (!pLayerData->isActive())
+		return;
+	pop(pLayerData);
+	insert(pLayerData);
+}
+
+void LayerData::restruct()
+{
+	while (totalSize >= MapDataBase::getMaxTotalSizeLayerData())
+	{
+		LayerData * pLayerData = head;
+		pLayerData->release();
+	}
+}
+
+LayerData * LayerData::create(const LayerType layerType)
+{
+	switch (layerType){
+	case lt_coast_line:
+		return new CoastLine;
+	}
+	return NULL;
+}
+
+bool LayerData::save(){
+	if (!bupdate){
+		return true;
+	}
+
+	if (!pNode)
+		return false;
+
+	char fname[2048];
+	genFileName(fname, 2048);
+
+	ofstream ofile(fname, ios::binary);
+	if (!ofile.is_open())
+		return false;
+
+	if (!save(ofile))
+		return false;
+
+	bupdate = false;
+	return true;
+}
+
+bool LayerData::load(){
+	if (!pNode)
+		return false;
+
+	char fname[2048];
+	genFileName(fname, 2048);
+
+	ifstream ifile(fname, ios::binary);
+	if (!ifile.is_open())
+		return false;
+
+	if (!load(ifile))
+		return false;
+
+	bupdate = false;
+
+	setActive();
 
 	return true;
 }
 
-///////////////////////////////////////////////////////////////////// LayerData
+void LayerData::release()
+{
+	if (bupdate){
+		save();
+	}
+	_release();
+	LayerData::pop(this);
+	bactive = false;
+}
 
+bool LayerData::reduce(const size_t sz_lim)
+{
+	bupdate = true;
+	if (isActive())
+		LayerData::accessed(this);
+	return _reduce(sz_lim);
+}
+
+bool LayerData::merge(const LayerData & layerData)
+{
+	bupdate = true;
+	if (isActive())
+		LayerData::accessed(this);
+	return _merge(layerData);
+}
+
+///////////////////////////////////////////////////////////////////// CoastLine
 CoastLine::CoastLine() :dist_min(FLT_MAX)
 {
 }
@@ -151,45 +894,86 @@ CoastLine::~CoastLine()
 {
 }
 
-bool CoastLine::save()
+bool CoastLine::save(ofstream & ofile)
 {
+	unsigned int nlines = (unsigned int) lines.size();
+	ofile.write((const char*)&nlines, sizeof(unsigned int));
+	for (auto itr = lines.begin(); itr != lines.end(); itr++){
+		vector<vec2> & pts = (*itr)->pts;
+		unsigned int length = (unsigned int) pts.size();
+		ofile.write((const char*)&((*itr)->id), sizeof(unsigned int));
+		ofile.write((const char*)&length, sizeof(unsigned int));
+		for (auto itr_pt = pts.begin(); itr_pt != pts.end(); itr_pt++){	
+			vec2 pt = *itr_pt;
+			ofile.write((const char*)(&pt), sizeof(vec2));
+		}
+	}
 	return true;
 }
 
-bool CoastLine::load()
+bool CoastLine::load(ifstream & ifile)
 {
+	unsigned int nlines = 0;
+	ifile.read((char*)&nlines, sizeof(unsigned int));
+	lines.resize(nlines);
+
+	for (auto itr = lines.begin(); itr != lines.end(); itr++){
+		vector<vec2> & pts = (*itr)->pts;
+		unsigned int length;
+		ifile.read((char*)&length, sizeof(unsigned int));
+		ifile.read((char*)&((*itr)->id), sizeof(unsigned int));
+		pts.resize(length);
+		for (auto itr_pt = pts.begin(); itr_pt != pts.end(); itr_pt++){
+			vec2 pt;
+			ifile.read((char*)(&pt), sizeof(vec2));
+
+			(*itr_pt) = pt;
+		}
+	}
+
+	update_properties();
+
 	return true;
 }
 
-size_t CoastLine::size()
+void CoastLine::_release()
+{
+	for (auto itr = lines.begin(); itr != lines.end(); itr++)
+	{
+		delete (*itr);
+	}
+	lines.clear();
+}
+
+size_t CoastLine::size() const
 {
 	return total_size;
 }
 
-float CoastLine::resolution()
+float CoastLine::resolution() const
 {
 	return dist_min;
 }
 
-float CoastLine::radius()
+float CoastLine::radius() const
 {
-	return 0;
+	return pt_radius;
 }
 
-Point3f CoastLine::center()
+vec3 CoastLine::center() const
 {
-	return Point3f();
+	return pt_center;
 }
 
-bool CoastLine::split(list<Node*> & nodes)
+bool CoastLine::split(list<Node*> & nodes) const
 {
 	vector<CoastLine*> cls(nodes.size(), NULL);
-	list<Point2f> line_new;
+	list<vec2> line_new;
 	int inode_line_new = 0;
 	Node * pNode_line_new = NULL;
 	for (int iline = 0; iline < lines.size(); iline++) {
 
-		vector<Point3f> & pts = lines[iline]->pts_ecef;
+		vector<vec3> & pts = lines[iline]->pts_ecef;
 		for (int ipt = 0; ipt < pts.size(); ipt++) {
 			if (pNode_line_new != NULL) {
 				line_new.push_back(lines[iline]->pts[ipt]);
@@ -220,36 +1004,282 @@ bool CoastLine::split(list<Node*> & nodes)
 	}
 	int inode = 0;
 	for (list<Node*>::iterator itr = nodes.begin(); itr != nodes.end(); itr++) {
-		(*itr)->addLayerData(*cls[inode]);
+		if (cls[inode]->size())
+		(*itr)->addLayerData(*cls[inode], MapDataBase::getMaxSizeLayerData(cls[inode]->getLayerType()));
 		inode++;
 	}
 
 	return true;
 }
 
-	void CoastLine::add(list<Point2f> & line)
+
+int CoastLine::try_reduce(int nred)
+{
+	// select nred points with shortest distance to both sides in the line (excluding terminal points)
+	struct s_red_pt{
+		int iline;
+		int ipt;
+		double dist;
+		s_red_pt() :iline(-1), ipt(-1), dist(DBL_MAX){};
+	};
+
+	// creating distance data 
+	int npts_list = 0;
+	vector<vector<s_red_pt*>> redpts(lines.size());
+
+	for (int iline = 0; iline < lines.size(); iline++){
+		redpts[iline].resize(lines[iline]->pts.size());
+		vector<vec3> & pts = lines[iline]->pts_ecef;
+		npts_list = (int)pts.size() - 2;
+	}
+
+	// creating sort list
+	vector<s_red_pt> mblock(npts_list);
+	vector<s_red_pt*> sortlist(npts_list, NULL);
+	npts_list = 0;
+	for (int iline = 0; iline < lines.size(); iline++){
+		vector<vec3> & pts = lines[iline]->pts_ecef;
+		for (int ipt = 1; ipt < pts.size() - 1; ipt++){
+			redpts[iline][ipt] = &mblock[npts_list];
+			redpts[iline][ipt]->iline = iline;
+			redpts[iline][ipt]->ipt = ipt;
+			redpts[iline][ipt]->dist =
+				l2Norm(pts[ipt], pts[ipt - 1]) + l2Norm(pts[ipt], pts[ipt + 1]);
+			sortlist[npts_list] = &mblock[npts_list];;
+			npts_list++;
+		}
+	}
+	struct {
+		bool operator () (const s_red_pt * p0, const s_red_pt * p1) const
+		{
+			return p0->dist < p1->dist;
+		}
+	} lessthan;
+	sort(sortlist.begin(), sortlist.end(), lessthan);
+
+	// reduction phase
+	int nredd = 0;
+	while (nredd < nred){
+		int iline = sortlist[nredd]->iline;
+		int ipt = sortlist[nredd]->ipt;
+		int ipt0 = ipt - 1, ipt1 = ipt + 1;
+		s_line & line = *lines[iline];
+		vector<vec2> & pts = line.pts;
+		vector<vec3> & pts_ecef = line.pts_ecef;
+
+		redpts[iline][ipt0]->dist = l2Norm(pts_ecef[ipt0], pts_ecef[ipt0 - 1]) +
+			l2Norm(pts_ecef[ipt0], pts_ecef[ipt1]);
+	
+		redpts[iline][ipt1]->dist = l2Norm(pts_ecef[ipt1], pts_ecef[ipt0]) +
+			l2Norm(pts_ecef[ipt1], pts_ecef[ipt1 + 1]);
+		for (; ipt < line.pts.size(); ipt++){
+			redpts[iline][ipt]->ipt = ipt - 1;
+		}
+		ipt = sortlist[nredd]->ipt;
+		pts.erase(pts.begin() + ipt);
+		pts_ecef.erase(pts_ecef.begin() + ipt);
+		sortlist.erase(sortlist.begin());
+		nredd++;
+
+		sort(sortlist.begin() + nredd, sortlist.end(), lessthan);
+		if (sortlist.size() == 0)
+			break;
+	}
+
+	update_properties();
+
+	return nred - nredd;
+}
+
+bool CoastLine::_reduce(const size_t sz_lim)
+{
+	bupdate = true;
+	if (size() < sz_lim)
+		return true;
+
+	// calculate nred; the number of points to be reduced
+	unsigned int sz_ids = (unsigned int)(lines.size() * sizeof(unsigned int));
+	unsigned int sz_pts_lim = (unsigned int)(sz_lim - sz_ids);	
+	unsigned int sz_pt = (unsigned int)(sizeof(vec2)+sizeof(vec3));
+	unsigned int npts = 0;
+	for (unsigned int iline = 0; iline < npts; iline++){
+		npts += (unsigned int) lines[iline]->pts.size();
+	}
+
+	unsigned int nred = (sz_pts_lim / sz_pt) - npts;
+	if (try_reduce(nred) != 0){
+		return false;
+	}
+	return true;
+}
+
+bool CoastLine::_merge(const LayerData & layerData)
+{
+	bupdate = true;
+	const CoastLine * src = dynamic_cast<const CoastLine*>(&layerData);
+	const vector<s_line*> & lines_src = src->lines;
+
+	for (int iline0 = 0; iline0 < lines_src.size(); iline0++){
+		s_line & line_src = *lines_src[iline0];
+		vector<vec2> & pts_src = line_src.pts;
+		vec2 & pt_src_begin = pts_src.front() , & pt_src_end = pts_src.back();
+		int iline_con_begin = -1, iline_con_end = -1;
+		bool bdst_begin_con_begin = true, bdst_begin_con_end = true;
+		// check connection
+		for (int iline1 = 0; iline1 < lines.size(); iline1++){
+			s_line & line_dst = *lines[iline1];
+			vector<vec2> & pts_dst = line_dst.pts;
+			vec2 & pt_dst_begin = pts_dst.front(), & pt_dst_end = pts_dst.back();
+			if (pt_src_begin == pt_dst_begin){
+				iline_con_begin = iline1;
+				bdst_begin_con_begin = true;
+			}
+			else if (pt_src_begin == pt_dst_end){
+				iline_con_begin = iline1;
+				bdst_begin_con_begin = false;
+			}
+			else{
+				iline_con_begin = -1;
+			}
+
+			if (pt_src_end == pt_dst_begin){
+				iline_con_end = iline1;
+				bdst_begin_con_end = true;
+			}
+			else if (pt_src_end == pt_dst_end){
+				iline_con_end = iline1;
+				bdst_begin_con_end = false;
+			}
+			else{
+				iline_con_end = -1;
+			}
+		}
+
+		s_line * pline_begin = NULL, *pline_end = NULL, *pline_new;
+		pline_new = new s_line;
+		if (iline_con_begin >= 0){
+			pline_begin = lines[iline_con_begin];
+			if (bdst_begin_con_begin){
+				reverse(pline_begin->pts.begin(), pline_begin->pts.end());
+				reverse(pline_begin->pts_ecef.begin(), pline_begin->pts_ecef.end());
+			}
+			*pline_new = *pline_begin;
+			pline_new->pts.insert(pline_new->pts.end(), pts_src.begin(), pts_src.end());
+			pline_new->pts_ecef.insert(pline_new->pts_ecef.end(), line_src.pts_ecef.begin(), line_src.pts_ecef.end());
+			delete lines[iline_con_begin];
+			lines[iline_con_begin] = pline_new;
+		}
+		if (iline_con_end >= 0){
+			pline_end = lines[iline_con_end];
+			vector<vec2> pts = pline_end->pts;
+			vector<vec3> pts_ecef = pline_end->pts_ecef;
+			if (pline_new->pts.size() == 0){
+				pline_new->pts = pts_src;
+				pline_new->pts_ecef = line_src.pts_ecef;
+				pline_new->id = pline_end->id;
+				delete lines[iline_con_end];
+				lines[iline_con_end] = pline_new;
+			}
+			else{
+				delete lines[iline_con_end];
+				lines[iline_con_end] = NULL;
+			}
+
+			if (!bdst_begin_con_end){
+				reverse(pts.begin(), pts.end());
+				reverse(pts_ecef.begin(), pts_ecef.end());
+			}
+			pline_new->pts.insert(pline_new->pts.end(), pts.begin(), pts.end());
+			pline_new->pts_ecef.insert(pline_new->pts_ecef.end(), pts_ecef.begin(), pts_ecef.end());
+		}
+	}
+
+	// erase null element from lines
+	for (vector<s_line*>::iterator itr = lines.begin(); itr != lines.end();){
+		if (*itr == NULL)
+			itr = lines.erase(itr);
+		else
+			itr++;
+	}
+
+	update_properties();
+	return true;
+}
+
+LayerData * CoastLine::clone() const
+{
+	CoastLine * pnew = new CoastLine;
+
+	pnew->pNode = NULL;
+	pnew->bupdate = bupdate;
+	pnew->dist_min = dist_min;
+	pnew->total_size = total_size;
+
+	vector<s_line*> & lines_new = pnew->lines;
+	lines_new.resize(lines.size());
+	auto itr_new = lines_new.begin();
+	for (auto itr = lines.begin(); itr != lines.end(); itr++, itr_new++){
+		*itr_new = new s_line;
+		*(*itr_new) = *(*itr);
+	}
+
+	return pnew;
+}
+
+	void CoastLine::add(list<vec2> & line)
 	{
 		s_line * pline = new s_line;
 
-		pline->id = lines.size();
+		pline->id = (unsigned int) lines.size();
 		pline->pts.resize(line.size());
 		pline->pts_ecef.resize(line.size());
-		list<Point2f>::iterator itr_src = line.begin();
-		vector<Point2f>::iterator itr_dst = pline->pts.begin();
-		vector<Point3f>::iterator itr_dst_ecef = pline->pts_ecef.begin();
+		list<vec2>::iterator itr_src = line.begin();
+		vector<vec2>::iterator itr_dst = pline->pts.begin();
+		vector<vec3>::iterator itr_dst_ecef = pline->pts_ecef.begin();
 		for (; itr_src != line.end(); itr_src++, itr_dst++) {
 			*itr_dst = *itr_src;
-			bihtoecef(itr_dst->x, itr_dst->y, 0., itr_dst_ecef->x, itr_dst_ecef->y, itr_dst_ecef->z);
+			bihtoecef(itr_dst->lat, itr_dst->lon, 0., itr_dst_ecef->x, itr_dst_ecef->y, itr_dst_ecef->z);
 		}
 		lines.push_back(pline);
 
 		// calculating resolution and size
-		vector<Point3f> & pts = pline->pts_ecef;
+		vector<vec3> & pts = pline->pts_ecef;
 		for (int i = 1; i < pts.size(); i++) {
-			Point3f & pt0 = pts[i - 1];
-			Point3f & pt1 = pts[i];
-			dist_min = min(dist_min, (float)norm(pt0 - pt1));
-			total_size += pline->size();
+			vec3 & pt0 = pts[i - 1];
+			vec3 & pt1 = pts[i];
+			dist_min = min(dist_min, l2Norm(pt0, pt1));
+		}
+		total_size += pline->size();
+	}
+
+	void CoastLine::update_properties()
+	{
+		// calculating center 
+	
+		pt_center = vec3(0, 0, 0);
+		unsigned int num_total_points = 0;
+		for (int iline = 0; iline < lines.size(); iline++){
+			vector<vec3> & pts = lines[iline]->pts_ecef;
+			for (int i = 0; i < pts.size(); i++){
+				pt_center += pts[i];
+			}
+			num_total_points += (unsigned int)pts.size();
+		}
+		pt_center *= (1.0 / (double)num_total_points);
+
+		total_size = 0;
+		pt_radius = 0;
+		for (int iline = 0; iline < lines.size(); iline++){
+			// calculating resolution and size
+			vector<vec3> & pts = lines[iline]->pts_ecef;
+			pt_radius = max(pt_radius, l2Norm(pt_center, pts[0]));
+			for (int i = 1; i < pts.size(); i++) {
+				vec3 & pt0 = pts[i - 1];
+				vec3 & pt1 = pts[i];
+				dist_min = min(dist_min, l2Norm(pt0, pt1));
+				pt_radius = max(pt_radius, l2Norm(pt_center, pts[i]));
+			}
+			total_size += lines[iline]->size();
 		}
 	}
 
@@ -263,7 +1293,7 @@ bool CoastLine::split(list<Node*> & nodes)
 
 		char buf[1024];
 		bool bline = false;
-		list<Point2f> line;
+		list<vec2> line;
 		while (!fjpgis.eof())
 		{
 			fjpgis.getline(buf, 1024);
@@ -279,7 +1309,7 @@ bool CoastLine::split(list<Node*> & nodes)
 					break;
 				}
 
-				Point2f pt;
+				vec2 pt;
 				char * p;
 				for (p = buf; *p != ' ' && *p != '\0'; p++);
 				*p = '\0';
@@ -292,1119 +1322,9 @@ bool CoastLine::split(list<Node*> & nodes)
 
 		return true;
 	}
-
-
 }
 
-using namespace AWSMap;
-
-const char * LayerStr[amlc_undef] = {
-	"cl"
-};
-
-//////////////////////////////////////////////////////////////////////////////////////////
-c_layer::c_layer() :bupdate(false)
-{
-}
-
-c_layer::~c_layer()
-{
-}
-
-c_layer * c_layer::create(const LayerCode code)
-{
-	switch (code){
-	case amlc_coast_line:
-		return new c_coast_line;
-	}
-
-	return NULL;
-}
-
-//////////////////////////////////////////////////////////////////////////////////////////
-c_coast_line::c_coast_line()
-{
-}
-
-c_coast_line::~c_coast_line()
-{
-}
-
-bool c_coast_line::save(const char * fname)
-{
-
-	char buf[1024];
-	snprintf(buf, 1024, "%s/%s", c_map::path, fname);
-
-	ofstream ofile(buf, ios::binary);
-	if (!ofile.is_open()){
-		cerr << "Cannot open " << fname << endl;
-		return false;
-	}
-	
-	int nLines = lines.size();
-	ofile.write((char*)&nLines, sizeof(nLines));
-
-	for (int iline = 0; iline < nLines; iline++){
-		s_line & line = lines[iline];
-		int nPoints = line.points.size();
-		ofile.write((char*)&nPoints, sizeof(nPoints));
-		for (int ipt = 0; ipt < nPoints; ipt++){
-			ofile.write((char*)&line.points[ipt], sizeof(Point3f));
-		}
-	}
-
-	bupdate = false;
-	return	true;
-}
-
-bool c_coast_line::load(const char * fname)
-{
-	char buf[1024];
-	snprintf(buf, 1024, "%s/%s", c_map::path, fname);
-
-	ifstream ifile(buf, ios::binary);
-	if (!ifile.is_open()){
-		cerr << "Cannot open " << fname << endl;
-		return false;
-	}
-
-	int nLines;
-	ifile.read((char*)&nLines, sizeof(nLines));
-	lines.resize(nLines);
-
-	for (int iline = 0; iline < nLines; iline++){
-		s_line & line = lines[iline];
-		int nPoints;
-		ifile.read((char*)&nPoints, sizeof(nPoints));
-		line.points.resize(nPoints);
-		for (int ipt = 0; ipt < nPoints; ipt++){
-			ifile.read((char*)&line.points[ipt], sizeof(Point3f));
-		}
-	}
-	return true;
-}
-
-c_coast_line * c_coast_line::convertFromJPGIS(const char * fname)
-{
-	c_coast_line * pCL = new c_coast_line;
-
-	ifstream fjpgis(fname);
-	if (!fjpgis.is_open()){
-		cerr << "Failed to open file " << fname << "." << endl;
-		return NULL;
-	}
-
-	char buf[1024];
-	bool bline = false;
-	list<Point2f> line;
-	while (!fjpgis.eof())
-	{
-		fjpgis.getline(buf, 1024);
-		if (!bline){
-			if (strcmp(buf, "\t\t\t<gml:posList>") == 0){
-				bline = true;
-			}
-		}
-		else{
-			if (strcmp(buf, "\t\t\t</gml:posList>") == 0){
-				pCL->addLine(line);
-				line.clear();
-				break;
-			}
-			
-			Point2f pt;
-			char * p;
-			for (p = buf; *p != ' ' && *p != '\0'; p++);
-			*p = '\0';
-			p++;
-			pt.x = (float)(atof(buf) * PI / 180.);
-			pt.y = (float)(atof(p) * PI / 180.);
-			line.push_back(pt);
-		}
-	}
-
-	return pCL;
-}
-
-bool c_coast_line::addLine(s_line & line)
-{
-	vector<Point3f> & newPoints = line.points;
-
-	Point3f & pe2 = newPoints.back();
-	Point3f & pb2 = newPoints.front();
-	if (pb2 == pe2){// detecting single segment loop
-		line.bclosed = true;
-		lines.push_back(line);
-		return true;
-	}
-
-	// finding the joint point in previous shapes
-	int ibline = -1, ieline = -1;
-	enum connection{ none, e2b, e2e, b2b, b2e } bcon = none, econ = none;
-	for (int iline = 0; iline < lines.size(); iline++){
-		s_line & cline = lines[iline];
-		Point3f & pe1 = cline.points.back();
-		Point3f & pb1 = cline.points.front();
-		if (bcon == none){
-			if (pe1 == pb2){
-				ibline = iline;
-				bcon = b2e;
-			}
-			else if (pb1 == pb2){
-				ibline = iline;
-				bcon = b2b;
-			}
-		}
-
-		if (econ == none){
-			if (pe1 == pe2){
-				ieline = iline;
-				econ = e2e;
-			}
-			else if (pb1 == pe2){
-				ieline = iline;
-				econ = e2b;
-			}
-		}
-		if (bcon != none && econ != none)
-			break;
-	}
-
-	if (bcon == none && econ == none){ // the line is a new fragment	
-		lines.push_back(line);
-		
-		return true;
-	}
-
-	// merge lines
-	if (bcon != none && econ == none){
-		vector<Point3f> & cpts = lines[ibline].points;
-		if (bcon == b2e){
-			// merge start point in the newLine and the end point in the candidate line
-			cpts.insert(cpts.end(), newPoints.begin(), newPoints.end());
-		}
-		else{
-			vector<Point3f> pts;
-			pts.resize(cpts.size() + newPoints.size());
-			int ipt = 0;
-			for (int i = newPoints.size() - 1; i >= 0; i--){
-				pts[ipt] = newPoints[i];
-				ipt++;
-			}
-			for (int i = 0; i < cpts.size(); i++){
-				pts[ipt] = cpts[i];
-				ipt++;
-			}
-			cpts = pts;
-		}
-	}
-	if (bcon == none && econ != none){ // only the end point is connected to a shape
-		vector<Point3f> & cpts = lines[ibline].points;
-		if (econ == e2b){
-			cpts.insert(cpts.begin(), newPoints.begin(), newPoints.end());
-		}
-		else{
-			vector<Point3f> pts;
-			pts.resize(cpts.size() + newPoints.size());
-			int ipt = 0;
-			for (int i = 0; i < newPoints.size(); i++){
-				pts[ipt] = newPoints[i];
-				ipt++;
-			}
-			for (int i = cpts.size() - 1; i >= 0; i--){
-				pts[ipt] = cpts[i];
-				ipt++;
-			}
-			cpts = pts;
-		}
-	}
-	else if (bcon != none && econ != none){ 
-		vector<Point3f> & cptb = lines[ibline].points, &cpte = lines[ieline].points;
-
-	}
-
-	setUpdate(true);
-
-	return true;
-}
-
-bool c_coast_line::addLine(list<Point2f> & line)
-{
-	lines.push_back(s_line());
-	s_line & newLine = lines.back();
-	newLine.points.resize(line.size());
-	vector<Point3f> & newPoints = newLine.points;
-
-	int i = 0;
-	for (list<Point2f>::iterator itr = line.begin(); itr != line.end(); itr++)
-	{
-		Point3f & pt = newPoints[i];
-		bihtoecef((*itr).x, (*itr).y, 0.f, pt.x, pt.y, pt.z);
-		i++;
-	}
-
-	return true;
-}
-
-bool c_coast_line::distribute(Lv & ml)
-{
-
-	vector<Point3f> gl; // gravity centers of lines 
-	gl.resize(lines.size());
-	Point3f gls(0, 0, 0); // gravity center of this set of lines
-
-	Point3f pmin(FLT_MAX, FLT_MAX, FLT_MAX);
-	Point3f pmax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-
-	// calculate maximum/minimum coordinate point to restrict search area
-	int nLines = lines.size();
-	for (int iline = 0; iline < nLines; iline++){
-		s_line & line = lines[iline];
-		Point3f g(0, 0, 0);
-		for (int ipt = 0; ipt < line.points.size(); ipt++){
-			Point3f pt = line.points[ipt];
-			g += pt;
-			pmin.x = min(pmin.x, pt.x);
-			pmin.y = min(pmin.y, pt.y);
-			pmin.z = min(pmin.z, pt.z);
-			pmax.x = max(pmax.x, pt.x);
-			pmax.y = max(pmax.y, pt.y);
-			pmax.z = max(pmax.z, pt.z);
-		}
-		gl[iline] = g * (float)(1.0 / (double)line.points.size());
-		gls += g;
-	}
-
-	gls *= (float)(1.0 / (double)nLines);
-
-	// extracting candidate nodes
-	double radius = 2 * max(norm(gls - pmin), norm(gls - pmax));
-	/*
-	vector<Node*> candidates;
-	ml.getNode(gls.x, gls.y, gls.z, radius, candidates);
-
-	for (int iline = 0; iline < nLines; iline++){
-		s_line & line = lines[iline];
-		vector<Point3f> & pts = line.points;
-		vector<int> nn; // nearest node
-		nn.resize(pts.size());
-
-		for (int ipt = 0; ipt < pts.size(); ipt++){
-			double Dmin = DBL_MAX;
-			Point3f & pt = pts[ipt];
-
-			for (int inode = 0; inode < candidates.size(); inode++){
-				Node * pNode = candidates[inode];
-				double D = pNode->getDist(pt.x, pt.y, pt.z);
-				if (D < Dmin){
-					Dmin = D;
-					nn[ipt] = inode;
-				}
-			}
-		}
-
-		{
-			int inode = nn[0];
-			s_line newLine;
-			newLine.points.push_back(pts[0]);
-			for (int ipt = 1; ipt < pts.size(); ipt++){
-				newLine.points.push_back(pts[ipt]);
-				if (nn[ipt] != inode){
-					c_coast_line * pCL = dynamic_cast<c_coast_line*>(candidates[inode]->getLaye(ramlc_coast_line));
-					pCL->addLine(newLine);
-					newLine.points.clear();
-					newLine.points.push_back(pts[ipt]);
-					inode = nn[ipt];
-					candidates[inode]->setUpdate(true);
-				}
-			}
-		}
-	}
-	*/
-	return true;
-}
-
-void c_coast_line::build(list<c_layer*> & ll, double spix)
-{
-	for (list<c_layer*>::iterator itr = ll.begin();
-		itr != ll.end(); itr++){
-		c_coast_line * pCL = dynamic_cast<c_coast_line*>(*itr);
-		if (pCL == NULL)
-			continue;
-		vector<s_line> & lls = pCL->lines;
-		for (vector<s_line>::iterator itrl = lls.begin(); itrl != lls.end(); itrl++){
-			addLine(*itrl);
-		}
-	}
-
-	for (vector<s_line>::iterator itr = lines.begin(); itr != lines.end();){
-		vector<Point3f> & pts = (*itr).points;
-		for (vector<Point3f>::iterator itrp1 = pts.begin(), itrp2 = pts.begin() + 1;
-			itrp2 != pts.end();){
-	
-			double d = norm(*itrp2 - *itrp1);
-			if (d < spix){
-				itrp2 = pts.erase(itrp2);
-			}
-			else{
-				itrp1 = itrp2;
-				itrp2++;
-			}
-		}
-
-		if (pts.size() < 2 || ((*itr).bclosed && pts.size() < 3))
-			itr = lines.erase(itr);
-		else
-			itr++;
-	}
-}
-
-//////////////////////////////////////////////////////////////////////////////////// s_grid
-
-bool s_grid::init(const double _step, const int _ilevel, bool becef)
-{
-	lv = _ilevel;
-	int nLatLines = (int)(RE * PI / _step);
-	latStep = PI / (double)nLatLines;
-
-	// 3. allocate lattitude grid
-	grid.resize(nLatLines + 1);
-	lonStep.resize(nLatLines + 1);
-	lat.resize(nLatLines + 1);
-	lon.resize(nLatLines + 1);
-
-	// 4. allocate nodes on lattitude grid
-	grid[0].resize(1);			// north pole
-	lon[0].resize(1);
-	lat[0] = 0.5 * PI;
-
-	grid[nLatLines].resize(1);	// south pole
-	lon[nLatLines].resize(1);
-	lat[nLatLines] = -0.5 * PI;
-
-	for (int ilat = 0; ilat < nLatLines; ilat++){
-		lat[ilat] = 0.5 * PI - ilat * latStep;
-		double lenLatLine = 2. * PI * RE * cos(lat[ilat]);
-		int lonNodes = (int)(lenLatLine / _step);
-		if (lonNodes == 0) // in south and north poles
-			lonNodes = 1;
-
-		lonStep[ilat] = 2. * PI / (double)lonNodes;
-		grid[ilat].resize(lonNodes);
-		lon[ilat].resize(lonNodes);
-		for (int ilon = 0; ilon < lonNodes; ilon++){
-			lon[ilat][ilon] = ilon * lonStep[ilat];
-		}
-	}
-
-	int inode = 0;
-	for (int ilat = 0; ilat < lat.size(); ilat++){
-		for (int ilon = 0; ilon < lon[ilat].size(); ilon++){
-			grid[ilat][ilon] = inode;
-			inode++;
-		}
-	}
-	nNodes = inode;
-
-	if (becef){
-		ecef.resize(grid.size());
-		for (int ilat = 0; ilat < ecef.size(); ilat++){
-			ecef[ilat].resize(grid[ilat].size());
-			for (int ilon = 0; ilon < ecef[ilat].size(); ilon++){
-				bihtoecef(lat[ilat], lon[ilat][ilon], 0, ecef[ilat][ilon].x, ecef[ilat][ilon].y, ecef[ilat][ilon].z);
-			}
-		}
-	}
-	return true;
-}
-
-unsigned char * gen_edge(int ilv, int ilat, int ilon, vector<s_grid> & grids,
-	vector<vector<int>> & un, vector<vector<unsigned char>> & tn, unsigned short & szedge)
-{
-	if (ilv >= grids.size() || ilv < 0)
-		return NULL;
-
-	vector<vector<int>> & grid = grids[ilv].grid;
-
-	if (ilat >= grid.size() || ilat < 0)
-		return NULL;
-
-	if (ilon >= grid[ilat].size() || ilon < 0)
-		return NULL;
-
-	list<int> nei;
-	if (ilat == 0){ // north pole
-		// south connection
-		for (int inlon = 0; inlon < grid[1].size(); inlon++){
-			nei.push_back(grid[1][inlon]);
-		}
-	}
-	else if (ilat == (int)(grid.size() - 1)){
-		// north connection
-		for (int inlon = 0; inlon < grid[grid.size() - 2].size(); inlon++){
-			nei.push_back(grid[grid.size() - 2][inlon]);
-		}
-	}
-	else{
-		if (ilon == 0){
-			// north connection
-			nei.push_back(grid[ilat - 1][0]);
-			// south connection 
-			nei.push_back(grid[ilat + 1][0]);
-		}
-		else{
-			double _lon = grids[ilv].lon[ilat][ilon];
-			int inlon1, inlon2;
-
-			// north connection
-			double _lonStep = grids[ilv].lonStep[ilat - 1];
-			inlon1 = (int)(_lon / _lonStep);
-			inlon2 = inlon1 + 1;
-
-			nei.push_back(grid[ilat - 1][inlon1]);
-			nei.push_back(grid[ilat - 1][inlon2]);
-
-			// south connection
-			_lonStep = grids[ilv].lonStep[ilat + 1];
-			inlon1 = (int)(_lon / _lonStep);
-			inlon2 = inlon1 + 1;
-
-			nei.push_back(grid[ilat + 1][inlon1]);
-			nei.push_back(grid[ilat + 1][inlon2]);
-		}
-		{
-			int inlon1, inlon2;
-			inlon1 = (ilon + 1) % grid[ilat].size();
-			inlon2 = (ilon + grid[ilat].size() - 1) % grid[ilat].size();
-			nei.push_back(grid[ilat][inlon1]);
-			nei.push_back(grid[ilat][inlon2]);
-		}
-	}
-
-	// constructing edge
-	int ipnode = un[ilv][grid[ilat][ilon]];
-	unsigned char * pid = gen_id(ilv, ipnode, un, tn);
-	vector<unsigned char> edge_tmp;
-	edge_tmp.resize(nei.size() * (grids.size() + 1) + 1);
-	int iedge = 0;
-	for (list<int>::iterator itr = nei.begin(); itr != nei.end(); itr++){
-		unsigned char * id = gen_id(ilv, *itr, un, tn);
-		int iid = 0;
-		if (is_parent_id(pid, id)){
-			while (id[iid]){
-				iid++;
-			}
-			edge_tmp[iedge] = id[iid - 1];
-			iedge++;
-		}
-		else{
-			while (id[iid]){
-				edge_tmp[iedge] = id[iid];
-				id++;
-				iedge++;
-			}
-		}
-		edge_tmp[iedge] = 0;
-		iedge++;
-
-		free_id(id);
-	}
-	edge_tmp[iedge] = 0;
-	iedge++;
-
-	unsigned char * edge = new unsigned char[iedge];
-	for (iedge = 0; edge_tmp[iedge]; iedge++){
-		edge[iedge] = edge_tmp[iedge];
-	}
-	edge[iedge] = 0;
-	iedge++;
-	edge[iedge] = 0;
-	free_id(pid);
-
-	return edge;
-}
-
-///////////////////////////////////////////////////////////////////////////////////// s_node
-unsigned int s_node::szpool = 0;
-s_node * s_node::pchank = NULL;
-s_node * s_node::pool = NULL;
-s_node * s_node::phead = NULL;
-s_node * s_node::ptail = NULL;
-
-bool s_node::init(const unsigned char * _id, const unsigned char _lv)
-{
-	id = new unsigned char [idlen(_id) + 1];
-	copy_id(_id, id);
-	lv = _lv;
-	return true;
-}
-
-bool s_node::init(const unsigned int _szpool)
-{
-	szpool = _szpool;
-	pool = new s_node[szpool];
-	if (!pool)
-		return false;
-
-	pchank = pool;
-	s_node * ptmp = pool;
-	for (int i = 0; i < szpool-1; i++){
-		ptmp->pnext = ptmp + 1;
-		ptmp++;
-	}
-	ptmp->pnext = NULL;
-	return true;
-}
-
-s_node * s_node::alloc()
-{
-	if (!pchank){
-		s_node * pndisc = disc();
-		if (!pndisc)
-			return NULL;
-		free(pndisc);
-	}
-	s_node * pret = pchank;
-	pchank = pchank->pnext;
-
-	// connecting LRU list
-	ptail->pnext = pret;
-	pret->pnext = NULL;
-	pret->pnext = NULL;
-	ptail = pret;
-
-	return pret;
-}
-
-void s_node::free(s_node * pn)
-{
-	if (pn->pnext){
-		s_node * pnext = pn->pnext;
-		pnext->pprev = pn->pprev;
-	}
-
-	if (pn->pprev){
-		s_node * pprev = pn->pprev;
-		pprev->pnext = pn->pnext;
-	}
-
-	pn->release();
-
-	pn->pnext = pchank;
-	pchank = pn;
-}
-
-s_node * s_node::disc()
-{
-	if (!phead)
-		return NULL;
-
-	s_node * ptmp;
-	for (ptmp = phead; ptmp != NULL; ptmp = ptmp->pnext)
-	{
-		if (ptmp->lns.size() == 0)
-			break;
-	}
-
-	return ptmp;
-}
-
-unsigned int s_node::get_sz_graph_data(unsigned int sz_edge_max)
-{
-	unsigned int sz = sizeof(unsigned int)+sizeof(unsigned char)+
-		sizeof(x)+sizeof(y)+sizeof(z)+
-		sizeof(lv)+sizeof(szlns)+
-		sizeof(szedge)+sz_edge_max + sizeof(unsigned int)*(int)amlc_undef * 2;
-	return sz;
-}
-
-bool s_node::save_grph(ofstream & fgrp, unsigned short sz_edge_max)
-{
-	unsigned short lv_grph = lv - 1;
-	vector<list<unsigned int>> grph;
-	grph.resize(lv_grph);
-
-	init_grph(grph);
-
-	fgrp.write((const char*)&sz_edge_max, sizeof(sz_edge_max));
-	fgrp.write((const char*)&lv_grph, sizeof(lv_grph));
-	for (int ilv = 0; ilv < grph.size(); ilv++){
-		list<unsigned int> & lgrph = grph[ilv];
-		list<unsigned int> lgrph_idx;
-		unsigned int n = 0;
-		lgrph_idx.push_back(n);
-		for (list<unsigned int>::iterator itr = lgrph.begin(); itr != lgrph.end(); itr++){
-			unsigned int _n = *itr;
-			n += _n;
-			lgrph_idx.push_back(n);
-			itr = lgrph.erase(itr);
-			for (int i = 0; i < _n; i++, itr++);
-		}
-		unsigned int sz_lgrph_idx = lgrph_idx.size();
-		unsigned int sz_lgrph = lgrph.size();
-
-		fgrp.write((const char*)&sz_lgrph_idx, sizeof(sz_lgrph_idx));
-		for (list<unsigned int>::iterator itr = lgrph_idx.begin(); itr != lgrph_idx.end(); itr++){
-			unsigned int v = *itr;
-			fgrp.write((const char*)&v, sizeof(v));
-		}
-		fgrp.write((const char*)&sz_lgrph, sizeof(sz_lgrph));
-		for (list<unsigned int>::iterator itr = lgrph.begin(); itr != lgrph.end(); itr++){
-			unsigned int v = *itr;
-			fgrp.write((const char*)&v, sizeof(v));
-		}
-	}
-
-	return true;
-}
-
-bool s_node::load_grph(ifstream & fgrp, vector<unsigned int *> & grph, vector<unsigned int*> & grph_idx, unsigned short & sz_edge_max)
-{
-	unsigned short lv_grph;
-	fgrp.read((char*)&sz_edge_max, sizeof(sz_edge_max));
-	fgrp.read((char*)&lv_grph, sizeof(lv_grph));
-	grph.resize(lv_grph);
-	grph_idx.resize(lv_grph);
-	for (int ilv = 0; ilv < grph.size(); ilv++){
-		unsigned int n = 0;
-		fgrp.read((char*)&n, sizeof(n));
-		grph_idx[ilv] = new unsigned int[n];
-		fgrp.read((char*)grph_idx[ilv], sizeof(unsigned int)* n);
-
-		fgrp.read((char*)&n, sizeof(n));
-		grph[ilv] = new unsigned int[n];
-		fgrp.read((char*)grph[ilv], sizeof(unsigned int)* n);
-	}
-	return true;
-}
-
-bool s_node::init_grph(vector<list<unsigned int>> & grph)
-{
-	if (lv == 1){
-		return true;
-	}
-
-	grph[lv - 2].push_back(lns.size());
-
-	for (map<unsigned char, s_node*>::iterator itr = lns.begin();
-		itr != lns.end(); itr++){
-		unsigned int counts = itr->second->count_child_nodes();
-		grph[lv - 2].push_back(counts);
-		itr->second->init_grph(grph);
-	}
-
-	return true;
-}
-
-bool s_node::save(ofstream & fgrp, unsigned short sz_edge_max)
-{
-	unsigned int num_child_nodes = count_child_nodes();
-	fgrp.write((const char*)&num_child_nodes, sizeof(num_child_nodes));
-	unsigned char idl = get_last_id(id);
-	fgrp.write((const char*)&idl, sizeof(idl));
-
-	fgrp.write((const char *)&x, sizeof(x));
-	fgrp.write((const char *)&y, sizeof(y));
-	fgrp.write((const char *)&z, sizeof(z));
-	fgrp.write((const char*)&lv, sizeof(lv));
-	fgrp.write((const char*)&szlns, sizeof(szlns));
-	fgrp.write((const char*)&offset, sizeof(unsigned int)* (int)amlc_undef);
-	fgrp.write((const char*)&size, sizeof(unsigned int)* (int)amlc_undef);
-	fgrp.write((const char*)&szedge, sizeof(szedge));
-	unsigned char * edge_tmp = new unsigned char[sz_edge_max];
-	memset((void*)edge_tmp, 0, sz_edge_max);
-	memcpy((void*)edge_tmp, (void*)edge, szedge);
-	fgrp.write((const char*)edge, sz_edge_max);
-	delete[] edge_tmp;
-
-	for (map<unsigned char, s_node*>::iterator itr = lns.begin();
-		itr != lns.end(); itr++){
-		itr->second->save(fgrp, sz_edge_max);
-	}
-
-	return true;
-}
-
-bool s_node::load(ifstream & fgrp, unsigned char * _id, const unsigned char _lv)
-{
-	id = _id;
-
-	fgrp.seekg(0);
-	unsigned short sz_edge_max = 0;
-	vector<unsigned int*> grph, grph_idx;
-	load_grph(fgrp, grph, grph_idx, sz_edge_max);
-
-	unsigned int sz_node = get_sz_graph_data(sz_edge_max);
-	unsigned int num_nodes = 0;
-	unsigned char cid = 0;
-	unsigned int sz_node_head = sizeof(num_nodes)+sizeof(id);
-	unsigned int pos = fgrp.tellg();
-
-	if (_id[1] != 0){
-		int ilv_inv = 1;
-		int ilv_grph = grph.size() - 1;
-		unsigned int offset = 0;
-		unsigned int ppos = 0;
-		while (id[ilv_inv] && ilv_grph >= 0){
-			unsigned int dpos = id[ilv_inv] - 1;
-			unsigned int * cl = grph[ilv_grph] + grph_idx[ilv_grph][ppos];
-			for (int i = 0; i < dpos; i++){
-				offset += cl[i];
-			}
-			ppos = dpos;
-			ilv_grph--;
-			ilv_inv++;
-		}
-
-		if (id[ilv_inv]){
-			offset += (id[ilv_inv] - 1);
-		}
-
-		pos += offset * sz_node;
-	}
-	fgrp.seekg(pos);
-	fgrp.read((char*)&num_nodes, sizeof(num_nodes));
-	fgrp.read((char*)&cid, sizeof(cid));
-	fgrp.read((char *)&x, sizeof(x));
-	fgrp.read((char *)&y, sizeof(y));
-	fgrp.read((char *)&z, sizeof(z));
-	fgrp.read((char*)&lv, sizeof(lv));
-	fgrp.read((char*)&szlns, sizeof(szlns));
-	fgrp.read((char*)offset, sizeof(unsigned int)* (int)amlc_undef);
-	fgrp.read((char*)size, sizeof(unsigned int)* (int)amlc_undef);
-	fgrp.read((char*)szedge, sizeof(szedge));
-
-	edge = new unsigned char[szedge];
-	fgrp.read((char*)edge, szedge);
-
-	return true;
-}
-
-unsigned int s_node::count_child_nodes()
-{
-	unsigned int count = lns.size() + 1;
-	for (map<unsigned char, s_node*>::iterator itr = lns.begin();
-		itr != lns.end(); itr++){
-		count += itr->second->count_child_nodes();
-	}
-	return count;
-}
-
-s_node * s_node::get_child(unsigned char * _id)
-{
-	unsigned char * idc = _id;
-	unsigned char * idp = id;
-	while (*idp && *idc){
-		if (*idp != *idc)
-			return NULL;
-		idp++;
-		idc++;
-	}
-
-	if (*idp == 0 && *idc == 0)
-		return this;
-
-	s_node * pn = NULL;
-	for (map<unsigned char, s_node*>::iterator itr = lns.begin(); itr != lns.end(); itr++){
-		if (pn = itr->second->get_child(_id))
-			break;
-	}
-	return pn;
-}
-
-bool s_node::append(s_node * pn)
-{
-	unsigned char * idc = pn->id;
-	unsigned char * idp = id;
-	while (*idp && *idc){
-		if (*idp != *idc)
-			return false;
-		idp++;
-		idc++;
-	}
-
-	map<unsigned char, s_node*>::iterator itr = lns.find(*idc);
-
-	if (itr == lns.end()){
-		if (idc[1] == 0){
-			lns.insert(map<unsigned char, s_node*>::value_type(idc[lv + 1], pn));
-			return true;
-		}
-		return false;
-	}
-
-	if (idc[1] == 0)
-		return false;
-
-	return itr->second->append(pn);
-}
-
-void s_node::_release()
-{
-	free_id(id);
-	free_edge(edge);
-	for (map<unsigned char, s_node*>::iterator itr = lns.begin();
-		itr != lns.end(); itr++){
-		itr->second->release();
-		delete itr->second;
-	}
-	lns.clear();
-}
-
-void s_node::release()
-{
-	free_id(id);
-	free_edge(edge);
-	if (un){
-		map<unsigned char, s_node*>::iterator itr = un->lns.find(get_child_id(un->id, id));
-		un->lns.erase(itr);
-	}
-
-	for (map<unsigned char, s_node*>::iterator itr = lns.begin();
-		itr != lns.end(); itr++){
-		itr->second->release();
-		free(itr->second);
-	}
-	lns.clear();
-}
-
-/////////////////////////////////////////////////////////////////////////////////////////
-char c_map::path[1024];
-
-c_map::c_map() :nLevels(4), minMeterPerPix(1), minStep(1000), scale(10), iscale(1.0/scale)
-{
-	steps.resize(nLevels);
-	steps[0] = minStep;
-	for (int i = 1; i < nLevels; i++)
-		steps[i] = steps[i - 1] * scale;
-}
-
-c_map::c_map(const int _nLevels, const double _minMeterPerPix, const double _minStep, const double _scale, const unsigned int _nCache)
-{
-	init(_nLevels, _minMeterPerPix, _minStep, _scale, _nCache);
-	root.id = new unsigned char;
-	root.id[0] = 0;
-}
-
-c_map::~c_map()
-{
-	delete root.id;
-}
-
-void c_map::release()
-{
-}
-
-bool c_map::init(const int _nLevels, const double _minMeterPerPix, const double _minStep, const double _scale, const unsigned int _nCache, const char * _path)
-{ 
-	nLevels = _nLevels;
-	minStep = _minStep;
-	minMeterPerPix = _minMeterPerPix;
-	scale = _scale;
-	iscale = 1.0 / scale;
-	strncpy(path, _path, 1024);
-	nCache = _nCache;
-	s_node::init(nCache);
-
-	steps.resize(nLevels);
-	pixels.resize(nLevels);
-	steps[0] = minStep;
-	pixels[0] = minMeterPerPix;
-	for (int i = 1; i < nLevels; i++){
-		steps[i] = steps[i - 1] * scale;
-		pixels[i] = pixels[i - 1] * scale;
-	}
-
-	char fgrph[1024];
-	snprintf(fgrph, 1024, "%s/%d_%03.3f_%03.3f_%03.3f.grp", path, nLevels, minMeterPerPix, minStep, scale);
-	ifstream ifile(fgrph, ios::binary);
-
-	if (!ifile.is_open()){ // if the graph file is not found, graph initialization is done.  
-		vector<s_grid> grids(nLevels);
-		vector<vector<float>> dist;
-		vector<vector<int>> node;
-		vector<vector<unsigned char>> tnode;
-		vector<vector<unsigned char>> lcnt; // lower node count
-		dist.resize(nLevels);
-		node.resize(nLevels);
-		tnode.resize(nLevels);
-		for (int ilv = 0; ilv < nLevels; ilv++)
-		{
-			grids[ilv].init(steps[ilv], ilv);
-			dist[ilv].resize(grids[ilv].nNodes, FLT_MAX);
-			node[ilv].resize(grids[ilv].nNodes, INT_MAX);
-			tnode[ilv].resize(grids[ilv].nNodes, 0);
-			lcnt[ilv].resize(grids[ilv].nNodes, 0);
-		}
-		
-		// calculate upper layer connection
-		// Note:
-		// 1. corresponding upper layer node is in bounding two lat lines in upper layer
-		// 2. corresponding upper layer node is one of the four nodes bounding around the node on the two lat lines above mentioned.
-		for (int ilv = 0; ilv < nLevels - 1; ilv++)
-		{
-			double latSteph = grids[ilv + 1].latStep;
-			vector<double> & lonSteph = grids[ilv + 1].lonStep;
-			vector<vector<int>> & gridh = grids[ilv + 1].grid;
-			vector<double> & lath = grids[ilv + 1].lat;
-			vector<vector<double>> & lonh = grids[ilv + 1].lon;
-
-			double latStepl = grids[ilv].latStep;
-			vector<double> & lonStepl = grids[ilv].lonStep;
-			vector<vector<int>> & gridl = grids[ilv].grid;
-			vector<double> & latl = grids[ilv].lat;
-			vector<vector<double>> & lonl = grids[ilv].lon;
-
-			vector<float> & dmin = dist[ilv];
-			vector<int> & n = node[ilv];
-
-			for (int ilat = 0; ilat < latl.size(); ilat++){
-				int ilath_max, ilath_min;
-				int ilonh_max, ilonh_min;
-				double lat = latl[ilat];
-				for (int ilon = 0; ilon < lonl[ilat].size(); ilon++){
-					double lon = lonl[ilat][ilon];
-					int inl = gridl[ilat][ilon];
-					Point3f pl, ph;
-					bihtoecef((float)lat, (float)lon, 0., pl.x, pl.y, pl.z);
-
-					if (ilon == 0){ // determine lattitude to be searched
-						ilath_min = (int) ((0.5 * PI - lat) / latSteph);
-						ilath_max = ilath_min + 1;
-						ilath_min = max(ilath_min, 0);
-						ilath_max = min(ilath_max, (int)lath.size());
-					}
-
-					for (int ilath = ilath_min; ilath <= ilath_max; ilath++){
-						ilonh_min = (int)(lon / lonSteph[ilath]);
-						ilonh_max = (ilonh_min + 1) % (int) lonh[ilat].size();
-						ilonh_min = max(0, ilonh_min);
-
-						for (int ilonh = ilonh_min; ilonh <= ilonh_max; ilonh++){
-							bihtoecef((float)lath[ilath], (float)lonh[ilath][ilonh], 0, ph.x, ph.y, ph.z);
-							double d = norm(ph - ph);
-							if (dmin[inl] > d){
-								dmin[inl] = d;
-								n[inl] = gridh[ilath][ilonh];
-							}
-						}
-					}
-				}
-			}
-		}
-
-		// calculate true node index
-		for (int ilv = 0; ilv < nLevels - 1; ilv++){
-			vector<unsigned char> & _lcnt = lcnt[ilv + 1];
-			vector<unsigned char> & _tnode = tnode[ilv];
-			for (int inode = 0; inode < grids[ilv].nNodes; inode++)
-			{
-				int unode = node[ilv][inode];
-				tnode[ilv][inode] = _lcnt[unode] + 1;
-				_lcnt[unode]++;
-			}
-		}
-
-		for (int inode = 0; inode < grids[nLevels - 1].nNodes; inode++)
-			tnode[nLevels - 1][inode] = inode + 1;
-
-		{
-			vector<double> & clat = grids[nLevels - 1].lat;
-			vector<vector<double>> & clon = grids[nLevels - 1].lon;
-			vector<vector<int>> & cgrid = grids[nLevels - 1].grid;
-			s_node root;
-			unsigned char root_id[2];
-			unsigned short sz_edge_max;
-			root_id[1] = 0;
-
-			for (int ilat = 0; ilat < clat.size(); ilat++){
-				for (int ilon = 0; ilon < clon[ilat].size(); ilon++){
-					root_id[0] = (unsigned char)cgrid[ilat][ilon];
-					root.init(root_id, (unsigned char)(nLevels - 1));
-					bihtoecef(clat[ilat], clon[ilat][ilon], 0., root.x, root.y, root.z);
-					root.edge = gen_edge(nLevels - 1, ilat, ilon, grids, node, tnode, root.szedge);
-					sz_edge_max = root.szedge;
-					list<s_node*> queue;
-					queue.push_back(&root);
-
-					while (!queue.empty()){
-						s_node * pn = queue.front();
-						queue.pop_front();
-						
-						if (pn->lv == 0)
-							continue;
-
-						vector<double> & llat = grids[pn->lv - 1].lat;
-						vector<vector<double>> & llon = grids[pn->lv - 1].lon;
-						vector<vector<int>> & lgrid = grids[pn->lv - 1].grid;
-						for (int illat = 0; illat < llat.size(); illat++){
-							for (int illon = 0; illon < llon[illat].size(); illon++){
-								unsigned char * idnew = gen_id(pn->lv - 1, lgrid[illat][illon], node, tnode);
-								if (is_eq_id(pn->id, idnew)){
-									s_node *pnnew = new s_node;
-									pnnew->init(idnew, pn->lv - 1);
-									pnnew->edge = gen_edge(pn->lv - 1, illat, illon, grids, node, tnode, pnnew->szedge);
-									pn->lns.insert(map<unsigned char, s_node*>::value_type(tnode[pn->lv - 1][lgrid[illat][illon]], pnnew));
-
-									sz_edge_max = max(pnnew->szedge, sz_edge_max);
-									bihtoecef(llat[illat], llon[illat][illon], 0, pnnew->x, pnnew->y, pnnew->z);
-									queue.push_back(pnnew);
-								}
-								else
-									free_id(idnew);
-							}
-						}
-					}
-
-					// save to the file
-					cout << "saving cell " << cgrid[ilat][ilon] <<  " edge size " << sz_edge_max << endl;
-					char fname[1024];
-					snprintf(fname, 1024, "%s/%d.grp", path, cgrid[ilat][ilon]);
-					ofstream ofile(fname);
-					ofile.write((const char*)&sz_edge_max, sizeof(sz_edge_max));
-					root.save_grph(ofile, sz_edge_max);
-					root.save(ofile, sz_edge_max);
-					root.release();
-					delete[] root.edge;
-					root.edge = NULL;
-				}
-			}
-		}
-
-	}
-
-	cgrid.init(steps[nLevels - 1], nLevels - 1, true);
-
-	return true;
-}
-
-bool c_map::addJPGIS(const char * fname)
-{
-	c_coast_line * pCL = c_coast_line::convertFromJPGIS(fname);
-
-	delete pCL;
-
-	return true;
-}
-
-bool c_map::load_with_ecef(const float x, const float y, const float z)
-{
-	float lat, lon, alt;
-	eceftobih(x, y, z, lat, lon, alt);
-	unsigned char id = (unsigned char)cgrid.get_near_index(lat, lon, x, y, z);
-
-	return true;
-}
-
-bool c_map::load_with_bih(const float lat, const float lon, const float alt)
-{
-	float x, y, z;
-	bihtoecef(lat, lon, alt, x, y, z);
-	unsigned char id = (unsigned char) cgrid.get_near_index(lat, lon, x, y, z);
-	return true;
-}
-
+//////////////////////////////////////////////////////////////////////////////////////c_icosahedron
 c_icosahedron::c_icosahedron() :nv(12), nf(20), ne(30)
 {
 	q = new Point2f[12];
@@ -1421,8 +1341,8 @@ c_icosahedron::c_icosahedron() :nv(12), nf(20), ne(30)
 		e[i] = e[0] + i * 2;
 	}
 
-	float lat0 = atan2(GR, 1), lat1 = atan2(1, GR);
-	float lon = atan2(GR, 1);
+	float lat0 = (float) atan2(GR, 1), lat1 = (float) atan2(1, GR);
+	float lon = (float) atan2(GR, 1);
 
 	q[0] = Point2f(lat0, 0.5 * PI);
 	q[1] = Point2f(lat0, -0.5 * PI);

@@ -24,30 +24,54 @@
 class ch_map: public ch_base
 {
 protected:
-	float m_range;
-	Point3f m_cecef; // x, y, z
-	Point3f m_bih; // lat, lon, alt
-	vector<list<const vector<Point3f>*>> m_cls;
+	bool bupdate;
+	float m_range, m_resolution;
+	bool m_blayer_type[AWSMap2::lt_undef];
+	list<const AWSMap2::LayerData*> m_layer_datum[AWSMap2::lt_undef];
+
+	AWSMap2::vec3 m_cecef; // x, y, z
 public:
-	ch_map(const char * name):ch_base(name), m_range(10000), m_cecef()
+	ch_map(const char * name):ch_base(name), bupdate(true), m_resolution(10), m_range(10000), m_cecef()
 	{
+		m_blayer_type[AWSMap2::lt_coast_line] = true;
 	}
 
-	bool init(int nLevels)
-	{
-		m_cls.resize(nLevels);
-		return true;
-	}
 
 	virtual ~ch_map()
 	{
-		m_cls.clear();
 	}
 
-	void set_range(const float range){
-		lock();
+	void enable_layer(const AWSMap2::LayerType layer_type)
+	{
+		bupdate = true;
+		m_blayer_type[layer_type] = true;
+	}
+
+	void disable_layer(const AWSMap2::LayerType layer_type)
+	{
+		m_blayer_type[layer_type] = false;
+	}
+
+	bool is_layer_enabled(const AWSMap2::LayerType layer_type)
+	{
+		return m_blayer_type[layer_type];
+	}
+
+	void set_resolution(const float resolution)
+	{
+		bupdate = true;
+		m_resolution = m_resolution;
+	}
+
+	const float get_resolution()
+	{
+		return m_resolution;
+	}
+
+	void set_range(const float range)
+	{
+		bupdate = true;
 		m_range = range;
-		unlock();
 	}
 
 	const float get_range()
@@ -57,60 +81,32 @@ public:
 
 	void set_center(const float x, const float y, const float z)
 	{
-		lock();
+		bupdate = true;
 		m_cecef.x = x;
 		m_cecef.y = y;
 		m_cecef.z = z;
-		unlock();
 	}
 
-	void set_center_bih(const float lat, const float lon, const float alt)
+	const AWSMap2::vec3 get_center()
 	{
-		lock();
-		m_bih.x = lat;
-		m_bih.y = lon;
-		m_bih.z = alt;
-		unlock();
+		return m_cecef;
 	}
 
-	void get_center(float & x, float & y, float & z)
+	void set_layer_data(const AWSMap2::LayerType layer_type, list<const AWSMap2::LayerData*> & layer_data)
 	{
-		lock();
-		x = m_cecef.x;
-		y = m_cecef.y;
-		z = m_cecef.z;
-		unlock();
+		m_layer_datum[layer_type] = layer_data;
 	}
 
-	void get_center_bih(float & lat, float & lon, float & alt)
+	const list<const AWSMap2::LayerData*> & get_layer_data(const AWSMap2::LayerType layer_type)
 	{
-		lock();
-		lat = m_bih.x;
-		lon = m_bih.y;
-		alt = m_bih.z;
-		unlock();
+		return m_layer_datum[layer_type];
 	}
 
-	void insert(const int ilevel, const vector<Point3f> * pline){
-		m_cls[ilevel].push_back(pline);
-	}
-
-	void erase(const int ilevel, const vector<Point3f> * pline){
-		m_cls[ilevel].remove(pline);
-	}
-
-	void clear(const int ilevel)
+	void clear_layer_datum()
 	{
-		m_cls[ilevel].clear();
-	}
-
-	int get_num_lines(){
-		return (int)m_cls.size();
-	}
-
-	const list<const vector<Point3f>*> & get_lines(const int ilevel)
-	{
-		return m_cls[ilevel];
+		for (int layer_type = 0; layer_type < (int)AWSMap2::lt_undef; layer_type++){
+			m_layer_datum[layer_type].clear();
+		}
 	}
 };
 

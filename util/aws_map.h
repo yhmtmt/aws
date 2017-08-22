@@ -1,7 +1,6 @@
 #ifndef _AWS_MAP_H_
 #define _AWS_MAP_H_
-// Copyright(c) 2017 Yohei Matsumoto, Tokyo University of Marine
-// Science and Technology, All right reserved. 
+// Copyright(c) 2017 Yohei Matsumoto, All right reserved. 
 
 // aws_map.h is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -15,81 +14,118 @@
 
 // You should have received a copy of the GNU General Public License
 // along with aws_map.h.  If not, see <http://www.gnu.org/licenses/>. 
-
-// Usage
-// Adding New Layer data to the map
-// 1. Loading the layerData from files with their specific format
-// 2. Insert it to the MapDB, then the layerData splits data into Nodes by it self do not exceed the limit
-//
-// Loading Map on ceartain area, and resolution (in meter).
-// 1. request layerData for the area
-// 2. corresponding layerData is collected from the quad trees of the Nodes feature length is larger  than  specified resolution
-// 
-// Deleting 
-
-// Policy
-// * The size of a layerData file is restricted, and automatically splitted into four if the size exceeded the limit
-// * Requested layer data is loaded using catalog files conforms quad tree within some log time.
-// * At the leaf node,  the finest information is stored. The resolution is determined as the minimum distance of the features in the LayerData.
-// * At the intermediate node, the lower resolution LayerData is stored. the resolution is reduced to half in the upper node.
-// * 
-
-// Files
-// catalog file: for each 4th division, catalog file is generated as the replace to the layerData enumerateion (4 level quad tree, 64 leaf triangles at the maximum)
-//			Data Description:
-//				- data size under the catalog
-//				- list of DataType included
-//			Triangle Description: 
-//				- three points (lat0, lon0), (lat1, lon1), (lat2, lon2)
-//				- list of layerData files
-//				- catalog file
-
-// layerData file: for each leaf triangle, layerData file is generated for each layerType
-//		DataType
-//		Number of Objects
-//		Size of Data
-//		Updated Time
-//		List of Data Object
-//			Data Object:
-//				- Object index and Object Data
-
-// Map database
-// Data
-//	Node[20]
-// 
-// Methods
-//  request(area, resolution, layerTypes) -> layerData
-//	insert(location, layerType, layerData)
-//		- insert layerData to the corresponding leaf Node
-//		- update intermediate node(mip map)
-//	erase(location, layerType, layerData)
-
-// Node
-// Data
-//	Vertex[3]
-//	LayerDataList
-//  DownLink[4]
-// Methods
-//  collision(location) -> Node
-//		* Test if the location is in the triagle defined by the vertex[3]
-//		* The location is inside the triangle, recursively test the Downlink[4].
-//		* finally returns the leaf Node
-//	getLayerData(layerType) -> layerData
-//  addLayerData(layerData)
-
-// LayerData 
-// Data
-//  Node
-//
-// Methods
-//	save(fname) 
-//	load(fname)
-//	size
-//  resolution
-//	split(NodeList)
-//		- The ways to split data into Nodes are responsible for the LayerType
+#define GR 1.61803398875 // golden ratio
 
 namespace AWSMap2 {
+
+	struct vec3{
+		union{
+			double x;
+			double lat;
+		};
+
+		union{
+			double y;
+			double lon;
+		};
+
+		union {
+			double z;
+			double alt;
+		};
+
+		vec3() :x(0), y(0), z(0)
+		{
+		}
+
+		vec3(const double _x, const double _y, const double _z) : x(_x), y(_y), z(_z)
+		{
+		}
+
+		const vec3 & operator *= (const double s)
+		{
+			x *= s; y *= s; z *= s;
+			return *this;
+		}
+
+		const vec3 & operator += (const vec3 & r)
+		{
+			x += r.x; y += r.y; z += r.z;
+			return *this;
+		}
+	};
+
+	inline bool operator == (const vec3 & l, const vec3 & r)
+	{
+		return l.x == r.x && l.y == r.y && l.z == r.z;
+	}
+
+	inline vec3 operator - (const vec3 & l, const vec3 & r)
+	{
+		return vec3(l.x - r.x, l.y - r.y, l.z - r.z);
+	}
+
+	inline vec3 operator + (const vec3 & l, const vec3 & r)
+	{
+		return vec3(l.x + r.x, l.y + r.y, l.z + r.z);
+	}
+
+	inline vec3 operator * (const vec3 & l, const double & r)
+	{
+		return vec3(l.x * r, l.y * r, l.z * r);
+	}
+
+	inline double dot(const vec3 & l, const vec3 & r)
+	{
+		return l.x * r.x + l.y * r.y + l.z * r.z;
+	}
+
+	struct vec2{
+		union{
+			double x;
+			double lat;
+		};
+
+		union{
+			double y;
+			double lon;
+		};
+
+		vec2() :x(0.), y(0.)
+		{
+		}
+
+		vec2(const double _x, const double _y) :x(_x), y(_y)
+		{
+		}
+	};
+
+	inline bool operator == (const vec2 & l, const vec2 & r)
+	{
+		return l.x == r.x && l.y == r.y;
+	}
+
+
+	inline double l2Norm2(const vec3 & pt0, const vec3 & pt1)
+	{
+		double tmp, result = 0.0;
+		tmp = pt0.x - pt0.x;
+		result = tmp * tmp;
+
+		tmp = pt0.y - pt1.y;
+		result += tmp * tmp;
+
+		tmp = pt0.z - pt1.z;
+		result += tmp * tmp;
+
+		return result;
+	}
+
+	inline double l2Norm(const vec3 & pt0, const vec3 & pt1)
+	{
+		return sqrt(l2Norm2(pt0, pt1));
+	}
+
 	enum {
 		MAX_PATH_LEN=1024
 	};
@@ -105,482 +141,280 @@ namespace AWSMap2 {
 	class MapDataBase
 	{
 	private:
-		Node * pNodes[20]; // 20 triangles of the first icosahedron
-		static char * path;
+		static unsigned int maxSizeLayerData[lt_undef]; // maximum size of each LayerData instance
+		static unsigned int maxNumNodes;			// maximum number of Node instances
+		static unsigned int maxTotalSizeLayerData;	// maximum total size of LayerData instances
+		static char * path;							// local storage path to save Node and LayerData. 
+
 	public:
-		static void setPath(const char * path);
+		static unsigned int getMaxSizeLayerData(const LayerType & layerType)
+		{
+			return maxSizeLayerData[layerType];
+		}
+
+		static void setMaxSizeLayerData(const LayerType & layerType, const unsigned int size)
+		{
+			maxSizeLayerData[layerType] = size;
+		}
+
+		static unsigned int getMaxNumNodes()
+		{
+			return maxNumNodes;
+		}
+		static void setMaxNumNodes(const unsigned int _maxNumNodes)
+		{
+			maxNumNodes = _maxNumNodes;
+		}
+
+		static unsigned int getMaxTotalSizeLayerData()
+		{
+			return maxTotalSizeLayerData;
+		}
+
+		static void setMaxTotalSizeLayerData(const unsigned int _maxTotalSizeLayerData)
+		{
+			maxTotalSizeLayerData = _maxTotalSizeLayerData;
+		}
+
 		static const char * getPath();
+		static void setPath(const char * path);
 
+	private:
+		Node * pNodes[20];							// 20 triangles of the first icosahedron
+
+	public:
 		MapDataBase();
-		~MapDataBase();
-		const LayerData* request(const Point3f & location, const float radius, 
-			const LayerType & layerType, const float resolution = 0);
-		vector<const LayerData*> request(const Point3f & location, const float radius, 
-			const vector<LayerType> & layerTypes, const float resolution = 0);
+		virtual ~MapDataBase();
 
-		bool insert(const Point3f & location, const LayerData * layerData);
+		// request layerData within the circle specified with (center, radius).
+		void request(list<list<const LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
+			const vec3 & center, const float radius, const float resolution = 0);
+
+		// insert an instance of LayerData to the location.
+		bool insert(const LayerData * layerData);
+
+		// erase an instance of LayerData. The instance should be got via request method
 		bool erase(const LayerData * layerData);
+
+		// restruct MapDataBase on the memory, as the number of nodes and total size of layer data are to be under their limits.
+		// (this method should be called periodically)
+		void restruct();
+
+		// save MapDataBase (only the parts updated)
+		bool save();
 	};
 
 	class Node
 	{
 	private:
-		unsigned char id;
-		Node * upLink;
-		Node * downLink[4];
-		Point3f vertex[3];
+		static Node * head, * tail;
+		static unsigned int numNodesAlive;
+		static void insert(Node * pNode);
+		static void pop(Node * pNode);
+		static void accessed(Node * pNode);
+	public:
+		static void restruct();
+		static Node * load(Node * pNodeUp, unsigned int idChild);
+
+	private:
+		Node * prev, * next;// link pointers for memory management
+	
+		bool bupdate;		// update flag. asserted when the layerDataList or downLink is updated
+		unsigned char id;	// id of the node in the upper node. (0 to 3 for ordinal nodes. 0 to 19 for top level nodes.)
+		Node * upLink;		// Up link. NULL for top 20 nodes
+		bool bdownLink;		// false until the downLink is created.
+		Node * downLink[4]; // Down link. 
+		vec2 vtx_bih[3];	// bih coordinte of the node's triangle
+		vec3 vtx_ecef[3];   // ecef coordinate of the node's triangle (calculated automatically in construction phase) 
 		map<LayerType, LayerData*> layerDataList;
+		
+		// create downLink nodes, and assert bdownLink flag. 
+		// the function is called only in addLayerData when the addition exceeds the 
+		// size limit of the layer type. 
+		bool createDownLink();
+
+		// getPath(list<unsigned char>) helps getPath(char*, unsigned int) to generate path string to this node.
+		void getPath(list<unsigned char> & path_id);
+
+		// insertLayerData helps addLayerData. 
+		void insertLayerData(const LayerType layerType, LayerData * pLayerData)
+		{
+			layerDataList.insert(pair<LayerType, LayerData*>(layerType, pLayerData));
+		}
+
+		// getLayerData returns layerData of layerType in this node 
+		const LayerData * getLayerData(const LayerType layerType);
+
+		// distributeLayerData helps addLayerData. 
+		bool distributeLayerData(const LayerData & layerData);
+
+		// relleaseLayerData releases all the layer data in the node.
+		void releaseLayerData();
+		
 	public:
 		Node();
-		virtual ~Node();
-		bool save();
-		bool load();
+		Node(const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2);
 
-		const Node * collision(const Point3f & location);
-		const LayerData * getLayerData(const LayerType layerType);
+		virtual ~Node();
+
+		// setId(unsigned char) set node index in the upper layer.
+		void setId(const unsigned char _id){
+			id = _id;
+		}
+
+		// getPath(char*, unsigned int) returns the path string the length is less than the specified limit.
+		void getPath(char * path, unsigned int maxlen);
+
+		// save Node data and layer data recursively for all downlinks
+		// this function is called only from MapDataBase::save()
+		bool save();
+
+		// collision(vec3) determines whether the specified point collides with the node.
+		const bool collision(const vec3 & location);
+
+		// collision(vec3, float) determines whether the specified circle collides with the node.
+		const bool collision(const vec3 & center, const float radius);
+
+		// getLayerData called from MapDataBase::request
+		const void getLayerData(list<list<const LayerData*>> & layerData, 
+			const list<LayerType> & layerType, const vec3 & center,
+			const float radius, const float resolution = 0);
+
+		// addLayerData adds the layer data given in the argument.
+		// the function is invoked from LayerData::split, and the split is called from MapDataBase::insert
+		// This function recursively call split() and itself so that the size of the layer data does not exceeds its limit.
 		bool addLayerData(const LayerData & layerData, 
 				  const size_t sz_node_data_lim = 0x4FFFFF /* 4MB */);
+
+		// deleteLayerData deletes the layer data given in the argument.
+		// The method delete the layer data in the node when the pointer is exactly the same as that given in the argument.
+		// so the pointer given as the argument should be got via getLayerData
+		bool deleteLayerData(const LayerData * layerData);	
 	};
 
 	class LayerData
 	{
+		// static section
+	private:
+		static LayerData * head, * tail;
+		static unsigned int totalSize;
 	protected:
-		Node * pNode;
+		static void insert(LayerData * pLayerData);
+		static void pop(LayerData * pLayerData);
 	public:
-		LayerData() : pNode(NULL) {};
+		static void accessed(LayerData * pLayerData);
+		static void restruct();
+		static LayerData * create(const LayerType layerType); // factory function
+
+	protected:
+		LayerData * prev, * next;
+		bool bupdate;
+		bool bactive;
+
+		Node * pNode;
+
+		void genFileName(char * fname, size_t len_max)
+		{
+			char path[2048];
+			pNode->getPath(path, 2048);
+			snprintf(fname, len_max, "%s/%s.dat", path, strLayerType[getLayerType()]);
+		}
+
+	public:
+		LayerData() : prev(NULL), next(NULL), pNode(NULL), bupdate(true), bactive(false) {};
 		virtual ~LayerData() {};
+
+
 		void setNode(Node * _pNode) { pNode = _pNode; };
-		const Node * getNode() { return pNode; };
+		Node * getNode() const { return pNode; };
 
-		virtual LayerType getLayerType() = 0;
+		void setActive(){
+			bactive = true;
+			LayerData::insert(this);
+		}
 
-		virtual bool save() = 0; // save file 
-		virtual bool load() = 0;
-		virtual bool split(list<Node*> & nodes) = 0; // 
-		virtual size_t size() = 0;
-		virtual float resolution() = 0; // returns minimum distance between objects in meter
-		
-		virtual float radius() = 0; // returns radius of the object's distribution in meter
-		virtual Point3f center() = 0; // returns center of the object's distribution
+		bool isActive(){
+			return bactive;
+		}
+
+		// major interfaces 
+		bool save();
+		bool load();
+		void release();
+		bool reduce(const size_t sz_lim);
+		bool merge(const LayerData & layerData);
+
+		// interfaces to be implemented in sub-classes.
+	protected:
+		virtual bool _reduce(const size_t sz_lim) = 0;			// reduce the data structure to meet the size limit
+		virtual bool _merge(const LayerData & layerData) = 0;	// merge given layerData to this layerData
+		virtual void _release() = 0;							// release all internal data structure but does not mean the destruction of this object
+
+	public:
+		virtual const LayerType getLayerType() const = 0; // returns LayerType value.
+		virtual bool save(ofstream & ofile) = 0;// save data to ofile stream.
+		virtual bool load(ifstream & ifile) = 0;// load data from ifile stream.
+		virtual bool split(list<Node*> & nodes) const = 0; // split the layer data into nodes given
+		virtual LayerData * clone() const = 0;	// returns clone of the instance
+		virtual size_t size() const = 0;		// returns size in memory 
+		virtual float resolution() const = 0;	// returns minimum distance between objects in meter		
+		virtual float radius() const = 0;		// returns radius of the object's distribution in meter
+		virtual vec3 center() const = 0;	// returns center of the object's distribution
 	};
-
 
 	class CoastLine : public LayerData
 	{
 	protected:
 		struct s_line {
 			unsigned int id;
-			vector<Point2f> pts;
-			vector<Point3f> pts_ecef;
+			vector<vec2> pts;
+			vector<vec3> pts_ecef;
 
 			size_t size() {
-				return sizeof(unsigned int) + (sizeof(Point2f) + sizeof(Point3f)) * pts.size();
+				return sizeof(unsigned int) + (sizeof(vec2) + sizeof(vec3)) * pts.size();
 			}
 		};
 		size_t total_size;
-		float dist_min;
+		double dist_min;
+		double pt_radius;
+		vec3 pt_center;
 		vector<s_line*> lines;
-		void add(list<Point2f> & line);
+		void add(list<vec2> & line);
+		int try_reduce(int nred);
+		void update_properties();
 	public:
 		CoastLine();
 		virtual ~CoastLine();
 
-		virtual LayerType getLayerType() { return lt_coast_line; };
-		virtual bool save();
-		virtual bool load();
-
-		virtual bool split(list<Node*> & nodes);
-		virtual size_t size();
-		virtual float resolution();
-
-		virtual float radius(); // returns radius of the object's distribution in meter
-		virtual Point3f center(); // returns center of the object's distribution
-		bool loadJPJIS(const char * fname);
-	};
-};
-
-namespace AWSMap{
-class Node;
-class Lv;
-class c_map;
-
-enum LayerCode
-{
-	 amlc_coast_line = 0, amlc_undef
-};
-
-inline bool isNewNodeIndex(int inode, list<int> & l1, list<int> & l2)
-{
-	return (find(l1.begin(), l1.end(), inode) != l1.end()) 
-		&& (find(l2.begin(), l2.end(), inode) != l2.end());
-}
-
-extern const char * LayerStr[amlc_undef];
-
-class c_layer
-{
-protected:
-	bool bupdate;
-public:
-	c_layer();
-	virtual ~c_layer();
-
-	void setUpdate(const bool update = true)
-	{
-		bupdate = update;	
-	}
-
-	bool isUpdate()
-	{
-		return bupdate;
-	}
-
-	// save and load interface for layer data
-	virtual bool save(const char * fname) = 0;
-	virtual bool load(const char * fname) = 0;
-	virtual LayerCode getCode() = 0;
-
-	static c_layer * create(const LayerCode code);
-
-	virtual void build(list<c_layer*> & ll, double spix) = 0;
-	virtual unsigned int size() = 0;
-};
-
-class c_coast_line: public c_layer
-{
-protected:
-	struct s_line{
-		bool bclosed;
-		vector<Point3f> points;
-		s_line():bclosed(false){}
-	};
-
-	vector<s_line> lines;
-
-	bool addLine(list<Point2f> & line);
-	bool addLine(s_line & line);
-public:
-	c_coast_line();
-	virtual ~c_coast_line();
-
-	virtual bool save(const char * fname);
-	virtual bool load(const char * fname);
-
-	virtual LayerCode getCode()
-	{
-		return amlc_coast_line;
-	}
-
-	static c_coast_line * convertFromJPGIS(const char * fname);
-
-	bool distribute(Lv & ml);
-	virtual void build(list<c_layer*> & ll, double spix);
-	const vector<Point3f> * getLine(int iline)
-	{
-		if (iline < lines.size())
-			return &(lines[iline].points);
-		return NULL;
-	}
-
-	virtual unsigned int size()
-	{
-		unsigned int sz = sizeof(unsigned int); /* number of lines*/
-		for (int iline = 0; iline < (int) lines.size(); iline++){
-			sz += sizeof(lines[iline].bclosed); /* closed flag */
-			sz += sizeof(unsigned int); /* number of points */
-			sz += (unsigned int)(lines[iline].points.size() * sizeof(Point3f)); /* points */
-		}
-		return sz;
-	}
-};
-
-
-struct s_node;
-struct s_grid;
-
-inline int idlen(const unsigned char * id)
-{
-	int len = 0;
-	while (*id)
-	{
-		len++;
-		id++;
-	}
-	return len;
-}
-
-inline void copy_id(const unsigned char * id, unsigned char * id_dst)
-{
-	do{
-		*id_dst = *id;
-		id_dst++;
-		id++;
-	} while (*id);
-	*id_dst = 0;
-}
-
-inline void gen_id(const unsigned char * id_up, unsigned char id_this, unsigned char * id_dist)
-{
-	if (id_up){
-		do{
-			*id_dist = *id_up;
-			id_up++;
-			id_dist++;
-		} while (*id_up);
-	}
-	*id_dist = id_this;
-	id_dist++;
-	*id_dist = 0;
-}
-
-inline unsigned char get_last_id(const unsigned char * id)
-{
-	unsigned char _idl = 0;
-	while (*id){
-		_idl = *id;
-		id++;
-	}
-	return _idl;
-}
-
-inline unsigned char * gen_id(int ilv, int inode, 
-	vector<vector<int>> & unl, vector<vector<unsigned char>> & tidl)
-{
-	unsigned char * id = new unsigned char[unl.size() - ilv + 1];
-	unsigned char iid = (unsigned char)(unl.size() - ilv);
-	id[iid] = 0; iid--;
-
-	while (ilv < unl.size()){
-		id[iid] = tidl[ilv][inode];
-		iid--;
-		inode = unl[ilv][inode];
-		ilv++;
-	}
-
-	return id;
-}
-
-inline void free_id(unsigned char * id)
-{
-	delete[] id;
-}
-
-inline bool is_eq_id(unsigned char * id1, unsigned char * id2)
-{
-	while (*id1 && *id2){
-		if (*id1 != *id2)
-			return false;
-
-		id1++;
-		id2++;
-	}
-
-	if (*id1 != *id2)
-		return false;
-
-	return true;
-}
-
-inline bool is_parent_id(unsigned char * idp, unsigned char * idc)
-{
-	while (*idp && *idc){
-		if (*idp != *idc)
-			return false;
-
-		idp++;
-		idc++;
-	}
-
-	if (*idp == 0 && *idc != 0)
-		return true;
-
-	return false;
-}
-
-inline unsigned char get_child_id(unsigned char * idp, unsigned char *idc)
-{
-	while (*idp && *idc){
-		if (*idp != *idc)
-			return 0;
-
-		idp++;
-		idc++;
-	}
-	return *idc;
-}
-
-
-inline void free_edge(unsigned char * edge)
-{
-	delete[] edge;
-}
-
-struct s_node{
-	float x, y, z;						// ecef position
-	unsigned char lv;					// scale level
-	unsigned char * id;					// full index the node id sequence of top to current layer.
-	unsigned char szlns;				// number of lower level nodes
-	unsigned short szedge;
-	unsigned char * edge;				// connected nodes, null terminated sequence of relative indices to the node connected.  
-	unsigned int offset[amlc_undef];	// in pages
-	unsigned int size[amlc_undef];		// in pages
-	c_layer * data[amlc_undef];			// layer data
-	s_node * un;						// instantiated upper level node
-	map<unsigned char, s_node*> lns;	// instantiated lower level nodes
-
-	s_node() :x(0), y(0), z(0), id(0), szlns(0), szedge(0), edge(NULL), pprev(NULL), pnext(NULL), un(NULL)
-	{ 
-		for (int i = 0; i < (int)amlc_undef; i++)
+		const unsigned int getNumLines() const
 		{
-			offset[i] = 0;
-			size[i] = 0;
-			data[i] = NULL;
+			return lines.size();
 		}
+
+		const vector<vec3> & getPointsECEF(unsigned int id) const
+		{
+			if (id >= lines.size())
+				return vector<vec3>();
+			return lines[id]->pts_ecef;
+		}
+
+		bool loadJPJIS(const char * fname);
+	protected:
+		virtual bool _reduce(const size_t sz_lim);
+		virtual bool _merge(const LayerData & layerData);
+		virtual void _release();
+	public:
+		virtual const LayerType getLayerType() const { return lt_coast_line; };
+		virtual bool save(ofstream & ofile);
+		virtual bool load(ifstream & ifile);
+		virtual bool split(list<Node*> & nodes) const;
+		virtual LayerData * clone() const;
+		virtual size_t size() const;
+		virtual float resolution() const;
+		virtual float radius() const; // returns radius of the object's distribution in meter
+		virtual vec3 center() const; // returns center of the object's distribution
 	};
-
-	~s_node()
-	{
-	}
-
-	s_node * get_child(unsigned char * _id);
-
-	const float dist(const float _x, const float _y, const float _z)
-	{
-		double dx = x - _x;
-		double dy = y - _y;
-		double dz = z - _z;
-
-		return (float)sqrt(dx * dx + dy * dy + dz * dz);;
-	}
-
-	bool init(const unsigned char * _id, const unsigned char _lv);
-	bool load(ifstream & fgrp, unsigned char * _id, const unsigned char _lv);
-	bool save(ofstream & fgrp, unsigned short sz_edge_max);
-	bool save_grph(ofstream & fgrp, unsigned short sz_edge_max);
-	bool load_grph(ifstream & fgrp, vector<unsigned int *> & grph, vector<unsigned int*> & grph_idx, unsigned short & sz_edge_max);
-	bool init_grph(vector<list<unsigned int>> & grph);
-
-	bool load(ifstream & fdat, const unsigned char * _id, const unsigned char _lv, const LayerCode ly = amlc_undef);
-	bool save(ofstream & fdat, const unsigned char * _id, const unsigned char _lv, const LayerCode code);
-	unsigned int get_sz_graph_data(unsigned int sz_edge_max);
-	void _release();
-	void release();
-	unsigned int count_child_nodes();
-
-	bool append(s_node * pn);
-	s_node * pprev;					// used in memory management
-	s_node * pnext;					// used in memory management
-
-	static unsigned int szpool;
-	static s_node * pchank, * pool;
-	static s_node * phead, * ptail; // LRU list
-	static bool init(const unsigned int _szpool);
-	static s_node * alloc();
-	static void free(s_node * pn);
-	static void used(s_node * pn);
-	static s_node * disc();
 };
-
-struct s_grid
-{
-	int lv;
-	int nNodes;
-	double latStep;
-	vector<double> lat;
-	vector<double> lonStep;
-	vector<vector<double>> lon;
-	vector<vector<int>> grid;
-	vector<vector<Point3f>> ecef;
-
-	bool init(const double _step, const int _ilevel, bool becef = false);
-
-
-	int get_near_lat_index(const float _lat)
-	{
-		int i = (int)((0.5 * PI - _lat) / latStep);
-		return i;
-	}
-
-	int get_near_lon_index(const int ilat, const float _lon)
-	{
-		int i = (int)(_lon / lonStep[ilat]);
-		return i;
-	}
-
-	const float dist2(const int ilat, const int ilon, const float x, const float y, const float z)
-	{
-		Point3f & p = ecef[ilat][ilon];
-		float dx = (float)(p.x - x);
-		float dy = (float)(p.y - y);
-		float dz = (float)(p.z - z);
-		return dx * dx + dy * dy + dz * dz;
-	}
-
-	const int get_near_index(const float lat, const float lon, const float x, const float y, const float z)
-	{
-		int ilat = get_near_lat_index(lat);
-		int ilon = get_near_lon_index(ilat, lon);
-		int ilat_min = ilat, ilon_min = ilon;
-
-		float dmin = dist2(ilat, ilon, x, y, z);
-		ilon++;
-		float d = dist2(ilat, ilon + 1, x, y, z);
-		if (d < dmin){
-			dmin = d;
-			ilat_min = ilat;
-			ilon_min = ilon + 1;
-		}
-
-		ilat++;
-		ilon = get_near_lon_index(ilat, lon);
-		d = dist2(ilat, ilon, x, y, z);
-		if (d < dmin){
-			dmin = d;
-			ilat_min = ilat;
-			ilon_min = ilon;
-		}
-
-		ilon++;
-		d = dist2(ilat, ilon + 1, x, y, z);
-		if (d < dmin){
-			dmin = d;
-			ilat_min = ilat;
-			ilon_min = ilon;
-		}
-		return grid[ilat_min][ilon_min];
-	}
-};
-
-class c_map
-{
-private:
-	int nLevels;
-	double minMeterPerPix;
-	double minStep;
-	vector<double> steps;
-	vector<double> pixels;
-
-	double scale, iscale;
-	s_grid cgrid;
-	s_node root; // root node
-public:
-	c_map();
-	c_map(const int _nLevels, const double _minMeterPerPix, const double _minStep, const double _scale, const unsigned int _nCache);
-	~c_map();
-
-	bool init(const int _nLevels, const double _minMeterPerPix, const double _minStep, const double _scale, const unsigned int _nCache, const char * _path = NULL);
-	void release();
-
-	bool load_with_ecef(const float x, const float y, const float z);
-	bool load_with_bih(const float lat, const float lon, const float alt = 0.f);
-
-	bool addJPGIS(const char * fname);
-
-	static char path[1024];
-	unsigned int nCache;
-};
-
-#define GR 1.61803398875 // golden ratio
 
 class c_icosahedron
 {
@@ -592,11 +426,6 @@ private:
 	unsigned int ** f;   // face (index)
 	unsigned int ** e;   // edge (index)
 
-	/*
-	Point3f v[12];
-	Point2f q[12];
-	int f[20][3];
-	*/
 public:
 	c_icosahedron();
 	c_icosahedron(const c_icosahedron & icshdrn);
@@ -648,8 +477,6 @@ public:
 	unsigned int ** getf(){
 		return f;
 	}
-};
-
 };
 
 #endif

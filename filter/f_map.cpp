@@ -32,36 +32,30 @@ using namespace cv;
 
 #include "f_map.h"
 
-const char * f_map::m_cmd_str[emc_none] =
+const char * f_map::m_str_dtype[edt_undef] =
 {
-	"normal", "add", "release"
+	"jpjis"
 };
 
-const char * f_map::m_mdt_str[emd_none] = 
+const char * f_map::m_str_cmd[emc_undef] =
 {
-	"jpgis"
+	"update", "add_data"
 };
 
-f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_num_levels(4),
-m_min_meter_per_pix(1), m_min_step(1000), m_scale(10), m_ncache(1000)
+f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL)
 {
 	m_path[0] = '.';
 	m_path[1] = '\0';
+	m_fdata[0] = '.';
+	m_fdata[1] = '\0';
 	register_fpar("ch_map", (ch_base**)&m_ch_map, typeid(ch_map).name(), "Map channel.");
-
+	register_fpar("cmd", (int*)&m_cmd, emc_undef, m_str_cmd, "Command");
+	register_fpar("dtype", (int*)&m_dtype, edt_undef, m_str_dtype, "Data type of fdata");
 	register_fpar("path", m_path, 1024, "Path to map data.");
-	register_fpar("nLevels", &m_num_levels, "Number of scale levels");
-	register_fpar("minMeterPerPix", &m_min_meter_per_pix, "Dimension of the pixel in the lowest level.");
-	register_fpar("minStep", &m_min_step, "Minimum node distance in the lowest level");
-	register_fpar("scale", &m_scale, "Scale between levels.");
-	register_fpar("ncache", &m_ncache, "Cache size for nodes.");
-
-	// map command related 
-	register_fpar("dtype", (int*)&m_dtype, (int)emd_none, m_mdt_str, "Data type to be added.");
-	register_fpar("fdata", m_fdata, 1024, "File path to map data to be added");
-
-	register_fpar("cmd", (int*)&m_cmd, (int)emc_none, m_cmd_str, "Map command.");
-
+	register_fpar("fdata", m_fdata, "File path to data file.");
+	register_fpar("max_num_nodes", &m_max_num_nodes, "Maximum number of nodes.");
+	register_fpar("max_total_size_layer_data", &m_max_total_size_layer_data, "Maximum total size of layer data.");
+	register_fpar("max_size_coast_line", &m_max_size_layer_data[AWSMap2::lt_coast_line], "Max data size of layer data per node.");
 }
 
 f_map::~f_map()
@@ -73,7 +67,11 @@ bool f_map::init_run()
 	if (!m_ch_map)
 		return false;
 
-	m_ch_map->init(m_num_levels);
+	m_db.setPath(m_path);
+	m_db.setMaxNumNodes(m_max_num_nodes);
+	m_db.setMaxTotalSizeLayerData(m_max_total_size_layer_data);
+	m_db.setMaxSizeLayerData(AWSMap2::lt_coast_line, m_max_size_layer_data[AWSMap2::lt_coast_line]);
+
 	return true;
 }
 
@@ -83,42 +81,85 @@ void f_map::destroy_run()
 
 bool f_map::proc()
 {
-	switch (m_cmd){
-	case emc_normal:
-		return proc_normal();
-	case emc_add:
-		return proc_add();
-	case emc_release:
-		return proc_release();
-	case emc_none:
+	switch (m_cmd)
+	{
+	case emc_update:
+		if (!update_channel())
+		{
+			return false;
+		}
 		break;
+	case emc_add_data:
+		if (!add_data()){
+			return false;
+		}
+		break;
+
+	}
+	return true;
+}
+
+bool f_map::update_channel()
+{
+	// lock channel
+	// clear layer data in channel
+	// get range from channel
+	// get active layer types from channel
+	// get layer data from db
+	// set layer data to the channel
+	// unlock channel
+
+	m_ch_map->lock();
+	m_ch_map->clear_layer_datum();
+
+	m_db.restruct();
+
+	list < list<const AWSMap2::LayerData *>> layerDatum;
+	list<AWSMap2::LayerType> layerTypes;
+
+	for (int layer_type = 0; layer_type < (int)AWSMap2::lt_undef; layer_type++){
+		if (m_ch_map->is_layer_enabled((AWSMap2::LayerType)layer_type))
+			layerTypes.push_back((AWSMap2::LayerType)layer_type);
+	}
+
+	m_db.request(layerDatum, layerTypes, 
+		m_ch_map->get_center(), 
+		m_ch_map->get_range(), 
+		m_ch_map->get_resolution());
+
+
+	auto itrData = layerDatum.begin(); 
+	for (auto itrType = layerTypes.begin(); itrType != layerTypes.end(); itrType++, itrData++){
+		m_ch_map->set_layer_data(*itrType, *itrData);
+	}
+	m_ch_map->unlock();
+	return true;
+}
+
+bool f_map::add_data()
+{
+	AWSMap2::LayerData * pld;
+	switch (m_dtype)
+	{
+	case edt_jpjis:
+		pld = load_jpjis();
+		break;
+	}
+
+	if (pld != NULL){
+		m_db.insert(pld);
 	}
 
 	return true;
 }
 
-bool f_map::proc_normal()
+AWSMap2::LayerData * f_map::load_jpjis()
 {
-	m_range = m_ch_map->get_range();
-	Point3f point;
-	m_ch_map->get_center(point.x, point.y, point.z);
-	double d = norm(point-m_point_prev);
-	if (d < m_range)
-		return true;
-
-	return true;
-}
-
-bool f_map::proc_add()
-{
-	switch (m_dtype){
-	case emd_jpgis:
-		break;
+	AWSMap2::CoastLine * pcl = new AWSMap2::CoastLine;
+	if (!pcl->loadJPJIS(m_fdata)){
+		delete pcl;
+		return NULL;
 	}
-	return true;
-}
 
-bool f_map::proc_release()
-{
-	return true;
+	return pcl;
 }

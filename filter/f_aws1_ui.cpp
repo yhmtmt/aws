@@ -53,6 +53,7 @@ m_ch_ap_inst(NULL),
 m_js_id(0), m_bsvw(false), m_bss(false),
 fov_cam_x(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
 num_max_wps(100), num_max_ais(100),
+bupdate_map(true), tupdate_map(30 * SEC), tnext_update_map(0), pt_prev_map_update(0,0,0),
 map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
 bmap_center_free(false)
 {
@@ -100,6 +101,8 @@ bmap_center_free(false)
 
   register_fpar("ss", &m_bss, "Screen shot now.");
   register_fpar("svw", &m_bsvw, "Screen video write.");
+
+  register_fpar("tupdate_map", &tupdate_map, "Time interval for updating map");
 }
 
 
@@ -188,7 +191,7 @@ bool f_aws1_ui::init_run()
 		  return false;
 	  if (!otxt.init(ftex, ftexinf, loc_mode, loc_pos2d, loc_texcoord, loc_sampler, loc_gcolor, loc_gcolorb, loc_depth2d, 65535))
 		  return false;
-	  if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 4096))
+	  if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 8192))
 		  return false;
   }
 
@@ -215,6 +218,9 @@ bool f_aws1_ui::init_run()
 	  return false;
 
   if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
+	  return false;
+  
+  if (!coast_line.init(&oline, clr, 4096))
 	  return false;
 
   glEnable(GL_CULL_FACE);
@@ -335,8 +341,13 @@ void f_aws1_ui::write_screen()
 
 void f_aws1_ui::update_route()
 {
+	if (!m_ch_wp)
+		return;
+
 	owp.disable();
-	
+	if (visible_obj[ui_obj_wp])
+		return;
+
 	m_ch_wp->lock();
 	int iwp = 0;
 	for (m_ch_wp->begin(); !m_ch_wp->is_end(); m_ch_wp->next())
@@ -374,7 +385,12 @@ void f_aws1_ui::update_ais_objs()
 {
 	if (!m_ch_ais_obj)
 		return;
+
 	oais.disable();
+
+	if (!visible_obj[ui_obj_vsl])
+		return;
+
 	m_ch_ais_obj->lock();
 	int iobj = 0;
 	for (m_ch_ais_obj->begin(); !m_ch_ais_obj->is_end(); m_ch_ais_obj->next()){
@@ -392,9 +408,39 @@ void f_aws1_ui::update_ais_objs()
 
 	oais.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
 	oais.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+	
 	oais.update_drawings();
 }
 
+
+void f_aws1_ui::update_map()
+{
+	if (!m_ch_map)
+		return;
+
+	coast_line.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
+	coast_line.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+
+	// bupdate_map is asserted when map_scale is changed or drawing object types are re-selected
+	if (glm::distance(pt_prev_map_update, pt_map_center_ecef) > 0.5 * map_range || bupdate_map){
+		// update map
+		m_ch_map->lock();
+		m_ch_map->set_center(pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+		m_ch_map->set_range((float)(2 * map_range));
+		m_ch_map->set_resolution(meter_per_pix);
+		m_ch_map->unlock();
+		bupdate_map = false;
+	}
+
+	if (visible_obj[ui_obj_cl])
+	{
+		list<const AWSMap2::LayerData *> layerData;
+		m_ch_map->lock();
+		layerData = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
+		coast_line.update_points(layerData);
+		m_ch_map->unlock();
+	}
+}
 
 bool f_aws1_ui::proc()
 {
@@ -542,6 +588,9 @@ bool f_aws1_ui::proc()
 
 	// update ais object
 	update_ais_objs();
+
+	// update coast line (map)
+	update_map();
 
 	// rendering graphics
 	render_gl_objs();
@@ -824,6 +873,7 @@ void f_aws1_ui::update_view_mode_box(c_view_mode_box * pvm_box)
 	ind.set_mode(pvm_box->get_mode());
 	owp.set_ui_mode(pvm_box->get_mode());
 	oais.set_ui_mode(pvm_box->get_mode());
+	coast_line.set_ui_mode(pvm_box->get_mode());
 }
 
 void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
@@ -935,6 +985,15 @@ void f_aws1_ui::update_obj_cfg_box(c_obj_cfg_box * poc_box)
 			map_range *= 0.1f;
 			recalc_range();
 		}
+		break;
+	case c_obj_cfg_box::wp:
+		break;
+	case c_obj_cfg_box::vsl:
+		break;
+	case c_obj_cfg_box::cl:
+		bupdate_map = true;
+		break;
+	case c_obj_cfg_box::mrk:
 		break;
 	}
 	poc_box->set_params(map_range, visible_obj);
@@ -2974,6 +3033,104 @@ void c_ui_ais_obj::set_focus(const int iobj)
 {
 	focus = iobj;
 }
+
+/////////////////////////////////////////////////////////////////// c_ui_coast_line_obj
+bool c_ui_coast_line_obj::init(c_gl_2d_line_obj * _poline, const glm::vec4 & _clr, unsigned int max_num_points)
+{
+	clr = _clr;
+	poline = _poline;
+	return true;
+}
+
+bool c_ui_coast_line_obj::update_points(list<const AWSMap2::LayerData*> & coast_lines)
+{
+	// clear line object
+	for (auto itr = handle.begin(); itr != handle.end(); itr++)
+		poline->remove(itr->handle);
+	handle.clear();
+
+	// add new lines
+	struct s_vertex{
+		float x, y;
+		s_vertex() :x(0), y(0){}
+	};
+
+	vector<s_vertex> pts;
+	vector<bool> bcull; // In fpv mode, we need to cull a line partially.
+
+	if (mode == ui_mode_fpv)
+		bcull.reserve(128);
+
+	pts.reserve(128);
+	int index = 0;
+	for (auto itr = coast_lines.begin(); itr != coast_lines.end(); itr++){
+		const AWSMap2::CoastLine * pcl = dynamic_cast<const AWSMap2::CoastLine*>(*itr);
+		unsigned int num_lines = pcl->getNumLines();
+		for (unsigned int iline = 0; iline < num_lines; iline++, index++){
+			const vector<AWSMap2::vec3> & pts_ecef = pcl->getPointsECEF(iline);
+			pts.resize(pts_ecef.size());
+			bcull.resize(pts_ecef.size());
+
+			for (int ipt = 0; ipt < pts.size(); ipt++){
+				const AWSMap2::vec3 & pte = pts_ecef[ipt];
+				float rx, ry, rz;
+				eceftowrld(Rmap, xmap, ymap, zmap, 
+					(const float)pte.x, (const float)pte.y, (const float)pte.z,
+					rx, ry, rz);
+
+				glm::vec2 pt;
+				if (mode == ui_mode_map){
+					pt = calc_map_pos(rx, ry, rz);
+				}
+				else if (mode == ui_mode_fpv){
+					glm::vec3 pt_tmp = calc_fpv_pos(rx, ry, rz);
+					pt.x = pt_tmp.x;
+					pt.y = pt_tmp.y;
+					if (pt_tmp.z > 1.0)
+						bcull[ipt] = true;
+					else
+						bcull[ipt] = false;
+				}
+				pts[ipt].x = pt.x;
+				pts[ipt].y = pt.y;
+			}
+		
+			// add lines
+			if (mode == ui_mode_map){
+				if (!add_new_line(index, pts.size(), (const float*)pts.data()))
+					return false;
+			}
+			else if (mode == ui_mode_fpv)
+			{
+				int start = -1;
+				for (int i = 0; i < pts.size(); i++){
+					if (bcull[i]){
+						if (start >= 0){
+							if (!add_new_line(index, i - start, (const float*)(pts.data() + start)))
+								return false;
+							start = -1;
+						}
+						continue;
+					}
+
+					if (start < 0){
+						start = i;
+					}
+				}
+
+				if (start >= 0)
+				{
+					if (!add_new_line(index, pts.size() - start, (const float*)(pts.data() + start)))
+						return false;
+				}
+			}
+
+		}
+	}
+
+	return true;
+}
+
 /////////////////////////////////////////////////////////////////// c_own_ship
 bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
 	const glm::vec4 & clr, const glm::vec2 & sz)

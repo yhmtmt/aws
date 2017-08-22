@@ -37,6 +37,10 @@ enum e_ui_mode {
 	ui_mode_fpv, ui_mode_map, ui_mode_sys, ui_mode_undef
 };
 
+enum e_ui_obj{
+	ui_obj_wp = 0, ui_obj_vsl, ui_obj_mrk, ui_obj_cl, ui_obj_undef 
+};
+
 class c_aws_ui_box
 {
 protected:
@@ -218,10 +222,10 @@ class c_obj_cfg_box : public c_aws_ui_box
 {
 public:
 	enum e_btn{
-		wp,		// waypoint
+		wp = 0,		// waypoint
 		vsl,	// vessel
 		mrk,	// mark
-		cl,		// cast line
+		cl,		// coast line
 		range_down,
 		range_up,
 		nul
@@ -600,6 +604,54 @@ public:
 	virtual int collision(const glm::vec2 pos);
 };
 
+class c_ui_coast_line_obj : public c_ui_obj
+{
+private:
+	c_gl_2d_line_obj * poline;
+	glm::vec4 clr;
+	struct s_line{
+		int index;
+		int handle;
+		s_line(const int _index, const int _handle) : index(_index), handle(_handle)
+		{}
+	};
+
+	vector<s_line> handle;
+
+	bool add_new_line(int index, int npts, const float * pts)
+	{
+		int h = poline->add(npts, pts);
+		if (h < 0)
+			return false;
+		handle.push_back(s_line(index, h));
+		poline->config_position(h, glm::vec2(0.f, 0.f));
+		poline->config_rotation(h, 0);
+		poline->config_width(h, 1.0);
+		poline->config_color(h, clr);
+		poline->config_depth(h, 0);
+		return true;
+	}
+public:
+	c_ui_coast_line_obj()
+	{
+	}
+
+	virtual ~c_ui_coast_line_obj()
+	{
+	}
+
+	bool init(c_gl_2d_line_obj * poline, const glm::vec4 & clr, const unsigned int max_num_points);
+	bool update_points(list<const AWSMap2::LayerData*> & coast_lines);
+	void enable();
+	void disable();
+
+	void update_drawings();
+	virtual int collision(const glm::vec2 pos)
+	{
+		return -1;
+	}
+};
+
 class c_own_ship
 {
 private:
@@ -755,6 +807,13 @@ public:
   int num_max_wps;
   void update_route();
 
+  c_ui_coast_line_obj coast_line;
+  bool bupdate_map;
+  glm::vec3 pt_prev_map_update;
+  long long tupdate_map;
+  long long tnext_update_map;
+  void update_map();
+
   c_ui_ais_obj oais;
   int num_max_ais;
   void update_ais_objs();
@@ -808,9 +867,10 @@ public:
   Mat Rmap;
   glm::vec2 pt_map_center_bih;
   glm::vec3 pt_map_center_ecef;
-  float map_range, meter_per_pix, pix_per_meter;
+  float map_range /* radius in meter */, meter_per_pix, pix_per_meter;
   void recalc_range()
   {
+	  bupdate_map = true;
 	  meter_per_pix = (float)(map_range / (float)(m_sz_win.height >> 1));
 	  pix_per_meter = (float)(1.0 / meter_per_pix);
   }

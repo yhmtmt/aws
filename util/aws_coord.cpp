@@ -37,6 +37,21 @@ void bihtoecef(const float lat, const float lon, const float alt,
 	z = (float)((N * (1 - EE2) + alt) * slat);
 }
 
+void bihtoecef(const double lat, const double lon, const double alt,
+	double & x, double & y, double & z)
+{
+	double slat = sin(lat);
+	double clat = cos(lat);
+	double slon = sin(lon);
+	double clon = cos(lon);
+	double N = AE / sqrt(1 - EE2 * slat * slat);
+
+	double tmp = (N + alt) * clat;
+	x = (tmp * clon);
+	y = (tmp * slon);
+	z = ((N * (1 - EE2) + alt) * slat);
+}
+
 void bihtoecef(const s_bihpos & Xbih, Point3d & Xecef)
 {
 	double slat = sin(Xbih.lat);
@@ -64,6 +79,21 @@ void eceftobih(const float x, const float y, const float z, float & lat, float &
 	s = (float)sin(lat);
 	alt = (float)(p / cos(lat) - AE / sqrt(1 - EE2 * s * s));
 }
+
+void eceftobih(const double x, const double y, const double z, double & lat, double & lon, double & alt)
+{
+	double p = sqrt(x* x + y * y);
+	double th = atan(z * AE / (p * BE));
+	double s = sin(th);
+	double c = cos(th);
+	s = s * s * s;
+	c = c * c* c;
+	lat = atan2(z + EE2_B * s, p - EE2_A * c);
+	lon = atan2(y, x);
+	s = sin(lat);
+	alt = (p / cos(lat) - AE / sqrt(1 - EE2 * s * s));
+}
+
 
 void eceftobih(Point3d & Xecef, s_bihpos & Xbih)
 {
