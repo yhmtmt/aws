@@ -41,699 +41,8 @@ enum e_ui_obj{
 	ui_obj_wp = 0, ui_obj_vsl, ui_obj_mrk, ui_obj_cl, ui_obj_undef 
 };
 
-class c_aws_ui_box
-{
-protected:
-	static c_gl_2d_obj * porect, * potri;
-	static c_gl_2d_line_obj * poline;
-	static c_gl_text_obj * potxt;
-	bool bopened;
-	int hbox, hopen, hclose;
-	bool btn_oc_pushed, btn_oc_released;
-	glm::vec2 pt_mouse;
-	glm::vec2 pos_close, pos_open; // box position
-	glm::vec2 sz_close, sz_open; // box size
-
-	glm::vec4 clr, bkgclr;
-	
-	void add_btn(int & hbtn, int & hstr, const char * str,
-		const glm::vec2 & pos, const glm::vec2 & sz_btn, const glm::vec2 & sz_fnt);
-	void add_select_box(int & hlbtn, int & hlstr, const char * lstr, int & hrbtn, int & hrstr, const char * rstr, int & hvalstr, 
-		const glm::vec2 & pos, const glm::vec2 & sz_btn, const glm::vec2 & sz_box, const glm::vec2 & sz_fnt, const unsigned int len_str);
-	void setup_frame(const float y, const bool left, const glm::vec2 & sz_scrn, 
-		const glm::vec2 &sz_box, const glm::vec2  & sz_fnt, const glm::vec4 & clr);
-
-	void set_selected_color(const int hrect);
-	void set_normal_color(const int hrect);
-	void set_checked_color(const int hbtn, const int hstr);
-	void set_normal_color(const int hbtn, const int hstr);
-
-	virtual void open();
-	virtual void close();
-
-	virtual bool handle_left_push(const glm::vec2 & pt);
-	virtual bool handle_left_release(const glm::vec2 & pt);
-
-public:
-	c_aws_ui_box() : bopened(false), hbox(-1), hopen(-1), hclose(-1), btn_oc_pushed(false), btn_oc_released(false)
-	{
-	}
-
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
-		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left)
-	{
-		setup_frame(y, left, sz_scrn, get_box_size(sz_fnt), sz_fnt, clr);
-
-		bopened = false;
-		close();
-		return true;
-	};
-
-	virtual const glm::vec2 get_box_size(const glm::vec2 sz_font)
-	{
-		return sz_open;
-	};
-
-	virtual bool set_mouse_event(const glm::vec2 & pt, 
-		const int button, const int action, const int modifier);
-
-	virtual bool proc(const bool bpushed, const bool breleased);
-
-	static void set_gl_objs(c_gl_2d_obj * _porect, c_gl_2d_obj * potri, 
-		c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline);
-};
-
-class c_view_mode_box : public c_aws_ui_box
-{
-public:
-	enum e_btn{
-		fpv = 0, // first person view
-		map, // map view
-		sys, // system menu
-		nul
-	};
-private:
-	static const char * str_btn[nul];
-	vector<int> hstr;
-	vector<int> hbtn;
-	e_btn btn_pushed, btn_released;
-
-	e_btn mode;
-	virtual void open();
-	virtual void close();
-	virtual bool handle_left_push(const glm::vec2 & pt);
-	virtual bool handle_left_release(const glm::vec2 & pt);
-public:
-	c_view_mode_box() :c_aws_ui_box(), mode(fpv), btn_pushed(nul), btn_released(nul)
-	{
-		hstr.resize(nul);
-		hbtn.resize(nul);
-	}
-
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
-		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
-	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
-	{
-		glm::vec2 pos, sz_btn, sz_box;
-		sz_btn.x = (float)(4 * sz_fnt.x);
-		sz_btn.y = (float)(1.5 * sz_fnt.y);
-		sz_box.x = sz_btn.x;
-		sz_box.y = (float)(sz_btn.y * (float)nul);
-		return sz_box;
-	}
-
-	virtual bool proc(const bool bpushed, const bool breleased);
-
-	void set_mode(const e_btn _mode){
-		mode = _mode;
-	}
-
-	e_ui_mode get_mode(){
-		switch (mode) {
-		case fpv:
-			return ui_mode_fpv;
-		case map:
-			return ui_mode_map;
-		case sys:
-			return ui_mode_sys;
-		}
-		return ui_mode_undef;
-	}
-};
-
-class c_ctrl_mode_box : public c_aws_ui_box
-{
-public:
-	enum e_btn{
-		crz = 0, // manual cruise mode
-		ctl,	// manual control mode
-		csr,	// cursor control mode
-		fwp,	// follow way point mode
-		sty,	// stay mode
-		ftg,	// follow target mode
-		nul
-	};
-private:
-	static const char * str_btn[nul];
-	vector<int> hstr;
-	vector<int> hbtn;
-	e_btn btn_pushed, btn_released;
-
-	e_btn mode;
-	virtual void open();
-	virtual void close();
-	virtual bool handle_left_push(const glm::vec2 & pt);
-	virtual bool handle_left_release(const glm::vec2 & pt);
-
-public:
-	c_ctrl_mode_box() :c_aws_ui_box(), mode(crz), btn_pushed(nul), btn_released(nul)
-	{
-		hstr.resize(nul);
-		hbtn.resize(nul);
-	};
-
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
-		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
-
-	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
-	{
-		glm::vec2 pos, sz_btn, sz_box;
-		sz_btn.x = (float)(4 * sz_fnt.x);
-		sz_btn.y = (float)(1.5 * sz_fnt.y);
-		sz_box.x = sz_btn.x;
-		sz_box.y = (float)(sz_btn.y * (float)nul);
-		return sz_box;
-	}
-
-	virtual bool proc(const bool bpushed, const bool breleased);
-
-	void set_mode(const e_btn _mode){
-		set_normal_color(hbtn[mode], hstr[mode]);
-		mode = _mode;
-		set_checked_color(hbtn[mode], hstr[mode]);
-	}
-
-	const e_btn get_mode(){
-		return mode;
-	}
-};
-
-class c_obj_cfg_box : public c_aws_ui_box
-{
-public:
-	enum e_btn{
-		wp = 0,		// waypoint
-		vsl,	// vessel
-		mrk,	// mark
-		cl,		// coast line
-		range_down,
-		range_up,
-		nul
-	};
-
-private:
-	static const char * str_btn[nul];
-	vector<int> hstr;
-	vector<int> hbtn;
-	e_btn btn_pushed, btn_released;
-	e_btn command;
-
-	vector<bool> check;
-	int hstr_range;
-	char range_str[8];
-	float range;
-	virtual void open();
-	virtual void close();
-	virtual bool handle_left_push(const glm::vec2 & pt);
-	virtual bool handle_left_release(const glm::vec2 & pt);
-public:
-	c_obj_cfg_box() : c_aws_ui_box(), range(1000), btn_pushed(nul), btn_released(nul), command(nul)
-	{
-		hstr.resize(nul);
-		hbtn.resize(nul);
-		check.resize(range_down, true);
-	}
-
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
-		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
-
-	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
-	{
-		glm::vec2 sz_btn, sz_box;
-		int rows = nul / 3 + (nul % 3 ? 1 : 0);
-		sz_btn.x = (float)(4 * sz_fnt.x);
-		sz_btn.y = (float)(1.5 * sz_fnt.y);
-		sz_box.x = (float)(sz_btn.x * 3);
-		sz_box.y = (float)(sz_btn.y * (rows + 1));
-		return sz_box;
-	}
-
-	virtual bool proc(const bool bpushed, const bool breleased);
-
-	void set_params(const float _range, vector<bool> _check)
-	{
-		range = _range;
-		if(range > 1000000)
-			snprintf(range_str, 8, "%dM", (int)(range * 0.000001));
-		else if (range > 1000)
-			snprintf(range_str, 8, "%dK", (int)(range * 0.001));
-		else
-			snprintf(range_str, 8, "%d", (int)(range));
-		potxt->set(hstr_range, range_str);
-
-		for (int ibtn = 0; ibtn < range_down; ibtn++){
-			check[ibtn] = _check[ibtn];
-			if (check[ibtn]){
-				set_checked_color(hbtn[ibtn], hstr[ibtn]);
-			}
-			else{
-				set_normal_color(hbtn[ibtn], hstr[ibtn]);
-			}
-		}
-		command = nul;
-	}
-
-	void get_params(float & _range, vector<bool> & _check)
-	{
-		_range = range;
-		if (_check.size() != check.size())
-			_check.resize(check.size());
-		for (int ibtn = 0; ibtn < range_down; ibtn++){
-			_check[ibtn] = check[ibtn];
-		}
-	}
-
-	e_btn get_command()
-	{
-		return command;
-	}
-};
-
-class c_route_cfg_box : public c_aws_ui_box
-{
-public:
-	enum e_btn{
-		wp_prev, wp_next,
-		wp_spd_down, wp_spd_up,
-		wp_add, wp_del,
-		rt_prev, rt_next,
-		rt_load, rt_save,
-		nul
-	};
-private:
-	static const char * str_btn[nul];
-	vector<int> hstr;
-	vector<int> hbtn;
-	e_btn btn_pushed, btn_released;
-	e_btn command;
-	char str_val[8];
-	int hstr_wp, hstr_spd, hstr_rt;
-	unsigned int wp;
-	unsigned int spd;
-	unsigned int rt;
-	virtual void open();
-	virtual void close();
-	virtual bool handle_left_push(const glm::vec2 & pt);
-	virtual bool handle_left_release(const glm::vec2 & pt);
-public:
-	c_route_cfg_box() :c_aws_ui_box(), wp(0), spd(0), rt(0), btn_pushed(nul), btn_released(nul), command(nul)
-	{
-		hstr.resize(nul);
-		hbtn.resize(nul);
-	}
-
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
-		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
-
-	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
-	{
-		glm::vec2 sz_btn, sz_box;
-		sz_btn.x = (float)(5 * sz_fnt.x);
-		sz_btn.y = (float)(1.5 * sz_fnt.y);
-
-		sz_box.x = (float)(sz_btn.x * 2);
-		sz_box.y = (float)(sz_btn.y * 5);
-		return sz_box;
-	}
-	virtual bool proc(const bool bpushed, const bool breleased);
-
-	const e_btn get_command()
-	{
-		return command;
-	}
-
-	void reset_command()
-	{
-		command = nul;
-	}
-
-	void command_processed(e_btn _command)
-	{
-		if (_command != nul)
-		{
-			set_normal_color(hbtn[_command], hstr[_command]);
-		}
-	}
-
-	void set_params(const unsigned int _wp, const unsigned int _spd, const unsigned int _rt)
-	{
-		wp = _wp;
-		snprintf(str_val, 8, "WP%03d", wp);
-		potxt->set(hstr_wp, str_val);
-
-		spd = _spd;
-		snprintf(str_val, 8, "%03d", spd);
-		potxt->set(hstr_spd, str_val);
-
-		rt = _rt;
-		snprintf(str_val, 8, "R%d", rt);
-		potxt->set(hstr_rt, str_val);
-	}
-
-	void get_params(unsigned int & _wp, unsigned int & _spd, unsigned int & _rt)
-	{
-		_wp = wp;
-		_spd = spd;
-		_rt = rt;
-	}
-};
-
-class c_indicator
-{
-public:
-	// main/sub engine throttle
-	// main/sub engine gear
-	// rudder 
-	// roll/pitch/yaw
-	// cog/sog
-private:
-	e_ui_mode mode;
-	c_gl_2d_obj * porect, * potri;
-	c_gl_2d_line_obj * poline;
-	c_gl_text_obj * potxt;
-
-	const unsigned char veng_n, veng_nf, veng_nb;
-	unsigned char meng, seng, rud;
-	float cog /*radian*/, sog, yaw /*radian*/, pitch /*radian*/, roll /*radian*/;
-
-	int hmeng_in, hmeng_out, hseng_in, hseng_out, hrud_in, hrud_out;
-	int hmeng_n, hmeng_f, hmeng_b, hseng_n, hseng_f, hseng_b;
-	glm::vec2 scl_eng, scl_rud, pos_rud;
-	void create_engine_indicator(int & heng_in, int & heng_out, 
-		int & heng_n, int & heng_f, int & heng_b, 
-		glm::vec2 & pos, const glm::vec2 & sz_fnt,
-		const glm::vec4 & clr);
-	void update_engine_indicator(int & heng_in, int & heng_n, int & heng_f, int & heng_b,
-		const unsigned char val);
-	void create_rudder_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
-		const glm::vec4 & clr);
-	void update_rudder_indicator();
-#define SOG_STEP 5
-	glm::vec2 pos_sog;
-	glm::vec2 rad_sog;
-	int hsog_arc, hsog_scale, hstr_sog_scale[SOG_STEP], hsog_ptr;
-	void create_sog_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt, const glm::vec4 & clr);
-	void update_sog_indicator();
-
-#define PITCH_STEP 9
-#define ROLL_STEP 19
-	glm::vec2 pos_rp;
-	float lpmeas;
-	int hrarc, hrscale, hstr_rscale[ROLL_STEP], hpmeas, hpscale, hstr_pscale[PITCH_STEP], hpptr;
-	glm::vec2 pos_pscale[PITCH_STEP];
-	void create_rp_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt, const glm::vec4 & clr);
-	void update_rp_indicator();
-
-#define YAW_STEP 36
-	float dir_cam, pos_ystr, pos_yptr, fxcam;
-	
-	glm::vec2 pos_yscl[YAW_STEP], pos_yscl_tmp[YAW_STEP];
-	int hhlzn, hyscale[YAW_STEP], hstr_yscale[YAW_STEP], hhptr, hcptr;
-	void create_hc_indicator(const float fovx, const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const glm::vec4 & clr);
-	void update_hc_indicator();
-public:
-	c_indicator();
-	~c_indicator();
-	bool init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt, 
-		c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
-		const glm::vec2 & sz_fnt, const glm::vec4 & clr, 
-		const float fovx, const glm::vec2 & sz_scrn);
-
-	void set_param(
-		const unsigned char _meng, const unsigned char _seng, const unsigned char _rud,
-		const float _cog /*radian*/, const float _sog,
-		const float _yaw /*radian*/, const float _pitch/*radian*/, const float _roll/*radian*/);
-
-	void set_dir_cam(const float _dir_cam)
-	{
-		dir_cam = _dir_cam;
-	}
-
-	void set_mode(e_ui_mode _mode = ui_mode_fpv)
-	{
-		mode = _mode;
-	}
-};
-
-class c_ui_obj
-{
-protected:
-	e_ui_mode mode;
-	glm::mat4 pv;
-	glm::vec2 sz_scrn;
-	float pix_per_meter;
-	float meter_per_pix;
-	Mat Rmap;
-	float xmap, ymap, zmap;
-
-	glm::vec3 calc_fpv_pos(const float rx, const float ry, const float rz)
-	{
-		glm::vec3 pos;
-		glm::vec4 x(rx, ry, rz, 1), xprj;
-		xprj = pv * x;
-		float iw = (float)(1.0 / xprj.w);
-		pos.x = xprj.x * iw * sz_scrn.x;
-		pos.y = xprj.y * iw * sz_scrn.y;
-		pos.z = xprj.z * iw;
-		return pos;
-	}
-
-	glm::vec2 calc_map_pos(const float rx, const float ry, const float rz)
-	{
-		glm::vec2 pos;
-		pos.x = pix_per_meter * rx;
-		pos.y = pix_per_meter * ry;
-		return pos;
-	}
-public:
-	c_ui_obj() :mode(ui_mode_fpv)
-	{
-	}
-
-	virtual int collision(const glm::vec2 pos) = 0;
-
-	void set_ui_mode(e_ui_mode _mode = ui_mode_fpv)
-	{
-		mode = _mode;
-	}
-
-	void set_fpv_param(
-		const glm::mat4 & _pv /* camera projection x camera rotation and translation*/,
-		const glm::vec2 & _sz_scrn)
-	{
-		pv = _pv;
-		sz_scrn.x = (float)(_sz_scrn.x * 0.5);
-		sz_scrn.y = (float)(_sz_scrn.y * 0.5);
-	}
-
-	void set_map_param(const float _pix_per_meter, const Mat & Rorg, const float xorg, const float yorg, const float zorg)
-	{
-		pix_per_meter = _pix_per_meter;
-		meter_per_pix = (float)(1.0 / pix_per_meter);
-		Rmap = Rorg;
-		xmap = xorg;
-		ymap = yorg; 
-		zmap = zorg;
-	}
-};
-
-class c_ui_waypoint_obj: public c_ui_obj
-{
-private:
-
-	c_gl_2d_obj * pocirc;
-	c_gl_text_obj * potxt;
-	c_gl_2d_line_obj * poline;
-	glm::vec4 clr;
-	vector<s_wp> wps;
-	struct s_marker{
-		int hmark, hstr, hline_inf, hline_next;
-	};
-	vector<s_marker> hmarks;
-	int focus, next;
-	float dist, crs;
-	int nmaxwps;
-	float rmark;
-public:
-	c_ui_waypoint_obj();
-	bool init(c_gl_2d_obj * pocirc, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline, 
-		const glm::vec4 & clr,  const glm::vec2 & sz_fnt, const float _rmark, 
-		const unsigned int _nmaxwps = 100);
-	void update_wps(const int iwp, const s_wp & wp);
-	void update_drawings();
-	void enable(const int iwp);
-	void disable(const int iwp);
-	void disable();
-	void set_focus(const int iwp);
-	void set_next(const int iwp, const float dist, const float crs);
-	virtual int collision(const glm::vec2 pos);
-};
-
-class c_ui_ais_obj : public c_ui_obj
-{
-private:
-	c_gl_2d_obj * porect, * potri;
-	c_gl_text_obj * potxt;
-	c_gl_2d_line_obj * poline;
-
-	glm::vec2 sz_rect;
-	glm::vec4 clr;
-	struct s_marker{
-		int hmark, hship2d, hstr, hline_inf, hline_vel;
-	};
-	vector<s_marker> hmarks;
-	vector<c_ais_obj> objs;
-	int nmax_objs;
-	int focus;
-	float tvel;
-public:
-	c_ui_ais_obj() : tvel(300)
-	{
-	}
-
-	bool init(c_gl_2d_obj * porect, c_gl_2d_obj * potri, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
-		const glm::vec4 & clr, const glm::vec2 & sz_fnt, const glm::vec2 & sz_rect,
-		const unsigned int _nmax_objs = 100);
-	void update_ais_obj(const int iobj, const c_ais_obj & ais_obj);
-	void update_drawings();
-	void enable(const int iobj);
-	void disable(const int iobj);
-	void disable();
-	void set_focus(const int iobj);
-	void set_vel_len(const float t = 300){ tvel = t; };
-	virtual int collision(const glm::vec2 pos);
-};
-
-class c_ui_coast_line_obj : public c_ui_obj
-{
-private:
-	c_gl_2d_line_obj * poline;
-	glm::vec4 clr;
-	struct s_line{
-		int index;
-		int handle;
-		s_line(const int _index, const int _handle) : index(_index), handle(_handle)
-		{}
-	};
-
-	vector<s_line> handle;
-
-	bool add_new_line(int index, int npts, const float * pts)
-	{
-		int h = poline->add(npts, pts);
-		if (h < 0)
-			return false;
-		handle.push_back(s_line(index, h));
-		poline->config_position(h, glm::vec2(0.f, 0.f));
-		poline->config_rotation(h, 0);
-		poline->config_width(h, 1.0);
-		poline->config_color(h, clr);
-		poline->config_depth(h, 0);
-		return true;
-	}
-public:
-	c_ui_coast_line_obj()
-	{
-	}
-
-	virtual ~c_ui_coast_line_obj()
-	{
-	}
-
-	bool init(c_gl_2d_line_obj * poline, const glm::vec4 & clr, const unsigned int max_num_points);
-	bool update_points(list<const AWSMap2::LayerData*> & coast_lines);
-	void enable();
-	void disable();
-
-	void update_drawings();
-	virtual int collision(const glm::vec2 pos)
-	{
-		return -1;
-	}
-};
-
-class c_own_ship
-{
-private:
-	c_gl_2d_obj * potri;
-	c_gl_2d_line_obj * poline;
-	int hship, hline_vel;
-	float tvel;
-public:
-	c_own_ship() :tvel(300)
-	{
-
-	}
-
-	bool init(c_gl_2d_obj * potri, c_gl_2d_line_obj * poline,
-		const glm::vec4 & clr, const glm::vec2 & sz);
-	void set_param(const float rx, const float ry, const float rz,
-		const float hdg, const float vx, const float vy, const float pix_per_meter);
-	void set_vel_len(const float t = 300) {
-		tvel = t;
-	}
-	void enable();
-	void disable();
-};
-
-class c_cursor
-{
-private:
-	c_gl_2d_line_obj * poline;
-	c_gl_text_obj * potxt;
-	int harrow, hpos, hpos_str;
-	glm::vec2 pos_str;
-public:
-	bool init(c_gl_2d_line_obj * poline, c_gl_text_obj * potxt, const glm::vec4 & clr, glm::vec2 sz_fnt, glm::vec2 & sz);
-	void set_cursor_position(const glm::vec2 & _pos_mouse, const glm::vec2 & _pos_bih);
-	void enable_arrow();
-	void enable_pos();
-	void disable();
-};
-
-class c_aws_ui_box_manager
-{
-public:
-	enum e_box{
-		view_mode = 0,
-		ctrl_mode = 1,
-		obj_cfg = 2,
-		route_cfg = 3,
-		nul
-	};
-private:
-	vector<c_aws_ui_box*> pboxes;
-	vector<int> hboxes;
-
-	e_box box_pushed, box_released, box_updated;
-	bool blpushed, blreleased;
-	c_gl_2d_obj * porect, *potri;
-	c_gl_text_obj * potxt;
-	c_gl_2d_line_obj * poline;
-
-	glm::vec4 clr, bkgclr;
-	glm::vec2 sz_font, sz_screen;
-public:
-	c_aws_ui_box_manager();
-	~c_aws_ui_box_manager();
-
-	bool init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
-		c_gl_text_obj * _potxt, c_gl_2d_line_obj * poline, 
-		const glm::vec4 & _clr, const glm::vec4 & _bkgclr, const glm::vec2 & _sz_font, const float fovx, const glm::vec2 & _sz_screen);
-
-	bool set_mouse_event(const glm::vec2 & pt, const int button, const int action, const int modifier);
-
-	c_aws_ui_box * get_ui_box(const e_box & box)
-	{
-		return pboxes[box];
-	}
-
-	e_box get_box_updated()
-	{
-		return box_updated;
-	}
-};
-
+#include "f_aws1_ui_util/c_ui_box.h"
+#include "f_aws1_ui_util/c_map_obj.h"
 
 class f_aws1_ui: public f_glfw_window
 {
@@ -741,6 +50,7 @@ public:
 	enum e_obj_type{
 		ot_wp, ot_cl, ot_ais, ot_mark, ot_nul
 	};
+
 	struct s_obj{
 		e_obj_type type;
 		int handle;
@@ -753,92 +63,114 @@ public:
 
  private:
 	 void cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy);
-	 s_aws1_ctrl_inst m_inst;
-	 s_aws1_ctrl_stat m_stat;
 
-	 // send control packet to m_acd_socket or m_ch_ctrl_out
-	 void snd_ctrl_inst();
-	 // Recive control state (rudder angle) from m_acd_socket or m_ch_ctrl_in.
-	 void rcv_ctrl_stat();
+	 bool m_verb;
 
-	 ////////////////////////////////////////// current version
-  ch_state * m_state;
-  ch_aws1_sys * m_ch_sys;
-  ch_aws1_ctrl_inst * m_ch_ctrl_inst;
-  ch_aws1_ctrl_stat * m_ch_ctrl_stat;
-  ch_wp * m_ch_wp;
-  ch_map * m_ch_map;
-  ch_obj * m_ch_obj;
-  ch_ais_obj * m_ch_ais_obj;
-  ch_image_ref * m_ch_img, * m_ch_img2, * m_ch_disp;
-  ch_obst * m_ch_obst;
-  ch_aws1_ap_inst * m_ch_ap_inst;
+	 ////////////////////////////////////////// Channel Declaration
 
-  char m_path_storage[1024];
+  ch_state * m_state;					// required
+  ch_aws1_sys * m_ch_sys;				// is not used
+  ch_aws1_ctrl_inst * m_ch_ctrl_inst;	// optional
+  ch_aws1_ctrl_stat * m_ch_ctrl_stat;   // optional
+  ch_wp * m_ch_wp;						// optional, ref. update_route_cfg_box(), update_route(), add_waypoint()
+  ch_map * m_ch_map;					// optional, ref. update_map()
+  ch_obj * m_ch_obj;					// is not used
+  ch_ais_obj * m_ch_ais_obj;			// optional, ref. update_ais_obj()
+  ch_obst * m_ch_obst;					// is not used
+  ch_aws1_ap_inst * m_ch_ap_inst;		// optional, ref. update_ctrl_mode_box(), handle_ctrl_csr()
 
-  // shader related members
+  char m_path_storage[1024]; // path string to the storage
+
+  /////////////////////////////////////////// shader related members
   char fvs[1024], ffs[1024], ftex[1024], ftexinf[1024];
-  GLuint p;
-  GLuint loc_mode, loc_gcolor, loc_gcolorb, loc_pos2d, loc_inv_sz_half_scrn,
-	  loc_Mmvp, loc_Mm, loc_Lpar, loc_sampler, 
+  GLuint p;// shader program
+  GLuint loc_mode /* rendering mode flag. See glsl.*/ , 
+	  loc_gcolor /* object color */ , loc_gcolorb /* object background color */,
+	  loc_pos2d /* 2d point */, loc_inv_sz_half_scrn /* inverse half screen size */,
+	  loc_Mmvp /* transform matrix */ , loc_Mm /* object rotation/translation matrix */, 
+	  loc_Lpar /* Light direction */, loc_sampler /* Texture sampler */, 
 	  loc_depth2d, loc_position, loc_normal, loc_texcoord;
   float inv_sz_half_scrn[2], fov_cam_x, fov_cam_y, fcam, ifcam, height_cam, dir_cam_hdg, dir_cam_hdg_drag;
   float iRE, height_cam_ec, dhorizon_cam, dhorizon_arc, zhorizon, th_horizon;
   bool setup_shader();
 
-  // visual elements
-  c_gl_2d_obj orect, otri, ocirc;
-  c_gl_text_obj otxt;
-  c_gl_2d_line_obj oline;
-  void render_gl_objs()
-  {
-	  orect.render();
-	  otri.render();
-	  ocirc.render();
-	  otxt.render(0);
-	  oline.render();
-  }
+  /////////////////////////////////////////// graphics elements. 
+  // The elements can be used by changing position, scale, and rotation for each graphics artifacts.
+  c_gl_2d_obj orect /* 2d rectangle */, otri /* 2d triangle */, ocirc /* 2d circle */;
+  c_gl_text_obj otxt /* Text */;
+  c_gl_2d_line_obj oline /* 2d line */;
+  void render_gl_objs(); // renders all elements above declared.
 
-  // ui elements
+  // ui boxes
   c_aws_ui_box_manager uim;
-  c_indicator ind;
-  float sz_mark;
-  c_ui_waypoint_obj owp;
-  int num_max_wps;
-  void update_route();
-
-  c_ui_coast_line_obj coast_line;
-  bool bupdate_map;
-  glm::vec3 pt_prev_map_update;
-  long long tupdate_map;
-  long long tnext_update_map;
-  void update_map();
-
-  c_ui_ais_obj oais;
-  int num_max_ais;
-  void update_ais_objs();
-  vector<bool> visible_obj;
-  c_own_ship own_ship;
-  c_cursor ocsr;
-
+  void handle_updated_ui_box(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box, c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box);
+ 
   void update_view_mode_box(c_view_mode_box * pvm_box);
   void update_ctrl_mode_box(c_ctrl_mode_box * pcm_box);
-  void update_obj_cfg_box(c_obj_cfg_box * poc_box);
+  void update_map_cfg_box(c_map_cfg_box * pmc_box);
   void update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new);
+  void update_ui_params(c_view_mode_box * pvm_box,
+	  const float xown, const float yown, const float zown,
+	  const float vx, const float vy, const float yaw);
+ 
+  // Indicator
+  c_indicator ind;
+  void update_indicator(const float cog, const float sog, 
+	  const float roll, const float pitch, const float yaw)
+  {
+	  ind.set_param(m_stat.meng, m_stat.seng, m_stat.rud, (float)(cog * (PI / 180.f)), sog,
+		  (float)(yaw * (PI / 180.f)), (float)(pitch* (PI / 180.f)), (float)(roll* (PI / 180.f)));
+	  ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
+  }
 
-  // joypad related members
-  bool m_verb;
-  s_jc_u3613m m_js;
-  int m_js_id;
-  const char * m_js_name;
-  float m_rud_f, m_meng_f, m_seng_f;
+  //////////////////////////////////////////// map objects
+  float sz_mark;			// Basic size of each object.
+  vector<bool> visible_obj; // Visible objects (copied from map_cfg_box), the index is e_obj_type
+
+  c_map_waypoint_obj owp;	// waypoint object
+  int num_max_wps;			// maximum number of waypoints user can create.
+
+  c_map_coast_line_obj coast_line;	// coast line object
+  bool bupdate_map;					// flag to notify reload the map 
+  glm::vec3 pt_prev_map_update;		// position previous map update invoked. 
+								    //(if the distance from the point has been larger than map range, bupdate_map is asserted.) 
+
+  c_map_ais_obj oais;		// ais object
+  int num_max_ais;			// maximum number of ais objects ui can draw.
+
+  void update_ais_objs();
+  void update_route();
+  void update_map();
+
+  c_own_ship own_ship;	// own ship object
+  c_cursor ocsr;		// cursor 
+
+ 
+  ////////////////////////////////////////// Control instruction and status
+  // Control source is categorized into two: one is manual, another is autopilot.
+  // Manual control is done via joystic by instructing the control value to the m_ch_ctrl_inst channel,
+  // and autopilot control is done by instructing the autopilot command to the m_ch_ap_inst channel.
+
+  s_aws1_ctrl_inst m_inst; // the control instruction value
+  void snd_ctrl_inst(); // send m_inst to m_ch_ctrl_inst
+
+  s_aws1_ctrl_stat m_stat; // the control state value 
+  void rcv_ctrl_stat(); // recieve m_stat from m_ch_ctrl_stat.
+
+  // AWS1's manual control mode, crz: Cruise mode (for usual crusing), ctl: Control mode (for precise control), csr: Cursor mode (AWS1 follows mouse cursor)
   enum e_ctrl_mode{
 	  cm_crz, cm_ctl, cm_csr
   } ctrl_mode;
 
+  float m_rud_f, m_meng_f, m_seng_f;
   void handle_ctrl_crz(); // cruise mode: sticks are used to increase/decrease engine throttle and rudder angle 
   void handle_ctrl_ctl(); // control mode: positions of sticks are the throttle values. 
   void handle_ctrl_csr(); // cursor mode: follows cursor position 
+
+  ///////////////////////////////////////////////// joypad handlers (used for manual control)
+  s_jc_u3613m m_js;			// joystick wrapper. (Now i only support jc_u3613) 
+  int m_js_id;				// joystick id (glfw's ordering)
+  const char * m_js_name;	// joystick name (glfw's naming)
 
   // mouse related members
   glm::vec2 pt_mouse, pt_mouse_drag_begin, pt_mouse_bih;
@@ -846,16 +178,50 @@ public:
   int mouse_button, mouse_action, mouse_mods;
   s_obj obj_mouse_on;
 
+  // calc_mouse_enu_and_ecef_pos calculates global position the mouse pointer is pointing on. 
   void calc_mouse_enu_and_ecef_pos(e_ui_mode vm, Mat & Rown,
 	  const float lat, const float lon, 
 	  const float xown, const float yown, const float zown, const float yaw);
+
+  // these event handlers are called when the mouse event isnot handled in ui boxes. 
+  void handle_base_mouse_event(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
+	  c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
+  {
+	  if (mouse_button == GLFW_MOUSE_BUTTON_LEFT){
+		  if (mouse_action == GLFW_PRESS){
+			  handle_mouse_lbtn_push(pvm_box, pcm_box, pmc_box, prc_box);
+		  }
+		  else if (mouse_action == GLFW_RELEASE){
+			  handle_mouse_lbtn_release(pvm_box, pcm_box, pmc_box, prc_box);
+		  }
+		  clear_mouse_state();
+	  }
+	  else{
+		  handle_mouse_mv(pvm_box, pcm_box, pmc_box, prc_box);
+	  }
+
+	  if (obj_mouse_on.type == ot_nul){
+		  ocsr.enable_pos();
+		  ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
+	  }
+	  else {
+		  ocsr.disable();
+	  }
+  }
+
   void handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	  c_obj_cfg_box * poc_box, c_route_cfg_box * prc_box);
-  void handle_mouse_lbtn_up(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	  c_obj_cfg_box * poc_box, c_route_cfg_box * prc_box);
+	  c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box);
+  void handle_mouse_lbtn_release(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
+	  c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box);
   void handle_mouse_mv(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	  c_obj_cfg_box * poc_box, c_route_cfg_box * prc_box);
+	  c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box);
   void handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp);
+  void clear_mouse_state()
+  {
+	  mouse_button = -1;
+	  mouse_action = -1;
+	  mouse_mods = -1;
+  }
   void add_waypoint(c_route_cfg_box * prc_box);
   void drag_waypoint();
   void drag_cam_dir();
@@ -883,7 +249,7 @@ public:
   bool m_bsvw; // screen video write
   bool m_bss; // screen shot
   Mat m_simg;	// screen img
-  void write_screen();
+  void print_screen();
 
   // glfw event handler 
   virtual void _cursor_position_callback(double xpos, double ypos);
@@ -895,9 +261,7 @@ public:
   virtual ~f_aws1_ui();
 
   virtual bool init_run();
-
   virtual void destroy_run();
-
   virtual bool proc();
 
   // If LT+LB+RT+RB is detected, the system forces the controls to be nutral state. Called by default.
