@@ -418,8 +418,10 @@ void printProgramInfoLog(GLuint obj)
 char * load_glsl_text(const char * fname)
 {
 	ifstream fin(fname);
-	if (!fin.is_open())
+	if (!fin.is_open()){
+	  cerr << "Failed to open GLSL program " << fname << endl;
 		return NULL;
+	}
 
 	fin.seekg(0, fin.end);
 	unsigned int flen = fin.tellg();
@@ -447,8 +449,15 @@ bool load_glsl_program(const char * ffs, const char * fvs,  GLuint & p)
 
 
 	vs = load_glsl_text(fvs);
+	if(!vs){
+	  return false;
+	}
 	fs = load_glsl_text(ffs);
-
+	if(!fs){
+	  delete[] vs;
+	  return false;
+	}
+	
 	const char * vv = vs;
 	const char * ff = fs;
 

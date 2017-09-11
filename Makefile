@@ -17,14 +17,14 @@ INST_DIR = ./bin
 OFLAGS = -O3
 
 # Platform specification
-#BOARD = jtx
+BOARD = jtx
 #BOARD = jtk
 #BOARD = zed
-BOARD = pc
+#BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
-#CPU	= arm
-CPU	= x64
+CPU	= arm
+#CPU	= x64
 #CPU	= x86
 
 #operating system (currently only for LINUX)
@@ -36,14 +36,14 @@ DEFS = -D_$(CPU) -D_$(OS)
 # module switch setting
 
 # n: disable all the window filter later
-WINDOW = n	
+WINDOW = y	
 FWINDOW = n
-GLFW_WINDOW = n
+GLFW_WINDOW = y
 
 # n: disable all the imaging and image processing filter later
-IMGPROC = n	
+IMGPROC = y
 AVT_CAM = n
-VMB_CAM = n
+VMB_CAM = y
 UVC_CAM = n
 GST_CAM = y
 SANYO_HD5400 = n	
@@ -66,14 +66,16 @@ FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
 RCMD_DIR = $(CUR_DIR)/rcmd
-INC_CV_DIR = $(CUR_DIR)/../opencv3/include
-LIB_CV_DIR = $(CUR_DIR)/../opencv3/lib
+#INC_CV_DIR = $(CUR_DIR)/../opencv3/include
+#LIB_CV_DIR = $(CUR_DIR)/../opencv3/lib
+INC_CV_DIR = /usr/local/include
+LIB_CV_DIR = /usr/local/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
-LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_32bit
+LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_64bit
 INC_GLFW_DIR = /usr/local/include/GLFW
-LIB_GLFW_DIR = /usr/local/lib
+LIB_GLFW_DIR = /usr/lib/aarch64-linux-gnu
 INC_EIGEN_DIR = /usr/include/eigen3
 INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
 INC_GST = /usr/include/gstreamer-1.0
@@ -81,7 +83,7 @@ LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
 INC_GLIB = /usr/include/glib-2.0
 INC_GLIB_CONFIG = /usr/lib/arm-linux-gnueabihf/glib-2.0/include
 #INC_GLM = $(CUR_DIR)/glm
-INC_GLM = /usr/include/glm
+INC_GLM = /usr/local/include/glm
 
 # modules
 MODS = filter channel util
@@ -94,7 +96,7 @@ LIB = -lrt -lpthread
 # listing filters
 FILTER = f_base f_nmea \
 	f_shioji f_com f_event f_fep01 f_time \
-	f_aws1_nmea_sw f_aws1_ctrl f_ahrs f_aws1_ap f_map f_obj_manager \
+	f_aws1_nmea_sw f_aws1_ctrl f_aws1_sim f_ahrs f_aws1_ap f_map f_obj_manager \
 	f_wp_manager f_aws3_com
 
 # listing channels
@@ -134,7 +136,7 @@ ifeq ($(BOARD), jtx)
 	INC += -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -I/usr/lib/aarch64-linux-gnu/gstreamer-1.0/include
 	INC_CV_DIR = /usr/local/include
 	LIB_CV_DIR = /usr/local/lib
-	INC_EIGEN_DIR = /usr/local/include/eigen3
+	INC_EIGEN_DIR = /usr/include/eigen3
 endif
 
 ifeq ($(BOARD), pc)
@@ -215,8 +217,11 @@ ifeq ($(GLFW_WINDOW),y)
 	UTIL += aws_glib
 ifeq ($(CPU), arm)
 ifeq ($(BOARD), jtx)
-	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor 
-	FILTER += f_glfw_window  f_glfw_stereo_view 	
+	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw -lGLEW -dy -lXxf86vm -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor
+	DEFS += -DGLFW_WINDOW 
+	FILTER += f_glfw_window  f_glfw_stereo_view
+	OFLAGS += -fopenmp
+
 endif # jtx
 ifeq ($(BOARD), jtk)
 	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor
