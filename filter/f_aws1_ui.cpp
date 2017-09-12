@@ -455,11 +455,15 @@ void f_aws1_ui::update_ais_objs()
 
 void f_aws1_ui::update_map()
 {
+  cout << "update_map 0" << endl;
+  
   if (!m_ch_map)
     return;
   coast_line.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
   coast_line.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
   // bupdate_map is asserted when map_scale is changed or drawing object types are re-selected
+
+  cout << "update_map 1" << endl;
   if (glm::distance(pt_prev_map_update, pt_map_center_ecef) > 0.5 * map_range || bupdate_map){
     // update map
 
@@ -472,7 +476,7 @@ void f_aws1_ui::update_map()
 
     bupdate_map = false;
   }
-  
+  cout << "update_map 2" << endl;
   if (visible_obj[ui_obj_cl])
     {
       list<const AWSMap2::LayerData *> layerData;
@@ -481,6 +485,7 @@ void f_aws1_ui::update_map()
       coast_line.update_points(layerData);
       m_ch_map->unlock();
     }
+  cout << "update_map 3" << endl;
 }
 
 void f_aws1_ui::render_gl_objs()

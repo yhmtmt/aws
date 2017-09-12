@@ -94,7 +94,10 @@ public:
 
 	void set_layer_data(const AWSMap2::LayerType layer_type, list<const AWSMap2::LayerData*> & layer_data)
 	{
-		m_layer_datum[layer_type] = layer_data;
+	  cout << "Entering set_layer_data" << endl;
+	  cout << " for LayerType " << AWSMap2::strLayerType[layer_type] << endl;
+	  m_layer_datum[layer_type] = layer_data;
+	  cout << "Exiting set_layer_data" << endl;
 	}
 
 	const list<const AWSMap2::LayerData*> & get_layer_data(const AWSMap2::LayerType layer_type)
