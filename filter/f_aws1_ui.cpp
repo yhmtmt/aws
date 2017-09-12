@@ -163,7 +163,7 @@ bool f_aws1_ui::init_run()
 	  cout << "Joystick " << m_js.name << " found." << endl;
   }
 
-  ///////////////////////////////// Preparing graphics resources///////////////////////////
+    ///////////////////////////////// Preparing graphics resources///////////////////////////
   cout << "Setting up shader" << endl;
   if (!setup_shader()){
 	  return false;
@@ -238,6 +238,9 @@ bool f_aws1_ui::init_run()
   if (!coast_line.init(&oline, clr, 4096))
 	  return false;
 
+  // Visible object
+  visible_obj.resize(ot_nul, true);
+  
   // Initializing OpenGL flags
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
@@ -383,9 +386,9 @@ void f_aws1_ui::update_route()
 		return;
 
 	owp.disable();
+
 	if (visible_obj[ui_obj_wp])
 		return;
-
 	m_ch_wp->lock();
 	int iwp = 0;
 	for (m_ch_wp->begin(); !m_ch_wp->is_end(); m_ch_wp->next())
@@ -452,31 +455,32 @@ void f_aws1_ui::update_ais_objs()
 
 void f_aws1_ui::update_map()
 {
-	if (!m_ch_map)
-		return;
+  if (!m_ch_map)
+    return;
+  coast_line.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
+  coast_line.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+  // bupdate_map is asserted when map_scale is changed or drawing object types are re-selected
+  if (glm::distance(pt_prev_map_update, pt_map_center_ecef) > 0.5 * map_range || bupdate_map){
+    // update map
 
-	coast_line.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
-	coast_line.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+    m_ch_map->lock();
+    m_ch_map->set_center(pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+    m_ch_map->set_range((float)(2 * map_range));
+    m_ch_map->set_resolution(meter_per_pix);
 
-	// bupdate_map is asserted when map_scale is changed or drawing object types are re-selected
-	if (glm::distance(pt_prev_map_update, pt_map_center_ecef) > 0.5 * map_range || bupdate_map){
-		// update map
-		m_ch_map->lock();
-		m_ch_map->set_center(pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
-		m_ch_map->set_range((float)(2 * map_range));
-		m_ch_map->set_resolution(meter_per_pix);
-		m_ch_map->unlock();
-		bupdate_map = false;
-	}
+    m_ch_map->unlock();
 
-	if (visible_obj[ui_obj_cl])
-	{
-		list<const AWSMap2::LayerData *> layerData;
-		m_ch_map->lock();
-		layerData = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
-		coast_line.update_points(layerData);
-		m_ch_map->unlock();
-	}
+    bupdate_map = false;
+  }
+  
+  if (visible_obj[ui_obj_cl])
+    {
+      list<const AWSMap2::LayerData *> layerData;
+      m_ch_map->lock();
+      layerData = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
+      coast_line.update_points(layerData);
+      m_ch_map->unlock();
+    }
 }
 
 void f_aws1_ui::render_gl_objs()

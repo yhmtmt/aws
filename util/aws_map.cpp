@@ -187,103 +187,108 @@ namespace AWSMap2 {
 
 
 
-	MapDataBase::MapDataBase()
-	{
-		bool bloaded = true;
-		for (unsigned int id = 0; id < 20; id++){
-			pNodes[id] = Node::load(NULL, id);
-			if (!pNodes[id])
-				bloaded = false;
-		}
+  MapDataBase::MapDataBase()
+  {
+  }
+  
+  MapDataBase::~MapDataBase()
+  {
+    for (int i = 0; i < 12; i++)
+      delete pNodes[i];
+  }
 
-		if (bloaded)
-			return;
+  bool MapDataBase::init()
+  {
+    bool bloaded = true;
+    for (unsigned int id = 0; id < 20; id++){
+      pNodes[id] = Node::load(NULL, id);
+      if (!pNodes[id])
+	bloaded = false;
+    }
+    
+    if (bloaded)
+      return true;
+    
+    for (unsigned int id = 0; id < 20; id++){
+      if (pNodes[id])
+	delete pNodes[id];
+    }
+    
+    vec2 * q = new vec2[12];
+    vec3 * v = new vec3[12];
+    unsigned int ** f = new unsigned int*[20];
+    
+    float lat0 = (float)atan2(GR, 1), lat1 = (float)atan2(1, GR);
+    float lon = (float)atan2(GR, 1);
+    
+    q[0] = vec2(lat0, 0.5 * PI);
+    q[1] = vec2(lat0, -0.5 * PI);
+    q[2] = vec2(-lat0, 0.5 * PI);
+    q[3] = vec2(-lat0, -0.5 * PI);
+    
+    q[4] = vec2(0, atan2(GR, 1));
+    q[5] = vec2(0, atan2(GR, -1));
+    q[6] = vec2(0, atan2(-GR, 1));
+    q[7] = vec2(0, atan2(-GR, -1));
+    
+    q[8] = vec2(lat1, 0);
+    q[9] = vec2(-lat1, 0);
+    q[10] = vec2(lat1, PI);
+    q[11] = vec2(-lat1, PI);
+    
+    pNodes[0] = new Node(q[0], q[1], q[8]);
+    pNodes[1] = new Node(q[1], q[0], q[10]);
+    pNodes[2] = new Node(q[2], q[3], q[11]);
+    pNodes[3] = new Node(q[3], q[2], q[9]);
+    pNodes[4] = new Node(q[0], q[4], q[5]);
+    pNodes[5] = new Node(q[1], q[7], q[6]);
+    pNodes[6] = new Node(q[2], q[5], q[4]);
+    pNodes[7] = new Node(q[3], q[6], q[7]);
+    pNodes[8] = new Node(q[0], q[8], q[4]);
+    pNodes[9] = new Node(q[1], q[10], q[7]);
+    pNodes[10] = new Node(q[2], q[11], q[5]);
+    pNodes[11] = new Node(q[3], q[9], q[6]);
+    pNodes[12] = new Node(q[0], q[5], q[10]);
+    pNodes[13] = new Node(q[1], q[6], q[8]);
+    pNodes[14] = new Node(q[2], q[4], q[9]);
+    pNodes[15] = new Node(q[3], q[7], q[11]);
+    pNodes[16] = new Node(q[4], q[8], q[9]);
+    pNodes[17] = new Node(q[5], q[11], q[10]);
+    pNodes[18] = new Node(q[6], q[9], q[8]);
+    pNodes[19] = new Node(q[7], q[10], q[11]);
+    
+    for (unsigned int id = 0; id < 20; id++){
+      pNodes[id]->setId((unsigned char)id);
+    }
 
-		for (unsigned int id = 0; id < 20; id++){
-			if (pNodes[id])
-				delete pNodes[id];
-		}
-
-		vec2 * q = new vec2[12];
-		vec3 * v = new vec3[12];
-		unsigned int ** f = new unsigned int*[20];
-
-		float lat0 = (float)atan2(GR, 1), lat1 = (float)atan2(1, GR);
-		float lon = (float)atan2(GR, 1);
-
-		q[0] = vec2(lat0, 0.5 * PI);
-		q[1] = vec2(lat0, -0.5 * PI);
-		q[2] = vec2(-lat0, 0.5 * PI);
-		q[3] = vec2(-lat0, -0.5 * PI);
-
-		q[4] = vec2(0, atan2(GR, 1));
-		q[5] = vec2(0, atan2(GR, -1));
-		q[6] = vec2(0, atan2(-GR, 1));
-		q[7] = vec2(0, atan2(-GR, -1));
-
-		q[8] = vec2(lat1, 0);
-		q[9] = vec2(-lat1, 0);
-		q[10] = vec2(lat1, PI);
-		q[11] = vec2(-lat1, PI);
-
-
-		pNodes[0] = new Node(q[0], q[1], q[8]);
-		pNodes[1] = new Node(q[1], q[0], q[10]);
-		pNodes[2] = new Node(q[2], q[3], q[11]);
-		pNodes[3] = new Node(q[3], q[2], q[9]);
-		pNodes[4] = new Node(q[0], q[4], q[5]);
-		pNodes[5] = new Node(q[1], q[7], q[6]);
-		pNodes[6] = new Node(q[2], q[5], q[4]);
-		pNodes[7] = new Node(q[3], q[6], q[7]);
-		pNodes[8] = new Node(q[0], q[8], q[4]);
-		pNodes[9] = new Node(q[1], q[10], q[7]);
-		pNodes[10] = new Node(q[2], q[11], q[5]);
-		pNodes[11] = new Node(q[3], q[9], q[6]);
-		pNodes[12] = new Node(q[0], q[5], q[10]);
-		pNodes[13] = new Node(q[1], q[6], q[8]);
-		pNodes[14] = new Node(q[2], q[4], q[9]);
-		pNodes[15] = new Node(q[3], q[7], q[11]);
-		pNodes[16] = new Node(q[4], q[8], q[9]);
-		pNodes[17] = new Node(q[5], q[11], q[10]);
-		pNodes[18] = new Node(q[6], q[9], q[8]);
-		pNodes[19] = new Node(q[7], q[10], q[11]);
-
-		for (unsigned int id = 0; id < 20; id++){
-			pNodes[id]->setId((unsigned char)id);
-		}
-	}
-
-	MapDataBase::~MapDataBase()
-	{
-		for (int i = 0; i < 12; i++)
-			delete pNodes[i];
-	}
-
-	void MapDataBase::request(list<list<const LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
-		const vec3 & center, const float radius,  const float resolution)
-	{
-		for (int iface = 0; iface < 20; iface++)
-		{
-			pNodes[iface]->getLayerData(layerDatum, layerTypes, center, radius, resolution);
-		}
-		for (auto itrType = layerDatum.begin(); itrType != layerDatum.end(); itrType++){
-			for (auto itrData = itrType->begin(); itrData != itrType->end(); itrData++)
-				LayerData::accessed(const_cast<LayerData*>(*itrData));
-		}			
-	}
-
-	bool MapDataBase::insert(const LayerData * layerData)
-	{
-		list<Node*> nodes;
-		for (int iface = 0; iface < 20; iface++){
-			if (!pNodes[iface]->collision(layerData->center(), layerData->radius()))
-				continue;
-			nodes.push_back(pNodes[iface]);
-		}
-
-		layerData->split(nodes);
-		return true;
-	}
+    return true;
+  }
+  
+  void MapDataBase::request(list<list<const LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
+			    const vec3 & center, const float radius,  const float resolution)
+  {
+    for (int iface = 0; iface < 20; iface++)
+      {
+	pNodes[iface]->getLayerData(layerDatum, layerTypes, center, radius, resolution);
+      }
+    for (auto itrType = layerDatum.begin(); itrType != layerDatum.end(); itrType++){
+      for (auto itrData = itrType->begin(); itrData != itrType->end(); itrData++)
+	LayerData::accessed(const_cast<LayerData*>(*itrData));
+    }			
+  }
+  
+  bool MapDataBase::insert(const LayerData * layerData)
+  {
+    list<Node*> nodes;
+    for (int iface = 0; iface < 20; iface++){
+      if (!pNodes[iface]->collision(layerData->center(), layerData->radius()))
+	continue;
+      nodes.push_back(pNodes[iface]);
+    }
+    
+    layerData->split(nodes);
+    return true;
+  }
 
 	bool MapDataBase::erase(const LayerData * layerData)
 	{
@@ -306,12 +311,12 @@ namespace AWSMap2 {
 
 	bool MapDataBase::save()
 	{
-		bool result = true;
-		for (int iface = 0; iface < 20; iface++){
-			result &= pNodes[iface]->save();
-		}
+	  bool result = true;
+	  for (int iface = 0; iface < 20; iface++){
+	    result &= pNodes[iface]->save();
+	  }
 
-		return result;
+	  return result;
 	}
 
 	///////////////////////////////////////////////////////////////////// Node
@@ -362,43 +367,43 @@ namespace AWSMap2 {
 		insert(pNode);
 	}
 
-	void Node::restruct()
-	{
-		while (numNodesAlive >= MapDataBase::getMaxNumNodes())
-		{
-			Node * itr = head;
-			for (; itr != NULL; itr = itr->next){
-				if (!itr->bdownLink ||
-					(itr->downLink[0] == NULL &&
-					itr->downLink[1] == NULL &&
-					itr->downLink[2] == NULL &&
-					itr->downLink[3] == NULL)){
-					break;
-				}
-			}
-
-			if (itr != NULL){
-				itr->releaseLayerData();
-				pop(itr);
-				delete itr;
-			}
-		}
+  void Node::restruct()
+  {
+    while (numNodesAlive >= MapDataBase::getMaxNumNodes())
+      {
+	Node * itr = head;
+	for (; itr != NULL; itr = itr->next){
+	  if (!itr->bdownLink ||
+	      (itr->downLink[0] == NULL &&
+	       itr->downLink[1] == NULL &&
+	       itr->downLink[2] == NULL &&
+	       itr->downLink[3] == NULL)){
+	    break;
+	  }
 	}
-
-	bool Node::deleteLayerData(const LayerData * layerData)
-	{
-		bupdate = true;
-		auto itr = layerDataList.find(layerData->getLayerType());
-		if (itr == layerDataList.end())
-			return false;
-		itr->second->release();
-		delete itr->second;
-
-		layerDataList.erase(itr);
-		return true;
+	
+	if (itr != NULL){
+	  itr->releaseLayerData();
+	  pop(itr);
+	  delete itr;
 	}
-
-	void Node::releaseLayerData()
+      }
+  }
+  
+  bool Node::deleteLayerData(const LayerData * layerData)
+  {
+    bupdate = true;
+    auto itr = layerDataList.find(layerData->getLayerType());
+    if (itr == layerDataList.end())
+      return false;
+    itr->second->release();
+    delete itr->second;
+    
+    layerDataList.erase(itr);
+    return true;
+  }
+  
+  void Node::releaseLayerData()
 	{
 		for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++){
 			itr->second->release();
@@ -449,7 +454,7 @@ bool Node::save()
 	char path[2048];
 	char fname[2048];
 	getPath(path, 2048);
-	snprintf(fname, 2048, "%s/%N02d.index", path, (int)id);
+	snprintf(fname, 2048, "%s/N%02d.index", path, (int)id);
 
 	ofstream ofile;
 
@@ -491,52 +496,52 @@ bool Node::save()
 
 Node * Node::load(Node * pNodeUp, unsigned int idChild)
 {
-	char fname[2048];
-
-	if (pNodeUp == NULL){
-		if (idChild < 20)
-			return NULL;
-
-		// the top 20 nodes
-		const char * path = MapDataBase::getPath();
-		char fname[2048];
-		snprintf(fname, 2048, "%s/N%02d/N%02d.index", idChild, idChild);
-	}
-	else{
-		char path[2048];
-		pNodeUp->getPath(path, 2048);
-		snprintf(fname, 2048, "%s/N%02d/N%02d.index", idChild, idChild);
-	}
-
-	ifstream findex(fname, ios::binary);
-	if (!findex.is_open()){
-		return NULL;
-	}
-
-	Node * pNode = new Node();
-	pNode->upLink = pNodeUp;
-	pNode->id = idChild;
-	////////////////////// loading index file to the Node
-	findex.read((char*)&(pNode->bdownLink), sizeof(bool));
-	findex.read((char*)(pNode->vtx_bih), sizeof(vec2) * 3);
-	for (int ivtx = 0; ivtx < 3; ivtx++){
-		bihtoecef(pNode->vtx_bih[ivtx].x, pNode->vtx_bih[ivtx].y, 0.0f,
-			pNode->vtx_ecef[ivtx].x, pNode->vtx_ecef[ivtx].y, pNode->vtx_ecef[ivtx].z);
-	}
-
-	while (!findex.eof()){
-		LayerType layerType;
-		findex.read((char*)&layerType, sizeof(LayerType));
-		LayerData * layerData = LayerData::create(layerType);
-		layerData->setNode(pNode);
-		if (layerData){
-			pNode->insertLayerData(layerType, layerData);
-		}
-	}
-
-	return pNode;
+  char fname[2048];
+  
+  if (pNodeUp == NULL){
+    if (idChild >= 20)
+      return NULL;
+    
+    // the top 20 nodes
+    const char * path = MapDataBase::getPath();
+    char fname[2048];
+    snprintf(fname, 2048, "%s/N%02d/N%02d.index", path, (int)idChild, (int)idChild);
+  }
+  else{
+    char path[2048];
+    pNodeUp->getPath(path, 2048);
+    snprintf(fname, 2048, "%s/N%02d/N%02d.index", path, (int)idChild, (int)idChild);
+  }
+  
+  ifstream findex(fname, ios::binary);
+  if (!findex.is_open()){
+    return NULL;
+  }
+  
+  Node * pNode = new Node();
+  pNode->upLink = pNodeUp;
+  pNode->id = idChild;
+  ////////////////////// loading index file to the Node
+  findex.read((char*)&(pNode->bdownLink), sizeof(bool));
+  findex.read((char*)(pNode->vtx_bih), sizeof(vec2) * 3);
+  for (int ivtx = 0; ivtx < 3; ivtx++){
+    bihtoecef(pNode->vtx_bih[ivtx].x, pNode->vtx_bih[ivtx].y, 0.0f,
+	      pNode->vtx_ecef[ivtx].x, pNode->vtx_ecef[ivtx].y, pNode->vtx_ecef[ivtx].z);
+  }
+  
+  while (!findex.eof()){
+    LayerType layerType;
+    findex.read((char*)&layerType, sizeof(LayerType));
+    LayerData * layerData = LayerData::create(layerType);
+    layerData->setNode(pNode);
+    if (layerData){
+      pNode->insertLayerData(layerType, layerData);
+    }
+  }
+  
+  return pNode;
 }
-
+  
 bool Node::createDownLink()
 {
 	vec3 vtx_ecef_mid[3];
@@ -631,49 +636,51 @@ const bool Node::collision(const vec3 & center, const float radius)
 }
 
 
-const void Node::getLayerData(
-	list<list<const LayerData*>> & layerData, const list<LayerType> & layerType, 
-	const vec3 & center, const float radius, const float resolution)
-{
-	if (!collision(center, radius))
-		return;
-
-	if (layerData.size() != layerType.size()){
-		layerData.resize(layerType.size());
+  const void Node::getLayerData(
+				list<list<const LayerData*>> & layerData, const list<LayerType> & layerType, 
+				const vec3 & center, const float radius, const float resolution)
+  {
+    
+    if (!collision(center, radius))
+      return;
+    
+    if (layerData.size() != layerType.size()){
+      layerData.resize(layerType.size());
+    }
+    // retrieving more detailed data than this node
+    list<list<const LayerData*>> detailedLayerData;
+    if(bdownLink){
+      for (int idown = 0; idown < 4; idown++){
+	downLink[idown]->getLayerData(detailedLayerData, layerType, center, radius, resolution);
+      }
+    }
+    
+    auto itrType = layerData.begin();
+    auto itrTypeVal = layerType.begin();
+    for (auto itrTypeLow = detailedLayerData.begin();
+	 itrTypeLow != detailedLayerData.end(); itrTypeLow++, itrType++, itrTypeVal++){
+      const LayerData * data = getLayerData(*itrTypeVal);
+      if (data->resolution() < resolution)
+	continue;
+      
+      float min_res = FLT_MAX;
+      for (auto itrData = itrTypeLow->begin(); itrData != itrTypeLow->end(); itrData++){
+	min_res = min((*itrData)->resolution(), min_res);
+      }
+      
+      if (min_res < resolution){
+	itrType->push_back(data);
+      }
+      else{
+	for (auto itrData = itrTypeLow->begin(); itrData != itrTypeLow->end(); itrData++){
+	  itrType->push_back((*itrData));
 	}
-
-	// retrieving more detailed data than this node
-	list<list<const LayerData*>> detailedLayerData;
-	for (int idown = 0; idown < 4; idown++){
-		downLink[idown]->getLayerData(detailedLayerData, layerType, center, radius, resolution);
-	}
-
-	auto itrType = layerData.begin();
-	auto itrTypeVal = layerType.begin();
-	for (auto itrTypeLow = detailedLayerData.begin();
-		itrTypeLow != detailedLayerData.end(); itrTypeLow++, itrType++, itrTypeVal++){
-		const LayerData * data = getLayerData(*itrTypeVal);
-		if (data->resolution() < resolution)
-			continue;
-
-		float min_res = FLT_MAX;
-		for (auto itrData = itrTypeLow->begin(); itrData != itrTypeLow->end(); itrData++){
-			min_res = min((*itrData)->resolution(), min_res);
-		}
-
-		if (min_res < resolution){
-			itrType->push_back(data);
-		}
-		else{
-			for (auto itrData = itrTypeLow->begin(); itrData != itrTypeLow->end(); itrData++){
-				itrType->push_back((*itrData));
-			}
-		}
-	}
-}
-
-const LayerData * Node::getLayerData(const LayerType layerType)
-{
+      }
+    }
+  }
+  
+  const LayerData * Node::getLayerData(const LayerType layerType)
+  {
 	auto itrLayerData = layerDataList.find(layerType);
 	if (itrLayerData == layerDataList.end())
 		return NULL;
@@ -770,26 +777,25 @@ void LayerData::insert(LayerData * pLayerData)
 
 void LayerData::pop(LayerData * pLayerData)
 {
-	LayerData * prev = pLayerData->prev, *next = pLayerData->next;
-
-	pLayerData->prev = pLayerData->next = NULL;
-
-	if (next == NULL){
-		prev->next = NULL;
-		tail = prev;
-	}
-
-	// reconnect 
-	if (prev == NULL){
-		head = next;
-	}
-	else{
-		prev->next = next;
-	}
-	next->prev = prev;
-	totalSize -= (unsigned int) pLayerData->size();
+  LayerData * prev = pLayerData->prev, *next = pLayerData->next;
+  pLayerData->prev = pLayerData->next = NULL;
+  
+  if (next == NULL){
+    prev->next = NULL;
+    tail = prev;
+  }
+  
+  // reconnect 
+  if (prev == NULL){
+    head = next;
+  }
+  else{
+    prev->next = next;
+  }
+  next->prev = prev;
+  totalSize -= (unsigned int) pLayerData->size();
 }
-
+  
 void LayerData::accessed(LayerData * pLayerData)
 {
 	if (!pLayerData->isActive())
@@ -802,8 +808,10 @@ void LayerData::restruct()
 {
 	while (totalSize >= MapDataBase::getMaxTotalSizeLayerData())
 	{
-		LayerData * pLayerData = head;
-		pLayerData->release();
+	  if(head){
+	    LayerData * pLayerData = head;
+	    pLayerData->release();
+	  }
 	}
 }
 
@@ -886,6 +894,9 @@ bool LayerData::merge(const LayerData & layerData)
 }
 
 ///////////////////////////////////////////////////////////////////// CoastLine
+
+  const vector<vec3> CoastLine::null_vec_vec3;
+  
 CoastLine::CoastLine() :dist_min(FLT_MAX)
 {
 }

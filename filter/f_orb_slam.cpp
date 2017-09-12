@@ -2831,7 +2831,7 @@ namespace ORB_SLAM2
 			y -= 2 * hfont;
 
 			dt = (int)(m_t - m_cur_time);
-			snprintf(buf, 1024, "t %+10d FrameId %+10d", dt, m_id);
+			snprintf(buf, 1024, "t %+10d FrameId %+10u", dt, m_id);
 			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 			y -= 2 * hfont;
 

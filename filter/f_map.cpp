@@ -55,7 +55,7 @@ f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL)
 	register_fpar("fdata", m_fdata, "File path to data file.");
 	register_fpar("max_num_nodes", &m_max_num_nodes, "Maximum number of nodes.");
 	register_fpar("max_total_size_layer_data", &m_max_total_size_layer_data, "Maximum total size of layer data.");
-	register_fpar("max_size_coast_line", &m_max_size_layer_data[AWSMap2::lt_coast_line], "Max data size of layer data per node.");
+	register_fpar("max_size_coast_line", &m_max_size_layer_data[AWSMap2::lt_coast_line], "Max data size of coast line layer data per node.");
 }
 
 f_map::~f_map()
@@ -64,15 +64,16 @@ f_map::~f_map()
 
 bool f_map::init_run()
 {
-	if (!m_ch_map)
-		return false;
-
-	m_db.setPath(m_path);
-	m_db.setMaxNumNodes(m_max_num_nodes);
-	m_db.setMaxTotalSizeLayerData(m_max_total_size_layer_data);
-	m_db.setMaxSizeLayerData(AWSMap2::lt_coast_line, m_max_size_layer_data[AWSMap2::lt_coast_line]);
-
-	return true;
+  if (!m_ch_map)
+    return false;
+  
+  m_db.setPath(m_path);
+  m_db.setMaxNumNodes(m_max_num_nodes);
+  m_db.setMaxTotalSizeLayerData(m_max_total_size_layer_data);
+  m_db.setMaxSizeLayerData(AWSMap2::lt_coast_line, m_max_size_layer_data[AWSMap2::lt_coast_line]);
+  if(!m_db.init())
+    return false;
+  return true;
 }
 
 void f_map::destroy_run()
@@ -81,59 +82,56 @@ void f_map::destroy_run()
 
 bool f_map::proc()
 {
-	switch (m_cmd)
+  switch (m_cmd)
+    {
+    case emc_update:
+      if (!update_channel())
 	{
-	case emc_update:
-		if (!update_channel())
-		{
-			return false;
-		}
-		break;
-	case emc_add_data:
-		if (!add_data()){
-			return false;
-		}
-		break;
-
+	  return false;
 	}
-	return true;
+      break;
+    case emc_add_data:
+      if (!add_data()){
+	return false;
+      }
+      break;
+      
+    }
+  return true;
 }
 
 bool f_map::update_channel()
 {
-	// lock channel
-	// clear layer data in channel
-	// get range from channel
-	// get active layer types from channel
-	// get layer data from db
-	// set layer data to the channel
-	// unlock channel
-
-	m_ch_map->lock();
-	m_ch_map->clear_layer_datum();
-
-	m_db.restruct();
-
-	list < list<const AWSMap2::LayerData *>> layerDatum;
-	list<AWSMap2::LayerType> layerTypes;
-
-	for (int layer_type = 0; layer_type < (int)AWSMap2::lt_undef; layer_type++){
-		if (m_ch_map->is_layer_enabled((AWSMap2::LayerType)layer_type))
-			layerTypes.push_back((AWSMap2::LayerType)layer_type);
-	}
-
-	m_db.request(layerDatum, layerTypes, 
-		m_ch_map->get_center(), 
-		m_ch_map->get_range(), 
-		m_ch_map->get_resolution());
-
-
-	auto itrData = layerDatum.begin(); 
-	for (auto itrType = layerTypes.begin(); itrType != layerTypes.end(); itrType++, itrData++){
-		m_ch_map->set_layer_data(*itrType, *itrData);
-	}
-	m_ch_map->unlock();
-	return true;
+  // lock channel
+  // clear layer data in channel
+  // get range from channel
+  // get active layer types from channel
+  // get layer data from db
+  // set layer data to the channel
+  // unlock channel
+  m_ch_map->lock();
+  m_ch_map->clear_layer_datum();
+  m_db.restruct();
+  list < list<const AWSMap2::LayerData *>> layerDatum;
+  list<AWSMap2::LayerType> layerTypes;
+  
+  for (int layer_type = 0; layer_type < (int)AWSMap2::lt_undef; layer_type++){
+    if (m_ch_map->is_layer_enabled((AWSMap2::LayerType)layer_type))
+      layerTypes.push_back((AWSMap2::LayerType)layer_type);
+  }
+  
+  m_db.request(layerDatum, layerTypes, 
+	       m_ch_map->get_center(), 
+	       m_ch_map->get_range(), 
+	       m_ch_map->get_resolution());
+  
+  auto itrData = layerDatum.begin(); 
+  for (auto itrType = layerTypes.begin(); itrType != layerTypes.end();
+       itrType++, itrData++){
+    m_ch_map->set_layer_data(*itrType, *itrData);
+  }
+  m_ch_map->unlock();
+  return true;
 }
 
 bool f_map::add_data()
