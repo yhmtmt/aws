@@ -109,14 +109,11 @@ bool f_map::update_channel()
   // get layer data from db
   // set layer data to the channel
   // unlock channel
-  cout << "update_channel 0" << endl;
   m_ch_map->lock();
   m_ch_map->clear_layer_datum();
 
-  cout << "update_channel 1" << endl;  
   m_db.restruct();
 
-  cout << "update_channel 2" << endl;
   list < list<const AWSMap2::LayerData *>> layerDatum;
   list<AWSMap2::LayerType> layerTypes;
   
@@ -125,20 +122,16 @@ bool f_map::update_channel()
       layerTypes.push_back((AWSMap2::LayerType)layer_type);
   }
 
-  cout << "update_channel 3" << endl;
   m_db.request(layerDatum, layerTypes, 
 	       m_ch_map->get_center(), 
 	       m_ch_map->get_range(), 
 	       m_ch_map->get_resolution());
-  cout << "update_channel 4" << endl;
   auto itrData = layerDatum.begin(); 
   for (auto itrType = layerTypes.begin(); itrType != layerTypes.end();
        itrType++, itrData++){
-    cout << "Setting layer_data" << endl;
     m_ch_map->set_layer_data(*itrType, *itrData);
   }
   m_ch_map->unlock();
-  cout << "update_channel 5" << endl;
   return true;
 }
 

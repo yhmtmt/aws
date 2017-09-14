@@ -164,7 +164,6 @@ bool f_aws1_ui::init_run()
   }
 
     ///////////////////////////////// Preparing graphics resources///////////////////////////
-  cout << "Setting up shader" << endl;
   if (!setup_shader()){
 	  return false;
   }
@@ -192,7 +191,6 @@ bool f_aws1_ui::init_run()
   recalc_range();
 
   {
-    cout << "Initializing graphcis elements." << endl;
 	  glm::vec2 lb(0, 0);
 	  glm::vec2 sz(1, 1);
 	  if (!orect.init_rectangle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, lb, sz, 256))
@@ -214,8 +212,6 @@ bool f_aws1_ui::init_run()
   glm::vec2 sz_mark_xy((float)(2.0 * sz_mark), (float)(2.0 * sz_mark));
   glm::vec2 sz_ship2d(sz_fnt.x, (float)(sz_fnt.y * 0.5));
 
-
-  cout << "Initializing ui components." << endl;
   // initializing ui components
   uim.init(&orect, &otri, &otxt, &oline, 
 	  clr, clrb, sz_fnt, fov_cam_x, sz_scrn);
@@ -253,7 +249,6 @@ bool f_aws1_ui::init_run()
   mouse_action = -1;
   mouse_mods = -1;
 
-  cout << "Initialization done." << endl;
   return true;
 }
 
@@ -510,7 +505,6 @@ void f_aws1_ui::render_gl_objs()
 
 bool f_aws1_ui::proc()
 {
-  cout << "Now entering f_aws1_ui::proc" << endl;
    c_view_mode_box * pvm_box =
     dynamic_cast<c_view_mode_box*>(uim.get_ui_box(c_aws_ui_box_manager::view_mode));
   c_ctrl_mode_box * pcm_box = 
@@ -520,7 +514,6 @@ bool f_aws1_ui::proc()
   c_route_cfg_box * prc_box =
     dynamic_cast<c_route_cfg_box*>(uim.get_ui_box(c_aws_ui_box_manager::route_cfg));
 
-  cout << "Handling joypad" << endl;
   // process joypad inputs
   if(m_js.id != -1){
     m_js.set_btn();
@@ -547,14 +540,12 @@ bool f_aws1_ui::proc()
 	// m_ch_ctrl_stat to m_stat
 	rcv_ctrl_stat();
 
-
 	// Window forcus is now at this window
 	glfwMakeContextCurrent(pwin());
 
 	// UI polling.
 	glfwPollEvents();
 
-	cout << "Capturing state" << endl;
 	// loading states
 	long long t;
 	float roll, pitch, yaw, cog, sog, vx, vy;
@@ -571,7 +562,6 @@ bool f_aws1_ui::proc()
 	float depth;
 	m_state->get_depth(t, depth);
 
-	cout << "Handling mouse event" << endl;
 	// handling ui events
 	bool event_handled = uim.set_mouse_event(pt_mouse, mouse_button, mouse_action, mouse_mods);
 
@@ -583,33 +573,25 @@ bool f_aws1_ui::proc()
 	else{
 		handle_base_mouse_event(pvm_box, pcm_box, pmc_box, prc_box);
 	}
-
-	cout << "Update ui drawings." << endl;
 	
  	// update ui params 
 	update_ui_params(pvm_box, xown, yown, zown, vx, vy, yaw);
 
-	cout << "Update indicator" << endl;
 	// updating indicator
 	update_indicator(cog, sog, roll, pitch, yaw);
 
-	cout << "Update route" << endl;
 	// update route object
 	update_route();
 
-	cout << "Update ais" << endl;
 	// update ais object
 	update_ais_objs();
 
-	cout << "Update map" << endl;
 	// update coast line (map)
 	update_map();
 
-	cout << "Render GL objects." << endl;
 	// rendering graphics
 	render_gl_objs();
 
-	cout << "exiting f_aws1_ui::proc." << endl;
 	// screen shot or video capturue
 	print_screen();
  
@@ -1067,7 +1049,9 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
 		m_ch_wp->prev_focus();
 		wp = m_ch_wp->get_focus();
 		owp.set_focus(wp);	
-		fwp = m_ch_wp->get_focused_wp();
+		bno_focused_wp = wp == m_ch_wp->get_num_wps();
+		if (!bno_focused_wp)
+			fwp = m_ch_wp->get_focused_wp();
 		break;
 	case c_route_cfg_box::wp_next:
 		m_ch_wp->next_focus();

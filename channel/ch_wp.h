@@ -40,8 +40,16 @@ struct s_wp
 		bihtoecef(lat, lon, 0., x, y, z);
 	}
 
+	s_wp(bool bnull): lat(FLT_MAX), lon(FLT_MAX), x(FLT_MAX), y(FLT_MAX), z(FLT_MAX), rarv(FLT_MAX), 
+		v(FLT_MAX), t(LLONG_MAX), update_rpos(bnull){
+	}
+
 	~s_wp()
 	{
+	}
+
+	bool is_null(){
+		return lat == FLT_MAX;
 	}
 
 	void update_pos_rel(const Mat & Rorg, float xorg, float yorg, float zorg)
@@ -74,6 +82,8 @@ protected:
 	e_cmd cmd;
 
 	int id;
+
+	static s_wp wp_null;
 
 	list<s_wp*> wps;
 	list<s_wp*>::iterator itr;
@@ -212,6 +222,8 @@ public:
 
 	s_wp & get_focused_wp()
 	{
+		if (itr_focus == wps.end())
+			return wp_null;
 		return **itr_focus;
 	}
 

@@ -545,7 +545,7 @@ float c_gl_text_obj::parse_float(ifstream & ifile, char * str_var, int & len_str
 	return atof(str_var);
 }
 
-c_gl_text_obj::c_gl_text_obj() : vao(0), vertices(NULL), texcoord(NULL), bupdated(false)
+c_gl_text_obj::c_gl_text_obj() : vao(0), vertices(NULL), texcoord(NULL), indices(NULL), bupdated(false)
 {
 }
 
@@ -1986,7 +1986,7 @@ bool c_gl_2d_obj::collision(const glm::vec2 & pt, const int handle)
 	case rectangle:
 	{
 					  s_inst_inf & ii = iis[handle];
-					  if (!ii.bvalid || !ii.bactive)
+					  if (!ii.bvalid || !ii.bactive || !ii.bupdated)
 						  return false;
 					  s_vertex * vtx = vtxbuf + ii.vtxoffset;
 
