@@ -8,7 +8,7 @@ CC	= g++
 LD	= ld
 
 #debug option (y: build as debug binary)
-#DEBUG = y
+DEBUG = y
 
 #install Directory
 INST_DIR = ./bin
@@ -100,7 +100,7 @@ FILTER = f_base f_nmea \
 	f_wp_manager f_aws3_com
 
 # listing channels
-CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state
+CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state ch_wp
 
 # listing utilities
 UTIL =  c_clock  aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_stdlib aws_map

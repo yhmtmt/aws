@@ -269,10 +269,14 @@ namespace AWSMap2 {
   {
     for (int iface = 0; iface < 20; iface++)
       {
-	pNodes[iface]->getLayerData(layerDatum, layerTypes, center, radius, resolution);
+	pNodes[iface]->getLayerData(layerDatum, layerTypes,
+				    center, radius, resolution);
       }
-    for (auto itrType = layerDatum.begin(); itrType != layerDatum.end(); itrType++){
-      for (auto itrData = itrType->begin(); itrData != itrType->end(); itrData++)
+    
+    for (auto itrType = layerDatum.begin();
+	 itrType != layerDatum.end(); itrType++){
+      for (auto itrData = itrType->begin();
+	   itrData != itrType->end(); itrData++)
 	LayerData::accessed(const_cast<LayerData*>(*itrData));
     }			
   }
@@ -637,8 +641,10 @@ const bool Node::collision(const vec3 & center, const float radius)
 
 
   const void Node::getLayerData(
-				list<list<const LayerData*>> & layerData, const list<LayerType> & layerType, 
-				const vec3 & center, const float radius, const float resolution)
+				list<list<const LayerData*>> & layerData,
+				const list<LayerType> & layerType, 
+				const vec3 & center, const float radius,
+				const float resolution)
   {
     
     if (!collision(center, radius))
@@ -651,15 +657,20 @@ const bool Node::collision(const vec3 & center, const float radius)
     list<list<const LayerData*>> detailedLayerData;
     if(bdownLink){
       for (int idown = 0; idown < 4; idown++){
-	downLink[idown]->getLayerData(detailedLayerData, layerType, center, radius, resolution);
+	downLink[idown]->getLayerData(detailedLayerData, layerType,
+				      center, radius, resolution);
       }
     }
     
     auto itrType = layerData.begin();
     auto itrTypeVal = layerType.begin();
     for (auto itrTypeLow = detailedLayerData.begin();
-	 itrTypeLow != detailedLayerData.end(); itrTypeLow++, itrType++, itrTypeVal++){
+	 itrTypeLow != detailedLayerData.end();
+	 itrTypeLow++, itrType++, itrTypeVal++){
       const LayerData * data = getLayerData(*itrTypeVal);
+      if(!data){
+	continue;
+      }
       if (data->resolution() < resolution)
 	continue;
       
@@ -672,7 +683,8 @@ const bool Node::collision(const vec3 & center, const float radius)
 	itrType->push_back(data);
       }
       else{
-	for (auto itrData = itrTypeLow->begin(); itrData != itrTypeLow->end(); itrData++){
+	for (auto itrData = itrTypeLow->begin();
+	     itrData != itrTypeLow->end(); itrData++){
 	  itrType->push_back((*itrData));
 	}
       }

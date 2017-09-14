@@ -94,9 +94,9 @@ bool f_map::proc()
       if (!add_data()){
 	return false;
       }
-      break;
-      
+      break;      
     }
+ 
   return true;
 }
 
@@ -118,8 +118,10 @@ bool f_map::update_channel()
   list<AWSMap2::LayerType> layerTypes;
   
   for (int layer_type = 0; layer_type < (int)AWSMap2::lt_undef; layer_type++){
-    if (m_ch_map->is_layer_enabled((AWSMap2::LayerType)layer_type))
+    if (m_ch_map->is_layer_enabled((AWSMap2::LayerType)layer_type)){
       layerTypes.push_back((AWSMap2::LayerType)layer_type);
+      layerDatum.push_back(list<const AWSMap2::LayerData*>());
+    }
   }
 
   m_db.request(layerDatum, layerTypes, 
