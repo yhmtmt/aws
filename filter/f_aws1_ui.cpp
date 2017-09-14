@@ -382,7 +382,7 @@ void f_aws1_ui::update_route()
 
 	owp.disable();
 
-	if (visible_obj[ui_obj_wp])
+	if (!visible_obj[ui_obj_wp])
 		return;
 	m_ch_wp->lock();
 	int iwp = 0;
@@ -450,7 +450,6 @@ void f_aws1_ui::update_ais_objs()
 
 void f_aws1_ui::update_map()
 {
-  cout << "update_map 0" << endl;
   
   if (!m_ch_map)
     return;
@@ -458,7 +457,6 @@ void f_aws1_ui::update_map()
   coast_line.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
   // bupdate_map is asserted when map_scale is changed or drawing object types are re-selected
 
-  cout << "update_map 1" << endl;
   if (glm::distance(pt_prev_map_update, pt_map_center_ecef) > 0.5 * map_range || bupdate_map){
     // update map
 
@@ -471,7 +469,6 @@ void f_aws1_ui::update_map()
 
     bupdate_map = false;
   }
-  cout << "update_map 2" << endl;
   if (visible_obj[ui_obj_cl])
     {
       list<const AWSMap2::LayerData *> layerData;
@@ -480,7 +477,6 @@ void f_aws1_ui::update_map()
       coast_line.update_points(layerData);
       m_ch_map->unlock();
     }
-  cout << "update_map 3" << endl;
 }
 
 void f_aws1_ui::render_gl_objs()
@@ -567,7 +563,7 @@ bool f_aws1_ui::proc()
 
 	// calculating mouse point coordinate
 	calc_mouse_enu_and_ecef_pos(pvm_box->get_mode(), Rown, lat, lon, xown, yown, zown, yaw);
-	if (uim.set_mouse_event(pt_mouse, mouse_button, mouse_action, mouse_mods)){
+	if (event_handled){
 		handle_updated_ui_box(pvm_box, pcm_box, pmc_box, prc_box);
 	}
 	else{
