@@ -16,63 +16,63 @@
 class c_map_obj
 {
 protected:
-	e_ui_mode mode;
-	glm::mat4 pv;
-	glm::vec2 sz_scrn;
-	float pix_per_meter;
-	float meter_per_pix;
-	Mat Rmap;
-	float xmap, ymap, zmap;
-
-	glm::vec3 calc_fpv_pos(const float rx, const float ry, const float rz)
-	{
-		glm::vec3 pos;
-		glm::vec4 x(rx, ry, rz, 1), xprj;
-		xprj = pv * x;
-		float iw = (float)(1.0 / xprj.w);
-		pos.x = xprj.x * iw * sz_scrn.x;
-		pos.y = xprj.y * iw * sz_scrn.y;
-		pos.z = xprj.z * iw;
-		return pos;
-	}
-
-	glm::vec2 calc_map_pos(const float rx, const float ry, const float rz)
-	{
-		glm::vec2 pos;
-		pos.x = pix_per_meter * rx;
-		pos.y = pix_per_meter * ry;
-		return pos;
-	}
-public:
-	c_map_obj() :mode(ui_mode_fpv)
-	{
-	}
-
-	virtual int collision(const glm::vec2 pos) = 0;
-
-	void set_ui_mode(e_ui_mode _mode = ui_mode_fpv)
-	{
-		mode = _mode;
-	}
-
-	void set_fpv_param(
-		const glm::mat4 & _pv /* camera projection x camera rotation and translation*/,
-		const glm::vec2 & _sz_scrn)
-	{
-		pv = _pv;
-		sz_scrn.x = (float)(_sz_scrn.x * 0.5);
-		sz_scrn.y = (float)(_sz_scrn.y * 0.5);
-	}
-
-	void set_map_param(const float _pix_per_meter, const Mat & Rorg, const float xorg, const float yorg, const float zorg)
-	{
-		pix_per_meter = _pix_per_meter;
-		meter_per_pix = (float)(1.0 / pix_per_meter);
-		Rmap = Rorg;
-		xmap = xorg;
-		ymap = yorg;
-		zmap = zorg;
-	}
+  e_ui_mode mode;
+  glm::mat4 pv;
+  glm::vec2 sz_scrn;
+  float pix_per_meter;
+  float meter_per_pix;
+  Mat Rmap;
+  float xmap, ymap, zmap;
+  
+  glm::vec3 calc_fpv_pos(const float rx, const float ry, const float rz)
+    {
+      glm::vec3 pos;
+      glm::vec4 x(rx, ry, rz, 1), xprj;
+      xprj = pv * x;
+      float iw = (float)(1.0 / xprj.w);
+      pos.x = xprj.x * iw * sz_scrn.x;
+      pos.y = xprj.y * iw * sz_scrn.y;
+      pos.z = xprj.z * iw;
+      return pos;
+    }
+  
+  glm::vec2 calc_map_pos(const float rx, const float ry, const float rz)
+    {
+      glm::vec2 pos;
+      pos.x = pix_per_meter * rx;
+      pos.y = pix_per_meter * ry;
+      return pos;
+    }
+ public:
+ c_map_obj() :mode(ui_mode_fpv)
+  {
+  }
+  
+  virtual int collision(const glm::vec2 pos) = 0;
+  
+  void set_ui_mode(e_ui_mode _mode = ui_mode_fpv)
+  {
+    mode = _mode;
+  }
+  
+  void set_fpv_param(
+		     const glm::mat4 & _pv /* camera projection x camera rotation and translation*/,
+		     const glm::vec2 & _sz_scrn)
+  {
+    pv = _pv;
+    sz_scrn.x = (float)(_sz_scrn.x * 0.5);
+    sz_scrn.y = (float)(_sz_scrn.y * 0.5);
+  }
+  
+  void set_map_param(const float _pix_per_meter, const Mat & Rorg, const float xorg, const float yorg, const float zorg)
+  {
+    pix_per_meter = _pix_per_meter;
+    meter_per_pix = (float)(1.0 / pix_per_meter);
+    Rmap = Rorg;
+    xmap = xorg;
+    ymap = yorg;
+    zmap = zorg;
+  }
 };
 
 class c_map_waypoint_obj : public c_map_obj
