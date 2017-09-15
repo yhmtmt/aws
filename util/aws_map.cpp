@@ -451,53 +451,57 @@ Node::~Node()
 
 bool Node::save()
 {
-	if (!bupdate){
-		return true;
-	}
-
-	char path[2048];
-	char fname[2048];
-	getPath(path, 2048);
-	snprintf(fname, 2048, "%s/N%02d.index", path, (int)id);
-
-	ofstream ofile;
-
-	ofile.open(fname, ios::binary);
-	if (!ofile.is_open()){
-		aws_mkdir(path);
-		ofile.clear();
-		ofile.open(fname, ios::binary);
-		if (!ofile.is_open())
-			return false;
-	}
-
-	bool result = true;
-
-	ofile.write((const char*)&bdownLink, sizeof(bool));
-	ofile.write((const char*)&vtx_bih, sizeof(vec2) * 3);
-	
-	for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++){
-		LayerType layerType = itr->first;
-		ofile.write((const char*)&layerType, sizeof(LayerType));
-	}
-
-	ofile.close();
-
-	// save layer data
-	for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++){
-		result &= itr->second->save();
-	}
-
-	if (bdownLink){
-		for (int idown = 0; idown < 4; idown++){
-			if (downLink[idown])
-				result &= downLink[idown]->save();
-		}
-	}
-
-	return result;
+  if (!bupdate){
+    return true;
+  }
+  
+  char path[2048];
+  char fname[2048];
+  getPath(path, 2048);
+  snprintf(fname, 2048, "%s/N%02d.index", path, (int)id);
+  
+  ofstream ofile;
+  
+  ofile.open(fname, ios::binary);
+  if (!ofile.is_open()){
+    aws_mkdir(path);
+    ofile.clear();
+    ofile.open(fname, ios::binary);
+    if (!ofile.is_open())
+      return false;
+  }
+  
+  bool result = true;
+  
+  ofile.write((const char*)&bdownLink, sizeof(bool));
+  ofile.write((const char*)&vtx_bih, sizeof(vec2) * 3);
+  
+  unsigned int num_layer_datum = (unsigned int) layerDataList.size();
+  ofile.write((const char*)&num_layer_datum, sizeof(unsigned int));
+  for (auto itr = layerDataList.begin(); itr != layerDataList.end();
+       itr++){
+    LayerType layerType = itr->first;
+    ofile.write((const char*)&layerType, sizeof(LayerType));
+  }
+  
+  ofile.close();
+  
+  // save layer data
+  for (auto itr = layerDataList.begin(); itr != layerDataList.end();
+       itr++){
+    result &= itr->second->save();
+  }
+  
+  if (bdownLink){
+    for (int idown = 0; idown < 4; idown++){
+      if (downLink[idown])
+	result &= downLink[idown]->save();
+    }
+  }
+  
+  return result;
 }
-
+  
 Node * Node::load(Node * pNodeUp, unsigned int idChild)
 {
   char fname[2048];
@@ -525,6 +529,7 @@ Node * Node::load(Node * pNodeUp, unsigned int idChild)
   Node * pNode = new Node();
   pNode->upLink = pNodeUp;
   pNode->id = idChild;
+  
   ////////////////////// loading index file to the Node
   findex.read((char*)&(pNode->bdownLink), sizeof(bool));
   findex.read((char*)(pNode->vtx_bih), sizeof(vec2) * 3);
@@ -532,15 +537,19 @@ Node * Node::load(Node * pNodeUp, unsigned int idChild)
     bihtoecef(pNode->vtx_bih[ivtx].x, pNode->vtx_bih[ivtx].y, 0.0f,
 	      pNode->vtx_ecef[ivtx].x, pNode->vtx_ecef[ivtx].y, pNode->vtx_ecef[ivtx].z);
   }
+
+  unsigned int num_layer_datum = 0;
+  findex.read((char*)(&num_layer_datum), sizeof(unsigned int));
   
-  while (!findex.eof()){
+  while (!findex.eof() && num_layer_datum != 0){
     LayerType layerType;
     findex.read((char*)&layerType, sizeof(LayerType));
     LayerData * layerData = LayerData::create(layerType);
-    layerData->setNode(pNode);
     if (layerData){
+      layerData->setNode(pNode);
       pNode->insertLayerData(layerType, layerData);
     }
+    num_layer_datum--;
   }
   
   return pNode;
