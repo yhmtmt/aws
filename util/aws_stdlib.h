@@ -10,6 +10,10 @@
 
 #include "aws_const.h"
 
+#ifdef _WIN32
+#include <direct.h>
+#endif
+
 class aws_scope_show
 {
 	const char * name;
@@ -63,9 +67,13 @@ inline double gauss(double u, double s, double x){
 
  inline int aws_mkdir(const char * path)
  {
+#ifdef _WIN32
+	 return _mkdir(path);
+#else
 	 char cmd[2048];
 	 snprintf(cmd, 2048, "mkdir %s", path);
 	 return system(cmd);
+#endif
  }
 
 #endif

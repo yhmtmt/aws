@@ -6,7 +6,16 @@ User interface
 * waypoint to waypoint lines cannot be collectlly culled in fpv mode
 * during dragging map, flickers are caused frequently.
 * The menu open/close markers are not sufficientlly sensitive. (larger size is prefered.)
+* When waypoint is selected by mouse, menu box does not reflect the waypoint number selected.
+* waypoint cannot be drugged.
+
 
 AIS decoder
 * ships are vanished as time progress.
 
+remote command
+* Buffer overrun is not checked.
+
+
+#### Solved
+* in windows version, aws_mkdir is not working.
