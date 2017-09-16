@@ -139,12 +139,11 @@ public:
   int num_max_ais;			// maximum number of ais objects ui can draw.
 
   void update_ais_objs();
-  void update_route();
+  void update_route(c_route_cfg_box * prc_box);
   void update_map();
 
   c_own_ship own_ship;	// own ship object
   c_cursor ocsr;		// cursor 
-
  
   ////////////////////////////////////////// Control instruction and status
   // Control source is categorized into two: one is manual, another is autopilot.

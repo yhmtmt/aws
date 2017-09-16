@@ -31,7 +31,6 @@
 #include <VimbaCPP/Include/IFrameObserver.h>
 #include <VimbaCPP/Include/Frame.h>
 
-
 #include "../channel/ch_image.h"
 
 namespace avt_vmb_cam{

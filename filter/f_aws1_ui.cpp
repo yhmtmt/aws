@@ -375,7 +375,7 @@ void f_aws1_ui::print_screen()
 	}
 }
 
-void f_aws1_ui::update_route()
+void f_aws1_ui::update_route(c_route_cfg_box * prc_box)
 {
 	if (!m_ch_wp)
 		return;
@@ -403,8 +403,13 @@ void f_aws1_ui::update_route()
 
 	if (obj_mouse_on.type == ot_wp){
 		owp.set_focus(obj_mouse_on.handle);
-		if (obj_mouse_on.handle != m_ch_wp->get_focus())
+		if (obj_mouse_on.handle != m_ch_wp->get_focus()){
 			m_ch_wp->set_focus(obj_mouse_on.handle);
+			unsigned int _wp, _spd, _rt;
+			prc_box->get_params(_wp, _spd, _rt);
+			_wp = obj_mouse_on.handle;
+			prc_box->set_params(_wp, _spd, _rt);
+		}
 		obj_mouse_on.type = ot_nul;
 		obj_mouse_on.handle = -1;
 	}
@@ -441,6 +446,10 @@ void f_aws1_ui::update_ais_objs()
 		iobj++;
 	}
 	m_ch_ais_obj->unlock();
+
+	if (obj_mouse_on.type == ot_ais){
+		oais.set_focus(obj_mouse_on.handle);
+	}
 
 	oais.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
 	oais.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
@@ -577,7 +586,7 @@ bool f_aws1_ui::proc()
 	update_indicator(cog, sog, roll, pitch, yaw);
 
 	// update route object
-	update_route();
+	update_route(prc_box);
 
 	// update ais object
 	update_ais_objs();
