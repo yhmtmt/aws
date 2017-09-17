@@ -434,6 +434,12 @@ void f_aws1_ui::update_ais_objs()
 
 	m_ch_ais_obj->lock();
 	int iobj = 0;
+	if (obj_mouse_on.type == ot_ais){
+		m_ch_ais_obj->set_track(obj_mouse_on.handle);
+		obj_mouse_on.type = ot_nul;
+		obj_mouse_on.handle = -1;
+	}
+	oais.set_focus(-1);
 	for (m_ch_ais_obj->begin(); !m_ch_ais_obj->is_end(); m_ch_ais_obj->next()){
 		{
 			float bear = 0.f, dist = 0.f;
@@ -441,15 +447,15 @@ void f_aws1_ui::update_ais_objs()
 				continue;
 		}
 
+		if (m_ch_ais_obj->get_tracking_id() >= 0)
+			oais.set_focus(iobj);
+
 		oais.enable(iobj);
 		oais.update_ais_obj(iobj, m_ch_ais_obj->cur());
 		iobj++;
 	}
 	m_ch_ais_obj->unlock();
 
-	if (obj_mouse_on.type == ot_ais){
-		oais.set_focus(obj_mouse_on.handle);
-	}
 
 	oais.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
 	oais.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);

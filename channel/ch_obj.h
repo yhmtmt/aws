@@ -56,6 +56,8 @@ protected:
 	e_obj_trck_state m_tst;		// Tracking status.
 	e_obj_data_type m_dtype;	// Data types the object hold
 
+	int m_id_track;				// tracking id
+
 	long long m_t;				// Time updated.
 	float m_lat, m_lon, m_alt;	// BIH coordinate
 	float m_cog, m_sog;			// Velocity in BIH coordinate (knots, degree)
@@ -77,6 +79,16 @@ public:
 
 	virtual void print(ostream & out)
 	{
+	}
+
+	void set_tracking_id(const int _id)
+	{
+		m_id_track = _id;
+	}
+
+	const int get_tracking_id()
+	{
+		return m_id_track;
 	}
 
 	void set(const e_obj_type & type){
@@ -892,6 +904,7 @@ public:
 		}
 		unlock();
 	}
+
 	void reset_updates()
 	{
 	  lock();
@@ -911,6 +924,23 @@ public:
 			pobj->set_pos_bd_from_rel();
 		}
 		unlock();
+	}
+
+	void set_track(const int _id){
+		int id = 0;
+		for (itr = objs.begin(); itr != objs.end(); itr++){
+			c_ais_obj * pobj = itr->second;
+			if (id == _id)
+				pobj->set_tracking_id(0);
+			else
+				pobj->set_tracking_id(-1);
+			id++;
+		}
+	}
+
+	const int get_tracking_id(){
+		c_ais_obj & obj = *(itr->second);
+		return obj.get_tracking_id();
 	}
 
 	void calc_tdcpa(const long long t, float vx, float vy)

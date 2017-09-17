@@ -7,7 +7,6 @@ User interface
 * The menu open/close markers are not sufficientlly sensitive. (larger size is prefered.)
 * waypoint cannot be drugged.
 
-
 AIS decoder
 * ships are vanished as time progress.
 
@@ -19,3 +18,4 @@ remote command
 * in windows version, aws_mkdir is not working.
 * Selected AIS object is not collect
 * When waypoint is selected by mouse, menu box does not reflect the waypoint number selected.
+* selected ais object is changed when the order of the object is changed.
