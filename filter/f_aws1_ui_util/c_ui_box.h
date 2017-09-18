@@ -13,6 +13,57 @@
 // You should have received a copy of the GNU General Public License
 // along with c_ui_box.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+class c_aws_ui_button
+{
+protected:
+  static c_gl_2d_obj * porect;
+  static c_gl_text_obj * potxt;
+public:
+  static void set_gl_element(c_gl_2d_obj * _porect, c_gl_text_obj * _potxt){
+    porect = _porect;
+    potxt = _potxt;
+  }
+
+  enum e_state
+  {
+    es_select = 0, es_check, es_normal, es_disable, es_nul
+  };
+protected:
+ 
+  e_state state;
+  int hbox, htxt;
+  glm::vec2 sz;
+  glm::vec4 clr, bkgclr;
+public:
+  c_aws_ui_button() :hbox(-1), htxt(-1)
+  { 
+  }
+  ~c_aws_ui_button()
+  {
+  }
+
+  bool init(const glm::vec2 & _pos, glm::vec2 _sz, const unsigned int _txt_len, const glm::vec4 & _clr, const glm::vec4 & _bkgclr);
+
+  bool collision(const glm::vec2 & pt)
+  {
+    return porect->collision(pt, hbox);
+  }
+
+  void set_position(const glm::vec2 & _pos);
+  void set_text(const char * _text);
+  void set_visible();
+  void set_invisible();
+
+  e_state get_state(){
+    return state;
+  }
+
+  void set_select();
+  void set_check();
+  void set_normal();
+  void set_disable();
+};
+
 ////////////////////////////////////////////////////////////////////////////////// ui control box
 // The base class c_aws_ui_box provides some basic methods: constructing buttons, handling event's , and changing the looks.
 // currentlly four subclasses are created.  : c_view_mode_box, c_ctrl_mode_box, c_map_cfg_box, c_route_cfg_box

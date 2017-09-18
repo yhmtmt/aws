@@ -44,6 +44,97 @@ using namespace cv;
 #include "../../util/aws_glib.h"
 #include "../f_aws1_ui.h"
 
+/////////////////////////////////////////////////////////////////// c_aws_ui_button
+c_gl_2d_obj * c_aws_ui_button::porect = NULL;
+c_gl_text_obj * c_aws_ui_button::potxt = NULL;
+
+bool c_aws_ui_button::init(const glm::vec2 & _pos, const glm::vec2 _sz, const unsigned int _txt_len,
+  const glm::vec4 & _clr, const glm::vec4 & _bkgclr)
+{
+  clr = _clr;
+  bkgclr = _bkgclr;
+  sz = _sz;
+
+  hbox = porect->add(clr, _pos, 0, _sz);
+  porect->config_depth(hbox, 1);
+  htxt = potxt->reserv(_txt_len);
+  potxt->config_depth(htxt, 0);
+
+  glm::vec2 sz_fnt;
+  sz_fnt.x = (float)(0.8 * _sz.x / (double)_txt_len);
+  sz_fnt.y = (float)(0.8 * _sz.y);
+  if (sz_fnt.x < sz_fnt.y)
+    sz_fnt.y = sz_fnt.x;
+  else
+    sz_fnt.x = sz_fnt.y;
+
+  glm::vec2 pos_txt((float)(_pos.x + _sz.x * 0.5), (float)(_pos.y + _sz.y * 0.5));
+  potxt->config(htxt, clr, bkgclr, sz_fnt, sz_fnt, c_gl_text_obj::an_cc, pos_txt, 0);
+
+  set_normal();
+
+  return true;
+}
+
+void c_aws_ui_button::set_position(const glm::vec2 & _pos)
+{
+  porect->config_position(hbox, _pos);
+  glm::vec2 pos_txt((float)(_pos.x + sz.x * 0.5), (float)(_pos.y + sz.y * 0.5));
+  potxt->config_position(htxt, pos_txt);
+}
+
+void c_aws_ui_button::set_text(const char * _text)
+{
+  potxt->set(htxt, _text);
+}
+
+void c_aws_ui_button::set_visible()
+{
+  porect->enable(hbox);
+  potxt->enable(htxt);
+}
+
+void c_aws_ui_button::set_invisible()
+{
+  porect->disable(hbox);
+  potxt->disable(htxt);
+}
+
+void c_aws_ui_button::set_select()
+{
+  glm::vec4 sel_clr(clr.x * 0.5, clr.y * 0.5, clr.z * 0.5, clr.w * 0.5);
+  porect->config_color(hbox, sel_clr);
+  porect->config_border(hbox, false, 1.0);
+  potxt->config_color(htxt, clr, bkgclr);
+  state = es_select;
+}
+
+void c_aws_ui_button::set_check()
+{
+  glm::vec4 txt_clr(0, 0, 0, 1);
+
+  porect->config_color(hbox, clr);
+  porect->config_border(hbox, false, 1.0);
+  potxt->config_color(htxt, txt_clr, bkgclr);
+  state = es_check;
+}
+
+void c_aws_ui_button::set_normal()
+{
+  porect->config_color(hbox, clr);
+  porect->config_border(hbox, true, 1.0);
+  potxt->config_color(htxt, clr, bkgclr);
+  state = es_normal;
+}
+
+void c_aws_ui_button::set_disable()
+{
+  porect->config_color(hbox, clr);
+  porect->config_border(hbox, true, 1.0);
+  glm::vec4 txt_clr(clr.r * 0.3, clr.g * 0.3, clr.b * 0.3, clr.a);
+  potxt->config_color(htxt, clr, bkgclr);
+  state = es_disable;
+}
 
 /////////////////////////////////////////////////////////////////// c_aws_ui_box_manager
 c_aws_ui_box_manager::c_aws_ui_box_manager() : box_pushed(nul), box_released(nul),
