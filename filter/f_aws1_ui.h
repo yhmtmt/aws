@@ -99,6 +99,8 @@ public:
   c_gl_2d_obj orect /* 2d rectangle */, otri /* 2d triangle */, ocirc /* 2d circle */;
   c_gl_text_obj otxt /* Text */;
   c_gl_2d_line_obj oline /* 2d line */;
+  c_gl_line_obj oline3d /* 3d line */;
+
   void render_gl_objs(); // renders all elements above declared.
 
   // ui boxes
@@ -241,7 +243,8 @@ public:
   }
 
   // FPV related member
-  glm::mat4 pm, vm, pvm;
+  glm::mat4 pm, vm, pvm, mm;
+  glm::vec3 light;
 
   // video/screen capture related members
   VideoWriter m_vw;

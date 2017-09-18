@@ -1150,6 +1150,16 @@ int c_gl_line_obj::add(const int npts, const float * pts)
 	return handle;
 }
 
+void c_gl_line_obj::config_points(const int handle, const float * pts)
+{
+	if (handle < lbis.size()){
+		s_vertex * vtx = lbis[handle].vtx;
+		int npts = lbis[handle].npts;
+		memcpy((void*)vtx, (void*)pts, sizeof(float)* 3 * npts);
+		bupdated = false;
+	}
+}
+
 void c_gl_line_obj::remove(const int handle)
 {
 	if (handle < lbis.size()){
@@ -1175,7 +1185,6 @@ void c_gl_line_obj::render(const glm::mat4 & PV)
 {
 	if (!bupdated)
 		update_vertices();
-
 
 	glm::mat4 T(1.0);
 	glUniform1i(modeloc, 2);

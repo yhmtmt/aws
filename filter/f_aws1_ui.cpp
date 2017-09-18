@@ -51,7 +51,7 @@ m_state(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_
 m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL), 
 m_ch_ap_inst(NULL),
 m_js_id(0), m_bsvw(false), m_bss(false),
-fov_cam_x(55.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
+fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
 num_max_wps(100), num_max_ais(100),
 bupdate_map(true), pt_prev_map_update(0,0,0),
 map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
@@ -203,6 +203,9 @@ bool f_aws1_ui::init_run()
 		  return false;
 	  if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 8192))
 		  return false;
+
+	  if (!oline3d.init(loc_mode, loc_position, loc_gcolor, loc_depth2d, 8192))
+		  return false;
   }
 
   glm::vec4 clr(0, 1, 0, 1);
@@ -219,7 +222,7 @@ bool f_aws1_ui::init_run()
   if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr, fov_cam_x, sz_scrn))
 	  return false;
  
-  if (!owp.init(&ocirc, &otxt, &oline, clr, sz_fnt_small, sz_mark, num_max_wps))
+  if (!owp.init(&ocirc, &otxt, &oline, &oline3d, clr, sz_fnt_small, sz_mark, num_max_wps))
 	  return false;
 
   if (!oais.init(&orect, &otri, &otxt, &oline, clr, sz_fnt_small, sz_mark_xy, num_max_ais))
@@ -503,7 +506,16 @@ void f_aws1_ui::render_gl_objs()
 	glUseProgram(p);
 	glUniform2fv(loc_inv_sz_half_scrn, 1, inv_sz_half_scrn);
 
+	// 3d rendering
+	glUniform1i(loc_mode, 0);
 
+	glUniformMatrix4fv(loc_Mmvp, 1, GL_FALSE, glm::value_ptr(pvm));
+	glUniformMatrix4fv(loc_Mm, 1, GL_FALSE, glm::value_ptr(mm));
+	glUniform3fv(loc_Lpar, 1, glm::value_ptr(light));
+
+	oline3d.render(pvm);
+
+	// 2d rendering
 	orect.render();
 	otri.render();
 	ocirc.render();
@@ -1132,6 +1144,17 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
 	const float xown, const float yown, const float zown,
 	const float vx, const float vy, const float yaw)
 {
+	{
+		glm::mat4 tm(1.0);
+		tm = glm::translate(tm, -pt_map_center_ecef);
+		glm::mat4 rm(1.0);
+		double * ptr = Rmap.ptr<double>();
+		rm[0][0] = (float)ptr[0]; rm[1][0] = (float)ptr[1]; rm[2][0] = (float)ptr[2];
+		rm[0][1] = (float)ptr[3]; rm[1][1] = (float)ptr[4]; rm[2][1] = (float)ptr[5];
+		rm[0][2] = (float)ptr[6]; rm[1][2] = (float)ptr[7]; rm[2][2] = (float)ptr[8];
+		mm = rm * tm;
+	}
+
 	if (pvm_box->get_mode() == ui_mode_fpv){ // calculating projection matrix
 		float c, s, th = (float)(dir_cam_hdg + dir_cam_hdg_drag + yaw * PI / 180.);
 		c = (float)cos(th);
@@ -1141,6 +1164,7 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
 		pm = glm::perspective((float)(fov_cam_y * PI / 180.0f), ratio, 1.f, 30e6f);
 		vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(s, c, height_cam), glm::vec3(0, 0, 1));
 		pvm = pm * vm;
+		
 		own_ship.disable();
 	}
 	else if (pvm_box->get_mode() == ui_mode_map){
@@ -1148,6 +1172,13 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
 		eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z, xown, yown, zown, rx, ry, rz);
 		own_ship.enable();
 		own_ship.set_param(rx, ry, rz, yaw, vx, vy, pix_per_meter);
+
+		float wx = (float)(meter_per_pix * (m_sz_win.width >> 1)),
+			wy = (float)(meter_per_pix * (m_sz_win.height >> 1));
+
+		pm = glm::ortho(-wx, wx, -wy, wy, 1.f, 30e6f);
+		vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+		pvm = pm * vm;
 	}
 }
 

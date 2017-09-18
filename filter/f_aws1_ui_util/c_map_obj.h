@@ -82,10 +82,11 @@ private:
 	c_gl_2d_obj * pocirc;
 	c_gl_text_obj * potxt;
 	c_gl_2d_line_obj * poline;
+	c_gl_line_obj * poline3d;
 	glm::vec4 clr;
 	vector<s_wp> wps;
 	struct s_marker{
-		int hmark, hstr, hline_inf, hline_next;
+		int hmark, hstr, hline_inf, hline_next_3d;
 	};
 	vector<s_marker> hmarks;
 	int focus, next;
@@ -95,6 +96,7 @@ private:
 public:
 	c_map_waypoint_obj();
 	bool init(c_gl_2d_obj * pocirc, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
+		c_gl_line_obj * poline3d, 
 		const glm::vec4 & clr, const glm::vec2 & sz_fnt, const float _rmark,
 		const unsigned int _nmaxwps = 100);
 	void update_wps(const int iwp, const s_wp & wp);

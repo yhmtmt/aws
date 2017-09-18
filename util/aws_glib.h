@@ -299,6 +299,8 @@ public:
 		lbis[handle].clr = _clr;
 	}
 
+	void config_points(const int handle, const float * pts);
+
 	void config_position(const glm::vec3 & _t)
 	{
 		for (int ih = 0; ih < lbis.size(); ih++){
@@ -346,7 +348,7 @@ public:
 
 	void update_vertices();
 
-	void render(const glm::mat4 & PV);
+  void render(const glm::mat4 & PV);
 };
 
 class c_gl_point_obj
