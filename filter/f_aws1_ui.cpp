@@ -209,7 +209,7 @@ bool f_aws1_ui::init_run()
   }
   
   glm::vec4 clr(0, 1, 0, 1);
-  glm::vec4 clrb(0, 0, 0, 0);
+  glm::vec4 clrb(0, 0, 0, 0.5);
   glm::vec2 sz_fnt(20, 20), sz_fnt_small(10, 10);
   glm::vec2 sz_scrn(m_sz_win.width, m_sz_win.height);
   glm::vec2 sz_mark_xy((float)(2.0 * sz_mark), (float)(2.0 * sz_mark));

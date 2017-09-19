@@ -74,7 +74,7 @@ protected:
 	static c_gl_2d_line_obj * poline;
 	static c_gl_text_obj * potxt;
 	bool bopened;
-	int hbox, hopen, hclose;
+	int hback, hbox, hopen, hclose;
 	bool btn_oc_pushed, btn_oc_released;
 	glm::vec2 pt_mouse;
 	glm::vec2 pos_close, pos_open; // box position
@@ -119,18 +119,19 @@ protected:
 	virtual bool handle_left_release(const glm::vec2 & pt);
 
 public:
-	c_aws_ui_box() : bopened(false), hbox(-1), hopen(-1), hclose(-1), btn_oc_pushed(false), btn_oc_released(false)
+	c_aws_ui_box() : bopened(false), hback(-1), hbox(-1), hopen(-1), hclose(-1), btn_oc_pushed(false), btn_oc_released(false)
 	{
 	}
 
 	// initialization method. sub class should call this at the final line.
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+	virtual bool init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
 		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left)
 	{
+    clr = _clr;
+    bkgclr = _bkgclr;
 		setup_frame(y, left, sz_scrn, get_box_size(sz_fnt), sz_fnt, clr);
 
 		bopened = false;
-		close();
 		return true;
 	};
 
@@ -152,6 +153,10 @@ public:
 	// Setup the drawing resources. This should be called before initializing the instance of the class and the subclasses. 
 	static void set_gl_objs(c_gl_2d_obj * _porect, c_gl_2d_obj * potri,
 		c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline);
+
+  bool collision(const glm::vec2 & pt){
+    return porect->collision(pt, hbox);
+  }
 };
 
 // c_view_mode_box is to be used for selecting the view mode. Currently three modes are implemented.
@@ -185,7 +190,7 @@ public:
 		hbtn.resize(nul);
 	}
 
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+	virtual bool init(const glm::vec4 & clr, const glm::vec4 & bkgclr,
 		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
 	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
 	{
@@ -255,7 +260,7 @@ public:
 		hbtn.resize(nul);
 	};
 
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+	virtual bool init(const glm::vec4 & clr, const glm::vec4 & bkgclr,
 		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
 
 	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
@@ -321,7 +326,7 @@ public:
 		check.resize(range_down, true);
 	}
 
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+	virtual bool init(const glm::vec4 & clr, const glm::vec4 & bkgclr,
 		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
 
 	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
@@ -416,7 +421,7 @@ public:
 		hbtn.resize(nul);
 	}
 
-	virtual bool init(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
+	virtual bool init(const glm::vec4 & clr, const glm::vec4 & bkgclr,
 		const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left);
 
 	virtual const glm::vec2 get_box_size(const glm::vec2 sz_fnt)
@@ -486,7 +491,6 @@ public:
 	};
 private:
 	vector<c_aws_ui_box*> pboxes;
-	vector<int> hboxes;
 
 	// Following four members are used in set_mouse_event and cleared when the mouse left button released
 	e_box
