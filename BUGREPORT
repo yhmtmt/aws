@@ -1,5 +1,4 @@
 User interface
-* indicator draws a long line rolling with roll scale at the center.
 * Menus and indicator are overwrapped with objects.
 * Map cannot be back to the own-ship centered mode.
 * waypoint to waypoint lines cannot be collectlly culled in fpv mode
@@ -19,3 +18,4 @@ remote command
 * Selected AIS object is not collect
 * When waypoint is selected by mouse, menu box does not reflect the waypoint number selected.
 * selected ais object is changed when the order of the object is changed.
+* indicator draws a long line rolling with roll scale at the center.

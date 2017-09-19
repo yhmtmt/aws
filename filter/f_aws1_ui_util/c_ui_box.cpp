@@ -1172,7 +1172,9 @@ void c_indicator::create_engine_indicator(int & heng_in, int & heng_out,
   potri->config_depth(heng_b, 0);
 }
 
-void c_indicator::update_engine_indicator(int & heng_in, int & heng_n, int & heng_f, int & heng_b, const unsigned char val)
+void c_indicator::update_engine_indicator(int & heng_in, int & heng_n,
+					  int & heng_f, int & heng_b,
+					  const unsigned char val)
 {
   glm::vec2 scl(scl_eng.x, scl_eng.y * abs((int)val - (int)127) * (1 / 127.));
   porect->config_scale(heng_in, scl);
@@ -1416,7 +1418,7 @@ void c_indicator::create_rp_indicator(glm::vec2 & pos,
       }
     }
     
-    hpscale = poline->add(PITCH_STEP * 4, (float*)pts, true);
+    hpscale = poline->add(((PITCH_STEP - 1) * 2 + 1) * 2, (float*)pts, true);
     poline->config_depth(hpscale, 0);
     poline->config_position(hpscale, pos);
     poline->config_rotation(hpscale, 0.0);
@@ -1490,6 +1492,7 @@ void c_indicator::update_rp_indicator()
 	poline->config_rotation(hpmeas, roll, c, s);
 	poline->config_rotation(hpscale, roll, c, s);
 	poline->config_rotation(hpptr, roll, c, s);
+
 	glm::vec2 pos_pptr(0, lpmeas * pitch * (1.0 / (PI * 40. / 180.)));
 	pos_pptr.x = -s * pos_pptr.y + pos_rp.x;
 	pos_pptr.y = c * pos_pptr.y + pos_rp.y;
