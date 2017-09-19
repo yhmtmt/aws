@@ -429,7 +429,7 @@ char * load_glsl_text(const char * fname)
 
 	char * txt = new char[flen + 1];
 	if (!txt)
-		return false;
+		return NULL;
 
 	memset((void*)txt, 0, (size_t)(flen + 1));
 	fin.read(txt, flen);
