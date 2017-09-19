@@ -39,17 +39,28 @@ void eceftobih(const float x, const float y, const float z, float & lat, float &
 void eceftobih(const double x, const double y, const double z, double & lat, double & lon, double & alt);
 
 void wrldtoecef(const Mat & Rrot, 
-				const float xorg, const float yorg, const float zorg, 
-				const float xwrld, const float ywrld, const float zwrld,
-				float & xecef, float & yecef, float & zecef
-				);
+		const float xorg, const float yorg, const float zorg, 
+		const float xwrld, const float ywrld, const float zwrld,
+		float & xecef, float & yecef, float & zecef
+		);
+void wrldtoecef(const Mat & Rrot, 
+		const double xorg, const double yorg, const double zorg, 
+		const double xwrld, const double ywrld, const double zwrld,
+		double & xecef, double & yecef, double & zecef
+		);
 void eceftowrld(const Mat & Rrot, 
-				const float xorg, const float yorg, const float zorg, 
-				const float xecef, const float yecef, const float zecef,
-				float & xwrld, float & ywrld, float & zwrld
-				);
-void getwrldrot(const float lat, const float lon, Mat & Rwrld);
+		const float xorg, const float yorg, const float zorg, 
+		const float xecef, const float yecef, const float zecef,
+		float & xwrld, float & ywrld, float & zwrld
+		);
+void eceftowrld(const Mat & Rrot, 
+		const double xorg, const double yorg, const double zorg, 
+		const double xecef, const double yecef, const double zecef,
+		double & xwrld, double & ywrld, double & zwrld
+		);
 
+void getwrldrot(const float lat, const float lon, Mat & Rwrld);
+void getwrldrot(const double lat, const double lon, Mat & Rwrld);
 
 void bihtoecef(const s_bihpos & Xbih, Point3d & Xecef);
 void eceftobih(Mat & Xecef, Mat & Xbih);

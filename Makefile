@@ -15,6 +15,7 @@ INST_DIR = ./bin
 
 #optimization option
 OFLAGS = -O3
+#OFLAGS =
 
 # Platform specification
 BOARD = jtx

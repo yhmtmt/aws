@@ -55,7 +55,6 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
   c_gl_2d_line_obj * _poline, c_gl_line_obj * _poline3d,
   const glm::vec4 & _clr, const glm::vec2 & sz_fnt, const float _rmark, const unsigned int _nmaxwps)
 {
-  cout << "Initializitn waypoints." << endl;
   nmaxwps = _nmaxwps;
   rmark = _rmark;
   pocirc = _pocirc;

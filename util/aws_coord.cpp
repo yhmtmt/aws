@@ -168,24 +168,37 @@ void wrldtobih(Point3d & Xorg, Mat & Xrot, Point3d & Xwrld, s_bihpos & Xbih)
 	eceftobih(Xecef, Xbih);
 }
 
-void wrldtoecef(const Mat & Rrot, 
-				const float xorg, const float yorg, const float zorg, 
-				const float xwrld, const float ywrld, const float zwrld,
-				float & xecef, float & yecef, float & zecef
-				)
-{
-	const double * ptr = Rrot.ptr<double>();
-	xecef = (float)(ptr[0] * xwrld + ptr[3] * ywrld + ptr[6] * zwrld + xorg);
-	yecef = (float)(ptr[1] * xwrld + ptr[4] * ywrld + ptr[7] * zwrld + yorg);
-	zecef = (float)(ptr[2] * xwrld + ptr[5] * ywrld + ptr[8] * zwrld + zorg);
 
+void wrldtoecef(const Mat & Rrot, 
+		const float xorg, const float yorg, const float zorg, 
+		const float xwrld, const float ywrld, const float zwrld,
+		float & xecef, float & yecef, float & zecef
+		)
+{
+  const double * ptr = Rrot.ptr<double>();
+  xecef = (float)(ptr[0] * xwrld + ptr[3] * ywrld + ptr[6] * zwrld + xorg);
+  yecef = (float)(ptr[1] * xwrld + ptr[4] * ywrld + ptr[7] * zwrld + yorg);
+  zecef = (float)(ptr[2] * xwrld + ptr[5] * ywrld + ptr[8] * zwrld + zorg);  
+}
+
+
+void wrldtoecef(const Mat & Rrot, 
+		const double xorg, const double yorg, const double zorg, 
+		const double xwrld, const double ywrld, const double zwrld,
+		double & xecef, double & yecef, double & zecef
+		)
+{
+  const double * ptr = Rrot.ptr<double>();
+  xecef = (double)(ptr[0] * xwrld + ptr[3] * ywrld + ptr[6] * zwrld + xorg);
+  yecef = (double)(ptr[1] * xwrld + ptr[4] * ywrld + ptr[7] * zwrld + yorg);
+  zecef = (double)(ptr[2] * xwrld + ptr[5] * ywrld + ptr[8] * zwrld + zorg);  
 }
 
 void eceftowrld(const Mat & Rrot, 
-				const float xorg, const float yorg, const float zorg, 
-				const float xecef, const float yecef, const float zecef,
-				float & xwrld, float & ywrld, float & zwrld
-				)
+		const float xorg, const float yorg, const float zorg, 
+		const float xecef, const float yecef, const float zecef,
+		float & xwrld, float & ywrld, float & zwrld
+		)
 {
 	const double * ptr = Rrot.ptr<double>();
 	float x = (float)(xecef - xorg);	
@@ -195,6 +208,22 @@ void eceftowrld(const Mat & Rrot,
 	xwrld = (float)(ptr[0] * x + ptr[1] * y + ptr[2] * z);
 	ywrld = (float)(ptr[3] * x + ptr[4] * y + ptr[5] * z);
 	zwrld = (float)(ptr[6] * x + ptr[7] * y + ptr[8] * z);
+}
+
+void eceftowrld(const Mat & Rrot, 
+		const double xorg, const double yorg, const double zorg, 
+		const double xecef, const double yecef, const double zecef,
+		double & xwrld, double & ywrld, double & zwrld
+		)
+{
+	const double * ptr = Rrot.ptr<double>();
+	double x = (double)(xecef - xorg);	
+	double y = (double)(yecef - yorg);
+	double z = (double)(zecef - zorg);
+
+	xwrld = (double)(ptr[0] * x + ptr[1] * y + ptr[2] * z);
+	ywrld = (double)(ptr[3] * x + ptr[4] * y + ptr[5] * z);
+	zwrld = (double)(ptr[6] * x + ptr[7] * y + ptr[8] * z);
 }
 
 
@@ -242,77 +271,115 @@ void eceftowrld(Point3d & Xorg, Mat & Xrot, Point3d & Xecef, Point3d & Xwrld)
 
 void getwrldrotf(const float lat, const float lon, Mat & Rwrld)
 {
-	float c, s;
-
-	// pi/2
-	c = 0;
-	s = 1;
-
-	Rwrld = Mat::eye(3, 3, CV_32FC1);
-	Rwrld.at<float>(0, 0) = c;
-	Rwrld.at<float>(1, 1) = c;
-	Rwrld.at<float>(0, 1) = s;
-	Rwrld.at<float>(1, 0) = -s;
-
-	// pi/2 - lat
-	c = sin(lat);
-	s = cos(lat);
-	Mat tmp = Mat::eye(3, 3, CV_32FC1);
-	tmp.at<float>(0, 0) = c;
-	tmp.at<float>(2, 2) = c;
-	tmp.at<float>(0, 2) = -s;
-	tmp.at<float>(2, 0) = s;
-
-	Rwrld *= tmp;
-
-	// lon
-	c = cos(lon);
-	s = sin(lon);
-	tmp = Mat::eye(3, 3, CV_32FC1);
-	tmp.at<float>(0, 0) = c;
-	tmp.at<float>(1, 1) = c;
-	tmp.at<float>(0, 1) = s;
-	tmp.at<float>(1, 0) = -s;
-
-	Rwrld *= tmp;
+  float c, s;
+  
+  // pi/2
+  c = 0;
+  s = 1;
+  
+  Rwrld = Mat::eye(3, 3, CV_32FC1);
+  Rwrld.at<float>(0, 0) = c;
+  Rwrld.at<float>(1, 1) = c;
+  Rwrld.at<float>(0, 1) = s;
+  Rwrld.at<float>(1, 0) = -s;
+  
+  // pi/2 - lat
+  c = sin(lat);
+  s = cos(lat);
+  Mat tmp = Mat::eye(3, 3, CV_32FC1);
+  tmp.at<float>(0, 0) = c;
+  tmp.at<float>(2, 2) = c;
+  tmp.at<float>(0, 2) = -s;
+  tmp.at<float>(2, 0) = s;
+  
+  Rwrld *= tmp;
+  
+  // lon
+  c = cos(lon);
+  s = sin(lon);
+  tmp = Mat::eye(3, 3, CV_32FC1);
+  tmp.at<float>(0, 0) = c;
+  tmp.at<float>(1, 1) = c;
+  tmp.at<float>(0, 1) = s;
+  tmp.at<float>(1, 0) = -s;
+  
+  Rwrld *= tmp;
 }
 
 void getwrldrot(const float lat, const float lon, Mat & Rwrld)
 {
-	double c, s;
-
-	// pi/2
-	c = 0;
-	s = 1;
-
-	Rwrld = Mat::eye(3, 3, CV_64FC1);
-	Rwrld.at<double>(0, 0) = c;
-	Rwrld.at<double>(1, 1) = c;
-	Rwrld.at<double>(0, 1) = s;
-	Rwrld.at<double>(1, 0) = -s;
-
-	// pi/2 - lat
-	c = sin(lat);
-	s = cos(lat);
-	Mat tmp = Mat::eye(3, 3, CV_64FC1);
-	tmp.at<double>(0, 0) = c;
-	tmp.at<double>(2, 2) = c;
-	tmp.at<double>(0, 2) = -s;
-	tmp.at<double>(2, 0) = s;
-
-	Rwrld *= tmp;
-
-	// lon
-	c = cos(lon);
-	s = sin(lon);
-	tmp = Mat::eye(3, 3, CV_64FC1);
-	tmp.at<double>(0, 0) = c;
-	tmp.at<double>(1, 1) = c;
-	tmp.at<double>(0, 1) = s;
-	tmp.at<double>(1, 0) = -s;
-
-	Rwrld *= tmp;
+  double c, s;
+  
+  // pi/2
+  c = 0;
+  s = 1;
+  
+  Rwrld = Mat::eye(3, 3, CV_64FC1);
+  Rwrld.at<double>(0, 0) = c;
+  Rwrld.at<double>(1, 1) = c;
+  Rwrld.at<double>(0, 1) = s;
+  Rwrld.at<double>(1, 0) = -s;
+  
+  // pi/2 - lat
+  c = sin(lat);
+  s = cos(lat);
+  Mat tmp = Mat::eye(3, 3, CV_64FC1);
+  tmp.at<double>(0, 0) = c;
+  tmp.at<double>(2, 2) = c;
+  tmp.at<double>(0, 2) = -s;
+  tmp.at<double>(2, 0) = s;
+  
+  Rwrld *= tmp;
+  
+  // lon
+  c = cos(lon);
+  s = sin(lon);
+  tmp = Mat::eye(3, 3, CV_64FC1);
+  tmp.at<double>(0, 0) = c;
+  tmp.at<double>(1, 1) = c;
+  tmp.at<double>(0, 1) = s;
+  tmp.at<double>(1, 0) = -s;
+  
+  Rwrld *= tmp;
 }
+
+void getwrldrot(const double lat, const double lon, Mat & Rwrld)
+{
+  double c, s;
+  
+  // pi/2
+  c = 0;
+  s = 1;
+  
+  Rwrld = Mat::eye(3, 3, CV_64FC1);
+  Rwrld.at<double>(0, 0) = c;
+  Rwrld.at<double>(1, 1) = c;
+  Rwrld.at<double>(0, 1) = s;
+  Rwrld.at<double>(1, 0) = -s;
+  
+  // pi/2 - lat
+  c = sin(lat);
+  s = cos(lat);
+  Mat tmp = Mat::eye(3, 3, CV_64FC1);
+  tmp.at<double>(0, 0) = c;
+  tmp.at<double>(2, 2) = c;
+  tmp.at<double>(0, 2) = -s;
+  tmp.at<double>(2, 0) = s;
+  
+  Rwrld *= tmp;
+  
+  // lon
+  c = cos(lon);
+  s = sin(lon);
+  tmp = Mat::eye(3, 3, CV_64FC1);
+  tmp.at<double>(0, 0) = c;
+  tmp.at<double>(1, 1) = c;
+  tmp.at<double>(0, 1) = s;
+  tmp.at<double>(1, 0) = -s;
+  
+  Rwrld *= tmp;
+}
+
 
 // getwrldrot calculates world rotation matrix from bih 
 // resulting matrix is used in wrldtoecef() or eceftowrld()

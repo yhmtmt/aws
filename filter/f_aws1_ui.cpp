@@ -389,6 +389,7 @@ void f_aws1_ui::update_route(c_route_cfg_box * prc_box)
 		return;
 	m_ch_wp->lock();
 	int iwp = 0;
+	
 	for (m_ch_wp->begin(); !m_ch_wp->is_end(); m_ch_wp->next())
 	{
 		s_wp wp = m_ch_wp->cur();
@@ -591,10 +592,10 @@ bool f_aws1_ui::proc()
 	// calculating mouse point coordinate
 	calc_mouse_enu_and_ecef_pos(pvm_box->get_mode(), Rown, lat, lon, xown, yown, zown, yaw);
 	if (event_handled){
-		handle_updated_ui_box(pvm_box, pcm_box, pmc_box, prc_box);
+	  handle_updated_ui_box(pvm_box, pcm_box, pmc_box, prc_box);
 	}
 	else{
-		handle_base_mouse_event(pvm_box, pcm_box, pmc_box, prc_box);
+	  handle_base_mouse_event(pvm_box, pcm_box, pmc_box, prc_box);
 	}
 	
  	// update ui params 
@@ -753,7 +754,7 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 			pt_map_center_ecef.z = zown;
 			pt_map_center_bih.x = (float)(lat * PI / 180.0f);
 			pt_map_center_bih.y = (float)(lon * PI / 180.0f);
-			Rmap = Rown;
+			Rmap = Rown.clone();
 		}
 		pt_mouse_enu.x = pt_mouse.x * meter_per_pix;
 		pt_mouse_enu.y = pt_mouse.y * meter_per_pix;
@@ -772,7 +773,7 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 		pt_map_center_ecef.z = zown;
 		pt_map_center_bih.x = lat;
 		pt_map_center_bih.y = lon;
-		Rmap = Rown;
+		Rmap = Rown.clone();
 
 		glm::vec2 phi(atan2(pt_mouse.x, fcam), atan2(-pt_mouse.y, fcam));
 		float th, RE_sin_th;
@@ -835,30 +836,38 @@ void f_aws1_ui::drag_waypoint()
 
 void f_aws1_ui::drag_map()
 {
-	if (!bmap_center_free){
-		bmap_center_free = true;
-	}
-	// change map center
-	glm::vec2 d_pt_mouse = pt_mouse_drag_begin - pt_mouse;
-	d_pt_mouse.x *= meter_per_pix;
-	d_pt_mouse.y *= meter_per_pix;
-	glm::vec3 pt_map_center_ecef_new;
-	float alt;
-	wrldtoecef(Rmap, 
-		pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
-		d_pt_mouse.x, d_pt_mouse.y, 0.,
-		pt_map_center_ecef_new.x, pt_map_center_ecef_new.y, pt_map_center_ecef_new.z);
-	pt_map_center_ecef = pt_map_center_ecef_new;
+  if (!bmap_center_free){
+    bmap_center_free = true;
+  }
+  // change map center
+  glm::vec2 d_pt_mouse = pt_mouse_drag_begin - pt_mouse;
+  if(d_pt_mouse.x == 0.f && d_pt_mouse.y == 0.f)
+    return;
+  
+  d_pt_mouse.x *= meter_per_pix;
+  d_pt_mouse.y *= meter_per_pix;
+  double xnew, ynew, znew, latnew, lonnew, altnew;
+  xnew = ynew = znew = latnew = lonnew = altnew = 0;
+  
+  wrldtoecef(Rmap, 
+	     (double)pt_map_center_ecef.x, (double)pt_map_center_ecef.y, (double)pt_map_center_ecef.z,
+	     (double)d_pt_mouse.x, (double)d_pt_mouse.y, 0.,
+	     xnew, ynew, znew);
+  pt_map_center_ecef.x = (float) xnew;
+  pt_map_center_ecef.y = (float) ynew;
+  pt_map_center_ecef.z = (float) znew;
 
-	eceftobih(pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
-		pt_map_center_bih.x, pt_map_center_bih.y, alt);
-	getwrldrot(pt_map_center_bih.x, pt_map_center_bih.y, Rmap);
-	pt_mouse_drag_begin = pt_mouse;
+  eceftobih(xnew, ynew, znew,
+	    latnew, lonnew, altnew);
+  getwrldrot(latnew, lonnew, Rmap);
+  pt_map_center_bih.x = (float)latnew;
+  pt_map_center_bih.y = (float)lonnew;
+  pt_mouse_drag_begin = pt_mouse;
 }
 
 void f_aws1_ui::drag_cam_dir()
 {
-	float th0 = (float) atan2(pt_mouse.x, fcam);
+  float th0 = (float) atan2(pt_mouse.x, fcam);
 	float th1 = (float) atan2(pt_mouse_drag_begin.x,fcam);
 	dir_cam_hdg_drag = (float)(th1 - th0);
 }
@@ -885,17 +894,19 @@ void f_aws1_ui::det_obj_collision()
 void f_aws1_ui::handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
 	c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
 {
-	det_obj_collision();
-	switch (mouse_state){
-	case ms_normal:
-		pt_mouse_drag_begin = pt_mouse;
-		mouse_state = ms_drag;
-		break;
-	}
+  det_obj_collision();
+  switch (mouse_state){
+  case ms_normal:
+    pt_mouse_drag_begin = pt_mouse;
+    mouse_state = ms_drag;
+    break;
+  }
 }
 
-void f_aws1_ui::handle_mouse_lbtn_release(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
+void f_aws1_ui::handle_mouse_lbtn_release(c_view_mode_box * pvm_box,
+					  c_ctrl_mode_box * pcm_box,
+					  c_map_cfg_box * pmc_box,
+					  c_route_cfg_box * prc_box)
 {
 	s_obj obj_tmp = obj_mouse_on;
 	det_obj_collision();
@@ -919,30 +930,32 @@ void f_aws1_ui::handle_mouse_lbtn_release(c_view_mode_box * pvm_box, c_ctrl_mode
 	}
 }
 
-void f_aws1_ui::handle_mouse_mv(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
+void f_aws1_ui::handle_mouse_mv(c_view_mode_box * pvm_box,
+				c_ctrl_mode_box * pcm_box,
+				c_map_cfg_box * pmc_box,
+				c_route_cfg_box * prc_box)
 {
-	switch (mouse_state){
-	case ms_drag:
-		handle_mouse_drag(pvm_box, obj_mouse_on);
-	}
+  switch (mouse_state){
+  case ms_drag:
+    handle_mouse_drag(pvm_box, obj_mouse_on);
+  }
 }
 
 void f_aws1_ui::handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp)
 {
-	if (obj_tmp.type == ot_wp){
-		drag_waypoint();
-	}
-	else if (obj_tmp.type == ot_nul)
-	{
-		if (pvm_box->get_mode() == ui_mode_fpv){
-			// change dir_cam_hdg
-			drag_cam_dir();
-		}
-		else if (pvm_box->get_mode() == ui_mode_map){
-			drag_map();
-		}
-	}
+  if (obj_tmp.type == ot_wp){
+    drag_waypoint();
+  }
+  else if (obj_tmp.type == ot_nul)
+    {
+      if (pvm_box->get_mode() == ui_mode_fpv){
+	// change dir_cam_hdg
+	drag_cam_dir();
+      }
+      else if (pvm_box->get_mode() == ui_mode_map){
+	drag_map();
+      }
+    }
 }
 
 void f_aws1_ui::handle_updated_ui_box(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box, c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box) 
