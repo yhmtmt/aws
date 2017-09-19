@@ -107,79 +107,79 @@ f_aws1_ui::~f_aws1_ui()
 
 bool f_aws1_ui::init_run()
 {
-	if (!m_state)
-	{
-		cerr << "In filter " << m_name << ", ";
-		cerr << "State channel is not connected." << endl;
-		return false;
-	}
-
-	if (!m_ch_ctrl_inst)
-	{
-		cerr << "In filter " << m_name << ", ";
-		cerr << "Control instruction channel is not connected. " << endl;
-	}
-
-	if (!m_ch_ctrl_stat)
-	{
-		cerr << "In filter " << m_name << ", ";
-		cerr << "Control state channel is not connected." << endl;
-	}
-
-	if (!m_ch_map)
-	{
-		cerr << "In filter " << m_name << ", ";
-		cerr << "Map channel is not connected." << endl;
-	}
-
-	if (!m_ch_ais_obj)
-	{
-		cerr << "In filter " << m_name << ", ";
-		cerr << "AIS object channel is not connected." << endl;
-	}
-
-	if (!m_ch_obst)
-	{
-		cerr << "In filter " << m_name << ", ";
-		cerr << "Obstacle channel is not connected." << endl;
-	}
-
-	if (!m_ch_ap_inst)
-	{
-		cerr << "In filter " << m_name << ", ";
-		cerr << "Autopilot instruction channel is not connected." << endl;
-	}
-
+  if (!m_state)
+    {
+      cerr << "In filter " << m_name << ", ";
+      cerr << "State channel is not connected." << endl;
+      return false;
+    }
+  
+  if (!m_ch_ctrl_inst)
+    {
+      cerr << "In filter " << m_name << ", ";
+      cerr << "Control instruction channel is not connected. " << endl;
+    }
+  
+  if (!m_ch_ctrl_stat)
+    {
+      cerr << "In filter " << m_name << ", ";
+      cerr << "Control state channel is not connected." << endl;
+    }
+  
+  if (!m_ch_map)
+    {
+      cerr << "In filter " << m_name << ", ";
+      cerr << "Map channel is not connected." << endl;
+    }
+  
+  if (!m_ch_ais_obj)
+    {
+      cerr << "In filter " << m_name << ", ";
+      cerr << "AIS object channel is not connected." << endl;
+    }
+  
+  if (!m_ch_obst)
+    {
+      cerr << "In filter " << m_name << ", ";
+      cerr << "Obstacle channel is not connected." << endl;
+    }
+  
+  if (!m_ch_ap_inst)
+    {
+      cerr << "In filter " << m_name << ", ";
+      cerr << "Autopilot instruction channel is not connected." << endl;
+    }
+  
   m_inst.ctrl_src = ACS_UI;
   m_inst.tcur = get_time();
   m_inst.rud_aws = 127;
   m_inst.meng_aws = 127;
   m_inst.seng_aws = 127;
-
+  
   if(!f_glfw_window::init_run())
     return false;
 
   if(m_js.init(m_js_id)){
-	  cout << "Joystick " << m_js.name << " found." << endl;
+    cout << "Joystick " << m_js.name << " found." << endl;
   }
-
-    ///////////////////////////////// Preparing graphics resources///////////////////////////
+  
+  ///////////////////////////////// Preparing graphics resources///////////////////////////
   if (!setup_shader()){
-	  return false;
+    return false;
   }
-
+  
   inv_sz_half_scrn[0] = (float)(2. / (float)m_sz_win.width);
   inv_sz_half_scrn[1] = (float)(2. / (float)m_sz_win.height);
   if (fcam == 0.0f){
-	  fcam = (float)((float)(m_sz_win.width >> 1) / tan(fov_cam_x * (0.5 *  PI / 180.0f)));
-	  ifcam = (float)(1.0 / fcam);
+    fcam = (float)((float)(m_sz_win.width >> 1) / tan(fov_cam_x * (0.5 *  PI / 180.0f)));
+    ifcam = (float)(1.0 / fcam);
   }
   else{ // fov is overriden
-	  ifcam = (float)(1.0 / fcam);
-	  fov_cam_x = (float)(2.0 * atan((m_sz_win.width >> 1) * ifcam) * 180.0f / PI);
+    ifcam = (float)(1.0 / fcam);
+    fov_cam_x = (float)(2.0 * atan((m_sz_win.width >> 1) * ifcam) * 180.0f / PI);
   }
   fov_cam_y = (float)(2.0 * atan((m_sz_win.height >> 1) * ifcam) * 180.0f / PI);
-
+  
   // calculating horizon related parameters 
   iRE = (float)(1.0 / RE);
   height_cam_ec = (float)(RE + height_cam);
@@ -187,27 +187,27 @@ bool f_aws1_ui::init_run()
   th_horizon = (float) acos(RE / height_cam_ec); // angle of the arc to the horizon
   dhorizon_arc = (float)(RE * th_horizon);
   zhorizon = dhorizon_cam * height_cam_ec * iRE;
-
+  
   recalc_range();
 
   {
-	  glm::vec2 lb(0, 0);
-	  glm::vec2 sz(1, 1);
-	  if (!orect.init_rectangle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, lb, sz, 256))
-		  return false;
-	  if (!otri.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 3, 1, 1, 256))
-		  return false;
-	  if (!ocirc.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 10, 1, 1, 256))
-		  return false;
-	  if (!otxt.init(ftex, ftexinf, loc_mode, loc_pos2d, loc_texcoord, loc_sampler, loc_gcolor, loc_gcolorb, loc_depth2d, 65535))
-		  return false;
-	  if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 8192))
-		  return false;
-
-	  if (!oline3d.init(loc_mode, loc_position, loc_gcolor, loc_depth2d, 8192))
-		  return false;
+    glm::vec2 lb(0, 0);
+    glm::vec2 sz(1, 1);
+    if (!orect.init_rectangle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, lb, sz, 256))
+      return false;
+    if (!otri.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 3, 1, 1, 256))
+      return false;
+    if (!ocirc.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 10, 1, 1, 256))
+      return false;
+    if (!otxt.init(ftex, ftexinf, loc_mode, loc_pos2d, loc_texcoord, loc_sampler, loc_gcolor, loc_gcolorb, loc_depth2d, 65535))
+      return false;
+    if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 8192))
+      return false;
+    
+    if (!oline3d.init(loc_mode, loc_position, loc_gcolor, loc_depth2d, 8192))
+      return false;
   }
-
+  
   glm::vec4 clr(0, 1, 0, 1);
   glm::vec4 clrb(0, 0, 0, 0);
   glm::vec2 sz_fnt(20, 20), sz_fnt_small(10, 10);

@@ -225,129 +225,130 @@ public:
 class c_gl_line_obj
 {
 private:
-	GLuint vao, vbo;
-	struct s_vertex
-	{
-		float x, y, z;
-	};
-
-	unsigned int buffer_size;
-	int num_total_vertices;
-	s_vertex * vertices;
-	float wrange[2];
-	GLuint modeloc, posloc, Mmvploc, clrloc;
-
-	struct s_line_buffer_inf
-	{
-		bool bvalid;
-		bool bactive;
-		s_vertex * vtx;
-		unsigned int offset;
-		unsigned int npts;
-		float w;
-		glm::vec4 clr;
-		glm::vec3 t;
-		glm::mat4 R;
-
-		s_line_buffer_inf() :offset(0), npts(0), vtx(NULL), bvalid(false), bactive(false), w(1.f)
-		{}
-	};
-
-	vector<s_line_buffer_inf> lbis;
-
-	bool bupdated;
-public:
-	c_gl_line_obj();
-	~c_gl_line_obj();
-
-	bool init(GLuint modeloc, GLuint posloc, GLuint Mmvploc, GLuint clrloc,
-		unsigned int buffer_size = 4096);
-	int add(const int npts, const float * pts);
-
-	void destroy();
-
-	void remove(const int handle);
-
-	void enable(const int handle)
-	{
-		if (handle < lbis.size())
-		{
-			lbis[handle].bactive = true;
-		}
-	}
-
-	void disable(const int handle)
-	{
-		if (handle < lbis.size())
-		{
-			lbis[handle].bactive = false;
-		}
-	}
-
-	void config_color(const glm::vec4 & _clr)
-	{
-		for (int ih = 0; ih < lbis.size(); ih++){
-			lbis[ih].clr = _clr;
-		}
-	}
-
-	void config_color(const int handle, const glm::vec4 & _clr)
-	{
-		if (handle >= lbis.size())
-			return;
-
-		lbis[handle].clr = _clr;
-	}
-
-	void config_points(const int handle, const float * pts);
-
-	void config_position(const glm::vec3 & _t)
-	{
-		for (int ih = 0; ih < lbis.size(); ih++){
-			lbis[ih].t = _t; 
-		}
-	}
-
-	void config_position(const int handle, const glm::vec3 & _t)
-	{
-		if (handle >= lbis.size())
-			return;
-
-		lbis[handle].t = _t;
-	}
-
-	void config_rotation(const glm::mat4 & _R)
-	{
-		for (int ih = 0; ih < lbis.size(); ih++){
-			lbis[ih].R = _R;
-		}
-	}
-
-	void config_rotation(const int handle, const glm::mat4 & _R)
-	{
-		if (handle >= lbis.size())
-			return;
-
-		lbis[handle].R = _R;
-	}
-
-	void config_width(const float _width)
-	{
-		for (int ih = 0; ih < lbis.size(); ih++){
-			lbis[ih].w = _width;
-		}
-	}
-
-	void config_width(const int handle, const float _width)
-	{
-		if (lbis.size() >= handle)
-			return;
-
-		lbis[handle].w = _width;
-	}
-
-	void update_vertices();
-
+  GLuint vao, vbo;
+  struct s_vertex
+  {
+    float x, y, z;
+  };
+  
+  unsigned int buffer_size;
+  int num_total_vertices;
+  s_vertex * vertices;
+  float wrange[2];
+  GLuint modeloc, posloc, Mmvploc, clrloc;
+  
+  struct s_line_buffer_inf
+  {
+    bool bvalid;
+    bool bactive;
+    s_vertex * vtx;
+    unsigned int offset;
+    unsigned int npts;
+    float w;
+    glm::vec4 clr;
+    glm::vec3 t;
+    glm::mat4 R;
+    
+  s_line_buffer_inf() :offset(0), npts(0), vtx(NULL),
+      bvalid(false), bactive(false), w(1.f)
+    {}
+  };
+  
+  vector<s_line_buffer_inf> lbis;
+  
+  bool bupdated;
+ public:
+  c_gl_line_obj();
+  ~c_gl_line_obj();
+  
+  bool init(GLuint modeloc, GLuint posloc, GLuint Mmvploc, GLuint clrloc,
+	    unsigned int buffer_size = 4096);
+  int add(const int npts, const float * pts);
+  
+  void destroy();
+  
+  void remove(const int handle);
+  
+  void enable(const int handle)
+  {
+    if (handle < lbis.size())
+      {
+	lbis[handle].bactive = true;
+      }
+  }
+  
+  void disable(const int handle)
+  {
+    if (handle < lbis.size())
+      {
+	lbis[handle].bactive = false;
+      }
+  }
+  
+  void config_color(const glm::vec4 & _clr)
+  {
+    for (int ih = 0; ih < lbis.size(); ih++){
+      lbis[ih].clr = _clr;
+    }
+  }
+  
+  void config_color(const int handle, const glm::vec4 & _clr)
+  {
+    if (handle >= lbis.size())
+      return;
+    
+    lbis[handle].clr = _clr;
+  }
+  
+  void config_points(const int handle, const float * pts);
+  
+  void config_position(const glm::vec3 & _t)
+  {
+    for (int ih = 0; ih < lbis.size(); ih++){
+      lbis[ih].t = _t; 
+    }
+  }
+  
+  void config_position(const int handle, const glm::vec3 & _t)
+  {
+    if (handle >= lbis.size())
+      return;
+    
+    lbis[handle].t = _t;
+  }
+  
+  void config_rotation(const glm::mat4 & _R)
+  {
+    for (int ih = 0; ih < lbis.size(); ih++){
+      lbis[ih].R = _R;
+    }
+  }
+  
+  void config_rotation(const int handle, const glm::mat4 & _R)
+  {
+    if (handle >= lbis.size())
+      return;
+    
+    lbis[handle].R = _R;
+  }
+  
+  void config_width(const float _width)
+  {
+    for (int ih = 0; ih < lbis.size(); ih++){
+      lbis[ih].w = _width;
+    }
+  }
+  
+  void config_width(const int handle, const float _width)
+  {
+    if (lbis.size() >= handle)
+      return;
+    
+    lbis[handle].w = _width;
+  }
+  
+  void update_vertices();
+  
   void render(const glm::mat4 & PV);
 };
 
