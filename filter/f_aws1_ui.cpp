@@ -235,7 +235,7 @@ bool f_aws1_ui::init_run()
   if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
 	  return false;
   
-  if (!coast_line.init(&oline, clr, 4096))
+  if (!coast_line.init(&oline3d, clr, 4096))
 	  return false;
 
   glm::vec2 sz((float)(sz_fnt.x * 7), (float)(sz_fnt.y * 2)),
@@ -1087,15 +1087,15 @@ void f_aws1_ui::handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp)
     drag_waypoint();
   }
   else if (obj_tmp.type == ot_nul)
-    {
-      if (pvm_box->get_mode() == ui_mode_fpv){
-	// change dir_cam_hdg
-	drag_cam_dir();
-      }
-      else if (pvm_box->get_mode() == ui_mode_map){
-	drag_map();
-      }
+  {
+    if (pvm_box->get_mode() == ui_mode_fpv){
+      // change dir_cam_hdg
+      drag_cam_dir();
     }
+    else if (pvm_box->get_mode() == ui_mode_map){
+      drag_map();
+    }
+  }
 }
 
 void f_aws1_ui::handle_updated_ui_box(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box, c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box) 

@@ -147,7 +147,7 @@ public:
 class c_map_coast_line_obj : public c_map_obj
 {
 private:
-	c_gl_2d_line_obj * poline;
+	c_gl_line_obj * poline;
 	glm::vec4 clr;
 	struct s_line{
 		int index;
@@ -164,11 +164,8 @@ private:
 		if (h < 0)
 			return false;
 		handle.push_back(s_line(index, h));
-		poline->config_position(h, glm::vec2(0.f, 0.f));
-		poline->config_rotation(h, 0);
 		poline->config_width(h, 1.0);
 		poline->config_color(h, clr);
-		poline->config_depth(h, 0);
 		return true;
 	}
 public:
@@ -180,7 +177,7 @@ public:
 	{
 	}
 
-	bool init(c_gl_2d_line_obj * poline, const glm::vec4 & clr, const unsigned int max_num_points);
+	bool init(c_gl_line_obj * poline, const glm::vec4 & clr, const unsigned int max_num_points);
 	bool update_points(list<const AWSMap2::LayerData*> & coast_lines);
 	void enable();
 	void disable();

@@ -393,7 +393,7 @@ void c_map_ais_obj::set_focus(const int iobj)
 }
 
 /////////////////////////////////////////////////////////////////// c_map_coast_line_obj
-bool c_map_coast_line_obj::init(c_gl_2d_line_obj * _poline, const glm::vec4 & _clr, unsigned int max_num_points)
+bool c_map_coast_line_obj::init(c_gl_line_obj * _poline, const glm::vec4 & _clr, unsigned int max_num_points)
 {
   clr = _clr;
   poline = _poline;
@@ -409,8 +409,8 @@ bool c_map_coast_line_obj::update_points(list<const AWSMap2::LayerData*> & coast
 
   // add new lines
   struct s_vertex{
-    float x, y;
-    s_vertex() :x(0), y(0){}
+    float x, y, z;
+    s_vertex() :x(0), y(0), z(0){}
   };
 
   vector<s_vertex> pts;
@@ -435,54 +435,13 @@ bool c_map_coast_line_obj::update_points(list<const AWSMap2::LayerData*> & coast
         eceftowrld(Rmap, xmap, ymap, zmap,
           (const float)pte.x, (const float)pte.y, (const float)pte.z,
           rx, ry, rz);
-
-        glm::vec2 pt;
-        if (mode == ui_mode_map){
-          pt = calc_map_pos(rx, ry, rz);
-        }
-        else if (mode == ui_mode_fpv){
-          glm::vec3 pt_tmp = calc_fpv_pos(rx, ry, rz);
-          pt.x = pt_tmp.x;
-          pt.y = pt_tmp.y;
-          if (pt_tmp.z > 1.0)
-            bcull[ipt] = true;
-          else
-            bcull[ipt] = false;
-        }
-        pts[ipt].x = pt.x;
-        pts[ipt].y = pt.y;
+        pts[ipt].x = rx;
+        pts[ipt].y = ry;
+        pts[ipt].z = rz;
       }
 
-      // add lines
-      if (mode == ui_mode_map){
-        if (!add_new_line(index, pts.size(), (const float*)pts.data()))
-          return false;
-      }
-      else if (mode == ui_mode_fpv)
-      {
-        int start = -1;
-        for (int i = 0; i < pts.size(); i++){
-          if (bcull[i]){
-            if (start >= 0){
-              if (!add_new_line(index, i - start, (const float*)(pts.data() + start)))
-                return false;
-              start = -1;
-            }
-            continue;
-          }
-
-          if (start < 0){
-            start = i;
-          }
-        }
-
-        if (start >= 0)
-        {
-          if (!add_new_line(index, pts.size() - start, (const float*)(pts.data() + start)))
-            return false;
-        }
-      }
-
+      if (!add_new_line(index, pts.size(), (const float*)pts.data()))
+        return false;
     }
   }
 
