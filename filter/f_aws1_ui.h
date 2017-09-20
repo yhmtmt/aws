@@ -144,9 +144,18 @@ public:
   void update_route(c_route_cfg_box * prc_box);
   void update_map();
 
-  c_own_ship own_ship;	// own ship object
-  c_cursor ocsr;		// cursor 
+  c_own_ship own_ship;// own ship object
+  c_cursor ocsr;		  // cursor 
  
+  enum e_button{
+    ebtn_lock_map_own_ship, ebtn_lock_cam_dir_hdg, ebtn_nul
+  };
+  e_button btn_pushed, btn_released;
+  c_aws_ui_button btn_lock_map_own_ship, btn_lock_cam_dir_hdg;
+  bool handle_btn_pushed();
+  bool handle_btn_released();
+  void update_button(c_view_mode_box * pvm_box);
+
   ////////////////////////////////////////// Control instruction and status
   // Control source is categorized into two: one is manual, another is autopilot.
   // Manual control is done via joystic by instructing the control value to the m_ch_ctrl_inst channel,

@@ -1,5 +1,4 @@
 User interface
-* Map cannot be back to the own-ship centered mode.
 * waypoint to waypoint lines cannot be collectlly culled in fpv mode
 * The menu open/close markers are not sufficientlly sensitive. (larger size is prefered.)
 * waypoint cannot be drugged.
@@ -19,3 +18,4 @@ remote command
 * indicator draws a long line rolling with roll scale at the center.
 * during dragging map, flickers are caused frequently.
 * Menus and indicator are overwrapped with objects.
+* Map cannot be back to the own-ship centered mode.
