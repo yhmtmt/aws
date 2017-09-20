@@ -221,60 +221,62 @@ class ch_state: public ch_base
 
  public:
  ch_state(const char * name): ch_base(name), 
-	 m_tfile(0),
-	 tatt(0), tpos(0), tvel(0), tdp(0), tattf(0), tposf(0), tvelf(0), tdpf(0), 
-	 roll(0), pitch(0), yaw(0),
-    lon(0), lat(0), alt(0), galt(0), x(0), y(0), z(0), cog(0), sog(0), depth(0),
-	t9dof(0), mx(0), my(0), mz(0), ax(0), ay(0), az(0), gx(0), gy(0), gz(0)
-    {
-		R = Mat::eye(3, 3, CV_64FC1);
-    }
-
-  void set_attitude(const long long _tatt, const float _r, const float _p, const float _y)
+	   m_tfile(0), tatt(0), tpos(0), tvel(0), tdp(0),
+	   tattf(0), tposf(0), tvelf(0), tdpf(0), 
+	   roll(0), pitch(0), yaw(0), lon(0), lat(0), alt(0), galt(0),
+	   x(0), y(0), z(0), cog(0), sog(0), depth(0),
+	   t9dof(0), mx(0), my(0), mz(0), ax(0), ay(0), az(0),
+	   gx(0), gy(0), gz(0)
+	   {
+	     R = Mat::eye(3, 3, CV_64FC1);
+	   }
+	 
+	 void set_attitude(const long long _tatt, const float _r, const float _p, const float _y)
   {
     lock();
-	tatt = _tatt;
+    tatt = _tatt;
     roll = _r; 
     pitch = _p;
     yaw = _y;
     unlock();
   }
 
-  void set_9dof(const long long _t, const float _mx, const float _my, const float _mz,
-	  const float _ax, const float _ay, const float _az,
-	  const float _gx, const float _gy, const float _gz)
+  void set_9dof(const long long _t,
+		const float _mx, const float _my, const float _mz,
+		const float _ax, const float _ay, const float _az,
+		const float _gx, const float _gy, const float _gz)
   {
-	  lock();
-	  t9dof = _t;
-	  mx = _mx;
-	  my = _my;
-	  mz = _mz;
-	  ax = _ax;
-	  ay = _ay;
-	  az = _az;
-	  gx = _gx;
-	  gy = _gy;
-	  gz = _gz;
-	  unlock();
+    lock();
+    t9dof = _t;
+    mx = _mx;
+    my = _my;
+    mz = _mz;
+    ax = _ax;
+    ay = _ay;
+    az = _az;
+    gx = _gx;
+    gy = _gy;
+    gz = _gz;
+    unlock();
   }
-
+  
   void get_9dof(long long & _t, float & _mx, float & _my, float & _mz,
 	  float & _ax, float & _ay, float & _az,
 	  float & _gx, float & _gy, float & _gz)
   {
-	  lock();
-	  _t = t9dof;
-	  _mx = mx;
-	  _my = my;
-	  _mz = mz;
-	  _ax = ax;
-	  _ay = ay;
-	  _az = az;
-	  _gx = gx;
-	  _gy = gy;
-	  _gz = gz;
-
-	  unlock();
+    lock();
+    _t = t9dof;
+    _mx = mx;
+    _my = my;
+    _mz = mz;
+    _ax = ax;
+    _ay = ay;
+    _az = az;
+    _gx = gx;
+    _gy = gy;
+    _gz = gz;
+    
+    unlock();
   }
 
 

@@ -195,30 +195,30 @@ public:
 
   // these event handlers are called when the mouse event isnot handled in ui boxes. 
   void handle_base_mouse_event(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	  c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
+			       c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
   {
-	  if (mouse_button == GLFW_MOUSE_BUTTON_LEFT){
-		  if (mouse_action == GLFW_PRESS){
-			  handle_mouse_lbtn_push(pvm_box, pcm_box, pmc_box, prc_box);
-		  }
-		  else if (mouse_action == GLFW_RELEASE){
-			  handle_mouse_lbtn_release(pvm_box, pcm_box, pmc_box, prc_box);
-		  }
-		  clear_mouse_state();
-	  }
-	  else{
-		  handle_mouse_mv(pvm_box, pcm_box, pmc_box, prc_box);
-	  }
-
-	  if (obj_mouse_on.type == ot_nul){
-		  ocsr.enable_pos();
-		  ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
-	  }
-	  else {
-		  ocsr.disable();
-	  }
+    if (mouse_button == GLFW_MOUSE_BUTTON_LEFT){
+      if (mouse_action == GLFW_PRESS){
+	handle_mouse_lbtn_push(pvm_box, pcm_box, pmc_box, prc_box);
+      }
+      else if (mouse_action == GLFW_RELEASE){
+	handle_mouse_lbtn_release(pvm_box, pcm_box, pmc_box, prc_box);
+      }
+      clear_mouse_state();
+    }
+    else{
+      handle_mouse_mv(pvm_box, pcm_box, pmc_box, prc_box);
+    }
+    
+    if (obj_mouse_on.type == ot_nul){
+      ocsr.enable_pos();
+      ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
+    }
+    else {
+      ocsr.disable();
+    }
   }
-
+  
   void handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
 	  c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box);
   void handle_mouse_lbtn_release(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
