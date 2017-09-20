@@ -337,8 +337,8 @@ void c_aws_ui_box::setup_frame(const float y, const bool left,
   porect->config_depth(hbox, 2);
 
   porect->config_border(hback, false, 1.0);
-  porect->config_color(hback, bkgclr);
-  porect->config_depth(hback, 10);
+  porect->config_color(hback, glm::vec4(0,0,0,0));
+  porect->config_depth(hback, 3);
 //  porect->disable(hback);
 
   potri->config_border(hopen, false, 1.0);
@@ -804,7 +804,8 @@ bool c_map_cfg_box::init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
   pos.y = y;
 
   add_select_box(hbtn[range_down], hstr[range_down], str_btn[range_down],
-    hbtn[range_up], hstr[range_up], str_btn[range_up], hstr_range, pos, sz_udbtn, sz_box, sz_fnt, 7);
+    hbtn[range_up], hstr[range_up], str_btn[range_up],
+    hstr_range, pos, sz_udbtn, sz_box, sz_fnt, 7);
 
   pos.x = (float)(left ? xmin : xmax - sz_box.x);
   pos.y = (float)(y + sz_udbtn.y);
