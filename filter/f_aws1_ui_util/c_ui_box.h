@@ -154,7 +154,8 @@ public:
 	static void set_gl_objs(c_gl_2d_obj * _porect, c_gl_2d_obj * potri,
 		c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline);
 
-  bool collision(const glm::vec2 & pt){
+  bool collision(const glm::vec2 & pt)
+  {
     return porect->collision(pt, hbox);
   }
 };

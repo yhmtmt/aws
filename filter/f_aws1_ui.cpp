@@ -55,7 +55,8 @@ fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag
 num_max_wps(100), num_max_ais(100),
 bupdate_map(true), pt_prev_map_update(0,0,0),
 map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
-bmap_center_free(false)
+bmap_center_free(false),
+btn_pushed(ebtn_nul), btn_released(ebtn_nul)
 {
 	m_path_storage[0] = '.';m_path_storage[1] = '\0';
 
@@ -236,6 +237,23 @@ bool f_aws1_ui::init_run()
   
   if (!coast_line.init(&oline, clr, 4096))
 	  return false;
+
+  glm::vec2 sz((float)(sz_fnt.x * 7), (float)(sz_fnt.y * 2)),
+        pos((float)(-sz.x * 0.5), (float)((m_sz_win.height >> 1) - sz.y));
+
+  c_aws_ui_button::set_gl_element(&orect, &otxt);
+  if (!btn_lock_cam_dir_hdg.init(pos, sz, 5, clr, clrb)){
+    return false;
+  }
+  btn_lock_cam_dir_hdg.set_invisible();
+  btn_lock_cam_dir_hdg.set_text("LOCK");
+
+  if (!btn_lock_map_own_ship.init(pos, sz, 5, clr, clrb))
+  {
+    return false;
+  }
+  btn_lock_map_own_ship.set_invisible();
+  btn_lock_map_own_ship.set_text("LOCK");
 
   // Visible object
   visible_obj.resize(ot_nul, true);
@@ -498,6 +516,119 @@ void f_aws1_ui::update_map()
     }
 }
 
+bool f_aws1_ui::handle_btn_pushed()
+{
+  if (btn_lock_map_own_ship.collision(pt_mouse)){
+    btn_pushed = ebtn_lock_map_own_ship;
+    return true;
+  }
+  else if (btn_lock_cam_dir_hdg.collision(pt_mouse)){
+    btn_pushed = ebtn_lock_cam_dir_hdg;
+    return true;
+  }
+  return false;
+}
+
+bool f_aws1_ui::handle_btn_released()
+{
+  if (btn_lock_map_own_ship.collision(pt_mouse)){
+    btn_released = ebtn_lock_map_own_ship;
+    return true;
+  }
+  else if (btn_lock_cam_dir_hdg.collision(pt_mouse)){
+    btn_released = ebtn_lock_cam_dir_hdg;
+    return true;
+  }
+  return false;
+}
+
+void f_aws1_ui::update_button(c_view_mode_box * pvm_box)
+{
+  switch (pvm_box->get_mode()){
+  case ui_mode_fpv:
+    if (dir_cam_hdg != 0.0f){
+      btn_lock_cam_dir_hdg.set_visible();
+      btn_lock_cam_dir_hdg.set_normal();
+      btn_lock_map_own_ship.set_invisible();
+    }
+    else{
+      btn_lock_cam_dir_hdg.set_invisible();
+      btn_lock_map_own_ship.set_invisible();
+    }
+    break;
+  case ui_mode_map:
+    if (bmap_center_free){
+      btn_lock_cam_dir_hdg.set_invisible();
+      btn_lock_map_own_ship.set_normal();
+      btn_lock_map_own_ship.set_visible();
+    }
+    else{
+      btn_lock_cam_dir_hdg.set_invisible();
+      btn_lock_map_own_ship.set_invisible();
+    }
+    break;
+  case ui_mode_sys:
+    break;
+  }
+
+  if (btn_pushed != ebtn_nul){
+    if (btn_released == ebtn_nul){
+      switch (pvm_box->get_mode()){
+      case ui_mode_fpv:
+        if (dir_cam_hdg != 0.0f){
+          btn_lock_cam_dir_hdg.set_select();
+        }
+        break;
+      case ui_mode_map:
+        if (bmap_center_free){
+          btn_lock_map_own_ship.set_select();
+        }
+        break;
+      case ui_mode_sys:
+        break;
+      }
+    }
+    else if (btn_released == btn_pushed){
+      switch (btn_released){
+      case ebtn_lock_cam_dir_hdg:
+        dir_cam_hdg = 0.0f;
+        break;
+      case ebtn_lock_map_own_ship:
+        bmap_center_free = false;
+        break;
+      }
+    }
+    else{
+      switch (pvm_box->get_mode()){
+      case ui_mode_fpv:
+        if (dir_cam_hdg != 0.0f){
+          btn_lock_cam_dir_hdg.set_normal();
+        }
+        break;
+      case ui_mode_map:
+        if (bmap_center_free){
+          btn_lock_map_own_ship.set_normal();
+        }
+        break;
+      case ui_mode_sys:
+        break;
+      }
+    }
+    btn_pushed = btn_released = ebtn_nul;
+  }else if (btn_released != ebtn_nul){
+    // in touch panel, btn_push is not issued. the handler only need to handle release event.
+    switch (btn_released){
+    case ebtn_lock_cam_dir_hdg:
+      dir_cam_hdg = 0.0f;
+      break;
+    case ebtn_lock_map_own_ship:
+      bmap_center_free = false;
+      break;
+    }
+    btn_pushed = btn_released = ebtn_nul;
+  }
+}
+
 void f_aws1_ui::render_gl_objs()
 {	
 	// the image is completely fitted to the screen
@@ -612,6 +743,9 @@ bool f_aws1_ui::proc()
 
 	// update coast line (map)
 	update_map();
+
+  // update button
+  update_button(pvm_box);
 
 	// rendering graphics
 	render_gl_objs();
@@ -867,9 +1001,9 @@ void f_aws1_ui::drag_map()
 
 void f_aws1_ui::drag_cam_dir()
 {
-  float th0 = (float) atan2(pt_mouse.x, fcam);
-	float th1 = (float) atan2(pt_mouse_drag_begin.x,fcam);
-	dir_cam_hdg_drag = (float)(th1 - th0);
+  float th0 = (float)atan2(pt_mouse.x, fcam);
+  float th1 = (float)atan2(pt_mouse_drag_begin.x, fcam);
+  dir_cam_hdg_drag = (float)(th1 - th0);
 }
 
 void f_aws1_ui::det_obj_collision()
@@ -894,6 +1028,9 @@ void f_aws1_ui::det_obj_collision()
 void f_aws1_ui::handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
 	c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
 {
+  if (handle_btn_pushed())
+    return;
+
   det_obj_collision();
   switch (mouse_state){
   case ms_normal:
@@ -908,6 +1045,9 @@ void f_aws1_ui::handle_mouse_lbtn_release(c_view_mode_box * pvm_box,
 					  c_map_cfg_box * pmc_box,
 					  c_route_cfg_box * prc_box)
 {
+  if (handle_btn_released())
+    return;
+
 	s_obj obj_tmp = obj_mouse_on;
 	det_obj_collision();
 	switch (mouse_state){
@@ -1169,7 +1309,7 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
 	}
 
 	if (pvm_box->get_mode() == ui_mode_fpv){ // calculating projection matrix
-		float c, s, th = (float)(dir_cam_hdg + dir_cam_hdg_drag + yaw * PI / 180.);
+		float c, s, th = (float)(dir_cam_hdg + yaw * PI / 180.);
 		c = (float)cos(th);
 		s = (float)sin(th);
 

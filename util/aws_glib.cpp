@@ -1926,7 +1926,7 @@ void c_gl_2d_obj::config_depth(const int handle, const int depth)
 {
 	if (handle < iis.size())
 	{
-		iis[handle].z = 1.0 - (float)(depth * zstep);
+		iis[handle].z = -1.0 + (float)(depth * zstep);
 		reorder(handle);
 	}
 }

@@ -69,7 +69,7 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
   for (int i = 0; i < nmaxwps; i++){
     hmarks[i].hmark = pocirc->add(clr, pos, 0.0f, r);
     pocirc->config_border(hmarks[i].hmark, true, 1.0);
-    pocirc->config_depth(hmarks[i].hmark, 0);
+    pocirc->config_depth(hmarks[i].hmark, 10);
     pocirc->disable(hmarks[i].hmark);
     hmarks[i].hstr = potxt->reserv(20);
     potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos, 0, 0);
@@ -80,7 +80,7 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
       float pts[4] = { 0, 0, 0, (float)(rmark * 2.0) };
       h = hmarks[i].hline_inf = poline->add(2, pts);
       poline->config_color(h, clr);
-      poline->config_depth(h);
+      poline->config_depth(h, 10);
       poline->config_position(h, pos);
       poline->disable(h);
     }
@@ -238,12 +238,12 @@ bool c_map_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
   for (int i = 0; i < nmax_objs; i++){
     hmarks[i].hmark = porect->add(clr, pos, 0.0f, sz_rect);
     porect->config_border(hmarks[i].hmark, true, 1.0);
-    porect->config_depth(hmarks[i].hmark, 0);
+    porect->config_depth(hmarks[i].hmark, 10);
     porect->disable(hmarks[i].hmark);
 
     hmarks[i].hship2d = potri->add(clr, pos, 0.0f, sz_ship2d);
     potri->config_border(hmarks[i].hship2d, false, 1.0);
-    potri->config_depth(hmarks[i].hship2d, 1);
+    potri->config_depth(hmarks[i].hship2d, 11);
     potri->disable(hmarks[i].hship2d);
 
     hmarks[i].hstr = potxt->reserv(64);
@@ -253,12 +253,12 @@ bool c_map_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
     float pts[4] = { 0, 0, 0, (float)(sz_rect.y) };
     hmarks[i].hline_inf = poline->add(2, pts);
     poline->config_color(hmarks[i].hline_inf, clr);
-    poline->config_depth(hmarks[i].hline_inf);
+    poline->config_depth(hmarks[i].hline_inf, 10);
     poline->config_position(hmarks[i].hline_inf, pos);
 
     hmarks[i].hline_vel = poline->add(2, pts);
     poline->config_color(hmarks[i].hline_vel, clr);
-    poline->config_depth(hmarks[i].hline_vel);
+    poline->config_depth(hmarks[i].hline_vel, 10);
     poline->config_position(hmarks[i].hline_vel, pos);
   }
 
@@ -498,13 +498,13 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
 
   glm::vec2 pos(0, 0);
   hship = potri->add(clr, pos, 0, sz);
-  potri->config_depth(hship, 0);
+  potri->config_depth(hship, 10);
   potri->config_border(hship, true, 1.0);
 
   float pts[4] = { 0, 0, 1, 1 };
   hline_vel = poline->add(2, pts);
   poline->config_color(clr);
-  poline->config_depth(hline_vel, 0);
+  poline->config_depth(hline_vel, 10);
   return true;
 }
 
