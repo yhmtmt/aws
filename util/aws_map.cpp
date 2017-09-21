@@ -918,7 +918,7 @@ bool LayerData::merge(const LayerData & layerData)
 
   const vector<vec3> CoastLine::null_vec_vec3;
   
-CoastLine::CoastLine() :dist_min(FLT_MAX)
+  CoastLine::CoastLine() :dist_min(FLT_MAX), total_size(0)
 {
 }
 
@@ -1268,7 +1268,7 @@ LayerData * CoastLine::clone() const
 		list<vec2>::iterator itr_src = line.begin();
 		vector<vec2>::iterator itr_dst = pline->pts.begin();
 		vector<vec3>::iterator itr_dst_ecef = pline->pts_ecef.begin();
-		for (; itr_src != line.end(); itr_src++, itr_dst++) {
+		for (; itr_src != line.end(); itr_src++, itr_dst++, itr_dst_ecef++) {
 			*itr_dst = *itr_src;
 			bihtoecef(itr_dst->lat, itr_dst->lon, 0., itr_dst_ecef->x, itr_dst_ecef->y, itr_dst_ecef->z);
 		}
@@ -1338,7 +1338,8 @@ LayerData * CoastLine::clone() const
 				if (strcmp(buf, "\t\t\t</gml:posList>") == 0) {
 					add(line);
 					line.clear();
-					break;
+          bline = false;
+					continue;
 				}
 
 				vec2 pt;
@@ -1352,6 +1353,7 @@ LayerData * CoastLine::clone() const
 			}
 		}
 
+    update_properties();
 		return true;
 	}
 }

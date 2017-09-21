@@ -42,7 +42,7 @@ const char * f_map::m_str_cmd[emc_undef] =
 	"update", "add_data"
 };
 
-f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL)
+f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis)
 {
 	m_path[0] = '.';
 	m_path[1] = '\0';
@@ -52,7 +52,7 @@ f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL)
 	register_fpar("cmd", (int*)&m_cmd, emc_undef, m_str_cmd, "Command");
 	register_fpar("dtype", (int*)&m_dtype, edt_undef, m_str_dtype, "Data type of fdata");
 	register_fpar("path", m_path, 1024, "Path to map data.");
-	register_fpar("fdata", m_fdata, "File path to data file.");
+	register_fpar("fdata", m_fdata, 1024, "File path to data file.");
 	register_fpar("max_num_nodes", &m_max_num_nodes, "Maximum number of nodes.");
 	register_fpar("max_total_size_layer_data", &m_max_total_size_layer_data, "Maximum total size of layer data.");
 	register_fpar("max_size_coast_line", &m_max_size_layer_data[AWSMap2::lt_coast_line], "Max data size of coast line layer data per node.");
@@ -82,21 +82,24 @@ void f_map::destroy_run()
 
 bool f_map::proc()
 {
+  bool success = false;
   switch (m_cmd)
+  {
+  case emc_update:
+    if (update_channel())
     {
-    case emc_update:
-      if (!update_channel())
-	{
-	  return false;
-	}
-      break;
-    case emc_add_data:
-      if (!add_data()){
-	return false;
-      }
-      break;      
+      success = true;
     }
- 
+    break;
+  case emc_add_data:
+    if (add_data()){
+      success = true;
+      m_fdata[0] = '\0';
+    }
+    break;
+  }
+  m_cmd = emc_undef;
+
   return true;
 }
 
@@ -157,7 +160,9 @@ bool f_map::add_data()
 AWSMap2::LayerData * f_map::load_jpjis()
 {
 	AWSMap2::CoastLine * pcl = new AWSMap2::CoastLine;
-	if (!pcl->loadJPJIS(m_fdata)){
+  char fpath[2048];
+  snprintf(fpath, 2048, "%s/%s", m_path, m_fdata);
+	if (!pcl->loadJPJIS(fpath)){
 		delete pcl;
 		return NULL;
 	}
