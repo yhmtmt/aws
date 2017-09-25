@@ -12,17 +12,17 @@
 
 // You should have received a copy of the GNU General Public License
 // along with f_env_sensor.h.  If not, see <http://www.gnu.org/licenses/>. 
-#ifndef _F_BASE_H_
-#define _F_BASE_H_
+#ifndef _F_ENV_SENSOR_H_
+#define _F_ENV_SENSOR_H_
 
 #include "f_base.h"
-#include "ch_state"
+#include "../channel/ch_state.h"
 
 #define MLB_BUF 1024
 
-class f_env_sensor: public f_base
+class f_env_sensor : public f_base
 {
- protected:
+protected:
   ch_env * m_chan;
   char m_dname[1024];
   unsigned short m_port;
@@ -32,7 +32,7 @@ class f_env_sensor: public f_base
 
   int m_rbuf_head, m_rbuf_tail;
   bool m_verb;
- public:
+public:
   f_env_sensor(const char * name);
   virtual ~f_env_sensor();
 
@@ -43,3 +43,5 @@ class f_env_sensor: public f_base
   virtual bool proc();
 
 };
+
+#endif

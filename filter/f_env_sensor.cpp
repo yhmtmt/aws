@@ -34,11 +34,11 @@ using namespace cv;
 
 #include "f_env_sensor.h"
 
-f_env_sensor::f_env_sensor(const char * name):f_base(name), m_chan(NULL), m_rbuf_head(0), m_rbuf_tail(0), m_port(0), m_verb(false), m_hserial(-1), m_br(9600)
+f_env_sensor::f_env_sensor(const char * name) :f_base(name), m_chan(NULL), m_rbuf_head(0), m_rbuf_tail(0), m_port(0), m_verb(false), m_hserial(NULL), m_br(9600)
 {
   m_dname[0] = '¥0';
   register_fpar("ch", (ch_base**)&m_chan, typeid(ch_env).name(), "Channel for enviromental parameters.");
-  register_fpar("dev", &m_dname, 1024, "Device file path of the serial port.");
+  register_fpar("dev", m_dname, 1024, "Device file path of the serial port.");
   register_fpar("port", &m_port, "Port number.");
   register_fpar("br", &m_br, "Baudrate.");
   register_fpar("verb", &m_verb, "Verbose mode.");
@@ -55,7 +55,7 @@ bool f_env_sensor::init_run()
 #else
   m_hserial = open_serial(m_dname, m_br);
 #endif
-  if(m_hserial == NULL_SERIAL)
+  if (m_hserial == NULL_SERIAL)
     return false;
   return true;
 }
@@ -66,58 +66,61 @@ void f_env_sensor::destroy_run()
 
 bool f_env_sensor::proc()
 {
-  m_rbuf_tail += 
+  m_rbuf_tail +=
     read_serial(m_hserial, m_rbuf + m_rbuf_tail, MLB_BUF - m_rbuf_tail);
   int dat_start = -1, dat_end = -1;
-  for(int i = m_rbuf_head; i < m_rbuf_tail; i++){
-    if(m_rbuf[i] == 'm' && m_rbuf[i+1] == 'l' && m_rbuf[i+2] == 'b'){
+  for (int i = m_rbuf_head; i < m_rbuf_tail; i++){
+    if (m_rbuf[i] == 'm' && m_rbuf[i + 1] == 'l' && m_rbuf[i + 2] == 'b'){
       dat_start = i;
       break;
     }
   }
 
-  if(dat_start < 0){
+  if (dat_start < 0){
     return true;
-  }else{
-    for(int i = dat_start; i < m_rbuf_tail; i++){
-      if(m_rbuf[i] == '¥n'){
-	m_rbuf[i] = '¥0';
-	dat_end = i;
-	break;
+  }
+  else{
+    for (int i = dat_start; i < m_rbuf_tail; i++){
+      if (m_rbuf[i] == '¥n'){
+        m_rbuf[i] = '¥0';
+        dat_end = i;
+        break;
       }
     }
   }
 
-  if(dat_start >= 0 && dat_end >= 0){
+  double baro, temp, humd, ilum;
+
+  if (dat_start >= 0 && dat_end >= 0){
     int i = 3 + dat_start;
     int j = i;
     int ipar = 0;
-    for(; j < dat_end; j++){
-      if(m_rbuf[j] == ','){
-	m_rbuf[j] = '¥0';
-	switch(ipar){
-	case 0:
-	  temp = atof(m_rbuf[i]);
-	  break;
-	case 1:
-	  baro = atof(m_rbuf[i]);
-	  break;
-	case 2:
-	  humd = atof(m_rbuf[i]);
-	  break;
-	case 3:
-	  ilum = atof(m_rbuf[i]);
-	  break;
-	}
-	ipar++;
-	j++;
-	i = j;
+    for (; j < dat_end; j++){
+      if (m_rbuf[j] == ','){
+        m_rbuf[j] = '¥0';
+        switch (ipar){
+        case 0:
+          temp = atof(&m_rbuf[i]);
+          break;
+        case 1:
+          baro = atof(&m_rbuf[i]);
+          break;
+        case 2:
+          humd = atof(&m_rbuf[i]);
+          break;
+        case 3:
+          ilum = atof(&m_rbuf[i]);
+          break;
+        }
+        ipar++;
+        j++;
+        i = j;
       }
     }
-    m_chan->set(get_time(), baro, temp, humd, ilum);
+    m_chan->set(get_time(), (float)baro, (float)temp, (float)humd, (float)ilum);
 
     // repacking buffer
-    for(i = 0, j = dat_end + 1; j < m_rbuf_tail;  i++, j++){
+    for (i = 0, j = dat_end + 1; j < m_rbuf_tail; i++, j++){
       m_rbuf[i] = m_rbuf[j];
     }
     m_rbuf_head = 0;
