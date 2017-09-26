@@ -18,9 +18,9 @@ OFLAGS = -O3
 #OFLAGS =
 
 # Platform specification
-BOARD = jtx
+#BOARD = jtx
 #BOARD = jtk
-#BOARD = zed
+BOARD = zed
 #BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
@@ -42,24 +42,22 @@ FWINDOW = n
 GLFW_WINDOW = y
 
 # n: disable all the imaging and image processing filter later
-IMGPROC = y
+IMGPROC = n
 AVT_CAM = n
-VMB_CAM = y
+VMB_CAM = n
 UVC_CAM = n
-GST_CAM = y
+GST_CAM = n
 SANYO_HD5400 = n	
-ORB_SLAM = y
+ORB_SLAM = n
 STEREO = n
 CAMCALIB = n
 STABILIZER = n
-MISC = y
+MISC = ny
 
 ifeq ($(WINDOW), n)
 	FWINDOW = n
 	GLFW_WINDOW = n
 endif
-
-
 
 ############################################################ Path configuration
 CUR_DIR = $(shell pwd)
@@ -67,10 +65,10 @@ FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
 RCMD_DIR = $(CUR_DIR)/rcmd
-#INC_CV_DIR = $(CUR_DIR)/../opencv3/include
-#LIB_CV_DIR = $(CUR_DIR)/../opencv3/lib
-INC_CV_DIR = /usr/local/include
-LIB_CV_DIR = /usr/local/lib
+INC_CV_DIR = $(CUR_DIR)/../opencv3/include
+LIB_CV_DIR = $(CUR_DIR)/../opencv3/lib
+#INC_CV_DIR = /usr/local/include
+#LIB_CV_DIR = /usr/local/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
@@ -98,7 +96,7 @@ LIB = -lrt -lpthread
 FILTER = f_base f_nmea \
 	f_shioji f_com f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_aws1_sim f_ahrs f_aws1_ap f_map f_obj_manager \
-	f_wp_manager f_aws3_com
+	f_wp_manager f_aws3_com f_env_sensor
 
 # listing channels
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state ch_wp

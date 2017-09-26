@@ -36,7 +36,7 @@ using namespace cv;
 
 f_env_sensor::f_env_sensor(const char * name) :f_base(name), m_chan(NULL), m_rbuf_head(0), m_rbuf_tail(0), m_port(0), m_verb(false), m_hserial(NULL), m_br(9600)
 {
-  m_dname[0] = '¥0';
+  m_dname[0] = 0;
   register_fpar("ch", (ch_base**)&m_chan, typeid(ch_env).name(), "Channel for enviromental parameters.");
   register_fpar("dev", m_dname, 1024, "Device file path of the serial port.");
   register_fpar("port", &m_port, "Port number.");
@@ -70,7 +70,7 @@ bool f_env_sensor::proc()
     read_serial(m_hserial, m_rbuf + m_rbuf_tail, MLB_BUF - m_rbuf_tail);
   int dat_start = -1, dat_end = -1;
   for (int i = m_rbuf_head; i < m_rbuf_tail; i++){
-    if (m_rbuf[i] == 'm' && m_rbuf[i + 1] == 'l' && m_rbuf[i + 2] == 'b'){
+    if (m_rbuf[i] == 'm' && m_rbuf[i + 1] == 'l' && m_rbuf[i + 2] == 'b'){     
       dat_start = i;
       break;
     }
@@ -81,8 +81,8 @@ bool f_env_sensor::proc()
   }
   else{
     for (int i = dat_start; i < m_rbuf_tail; i++){
-      if (m_rbuf[i] == '¥n'){
-        m_rbuf[i] = '¥0';
+      if (m_rbuf[i] == 0x0d || m_rbuf[i] == 0x0a){
+        m_rbuf[i] = 0;
         dat_end = i;
         break;
       }
@@ -95,9 +95,9 @@ bool f_env_sensor::proc()
     int i = 3 + dat_start;
     int j = i;
     int ipar = 0;
-    for (; j < dat_end; j++){
-      if (m_rbuf[j] == ','){
-        m_rbuf[j] = '¥0';
+    for (; j <= dat_end; j++){
+      if (m_rbuf[j] == ',' || m_rbuf[j] == 0){
+        m_rbuf[j] = 0;
         switch (ipar){
         case 0:
           temp = atof(&m_rbuf[i]);
@@ -117,8 +117,12 @@ bool f_env_sensor::proc()
         i = j;
       }
     }
+    if(m_verb){
+      cout << m_time_str;
+      cout << " baro=" << baro << " temp=" << temp << " humd=" << humd << " ilum=" << ilum << endl;
+    }
     m_chan->set(get_time(), (float)baro, (float)temp, (float)humd, (float)ilum);
-
+    
     // repacking buffer
     for (i = 0, j = dat_end + 1; j < m_rbuf_tail; i++, j++){
       m_rbuf[i] = m_rbuf[j];
