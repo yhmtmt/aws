@@ -119,6 +119,7 @@ using namespace cv;
 #include "channel/ch_map.h"
 #include "channel/ch_obj.h"
 #include "channel/ch_wp.h"
+
 #ifdef ORB_SLAM
 #include "channel/ch_orb_slam.h"
 #endif
@@ -171,6 +172,7 @@ void ch_base::register_factory()
 	register_factory<ch_ring<char, 8192> >("crbuf8k");
 	register_factory<ch_state>("state");
 	register_factory<ch_estate>("estate");
+  register_factory<ch_env>("env");
 	register_factory<ch_map>("map");
 	register_factory<ch_obj>("obj");
 	register_factory<ch_obst>("obst");
@@ -268,6 +270,7 @@ void ch_base::register_factory()
 #include "filter/f_aws1_ap.h"
 #include "filter/f_obj_manager.h"
 #include "filter/f_wp_manager.h"
+#include "filter/f_env_sensor.h"
 
 #ifdef ORB_SLAM
 #include "filter/f_orb_slam.h"
@@ -431,12 +434,13 @@ void f_base::register_factory()
 	register_factory<f_time>("tsync");
 
 	register_factory<f_ahrs>("ahrs");
+  register_factory<f_env_sensor>("env");
+
 	register_factory<f_aws1_ap>("aws1_ap");
 	register_factory<f_obj_manager>("obj_manager");
 
 	register_factory<f_map>("map");
 	register_factory<f_wp_manager>("wp_manager");
-
 #ifdef ORB_SLAM
 	// orb slam
 	register_factory<ORB_SLAM2::f_local_mapper>("orb_slam_local_mapper");
