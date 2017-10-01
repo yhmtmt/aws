@@ -893,14 +893,11 @@ public:
     itr = objs.find(mmsi);
     if(itr != objs.end()){
       c_ais_obj & obj = *(itr->second);
-      cout << "Update AIS: "; obj.print(cout);
       obj.update(t, lat, lon, cog, sog, hdg);
-      cout << "Updated AIS: "; obj.print(cout);
       obj.set_ecef_from_bih();
       updates.push_back(&obj);
     }else{
       c_ais_obj * pobj = new c_ais_obj(t, mmsi, lat, lon, cog, sog, hdg);
-      cout << "New AIS: ";  pobj->print(cout);
       objs.insert(map<unsigned int, c_ais_obj *>::value_type(mmsi, pobj));
       pobj->set_ecef_from_bih();
       updates.push_back(pobj);
@@ -978,11 +975,9 @@ public:
   
   void remove_old(const long long told){
     lock();
-    cout << "Remove from " <<  objs.size() << " Objs " << updates.size() << " Updates" << endl;
     for(itr = objs.begin(); itr != objs.end();){
       c_ais_obj * pobj = itr->second;
       if(pobj->get_time() < told){
-	cout << "Remove AIS: "; pobj->print(cout);
 	updates.remove(pobj);
 	itr = objs.erase(itr);
 	delete pobj;
@@ -1092,15 +1087,12 @@ public:
       itr = objs.find(obj_new.get_mmsi());
       if(itr != objs.end()){
 	c_ais_obj & obj = *(itr->second);
-	cout << "Update AIS: "; obj.print(cout);
 	obj.update(obj_new);
-	cout << "Updated AIS: "; obj.print(cout);
 	obj.set_ecef_from_bih();
 	updates.push_back(itr->second);
       }else{
-	c_ais_obj * pobj = new c_ais_obj(obj);
-	objs.insert(map<unsigned int, c_ais_obj *>::value_type(obj.get_mmsi(), pobj));
-	cout << "New AIS: ";  pobj->print(cout);
+	c_ais_obj * pobj = new c_ais_obj(obj_new);
+	objs.insert(map<unsigned int, c_ais_obj *>::value_type(pobj->get_mmsi(), pobj));
 	pobj->set_ecef_from_bih();
 	updates.push_back(pobj);
       }
@@ -1130,10 +1122,8 @@ public:
     if(pf){
       lock();
       long long tnew = m_tfile;
-      //			cout << "cur log time " << m_tfile << endl;
       for(itr = objs.begin(); itr != objs.end(); itr++){
 	c_ais_obj & obj = *(itr->second);
-	//				cout << "t " << obj.get_time() << " mmsi "<< obj.get_mmsi() << endl;
 	if(obj.get_time() > m_tfile){
 	  tnew = max(tnew, obj.get_time());
 	  sz += obj.write(pf);
