@@ -119,10 +119,10 @@ public:
   c_indicator ind;
   void update_indicator(const float cog, const float sog, 
 	  const float roll, const float pitch, const float yaw)
-  {
-	  ind.set_param(m_stat.meng, m_stat.seng, m_stat.rud, (float)(cog * (PI / 180.f)), sog,
+  {   
+    ind.set_param(m_stat.meng_aws, m_stat.seng_aws, m_stat.rud_aws, (float)(cog * (PI / 180.f)), sog,
 		  (float)(yaw * (PI / 180.f)), (float)(pitch* (PI / 180.f)), (float)(roll* (PI / 180.f)));
-	  ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
+    ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
   }
 
   //////////////////////////////////////////// map objects

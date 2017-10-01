@@ -302,16 +302,18 @@ void f_aws1_ui::destroy_run()
 
 void f_aws1_ui::ui_force_ctrl_stop(c_ctrl_mode_box * pcm_box)
 {
-	if(m_js.id != -1){
-		if(m_js.elb & s_jc_u3613m::EB_STDOWN &&
-			m_js.elt & s_jc_u3613m::EB_STDOWN &&
-			m_js.erb & s_jc_u3613m::EB_STDOWN &&
-			m_js.ert & s_jc_u3613m::EB_STDOWN){
-				m_inst.ctrl_src = ACS_UI;
-				ctrl_mode = cm_crz;
-				pcm_box->set_mode(c_ctrl_mode_box::crz);
-		}
-	}
+  if(m_js.id != -1){
+    if(m_js.elb & s_jc_u3613m::EB_STDOWN &&
+       m_js.elt & s_jc_u3613m::EB_STDOWN &&
+       m_js.erb & s_jc_u3613m::EB_STDOWN &&
+       m_js.ert & s_jc_u3613m::EB_STDOWN){
+      m_inst.ctrl_src = ACS_UI;
+      m_meng_f = m_seng_f = m_rud_f = 127.f;
+      m_inst.rud_aws = m_inst.meng_aws = m_inst.seng_aws = 127;
+      ctrl_mode = cm_crz;
+      pcm_box->set_mode(c_ctrl_mode_box::crz);
+    }
+  }
 }
 
 void f_aws1_ui::cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy)
@@ -690,11 +692,11 @@ bool f_aws1_ui::proc()
   }
 
   //m_inst to m_ch_ctrl_inst
-	snd_ctrl_inst();
-
-	// m_ch_ctrl_stat to m_stat
-	rcv_ctrl_stat();
-
+  snd_ctrl_inst();
+  
+  // m_ch_ctrl_stat to m_stat
+  rcv_ctrl_stat();
+  
 	// Window forcus is now at this window
 	glfwMakeContextCurrent(pwin());
 
@@ -747,13 +749,13 @@ bool f_aws1_ui::proc()
   // update button
   update_button(pvm_box);
 
-	// rendering graphics
-	render_gl_objs();
-
-	// screen shot or video capturue
-	print_screen();
- 
-	return true;
+  // rendering graphics
+  render_gl_objs();
+  
+  // screen shot or video capturue
+  print_screen();
+  
+  return true;
 }
 
 void f_aws1_ui::snd_ctrl_inst()
@@ -765,11 +767,11 @@ void f_aws1_ui::snd_ctrl_inst()
 
 void f_aws1_ui::rcv_ctrl_stat()
 {
-	s_aws1_ctrl_stat stat;
+  s_aws1_ctrl_stat stat;
   if(m_ch_ctrl_stat){
     m_ch_ctrl_stat->get(stat);
   }else 
-	  return;
+    return;
   m_stat.ctrl_src = stat.ctrl_src;
   m_stat.rud_rmc = stat.rud_rmc;
   m_stat.meng_rmc = stat.meng_rmc;
@@ -777,9 +779,13 @@ void f_aws1_ui::rcv_ctrl_stat()
   m_stat.rud = stat.rud;
   m_stat.meng = stat.meng;
   m_stat.seng = stat.seng;
+  m_stat.rud_aws = stat.rud_aws;
+  m_stat.meng_aws = stat.meng_aws;
+  m_stat.seng_aws = stat.seng_aws;
+ 
   m_stat.rud_sta = stat.rud_sta;
   m_stat.rud_sta_out = stat.rud_sta_out;
-
+  
   m_stat.rud_max_rmc = stat.rud_max_rmc;
   m_stat.rud_nut_rmc = stat.rud_nut_rmc;
   m_stat.rud_min_rmc = stat.rud_min_rmc;
@@ -822,124 +828,124 @@ void f_aws1_ui::rcv_ctrl_stat()
 
 void f_aws1_ui::handle_ctrl_crz()
 {
-	if (m_js.id != -1){
-		m_rud_f += (float)(m_js.lr1 * (255. / 180.));
-		m_rud_f += (float)(m_js.lr2 * (255. / 180.));
-		m_rud_f = min((float)255.0, m_rud_f);
-		m_rud_f = max((float)0.0, m_rud_f);
-
-		m_meng_f -= (float)(m_js.ud1 * (255. / 180));
-		m_meng_f = min((float)255.0, m_meng_f);
-		m_meng_f = max((float)0.0, m_meng_f);
-
-		m_seng_f -= (float)(m_js.ud2 * (255. / 180));
-		m_seng_f = min((float) 255.0, m_seng_f);
-		m_seng_f = max((float)0.0, m_seng_f);
-	}
-	m_inst.tcur = get_time();
-	m_inst.rud_aws = (unsigned char)m_rud_f;
-	m_inst.meng_aws = (unsigned char)m_meng_f;
-	m_inst.seng_aws = (unsigned char)m_seng_f;
+  if (m_js.id != -1){
+    m_rud_f += (float)(m_js.lr1 * (255. / 180.));
+    m_rud_f += (float)(m_js.lr2 * (255. / 180.));
+    m_rud_f = min((float)255.0, m_rud_f);
+    m_rud_f = max((float)0.0, m_rud_f);
+    
+    m_meng_f -= (float)(m_js.ud1 * (255. / 180));
+    m_meng_f = min((float)255.0, m_meng_f);
+    m_meng_f = max((float)0.0, m_meng_f);
+    
+    m_seng_f -= (float)(m_js.ud2 * (255. / 180));
+    m_seng_f = min((float) 255.0, m_seng_f);
+    m_seng_f = max((float)0.0, m_seng_f);
+  }
+  m_inst.tcur = get_time();
+  m_inst.rud_aws = (unsigned char)m_rud_f;
+  m_inst.meng_aws = (unsigned char)m_meng_f;
+  m_inst.seng_aws = (unsigned char)m_seng_f;
 }
 
 void f_aws1_ui::handle_ctrl_ctl()
 {
-	if (m_js.id != -1){
-		m_rud_f = 127.5;
-		m_rud_f += (float)(m_js.lr1 * (127.5));
-		m_rud_f += (float)(m_js.lr2 * (127.5));
-		m_rud_f = min((float)255.0, m_rud_f);
-		m_rud_f = max((float)0.0, m_rud_f);
-
-		m_meng_f = 127.5;
-		m_meng_f -= (float)(m_js.ud1 * (127.5));
-		m_meng_f = min((float)255.0, m_meng_f);
-		m_meng_f = max((float)0.0, m_meng_f);
-
-		m_seng_f = 127.5;
-		m_seng_f -= (float)(m_js.ud2 * (127.5));
-		m_seng_f = min((float) 255.0, m_seng_f);
-		m_seng_f = max((float)0.0, m_seng_f);
-	}
-	m_inst.tcur = get_time();
-	m_inst.rud_aws = (unsigned char)m_rud_f;
-	m_inst.meng_aws = (unsigned char)m_meng_f;
-	m_inst.seng_aws = (unsigned char)m_seng_f;
+  if (m_js.id != -1){
+    m_rud_f = 127.5;
+    m_rud_f += (float)(m_js.lr1 * (127.5));
+    m_rud_f += (float)(m_js.lr2 * (127.5));
+    m_rud_f = min((float)255.0, m_rud_f);
+    m_rud_f = max((float)0.0, m_rud_f);
+    
+    m_meng_f = 127.5;
+    m_meng_f -= (float)(m_js.ud1 * (127.5));
+    m_meng_f = min((float)255.0, m_meng_f);
+    m_meng_f = max((float)0.0, m_meng_f);
+    
+    m_seng_f = 127.5;
+    m_seng_f -= (float)(m_js.ud2 * (127.5));
+    m_seng_f = min((float) 255.0, m_seng_f);
+    m_seng_f = max((float)0.0, m_seng_f);
+  }
+  m_inst.tcur = get_time();
+  m_inst.rud_aws = (unsigned char)m_rud_f;
+  m_inst.meng_aws = (unsigned char)m_meng_f;
+  m_inst.seng_aws = (unsigned char)m_seng_f;
 }
 
 void f_aws1_ui::handle_ctrl_csr()
 {
-	float th_mouse = (float)(atan2(pt_mouse.y, pt_mouse.x) * 180.0 / PI);
-	float d_mouse = (float)sqrt(pt_mouse_enu.x * pt_mouse_enu.x + pt_mouse_enu.y + pt_mouse_enu.y);
-
-	m_ch_ap_inst->set_csr_pos(pt_mouse_bih.x, pt_mouse_bih.y, pt_mouse_enu.x, pt_mouse_enu.y, d_mouse, th_mouse);
+  float th_mouse = (float)(atan2(pt_mouse.y, pt_mouse.x) * 180.0 / PI);
+  float d_mouse = (float)sqrt(pt_mouse_enu.x * pt_mouse_enu.x + pt_mouse_enu.y + pt_mouse_enu.y);
+  
+  m_ch_ap_inst->set_csr_pos(pt_mouse_bih.x, pt_mouse_bih.y, pt_mouse_enu.x, pt_mouse_enu.y, d_mouse, th_mouse);
 }
 
 void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
-	e_ui_mode vm, Mat & Rown,
-	const float lat, const float lon,
-	const float xown, const float yown, const float zown, const float yaw)
+					    e_ui_mode vm, Mat & Rown,
+					    const float lat, const float lon,
+					    const float xown, const float yown, const float zown, const float yaw)
 {
-	if (vm == ui_mode_map)
-	{
-		if (!bmap_center_free){
-			pt_map_center_ecef.x = xown;
-			pt_map_center_ecef.y = yown;
-			pt_map_center_ecef.z = zown;
-			pt_map_center_bih.x = (float)(lat * PI / 180.0f);
-			pt_map_center_bih.y = (float)(lon * PI / 180.0f);
-			Rmap = Rown.clone();
-		}
-		pt_mouse_enu.x = pt_mouse.x * meter_per_pix;
-		pt_mouse_enu.y = pt_mouse.y * meter_per_pix;
-		pt_mouse_enu.z = 0.f;
-		float alt = 0;
-		wrldtoecef(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
-			pt_mouse_enu.x, pt_mouse_enu.y, pt_mouse_enu.z,
-			pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z);
-		eceftobih(pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z,
-			pt_mouse_bih.x, pt_mouse_bih.y, alt);
-	}
-	else if (vm == ui_mode_fpv)
-	{
-		pt_map_center_ecef.x = xown;
-		pt_map_center_ecef.y = yown;
-		pt_map_center_ecef.z = zown;
-		pt_map_center_bih.x = lat;
-		pt_map_center_bih.y = lon;
-		Rmap = Rown.clone();
-
-		glm::vec2 phi(atan2(pt_mouse.x, fcam), atan2(-pt_mouse.y, fcam));
-		float th, RE_sin_th;
-		if (phi.y > th_horizon) {
-			phi.y = th_horizon;
-			th = th_horizon;
-		}
-		else {
-			th = (float)(phi.y - asin((height_cam_ec * iRE) * cos(phi.y)) - 0.5 * PI);
-		}
-		RE_sin_th = (float)(RE * sin(th));
-		glm::vec3 pcam(
-			(float)(RE_sin_th * sin(phi.x)),
-			(float)(RE_sin_th * (-pt_mouse.y * ifcam)),
-			(float)(RE_sin_th * cos(phi.x))
-		);
-
-		float c, s, thcam = (float)((PI / 180.0) * (yaw + dir_cam_hdg));
-		c = (float)cos(thcam);
-		s = (float)sin(thcam);
-
-		pt_mouse_enu.x = (float)(c * pcam.x + s * pcam.y);
-		pt_mouse_enu.y = (float)(-s * pcam.x + c * pcam.y);
-		pt_mouse_enu.z = (float)(pcam.z - height_cam);
-
-		float alt = 0;
-		wrldtoecef(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
-			pt_mouse_enu.x, pt_mouse_enu.y, pt_mouse_enu.z,
-			pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z);
-		eceftobih(pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z,
-			pt_mouse_bih.x, pt_mouse_bih.y, alt);
-	}
+  if (vm == ui_mode_map)
+    {
+      if (!bmap_center_free){
+	pt_map_center_ecef.x = xown;
+	pt_map_center_ecef.y = yown;
+	pt_map_center_ecef.z = zown;
+	pt_map_center_bih.x = (float)(lat * PI / 180.0f);
+	pt_map_center_bih.y = (float)(lon * PI / 180.0f);
+	Rmap = Rown.clone();
+      }
+      pt_mouse_enu.x = pt_mouse.x * meter_per_pix;
+      pt_mouse_enu.y = pt_mouse.y * meter_per_pix;
+      pt_mouse_enu.z = 0.f;
+      float alt = 0;
+      wrldtoecef(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
+		 pt_mouse_enu.x, pt_mouse_enu.y, pt_mouse_enu.z,
+		 pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z);
+      eceftobih(pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z,
+		pt_mouse_bih.x, pt_mouse_bih.y, alt);
+    }
+  else if (vm == ui_mode_fpv)
+    {
+      pt_map_center_ecef.x = xown;
+      pt_map_center_ecef.y = yown;
+      pt_map_center_ecef.z = zown;
+      pt_map_center_bih.x = lat;
+      pt_map_center_bih.y = lon;
+      Rmap = Rown.clone();
+      
+      glm::vec2 phi(atan2(pt_mouse.x, fcam), atan2(-pt_mouse.y, fcam));
+      float th, RE_sin_th;
+      if (phi.y > th_horizon) {
+	phi.y = th_horizon;
+	th = th_horizon;
+      }
+      else {
+	th = (float)(phi.y - asin((height_cam_ec * iRE) * cos(phi.y)) - 0.5 * PI);
+      }
+      RE_sin_th = (float)(RE * sin(th));
+      glm::vec3 pcam(
+		     (float)(RE_sin_th * sin(phi.x)),
+		     (float)(RE_sin_th * (-pt_mouse.y * ifcam)),
+		     (float)(RE_sin_th * cos(phi.x))
+		     );
+      
+      float c, s, thcam = (float)((PI / 180.0) * (yaw + dir_cam_hdg));
+      c = (float)cos(thcam);
+      s = (float)sin(thcam);
+      
+      pt_mouse_enu.x = (float)(c * pcam.x + s * pcam.y);
+      pt_mouse_enu.y = (float)(-s * pcam.x + c * pcam.y);
+      pt_mouse_enu.z = (float)(pcam.z - height_cam);
+      
+      float alt = 0;
+      wrldtoecef(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
+		 pt_mouse_enu.x, pt_mouse_enu.y, pt_mouse_enu.z,
+		 pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z);
+      eceftobih(pt_mouse_ecef.x, pt_mouse_ecef.y, pt_mouse_ecef.z,
+		pt_mouse_bih.x, pt_mouse_bih.y, alt);
+    }
 }
 
 void f_aws1_ui::add_waypoint(c_route_cfg_box * prc_box)
