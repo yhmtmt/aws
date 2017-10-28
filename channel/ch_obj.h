@@ -862,326 +862,324 @@ public:
 class ch_ais_obj:public ch_base
 {
 protected:
-	map<unsigned int, c_ais_obj *> objs;
-	map<unsigned int, c_ais_obj *>::iterator itr;
-	list<c_ais_obj*> updates;
-	long long m_tfile;
+  map<unsigned int, c_ais_obj *> objs;
+  map<unsigned int, c_ais_obj *>::iterator itr;
+  list<c_ais_obj*> updates;
+  long long m_tfile;
 public:
-	ch_ais_obj(const char * name): ch_base(name), m_tfile(0)
-	{
-		itr = objs.begin();
-	}
-
-	virtual ~ch_ais_obj()
-	{
-		lock();
-		begin();
-		for (; !is_end(); next())
-			delete (itr->second);
-		objs.clear();
-		updates.clear();
-		unlock();
-	}
-
-	void push(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
-	{
-	  if(mmsi == 0 || mmsi > 999999999){
+ ch_ais_obj(const char * name): ch_base(name), m_tfile(0)
+    {
+      itr = objs.begin();
+    }
+  
+  virtual ~ch_ais_obj()
+    {
+      lock();
+      begin();
+      for (; !is_end(); next())
+	delete (itr->second);
+      objs.clear();
+      updates.clear();
+      unlock();
+    }
+  
+  void push(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
+  {
+    if(mmsi == 0 || mmsi > 999999999){
 	    //cout << "illegal mmsi detected: mmsi " << mmsi <<  endl;
-	    return ;
-	  }
-		lock();
-		itr = objs.find(mmsi);
-		if(itr != objs.end()){
-			c_ais_obj & obj = *(itr->second);
-			obj.update(t, lat, lon, cog, sog, hdg);
-			obj.set_ecef_from_bih();
-			updates.push_back(&obj);
-		}else{
-			c_ais_obj * pobj = new c_ais_obj(t, mmsi, lat, lon, cog, sog, hdg);
-			objs.insert(map<unsigned int, c_ais_obj *>::value_type(mmsi, pobj));
-			pobj->set_ecef_from_bih();
-			updates.push_back(pobj);
-		}
-		unlock();
-	}
-
-	void reset_updates()
-	{
-	  lock();
-	  updates.clear();
-	  unlock();
-	}
-
-	void update_rel_pos_and_vel(const Mat & R, const float x, const float y, const float z)
-	{
-		lock();
-		for (itr = objs.begin(); itr != objs.end(); itr++){
-			c_ais_obj * pobj = itr->second;
-
-			pobj->set_pos_rel_from_ecef(R, x, y, z);
-			pobj->set_vel_ecef_from_bih(R);
-			pobj->set_vel_rel_from_bih();
-			pobj->set_pos_bd_from_rel();
-		}
-		unlock();
-	}
-
-	void set_track(const int _id){
-		int id = 0;
-		for (itr = objs.begin(); itr != objs.end(); itr++){
-			c_ais_obj * pobj = itr->second;
-			if (id == _id)
-				pobj->set_tracking_id(0);
-			else
-				pobj->set_tracking_id(-1);
-			id++;
-		}
-	}
-
-	const int get_tracking_id(){
-		c_ais_obj & obj = *(itr->second);
-		return obj.get_tracking_id();
-	}
-
-	void calc_tdcpa(const long long t, float vx, float vy)
-	{
-		lock();
-		for (itr = objs.begin(); itr != objs.end(); itr++){
-			c_ais_obj * pobj = itr->second;
-			pobj->calc_tdcpa(t, vx, vy);
-		}
-		unlock();
-	}
-
-	void remove_out(float range)
-	{
-		lock();
-		float r2 = (float)(range * range);
-		for(itr = objs.begin(); itr != objs.end();){
-			c_ais_obj * pobj = itr->second;
-			float x, y, z;
-			pobj->get_pos_rel(x, y, z);
-			float d = (float)(x * x + y * y + z * z);
-			if(d > r2){
-			  updates.remove(pobj);
-			  delete itr->second;			
-			  itr = objs.erase(itr);
-			}else{
-				itr++;
-			}
-		}
-		unlock();
-	}
-
-	void remove_old(const long long told){
-		lock();
-		for(itr = objs.begin(); itr != objs.end();){
-			c_ais_obj * pobj = itr->second;
-			if(pobj->get_time() < told){
-			  updates.remove(pobj);
-			  delete itr->second;
-			  itr = objs.erase(itr);
-			}else{
-				itr++;
-			}
-		}
-		unlock();
-	}
-
-	// Note: 
-	// get_cur_state, is_end, is_begin, begin, end, next, prev do not lock mutex. 
-	// If you use them, lock/unlock methods should be called by their user.
-
-	bool get_cur_state(float & x, float & y, float & z, float & vx, float & vy, float & vz, float & yw){
-		c_ais_obj & obj = *(itr->second);
-		bool flag = true;
-		float r, p;
-		if(obj.get_dtype() & EOD_POS_REL){
-			obj.get_pos_rel(x, y, z);
-		}
-		else{
-			flag = false;
-		}
-
-		if(obj.get_dtype() & EOD_VEL_REL){
-			obj.get_vel_rel(vx, vy, vz);
-		}
-		else{
-			flag = false;
-		}
-
-		if(obj.get_dtype() & EOD_ATTD){	
-			obj.get_att(r, p, yw);
-		}
-		else{
-			flag = false;
-		}
-		return flag;
-	}
-
-	bool get_tdcpa(float & tcpa, float & dcpa){
-		return (itr->second)->get_tdcpa(tcpa, dcpa);
-	}
-
-	bool get_pos_bd(float & bear, float & dist)
-	{
+      return ;
+    }
+    lock();
+    itr = objs.find(mmsi);
+    if(itr != objs.end()){
+      c_ais_obj & obj = *(itr->second);
+      obj.update(t, lat, lon, cog, sog, hdg);
+      obj.set_ecef_from_bih();
+      updates.push_back(&obj);
+    }else{
+      c_ais_obj * pobj = new c_ais_obj(t, mmsi, lat, lon, cog, sog, hdg);
+      objs.insert(map<unsigned int, c_ais_obj *>::value_type(mmsi, pobj));
+      pobj->set_ecef_from_bih();
+      updates.push_back(pobj);
+    }
+    unlock();
+  }
+  
+  void reset_updates()
+  {
+    lock();
+    updates.clear();
+    unlock();
+  }
+  
+  void update_rel_pos_and_vel(const Mat & R, const float x, const float y, const float z)
+  {
+    lock();
+    for (itr = objs.begin(); itr != objs.end(); itr++){
+      c_ais_obj * pobj = itr->second;
+      
+      pobj->set_pos_rel_from_ecef(R, x, y, z);
+      pobj->set_vel_ecef_from_bih(R);
+      pobj->set_vel_rel_from_bih();
+      pobj->set_pos_bd_from_rel();
+    }
+    unlock();
+  }
+  
+  void set_track(const int _id){
+    int id = 0;
+    for (itr = objs.begin(); itr != objs.end(); itr++){
+      c_ais_obj * pobj = itr->second;
+      if (id == _id)
+	pobj->set_tracking_id(0);
+      else
+	pobj->set_tracking_id(-1);
+      id++;
+    }
+  }
+  
+  const int get_tracking_id(){
+    c_ais_obj & obj = *(itr->second);
+    return obj.get_tracking_id();
+  }
+  
+  void calc_tdcpa(const long long t, float vx, float vy)
+  {
+    lock();
+    for (itr = objs.begin(); itr != objs.end(); itr++){
+      c_ais_obj * pobj = itr->second;
+      pobj->calc_tdcpa(t, vx, vy);
+    }
+    unlock();
+  }
+  
+  void remove_out(float range)
+  {
+    lock();
+    float r2 = (float)(range * range);
+    for(itr = objs.begin(); itr != objs.end();){
+      c_ais_obj * pobj = itr->second;
+      float x, y, z;
+      pobj->get_pos_rel(x, y, z);
+      float d = (float)(x * x + y * y + z * z);
+      if(d > r2){
+	updates.remove(pobj);
+	delete itr->second;			
+	itr = objs.erase(itr);
+      }else{
+	itr++;
+      }
+    }
+    unlock();
+  }
+  
+  void remove_old(const long long told){
+    lock();
+    for(itr = objs.begin(); itr != objs.end();){
+      c_ais_obj * pobj = itr->second;
+      if(pobj->get_time() < told){
+	updates.remove(pobj);
+	itr = objs.erase(itr);
+	delete pobj;
+      }else{
+	itr++;
+      }
+    }
+    unlock();
+  }
+  
+  // Note: 
+  // get_cur_state, is_end, is_begin, begin, end, next, prev do not lock mutex. 
+  // If you use them, lock/unlock methods should be called by their user.
+  
+  bool get_cur_state(float & x, float & y, float & z, float & vx, float & vy, float & vz, float & yw){
+    c_ais_obj & obj = *(itr->second);
+    bool flag = true;
+    float r, p;
+    if(obj.get_dtype() & EOD_POS_REL){
+      obj.get_pos_rel(x, y, z);
+    }
+    else{
+      flag = false;
+    }
+    
+    if(obj.get_dtype() & EOD_VEL_REL){
+      obj.get_vel_rel(vx, vy, vz);
+    }
+    else{
+      flag = false;
+    }
+    
+    if(obj.get_dtype() & EOD_ATTD){	
+      obj.get_att(r, p, yw);
+    }
+    else{
+      flag = false;
+    }
+    return flag;
+  }
+  
+  bool get_tdcpa(float & tcpa, float & dcpa){
+    return (itr->second)->get_tdcpa(tcpa, dcpa);
+  }
+  
+  bool get_pos_bd(float & bear, float & dist)
+  {
 		return (itr->second)->get_pos_bd(bear, dist);
+  }
+  
+  bool get_prediction(const long long t, float & x, float & y, float & s)
+  {
+    return (itr->second)->get_prediction(t, x, y, s);
+  }
+  
+  bool is_end(){
+    bool r = itr == objs.end();
+    return r;
+  }
+
+  bool is_begin(){
+    bool r = itr == objs.begin();
+    return r;
+  }
+  
+  void begin(){
+    itr = objs.begin();
+  }
+  
+  void end(){
+    itr = objs.end();
+  }
+  
+  c_ais_obj & cur()
+    {
+      return *(itr->second);
+    }
+  
+  void next(){
+    if(objs.end() != itr)
+      itr++;
+  }
+  
+  void prev(){
+    if(objs.begin() != itr)
+      itr--;
+  }
+  
+  int get_num_objs(){
+    int r;
+    r = (int) objs.size();
+    return r;
+  }
+  
+  virtual size_t get_dsize()
+  {
+    return c_ais_obj::get_dsize();
+  }
+  
+  virtual size_t write_buf(const char * buf)
+  {
+    lock();
+    c_ais_obj obj_new;
+    
+    obj_new.write_buf(buf);
+    if(obj_new.get_mmsi() != 0){
+      itr = objs.find(obj_new.get_mmsi());
+      if(itr != objs.end()){
+	c_ais_obj & obj = *(itr->second);
+	obj.update(obj_new);
+	obj.set_ecef_from_bih();
+	updates.push_back(itr->second);
+      }else{
+	c_ais_obj * pobj = new c_ais_obj(obj_new);
+	objs.insert(map<unsigned int, c_ais_obj *>::value_type(pobj->get_mmsi(), pobj));
+	pobj->set_ecef_from_bih();
+	updates.push_back(pobj);
+      }
+    }
+    unlock();
+    return get_dsize();
+  }
+  
+  virtual size_t read_buf(char * buf)
+  {
+    lock();
+    if(updates.size()){
+      c_ais_obj * pobj = *(updates.begin());
+      updates.pop_front();
+      pobj->read_buf(buf);
+    }else{
+      c_ais_obj::read_buf_null(buf);
+    }
+    unlock();
+    return get_dsize();
+  }
+  
+  virtual int write(FILE * pf, long long tcur)
+  {
+    int sz = 0;
+    
+    if(pf){
+      lock();
+      long long tnew = m_tfile;
+      for(itr = objs.begin(); itr != objs.end(); itr++){
+	c_ais_obj & obj = *(itr->second);
+	if(obj.get_time() > m_tfile){
+	  tnew = max(tnew, obj.get_time());
+	  sz += obj.write(pf);
 	}
-
-	bool get_prediction(const long long t, float & x, float & y, float & s)
-	{
-		return (itr->second)->get_prediction(t, x, y, s);
-	}
-
-	bool is_end(){
-		bool r = itr == objs.end();
-		return r;
-	}
-
-	bool is_begin(){
-		bool r = itr == objs.begin();
-		return r;
-	}
-
-	void begin(){
-		itr = objs.begin();
-	}
-
-	void end(){
-		itr = objs.end();
-	}
-
-	c_ais_obj & cur()
-	{
-		return *(itr->second);
-	}
-
-	void next(){
-		if(objs.end() != itr)
-			itr++;
-	}
-
-	void prev(){
-		if(objs.begin() != itr)
-			itr--;
-	}
-
-	int get_num_objs(){
-		int r;
-		r = (int) objs.size();
-		return r;
-	}
-
-	virtual size_t get_dsize()
-	{
-		return c_ais_obj::get_dsize();
-	}
-
-	virtual size_t write_buf(const char * buf)
-	{
-		lock();
-		c_ais_obj obj;
-
-		obj.write_buf(buf);
-		if(obj.get_mmsi() != 0){
-		  itr = objs.find(obj.get_mmsi());
-		  if(itr != objs.end()){
-		    c_ais_obj & obj = *(itr->second);
-		    obj.update(obj);
-		    obj.set_ecef_from_bih();
-		    updates.push_back(itr->second);
-		  }else{
-		    c_ais_obj * pobj = new c_ais_obj(obj);
-		    objs.insert(map<unsigned int, c_ais_obj *>::value_type(obj.get_mmsi(), pobj));
-		    pobj->set_ecef_from_bih();
-		    updates.push_back(pobj);
-		  }
-		}
-		unlock();
-		return get_dsize();
-	}
-
-	virtual size_t read_buf(char * buf)
-	{
-		lock();
-		if(updates.size()){
-		  c_ais_obj * pobj = *(updates.begin());
-		  updates.pop_front();
-		  pobj->read_buf(buf);
-		}else{
-		  c_ais_obj::read_buf_null(buf);
-		}
-		unlock();
-		return get_dsize();
-	}
-
-	virtual int write(FILE * pf, long long tcur)
-	{
-		int sz = 0;
-
-		if(pf){
-			lock();
-			long long tnew = m_tfile;
-			//			cout << "cur log time " << m_tfile << endl;
-			for(itr = objs.begin(); itr != objs.end(); itr++){
-				c_ais_obj & obj = *(itr->second);
-				//				cout << "t " << obj.get_time() << " mmsi "<< obj.get_mmsi() << endl;
-				if(obj.get_time() > m_tfile){
-					tnew = max(tnew, obj.get_time());
-					sz += obj.write(pf);
-				}
-			}
-			m_tfile = tnew;
-			unlock();
-		}
-		return sz;
-	}
-
-	virtual int read(FILE * pf, long long tcur)
-	{
-		c_ais_obj obj;
-		int sz = 0;
-		if(pf){
-			lock();
-			while(m_tfile < tcur && !feof(pf)){
-				obj.read(pf);
-				m_tfile = obj.get_time();
-				itr = objs.find(obj.get_mmsi());
-				if(itr != objs.end()){
-					c_ais_obj & obj = *(itr->second);
-					obj.update(obj);
-					obj.set_ecef_from_bih();
-					updates.push_back(itr->second);
-				}else{
-					c_ais_obj * pobj = new c_ais_obj(obj);
-					objs.insert(map<unsigned int, c_ais_obj *>::value_type(obj.get_mmsi(), pobj));
-					pobj->set_ecef_from_bih();
+      }
+      m_tfile = tnew;
+      unlock();
+    }
+    return sz;
+  }
+  
+  virtual int read(FILE * pf, long long tcur)
+  {
+    c_ais_obj obj;
+    int sz = 0;
+    if(pf){
+      lock();
+      while(m_tfile < tcur && !feof(pf)){
+	obj.read(pf);
+	m_tfile = obj.get_time();
+	itr = objs.find(obj.get_mmsi());
+	if(itr != objs.end()){
+	  c_ais_obj & obj = *(itr->second);
+	  obj.update(obj);
+	  obj.set_ecef_from_bih();
+	  updates.push_back(itr->second);
+	}else{
+	  c_ais_obj * pobj = new c_ais_obj(obj);
+	  objs.insert(map<unsigned int, c_ais_obj *>::value_type(obj.get_mmsi(), pobj));
+	  pobj->set_ecef_from_bih();
 					updates.push_back(pobj);
-				}				
-			}
-			unlock();
-		}
-		return sz;
-	}
-
-	virtual bool log2txt(FILE * pbf, FILE * ptf)
-	{
-		c_ais_obj obj;
-		fprintf(ptf, "t, mmsi, lat, lon, cog, sog, hdg\n");
-		int sz = 0;
-		if(pbf){
-			while(!feof(pbf)){
-				obj.read(pbf);
-				float lat, lon, alt, cog, sog, roll, pitch, yaw;
-				obj.get_pos_bih(lat, lon, alt);
-				obj.get_vel_bih(cog, sog);
-				obj.get_att(roll, pitch, yaw);
-				fprintf(ptf, "%lld, %u, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f\n", 
-					obj.get_time(), obj.get_mmsi(), lat, lon, cog, sog, yaw);
-			}
-		}
-		return true;
-	}
+	}				
+      }
+      unlock();
+    }
+    return sz;
+  }
+  
+  virtual bool log2txt(FILE * pbf, FILE * ptf)
+  {
+    c_ais_obj obj;
+    fprintf(ptf, "t, mmsi, lat, lon, cog, sog, hdg\n");
+    int sz = 0;
+    if(pbf){
+      while(!feof(pbf)){
+	obj.read(pbf);
+	float lat, lon, alt, cog, sog, roll, pitch, yaw;
+	obj.get_pos_bih(lat, lon, alt);
+	obj.get_vel_bih(cog, sog);
+	obj.get_att(roll, pitch, yaw);
+	fprintf(ptf, "%lld, %u, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f\n", 
+		obj.get_time(), obj.get_mmsi(), lat, lon, cog, sog, yaw);
+      }
+    }
+    return true;
+  }
 };
 
 #endif

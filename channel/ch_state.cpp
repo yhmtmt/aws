@@ -650,7 +650,7 @@ bool ch_env::log2txt(FILE * pbf, FILE * ptf)
     fread((void*)&temp, sizeof(float), 1, pbf);
     fread((void*)&humd, sizeof(float), 1, pbf);
     fread((void*)&ilum, sizeof(float), 1, pbf);
-    fprintf(ptf, "%lld, %lld, %06.1f, %03.1f, %03.1f, %05.1f¥n", tf, t, baro, temp, humd, ilum);
+    fprintf(ptf, "%lld, %lld, %06.1f, %03.1f, %03.1f, %05.1f\n", tf, t, baro, temp, humd, ilum);
   }
   return true;
 }

@@ -196,16 +196,16 @@ void f_aws1_ctrl::get_gpio()
  
   if(m_stat.ctrl_src == ACS_RMT){
     m_stat.rud_aws = map_oval(m_stat.rud_rmc, 
-			 m_stat.rud_max_rmc, m_stat.rud_nut_rmc, m_stat.rud_min_rmc,
-			 0xff, 0x7f, 0x00);
+			      m_stat.rud_max_rmc, m_stat.rud_nut_rmc, m_stat.rud_min_rmc,
+			      0xff, 0x7f, 0x00);
     m_stat.meng_aws = map_oval(m_stat.meng_rmc,
-			  m_stat.meng_max_rmc, m_stat.meng_nuf_rmc, m_stat.meng_nut_rmc, 
-			  m_stat.meng_nub_rmc, m_stat.meng_min_rmc,
-			  0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
+			       m_stat.meng_max_rmc, m_stat.meng_nuf_rmc, m_stat.meng_nut_rmc, 
+			       m_stat.meng_nub_rmc, m_stat.meng_min_rmc,
+			       0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
     m_stat.seng_aws = map_oval(m_stat.seng_rmc,
-			  m_stat.seng_max_rmc, m_stat.seng_nuf_rmc, m_stat.seng_nut_rmc, 
-			  m_stat.seng_nub_rmc, m_stat.seng_min_rmc,
-			  0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
+			       m_stat.seng_max_rmc, m_stat.seng_nuf_rmc, m_stat.seng_nut_rmc, 
+			       m_stat.seng_nub_rmc, m_stat.seng_min_rmc,
+			       0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00);
   }
 }
 

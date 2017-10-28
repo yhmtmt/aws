@@ -1709,9 +1709,9 @@ bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
 }
 
 void c_indicator::set_param(
-  const unsigned char _meng, const unsigned char _seng, const unsigned char _rud,
-  const float _cog, const float _sog,
-  const float _yaw, const float _pitch, const float _roll)
+			    const unsigned char _meng, const unsigned char _seng, const unsigned char _rud,
+			    const float _cog, const float _sog,
+			    const float _yaw, const float _pitch, const float _roll)
 {
   meng = _meng;
   seng = _seng;
