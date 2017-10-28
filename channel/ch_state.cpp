@@ -549,12 +549,9 @@ bool ch_state::log2txt(FILE * pbf, FILE * ptf)
 			m_tfile, tpos, tatt, tvel, tdp, t9dof, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
 		fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,",
 			mxf, myf, mzf, axf, ayf, azf, gxf, gyf, gzf);
-
 	}
 	return true;
 }
-
-
 
 /////////////////////////////////////////////////////////////// ch_env
 
@@ -632,10 +629,10 @@ int ch_env::read(FILE * pf, long long tcur)
     lock();
     fread((void*)&tf, sizeof(long long), 1, pf); // the time the data written is ignored (this line is only required to proceed file pointer.)
     fread((void*)&tf, sizeof(long long), 1, pf); 
-    fread((void*)&baro, sizeof(float), 1, pf);
-    fread((void*)&temp, sizeof(float), 1, pf);
-    fread((void*)&humd, sizeof(float), 1, pf);
-    fread((void*)&ilum, sizeof(float), 1, pf);
+    fread((void*)&barof, sizeof(float), 1, pf);
+    fread((void*)&tempf, sizeof(float), 1, pf);
+    fread((void*)&humdf, sizeof(float), 1, pf);
+    fread((void*)&ilumf, sizeof(float), 1, pf);
     
     unlock();
   }
@@ -661,4 +658,110 @@ bool ch_env::log2txt(FILE * pbf, FILE * ptf)
 void ch_env::print(ostream & out)
 {
   cout << "t=" << t << " B=" << baro << " T=" << temp << " H=" << humd << " I=" << ilum << endl; 
+}
+
+//////////////////////////////////////////////////////////////////////////////////////// ch_volt
+
+size_t ch_volt::write_buf(const char * buf)
+{
+  lock();
+  const long long * lptr = (const long long*)buf;
+  t = lptr[0];
+
+  const float * fptr = (const float*)(lptr + 1);
+  memcpy(val, fptr, sizeof(float)* 8);
+
+  unlock();
+  return get_dsize();
+}
+
+size_t ch_volt::read_buf(char * buf)
+{
+  lock();
+  long long * lptr = (long long*)buf;
+  lptr[0] = t;
+
+  float * fptr = (float*)(lptr + 1);
+  memcpy(fptr, val, sizeof(float)* 8);
+
+  unlock();
+  return get_dsize();
+}
+
+int ch_volt::write(FILE * pf, long long tcur)
+{
+  if (!pf)
+    return 0;
+
+  if (t <= tf){
+    return 0;
+  }
+
+  int sz = (int)get_dsize();
+
+  lock();
+  fwrite((void*)&tcur, sizeof(long long), 1, pf); // the time write operation executed
+  fwrite((void*)&t, sizeof(long long), 1, pf); // the time sensor data acquired
+  tf = t;
+  fwrite((void*)val, sizeof(float), 8, pf);
+  unlock();
+
+  return sz + sizeof(long long);
+}
+
+int ch_volt::read(FILE * pf, long long tcur)
+{
+  if (!pf)
+    return 0;
+
+  if (tf <= tcur && tf != t){
+    set(tf, valf);
+    return (int)(get_dsize() + sizeof(long long));
+  }
+
+  // reading next data record
+  while (!feof(pf)){
+    if (tf > tcur){
+      break;
+    }
+    lock();
+    fread((void*)&tf, sizeof(long long), 1, pf); // the time the data written is ignored (this line is only required to proceed file pointer.)
+    fread((void*)&tf, sizeof(long long), 1, pf);
+    fread((void*)valf, sizeof(float), 8, pf);
+
+    unlock();
+  }
+
+  return 0;
+}
+
+bool ch_volt::log2txt(FILE * pbf, FILE * ptf)
+{
+  fprintf(ptf, "trec, tsens,");
+  for (int iprobe = 0; iprobe < 8; iprobe++){
+    fprintf(ptf, ",v[%d]", iprobe);
+  }
+  fprintf(ptf, "\n");
+
+  while (!feof(pbf)){
+    fread((void*)&tf, sizeof(long long), 1, pbf); // the time the data written is ignored (this line is only required to proceed file pointer.)
+    fread((void*)&t, sizeof(long long), 1, pbf);
+    fread((void*)val, sizeof(float), 8, pbf);
+    fprintf(ptf, "%lld, %lld", tf, t);
+    for (int iprobe = 0; iprobe < 8; iprobe++){
+      fprintf(ptf, ",%03.2f");
+    }
+    fprintf(ptf, "\n");
+  }
+  return true;
+}
+
+void ch_volt::print(ostream & out)
+{
+  printf("trec=%lld, tsens=%lld", tf, t);
+  for (int iprobe = 0; iprobe < 8; iprobe++){
+    printf(",v[%d]=%03.2f", iprobe);
+  }
+  printf("/n");
+
 }
