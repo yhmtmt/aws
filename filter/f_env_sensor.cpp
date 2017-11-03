@@ -192,8 +192,6 @@ bool f_volt_sensor::proc()
     }
   }
 
-  double baro, temp, humd, ilum;
-
   if (dat_start >= 0 && dat_end >= 0){
     int i = 3 + dat_start;
     int j = i;
