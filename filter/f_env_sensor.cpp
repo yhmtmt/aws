@@ -173,7 +173,8 @@ bool f_volt_sensor::proc()
     read_serial(m_hserial, m_rbuf + m_rbuf_tail, MLB_BUF - m_rbuf_tail);
   int dat_start = -1, dat_end = -1;
   for (int i = m_rbuf_head; i < m_rbuf_tail; i++){
-    if (m_rbuf[i] == 'm' && m_rbuf[i + 1] == 'l' && m_rbuf[i + 2] == 'b'){
+    if (m_rbuf[i] == 'v' && m_rbuf[i + 1] == 's' 
+	&& m_rbuf[i + 2] == 'e' && m_rbuf[i + 3] == 'n'){
       dat_start = i;
       break;
     }
@@ -195,7 +196,7 @@ bool f_volt_sensor::proc()
   double baro, temp, humd, ilum;
 
   if (dat_start >= 0 && dat_end >= 0){
-    int i = 3 + dat_start;
+    int i = 4 + dat_start;
     int j = i;
     int ipar = 0;
     for (; j <= dat_end; j++){
