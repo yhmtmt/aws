@@ -47,7 +47,9 @@ f_ahrs::f_ahrs(const char * name): f_base(name), m_state(NULL),
 				   m_cmd(ERC_OT), m_omode(ERC_OT), 
 	m_ocont(true), m_sync(false), m_rbuf_tail(0), m_rbuf_head(0), m_tbuf_tail(0),
 	m_verb(false), m_readlen(1024),
-	m_b9dof(true), m_binit_9dof(false), m_magg(256.), m_Kai(0.00002), m_Kap(0.02), m_Kmi(0.00002), m_Kmp(1.2)
+	m_b9dof(true), m_binit_9dof(false), m_magg(256.), m_Kai(0.00002), m_Kap(0.02), m_Kmi(0.00002), m_Kmp(1.2),
+  m_max9(1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000, 1000), m_min9(-1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000),
+  m_max_ypr(180, 180, 180), m_min_ypr(-180, -180, -180)
 {
 	m_dname[0] = '\0';
 
@@ -59,6 +61,7 @@ f_ahrs::f_ahrs(const char * name): f_base(name), m_state(NULL),
 	register_fpar("br", &m_br, "Baud rate.");
 	register_fpar("cmd", (int*)&m_cmd, (int)ERC_UNDEF, m_str_razor_cmd, "Command for Razor AHRS.");
 	register_fpar("verb", &m_verb, "Verbose mode for Debug");
+
 }
 
 f_ahrs::~f_ahrs()
@@ -317,6 +320,12 @@ bool f_ahrs::proc()
 		if (bypr)
 			m_state->set_attitude(t, m_ypr.r, m_ypr.p, m_ypr.y);	  
 	}
+
+  if (!check_vals(bypr, braw, bcal)){
+    m_binit_9dof = false;
+    m_cmd = ERC_S;
+    cerr << "AHRS may not be synchronised. Trying synchronizastion." << endl;
+  }
 
 	return true;
 }

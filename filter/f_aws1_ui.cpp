@@ -709,6 +709,11 @@ bool f_aws1_ui::proc()
 	float roll, pitch, yaw, cog, sog, vx, vy;
 	float xown, yown, zown;
 	m_state->get_attitude(t, roll, pitch, yaw);
+  // applying saturation 
+  roll = min(max(-180.f, roll),180.f);
+  pitch = min(max(-180.f, pitch), 180.f);
+  yaw = min(max(-180.f, yaw), 180.f);
+
 	m_state->get_velocity(t, cog, sog);
 	m_state->get_velocity_vector(t, vx, vy);
 	m_state->get_position_ecef(t, xown, yown, zown);
