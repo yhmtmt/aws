@@ -775,7 +775,6 @@ namespace avt_vmb_cam{
 
 				ttrig_prev = m_cur_time;
 			}
-<<<<<<< HEAD
 			
 			for(int icam = 0; icam < ncam; icam++){
 			  if(pcam_pars[icam]->update){
@@ -785,14 +784,6 @@ namespace avt_vmb_cam{
 			    }
 			    pcam_pars[icam]->update = false;
 			  }
-=======
-
-			for (int icam = 0; icam < ncam; icam++){
-				if (pcam_pars[icam]->update){
-					config_dynamic_params(*pcam_pars[icam]);
-					pcam_pars[icam]->update = false;
-				}
->>>>>>> 2d55362e69ed7e0642ae7e72a654f500bc3e7b2c
 			}
 			return true;
 		}
