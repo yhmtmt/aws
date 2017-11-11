@@ -568,7 +568,7 @@ namespace avt_vmb_cam{
 
 		bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, float & val)
 		{
-			if (VmbErrorSuccess == pcam->GetFeatureByName(strFeature[AcquisitionFrameRateAbs], pf)){
+			if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
 				if (val == -FLT_MAX){
 					double _val;
 					if (VmbErrorSuccess == pf->GetValue(_val)){
@@ -624,7 +624,7 @@ namespace avt_vmb_cam{
 		bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, bool & val)
 		{
 
-			if (VmbErrorSuccess == pcam->GetFeatureByName(strFeature[AcquisitionFrameRateAbs], pf)){
+			if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
 				VmbBool_t _val;
 				if (VmbErrorSuccess == pf->GetValue(_val)){
 					val = (int)_val;
@@ -714,6 +714,7 @@ namespace avt_vmb_cam{
 				if (config_static_params(*pcam_pars[icam]) == false){
 					return false;
 				}
+				pcam_pars[icam]->update = false;
 			}
 
 			// allocating frame buffer
@@ -774,12 +775,15 @@ namespace avt_vmb_cam{
 
 				ttrig_prev = m_cur_time;
 			}
-
-			for (int icam = 0; icam < ncam; icam++){
-				if (pcam_pars[icam]->update){
-					config_dynamic_params(*pcam_pars[icam]);
-					pcam_pars[icam]->update = false;
-				}
+			
+			for(int icam = 0; icam < ncam; icam++){
+			  if(pcam_pars[icam]->update){
+			    if(config_dynamic_params(*pcam_pars[icam]) == false){
+			      cerr << "Failed to update parameters of cam["
+				   << icam << "]." << endl;		  
+			    }
+			    pcam_pars[icam]->update = false;
+			  }
 			}
 			return true;
 		}

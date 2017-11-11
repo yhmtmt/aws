@@ -46,17 +46,18 @@ using namespace cv;
 #include "f_aws1_ui.h"
 
 
-f_aws1_ui::f_aws1_ui(const char * name): f_glfw_window(name), 
-m_state(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL), 
-m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL), 
+f_aws1_ui::f_aws1_ui(const char * name) : f_glfw_window(name),
+m_state(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL),
+m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL),
 m_ch_ap_inst(NULL),
 m_js_id(0), m_bsvw(false), m_bss(false),
 fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
 num_max_wps(100), num_max_ais(100),
-bupdate_map(true), pt_prev_map_update(0,0,0),
+bupdate_map(true), pt_prev_map_update(0, 0, 0),
 map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
 bmap_center_free(false),
-btn_pushed(ebtn_nul), btn_released(ebtn_nul)
+btn_pushed(ebtn_nul), btn_released(ebtn_nul),
+m_rud_f(127.), m_meng_f(127.), m_seng_f(127.)
 {
 	m_path_storage[0] = '.';m_path_storage[1] = '\0';
 
@@ -708,6 +709,11 @@ bool f_aws1_ui::proc()
 	float roll, pitch, yaw, cog, sog, vx, vy;
 	float xown, yown, zown;
 	m_state->get_attitude(t, roll, pitch, yaw);
+  // applying saturation 
+  roll = min(max(-180.f, roll),180.f);
+  pitch = min(max(-180.f, pitch), 180.f);
+  yaw = min(max(-180.f, yaw), 180.f);
+
 	m_state->get_velocity(t, cog, sog);
 	m_state->get_velocity_vector(t, vx, vy);
 	m_state->get_position_ecef(t, xown, yown, zown);

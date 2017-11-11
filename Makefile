@@ -43,7 +43,7 @@ GLFW_WINDOW = y
 
 # n: disable all the imaging and image processing filter later
 IMGPROC = y
-AVT_CAM = n
+AVT_CAM = y
 VMB_CAM = n
 UVC_CAM = n
 GST_CAM = y
@@ -230,6 +230,7 @@ ifeq ($(BOARD), jtk)
 endif # jtk
 else # cpu is not arm
 	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lGLU -lglut 
+	FILTER += f_glfw_window  f_glfw_stereo_view 
 endif 
 	DEFS += -DGLFW_WINDOW 
 	FILTER += f_aws1_ui f_aws1_ui_util/c_map_obj f_aws1_ui_util/c_ui_box f_aws3_ui f_state_estimator

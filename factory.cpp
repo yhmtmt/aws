@@ -172,7 +172,8 @@ void ch_base::register_factory()
 	register_factory<ch_ring<char, 8192> >("crbuf8k");
 	register_factory<ch_state>("state");
 	register_factory<ch_estate>("estate");
-  register_factory<ch_env>("env");
+	register_factory<ch_env>("env");
+	register_factory<ch_volt>("volt");
 	register_factory<ch_map>("map");
 	register_factory<ch_obj>("obj");
 	register_factory<ch_obst>("obst");
@@ -434,7 +435,8 @@ void f_base::register_factory()
 	register_factory<f_time>("tsync");
 
 	register_factory<f_ahrs>("ahrs");
-  register_factory<f_env_sensor>("env");
+	register_factory<f_env_sensor>("env");
+	register_factory<f_volt_sensor>("volt");
 
 	register_factory<f_aws1_ap>("aws1_ap");
 	register_factory<f_obj_manager>("obj_manager");

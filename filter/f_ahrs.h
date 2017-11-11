@@ -55,13 +55,26 @@ protected:
   
   struct s_ahrs_ypr{
     float y, p, r;
-  } m_ypr;
+    s_ahrs_ypr() :y(0), p(0), r(0)
+    {}
+    s_ahrs_ypr(const float _y, const float _p, const float _r) :
+      y(_y), p(_p), r(_r)
+    {}
+  } m_ypr, m_max_ypr, m_min_ypr;
 
   struct s_ahrs9{
     float ax, ay, az;
     float mx, my, mz;
     float gx, gy, gz;
-  } m_raw, m_cal;
+    s_ahrs9() :ax(0), ay(0), az(0), mx(0), my(0), mz(0), gx(0), gy(0), gz(0)
+    {
+    }
+    s_ahrs9(const float _ax, const float _ay, const float _az,
+      const float _mx, const float _my, const float _mz,
+      const float _gx, const float _gy, const float _gz) : ax(_ax), ay(_ay), az(_az),
+      mx(_mx), my(_my), mz(_mz), gx(_gx), gy(_gy), gz(_gz){
+    }
+  } m_raw, m_cal, m_max9, m_min9;
   
   int set_buf_cmd(e_razor_cmd cmd)
   {
@@ -243,6 +256,36 @@ protected:
     xo = y1 * z2 - z1 * y2;
     yo = z1 * x2 - x1 * z2;
     zo = x1 * y2 - y1 * x2;
+  }
+
+  bool check_vals(const bool bypr, const bool braw, const bool bcal)
+  {
+    if (bypr){
+      if (m_max_ypr.r < m_ypr.r || m_max_ypr.p < m_ypr.p || m_max_ypr.y < m_ypr.y
+        || m_min_ypr.r > m_ypr.r || m_min_ypr.p > m_ypr.p || m_min_ypr.y > m_ypr.y)
+        return false;
+    }
+
+    if (braw){
+      if (m_max9.ax < m_raw.ax || m_max9.ay < m_raw.ay || m_max9.az < m_raw.az
+        || m_min9.ax > m_raw.ax || m_min9.ay > m_raw.ay || m_min9.az > m_raw.az
+        || m_max9.mx < m_raw.mx || m_max9.my < m_raw.my || m_max9.mz < m_raw.mz
+        || m_min9.mx > m_raw.mx || m_min9.my > m_raw.my || m_min9.mz > m_raw.mz
+        || m_max9.gx < m_raw.gx || m_max9.gy < m_raw.gy || m_max9.gz < m_raw.gz
+        || m_min9.gx > m_raw.gx || m_min9.gy > m_raw.gy || m_min9.gz > m_raw.gz)
+        return false;
+    }
+
+    if (bcal){
+      if (m_max9.ax < m_cal.ax || m_max9.ay < m_cal.ay || m_max9.az < m_cal.az
+        || m_min9.ax > m_cal.ax || m_min9.ay > m_cal.ay || m_min9.az > m_cal.az
+        || m_max9.mx < m_cal.mx || m_max9.my < m_cal.my || m_max9.mz < m_cal.mz
+        || m_min9.mx > m_cal.mx || m_min9.my > m_cal.my || m_min9.mz > m_cal.mz
+        || m_max9.gx < m_cal.gx || m_max9.gy < m_cal.gy || m_max9.gz < m_cal.gz
+        || m_min9.gx > m_cal.gx || m_min9.gy > m_cal.gy || m_min9.gz > m_cal.gz)
+        return false;
+    }
+    return true;
   }
   
  public:

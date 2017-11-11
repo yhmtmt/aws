@@ -477,4 +477,52 @@ class ch_env: public ch_base
   virtual bool log2txt(FILE * pbf, FILE * ptf);
 };
 
+
+// 8 channel voltage sensor outputs
+class ch_volt : public ch_base
+{
+private:
+  long long t, tf;
+  float val[8];
+  float valf[8];
+public:
+  ch_volt(const char * name) : ch_base(name)
+  {
+    for (int i = 0; i < 8; i++)
+      val[i] = valf[i] = 0;
+  }
+  ~ch_volt()
+  {
+  }
+
+  void set(const long long _t, const float * _val)
+  {
+    lock();
+    t = _t;
+    for (int iprobe = 0; iprobe < 8; iprobe++){
+      val[iprobe] = _val[iprobe];
+    }
+    unlock();
+  }
+
+  const float get(const int iprobe)
+  {
+    lock();
+    const float _val = val[iprobe];
+    unlock();
+    return _val;
+  }
+
+  virtual size_t get_dsize(){
+    return sizeof(long long)+sizeof(float)* 8;
+  }
+
+  virtual size_t write_buf(const char * buf);
+  virtual size_t read_buf(char * buf);
+  virtual int write(FILE * pf, long long tcur);
+  virtual int read(FILE * Pf, long long tcur);
+  virtual void print(ostream & out);
+  virtual bool log2txt(FILE * pbf, FILE * ptf);
+
+};
 #endif

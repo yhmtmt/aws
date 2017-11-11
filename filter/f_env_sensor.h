@@ -44,4 +44,28 @@ public:
 
 };
 
+// eight channel voltage sensor (Assuming Arduino Pro Mini)
+class f_volt_sensor : public f_base
+{
+protected:
+  ch_volt * m_chan;
+  char m_dname[1024];
+  unsigned short m_port;
+  unsigned int m_br;
+  char m_rbuf[MLB_BUF];
+  AWS_SERIAL m_hserial;
+  float m_val[8];
+  int m_rbuf_head, m_rbuf_tail;
+  bool m_verb;
+public:
+  f_volt_sensor(const char * name);
+  virtual ~f_volt_sensor();
+
+  virtual bool init_run();
+
+  virtual void destroy_run();
+
+  virtual bool proc();
+};
+
 #endif
