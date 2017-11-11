@@ -1179,7 +1179,7 @@ void c_indicator::update_engine_indicator(int & heng_in, int & heng_n,
   int & heng_f, int & heng_b,
   const unsigned char val)
 {
-  glm::vec2 scl(scl_eng.x, scl_eng.y * abs((int)val - (int)127) * (1 / 127.));
+  glm::vec2 scl(scl_eng.x, scl_eng.y *  abs((int)val - (int)127) * (1 / 127.));
   porect->config_scale(heng_in, scl);
 
   if (val == veng_n){
@@ -1242,7 +1242,7 @@ void c_indicator::create_rudder_indicator(glm::vec2 & pos,
 
 void c_indicator::update_rudder_indicator()
 {
-  int srud = -(int)rud + (int)127;
+  int srud = (int)rud - (int)127;
 
   glm::vec2 scl(scl_rud.x * abs(srud) * (1.0f / 255.0f), scl_rud.y);
   glm::vec2 pos;

@@ -19,8 +19,8 @@ OFLAGS = -O3
 
 # Platform specification
 #BOARD = jtx
-#BOARD = jtk
-BOARD = zed
+BOARD = jtk
+#BOARD = zed
 #BOARD = pc
 
 # cpu architecture (currently arm, x64, x86)
@@ -42,17 +42,17 @@ FWINDOW = n
 GLFW_WINDOW = y
 
 # n: disable all the imaging and image processing filter later
-IMGPROC = n
+IMGPROC = y
 AVT_CAM = n
 VMB_CAM = n
 UVC_CAM = n
-GST_CAM = n
+GST_CAM = y
 SANYO_HD5400 = n	
-ORB_SLAM = n
-STEREO = n
-CAMCALIB = n
+ORB_SLAM = y
+STEREO = y
+CAMCALIB = y
 STABILIZER = n
-MISC = ny
+MISC = y
 
 ifeq ($(WINDOW), n)
 	FWINDOW = n
@@ -73,16 +73,18 @@ INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
 LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_64bit
-INC_GLFW_DIR = /usr/local/include/GLFW
-LIB_GLFW_DIR = /usr/lib/aarch64-linux-gnu
+#INC_GLFW_DIR = /usr/local/include/GLFW
+#LIB_GLFW_DIR = /usr/lib/aarch64-linux-gnu
+INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
+LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
 INC_EIGEN_DIR = /usr/include/eigen3
 INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
 INC_GST = /usr/include/gstreamer-1.0
 LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
 INC_GLIB = /usr/include/glib-2.0
 INC_GLIB_CONFIG = /usr/lib/arm-linux-gnueabihf/glib-2.0/include
-#INC_GLM = $(CUR_DIR)/glm
-INC_GLM = /usr/local/include/glm
+INC_GLM = $(CUR_DIR)/glm
+#INC_GLM = /usr/local/include/glm
 
 # modules
 MODS = filter channel util
