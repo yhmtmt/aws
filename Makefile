@@ -1,9 +1,6 @@
 # Target Name
 EXE = aws
 
-#compiler
-CC	= g++
-
 #linker
 LD	= ld
 
@@ -15,18 +12,15 @@ INST_DIR = ./bin
 
 #optimization option
 OFLAGS = -O3
-#OFLAGS =
 
 # Platform specification
-#BOARD = jtx
-BOARD = jtk
-#BOARD = zed
-#BOARD = pc
+#ARCH = jtx
+ARCH = jtk
+#ARCH = zynq
+#ARCH = x64
+#ARCH = x86
 
-# cpu architecture (currently arm, x64, x86)
-CPU	= arm
-#CPU	= x64
-#CPU	= x86
+-include config_${ARCH}.mk
 
 #operating system (currently only for LINUX)
 OS	= LINUX
@@ -34,120 +28,38 @@ OS	= LINUX
 # preprocessor constant definition
 DEFS = -D_$(CPU) -D_$(OS) 
 
-# module switch setting
-
-# n: disable all the window filter later
-WINDOW = y	
-FWINDOW = n
-GLFW_WINDOW = y
-
-# n: disable all the imaging and image processing filter later
-IMGPROC = y
-AVT_CAM = y
-VMB_CAM = n
-UVC_CAM = n
-GST_CAM = y
-SANYO_HD5400 = n	
-ORB_SLAM = y
-STEREO = y
-CAMCALIB = y
-STABILIZER = n
-MISC = y
-
 ifeq ($(WINDOW), n)
 	FWINDOW = n
 	GLFW_WINDOW = n
 endif
 
-############################################################ Path configuration
-CUR_DIR = $(shell pwd)
-FDIR = $(CUR_DIR)/filter
-CDIR = $(CUR_DIR)/channel
-UDIR = $(CUR_DIR)/util
-RCMD_DIR = $(CUR_DIR)/rcmd
-INC_CV_DIR = $(CUR_DIR)/../opencv3/include
-LIB_CV_DIR = $(CUR_DIR)/../opencv3/lib
-#INC_CV_DIR = /usr/local/include
-#LIB_CV_DIR = /usr/local/lib
-INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
-LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
-INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
-LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_64bit
-#INC_GLFW_DIR = /usr/local/include/GLFW
-#LIB_GLFW_DIR = /usr/lib/aarch64-linux-gnu
-INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
-LIB_GLFW_DIR = $(CUR_DIR)/GLFW/lib
-INC_EIGEN_DIR = /usr/include/eigen3
-INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
-INC_GST = /usr/include/gstreamer-1.0
-LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
-INC_GLIB = /usr/include/glib-2.0
-INC_GLIB_CONFIG = /usr/lib/arm-linux-gnueabihf/glib-2.0/include
-INC_GLM = $(CUR_DIR)/glm
-#INC_GLM = /usr/local/include/glm
-
-# modules
-MODS = filter channel util
-
-INC = -I$(INC_CV_DIR) -I$(INC_EIGEN_DIR) -I$(INC_GLM) -I$(INC_MAVLINK)
-
-# base linker option
-LIB = -lrt -lpthread
-
-# listing filters
-FILTER = f_base f_nmea \
-	f_shioji f_com f_event f_fep01 f_time \
-	f_aws1_nmea_sw f_aws1_ctrl f_aws1_sim f_ahrs f_aws1_ap f_map f_obj_manager \
-	f_wp_manager f_aws3_com f_env_sensor
-
-# listing channels
-CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state ch_wp
-
-# listing utilities
-UTIL =  c_clock  aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_stdlib aws_map
 
 # for debug mode
 ifeq ($(DEBUG), y)
 	DFLAGS = -g 	
 endif
 
-########################################### Board specific build configuration
-# for Zedboard
-ifeq ($(BOARD), zed)
-	CC	= arm-xilinx-linux-gnueabi-g++
-	CPU 	= arm
-	SANYO_HD5400 = n
-	FWINDOW = n
-	GLFW_WINDOW = n
-	ORB_SLAM = n
-	GST_CAM = n
-	#OFLAGS += -mfloat-abi=hard
-endif
 
-ifeq ($(BOARD), jtk)
-	ORB_SLAM = n
-	CPU 	= arm
-	INC_CV_DIR = /usr/local/include
-	LIB_CV_DIR = /usr/local/lib
-	INC_EIGEN_DIR = /usr/include/eigen3
-endif
+# modules
+MODS = filter channel util
 
-ifeq ($(BOARD), jtx)
-	CPU 	= arm
-	INC += -I/usr/lib/aarch64-linux-gnu/glib-2.0/include -I/usr/lib/aarch64-linux-gnu/gstreamer-1.0/include
-	INC_CV_DIR = /usr/local/include
-	LIB_CV_DIR = /usr/local/lib
-	INC_EIGEN_DIR = /usr/include/eigen3
-endif
+# base include paths
+INC = -I$(INC_CV_DIR) -I$(INC_GLIB) -I$(INC_EIGEN_DIR) -I$(INC_GLM) -I$(INC_MAVLINK)
 
-ifeq ($(BOARD), pc)
-	GST_CAM = n
-endif
+# base libs
+LIB = -lrt -lpthread
 
-################################################# cpu specific compiler option
-ifeq ($(CPU), x86)
-	CC = $(CC) -m32
-endif
+# base filters
+FILTER = f_base f_nmea \
+	f_shioji f_com f_event f_fep01 f_time \
+	f_aws1_nmea_sw f_aws1_ctrl f_aws1_sim f_ahrs f_aws1_ap f_map f_obj_manager \
+	f_wp_manager f_aws3_com f_env_sensor
+
+# base channels
+CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state ch_wp
+
+# base utilities
+UTIL =  c_clock  aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_stdlib aws_map
 
 ################################################# Image processing configuration
 ifeq ($(IMGPROC),y)
@@ -216,24 +128,9 @@ endif
 ifeq ($(GLFW_WINDOW),y)
 	INC += -I$(INC_GLFW_DIR)
 	UTIL += aws_glib
-ifeq ($(CPU), arm)
-ifeq ($(BOARD), jtx)
-	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw -lGLEW -dy -lXxf86vm -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor
+	LIB += $(LIB_GLFW_WINDOW)
 	DEFS += -DGLFW_WINDOW 
-	FILTER += f_glfw_window  f_glfw_stereo_view
-	OFLAGS += -fopenmp
-
-endif # jtx
-ifeq ($(BOARD), jtk)
-	LIB += -Wl,--unresolved-symbols=ignore-in-shared-libs -L$(LIB_GLFW_DIR) -dy -lGL -lGLU -lglut -dn -lglfw3 -lGLEW -dy -lXxf86vm  -lX11 -ldl -lrt -lXi -lXrandr -lXinerama -lXcursor
-	FILTER += f_glfw_window  f_glfw_stereo_view 
-endif # jtk
-else # cpu is not arm
-	LIB += -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lGLU -lglut 
-	FILTER += f_glfw_window  f_glfw_stereo_view 
-endif 
-	DEFS += -DGLFW_WINDOW 
-	FILTER += f_aws1_ui f_aws1_ui_util/c_map_obj f_aws1_ui_util/c_ui_box f_aws3_ui f_state_estimator
+	FILTER += f_glfw_window  f_glfw_stereo_view f_aws1_ui f_aws1_ui_util/c_map_obj f_aws1_ui_util/c_ui_box f_aws3_ui f_state_estimator
 	OFLAGS += -fopenmp
 endif
 
@@ -310,24 +207,6 @@ endif
 ifeq ($(FWINDOW), y)
 	DEFS += -DFWINDOW
 	FILTER += f_window
-endif
-
-################################################ Board specific linker options
-ifeq ($(BOARD), jtx)
-	LIB += -L$(LIB_CV_DIR) -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
-endif
-
-ifeq ($(BOARD), jtk)
-	LIB +=  -L$(LIB_CV_DIR) -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
-endif
-
-ifeq ($(BOARD), zed)
-	LIB += -L$(LIB_CV_DIR) -lopencv_world
-endif
-
-ifeq ($(BOARD), pc)
-	LIB += -L$(LIB_CV_DIR) -lopencv_world
-#-lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
 endif
 
 ################################################################# Object lists
