@@ -47,7 +47,7 @@ MODS = filter channel util
 INC = -I$(INC_CV_DIR) -I$(INC_GLIB) -I$(INC_EIGEN_DIR) -I$(INC_GLM) -I$(INC_MAVLINK)
 
 # base libs
-LIB = -lrt -lpthread
+LIB = -lrt -lpthread $(LIB_CV)
 
 # base filters
 FILTER = f_base f_nmea \
