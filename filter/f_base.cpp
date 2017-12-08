@@ -210,59 +210,57 @@ mutex f_base::m_err_mtx;
 // this function is used if the filter should be executed in the mainthread such as the case using OpenGL
 void f_base::fthread()
 {
-	if((unsigned int) m_cycle < m_intvl){
-		m_cycle++;
-		return;
-	}
-
-	if(m_bactive){		
-		calc_time_diff();
-
-		if (!proc()){
-			m_bactive = false;
-		}
-
-		if(m_clk.is_run()){
-			m_count_proc++;
-			m_max_cycle = max(m_cycle, m_max_cycle);
-			m_proc_rate = (double)  m_count_proc / (double) m_count_clock;
-		}
-	}else{
-		m_bstopped = true;
-	}
+  if((unsigned int) m_cycle < m_intvl){
+    m_cycle++;
+    return;
+  }
+  
+  if(m_bactive){		
+    calc_time_diff();
+    
+    if (!proc()){
+      m_bactive = false;
+    }
+    
+    if(m_clk.is_run()){
+      m_count_proc++;
+      m_max_cycle = max(m_cycle, m_max_cycle);
+      m_proc_rate = (double)  m_count_proc / (double) m_count_clock;
+    }
+  }
 }
 
 // Filter thread function
 void f_base::sfthread(f_base * filter)
 {
-	while(filter->m_bactive){
-		filter->m_count_pre = filter->m_count_clock;
-
-		while(filter->m_cycle < (int) filter->m_intvl){
-			filter->clock_wait();
-			filter->m_cycle++;
-		}
-		filter->lock_cmd();
-
-		filter->calc_time_diff();
-
-		if(!filter->proc()){
-			filter->m_bactive = false;
-		}
-
-		if(filter->m_clk.is_run()){
-			filter->m_count_proc++;
-			filter->m_max_cycle = max(filter->m_cycle, filter->m_max_cycle);
-			filter->m_count_post = filter->m_count_clock;
-			filter->m_cycle = (int)(filter->m_count_post - filter->m_count_pre);
-			filter->m_cycle -= filter->m_intvl;
-			filter->m_proc_rate = (double)  filter->m_count_proc / (double) filter->m_count_clock;
-		}
-
-		filter->unlock_cmd();
-	}
-
-	filter->m_bstopped = true;
+  while(filter->m_bactive){
+    filter->m_count_pre = filter->m_count_clock;
+    
+    while(filter->m_cycle < (int) filter->m_intvl){
+      filter->clock_wait();
+      filter->m_cycle++;
+    }
+    filter->lock_cmd();
+    
+    filter->calc_time_diff();
+    
+    if(!filter->proc()){
+      filter->m_bactive = false;
+    }
+    
+    if(filter->m_clk.is_run()){
+      filter->m_count_proc++;
+      filter->m_max_cycle = max(filter->m_cycle, filter->m_max_cycle);
+      filter->m_count_post = filter->m_count_clock;
+      filter->m_cycle = (int)(filter->m_count_post - filter->m_count_pre);
+      filter->m_cycle -= filter->m_intvl;
+      filter->m_proc_rate = (double)  filter->m_count_proc / (double) filter->m_count_clock;
+    }
+    
+    filter->unlock_cmd();
+  }
+  
+  filter->m_bstopped = true;
 }
 
 void f_base::flush_err_buf(){
@@ -290,6 +288,32 @@ void f_base::send_err(f_base * ptr, const char * fname, int line, int code)
 	m_err_buf[m_err_tail].line = line;
 	m_err_buf[m_err_tail].code = code;
 	m_err_tail = next_tail;
+}
+
+bool f_base::stop()
+{
+  if(m_bactive){
+    cout << "Stopping " << m_name << "." << endl;
+    m_bactive = false;
+  }
+  if(is_main_thread()){
+    m_bstopped = true;
+    cout << m_name << " stopped." << endl;
+    return true;
+  }
+  
+  if(m_bstopped){
+    if(m_fthread){
+      m_fthread->join();
+      delete m_fthread;
+      m_fthread = NULL;
+      cout << m_name << " stopped." << endl;
+    }
+    return true;	      
+  }
+  
+  cout << m_name << " is still alive." << endl;
+  return false;
 }
 
 void f_base::clock(long long cur_time){

@@ -84,7 +84,7 @@ bool f_ahrs::init_run()
 void f_ahrs::destroy_run()
 {
 	close_serial(m_hserial);
-	m_hserial = NULL;
+	m_hserial = NULL_SERIAL;
 }
 
 bool f_ahrs::proc()

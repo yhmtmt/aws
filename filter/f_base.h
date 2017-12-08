@@ -364,24 +364,7 @@ public:
 	}
 
 	// stop main thread. the function is called from c_aws until the thread stops.
-	virtual bool stop()
-	{
-	  cout << "Stopping " << m_name;
-		m_bactive = false;
-		if(m_bstopped || is_main_thread()){
-			if (m_bstopped && m_fthread) {
-				m_fthread->join();
-				delete m_fthread;
-				m_fthread = NULL;
-			}
-			m_bstopped = true;
-			cout << " ... done." << endl;
-			return true;
-		}
-		cout << " ... " << endl;
-		return false;
-	}
-	
+	virtual bool stop();
 	void destroy(){
 		destroy_run();
 	}
