@@ -102,6 +102,15 @@ public:
 	}
 
 	long long get_time(); // get UTC time
+	const long long get_time_from_start()
+	{
+#ifdef _WIN32
+	  return m_tcur - m_offset;
+#else
+	  return m_tcur;
+#endif
+	}
+	
 	void set_time(tmex & tm); // set new UTC time
 	void set_time(long long & t);	// set new UTC time
 	void set_time_delta(long long & delta); // adjust time by gradually adding delta

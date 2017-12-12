@@ -34,760 +34,781 @@
 #include "../channel/ch_image.h"
 
 namespace avt_vmb_cam{
-	using namespace AVT::VmbAPI;
+  using namespace AVT::VmbAPI;
+  
+  class FrameObserver : public IFrameObserver
+  {
+  private:
+    CameraPtr m_pCamera;
+    ch_image_ref * pch;
+    long long received_frames, dropped_frames;
+  public:
+  FrameObserver(CameraPtr pCamera, ch_image_ref * _pch) :IFrameObserver(pCamera), m_pCamera(pCamera), pch(_pch), received_frames(0), dropped_frames(0)
+    {}
 
-	class FrameObserver : public IFrameObserver
+    const long long getNumRecievedFrames(){
+      return received_frames;
+    }
+
+    const long long getNumDroppedFrames()
+    {
+      return dropped_frames;
+    }
+    
+    void FrameReceived(const FramePtr pFrame)
+    {
+      VmbFrameStatusType eReceiveStatus;
+      
+      if (VmbErrorSuccess == pFrame->GetReceiveStatus(eReceiveStatus))
 	{
-	private:
-		CameraPtr m_pCamera;
-		ch_image_ref * pch;
-	public:
-		FrameObserver(CameraPtr pCamera, ch_image_ref * _pch) :IFrameObserver(pCamera), m_pCamera(pCamera), pch(_pch)
-		{}
-
-		void FrameReceived(const FramePtr pFrame)
-		{
-			VmbFrameStatusType eReceiveStatus;
-
-			if (VmbErrorSuccess == pFrame->GetReceiveStatus(eReceiveStatus))
-			{
-				Mat img;
-				if (VmbFrameStatusComplete == eReceiveStatus){
-
-					VmbUint32_t Width, Height;
-					VmbUint8_t * pBuffer;
-					pFrame->GetHeight(Height);
-					pFrame->GetWidth(Width);
-					pFrame->GetBuffer(pBuffer);
-					VmbPixelFormatType pixelFormat;
-					pFrame->GetPixelFormat(pixelFormat);
-					switch (pixelFormat){
-					case VmbPixelFormatMono8:
-						pch->set_fmt(IMF_GRAY8);
-						break;
-					case VmbPixelFormatBayerBG8:
-						pch->set_fmt(IMF_BayerBG8);
-						break;
-					case VmbPixelFormatBayerGB8:
-						pch->set_fmt(IMF_BayerGB8);
-						break;
-					case VmbPixelFormatBayerGR8:
-						pch->set_fmt(IMF_BayerGR8);
-						break;
-					case VmbPixelFormatBayerRG8:
-						pch->set_fmt(IMF_BayerRG8);
-						break;
-					case VmbPixelFormatMono10:
-						pch->set_fmt(IMF_GRAY10);
-						break;
-					case VmbPixelFormatMono12:
-						pch->set_fmt(IMF_GRAY12);
-						break;
-					case VmbPixelFormatMono14:
-						pch->set_fmt(IMF_GRAY14);
-						break;
-					case VmbPixelFormatMono16:
-						pch->set_fmt(IMF_GRAY16);
-						break;
-					case VmbPixelFormatBayerBG10:
-						pch->set_fmt(IMF_BayerBG10);
-						break;
-					case VmbPixelFormatBayerBG12:
-						pch->set_fmt(IMF_BayerBG12);
-						break;
-					case VmbPixelFormatBayerGB10:
-						pch->set_fmt(IMF_BayerGB10);
-						break;
-					case VmbPixelFormatBayerGB12:
-						pch->set_fmt(IMF_BayerGB12);
-						break;
-					case VmbPixelFormatBayerGR10:
-						pch->set_fmt(IMF_BayerGR10);
-						break;
-					case VmbPixelFormatBayerGR12:
-						pch->set_fmt(IMF_BayerGR12);
-						break;
-					case VmbPixelFormatBayerRG10:
-						pch->set_fmt(IMF_BayerRG10);
-						break;
-					case VmbPixelFormatBayerRG12:
-						pch->set_fmt(IMF_BayerRG10);
-						break;
-					case VmbPixelFormatBgr8:
-						pch->set_fmt(IMF_BGR8);
-						break;
-					case VmbPixelFormatRgb8:
-						pch->set_fmt(IMF_RGB8);
-						break;
-					case VmbPixelFormatBgr10:
-						pch->set_fmt(IMF_BGR10);
-						break;
-					case VmbPixelFormatBgr12:
-						pch->set_fmt(IMF_BGR12);
-						break;
-					case VmbPixelFormatBgr14:
-						pch->set_fmt(IMF_BGR14);
-						break;
-					case VmbPixelFormatBgr16:
-						pch->set_fmt(IMF_BGR16);
-						break;
-					case VmbPixelFormatRgb10:
-						pch->set_fmt(IMF_RGB10);
-						break;
-					case VmbPixelFormatRgb12:
-						pch->set_fmt(IMF_RGB12);
-						break;
-					case VmbPixelFormatRgb14:
-						pch->set_fmt(IMF_RGB14);
-						break;
-					case VmbPixelFormatRgb16:
-						pch->set_fmt(IMF_RGB16);
-						break;
-					}
-					
-					switch (pixelFormat){
-					case VmbPixelFormatMono8:
-
-					case VmbPixelFormatBayerBG8:
-					case VmbPixelFormatBayerGB8:
-					case VmbPixelFormatBayerGR8:
-					case VmbPixelFormatBayerRG8:
-						img = Mat(Height, Width, CV_8UC1, pBuffer);
-						break;
-					case VmbPixelFormatMono10:
-					case VmbPixelFormatMono12:
-					case VmbPixelFormatMono14:
-					case VmbPixelFormatMono16:
-					case VmbPixelFormatBayerBG10:
-					case VmbPixelFormatBayerBG12:
-					case VmbPixelFormatBayerGB10:
-					case VmbPixelFormatBayerGB12:
-					case VmbPixelFormatBayerGR10:
-					case VmbPixelFormatBayerGR12:
-					case VmbPixelFormatBayerRG10:
-					case VmbPixelFormatBayerRG12:
-						img = Mat(Height, Width, CV_16UC1, pBuffer);
-						break;
-					case VmbPixelFormatBgr8:
-					case VmbPixelFormatRgb8:
-						img = Mat(Height, Width, CV_8UC3, pBuffer);
-						break;
-					case VmbPixelFormatBgr10:
-					case VmbPixelFormatBgr12:
-					case VmbPixelFormatBgr14:
-					case VmbPixelFormatBgr16:
-					case VmbPixelFormatRgb10:
-					case VmbPixelFormatRgb12:
-					case VmbPixelFormatRgb14:
-					case VmbPixelFormatRgb16:
-						img = Mat(Height, Width, CV_16UC3, pBuffer);
-						break;
-					}
-
-					unsigned long long fid;
-					pFrame->GetFrameID(fid);
-					pch->set_img(img, f_base::get_time(), (long long)fid);
-				}
-				else{
-					cerr << "Failed to acquire frame." << endl;
-				}
-			}
-			m_pCamera->QueueFrame(pFrame);
-		}
+	  Mat img;
+	  if (VmbFrameStatusComplete == eReceiveStatus){
+	    
+	    VmbUint32_t Width, Height;
+	    VmbUint8_t * pBuffer;
+	    pFrame->GetHeight(Height);
+	    pFrame->GetWidth(Width);
+	    pFrame->GetBuffer(pBuffer);
+	    VmbPixelFormatType pixelFormat;
+	    pFrame->GetPixelFormat(pixelFormat);
+	    switch (pixelFormat){
+	    case VmbPixelFormatMono8:
+	      pch->set_fmt(IMF_GRAY8);
+	      break;
+	    case VmbPixelFormatBayerBG8:
+	      pch->set_fmt(IMF_BayerBG8);
+	      break;
+	    case VmbPixelFormatBayerGB8:
+	      pch->set_fmt(IMF_BayerGB8);
+	      break;
+	    case VmbPixelFormatBayerGR8:
+	      pch->set_fmt(IMF_BayerGR8);
+	      break;
+	    case VmbPixelFormatBayerRG8:
+	      pch->set_fmt(IMF_BayerRG8);
+	      break;
+	    case VmbPixelFormatMono10:
+	      pch->set_fmt(IMF_GRAY10);
+	      break;
+	    case VmbPixelFormatMono12:
+	      pch->set_fmt(IMF_GRAY12);
+	      break;
+	    case VmbPixelFormatMono14:
+	      pch->set_fmt(IMF_GRAY14);
+	      break;
+	    case VmbPixelFormatMono16:
+	      pch->set_fmt(IMF_GRAY16);
+	      break;
+	    case VmbPixelFormatBayerBG10:
+	      pch->set_fmt(IMF_BayerBG10);
+	      break;
+	    case VmbPixelFormatBayerBG12:
+	      pch->set_fmt(IMF_BayerBG12);
+	      break;
+	    case VmbPixelFormatBayerGB10:
+	      pch->set_fmt(IMF_BayerGB10);
+	      break;
+	    case VmbPixelFormatBayerGB12:
+	      pch->set_fmt(IMF_BayerGB12);
+	      break;
+	    case VmbPixelFormatBayerGR10:
+	      pch->set_fmt(IMF_BayerGR10);
+	      break;
+	    case VmbPixelFormatBayerGR12:
+	      pch->set_fmt(IMF_BayerGR12);
+	      break;
+	    case VmbPixelFormatBayerRG10:
+	      pch->set_fmt(IMF_BayerRG10);
+	      break;
+	    case VmbPixelFormatBayerRG12:
+	      pch->set_fmt(IMF_BayerRG10);
+	      break;
+	    case VmbPixelFormatBgr8:
+	      pch->set_fmt(IMF_BGR8);
+	      break;
+	    case VmbPixelFormatRgb8:
+	      pch->set_fmt(IMF_RGB8);
+	      break;
+	    case VmbPixelFormatBgr10:
+	      pch->set_fmt(IMF_BGR10);
+	      break;
+	    case VmbPixelFormatBgr12:
+	      pch->set_fmt(IMF_BGR12);
+	      break;
+	    case VmbPixelFormatBgr14:
+	      pch->set_fmt(IMF_BGR14);
+	      break;
+	    case VmbPixelFormatBgr16:
+	      pch->set_fmt(IMF_BGR16);
+	      break;
+	    case VmbPixelFormatRgb10:
+	      pch->set_fmt(IMF_RGB10);
+	      break;
+	    case VmbPixelFormatRgb12:
+	      pch->set_fmt(IMF_RGB12);
+	      break;
+	    case VmbPixelFormatRgb14:
+	      pch->set_fmt(IMF_RGB14);
+	      break;
+	    case VmbPixelFormatRgb16:
+	      pch->set_fmt(IMF_RGB16);
+	      break;
+	    }
+	    
+	    switch (pixelFormat){
+	    case VmbPixelFormatMono8:
+	      
+	    case VmbPixelFormatBayerBG8:
+	    case VmbPixelFormatBayerGB8:
+	    case VmbPixelFormatBayerGR8:
+	    case VmbPixelFormatBayerRG8:
+	      img = Mat(Height, Width, CV_8UC1, pBuffer);
+	      break;
+	    case VmbPixelFormatMono10:
+	    case VmbPixelFormatMono12:
+	    case VmbPixelFormatMono14:
+	    case VmbPixelFormatMono16:
+	    case VmbPixelFormatBayerBG10:
+	    case VmbPixelFormatBayerBG12:
+	    case VmbPixelFormatBayerGB10:
+	    case VmbPixelFormatBayerGB12:
+	    case VmbPixelFormatBayerGR10:
+	    case VmbPixelFormatBayerGR12:
+	    case VmbPixelFormatBayerRG10:
+	    case VmbPixelFormatBayerRG12:
+	      img = Mat(Height, Width, CV_16UC1, pBuffer);
+	      break;
+	    case VmbPixelFormatBgr8:
+	    case VmbPixelFormatRgb8:
+	      img = Mat(Height, Width, CV_8UC3, pBuffer);
+	      break;
+	    case VmbPixelFormatBgr10:
+	    case VmbPixelFormatBgr12:
+	    case VmbPixelFormatBgr14:
+	    case VmbPixelFormatBgr16:
+	    case VmbPixelFormatRgb10:
+	    case VmbPixelFormatRgb12:
+	    case VmbPixelFormatRgb14:
+	    case VmbPixelFormatRgb16:
+	      img = Mat(Height, Width, CV_16UC3, pBuffer);
+	      break;
+	    }
+	    
+	    unsigned long long fid;
+	    pFrame->GetFrameID(fid);
+	    pch->set_img(img, f_base::get_time(), (long long)fid);
+	    received_frames++;
+	  }
+	  else{
+	    cerr << "Failed to acquire frame." << endl;
+	    dropped_frames++;
+	  }
+	}
+      m_pCamera->QueueFrame(pFrame);
+    }
+  };
+  
+  class f_avt_vmb_cam : public f_base
+  {
+  public:
+  protected:
+    static VimbaSystem * psys;
+    enum eFeature{
+      AcquisitionMode, // enum
+      AcquisitionFrameRateAbs, // float
+      SensorShutterMode, //enum
+      TriggerActivation, //enum
+      TriggerDelayAbs, //float
+      TriggerMode, //enum
+      TriggerSelector, //enum
+      TriggerSource,  //enum
+      DSPSubregionBottom, //int
+      DSPSubregionLeft, //int
+      DSPSubregionRight, //int
+      DSPSubregionTop,//int
+      ExposureAuto, //enum
+      ExposureAutoAdjustTol, //int
+      ExposureAutoAlg, //enum
+      ExposureAutoMax, // int
+      ExposureAutoMin, //int 
+      ExposureAutoOutliers, //int
+      ExposureAutoRate, //int
+      ExposureAutoTarget, //int
+      ExposureMode, //enum
+      ExposureTimeAbs,//float
+      ExposureTimePWL1,//float 
+      ExposureTimePWL2,//float
+      Gain, // float
+      GainAuto, // enum
+      GainAutoAdjustTol, // int
+      GainAutoMax, // float
+      GainAutoMin, //float 
+      GainAutoOutliers, // int
+      GainAutoRate, //int
+      GainAutoTarget,//int
+      BlackLevel,//float
+      BalanceRatioAbs,//float
+      BalanceRatioSelector,//enum
+      BalanceWhiteAuto, //enum
+      BalanceWhiteAutoAdjustTol,//int
+      BalanceWhiteAutoRate,//int
+      BandwidthControlMode, //enum
+      GevSCPSPacketSize, // int
+      StreamBytesPerSecond,//int
+      StreamFrameRateConstrain,//boolean
+      Height, //int
+      OffsetX, // int
+      OffsetY, // int
+      PixelFormat, //enum
+      Width, // int
+      ReverseX, // bool
+      ReverseY, // bool
+      PayloadSize,
+      nfrmbuf,
+      addr, // char[1024]
+      update, // bool
+      channel,
+      FeatureUndef
+    };
+    
+    static const char * strFeature[FeatureUndef];
+    static const char * expFeature[FeatureUndef];
+    
+    enum class eAcquisitionMode {
+      Continuous, SingleFrame, MultiFrame, Recorder, Undef
 	};
-	class f_avt_vmb_cam : public f_base
+    static const char * strAcquisitionMode[(unsigned long long) eAcquisitionMode::Undef];
+    eAcquisitionMode findAcquisitionMode(const string & str)
+    {
+      for (int i = (int)eAcquisitionMode::Continuous; i != (int)eAcquisitionMode::Undef; i++)
 	{
-	public:
-	protected:
-		static VimbaSystem * psys;
-		enum eFeature{
-			AcquisitionMode, // enum
-			AcquisitionFrameRateAbs, // float
-			SensorShutterMode, //enum
-			TriggerActivation, //enum
-			TriggerDelayAbs, //float
-			TriggerMode, //enum
-			TriggerSelector, //enum
-			TriggerSource,  //enum
-			DSPSubregionBottom, //int
-			DSPSubregionLeft, //int
-			DSPSubregionRight, //int
-			DSPSubregionTop,//int
-			ExposureAuto, //enum
-			ExposureAutoAdjustTol, //int
-			ExposureAutoAlg, //enum
-			ExposureAutoMax, // int
-			ExposureAutoMin, //int 
-			ExposureAutoOutliers, //int
-			ExposureAutoRate, //int
-			ExposureAutoTarget, //int
-			ExposureMode, //enum
-			ExposureTimeAbs,//float
-			ExposureTimePWL1,//float 
-			ExposureTimePWL2,//float
-			Gain, // float
-			GainAuto, // enum
-			GainAutoAdjustTol, // int
-			GainAutoMax, // float
-			GainAutoMin, //float 
-			GainAutoOutliers, // int
-			GainAutoRate, //int
-			GainAutoTarget,//int
-			BlackLevel,//float
-			BalanceRatioAbs,//float
-			BalanceRatioSelector,//enum
-			BalanceWhiteAuto, //enum
-			BalanceWhiteAutoAdjustTol,//int
-			BalanceWhiteAutoRate,//int
-			BandwidthControlMode, //enum
-			GevSCPSPacketSize, // int
-			StreamBytesPerSecond,//int
-			StreamFrameRateConstrain,//boolean
-			Height, //int
-			OffsetX, // int
-			OffsetY, // int
-			PixelFormat, //enum
-			Width, // int
-			ReverseX, // bool
-			ReverseY, // bool
-			PayloadSize,
-			nfrmbuf,
-			addr, // char[1024]
-			update, // bool
-			channel,
-			FeatureUndef
-		};
-
-		static const char * strFeature[FeatureUndef];
-		static const char * expFeature[FeatureUndef];
-
-		enum class eAcquisitionMode {
-			Continuous, SingleFrame, MultiFrame, Recorder, Undef
-		};
-		static const char * strAcquisitionMode[(unsigned long long) eAcquisitionMode::Undef];
-		eAcquisitionMode findAcquisitionMode(const string & str)
-		{
-			for (int i = (int)eAcquisitionMode::Continuous; i != (int)eAcquisitionMode::Undef; i++)
-			{
-				if (strAcquisitionMode[i] == str)
-					return (eAcquisitionMode)i;
-			}
-			return eAcquisitionMode::Undef;
-		}
-
-		enum class eSensorShutterMode{
-			Global, Rolling, GlobalReset, Undef
-		};
-		static const char * strSensorShutterMode[(unsigned long long)eSensorShutterMode::Undef];
-		eSensorShutterMode findSensorShutterMode(const string & str)
-		{
-			for (int i = (int)eSensorShutterMode::Global; i != (int)eSensorShutterMode::Undef; i++){
-				if (strSensorShutterMode[i] == str)
-					return (eSensorShutterMode)i;
-			}
-			return eSensorShutterMode::Undef;
-		}
-
-		enum class eTriggerActivation{
-			RisingEdge, FallingEdge, AnyEdge, LevelHigh, LevelLow, Undef
-		};
-		static const char * strTriggerActivation[(unsigned long long)eTriggerActivation::Undef];
-		eTriggerActivation findTriggerActivation(const string & str)
-		{
-			for (int i = 0; i != (int)eTriggerActivation::Undef; i++){
-				if (strTriggerActivation[i] == str)
-					return (eTriggerActivation)i;
-			}
-			return eTriggerActivation::Undef;
-		}
-
-		enum class eTriggerMode{
-			Off, On, Undef
-		};
-		static const char * strTriggerMode[(unsigned long long)eTriggerMode::Undef];
-		eTriggerMode findTriggerMode(const string & str)
-		{
-			for (int i = 0; i != (int)eTriggerMode::Undef; i++){
-				if (strTriggerMode[i] == str)
-					return (eTriggerMode)i;
-			}
-			return eTriggerMode::Undef;
-		}
-
-		enum class eTriggerSelector{
-			FrameStart, AcquisitionStart, AcquisitionEnd, AcquisitionRecord, Undef
-		};
-		static const char * strTriggerSelector[(unsigned long long)eTriggerSelector::Undef];
-		eTriggerSelector findTriggerSelector(const string & str)
-		{
-			for (int i = 0; i != (int)eTriggerSelector::Undef; i++){
-				if (strTriggerSelector[i] == str)
-					return (eTriggerSelector)i;
-			}
-			return eTriggerSelector::Undef;
-		}
-
-		enum class eTriggerSource{
-			Freerun = 0, Line1, Line2, Line3, Line4, FixedRate, Software, Action0, Action1, Undef
-		};
-		static const char * strTriggerSource[(unsigned long long)eTriggerSource::Undef];
-		eTriggerSource findTriggerSource(const string & str)
-		{
-			for (int i = 0; i != (int)eTriggerSource::Undef; i++){
-				if (strTriggerSource[i] == str)
-					return (eTriggerSource)i;
-			}
-			return eTriggerSource::Undef;
-		}
-
-		enum class eExposureAuto{
-			Off, Once, Continuous, Undef
-		};
-		static const char * strExposureAuto[(unsigned long long)eExposureAuto::Undef];
-		eExposureAuto findExposureAuto(const string & str)
-		{
-			for (int i = 0; i != (int)eExposureAuto::Undef; i++){
-				if (strExposureAuto[i] == str)
-					return (eExposureAuto)i;
-			}
-			return eExposureAuto::Undef;
-		}
-
-		enum class eExposureAutoAlg{
-			Mean, FitRange, Undef
-		};
-		static const char * strExposureAutoAlg[(unsigned long long)eExposureAutoAlg::Undef];
-		eExposureAutoAlg findExposureAutoAlg(const string & str)
-		{
-			for (int i = 0; i != (int)eExposureAutoAlg::Undef; i++){
-				if (strExposureAutoAlg[i] == str)
-					return (eExposureAutoAlg)i;
-			}
-			return eExposureAutoAlg::Undef;
-		}
-
-		enum class eExposureMode{
-			Timed, TriggerWidth, PieceWiseLinearHDR, Undef
-		};
-		static const char * strExposureMode[(unsigned long long)eExposureMode::Undef];
-		eExposureMode findExposureMode(const string & str)
-		{
-			for (int i = 0; i != (int)eExposureMode::Undef; i++){
-				if (strExposureMode[i] == str)
-					return (eExposureMode)i;
-			}
-			return eExposureMode::Undef;
-		}
-
-		enum class eGainAuto{
-			Off, Once, Continuous, Undef
-		};
-		static const char * strGainAuto[(unsigned long long)eGainAuto::Undef];
-		eGainAuto findGainAuto(const string & str)
-		{
-			for (int i = 0; i != (int)eGainAuto::Undef; i++){
-				if (strGainAuto[i] == str)
-					return (eGainAuto)i;
-			}
-			return eGainAuto::Undef;
-		}
-
-		enum class eBalanceRatioSelector{
-			Red, Blue, Undef
-		};
-		static const char * strBalanceRatioSelector[(unsigned long long)eBalanceRatioSelector::Undef];
-		eBalanceRatioSelector findBalanceRatioSelector(const string & str)
-		{
-			for (int i = 0; i != (int)eBalanceRatioSelector::Undef; i++){
-				if (strBalanceRatioSelector[i] == str)
-					return (eBalanceRatioSelector)i;
-			}
-			return eBalanceRatioSelector::Undef;
-		}
-
-		enum class eBalanceWhiteAuto{
-			Off, Once, Continuous, Undef
-		};
-		static const char * strBalanceWhiteAuto[(unsigned long long)eBalanceWhiteAuto::Undef];
-		eBalanceWhiteAuto findBalanceWhiteAuto(const string & str)
-		{
-			for (int i = 0; i != (int)eBalanceWhiteAuto::Undef; i++){
-				if (strBalanceWhiteAuto[i] == str)
-					return (eBalanceWhiteAuto)i;
-			}
-			return eBalanceWhiteAuto::Undef;
-		}
-
-		enum class eBandwidthControlMode{
-			StreamBytesPerSecond, SCPD, Both, Undef
-		};
-		static const char * strBandwidthControlMode[(unsigned long long)eBandwidthControlMode::Undef];
-		eBandwidthControlMode findBandwidthControlMode(const string & str)
-		{
-			for (int i = 0; i != (int)eBandwidthControlMode::Undef; i++){
-				if (strBandwidthControlMode[i] == str)
-					return (eBandwidthControlMode)i;
-			}
-			return eBandwidthControlMode::Undef;
-		}
-
-		enum class ePixelFormat {
-			Mono8, Mono10, Mono12, Mono12Packed, Mono14,
-			BayerGB8, BayerRG8, BayerGR8, BayerBG8,
-			BayerBG10, BayerGB12Packed, BayerGR12Packed,
-			BayerGB12, BayerRG12, BayerGR12, Bayer8Packed,
-			BGR8Packed, RGBA8Packed, BGRA8Packed,
-			RGB12Packed, YUV411Packed, YUV422Packed,
-			YUV444Packed, Undef
-		};
-		static const char * strPixelFormat[(unsigned long long)ePixelFormat::Undef];
-		ePixelFormat findPixelFormat(const string & str)
-		{
-			for (int i = 0; i != (int)ePixelFormat::Undef; i++){
-				if (strPixelFormat[i] == str)
-					return (ePixelFormat)i;
-			}
-			return ePixelFormat::Undef;
-		}
-
-		struct s_cam_params{
-			int icam;
-			char * strFeature[FeatureUndef];
-			eAcquisitionMode AcquisitionMode;
-			eTriggerSource TriggerSource;
-			float AcquisitionFrameRateAbs;
-			eSensorShutterMode SensorShutterMode;
-			eTriggerActivation TriggerActivation;
-			float TriggerDelayAbs;
-			eTriggerMode TriggerMode;
-			eTriggerSelector TriggerSelector;
-			int DSPSubregionBottom, DSPSubregionLeft, DSPSubregionRight, DSPSubregionTop;
-			eExposureAuto ExposureAuto;
-			int ExposureAutoAdjustTol;
-			eExposureAutoAlg ExposureAutoAlg;
-			int ExposureAutoMax, ExposureAutoMin;
-			int ExposureAutoOutliers;
-			int ExposureAutoRate;
-			int ExposureAutoTarget;
-			eExposureMode ExposureMode;
-			float ExposureTimeAbs, ExposureTimePWL1, ExposureTimePWL2;
-			float Gain;
-			int GainAutoAdjustTol;
-			float GainAutoMax, GainAutoMin;
-			eGainAuto GainAuto;
-			int GainAutoOutliers, GainAutoRate, GainAutoTarget;
-			float BlackLevel;
-			float BalanceRatioAbs;
-			eBalanceRatioSelector BalanceRatioSelector;
-			eBalanceWhiteAuto BalanceWhiteAuto;
-			int BalanceWhiteAutoAdjustTol;
-			int BalanceWhiteAutoRate;
-			eBandwidthControlMode BandwidthControlMode;
-			int GevSCPSPacketSize;
-			int StreamBytesPerSecond;
-			bool StreamFrameRateConstrain;
-			int Height;
-			int OffsetX, OffsetY;
-			ePixelFormat PixelFormat;
-			int Width;
-			bool ReverseX, ReverseY;
-			int PayloadSize;
-
-			CameraPtr pcam;
-			char addr[1024];
-			int nfrmbuf;
-			bool update;
-			ch_image_ref * pch;
-
-			FramePtrVector frmbuf;
-			IFrameObserverPtr pObserver;
-		  bool bopened;
-			s_cam_params(int _icam = -1);
-			~s_cam_params();
-		};
-
-		template <class T> bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, T & val, const char ** strvals)
-		{
-			if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
-				if (val == T::Undef){
-					string strval;
-					if (VmbErrorSuccess == pf->GetValue(strval)){
-						for (int i = 0; i < (int)T::Undef; i++){
-							if (strval == strvals[i])
-								val = (T)i;
-						}
-					}
-					else{
-						cerr << "Failed to get " << fstr << endl;
-						return false;
-					}
-				}
-				else{
-					if (VmbErrorSuccess != pf->SetValue(strvals[(int)val])){
-						cerr << "Failed to set " << fstr << endl;
-						return false;
-					}
-				}
-			}
-			else{
-				cerr << "Failed to get " << fstr << " feature object" << endl;
-				return false;
-			}
-			return true;
-		}
-
-		bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, int & val, const int Undef, const char ** strvals)
-		{
-			if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
-				if (val == Undef){
-					string strval;
-					if (VmbErrorSuccess == pf->GetValue(strval)){
-						for (int i = 0; i < Undef; i++){
-							if (strval == strvals[i])
-								val = i;
-						}
-					}
-					else{
-						cerr << "Failed to get " << fstr << endl;
-						return false;
-					}
-				}
-				else{
-					if (VmbErrorSuccess != pf->SetValue(strvals[val])){
-						cerr << "Failed to set " << fstr << endl;
-						return false;
-					}
-				}
-			}
-			else{
-				cerr << "Failed to get " << fstr << " feature object" << endl;
-				return false;
-			}
-			return true;
-		}
-
-		bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, float & val)
-		{
-			if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
-				if (val == -FLT_MAX){
-					double _val;
-					if (VmbErrorSuccess == pf->GetValue(_val)){
-						val = (float)_val;
-					}
-					else{
-						cerr << "Failed to get " << fstr << endl;
-						return false;
-					}
-				}
-				else{
-					double _val = val;
-					if (VmbErrorSuccess != pf->SetValue(_val)){
-						cerr << "Failed to set " << fstr << endl;
-						return false;
-					}
-				}
-			}
-			else{
-				cerr << "Failed to get " << fstr << " feature object" << endl;
-				return false;
-			}
-			return true;
-		}
-		bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, int & val)
-		{
-
-			if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
-				if (val == INT_MIN){
-					VmbInt64_t _val;
-					if (VmbErrorSuccess == pf->GetValue(_val)){
-						val = (int)_val;
-					}
-					else{
-						cerr << "Failed to get " << fstr << endl;
-						return false;
-					}
-				}
-				else{
-					VmbInt64_t _val = val;
-					if (VmbErrorSuccess != pf->SetValue(_val)){
-						cerr << "Failed to set " << fstr << endl;
-						return false;
-					}
-				}
-			}
-			else{
-				cerr << "Failed to get " << fstr << " feature object" << endl;
-				return false;
-			}
-			return true;
-		}
-		bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, bool & val)
-		{
-
-			if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
-				VmbBool_t _val;
-				if (VmbErrorSuccess == pf->GetValue(_val)){
-					val = (int)_val;
-				}
-				else{
-					cerr << "Failed to get " << fstr << endl;
-					return false;
-				}
-
-				if (_val != val){
-					_val = val;
-					if (VmbErrorSuccess != pf->SetValue(_val)){
-						cerr << "Failed to set " << fstr << endl;
-						return false;
-					}
-				}
-			}
-			else{
-				cerr << "Failed to get " << fstr << " feature object" << endl;
-				return false;
-			}
-			return true;
-		}
-
-		bool config_static_params(s_cam_params & par);
-		bool config_dynamic_params(s_cam_params & par);
-		static int m_num_avt_vmb_cams;
-		void register_params(s_cam_params & par);
-	public:
-		static bool init_interface();
-		static void destroy_interface();
-		f_avt_vmb_cam(const char * name);
-		virtual ~f_avt_vmb_cam();
+	  if (strAcquisitionMode[i] == str)
+	    return (eAcquisitionMode)i;
+	}
+      return eAcquisitionMode::Undef;
+    }
+    
+    enum class eSensorShutterMode{
+      Global, Rolling, GlobalReset, Undef
 	};
+    static const char * strSensorShutterMode[(unsigned long long)eSensorShutterMode::Undef];
+    eSensorShutterMode findSensorShutterMode(const string & str)
+    {
+      for (int i = (int)eSensorShutterMode::Global; i != (int)eSensorShutterMode::Undef; i++){
+	if (strSensorShutterMode[i] == str)
+	  return (eSensorShutterMode)i;
+      }
+      return eSensorShutterMode::Undef;
+    }
+    
+    enum class eTriggerActivation{
+      RisingEdge, FallingEdge, AnyEdge, LevelHigh, LevelLow, Undef
+	};
+    static const char * strTriggerActivation[(unsigned long long)eTriggerActivation::Undef];
+    eTriggerActivation findTriggerActivation(const string & str)
+    {
+      for (int i = 0; i != (int)eTriggerActivation::Undef; i++){
+	if (strTriggerActivation[i] == str)
+	  return (eTriggerActivation)i;
+      }
+      return eTriggerActivation::Undef;
+    }
+    
+    enum class eTriggerMode{
+      Off, On, Undef
+	};
+    static const char * strTriggerMode[(unsigned long long)eTriggerMode::Undef];
+    eTriggerMode findTriggerMode(const string & str)
+    {
+      for (int i = 0; i != (int)eTriggerMode::Undef; i++){
+	if (strTriggerMode[i] == str)
+	  return (eTriggerMode)i;
+      }
+      return eTriggerMode::Undef;
+    }
+    
+    enum class eTriggerSelector{
+      FrameStart, AcquisitionStart, AcquisitionEnd, AcquisitionRecord, Undef
+		};
+    static const char * strTriggerSelector[(unsigned long long)eTriggerSelector::Undef];
+    eTriggerSelector findTriggerSelector(const string & str)
+    {
+      for (int i = 0; i != (int)eTriggerSelector::Undef; i++){
+	if (strTriggerSelector[i] == str)
+	  return (eTriggerSelector)i;
+      }
+      return eTriggerSelector::Undef;
+    }
+    
+    enum class eTriggerSource{
+      Freerun = 0, Line1, Line2, Line3, Line4, FixedRate, Software, Action0, Action1, Undef
+	};
+    static const char * strTriggerSource[(unsigned long long)eTriggerSource::Undef];
+    eTriggerSource findTriggerSource(const string & str)
+    {
+      for (int i = 0; i != (int)eTriggerSource::Undef; i++){
+	if (strTriggerSource[i] == str)
+	  return (eTriggerSource)i;
+      }
+      return eTriggerSource::Undef;
+    }
+    
+    enum class eExposureAuto{
+      Off, Once, Continuous, Undef
+	};
+    static const char * strExposureAuto[(unsigned long long)eExposureAuto::Undef];
+    eExposureAuto findExposureAuto(const string & str)
+    {
+      for (int i = 0; i != (int)eExposureAuto::Undef; i++){
+	if (strExposureAuto[i] == str)
+	  return (eExposureAuto)i;
+      }
+      return eExposureAuto::Undef;
+    }
+    
+    enum class eExposureAutoAlg{
+      Mean, FitRange, Undef
+	};
+    static const char * strExposureAutoAlg[(unsigned long long)eExposureAutoAlg::Undef];
+    eExposureAutoAlg findExposureAutoAlg(const string & str)
+    {
+      for (int i = 0; i != (int)eExposureAutoAlg::Undef; i++){
+	if (strExposureAutoAlg[i] == str)
+	  return (eExposureAutoAlg)i;
+      }
+      return eExposureAutoAlg::Undef;
+    }
+    
+    enum class eExposureMode{
+      Timed, TriggerWidth, PieceWiseLinearHDR, Undef
+	};
+    static const char * strExposureMode[(unsigned long long)eExposureMode::Undef];
+    eExposureMode findExposureMode(const string & str)
+    {
+      for (int i = 0; i != (int)eExposureMode::Undef; i++){
+	if (strExposureMode[i] == str)
+	  return (eExposureMode)i;
+      }
+      return eExposureMode::Undef;
+    }
+    
+    enum class eGainAuto{
+      Off, Once, Continuous, Undef
+	};
+    static const char * strGainAuto[(unsigned long long)eGainAuto::Undef];
+    eGainAuto findGainAuto(const string & str)
+    {
+      for (int i = 0; i != (int)eGainAuto::Undef; i++){
+	if (strGainAuto[i] == str)
+	  return (eGainAuto)i;
+      }
+      return eGainAuto::Undef;
+    }
+    
+    enum class eBalanceRatioSelector{
+      Red, Blue, Undef
+	};
+    static const char * strBalanceRatioSelector[(unsigned long long)eBalanceRatioSelector::Undef];
+    eBalanceRatioSelector findBalanceRatioSelector(const string & str)
+    {
+      for (int i = 0; i != (int)eBalanceRatioSelector::Undef; i++){
+	if (strBalanceRatioSelector[i] == str)
+	  return (eBalanceRatioSelector)i;
+      }
+      return eBalanceRatioSelector::Undef;
+		}
+    
+    enum class eBalanceWhiteAuto{
+      Off, Once, Continuous, Undef
+	};
+    static const char * strBalanceWhiteAuto[(unsigned long long)eBalanceWhiteAuto::Undef];
+    eBalanceWhiteAuto findBalanceWhiteAuto(const string & str)
+    {
+      for (int i = 0; i != (int)eBalanceWhiteAuto::Undef; i++){
+	if (strBalanceWhiteAuto[i] == str)
+	  return (eBalanceWhiteAuto)i;
+      }
+      return eBalanceWhiteAuto::Undef;
+    }
+    
+    enum class eBandwidthControlMode{
+      StreamBytesPerSecond, SCPD, Both, Undef
+	};
+    static const char * strBandwidthControlMode[(unsigned long long)eBandwidthControlMode::Undef];
+    eBandwidthControlMode findBandwidthControlMode(const string & str)
+    {
+      for (int i = 0; i != (int)eBandwidthControlMode::Undef; i++){
+	if (strBandwidthControlMode[i] == str)
+	  return (eBandwidthControlMode)i;
+      }
+      return eBandwidthControlMode::Undef;
+    }
+    
+    enum class ePixelFormat {
+      Mono8, Mono10, Mono12, Mono12Packed, Mono14,
+	BayerGB8, BayerRG8, BayerGR8, BayerBG8,
+	BayerBG10, BayerGB12Packed, BayerGR12Packed,
+	BayerGB12, BayerRG12, BayerGR12, Bayer8Packed,
+	BGR8Packed, RGBA8Packed, BGRA8Packed,
+	RGB12Packed, YUV411Packed, YUV422Packed,
+	YUV444Packed, Undef
+	};
+    static const char * strPixelFormat[(unsigned long long)ePixelFormat::Undef];
+    ePixelFormat findPixelFormat(const string & str)
+    {
+      for (int i = 0; i != (int)ePixelFormat::Undef; i++){
+	if (strPixelFormat[i] == str)
+	  return (ePixelFormat)i;
+      }
+      return ePixelFormat::Undef;
+    }
+    
+    struct s_cam_params{
+      int icam;
+      char * strFeature[FeatureUndef];
+      eAcquisitionMode AcquisitionMode;
+      eTriggerSource TriggerSource;
+      float AcquisitionFrameRateAbs;
+      eSensorShutterMode SensorShutterMode;
+      eTriggerActivation TriggerActivation;
+      float TriggerDelayAbs;
+      eTriggerMode TriggerMode;
+      eTriggerSelector TriggerSelector;
+      int DSPSubregionBottom, DSPSubregionLeft, DSPSubregionRight, DSPSubregionTop;
+      eExposureAuto ExposureAuto;
+      int ExposureAutoAdjustTol;
+      eExposureAutoAlg ExposureAutoAlg;
+      int ExposureAutoMax, ExposureAutoMin;
+      int ExposureAutoOutliers;
+      int ExposureAutoRate;
+      int ExposureAutoTarget;
+      eExposureMode ExposureMode;
+      float ExposureTimeAbs, ExposureTimePWL1, ExposureTimePWL2;
+      float Gain;
+      int GainAutoAdjustTol;
+      float GainAutoMax, GainAutoMin;
+      eGainAuto GainAuto;
+      int GainAutoOutliers, GainAutoRate, GainAutoTarget;
+      float BlackLevel;
+      float BalanceRatioAbs;
+      eBalanceRatioSelector BalanceRatioSelector;
+      eBalanceWhiteAuto BalanceWhiteAuto;
+      int BalanceWhiteAutoAdjustTol;
+      int BalanceWhiteAutoRate;
+      eBandwidthControlMode BandwidthControlMode;
+      int GevSCPSPacketSize;
+      int StreamBytesPerSecond;
+      bool StreamFrameRateConstrain;
+      int Height;
+      int OffsetX, OffsetY;
+      ePixelFormat PixelFormat;
+      int Width;
+      bool ReverseX, ReverseY;
+      int PayloadSize;
+      
+      CameraPtr pcam;
+      char addr[1024];
+      int nfrmbuf;
+      bool update;
+      ch_image_ref * pch;
+      
+      FramePtrVector frmbuf;
+      IFrameObserverPtr pObserver;
+      bool bopened;
+      s_cam_params(int _icam = -1);
+      ~s_cam_params();
+    };
 
-	template<int ncam>
-	class f_avt_vmb_cam_impl : public f_avt_vmb_cam
+    template <class T> bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, T & val, const char ** strvals)
+      {
+	if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
+	  if (val == T::Undef){
+	    string strval;
+	    if (VmbErrorSuccess == pf->GetValue(strval)){
+	      for (int i = 0; i < (int)T::Undef; i++){
+		if (strval == strvals[i])
+		  val = (T)i;
+	      }
+	    }
+	    else{
+	      cerr << "Failed to get " << fstr << endl;
+	      return false;
+	    }
+	  }
+	  else{
+	    if (VmbErrorSuccess != pf->SetValue(strvals[(int)val])){
+	      cerr << "Failed to set " << fstr << endl;
+	      return false;
+	    }
+	  }
+	}
+	else{
+	  cerr << "Failed to get " << fstr << " feature object" << endl;
+	  return false;
+	}
+	return true;
+      }
+    
+    bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, int & val, const int Undef, const char ** strvals)
+    {
+      if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
+	if (val == Undef){
+	  string strval;
+	  if (VmbErrorSuccess == pf->GetValue(strval)){
+	    for (int i = 0; i < Undef; i++){
+	      if (strval == strvals[i])
+		val = i;
+	    }
+	  }
+	  else{
+	    cerr << "Failed to get " << fstr << endl;
+	    return false;
+	  }
+	}
+	else{
+	  if (VmbErrorSuccess != pf->SetValue(strvals[val])){
+	    cerr << "Failed to set " << fstr << endl;
+	    return false;
+	  }
+	}
+      }
+      else{
+	cerr << "Failed to get " << fstr << " feature object" << endl;
+	return false;
+      }
+      return true;
+    }
+    
+    bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, float & val)
+    {
+      if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
+	if (val == -FLT_MAX){
+	  double _val;
+	  if (VmbErrorSuccess == pf->GetValue(_val)){
+	    val = (float)_val;
+	  }
+	  else{
+	    cerr << "Failed to get " << fstr << endl;
+	    return false;
+	  }
+	}
+	else{
+	  double _val = val;
+	  if (VmbErrorSuccess != pf->SetValue(_val)){
+	    cerr << "Failed to set " << fstr << endl;
+	    return false;
+	  }
+	}
+      }
+      else{
+	cerr << "Failed to get " << fstr << " feature object" << endl;
+	return false;
+      }
+      return true;
+    }
+    bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, int & val)
+    {
+      
+      if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
+	if (val == INT_MIN){
+	  VmbInt64_t _val;
+	  if (VmbErrorSuccess == pf->GetValue(_val)){
+	    val = (int)_val;
+	  }
+	  else{
+	    cerr << "Failed to get " << fstr << endl;
+	    return false;
+	  }
+	}
+	else{
+	  VmbInt64_t _val = val;
+	  if (VmbErrorSuccess != pf->SetValue(_val)){
+	    cerr << "Failed to set " << fstr << endl;
+	    return false;
+	  }
+	}
+      }
+      else{
+	cerr << "Failed to get " << fstr << " feature object" << endl;
+	return false;
+      }
+      return true;
+    }
+    bool config_param(CameraPtr pcam, FeaturePtr pf, const char * fstr, bool & val)
+    {
+
+      if (VmbErrorSuccess == pcam->GetFeatureByName(fstr, pf)){
+	VmbBool_t _val;
+	if (VmbErrorSuccess == pf->GetValue(_val)){
+	  val = (int)_val;
+	}
+	else{
+	  cerr << "Failed to get " << fstr << endl;
+	  return false;
+	}
+	
+	if (_val != val){
+	  _val = val;
+	  if (VmbErrorSuccess != pf->SetValue(_val)){
+	    cerr << "Failed to set " << fstr << endl;
+						return false;
+	  }
+	}
+      }
+      else{
+	cerr << "Failed to get " << fstr << " feature object" << endl;
+	return false;
+      }
+      return true;
+    }
+    
+    bool config_static_params(s_cam_params & par);
+    bool config_dynamic_params(s_cam_params & par);
+    static int m_num_avt_vmb_cams;
+    void register_params(s_cam_params & par);
+  public:
+    static bool init_interface();
+    static void destroy_interface();
+    f_avt_vmb_cam(const char * name);
+    virtual ~f_avt_vmb_cam();
+  };
+  
+  template<int ncam>
+    class f_avt_vmb_cam_impl : public f_avt_vmb_cam
+    {
+    protected:
+      long long ttrig_prev;
+      long long ttrig_int;
+     
+      vector<s_cam_params*> pcam_pars;
+    public:
+    f_avt_vmb_cam_impl(const char * name) :f_avt_vmb_cam(name), ttrig_prev(0),
+	ttrig_int(100 * MSEC)
+	  {
+	    register_fpar("Ttrig", &ttrig_int, "Interval of the software trigger in 100ns");
+	    pcam_pars.resize(ncam, NULL);
+	    if (ncam == 1){
+	      pcam_pars[0] = (new s_cam_params());
+	      register_params(*pcam_pars[0]);
+	    }
+	    else{
+	      for (int icam = 0; icam < ncam; icam++){
+		pcam_pars[icam] =  new s_cam_params(icam);
+		register_params(*pcam_pars[icam]);
+	      }
+	    }
+	  }
+      
+      virtual ~f_avt_vmb_cam_impl()
 	{
-	protected:
-		long long ttrig_prev;
-		long long ttrig_int;
-		vector<s_cam_params*> pcam_pars;
-	public:
-		f_avt_vmb_cam_impl(const char * name) :f_avt_vmb_cam(name), ttrig_prev(0),
-			ttrig_int(100 * MSEC)
-		{
-			register_fpar("Ttrig", &ttrig_int, "Interval of the software trigger in 100ns");
-			pcam_pars.resize(ncam, NULL);
-			if (ncam == 1){
-				pcam_pars[0] = (new s_cam_params());
-				register_params(*pcam_pars[0]);
-			}
-			else{
-				for (int icam = 0; icam < ncam; icam++){
-					pcam_pars[icam] =  new s_cam_params(icam);
-					register_params(*pcam_pars[icam]);
-				}
-			}
-		}
+	  for (int icam = 0; icam < ncam; icam++){
+	    delete pcam_pars[icam];
+	  }
+	}
+      
+      virtual bool init_run()
+      {
+	// opening and configuring cameras
+	for (int icam = 0; icam < ncam; icam++){
+	  if (VmbErrorSuccess == psys->OpenCameraByID(pcam_pars[icam]->addr, VmbAccessModeFull, pcam_pars[icam]->pcam)){
+	    cout << icam << "th camera at " << pcam_pars[icam]->addr << " is opened." << endl;
+	    pcam_pars[icam]->bopened = true;					
+	  }
+	  else{
+	    cout << icam << "th camera at " << pcam_pars[icam]->addr << " cannot be opened." << endl;
+	    
+	    return false;
+	  }
+	  
+	  FeaturePtr pFeature;
+	  if (pcam_pars[icam]->GevSCPSPacketSize == INT_MIN){ // if packet size is not specified
+	    pcam_pars[icam]->pcam->GetFeatureByName("GVSPAdjustPacketSize", pFeature);
+	    pFeature->RunCommand();
+	  }
+	  if (config_static_params(*pcam_pars[icam]) == false){
+	    return false;
+	  }
+	  pcam_pars[icam]->update = false;
+	}
+	
+	// allocating frame buffer
+	for (int icam = 0; icam < ncam; icam++){
+	  pcam_pars[icam]->pObserver.reset(new FrameObserver(pcam_pars[icam]->pcam, pcam_pars[icam]->pch));
+	  pcam_pars[icam]->frmbuf.resize(pcam_pars[icam]->nfrmbuf);
+	  for (int ifrm = 0; ifrm < pcam_pars[icam]->nfrmbuf; ifrm++){
+	    pcam_pars[icam]->frmbuf[ifrm].reset(new Frame(pcam_pars[icam]->PayloadSize));
+	    pcam_pars[icam]->frmbuf[ifrm]->RegisterObserver(pcam_pars[icam]->pObserver);
+	    pcam_pars[icam]->pcam->QueueFrame(pcam_pars[icam]->frmbuf[ifrm]);
+	  }
+	}
+	
+	// starting acquisition
+	for (int icam = 0; icam < ncam; icam++){
+	  FeaturePtr pFeature;
+	  pcam_pars[icam]->pcam->GetFeatureByName("AcquisitionStart", pFeature);
+	  pcam_pars[icam]->pcam->StartCapture();
+	  pFeature->RunCommand();
+	}
+	return true;
+      }
+      
+      virtual void destroy_run()
+      {
+	for (int icam = 0; icam < ncam; icam++){
+	  if(!pcam_pars[icam]->bopened)
+	    continue;
+	  FeaturePtr pFeature;
+	  pcam_pars[icam]->pcam->GetFeatureByName("AcquisitionStop", pFeature);
+	  pFeature->RunCommand();
+	  pcam_pars[icam]->pcam->EndCapture();
+	  pcam_pars[icam]->pcam->FlushQueue();
+	  pcam_pars[icam]->pcam->RevokeAllFrames();
+	  if (VmbErrorSuccess == pcam_pars[icam]->pcam->Close())
+	    {
+	      cout << icam << "th camera at " << pcam_pars[icam]->addr << " closed." << endl;	      
+	    }
+	  long long td = f_base::m_clk.get_time_from_start();
+	  FrameObserver * pObserver = dynamic_cast<FrameObserver*>(pcam_pars[icam]->pObserver.get());
+	  double fps_drop =  (double)SEC * (double)pObserver->getNumDroppedFrames() / (double) td;
 
-		virtual ~f_avt_vmb_cam_impl()
-		{
-			for (int icam = 0; icam < ncam; icam++){
-				delete pcam_pars[icam];
-			}
-		}
+	  double fps_rcv = (double) SEC * (double)pObserver->getNumRecievedFrames() / (double) td;
 
-		virtual bool init_run()
-		{
-			// opening and configuring cameras
-			for (int icam = 0; icam < ncam; icam++){
-				if (VmbErrorSuccess == psys->OpenCameraByID(pcam_pars[icam]->addr, VmbAccessModeFull, pcam_pars[icam]->pcam)){
-					cout << icam << "th camera at " << pcam_pars[icam]->addr << " is opened." << endl;
-				  pcam_pars[icam]->bopened = true;					
-				}
-				else{
-				  cout << icam << "th camera at " << pcam_pars[icam]->addr << " cannot be opened." << endl;
-
-					return false;
-				}
-
-				FeaturePtr pFeature;
-				if (pcam_pars[icam]->GevSCPSPacketSize == INT_MIN){ // if packet size is not specified
-					pcam_pars[icam]->pcam->GetFeatureByName("GVSPAdjustPacketSize", pFeature);
-					pFeature->RunCommand();
-				}
-				if (config_static_params(*pcam_pars[icam]) == false){
-					return false;
-				}
-				pcam_pars[icam]->update = false;
-			}
-
-			// allocating frame buffer
-			for (int icam = 0; icam < ncam; icam++){
-				pcam_pars[icam]->pObserver.reset(new FrameObserver(pcam_pars[icam]->pcam, pcam_pars[icam]->pch));
-				pcam_pars[icam]->frmbuf.resize(pcam_pars[icam]->nfrmbuf);
-				for (int ifrm = 0; ifrm < pcam_pars[icam]->nfrmbuf; ifrm++){
-					pcam_pars[icam]->frmbuf[ifrm].reset(new Frame(pcam_pars[icam]->PayloadSize));
-					pcam_pars[icam]->frmbuf[ifrm]->RegisterObserver(pcam_pars[icam]->pObserver);
-					pcam_pars[icam]->pcam->QueueFrame(pcam_pars[icam]->frmbuf[ifrm]);
-				}
-			}
-
-			// starting acquisition
-			for (int icam = 0; icam < ncam; icam++){
-				FeaturePtr pFeature;
-				pcam_pars[icam]->pcam->GetFeatureByName("AcquisitionStart", pFeature);
-				pcam_pars[icam]->pcam->StartCapture();
-				pFeature->RunCommand();
-			}
-			return true;
-		}
-
-		virtual void destroy_run()
-		{
-			for (int icam = 0; icam < ncam; icam++){
-				if(!pcam_pars[icam]->bopened)
-				  continue;
-				FeaturePtr pFeature;
-				pcam_pars[icam]->pcam->GetFeatureByName("AcquisitionStop", pFeature);
-				pFeature->RunCommand();
-				pcam_pars[icam]->pcam->EndCapture();
-				pcam_pars[icam]->pcam->FlushQueue();
-				pcam_pars[icam]->pcam->RevokeAllFrames();
-				if (VmbErrorSuccess == pcam_pars[icam]->pcam->Close())
-				{
-					cout << icam << "th camera at " << pcam_pars[icam]->addr << " closed." << endl;
-				}
-			}
-		}
-
-		virtual bool proc()
-		{
-			if (ttrig_prev + ttrig_int < m_cur_time){
-				FeaturePtrVector pFeatures;
-				pFeatures.reserve(ncam);
-				for (int icam = 0; icam < ncam; icam++){
-					if (pcam_pars[icam]->TriggerSource == eTriggerSource::Software){
-						FeaturePtr pFeature;
-						pcam_pars[icam]->pcam->GetFeatureByName("TriggerSoftware", pFeature);
-						pFeatures.push_back(pFeature);
-					}
-				}
-
-				for (FeaturePtrVector::iterator itr = pFeatures.begin();
-					itr != pFeatures.end(); itr++)
-					(**itr).RunCommand();
-
-				ttrig_prev = m_cur_time;
-			}
-			
-			for(int icam = 0; icam < ncam; icam++){
-			  if(pcam_pars[icam]->update){
-			    if(config_dynamic_params(*pcam_pars[icam]) == false){
-			      cerr << "Failed to update parameters of cam["
-				   << icam << "]." << endl;		  
-			    }
-			    pcam_pars[icam]->update = false;
-			  }
-			}
-			return true;
-		}
-	};
-
+	  cout << icam << "th camera fps:" << fps_rcv << " dps:" << fps_drop << endl;
+	}
+      }
+      
+      virtual bool proc()
+      {
+	
+	if (ttrig_prev + ttrig_int < m_cur_time){
+	  FeaturePtrVector pFeatures;
+	  pFeatures.reserve(ncam);
+	  for (int icam = 0; icam < ncam; icam++){
+	    if (pcam_pars[icam]->TriggerSource == eTriggerSource::Software){
+	      FeaturePtr pFeature;
+	      pcam_pars[icam]->pcam->GetFeatureByName("TriggerSoftware", pFeature);
+	      pFeatures.push_back(pFeature);
+	    }
+	  }
+	  
+	  for (FeaturePtrVector::iterator itr = pFeatures.begin();
+	       itr != pFeatures.end(); itr++)
+	    (**itr).RunCommand();
+	  
+	  ttrig_prev = m_cur_time;
+	}
+	
+	for(int icam = 0; icam < ncam; icam++){
+	  if(pcam_pars[icam]->update){
+	    if(config_dynamic_params(*pcam_pars[icam]) == false){
+	      cerr << "Failed to update parameters of cam["
+		   << icam << "]." << endl;		  
+	    }
+	    pcam_pars[icam]->update = false;
+	  }
+	}
+	return true;
+      }
+    };
 };
 #endif
