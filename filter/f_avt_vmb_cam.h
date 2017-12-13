@@ -267,6 +267,7 @@ namespace avt_vmb_cam{
       nfrmbuf,
       addr, // char[1024]
       update, // bool
+      verb,
       channel,
       FeatureUndef
     };
@@ -510,6 +511,7 @@ namespace avt_vmb_cam{
       char addr[1024];
       int nfrmbuf;
       bool update;
+      bool verb;
       ch_image_ref * pch;
       
       FramePtrVector frmbuf;
@@ -780,13 +782,16 @@ namespace avt_vmb_cam{
       virtual bool proc()
       {
 	
-	if (ttrig_prev + ttrig_int < m_cur_time){
+	if (ttrig_prev + ttrig_int <= m_cur_time){
 	  FeaturePtrVector pFeatures;
 	  pFeatures.reserve(ncam);
 	  for (int icam = 0; icam < ncam; icam++){
 	    if (pcam_pars[icam]->TriggerSource == eTriggerSource::Software){
 	      FeaturePtr pFeature;
 	      pcam_pars[icam]->pcam->GetFeatureByName("TriggerSoftware", pFeature);
+	      if(pcam_pars[icam]->verb){
+		cout << m_time_str << "cam[" << icam << "] triggered" << endl;
+	      }
 	      pFeatures.push_back(pFeature);
 	    }
 	  }

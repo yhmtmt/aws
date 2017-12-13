@@ -370,7 +370,7 @@ public:
 	}
 
 	void runstat(){
-	  cout << get_name() << " stopped." << endl;
+	  cout << get_name() << ":"<< endl;
 	  cout << "Processing rate was " << m_proc_rate;
 	  cout << "(" << m_count_proc << "/" << m_count_clock << ")" << endl;
 	  cout << "Number of max cycles was " << m_max_cycle << endl;

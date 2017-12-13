@@ -312,7 +312,6 @@ bool f_base::stop()
     return true;	      
   }
   
-  cout << m_name << " is still alive." << endl;
   return false;
 }
 

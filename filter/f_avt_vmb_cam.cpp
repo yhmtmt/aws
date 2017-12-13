@@ -81,6 +81,7 @@ namespace avt_vmb_cam{
       "nfrmbuf",
       "addr",
       "update",
+      "verb",
       "channel"
     };
   
@@ -138,6 +139,7 @@ namespace avt_vmb_cam{
     "Number of frames in queue.",
     "IP address of the camera",
     "Updates dynamic parameters",
+    "Verbose for debug",
     "Image channel"
   };
   
@@ -299,6 +301,7 @@ namespace avt_vmb_cam{
     register_fpar(pstr[nfrmbuf], &par.nfrmbuf, expFeature[nfrmbuf]);
     register_fpar(pstr[addr], par.addr, 1024, expFeature[addr]);
     register_fpar(pstr[update], &par.update, expFeature[update]);
+    register_fpar(pstr[verb], &par.verb, expFeature[verb]);
     register_fpar(pstr[channel], (ch_base**)&par.pch, typeid(ch_image_ref).name(), "Image channel");
   }
   
@@ -354,6 +357,7 @@ namespace avt_vmb_cam{
 							 ReverseY(false),
 							 PayloadSize(INT_MIN),
 							 nfrmbuf(3),
+							 verb(false),
 							 bopened(false)
   {
     // creating parameter string
