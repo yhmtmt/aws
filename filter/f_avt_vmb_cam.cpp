@@ -28,6 +28,8 @@ namespace avt_vmb_cam{
   
   const char * f_avt_vmb_cam::strFeature[FeatureUndef] =
     {
+      "GVCPCmdRetries",
+      "GVCPCmdTimeout",
       "AcquisitionMode", 
       "AcquisitionFrameRateAbs", 
       "SensorShutterMode",
@@ -86,6 +88,8 @@ namespace avt_vmb_cam{
     };
   
   const char * f_avt_vmb_cam::expFeature[FeatureUndef] = {
+    "Controls Maximum number of resend requests that the host will attempt when trying to recover a lost",
+    "The timeout waiting for an answer from the camera",
     "Determines the behaviour of the camera if the acquisition start is triggered.",
     "Specifies frame rate if TriggerSelector=FrameStart TriggerMode=off TriggerSource=FixedRate",
     "Type of the shutter",
@@ -251,6 +255,8 @@ namespace avt_vmb_cam{
   void f_avt_vmb_cam::register_params(s_cam_params & par)
   {
     char ** pstr = par.strFeature;
+    register_fpar(pstr[GVCPCmdRetries], &par.GVCPCmdRetries, expFeature[GVCPCmdRetries]);
+    register_fpar(pstr[GVCPCmdTimeout], &par.GVCPCmdRetries, expFeature[GVCPCmdTimeout]);
     register_fpar(pstr[AcquisitionMode], (int*)&par.AcquisitionMode, (int)eAcquisitionMode::Undef, strAcquisitionMode, expFeature[AcquisitionMode]);
     register_fpar(pstr[AcquisitionFrameRateAbs], &par.AcquisitionFrameRateAbs, expFeature[AcquisitionFrameRateAbs]);
     register_fpar(pstr[SensorShutterMode], (int*)&par.SensorShutterMode, (int)eSensorShutterMode::Undef, strSensorShutterMode, expFeature[SensorShutterMode]);
@@ -305,60 +311,63 @@ namespace avt_vmb_cam{
     register_fpar(pstr[channel], (ch_base**)&par.pch, typeid(ch_image_ref).name(), "Image channel");
   }
   
-  f_avt_vmb_cam::s_cam_params::s_cam_params(int _icam) : icam(_icam),
-							 AcquisitionMode(eAcquisitionMode::Undef),
-							 AcquisitionFrameRateAbs(-FLT_MAX),
-							 SensorShutterMode(eSensorShutterMode::Undef),
-							 TriggerActivation(eTriggerActivation::Undef),
-							 TriggerDelayAbs(-FLT_MAX),
-							 TriggerMode(eTriggerMode::Undef),
-							 TriggerSelector(eTriggerSelector::Undef),
-							 TriggerSource(eTriggerSource::Undef),
-							 DSPSubregionBottom(INT_MIN),
-							 DSPSubregionLeft(INT_MIN),
-							 DSPSubregionRight(INT_MIN),
-							 DSPSubregionTop(INT_MIN),
-							 ExposureAuto(eExposureAuto::Undef),
-							 ExposureAutoAdjustTol(INT_MIN),
-							 ExposureAutoAlg(eExposureAutoAlg::Undef),
-							 ExposureAutoMax(INT_MIN),
-							 ExposureAutoMin(INT_MIN),
-							 ExposureAutoOutliers(INT_MIN),
-							 ExposureAutoRate(INT_MIN),
-							 ExposureAutoTarget(INT_MIN),
-							 ExposureMode(eExposureMode::Undef),
-							 ExposureTimeAbs(-FLT_MAX),
-							 ExposureTimePWL1(-FLT_MAX),
-							 ExposureTimePWL2(-FLT_MAX),
-							 Gain(-FLT_MAX),
-							 GainAuto(eGainAuto::Undef),
-							 GainAutoAdjustTol(INT_MIN),
-							 GainAutoMax(-FLT_MAX),
-							 GainAutoMin(-FLT_MAX),
-							 GainAutoOutliers(INT_MIN),
-							 GainAutoRate(INT_MIN),
-							 GainAutoTarget(INT_MIN),
-							 BlackLevel(-FLT_MAX),
-							 BalanceRatioAbs(-FLT_MAX),
-							 BalanceRatioSelector(eBalanceRatioSelector::Undef),
-							 BalanceWhiteAuto(eBalanceWhiteAuto::Undef),
-							 BalanceWhiteAutoAdjustTol(INT_MIN),
-							 BalanceWhiteAutoRate(INT_MIN),
-							 BandwidthControlMode(eBandwidthControlMode::Undef),
-							 GevSCPSPacketSize(INT_MIN),
-							 StreamBytesPerSecond(INT_MIN),
-							 StreamFrameRateConstrain(true),
-							 Height(INT_MIN),
-							 OffsetX(INT_MIN),
-							 OffsetY(INT_MIN),
-							 PixelFormat(ePixelFormat::Undef),
-							 Width(INT_MIN),
-							 ReverseX(false),
-							 ReverseY(false),
-							 PayloadSize(INT_MIN),
-							 nfrmbuf(3),
-							 verb(false),
-							 bopened(false)
+  f_avt_vmb_cam::s_cam_params
+  ::s_cam_params(int _icam) : icam(_icam),
+			      GVCPCmdRetries(INT_MIN),
+			      GVCPCmdTimeout(INT_MIN),
+			      AcquisitionMode(eAcquisitionMode::Undef),
+			      AcquisitionFrameRateAbs(-FLT_MAX),
+			      SensorShutterMode(eSensorShutterMode::Undef),
+			      TriggerActivation(eTriggerActivation::Undef),
+			      TriggerDelayAbs(-FLT_MAX),
+			      TriggerMode(eTriggerMode::Undef),
+			      TriggerSelector(eTriggerSelector::Undef),
+			      TriggerSource(eTriggerSource::Undef),
+			      DSPSubregionBottom(INT_MIN),
+			      DSPSubregionLeft(INT_MIN),
+			      DSPSubregionRight(INT_MIN),
+			      DSPSubregionTop(INT_MIN),
+			      ExposureAuto(eExposureAuto::Undef),
+			      ExposureAutoAdjustTol(INT_MIN),
+			      ExposureAutoAlg(eExposureAutoAlg::Undef),
+			      ExposureAutoMax(INT_MIN),
+			      ExposureAutoMin(INT_MIN),
+			      ExposureAutoOutliers(INT_MIN),
+			      ExposureAutoRate(INT_MIN),
+			      ExposureAutoTarget(INT_MIN),
+			      ExposureMode(eExposureMode::Undef),
+			      ExposureTimeAbs(-FLT_MAX),
+			      ExposureTimePWL1(-FLT_MAX),
+			      ExposureTimePWL2(-FLT_MAX),
+			      Gain(-FLT_MAX),
+			      GainAuto(eGainAuto::Undef),
+			      GainAutoAdjustTol(INT_MIN),
+			      GainAutoMax(-FLT_MAX),
+			      GainAutoMin(-FLT_MAX),
+			      GainAutoOutliers(INT_MIN),
+			      GainAutoRate(INT_MIN),
+			      GainAutoTarget(INT_MIN),
+			      BlackLevel(-FLT_MAX),
+			      BalanceRatioAbs(-FLT_MAX),
+			      BalanceRatioSelector(eBalanceRatioSelector::Undef),
+			      BalanceWhiteAuto(eBalanceWhiteAuto::Undef),
+			      BalanceWhiteAutoAdjustTol(INT_MIN),
+			      BalanceWhiteAutoRate(INT_MIN),
+			      BandwidthControlMode(eBandwidthControlMode::Undef),
+			      GevSCPSPacketSize(INT_MIN),
+			      StreamBytesPerSecond(INT_MIN),
+			      StreamFrameRateConstrain(true),
+			      Height(INT_MIN),
+			      OffsetX(INT_MIN),
+			      OffsetY(INT_MIN),
+			      PixelFormat(ePixelFormat::Undef),
+			      Width(INT_MIN),
+			      ReverseX(false),
+			      ReverseY(false),
+			      PayloadSize(INT_MIN),
+			      nfrmbuf(3),
+			      verb(false),
+			      bopened(false)
   {
     // creating parameter string
     if (icam > 1000){
@@ -411,6 +420,8 @@ namespace avt_vmb_cam{
   {
     CameraPtr pcam = par.pcam;
     FeaturePtr pf;
+    config_param(pcam, pf, strFeature[GVCPCmdRetries], par.GVCPCmdRetries);
+    config_param(pcam, pf, strFeature[GVCPCmdTimeout], par.GVCPCmdTimeout);
     config_param(pcam, pf, strFeature[AcquisitionFrameRateAbs], par.AcquisitionFrameRateAbs);
     config_param<eSensorShutterMode>(pcam, pf, strFeature[SensorShutterMode], par.SensorShutterMode, strSensorShutterMode);
     config_param<eTriggerActivation>(pcam, pf, strFeature[TriggerActivation], par.TriggerActivation, strTriggerActivation);

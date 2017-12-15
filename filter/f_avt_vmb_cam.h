@@ -156,8 +156,7 @@ namespace avt_vmb_cam{
 	    }
 	    
 	    switch (pixelFormat){
-	    case VmbPixelFormatMono8:
-	      
+	    case VmbPixelFormatMono8:	      
 	    case VmbPixelFormatBayerBG8:
 	    case VmbPixelFormatBayerGB8:
 	    case VmbPixelFormatBayerGR8:
@@ -196,14 +195,19 @@ namespace avt_vmb_cam{
 	    
 	    unsigned long long fid;
 	    pFrame->GetFrameID(fid);
+	    cout << "Setting Frame[" << fid << "]" << endl;
 	    pch->set_img(img, f_base::get_time(), (long long)fid);
+	    cout << "Frame[" << fid << "] sat" << endl;
 	    received_frames++;
 	  }
 	  else{
-	    cerr << "Failed to acquire frame." << endl;
+	    cerr << "Data is not valid." << endl;
 	    dropped_frames++;
 	  }
-	}
+	}else{
+	cerr << "Failed to acuire Frame." << endl;
+	dropped_frames++;
+      }
       m_pCamera->QueueFrame(pFrame);
     }
   };
@@ -214,6 +218,8 @@ namespace avt_vmb_cam{
   protected:
     static VimbaSystem * psys;
     enum eFeature{
+      GVCPCmdRetries,
+      GVCPCmdTimeout,      
       AcquisitionMode, // enum
       AcquisitionFrameRateAbs, // float
       SensorShutterMode, //enum
@@ -467,6 +473,8 @@ namespace avt_vmb_cam{
     struct s_cam_params{
       int icam;
       char * strFeature[FeatureUndef];
+      int GVCPCmdRetries;
+      int GVCPCmdTimeout;
       eAcquisitionMode AcquisitionMode;
       eTriggerSource TriggerSource;
       float AcquisitionFrameRateAbs;
