@@ -25,7 +25,7 @@ FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
 RCMD_DIR = $(CUR_DIR)/rcmd
-INC_CV_DIR = /usr/local/include
+INC_CV_DIR = /usr/locaa/include
 LIB_CV_DIR = /usr/local/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
@@ -35,10 +35,10 @@ INC_GLFW_DIR = /usr/include
 LIB_GLFW_DIR = /usr/lib
 INC_EIGEN_DIR = /usr/include/eigen3
 INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
-INC_GST = /usr/lib/aarch64-linux-gnu/gstreamer-1.0/include
+INC_GST = /usr/lib/aarch64-linux-gnu/gstreamer-1.0/include -I/usr/include/gstreamer-1.0
 LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
-INC_GLIB = /usr/lib/aarch64-linux-gnu/glib-2.0/include
-INC_GLIB_CONFIG = /usr/lib/arm-linux-gnueabihf/glib-2.0/include
+INC_GLIB = /usr/include/glib-2.0
+INC_GLIB_CONFIG = /usr/lib/aarch64-linux-gnu/glib-2.0/include
 INC_GLM = /usr/local/include/glm
 
 ########################################################### OpenCV Linker option

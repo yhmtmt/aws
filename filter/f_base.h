@@ -364,30 +364,13 @@ public:
 	}
 
 	// stop main thread. the function is called from c_aws until the thread stops.
-	virtual bool stop()
-	{
-	  cout << "Stopping " << m_name;
-		m_bactive = false;
-		if(m_bstopped || is_main_thread()){
-			if (m_bstopped && m_fthread) {
-				m_fthread->join();
-				delete m_fthread;
-				m_fthread = NULL;
-			}
-			m_bstopped = true;
-			cout << " ... done." << endl;
-			return true;
-		}
-		cout << " ... " << endl;
-		return false;
-	}
-	
+	virtual bool stop();
 	void destroy(){
 		destroy_run();
 	}
 
 	void runstat(){
-	  cout << get_name() << " stopped." << endl;
+	  cout << get_name() << ":"<< endl;
 	  cout << "Processing rate was " << m_proc_rate;
 	  cout << "(" << m_count_proc << "/" << m_count_clock << ")" << endl;
 	  cout << "Number of max cycles was " << m_max_cycle << endl;

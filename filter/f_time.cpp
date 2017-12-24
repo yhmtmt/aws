@@ -114,34 +114,34 @@ void f_time::destroy_run()
 
 bool f_time::proc()
 {
-	if(m_verb)
-		cout << m_time_str << endl;
+  if(m_verb)
+    cout << m_time_str << endl;
+  
+  
+  switch(mode){
+  case TRN: // -> RCV or WAI
+    if(!sttrn())
+      return false;
+    break;
+  case WAI: // -> RCV or TRN or FIX
+    if(!stwai())
+      return false;
+    break;
+  case RCV: // -> RCV or TRN
+    if(!strcv())
+      return false;
+    break;
+  case REP: // -> RCV or REP
+    if(!strep())
+      return false;
+    break;
+  case FIX: // -> RCV
+    if(!stfix())
+      return false;
+    break;
+  }
 
-
-	switch(mode){
-	case TRN: // -> RCV or WAI
-		if(!sttrn())
-			return false;
-		break;
-	case WAI: // -> RCV or TRN or FIX
-		if(!stwai())
-			return false;
-		break;
-	case RCV: // -> RCV or TRN
-		if(!strcv())
-			return false;
-		break;
-	case REP: // -> RCV or REP
-		if(!strep())
-			return false;
-		break;
-	case FIX: // -> RCV
-		if(!stfix())
-			return false;
-		break;
-	}
-
-	return true;
+  return true;
 }
 
 // State TRN transmits time synchronization request packet. If the filter is not configured as client

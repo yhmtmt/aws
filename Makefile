@@ -5,7 +5,7 @@ EXE = aws
 LD	= ld
 
 #debug option (y: build as debug binary)
-DEBUG = y
+DEBUG = n
 
 #install Directory
 INST_DIR = ./bin

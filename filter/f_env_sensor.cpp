@@ -34,7 +34,7 @@ using namespace cv;
 
 #include "f_env_sensor.h"
 
-f_env_sensor::f_env_sensor(const char * name) :f_base(name), m_chan(NULL), m_rbuf_head(0), m_rbuf_tail(0), m_port(0), m_verb(false), m_hserial(NULL), m_br(9600)
+f_env_sensor::f_env_sensor(const char * name) :f_base(name), m_chan(NULL), m_rbuf_head(0), m_rbuf_tail(0), m_port(0), m_verb(false), m_hserial(NULL_SERIAL), m_br(9600)
 {
   m_dname[0] = 0;
   register_fpar("ch", (ch_base**)&m_chan, typeid(ch_env).name(), "Channel for enviromental parameters.");
@@ -136,7 +136,7 @@ bool f_env_sensor::proc()
 }
 
 
-f_volt_sensor::f_volt_sensor(const char * name) :f_base(name), m_chan(NULL), m_rbuf_head(0), m_rbuf_tail(0), m_port(0), m_verb(false), m_hserial(NULL), m_br(9600)
+f_volt_sensor::f_volt_sensor(const char * name) :f_base(name), m_chan(NULL), m_rbuf_head(0), m_rbuf_tail(0), m_port(0), m_verb(false), m_hserial(NULL_SERIAL), m_br(9600)
 {
   m_dname[0] = 0;
   register_fpar("ch", (ch_base**)&m_chan, typeid(ch_volt).name(), "Channel for voltage parameters.");

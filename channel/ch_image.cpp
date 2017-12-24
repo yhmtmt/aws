@@ -34,184 +34,184 @@ using namespace cv;
 
 const char * str_imfmt[IMF_Undef] = 
 {
-	"GRAY8", "GRAY10", "GRAY12", "GRAY14", "GRAY16",
-	"RGB8", "RGB10", "RGB12", "RGB14", "RGB16",
-	"BGR8", "BGR10", "BGR12", "BGR14", "BGR16",
-	"BayerBG10", "BayerGB10", "BayerGR10", "BayerRG10",
-	"BayerBG12", "BayerGB12", "BayerGR12", "BayerRG12",
-	"NV12", "I420"
+  "GRAY8", "GRAY10", "GRAY12", "GRAY14", "GRAY16",
+  "RGB8", "RGB10", "RGB12", "RGB14", "RGB16",
+  "BGR8", "BGR10", "BGR12", "BGR14", "BGR16",
+  "BayerBG10", "BayerGB10", "BayerGR10", "BayerRG10",
+  "BayerBG12", "BayerGB12", "BayerGR12", "BayerRG12",
+  "NV12", "I420"
 };
 
 #define TIME_VERSION_1_00 14663001811536897L
  
 int ch_image::write(FILE * pf, long long tcur)
 {
-	if(pf){
-		unique_lock<mutex> lock(m_mtx_fr);
-	  Mat img;
-	  if (!m_img[m_front].empty() && m_tfile < m_time[m_front]){
-		  img = m_img[m_front].clone();
-	  }
-	  lock.unlock();
-	  if (!img.empty()){
-		  m_tfile = m_time[m_front];
-		  int r, c, type, size;
-		  r = img.rows;
-		  c = img.cols;
-		  type = img.type();
-		  size = (int)(r * c * img.elemSize());
-		  fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
-		  fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);
-		  fwrite((void*)&type, sizeof(int), 1, pf);
-		  fwrite((void*)&m_offset, sizeof(m_offset), 1, pf); // from ver.1.00	      
-		  fwrite((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pf); // from ver.1.00	      
-		  fwrite((void*)&r, sizeof(int), 1, pf);
-		  fwrite((void*)&c, sizeof(int), 1, pf);
-		  fwrite((void*)&size, sizeof(int), 1, pf);
-		  fwrite((void*)img.data, sizeof(char), size, pf);
-		  return sizeof(long long) + sizeof(m_offset) + sizeof(m_sz_sensor) + 4 * sizeof(int)+size;
-	  }
-	}
-	return 0;
+  if(pf){
+    unique_lock<mutex> lock(m_mtx_fr);
+    Mat img;
+    if (!m_img[m_front].empty() && m_tfile < m_time[m_front]){
+      img = m_img[m_front].clone();
+    }
+    lock.unlock();
+    if (!img.empty()){
+      m_tfile = m_time[m_front];
+      int r, c, type, size;
+      r = img.rows;
+      c = img.cols;
+      type = img.type();
+      size = (int)(r * c * img.elemSize());
+      fwrite((void*)&m_tfile, sizeof(long long), 1, pf);
+      fwrite((void*)&m_ifrm[m_front], sizeof(long long), 1, pf);
+      fwrite((void*)&type, sizeof(int), 1, pf);
+      fwrite((void*)&m_offset, sizeof(m_offset), 1, pf); // from ver.1.00	      
+      fwrite((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pf); // from ver.1.00	      
+      fwrite((void*)&r, sizeof(int), 1, pf);
+      fwrite((void*)&c, sizeof(int), 1, pf);
+      fwrite((void*)&size, sizeof(int), 1, pf);
+      fwrite((void*)img.data, sizeof(char), size, pf);
+      return sizeof(long long) + sizeof(m_offset) + sizeof(m_sz_sensor) + 4 * sizeof(int)+size;
+    }
+  }
+  return 0;
 }
 
 int ch_image::read(FILE * pf, long long tcur)
 {
   if(!pf)
-		return 0;
+    return 0;
   size_t sz = 0;
-	while(m_tfile <= tcur && !feof(pf)){
-		long long tsave, ifrm;
-		int r, c, type, size;
-		size_t res;
-		r = c = type = size = 0;
-		res = fread((void*)&tsave, sizeof(long long), 1, pf);
-		if(!res)
-			return 0;
-		sz += res;
-		
-		unique_lock<mutex> lock_bk(m_mtx_bk);
-		res = fread((void*)&ifrm, sizeof(long long), 1, pf);
-		if(!res)
-			goto failed;
-		sz += res;
+  while(m_tfile <= tcur && !feof(pf)){
+    long long tsave, ifrm;
+    int r, c, type, size;
+    size_t res;
+    r = c = type = size = 0;
+    res = fread((void*)&tsave, sizeof(long long), 1, pf);
+    if(!res)
+      return 0;
+    sz += res;
+    
+    unique_lock<mutex> lock_bk(m_mtx_bk);
+    res = fread((void*)&ifrm, sizeof(long long), 1, pf);
+    if(!res)
+      goto failed;
+    sz += res;
+    
+    m_ifrm[m_back] = ifrm;
+    m_time[m_back] = m_tfile = tsave;
+    
+    res = fread((void*)&type, sizeof(int), 1, pf);
+    if(!res)
+      goto failed;
+    sz += res;
+    
+    if(tsave > TIME_VERSION_1_00){
+      res = fread((void*)&m_offset, sizeof(m_offset), 1, pf);
+      if(!res)
+	goto failed;
+      sz += res;
+      res = fread((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pf);
+      if(!res)
+	goto failed;
+      sz += res;
+    }
+    
+    res = fread((void*)&r, sizeof(int), 1, pf);
+    if(!res)
+      goto failed;
+    sz += res;
+    
+    res = fread((void*)&c, sizeof(int), 1, pf);
+    if(!res)
+      goto failed;
+    sz += res;
+    
+    res = fread((void*)&size, sizeof(int), 1, pf);
+    if(!res)
+      goto failed;
+    sz += res;
+    
+    Mat & img = m_img[m_back];
+    if(img.type() != type || img.rows != r || img.cols != c){
+      img.create(r, c, type);
+    }
+    res = fread((void*)img.data, sizeof(char), size, pf);
+    if(!res)
+      goto failed;
+    sz += res;
 
-		m_ifrm[m_back] = ifrm;
-		m_time[m_back] = m_tfile = tsave;
-		
-		res = fread((void*)&type, sizeof(int), 1, pf);
-		if(!res)
-			goto failed;
-		sz += res;
-
-		if(tsave > TIME_VERSION_1_00){
-			res = fread((void*)&m_offset, sizeof(m_offset), 1, pf);
-			if(!res)
-				goto failed;
-			sz += res;
-			res = fread((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pf);
-			if(!res)
-				goto failed;
-			sz += res;
-		}
-
-		res = fread((void*)&r, sizeof(int), 1, pf);
-		if(!res)
-			goto failed;
-		sz += res;
-
-		res = fread((void*)&c, sizeof(int), 1, pf);
-		if(!res)
-			goto failed;
-		sz += res;
-
-		res = fread((void*)&size, sizeof(int), 1, pf);
-		if(!res)
-			goto failed;
-		sz += res;
-
-		Mat & img = m_img[m_back];
-		if(img.type() != type || img.rows != r || img.cols != c){
-			img.create(r, c, type);
-		}
-		res = fread((void*)img.data, sizeof(char), size, pf);
-		if(!res)
-			goto failed;
-		sz += res;
-
-		cout << m_name << " time " << m_time[m_back] << " frm " << m_ifrm[m_back] << " loaded." << endl;
-
-		unique_lock<mutex> lock_fr(m_mtx_fr);
-		
-		int tmp = m_front;
-		m_front = m_back;
-		m_back = tmp;
-		lock_fr.unlock();
-		lock_bk.unlock();
-	}
-	return (int) sz;
-failed:
-	return 0;
+    cout << m_name << " time " << m_time[m_back] << " frm " << m_ifrm[m_back] << " loaded." << endl;
+    
+    unique_lock<mutex> lock_fr(m_mtx_fr);
+    
+    int tmp = m_front;
+    m_front = m_back;
+    m_back = tmp;
+    lock_fr.unlock();
+    lock_bk.unlock();
+  }
+  return (int) sz;
+ failed:
+  return 0;
 }
 
 bool ch_image::log2txt(FILE * pbf, FILE * ptf)
 {
-	char fname[1024];
-	long long tprev = 0;
-	fprintf(ptf, "t, filename\n");
-	while(!feof(pbf)){
-		long long tsave, ifrm;
-		int r, c, type, size;
-		size_t res;
-		r = c = type = size = 0;
-
-		res = fread((void*)&tsave, sizeof(long long), 1, pbf);
-		if(tsave == tprev)
-			continue;
-
-		res = fread((void*)&ifrm, sizeof(long long), 1, pbf);
-		if(!res)
-			goto failed;
-
-		res = fread((void*)&type, sizeof(int), 1, pbf);
-		if(!res)
-			goto failed;
-
-		if(tsave > TIME_VERSION_1_00){
-			res = fread((void*)&m_offset, sizeof(m_offset), 1, pbf);
-			if(!res)
-				goto failed;
+  char fname[1024];
+  long long tprev = 0;
+  fprintf(ptf, "t, filename\n");
+  while(!feof(pbf)){
+    long long tsave, ifrm;
+    int r, c, type, size;
+    size_t res;
+    r = c = type = size = 0;
+    
+    res = fread((void*)&tsave, sizeof(long long), 1, pbf);
+    if(tsave == tprev)
+      continue;
+    
+    res = fread((void*)&ifrm, sizeof(long long), 1, pbf);
+    if(!res)
+      goto failed;
+    
+    res = fread((void*)&type, sizeof(int), 1, pbf);
+    if(!res)
+      goto failed;
+    
+    if(tsave > TIME_VERSION_1_00){
+      res = fread((void*)&m_offset, sizeof(m_offset), 1, pbf);
+      if(!res)
+	goto failed;
 		     
-			res = fread((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pbf);
-			if(!res)
-				goto failed;
-		}
-
-		res = fread((void*)&r, sizeof(int), 1, pbf);
-		if(!res)
-			goto failed;
-
-		res = fread((void*)&c, sizeof(int), 1, pbf);
-		if(!res)
-			goto failed;
-
-		res = fread((void*)&size, sizeof(int), 1, pbf);
-		if(!res)
-			goto failed;
-
-		Mat & img = m_img[m_back];
-		if(img.type() != type || img.rows != r || img.cols != c){
-			img.create(r, c, type);
-		}
-		res = fread((void*)img.data, sizeof(char), size, pbf);
-		if(!res)
-			goto failed;
-		snprintf(fname, 1024, "%s_%lld.png", get_name(), tsave);
-		fprintf(ptf, "%lld, %s\n", tsave, fname);
-		imwrite(fname, img);
-		tprev = tsave;
-	}
-	return true;
-failed:
-	return false;
+      res = fread((void*)&m_sz_sensor, sizeof(m_sz_sensor), 1, pbf);
+      if(!res)
+	goto failed;
+    }
+    
+    res = fread((void*)&r, sizeof(int), 1, pbf);
+    if(!res)
+      goto failed;
+    
+    res = fread((void*)&c, sizeof(int), 1, pbf);
+    if(!res)
+      goto failed;
+    
+    res = fread((void*)&size, sizeof(int), 1, pbf);
+    if(!res)
+      goto failed;
+    
+    Mat & img = m_img[m_back];
+    if(img.type() != type || img.rows != r || img.cols != c){
+      img.create(r, c, type);
+    }
+    res = fread((void*)img.data, sizeof(char), size, pbf);
+    if(!res)
+      goto failed;
+    snprintf(fname, 1024, "%s_%lld.png", get_name(), tsave);
+    fprintf(ptf, "%lld, %s\n", tsave, fname);
+    imwrite(fname, img);
+    tprev = tsave;
+  }
+  return true;
+ failed:
+  return false;
 }
