@@ -1,0 +1,13 @@
+activating ngt-1 in jetsontk1 
+install ftdi driver
+http://www.jetsonhacks.com/2015/07/15/jetsonbot-part-v-a-vision-robot-with-a-create-2-base-usb-ftdi-module/
+
+modprobe ngt-1 manually
+sudo modprobe ftdi_sio vendor=0x0403 product=0xd9aa
+
+to automate
+see http://knilluz.buurnet.nl/?p=1173
+
+
+clone canboat
+https://github.com/canboat/canboat
