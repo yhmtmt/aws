@@ -195,9 +195,7 @@ namespace avt_vmb_cam{
 	    
 	    unsigned long long fid;
 	    pFrame->GetFrameID(fid);
-	    cout << "Setting Frame[" << fid << "]" << endl;
 	    pch->set_img(img, f_base::get_time(), (long long)fid);
-	    cout << "Frame[" << fid << "] sat" << endl;
 	    received_frames++;
 	  }
 	  else{

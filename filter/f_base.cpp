@@ -247,7 +247,6 @@ void f_base::sfthread(f_base * filter)
     if(!filter->proc()){
       filter->m_bactive = false;
     }
-    
     if(filter->m_clk.is_run()){
       filter->m_count_proc++;
       filter->m_max_cycle = max(filter->m_cycle, filter->m_max_cycle);
