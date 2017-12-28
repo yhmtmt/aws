@@ -195,15 +195,18 @@ namespace avt_vmb_cam{
 	    
 	    unsigned long long fid;
 	    pFrame->GetFrameID(fid);
-	    pch->set_img(img, f_base::get_time(), (long long)fid);
+	    Mat img_set = img.clone();
+	    pch->set_img(img_set, f_base::get_time(), (long long)fid);
 	    received_frames++;
 	  }
 	  else{
-	    cerr << "Data is not valid." << endl;
+	    unsigned long long fid;
+	    pFrame->GetFrameID(fid);
+	    cerr << "Frame[" << fid << "]'s data is not valid." << endl;
 	    dropped_frames++;
 	  }
 	}else{
-	cerr << "Failed to acuire Frame." << endl;
+	cerr << "Failed to acquire Frame." << endl;
 	dropped_frames++;
       }
       m_pCamera->QueueFrame(pFrame);
