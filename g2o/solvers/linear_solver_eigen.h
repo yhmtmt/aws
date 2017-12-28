@@ -51,9 +51,9 @@ template <typename MatrixType>
 class LinearSolverEigen: public LinearSolver<MatrixType>
 {
   public:
-    typedef Eigen::SparseMatrix<double, Eigen::ColMajor> SparseMatrix;
+  typedef Eigen::SparseMatrix<double, Eigen::ColMajor, Eigen::Index> SparseMatrix;
     typedef Eigen::Triplet<double> Triplet;
-    typedef Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, SparseMatrix::Index> PermutationMatrix;
+    typedef Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, Eigen::Index> PermutationMatrix;
     /**
      * \brief Sub-classing Eigen's SimplicialLDLT to perform ordering with a given ordering
      */
@@ -153,7 +153,8 @@ class LinearSolverEigen: public LinearSolver<MatrixType>
         // block ordering with the Eigen Interface
         // This is really ugly currently, as it calls internal functions from Eigen
         // and modifies the SparseMatrix class
-        Eigen::PermutationMatrix<Eigen::Dynamic,Eigen::Dynamic> blockP;
+        //Eigen::PermutationMatrix<Eigen::Dynamic,Eigen::Dynamic> blockP;
+	PermutationMatrix blockP;
         {
           // prepare a block structure matrix for calling AMD
           std::vector<Triplet> triplets;
@@ -180,7 +181,8 @@ class LinearSolverEigen: public LinearSolver<MatrixType>
         assert(rows == A.cols() && "Matrix A is not square");
 
         // Adapt the block permutation to the scalar matrix
-	Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> scalarP;
+	//Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> scalarP;
+	PermutationMatrix scalarP;
         scalarP.resize(rows);
         int scalarIdx = 0;
         for (int i = 0; i < blockP.size(); ++i) {
