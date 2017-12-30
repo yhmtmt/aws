@@ -280,6 +280,8 @@ void ch_base::register_factory()
 #include "filter/f_aws3_com.h"
 
 
+#include "filter/f_test_vsrc.h"
+
 #ifdef GST_CAM
 #include "filter/f_gst_cam.h"
 #endif
@@ -452,7 +454,10 @@ void f_base::register_factory()
 #endif
 
 	register_factory<f_aws3_com>("aws3c");
+
+	register_factory<f_test_vsrc>("test_vsrc");
 #ifdef GST_CAM
+	register_factory<f_gst_enc>("gstenc");
 	register_factory<f_gst_cam>("gstcam");
 #endif
 }

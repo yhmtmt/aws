@@ -22,6 +22,8 @@
 #include <gst/app/gstappsrc.h>
 #include "../channel/ch_image.h"
 
+//#define CV_VIDEO
+
 bool cnv_imf(const Mat & src, Mat & dst, const e_imfmt & fmt_in, const e_imfmt & fmt_out);
 
 class f_gst_cam: public f_base
@@ -65,6 +67,9 @@ class f_gst_cam: public f_base
 class f_gst_enc: public f_base
 {
  protected:
+  #ifdef CV_VIDEO
+  VideoWriter video;
+  #endif
   ch_image_ref * m_ch_in;
   char m_fppl[1024];
   gchar * m_descr;

@@ -46,7 +46,7 @@ inline bool cnv_imf(const Mat & src, Mat & dst, const e_imfmt & fmt_in, const e_
     dst = src;
     return true;
   }
-  
+
   switch(fmt_in){
   case IMF_NV12:
     switch(fmt_out){
@@ -57,6 +57,7 @@ inline bool cnv_imf(const Mat & src, Mat & dst, const e_imfmt & fmt_in, const e_
       cvtColor(src, dst, COLOR_YUV2BGR_I420);
       return true;
     }
+    
   case IMF_BGR8:
     switch(fmt_out){
     case IMF_I420:
@@ -278,7 +279,6 @@ f_gst_enc::f_gst_enc(const char * name):f_base(name), m_ch_in(NULL), m_sz(0, 0),
   register_fpar("width", &m_sz.width, "Width of the image.");
   register_fpar("height", &m_sz.height, "Height of the image.");
   register_fpar("fps", &m_fps, "Frame per second.");
-  
 }
 
 f_gst_enc::~f_gst_enc()
@@ -287,6 +287,11 @@ f_gst_enc::~f_gst_enc()
 
 bool f_gst_enc::init_run()
 {
+#ifdef CV_VIDEO
+  video.open("appsrc ! autovideoconvert ! omxh265enc ! matroskamux ! filesink location=test.mkv ", 0, (double)m_fps, cv::Size(m_sz.width, m_sz.height), true);
+  return true;
+#endif
+  
   if(!m_ch_in){
     cerr << "No input image channel is connected." << endl;
     return false;
@@ -302,7 +307,8 @@ bool f_gst_enc::init_run()
     char tmp[2048], descr[2048];
     fppl.getline(tmp, 2048);
     snprintf(descr, 2048, "appsrc name=src ! %s", tmp);
-    
+    //snprintf(descr, 2048, "appsrc name=src ! video/x-raw,format=I420,width=640,height=480 ! omxh264enc ! video/x-h264,streamformat=byte-stream ! h264parse ! qtmux ! filesink location=test.mp4");
+      
     m_descr = g_strdup(descr);
     cout << "gst launch with: " << m_descr << endl;
   }
@@ -327,17 +333,18 @@ bool f_gst_enc::init_run()
     sfmt = str_imfmt[IMF_I420];
     break;   
   }
+
   GstCaps * caps = gst_caps_new_simple("video/x-raw",
 				       "format", G_TYPE_STRING, sfmt,
 				       "framerate", GST_TYPE_FRACTION, m_fps, 1,
-				       "pixel-aspect-ratio", GST_TYPE_FRACTION, 1, 1,
 				       "width", G_TYPE_INT, m_sz.width,
-				       "height", G_TYPE_INT, m_sz.height);
+				       "height", G_TYPE_INT, m_sz.height,
+				       NULL);
 
   gst_app_src_set_caps(GST_APP_SRC(m_src), caps);
   
-  GstAppSrcCallbacks callbacks = {need_data, enough_data, seek_data};
-  gst_app_src_set_callbacks(GST_APP_SRC(m_src), &callbacks, (gpointer)this, NULL);
+  //  GstAppSrcCallbacks callbacks = {need_data, enough_data, seek_data};
+  //  gst_app_src_set_callbacks(GST_APP_SRC(m_src), &callbacks, (gpointer)this, NULL);
   
   m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_ppl));
   m_bus_watch_id = gst_bus_add_watch(m_bus, bus_callback, (gpointer)this);
@@ -350,8 +357,11 @@ bool f_gst_enc::init_run()
 
 void f_gst_enc::destroy_run()
 {
-  gst_app_src_end_of_stream(GST_APP_SRC(m_src));
-
+#ifdef CV_VIDEO
+  return;
+  //  gst_app_src_end_of_stream(GST_APP_SRC(m_src));
+#endif
+  
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_NULL);
   gst_object_unref(GST_OBJECT(m_src));  
   gst_object_unref(GST_OBJECT(m_ppl));
@@ -359,6 +369,39 @@ void f_gst_enc::destroy_run()
 
 bool f_gst_enc::proc()
 {
+  Mat imsrc, imdst;
+  long long t;
+  imsrc = m_ch_in->get_img(t);
+#ifdef CV_VIDEO
+  if(imsrc.empty())
+    return true;
+
+  video.write(imsrc);
+  return true;
+#endif
+  
+  if(imsrc.empty())
+    return true;
+
+  if(!cnv_imf(imsrc, imdst, fmt_in, fmt_out)){
+    cerr << m_name << " failed to convert image format" << endl;
+    return false;
+  }
+
+  size_t sz_mem = imdst.cols * imdst.rows * imdst.channels();
+  GstBuffer * buf = gst_buffer_new_allocate(NULL, sz_mem, NULL);
+
+  
+  // copy buffer data
+  //GstMapInfo map;
+  //gst_buffer_map(buf, &map, GST_MAP_WRITE);
+  //memcpy(map.data, imdst.data, sz_mem);  
+  //gst_buffer_unmap(buf, &map);
+  gst_buffer_fill(buf, 0, imdst.data, sz_mem);
+
+  GstFlowReturn ret;
+  g_signal_emit_by_name(m_src, "push-buffer", buf, &ret);
+  
   return true;
 }
 
@@ -385,7 +428,7 @@ void f_gst_enc::need_data(GstAppSrc * src, guint length)
   memcpy(map.data, imdst.data, sz_mem);
   
   gst_buffer_unmap(buf, &map);
-
+  cout << "need_data for " << imdst.cols << "x" << imdst.rows << " image" << endl;
   gst_app_src_push_buffer(src, buf);  
 }
 

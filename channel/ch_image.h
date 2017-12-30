@@ -1,7 +1,6 @@
 #ifndef _CH_IMAGE_H_
 #define _CH_IMAGE_H_
-// Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
-// Science and Technology, All right reserved. 
+// Copyright(c) 2012-2017 Yohei Matsumoto,  All right reserved. 
 
 // ch_image.h is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by

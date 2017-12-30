@@ -1,5 +1,4 @@
-// Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
-// Science and Technology, All right reserved. 
+// Copyright(c) 2012-2017 Yohei Matsumoto, All right reserved. 
 
 // ch_image.cpp is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -37,6 +36,7 @@ const char * str_imfmt[IMF_Undef] =
   "GRAY8", "GRAY10", "GRAY12", "GRAY14", "GRAY16",
   "RGB8", "RGB10", "RGB12", "RGB14", "RGB16",
   "BGR8", "BGR10", "BGR12", "BGR14", "BGR16",
+  "BayerBG8", "BayerGB8", "BayerGR8", "BayerRG8",  
   "BayerBG10", "BayerGB10", "BayerGR10", "BayerRG10",
   "BayerBG12", "BayerGB12", "BayerGR12", "BayerRG12",
   "NV12", "I420"
