@@ -63,6 +63,8 @@ bool f_env_sensor::init_run()
 
 void f_env_sensor::destroy_run()
 {
+  if(m_hserial != NULL_SERIAL)    
+    close_serial(m_hserial);
 }
 
 bool f_env_sensor::proc()
