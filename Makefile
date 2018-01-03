@@ -53,7 +53,7 @@ LIB = -lrt -lpthread $(LIB_CV)
 FILTER = f_base f_nmea \
 	f_shioji f_com f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_aws1_sim f_ahrs f_aws1_ap f_map f_obj_manager \
-	f_wp_manager f_aws3_com f_env_sensor
+	f_wp_manager f_aws3_com f_env_sensor f_test_vsrc f_ngt1 ngt1/common ngt1/pgn
 
 # base channels
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state ch_wp

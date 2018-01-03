@@ -272,6 +272,7 @@ void ch_base::register_factory()
 #include "filter/f_obj_manager.h"
 #include "filter/f_wp_manager.h"
 #include "filter/f_env_sensor.h"
+#include "filter/f_ngt1.h"
 
 #ifdef ORB_SLAM
 #include "filter/f_orb_slam.h"
@@ -439,7 +440,8 @@ void f_base::register_factory()
 	register_factory<f_ahrs>("ahrs");
 	register_factory<f_env_sensor>("env");
 	register_factory<f_volt_sensor>("volt");
-
+	register_factory<f_ngt1>("ngt1");
+	
 	register_factory<f_aws1_ap>("aws1_ap");
 	register_factory<f_obj_manager>("obj_manager");
 

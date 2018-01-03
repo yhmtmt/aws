@@ -183,76 +183,71 @@ bool close_serial(AWS_SERIAL h)
 
 int write_serial(AWS_SERIAL h, char * buf, int len)
 {
-	if(h == NULL_SERIAL)
-		return 0;
-	int len_sent;
+  if(h == NULL_SERIAL)
+    return 0;
+  int len_sent;
 #ifdef _WIN32
-	if(!WriteFile(h, (LPVOID) buf, (DWORD) len,
+  if(!WriteFile(h, (LPVOID) buf, (DWORD) len,
 		(DWORD*) &len_sent, NULL))
-		return -1;
+    return -1;
 #else
-	len_sent = write(h, buf, len);
-	/*
-	cout << "Write serial: " << len << " bytes." << endl;
-	cout.write(buf, len);
-	cout << "(";
-	for(int i = 0; i < len; i++)
-		printf("%02x ", (int) buf[i]);
-	cout << ")";
-	*/
+  len_sent = write(h, buf, len);
+  /*
+    cout << "Write serial: " << len << " bytes." << endl;
+    cout.write(buf, len);
+    cout << "(";
+    for(int i = 0; i < len; i++)
+    printf("%02x ", (int) buf[i]);
+    cout << ")";
+  */
 #endif
-
-	return len_sent;
+  
+  return len_sent;
 }
 
 int read_serial(AWS_SERIAL h, char * buf, int len)
 {
-	int len_rcvd;
-
+  int len_rcvd;
+  
 #ifdef _WIN32
-	COMSTAT stat;
-	DWORD err;
-	int ninq = 0;
-	ClearCommError(h, &err, &stat);
-	ninq = stat.cbInQue;
-	if(ninq == 0)
-		return 0;
-
-	if(!ReadFile(h, buf, 
-		(DWORD) len, 
-		(DWORD*) &len_rcvd, NULL)){
-			return -1;
-	}
+  COMSTAT stat;
+  DWORD err;
+  int ninq = 0;
+  ClearCommError(h, &err, &stat);
+  ninq = stat.cbInQue;
+  if(ninq == 0)
+    return 0;
+  
+  if(!ReadFile(h, buf, 
+	       (DWORD) len, 
+	       (DWORD*) &len_rcvd, NULL)){
+    return -1;
+  }
 #else
-	fd_set rd, er;
-	timeval tout;
-	tout.tv_sec = 0;
-	tout.tv_usec = 0;
-	FD_ZERO(&rd);
-	FD_ZERO(&er);
-	FD_SET(h, &rd);
-	FD_SET(h, &er);
-
-	int res = select(h+1, &rd, NULL, &er, &tout);
-	len_rcvd = 0;
-	if(res > 0){
-		if(FD_ISSET(h, &rd)){
-			len_rcvd = read(h, buf, len);
-			/*
-			cout << "Read serial: " << len_rcvd << " bytes." << endl;
-			cout.write(buf, len_rcvd);
-			*/
-		}else if(FD_ISSET(h, &er)){
-			cerr << "Error in read_serial." << endl;
-			return -1;
-		}
-	}else if(res < 0){
-		cerr << "Error in read_serial." << endl;
-		return -1;
-	}else{
-		return 0;
-	}
-
+  fd_set rd, er;
+  timeval tout;
+  tout.tv_sec = 0;
+  tout.tv_usec = 0;
+  FD_ZERO(&rd);
+  FD_ZERO(&er);
+  FD_SET(h, &rd);
+  FD_SET(h, &er);
+  
+  int res = select(h+1, &rd, NULL, &er, &tout);
+  len_rcvd = 0;
+  if(res > 0){
+    if(FD_ISSET(h, &rd)){
+      len_rcvd = read(h, buf, len);
+    }else if(FD_ISSET(h, &er)){
+      cerr << "Error in read_serial." << endl;
+      return -1;
+    }
+  }else if(res < 0){
+    cerr << "Error in read_serial." << endl;
+    return -1;
+  }else{
+    return 0;
+  }  
 #endif
-	return len_rcvd;
+  return len_rcvd;
 }
