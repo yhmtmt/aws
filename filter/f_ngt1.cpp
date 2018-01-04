@@ -36,9 +36,30 @@ using namespace cv;
 #include "f_ngt1.h"
 
 
+f_ngt1::Packet::Packet():lastFastPacket(0), size(0), allocSize(0), data(NULL)
+{
+}
+
+f_ngt1::Packet::~Packet()
+{
+  if(data){
+    free(data);
+    data = NULL;
+  }
+}
+
+
 f_ngt1::DevicePackets::DevicePackets():packetList(NULL)
 {
   packetList = new Packet[pgnListSize];
+}
+
+f_ngt1::DevicePackets::~DevicePackets()
+{
+  if(packetList){
+    delete[] packetList;
+    packetList = NULL;
+  }
 }
 
 
@@ -101,7 +122,6 @@ bool f_ngt1::init_run()
   fillManufacturers();
   fillFieldCounts();
   checkPgnList();
-
  
   heapSize = 0;
   mp = mbuf;
@@ -114,6 +134,16 @@ void f_ngt1::destroy_run()
 {
   if(m_hserial != NULL_SERIAL)
     close_serial(m_hserial);
+
+  // release device-packet data
+  for(int idev = 0; idev < 256; idev++){
+    if(deice[idev]){
+      delete device[idev];
+      device[idev] = NULL;
+    }
+  }
+
+  heapSize = 0;  
 }
 
 bool f_ngt1::proc()
@@ -389,9 +419,11 @@ void f_ngt1::printPacket(size_t index, RawMessage * msg)
 
   if (!device[msg->src])
   {
-    heapSize += sizeof(DevicePackets);
-    logDebug("New device at address %u (heap %zu bytes)\n", msg->src, heapSize);
     device[msg->src] = new DevicePackets;
+    heapSize += sizeof(DevicePackets);
+    heapSize += sizeof(Packet)*pgnListSize;    
+    logDebug("New device at address %u (heap %zu bytes)\n", msg->src, heapSize);
+    
     if (!device[msg->src])
     {
       die("Out of memory\n");

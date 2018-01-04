@@ -80,11 +80,7 @@ class f_ngt1: public f_base
   {
     Packet * packetList;
     DevicePackets();
-    ~DevicePackets()
-    {
-      if(packetList)
-	delete[] packetList;
-    }
+    ~DevicePackets();
   };
   DevicePackets * device[256];
   const char *manufacturer[1 << 12];
