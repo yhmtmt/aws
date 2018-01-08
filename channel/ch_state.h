@@ -431,6 +431,192 @@ class ch_state: public ch_base
 };
 
 
+enum StatEng1{
+    CheckEngine, OverTemperature, LowOilPressure, LowOilLevel, LowFuelPressure,
+    LowSystemVoltage, LowCoolantLevel, WaterFlow, WaterInFuel, ChargeIndicator,
+    PreheatIndicator, HighBoostPressure, RevLimitExceeded, EGRSystem,
+    ThrottlePositionSensor, EmergencyStop
+};
+
+extern const char * strStatEng1[EmergencyStop+1];
+
+enum StatEng2{
+  WarningLevel1, WarningLevel2, PowerReduction, MaintenanceNeeded,
+  EngineCommError, SuborSecondaryThrottle, NeutralStartProtect,
+  EngineShuttingDown
+};
+
+extern const char * strStatEng2[EngineShuttingDown+1];
+
+enum StatGear{
+  Forward, Neutral, Reverse
+};
+
+extern const char * strStatGear[Reverse+1];
+
+class ch_eng_state: public ch_base
+{
+ private:
+  long long t, tf;
+
+  long long trapid, trapidf;
+  float rpm, rpmf; // x0.25
+  unsigned char trim, trimf; // x1
+
+  long long tdyn, tdynf;
+  int poil, poilf; // oil pressure
+  float toil, toilf; // oil temperature
+  float valt, valtf; // alternator potential 
+  float frate, fratef; // fuel rate (L/h)
+  unsigned int teng, tengf; // total engine hour
+  int pclnt, pclntf; // coolant pressure
+  int pfl, pflf; // fuel pressure
+  StatEng1 stat1, stat1f; // Status 1
+  StatEng2 stat2, stat2f; // Status 2
+  unsigned char ld, ldf; // load
+  unsigned char tq, tqf; // torque
+
+  long long ttran, ttranf;
+  StatGear gear, gearf;
+  int pgoil, pgoilf;
+  float tgoil, tgoilf;
+
+  long long ttrip, ttripf;
+  int flused, flusedf; // fuel used
+  float flavg, flavgf; // fuel rate average
+  float fleco, flecof; // fuel rate eco
+  float flinst, flinstf; // Instantaneous fuel rate
+  
+   public:
+ ch_eng_state(const char * name):ch_base(name)
+  {
+  }
+  ~ch_eng_state()
+    {
+    }
+
+  void set_rapid(const long long _t, const float _rpm, const unsigned char _trim)
+  {
+    lock();
+    t = trapid = _t;
+    rpm = _rpm;
+    trim = _trim;
+    unlock();
+  }
+
+  void get_rapid(long long & _t, float & _rpm, unsigned char & _trim)
+  {
+    lock();
+    _t = trapid;
+    _rpm = rpm;
+    _trim = trim;
+    unlock();
+  }
+
+  void set_dynamic(const long long _t, const int _poil, const float _toil,
+		   const float _valt, const float _frate,
+		   const unsigned int _teng, const int _pclnt, const int _pfl,
+		   const StatEng1 _stat1, const StatEng2 _stat2,
+		   const unsigned char _ld, const unsigned char _tq)
+  {
+    lock();
+    t = tdyn = _t;
+    poil = _poil;
+    toil = _toil;
+    valt = _valt;
+    frate = _frate;
+    teng = _teng;
+    pclnt = _pclnt;
+    pfl = _pfl;
+    stat1 = _stat1;
+    stat2 = _stat2;
+    ld = _ld;
+    tq = _tq;
+    unlock();
+  }
+
+  void get_dynamic(long long & _t,  int & _poil,  float & _toil,
+		    float _valt,  float _frate,
+		    unsigned int & _teng,  int & _pclnt,  int & _pfl,
+		    StatEng1 & _stat1,  StatEng2 & _stat2,
+		    unsigned char & _ld, unsigned char & _tq)
+  {
+    lock();
+    _t = tdyn;
+    _poil = poil;
+    _toil = toil;
+    _valt = valt;
+    _frate = frate;
+    _teng = teng;
+    _pclnt = pclnt;
+    _pfl = pfl;
+    _stat1 = stat1;
+    _stat2 = stat2;
+    _ld = ld;
+    _tq = tq;
+    unlock();    
+  }
+
+  void set_tran(const long long _t, const StatGear _gear, const int _pgoil,
+		const float _tgoil)
+  {
+    lock();
+    t = ttran = _t;
+    gear = _gear;
+    pgoil = _pgoil;
+    tgoil = _tgoil;
+    unlock();
+  }
+
+  void get_tran(long long & _t, StatGear & _gear, int & _pgoil, float & _tgoil)
+  {
+    lock();
+    _t = ttran;
+    _gear = gear;
+    _pgoil = pgoil;
+    _tgoil = tgoil;
+    unlock();
+  }
+
+  void set_trip(const long long _t, const int _flused, const float _flavg,
+		const float _fleco, const float _flinst)
+  {
+    lock();
+    t = ttrip = _t;
+    flused = _flused;
+    flavg = _flavg;
+    fleco = _fleco;
+    flinst = _flinst;
+    unlock();
+  }
+
+  void get_trip(long long & _t, int & _flused, float & _flavg, float & _fleco,
+		float & _flinst)
+  {
+    lock();
+    _t = ttrip;
+    _flused = flused;
+    _flavg = flavg;
+    _fleco = fleco;
+    _flinst = flinst;
+    unlock();
+  }
+
+    virtual size_t get_dsize(){
+      return sizeof(long long)*5 + sizeof(float)*8 + sizeof(unsigned char)*3
+	+ sizeof(int)*5 + sizeof(unsigned int) + sizeof(StatEng1)
+	+ sizeof(StatEng2) + sizeof(StatGear);
+    }
+
+    virtual size_t write_buf_back(const char * buf);
+    virtual size_t write_buf(const char * buf);
+    virtual size_t read_buf(char * buf);
+    virtual int write(FILE * pf, long long tcur);
+    virtual int read(FILE * Pf, long long tcur);
+    virtual void print(ostream & out);
+    virtual bool log2txt(FILE * pbf, FILE * ptf);
+};
+
 class ch_env: public ch_base 
 {
  private:

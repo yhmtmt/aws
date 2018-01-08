@@ -173,6 +173,31 @@ bool f_ngt1::proc()
   while(pgn_queue.size()){
     PgnFieldValues * pfv = *itr;
     cout << "Received pgn " << pfv->getPgn();
+
+    // 127488 engine parameters(rapid)
+    // 0. Engine Instance, 1. Engine Speed(rpm), 2. Engine Boost Pressure(hPa),
+    // 3. Engine Trim(?)
+    //
+    // 127489 engine parameters(dynamic)
+    // 0. Oil Pressure(hPa), 1. Oil temperature(K), 2. Temperature(K),
+    // 3. Alt Potential(V), 4. Fuel Rate(L/h), 5. Total Engine hours(s),
+    // 6. Coolant Pressure(hPa), 7. Fuel Pressure(hPa), 8. Reserved, Status1,
+    // 9. Status2, Engine Load(%), 11. Engine Torque(%) 
+    //
+    // 127493 Transmission Parameters (Dynamic)
+    // 0. Engine Instance, 1. Transmission Gear, 2. Reserved,
+    // 3. Oil pressure(hPa), 4. Oil temperature, 5. Status 1
+    //
+    // 127496 Trip Parameters(Vessel)
+    // 0. Time to Empty(s), 1. Distance to Empty(m), 2. Fuel Remaining(L)
+    // 3. Trip Run Time(s)
+    //
+    // 127497 Trip Parameters(Engine)
+    // 0. Engine Instance, 1. Fuel Rate avg(L/h), 2. Fuel Rate eco (L/h)
+    // 3. Instant Fuel eco (L/h)
+    // 
+    // 127498 Engine Parameters(Static)
+    // 0. Engine Instance, 1. Rated Engine Speed, 2. Vin, 3. Software ID
     
     for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
       const FieldValueBase * pfvb = pfv->get(ifv);
@@ -1027,7 +1052,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
       setSystemClock(currentDate, currentTime);
     }
 
-pgn_queue.push_back(pfv);
+  pgn_queue.push_back(pfv);
   return r;
 }
 

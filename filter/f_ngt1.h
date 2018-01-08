@@ -150,6 +150,8 @@ bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field,
   // these functions are from canboat.analyze -->
 
   list<PgnFieldValues*> pgn_queue;
+
+  ////////////////////////////////////////// pgn hanler
   
  public:
   f_ngt1(const char * name);

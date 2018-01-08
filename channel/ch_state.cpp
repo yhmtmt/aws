@@ -622,17 +622,18 @@ int ch_env::read(FILE * pf, long long tcur)
   }
 
   // reading next data record
+  int res;
   while (!feof(pf)){
     if(tf > tcur){
       break;
     }
     lock();
-    fread((void*)&tf, sizeof(long long), 1, pf); // the time the data written is ignored (this line is only required to proceed file pointer.)
-    fread((void*)&tf, sizeof(long long), 1, pf); 
-    fread((void*)&barof, sizeof(float), 1, pf);
-    fread((void*)&tempf, sizeof(float), 1, pf);
-    fread((void*)&humdf, sizeof(float), 1, pf);
-    fread((void*)&ilumf, sizeof(float), 1, pf);
+    res = fread((void*)&tf, sizeof(long long), 1, pf); // the time the data written is ignored (this line is only required to proceed file pointer.)
+    res = fread((void*)&tf, sizeof(long long), 1, pf); 
+    res = fread((void*)&barof, sizeof(float), 1, pf);
+    res = fread((void*)&tempf, sizeof(float), 1, pf);
+    res = fread((void*)&humdf, sizeof(float), 1, pf);
+    res = fread((void*)&ilumf, sizeof(float), 1, pf);
     
     unlock();
   }
@@ -643,13 +644,14 @@ int ch_env::read(FILE * pf, long long tcur)
 bool ch_env::log2txt(FILE * pbf, FILE * ptf)
 {
   fprintf(ptf, "trec, tsens, baro, temp, humd, ilum¥n");
+  int res;
   while(!feof(pbf)){
-    fread((void*)&tf, sizeof(long long), 1, pbf); // the time the data written is ignored (this line is only required to proceed file pointer.)
-    fread((void*)&t, sizeof(long long), 1, pbf); 
-    fread((void*)&baro, sizeof(float), 1, pbf);
-    fread((void*)&temp, sizeof(float), 1, pbf);
-    fread((void*)&humd, sizeof(float), 1, pbf);
-    fread((void*)&ilum, sizeof(float), 1, pbf);
+    res = fread((void*)&tf, sizeof(long long), 1, pbf); // the time the data written is ignored (this line is only required to proceed file pointer.)
+    res = fread((void*)&t, sizeof(long long), 1, pbf); 
+    res = fread((void*)&baro, sizeof(float), 1, pbf);
+    res = fread((void*)&temp, sizeof(float), 1, pbf);
+    res = fread((void*)&humd, sizeof(float), 1, pbf);
+    res = fread((void*)&ilum, sizeof(float), 1, pbf);
     fprintf(ptf, "%lld, %lld, %06.1f, %03.1f, %03.1f, %05.1f\n", tf, t, baro, temp, humd, ilum);
   }
   return true;
@@ -725,9 +727,10 @@ int ch_volt::read(FILE * pf, long long tcur)
       break;
     }
     lock();
-    fread((void*)&tf, sizeof(long long), 1, pf); // the time the data written is ignored (this line is only required to proceed file pointer.)
-    fread((void*)&tf, sizeof(long long), 1, pf);
-    fread((void*)valf, sizeof(float), 8, pf);
+    int res;
+    res = fread((void*)&tf, sizeof(long long), 1, pf); // the time the data written is ignored (this line is only required to proceed file pointer.)
+    res = fread((void*)&tf, sizeof(long long), 1, pf);
+    res = fread((void*)valf, sizeof(float), 8, pf);
 
     unlock();
   }
@@ -744,12 +747,13 @@ bool ch_volt::log2txt(FILE * pbf, FILE * ptf)
   fprintf(ptf, "\n");
 
   while (!feof(pbf)){
-    fread((void*)&tf, sizeof(long long), 1, pbf); // the time the data written is ignored (this line is only required to proceed file pointer.)
-    fread((void*)&t, sizeof(long long), 1, pbf);
-    fread((void*)val, sizeof(float), 8, pbf);
+    int res;
+    res = fread((void*)&tf, sizeof(long long), 1, pbf); // the time the data written is ignored (this line is only required to proceed file pointer.)
+    res = fread((void*)&t, sizeof(long long), 1, pbf);
+    res = fread((void*)val, sizeof(float), 8, pbf);
     fprintf(ptf, "%lld, %lld", tf, t);
     for (int iprobe = 0; iprobe < 8; iprobe++){
-      fprintf(ptf, ",%03.2f");
+      fprintf(ptf, ",%03.2f", val[iprobe]);
     }
     fprintf(ptf, "\n");
   }
@@ -760,8 +764,264 @@ void ch_volt::print(ostream & out)
 {
   printf("trec=%lld, tsens=%lld", tf, t);
   for (int iprobe = 0; iprobe < 8; iprobe++){
-    printf(",v[%d]=%03.2f", iprobe);
+    printf(",v[%d]=%03.2f", iprobe, val[iprobe]);
   }
   printf("/n");
 
+}
+
+
+//////////////////////////////////////////////////////////////////////////////////////// ch_eng_state
+
+const char * strStatEng1[EmergencyStop+1] = {
+    "Check Engine", "Over Temperature", "Low Oil Pressure", "Low Oil Level", "Low Fuel Pressure",
+    "Low System Voltage", "Low Coolant Level", "Water Flow", "Water In Fuel", "Charge Indicator",
+    "Preheat Indicator", "High Boost Pressure", "Rev Limit Exceeded", "EGR System",
+    "Throttle Position Sensor", "Emergency Stop"
+};;
+
+const char * strStatEng2[EngineShuttingDown+1] = {
+  "Warning Level1", "Warning Level2", "Power Reduction", "Maintenance Needed",
+  "Engine Comm Error", "Subor Secondary Throttle", "Neutral Start Protect",
+  "Engine Shutting Down"
+};
+
+const char * strStatGear[Reverse+1] = {
+  "Forward", "Neutral", "Reverse"
+};
+
+size_t ch_eng_state::write_buf(const char * buf)
+{
+  lock();
+  const long long * lptr = (const long long*)buf;
+  t = lptr[0];
+  trapid = lptr[1];
+  tdyn = lptr[2];
+  ttran = lptr[3];
+  ttrip = lptr[4];
+  
+  const float * fptr = (const float*)(lptr + 5);
+  rpm = fptr[0];
+  toil = fptr[1];
+  valt = fptr[2];
+  frate = fptr[3];
+  tgoil = fptr[4];
+  flavg = fptr[5];
+  fleco = fptr[6];
+  flinst = fptr[7];
+
+  const unsigned char * ucptr = (const unsigned char*)(fptr + 8);
+  trim = ucptr[0];
+  ld = ucptr[1];
+  tq = ucptr[2];
+  
+  const int * iptr = (const int *)(ucptr + 3);
+  poil = iptr[0];
+  pclnt = iptr[1];
+  pfl = iptr[2];
+  pgoil = iptr[3];
+  flused = iptr[4];
+
+  const unsigned int * uiptr = (const unsigned int*)(iptr + 5);
+  teng = uiptr[0];
+
+  const StatEng1 * se1ptr = (const StatEng1 *)(uiptr + 1);
+  stat1 = *se1ptr;
+
+  const StatEng2 * se2ptr = (const StatEng2 *)(se1ptr + 1);
+  stat2 = *se2ptr;
+
+  const StatGear * sgptr = (const StatGear *)(se2ptr +1);
+  gear = *sgptr;
+
+  unlock();
+  return get_dsize();
+}
+
+size_t ch_eng_state::write_buf_back(const char * buf)
+{
+  lock();
+  const long long * lptr = (const long long*)buf;
+  tf = lptr[0];
+  trapidf = lptr[1];
+  tdynf = lptr[2];
+  ttranf = lptr[3];
+  ttripf = lptr[4];
+  
+  const float * fptr = (const float*)(lptr + 5);
+  rpmf = fptr[0];
+  toilf = fptr[1];
+  valtf = fptr[2];
+  fratef = fptr[3];
+  tgoilf = fptr[4];
+  flavgf = fptr[5];
+  flecof = fptr[6];
+  flinstf = fptr[7];
+
+  const unsigned char * ucptr = (const unsigned char*)(fptr + 8);
+  trimf = ucptr[0];
+  ldf = ucptr[1];
+  tqf = ucptr[2];
+  
+  const int * iptr = (const int *)(ucptr + 3);
+  poilf = iptr[0];
+  pclntf = iptr[1];
+  pflf = iptr[2];
+  pgoilf = iptr[3];
+  flusedf = iptr[4];
+
+  const unsigned int * uiptr = (const unsigned int*)(iptr + 5);
+  tengf = uiptr[0];
+
+  const StatEng1 * se1ptr = (const StatEng1 *)(uiptr + 1);
+  stat1f = *se1ptr;
+
+  const StatEng2 * se2ptr = (const StatEng2 *)(se1ptr + 1);
+  stat2f = *se2ptr;
+
+  const StatGear * sgptr = (const StatGear *)(se2ptr +1);
+  gearf = *sgptr;
+
+  unlock();
+  return get_dsize();
+}
+
+size_t ch_eng_state::read_buf(char * buf)
+{
+  lock();
+  long long * lptr = (long long*)buf;
+  lptr[0] = t;
+  lptr[1] =  trapid;
+  lptr[2] = tdyn;
+  lptr[3] = ttran;
+  lptr[4] = ttrip;
+  
+  float * fptr = (float*)(lptr + 5);
+  fptr[0] = rpm;
+  fptr[1] = toil;
+  fptr[2] = valt;
+  fptr[3] = frate;
+  fptr[4] = tgoil;
+  fptr[5] = flavg;
+  fptr[6] = fleco;
+  fptr[7] = flinst;
+
+  unsigned char * ucptr = (unsigned char*)(fptr + 8);
+  ucptr[0] = trim;
+  ucptr[1] = ld;
+  ucptr[2] = tq;
+  
+  int * iptr = (int *)(ucptr + 3);
+  iptr[0] = poil;
+  iptr[1] = pclnt;
+  iptr[2] = pfl;
+  iptr[3] = pgoil;
+  iptr[4] = flused;
+
+  unsigned int * uiptr = (unsigned int*)(iptr + 5);
+  uiptr[0] = teng;
+
+  StatEng1 * se1ptr = (StatEng1 *)(uiptr + 1);
+  *se1ptr = stat1;
+
+  StatEng2 * se2ptr = (StatEng2 *)(se1ptr + 1);
+  *se2ptr = stat2;
+
+  StatGear * sgptr = (StatGear *)(se2ptr +1);
+  *sgptr = gear;
+  
+  unlock();
+  return get_dsize();
+}
+
+int ch_eng_state::write(FILE * pf, long long tcur)
+{
+  if (!pf)
+    return 0;
+
+  if (t <= tf){
+    return 0;
+  }
+
+  int sz = (int)get_dsize();
+
+  lock();
+  tf = tcur;
+  
+  char buf[sz];
+  read_buf(buf);
+  (*(long long*) buf) = tcur;
+  fwrite(buf, sizeof(char), sz, pf);
+  
+  unlock();
+
+  return sz + sizeof(long long);
+}
+
+int ch_eng_state::read(FILE * pf, long long tcur)
+{
+  if (!pf)
+    return 0;
+
+  if(trapidf <= tcur){
+    set_rapid(trapidf, rpmf, trimf);
+  }
+
+  if(tdynf <= tcur){
+    set_dynamic(tdynf, poilf, toilf,
+		valtf, fratef, tengf, pclntf, pflf, stat1f, stat2f, ldf, tqf);
+  }
+
+  if(ttranf <= tcur){
+    set_tran(ttranf, gearf, pgoilf, tgoilf);
+  }
+
+  if(ttripf <= tcur){
+    set_trip(ttripf, flusedf, flavgf, flecof, flinstf);
+  }
+
+  // reading next data record
+  size_t sz = get_dsize();
+  char buf[sz];
+  
+  while (!feof(pf)){
+    if (tf > tcur){
+      break;
+    }
+    lock();
+    int res;
+    res = fread(buf, sizeof(char), sz, pf);
+    write_buf_back(buf);
+    unlock();
+  }
+
+  return 0;
+}
+
+bool ch_eng_state::log2txt(FILE * pbf, FILE * ptf)
+{
+  fprintf(ptf, "trec, trapid, tdyn, ttran, ttrip, rpm, trim, poil, toil, valt, frate, teng, pclnt, pfl, stat1, stat2, ld, tq, gear, pgoil, tgoil, flused, flavg, fleco, flinst\n");
+  size_t sz = get_dsize();
+  char buf[sz];
+  while (!feof(pbf)){
+
+    int res;
+    res = fread(buf, sizeof(char), sz, pbf);
+    write_buf(buf);
+
+    fprintf(ptf, "%lld, %lld, %lld, %lld, %lld,", t, trapid, tdyn, ttran, ttrip);
+    fprintf(ptf, "%d, %03.2f, %02.2f, %03.2f, %u, %d, %d, %s, %s, %u, %u,",
+	    poil, toil, valt, frate, teng, pclnt, pfl, strStatEng1[stat1],
+	    strStatEng2[stat2], (unsigned int)ld, (unsigned int)tq);
+
+    fprintf(ptf, "%s, %d, %03.2f,", strStatGear[gear], pgoil, tgoil);
+    fprintf(ptf, "%d, %03.2f, %03.2f, %03.2f", flused, flavg, fleco, flinst);
+    
+    fprintf(ptf, "\n");
+  }
+  return true;
+}
+
+void ch_eng_state::print(ostream & out)
+{
 }
