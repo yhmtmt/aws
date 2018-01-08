@@ -17,6 +17,7 @@
 
 #include <cmath>
 #include <cstring>
+#include <string>
 #include <iostream>
 #include <fstream>
 #include <vector>
@@ -34,6 +35,18 @@ using namespace cv;
 
 #include "ngt1/common.h"
 #include "f_ngt1.h"
+
+
+
+PgnFieldValues::PgnFieldValues(const Pgn * _pgn):pgn(_pgn)
+{
+}
+
+PgnFieldValues::~PgnFieldValues()
+{
+}
+
+////////////////////////////////////////////////////////////////////
 
 
 f_ngt1::Packet::Packet():lastFastPacket(0), size(0), allocSize(0), data(NULL)
@@ -149,6 +162,21 @@ void f_ngt1::destroy_run()
 bool f_ngt1::proc()
 {
   readNGT1(m_hserial);
+
+  auto itr = pgn_queue.begin();
+  while(pgn_queue.size()){
+    PgnFieldValues * pfv = *itr;
+    cout << "Received pgn " << pfv->getPgn();
+    
+    for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
+      FieldValueBase * pfvb = pfv->get(ifv);
+      cout << "Field[" << ifv << "]:";
+      pfvb->print();
+      cout << endl;
+    }
+    delete *itr;
+    itr = pgn_queue.erase(itr);
+  }
   return true;
 }
 
@@ -545,7 +573,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
   uint32_t variableFieldCount[2]; // How many variable fields over all repetitions, indexed by group
   uint32_t variableFields[2];     // How many variable fields per repetition, indexed by group
   size_t variableFieldStart;
-
+  
   if (!msg) {
     return false;
   }
@@ -553,7 +581,13 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
   if (!pgn) {
     pgn = pgnList;
   }
-
+  
+  PgnFieldValues * pfv = new PgnFieldValue(pgn);
+  if(!pfv){
+    cerr << "Failed to allocate memory" << endl;
+    return false;
+  }
+  
   if (showData)
   {
     FILE * f = stdout;
@@ -811,6 +845,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 	else
 	  {
 	    ////////////////////////////////////////////////// insert data fetching code here
+	    string str; 
 	    for (k = 0; k < len; k++)
 	      {
 		if (data[k] == 0xff)
@@ -820,23 +855,31 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 		if (data[k] >= ' ' && data[k] <= '~')
 		  {
 		    mprintf("%c", data[k]);
+		    str.push_back(data[k]); // store ascii string in data
 		  }
 	      }
+	    pfv->push(str); // push into field variable
 	  }
 	
 	if (showJson)
 	  {
 	    mprintf("\"");
-	  }      
+	  } 
       }
       if (field->resolution == RES_STRING)
 	{
 	  int len;
-	  if (*data == 0x02)
+	  // there maybe two modes
+	  // one is string starting with 0x02 and terminating with 0x01
+	  // another is starting with length larger than 0x2
+	  if (*data == 0x02) // 0x02 is the starting code
 	    {
+	      // counting length 
 	      data++;
-          for (len = 0; data + len < dataEnd && data[len] != 0x01; len++);
-          bytes = len + 1;
+	      for (len = 0;
+		   data + len < dataEnd
+		     && data[len] != 0x01; len++);
+	      bytes = len + 1;
 	    }
 	  else if (*data > 0x02)
 	    {
@@ -862,68 +905,78 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 		}
 	      else
 		{
-		  ////////////////////////////////////////////////// insert data fetching code here
 		  mprintf("%s %s = %.*s", getSep(), fieldName, (int) len, data);
+		  ////////////////////////////////////////////////// insert data fetching code here
+
+		  string str;
+		  for (int idata = 0; idata < len; idata++)
+		    str.push_back(data[idata]);
+		  pfv->push(str);
 		}
 	    }
 	  bits = BYTES(bytes);
 	}
       else if (field->resolution == RES_LONGITUDE || field->resolution == RES_LATITUDE)
 	{
-	  printLatLon(fieldName, field->resolution, data, bytes);
+	  printLatLon(fieldName, field->resolution, data, bytes, pfv);
 	}
       else if (field->resolution == RES_DATE)
 	{
+	  //GMT days from (1/1/1970) in two bytes
 	  memcpy((void *) &valueu16, data, 2);
+	  pfv->push(valueu16);
 	  printDate(fieldName, valueu16);
 	  currentDate = valueu16;
 	}
       else if (field->resolution == RES_TIME)
 	{
+	  // 100usec in 4 bytes
 	  memcpy((void *) &valueu32, data, 4);
+	  pfv->push(value32);
 	  printTime(fieldName, valueu32);
 	  currentTime = valueu32;
 	}
       else if (field->resolution == RES_PRESSURE)
 	{
 	  valueu32 = data[0] + (data[1] << 8);
-	  printPressure(fieldName, valueu32, field);
+	  printPressure(fieldName, valueu32, field, pfv);
 	}
       else if (field->resolution == RES_PRESSURE_HIRES)
 	{
 	  valueu32 = data[0] + (data[1] << 8) + (data[2] << 16) + (data[3] << 24);
-	  printPressure(fieldName, valueu32, field);
+	  printPressure(fieldName, valueu32, field, pfv);
 	}
       else if (field->resolution == RES_TEMPERATURE)
 	{
 	  valueu32 = data[0] + (data[1] << 8);
-	  printTemperature(fieldName, valueu32, 16, 0.01);
+	  printTemperature(fieldName, valueu32, 16, 0.01, pfv);
 	}
       else if (field->resolution == RES_TEMPERATURE_HIGH)
 	{
 	  valueu32 = data[0] + (data[1] << 8);
-	  printTemperature(fieldName, valueu32, 16, 0.1);
+	  printTemperature(fieldName, valueu32, 16, 0.1, pfv);
 	}
       else if (field->resolution == RES_TEMPERATURE_HIRES)
 	{
 	  valueu32 = data[0] + (data[1] << 8) + (data[2] << 16);
-	  printTemperature(fieldName, valueu32, 24, 0.001);
+	  printTemperature(fieldName, valueu32, 24, 0.001, pfv);
 	}
       else if (field->resolution == RES_6BITASCII)
 	{
+	  // is not used.
 	  print6BitASCIIText(fieldName, data, startBit, bits);
 	}
       else if (field->resolution == RES_DECIMAL)
 	{
-	  printDecimal(fieldName, data, startBit, bits);
+	  printDecimal(fieldName, data, startBit, bits, pfv);
 	}
       else if (bits == LEN_VARIABLE)
 	{
-	  printVarNumber(fieldName, pgn, refPgn, field, data, startBit, &bits);
+	  printVarNumber(fieldName, pgn, refPgn, field, data, startBit, &bits, pfv);
 	}
       else if (bits > BYTES(8))
 	{
-	  printHex(fieldName, data, startBit, bits);
+	  printHex(fieldName, data, startBit, bits, pfv));
 	}
       else if (field->resolution == RES_INTEGER
 	       || field->resolution == RES_LOOKUP
@@ -932,7 +985,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 	       || field->resolution == RES_MANUFACTURER
 	       )
 	{
-	  printNumber(fieldName, field, data, startBit, bits);
+	  printNumber(fieldName, field, data, startBit, bits, pfv);
 	}
       else
 	{
@@ -941,7 +994,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
     }
     else if (field->resolution > 0.0)
       {
-	printNumber(fieldName, field, data, startBit, bits);
+	printNumber(fieldName, field, data, startBit, bits, pfv);
       }
     if (!r)
       {
@@ -962,7 +1015,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
     }
   ////////////////////////////////////////////////// insert data fetching code here
   mprintf("\n");
-  
+
   if (r)
     {
       mwrite(stdout);
@@ -971,11 +1024,13 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
   {
     mreset();
   }
-  
+
   if (msg->pgn == 126992 && currentDate < UINT16_MAX && currentTime < UINT32_MAX && clockSrc == msg->src)
     {
       setSystemClock(currentDate, currentTime);
     }
+
+pgn_queue.push_back(pfv);
   return r;
 }
 
@@ -1058,7 +1113,7 @@ void f_ngt1::mwrite(FILE * stream)
 }
 
 
-bool f_ngt1::printLatLon(char * name, double resolution, uint8_t * data, size_t bytes)
+bool f_ngt1::printLatLon(char * name, double resolution, uint8_t * data, size_t bytes, PgnFieldValues * pfv)
 {
   uint64_t absVal;
   int64_t value;
@@ -1090,17 +1145,17 @@ bool f_ngt1::printLatLon(char * name, double resolution, uint8_t * data, size_t 
     mprintf("(%" PRId64 ") ", value);
   }
 
+  double dd = (double) value / (double) RES_LAT_LONG_PRECISION;
+  pfv->push(dd);
+  
   if (showGeo == GEO_DD)
   {
-    double dd = (double) value / (double) RES_LAT_LONG_PRECISION;
-
     if (showJson)
     {
       mprintf("%s\"%s\":%10.7f", getSep(), name, dd);
     }
     else
     {
-      ///////////////////////////////////////////////////////// insert data fetching code here
       mprintf("%s %s = %10.7f", getSep(), name, dd);
     }
   }
@@ -1258,9 +1313,10 @@ bool f_ngt1::printTime(char * name, uint32_t t)
 }
 
 
-bool f_ngt1::printTemperature(char * name, uint32_t t, uint32_t bits, double resolution)
+bool f_ngt1::printTemperature(char * name, uint32_t t, uint32_t bits, double resolution, PgnFieldValues * pfv)
 {
   double k = t * resolution;
+  pfv->push(k);
   double c = k - 273.15;
   double f = c * 1.8 + 32;
 
@@ -1296,7 +1352,7 @@ bool f_ngt1::printTemperature(char * name, uint32_t t, uint32_t bits, double res
   return true;
 }
 
-bool f_ngt1::printPressure(char * name, uint32_t v, Field * field)
+bool f_ngt1::printPressure(char * name, uint32_t v, Field * field, PgnFieldValues * pfv)
 {
   int32_t pressure;
   double bar;
@@ -1342,7 +1398,7 @@ bool f_ngt1::printPressure(char * name, uint32_t v, Field * field)
       break;
     }
   }
-
+  pfv->push(pressure);
   bar = pressure / 100000.0; /* 1000 hectopascal = 1 Bar */
   psi = pressure / 1450.377; /* Silly but still used in some parts of the world */
 
@@ -1432,7 +1488,7 @@ bool f_ngt1::print6BitASCIIText(char * name, uint8_t * data, size_t startBit, si
 }
 
 
-bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits)
+bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits , PgnFieldValues * pfv))
 {
   uint8_t value = 0;
   uint8_t maxValue = 0;
@@ -1456,6 +1512,8 @@ bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits)
     mprintf("%s %s = ", getSep(), name);
   }
 
+  vector<uint8_t> hex;
+  
   for (bit = 0; bit < bits && bit < sizeof(buf) * 8; bit++)
   {
     /* Act on the current bit */
@@ -1483,9 +1541,13 @@ bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits)
       ///////////////////////////////////////////////////////// insert data fetching code here
       mprintf("%02x ", value);
       value = 0;
+      hex.push_back(value);
       bitMagnitude = 1;
     }
   }
+
+  pfv->push(hex);
+  
   if (showJson)
   {
     mprintf("\"");
@@ -1494,7 +1556,7 @@ bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits)
 }
 
 
-bool f_ngt1::printDecimal(char * name, uint8_t * data, size_t startBit, size_t bits)
+bool f_ngt1::printDecimal(char * name, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv))
 {
   uint8_t value = 0;
   uint8_t maxValue = 0;
@@ -1518,6 +1580,7 @@ bool f_ngt1::printDecimal(char * name, uint8_t * data, size_t startBit, size_t b
     mprintf("%s %s = ", getSep(), name);
   }
 
+  unsigned long long result = 0;  
   for (bit = 0; bit < bits && bit < sizeof(buf) * 8; bit++)
   {
     /* Act on the current bit */
@@ -1546,11 +1609,15 @@ bool f_ngt1::printDecimal(char * name, uint8_t * data, size_t startBit, size_t b
       {
 	///////////////////////////////////////////////////////// insert data fetching code here
         mprintf("%02u", value);
+	result *= 100;
+	result += value;
       }
       value = 0;
       bitMagnitude = 1;
     }
   }
+  pfv->push(result);
+  
   if (showJson)
   {
     mprintf("\"");
@@ -1558,7 +1625,7 @@ bool f_ngt1::printDecimal(char * name, uint8_t * data, size_t startBit, size_t b
   return true;
 }
 
-bool f_ngt1::printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field, uint8_t * data, size_t startBit, size_t * bits)
+bool f_ngt1::printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field, uint8_t * data, size_t startBit, size_t * bits, PgnFieldValues * pfv)
 {
   Field * refField;
   size_t size, bytes;
@@ -1574,6 +1641,7 @@ bool f_ngt1::printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field 
    */
 
   refField = getField(refPgn, data[-1] - 1);
+  // retrieving bit width of the field from corresponding pgn 
   if (refField)
   {
     *bits = (refField->size + 7) & ~7; // Round # of bits in field refField up to complete bytes: 1->8, 7->8, 8->8 etc.
@@ -1581,7 +1649,7 @@ bool f_ngt1::printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field 
     {
       mprintf("(refField %s size = %u in %zu bytes)", refField->name, refField->size, *bits / 8);
     }
-    return printNumber(fieldName, field, data, startBit, refField->size);
+    return printNumber(fieldName, field, data, startBit, refField->size, pfv);
   }
 
   logError("Pgn %d Field %s: cannot derive variable length from PGN %d field # %d\n"
@@ -1590,7 +1658,7 @@ bool f_ngt1::printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field 
   return false;
 }
 
-bool f_ngt1::printNumber(char * fieldName, Field * field, uint8_t * data, size_t startBit, size_t bits)
+bool f_ngt1::printNumber(char * fieldName, Field * field, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv)
 {
   bool ret = false;
   int64_t value;
@@ -1599,7 +1667,8 @@ bool f_ngt1::printNumber(char * fieldName, Field * field, uint8_t * data, size_t
   double a;
 
   extractNumber(field, data, startBit, bits, &value, &maxValue);
-
+  pfv->push(value);
+  
   /* There are max five reserved values according to ISO 11873-9 (that I gather from indirect sources)
    * but I don't yet know which datafields reserve the reserved values.
    */

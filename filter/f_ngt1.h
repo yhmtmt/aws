@@ -21,6 +21,9 @@
 #include "ngt1/actisense.h"
 #include "ngt1/analyzer.h"
 
+class PgnFieldValues;
+
+
 class f_ngt1: public f_base
 {
  protected:
@@ -123,18 +126,18 @@ class f_ngt1: public f_base
   // * printNumber
   
   const char * getSep();
-  bool printLatLon(char * name, double resolution, uint8_t * data, size_t bytes);
+  bool printLatLon(char * name, double resolution, uint8_t * data, size_t bytes, PgnFieldValues * pfv);
   bool printDate(char * name, uint16_t d);
   bool printTime(char * name, uint32_t t);
-  bool printTemperature(char * name, uint32_t t, uint32_t bits, double resolution);
-  bool printPressure(char * name, uint32_t v, Field * field);
+  bool printTemperature(char * name, uint32_t t, uint32_t bits, double resolution, PgnFieldValues * pfv);
+  bool printPressure(char * name, uint32_t v, Field * field, PgnFieldValues * pfv);
   void print6BitASCIIChar(uint8_t b);
   bool print6BitASCIIText(char * name, uint8_t * data, size_t startBit, size_t bits);
 
-  bool printHex(char * name, uint8_t * data, size_t startBit, size_t bits);
-  bool printDecimal(char * name, uint8_t * data, size_t startBit, size_t bits);
-  bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field, uint8_t * data, size_t startBit, size_t * bits);
-  bool printNumber(char * fieldName, Field * field, uint8_t * data, size_t startBit, size_t bits);
+  bool printHex(char * name, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv);
+  bool printDecimal(char * name, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv));
+bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field, uint8_t * data, size_t startBit, size_t * bits, PgnFieldValues * pfv);
+  bool printNumber(char * fieldName, Field * field, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv);
   void print_ascii_json_escaped(uint8_t *data, int len);
   void setSystemClock(uint16_t currentDate, uint32_t currentTime);
   char mbuf[8192];
@@ -144,6 +147,8 @@ class f_ngt1: public f_base
   void mwrite(FILE * stream);
   
   // these functions are from canboat.analyze -->
+
+  list<PgnFieldValue*> pgn_queue;
   
  public:
   f_ngt1(const char * name);
@@ -151,6 +156,81 @@ class f_ngt1: public f_base
   virtual bool init_run();
   virtual void destroy_run();
   virtual bool proc();  
+};
+
+
+class FieldValueBase
+{
+ private:
+ public:
+  virtual void print() = 0;
+};
+
+template <class T> class FieldValue: public FieldValueBase
+{
+  T val;
+ FieldValue(const T & _val):val(_val)
+  {
+  }
+
+  const T & get(){
+    return T;
+  }
+
+  void set(const T & _val){
+    val = _val;
+  }
+
+  virtual void print()
+  {
+    cout << val;
+  }
+};
+
+class PgnFieldValues
+{
+ private:
+  const Pgn * pgn;
+  vector<FieldValueBase*> values;
+ public:
+ PgnFieldValues(const Pgn * _pgn):
+  ~PgnFieldValues();
+
+  const uint32_t getPgn(){
+    return pgn->pgn;
+  }
+  
+  const int getNumFields()
+  {
+    return (int) values.size();
+  }
+  
+  const FieldValueBase * get(const int ifield)
+  {
+    if(ifield < 0 || ifield >= (int)values.size())
+      return NULL;
+    return values[ifield];
+  }
+
+  template<class T> void set(const int ifield, const T & val)
+  {
+
+    if(ifield < 0 || ifield >= values.size())
+      return;
+    
+    values[ifield]->set(val);
+  }
+  
+  template <class T > void push(const T & val)
+    {
+      T * p = new FieldValue<T>(val);    
+      if(!p){
+	cerr << "Failed to allocate memory" << endl;
+	exit(1);
+      }
+      
+      values.push_back(p);
+    }  
 };
 
 #endif
