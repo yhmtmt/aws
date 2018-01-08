@@ -79,12 +79,15 @@ f_ngt1::DevicePackets::~DevicePackets()
 }
 
 
-f_ngt1::f_ngt1(const char * name):f_base(name), m_hserial(NULL_SERIAL), state(MSG_START), showRaw(false), showData(false), showBytes(false), showJson(false), showSI(false), sep(NULL), onlyPgn(0), onlySrc(-1), clockSrc(-1), heapSize(0), showGeo(GEO_DD), mp(mbuf)
+f_ngt1::f_ngt1(const char * name):f_base(name), m_hserial(NULL_SERIAL), state(MSG_START), showRaw(false), showTxt(false), showData(false), showBytes(false), showJson(false), showSI(false), sep(NULL), onlyPgn(0), onlySrc(-1), clockSrc(-1), heapSize(0), showGeo(GEO_DD), mp(mbuf)
 {
   register_fpar("dev", m_dname, 1024, "Device file path of the serial port.");
   register_fpar("port", &m_port, "Port number of the serial port. (only for windows)");
+
   register_fpar("br", &m_br, "Baudrate.");
   register_fpar("verb", &m_verb, "Verbose mode.");
+  register_fpar("ShowTxt", &showTxt, "Text output is prepared (plain or Json).");
+  register_fpar("ShowJson", &showJson, "Text formated as Json format.");
 }
 
 f_ngt1::~f_ngt1()
@@ -601,36 +604,40 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
       f = stderr;
     }
 
-    fprintf(f, "%s %u %3u %3u %6u %s: ", msg->timestamp, msg->prio, msg->src, msg->dst, msg->pgn, pgn->description);
+    fprintf(f, "%s %u %3u %3u %6u %s: ",
+	    msg->timestamp, msg->prio, msg->src, msg->dst,
+	    msg->pgn, pgn->description);
     for (i = 0; i < length; i++)
     {
       fprintf(f, " %2.02X", dataStart[i]);
     }
     putc('\n', f);
 
-    fprintf(f, "%s %u %3u %3u %6u %s: ", msg->timestamp, msg->prio, msg->src, msg->dst, msg->pgn, pgn->description);
+    fprintf(f, "%s %u %3u %3u %6u %s: ",
+	    msg->timestamp, msg->prio, msg->src, msg->dst,
+	    msg->pgn, pgn->description);
+    
     for (i = 0; i < length; i++)
     {
       fprintf(f, "  %c", isalnum(dataStart[i]) ? dataStart[i] : '.');
     }
     putc('\n', f);
   }
-  if (showJson)
-  {
-    if (pgn->camelDescription)
-    {
-      mprintf("\"%s\":", pgn->camelDescription);
-    }
-    mprintf("{\"timestamp\":\"%s\",\"prio\":%u,\"src\":%u,\"dst\":%u,\"pgn\":%u,\"description\":\"%s\"", msg->timestamp, msg->prio, msg->src, msg->dst, msg->pgn, pgn->description);
-    strcpy(closingBraces, "}");
-    sep = ",\"fields\":{";
-  }
-  else
-  {
-    mprintf("%s %u %3u %3u %6u %s:", msg->timestamp, msg->prio, msg->src, msg->dst, msg->pgn, pgn->description);
-    sep = " ";
-  }
 
+  if(showTxt){
+    if (showJson){
+      if (pgn->camelDescription){
+	mprintf("\"%s\":", pgn->camelDescription);
+      }
+      mprintf("{\"timestamp\":\"%s\",\"prio\":%u,\"src\":%u,\"dst\":%u,\"pgn\":%u,\"description\":\"%s\"", msg->timestamp, msg->prio, msg->src, msg->dst, msg->pgn, pgn->description);
+      strcpy(closingBraces, "}");
+      sep = ",\"fields\":{";
+    }else{
+      mprintf("%s %u %3u %3u %6u %s:", msg->timestamp, msg->prio, msg->src, msg->dst, msg->pgn, pgn->description);
+      sep = " ";
+    }
+  }
+  
   g_variableFieldRepeat[0] = 0;
   g_variableFieldRepeat[1] = 0;
   g_variableFieldIndex = 0;
@@ -670,7 +677,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
       // the codes assume that the g_variableFieldRepeat[0](and[1](if exists))
       // has already been filled by field "# of ..." previously called printNumber
       repetition = 1;
-      if (showJson)
+      if (showTxt && showJson)
       {
         mprintf("%s\"list\":[{", getSep());
         strcat(closingBraces, "]}");
@@ -684,7 +691,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
     {
       if (variableFields[0])
       {
-        if (showBytes)
+        if (showTxt && showBytes)
         {
           mprintf("\ni=%d fs=%d vf=%d", i, variableFieldStart, variableFields[0]);
         }
@@ -696,7 +703,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 	// should be repeated g_variableFieldRepeat[0] times.
           i = variableFieldStart;
           repetition++;
-          if (showJson)
+          if (showTxt && showJson)
           {
             mprintf("},{");
             sep = "";
@@ -726,7 +733,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 	  // To repeate the second variable fields. The same code for the first variable fields is found in previous lines.
           i = variableFieldStart;
           repetition++;
-          if (showJson)
+          if (showTxt && showJson)
           {
             mprintf("},{");
             sep = "";
@@ -760,7 +767,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
     bytes = min(bytes, (size_t) (dataEnd - data));
     bits  = min(bytes * 8, bits);
 
-    if (showBytes)
+    if (showTxt && showBytes)
     {
       mprintf("\ndecode %s offset=%u startBit=%u bits=%u bytes=%u:", field->name, data - dataStart, startBit, bits, bytes);
     }
@@ -768,7 +775,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
     if (strcmp(fieldName, "PGN") == 0)
     {
       refPgn = data[0] + (data[1] << 8) + (data[2] << 16);
-      if (showBytes)
+      if (showTxt && showBytes)
       {
         mprintf("refPgn=%u ", refPgn);
       }
@@ -807,8 +814,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
           logError("Unhandled UNICODE string in PGN\n");
         }
 	ascii = true;
-      }else if (field->resolution == RES_ASCII)
-      {
+      }else if (field->resolution == RES_ASCII){
         len = (int) bytes;
         unsigned char lastbyte = data[len - 1];
 	
@@ -823,100 +829,86 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
       }
 
       if(ascii){
-	if (showBytes)
+	string str; 
+	for (k = 0; k < len; k++)
 	  {
-	    for (k = 0; k < len; k++)
+	    if (data[k] == 0xff)
 	      {
-		mprintf("%02x ", data[k]);
+		break;
+	      }
+	    if (data[k] >= ' ' && data[k] <= '~')
+	      {
+		str.push_back(data[k]); // store ascii string in data
 	      }
 	  }
+	pfv->push(str); // push into field variable	  
 	
-	if (showJson)
-	  {
-	    mprintf("%s\"%s\":\"", getSep(), fieldName);
-	  }
-	else
-	  {
-	    ////////////////////////////////////////////////// insert data fetching code here
-	    mprintf("%s %s = ", getSep(), fieldName);
-	  }
-	
-	if (showJson)
-	  {
-	    print_ascii_json_escaped(data, len);
-	  }
-	else
-	  {
-	    ////////////////////////////////////////////////// insert data fetching code here
-	    string str; 
-	    for (k = 0; k < len; k++)
-	      {
-		if (data[k] == 0xff)
-		  {
-		    break;
-		  }
-		if (data[k] >= ' ' && data[k] <= '~')
-		  {
-		    mprintf("%c", data[k]);
-		    str.push_back(data[k]); // store ascii string in data
-		  }
-	      }
-	    pfv->push(str); // push into field variable
-	  }
-	
-	if (showJson)
-	  {
-	    mprintf("\"");
-	  } 
+	if(showTxt){
+	  if (showBytes)
+	    {
+	      for (k = 0; k < len; k++)
+		{
+		  mprintf("%02x ", data[k]);
+		}
+	    }	  
+	  if (showJson)
+	    {
+	      mprintf("%s\"%s\":\"", getSep(), fieldName);
+	      print_ascii_json_escaped(data, len);
+	      mprintf("\"");
+	    }
+	  else
+	    {
+	      mprintf("%s %s = ", getSep(), fieldName);
+	      mprintf("%s", str.c_str());
+	    }
+	}
       }
+      
       if (field->resolution == RES_STRING)
 	{
 	  int len;
 	  // there maybe two modes
 	  // one is string starting with 0x02 and terminating with 0x01
 	  // another is starting with length larger than 0x2
-	  if (*data == 0x02) // 0x02 is the starting code
-	    {
-	      // counting length 
-	      data++;
-	      for (len = 0;
-		   data + len < dataEnd
-		     && data[len] != 0x01; len++);
-	      bytes = len + 1;
-	    }
-	  else if (*data > 0x02)
-	    {
-	      bytes = *data++;
-	      bytes--; /* Compensate for that we've already increased data by 1 */
-	      if (*data == 0x01)
-		{
-		  data++;
-		  bytes--;
-		}
-	      len = bytes - 1;
-	    }
-	  else
-	    {
-	      bytes = 1;
-	      len = 0;
-	    }
-	  if (len)
-	    {
-	      if (showJson)
-		{
-		  mprintf("%s\"%s\":\"%.*s\"", getSep(), fieldName, (int) len, data);
-		}
-	      else
-		{
-		  mprintf("%s %s = %.*s", getSep(), fieldName, (int) len, data);
-		  ////////////////////////////////////////////////// insert data fetching code here
+	  if (*data == 0x02){ // 0x02 is the starting code
+	    // counting length 
+	    data++;
+	    for (len = 0;
+		 data + len < dataEnd
+		   && data[len] != 0x01; len++);
+	    bytes = len + 1;
+	  }
+	  else if (*data > 0x02){
+	    bytes = *data++;
+	    bytes--; /* Compensate for that we've already increased data by 1 */
+	    if (*data == 0x01)
+	      {
+		data++;
+		bytes--;
+	      }
+	    len = bytes - 1;
+	  }
+	  else{
+	    bytes = 1;
+	    len = 0;
+	  }
+	  
+	  if (len){
+	    string str;
+	    for (int idata = 0; idata < len; idata++)
+	      str.push_back(data[idata]);
+	    pfv->push(str);
 
-		  string str;
-		  for (int idata = 0; idata < len; idata++)
-		    str.push_back(data[idata]);
-		  pfv->push(str);
-		}
+	    if(showTxt){
+	      if (showJson){
+		mprintf("%s\"%s\":\"%.*s\"", getSep(), fieldName, (int) len, data);
+	      }
+	      else{
+		mprintf("%s %s = %.*s", getSep(), fieldName, (int) len, data);
+	      }
 	    }
+	  }
 	  bits = BYTES(bytes);
 	}
       else if (field->resolution == RES_LONGITUDE || field->resolution == RES_LATITUDE)
@@ -928,7 +920,9 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 	  //GMT days from (1/1/1970) in two bytes
 	  memcpy((void *) &valueu16, data, 2);
 	  pfv->push(valueu16);
-	  printDate(fieldName, valueu16);
+	  if(showTxt)
+	    printDate(fieldName, valueu16);
+	  
 	  currentDate = valueu16;
 	}
       else if (field->resolution == RES_TIME)
@@ -936,7 +930,8 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 	  // 100usec in 4 bytes
 	  memcpy((void *) &valueu32, data, 4);
 	  pfv->push(valueu32);
-	  printTime(fieldName, valueu32);
+	  if(showTxt)
+	    printTime(fieldName, valueu32);
 	  currentTime = valueu32;
 	}
       else if (field->resolution == RES_PRESSURE)
@@ -1008,25 +1003,24 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
     data += startBit / 8;
     startBit %= 8;
   }
-  
-  if (showJson)
-    {
-      for (i = strlen(closingBraces); i;)
-	{
-	  mprintf("%c", closingBraces[--i]);
-	}
-    }
-  ////////////////////////////////////////////////// insert data fetching code here
-  mprintf("\n");
 
-  if (r)
-    {
+  if(showTxt){
+    if (showJson)
+      {
+	for (i = strlen(closingBraces); i;)
+	  {
+	    mprintf("%c", closingBraces[--i]);
+	  }
+      }
+    mprintf("\n");
+    if (r){
       mwrite(stdout);
     }
-  else
-  {
-    mreset();
+    else{
+      mreset();
+    }    
   }
+  
 
   if (msg->pgn == 126992 && currentDate < UINT16_MAX && currentTime < UINT32_MAX && clockSrc == msg->src)
     {
@@ -1134,7 +1128,7 @@ bool f_ngt1::printLatLon(char * name, double resolution, uint8_t * data, size_t 
 
   if (bytes == 8)
   {
-    if (showBytes)
+    if (showTxt && showBytes)
     {
       mprintf("(%" PRIx64 " = %" PRId64 ") ", value, value);
     }
@@ -1143,85 +1137,82 @@ bool f_ngt1::printLatLon(char * name, double resolution, uint8_t * data, size_t 
   }
   absVal = (value < 0) ? -value : value;
 
-  if (showBytes)
+  if (showTxt && showBytes)
   {
     mprintf("(%" PRId64 ") ", value);
   }
 
   double dd = (double) value / (double) RES_LAT_LONG_PRECISION;
   pfv->push(dd);
-  
-  if (showGeo == GEO_DD)
-  {
-    if (showJson)
-    {
-      mprintf("%s\"%s\":%10.7f", getSep(), name, dd);
-    }
-    else
-    {
-      mprintf("%s %s = %10.7f", getSep(), name, dd);
-    }
-  }
-  else if (showGeo == GEO_DM)
-  {
-    /* One degree = 10e6 */
 
-    uint64_t degrees = (absVal / RES_LAT_LONG_PRECISION);
-    uint64_t remainder = (absVal % RES_LAT_LONG_PRECISION);
-    double minutes = (remainder * 60) / (double) RES_LAT_LONG_PRECISION;
-
-    if(showJson){
-      mprintf("%s\"%s\":\"%02u&deg; %6.3f %c\""
-	      , getSep(), name, (uint32_t) degrees, minutes
-	      , ((resolution == RES_LONGITUDE)
-		 ? ((value >= 0) ? 'E' : 'W')
-		 : ((value >= 0) ? 'N' : 'S')
-		 )
-	      );
-
-    }else{
-      ///////////////////////////////////////////////////////// insert data fetching code here
-      mprintf("%s %s = %02ud %6.3f %c"
-	      , getSep(), name, (uint32_t) degrees, minutes
-	      , ((resolution == RES_LONGITUDE)
-		 ? ((value >= 0) ? 'E' : 'W')
-		 : ((value >= 0) ? 'N' : 'S')
-		 )
-	      );
+  if(showTxt){
+    if (showGeo == GEO_DD)
+      {
+	
+	if (showJson){
+	  mprintf("%s\"%s\":%10.7f", getSep(), name, dd);
+	}
+	else{
+	  mprintf("%s %s = %10.7f", getSep(), name, dd);
+	}
+      }
+    else if (showGeo == GEO_DM)
+      {
+	/* One degree = 10e6 */
+	
+	uint64_t degrees = (absVal / RES_LAT_LONG_PRECISION);
+	uint64_t remainder = (absVal % RES_LAT_LONG_PRECISION);
+	double minutes = (remainder * 60) / (double) RES_LAT_LONG_PRECISION;
+	
+	if(showJson){
+	  mprintf("%s\"%s\":\"%02u&deg; %6.3f %c\""
+		  , getSep(), name, (uint32_t) degrees, minutes
+		  , ((resolution == RES_LONGITUDE)
+		     ? ((value >= 0) ? 'E' : 'W')
+		     : ((value >= 0) ? 'N' : 'S')
+		     )
+		  );
+	  
+	}else{
+	  mprintf("%s %s = %02ud %6.3f %c"
+		  , getSep(), name, (uint32_t) degrees, minutes
+		  , ((resolution == RES_LONGITUDE)
+		     ? ((value >= 0) ? 'E' : 'W')
+		     : ((value >= 0) ? 'N' : 'S')
+		     )
+		  );
+	  
+	}
+      }
+    else{
+      uint32_t degrees = (uint32_t) (absVal / RES_LAT_LONG_PRECISION);
+      uint32_t remainder = (uint32_t) (absVal % RES_LAT_LONG_PRECISION);
+      uint32_t minutes = (remainder * 60) / RES_LAT_LONG_PRECISION;
+      double seconds = (((uint64_t) remainder * 3600) / (double) RES_LAT_LONG_PRECISION) - (60 * minutes);
       
-    }
-  }
-  else
-  {
-    uint32_t degrees = (uint32_t) (absVal / RES_LAT_LONG_PRECISION);
-    uint32_t remainder = (uint32_t) (absVal % RES_LAT_LONG_PRECISION);
-    uint32_t minutes = (remainder * 60) / RES_LAT_LONG_PRECISION;
-    double seconds = (((uint64_t) remainder * 3600) / (double) RES_LAT_LONG_PRECISION) - (60 * minutes);
-
-    if(showJson){
-      mprintf("%s\"%s\":\"%02u&deg;%02u&rsquo;%06.3f&rdquo;%c\""
-	      , getSep(), name, degrees, minutes, seconds
-	      , ((resolution == RES_LONGITUDE)
-		 ? ((value >= 0) ? 'E' : 'W')
-		 : ((value >= 0) ? 'N' : 'S')
-		 )
-	      );
+      if(showJson){
+	mprintf("%s\"%s\":\"%02u&deg;%02u&rsquo;%06.3f&rdquo;%c\""
+		, getSep(), name, degrees, minutes, seconds
+		, ((resolution == RES_LONGITUDE)
+		   ? ((value >= 0) ? 'E' : 'W')
+		   : ((value >= 0) ? 'N' : 'S')
+		   )
+		);
+	
+      }else{
+	mprintf( "%s %s = %02ud %02u' %06.3f\"%c"
+		 , getSep(), name, degrees, minutes, seconds
+		 , ((resolution == RES_LONGITUDE)
+		    ? ((value >= 0) ? 'E' : 'W')
+		    : ((value >= 0) ? 'N' : 'S')
+		    )
+		 );       
+      }
       
-    }else{
-      ///////////////////////////////////////////////////////// insert data fetching code here      
-      mprintf( "%s %s = %02ud %02u' %06.3f\"%c"
-	       , getSep(), name, degrees, minutes, seconds
-	       , ((resolution == RES_LONGITUDE)
-		  ? ((value >= 0) ? 'E' : 'W')
-		  : ((value >= 0) ? 'N' : 'S')
-		  )
-	       );       
-    }
-    
-    if (showJson)
-    {
-      double dd = (double) value / (double) RES_LAT_LONG_PRECISION;
-      mprintf("%s\"%s_dd\":%10.7f", getSep(), name, dd);
+      if (showJson){
+	double dd = (double) value / (double) RES_LAT_LONG_PRECISION;
+	mprintf("%s\"%s_dd\":%10.7f", getSep(), name, dd);
+      }
     }
   }
   return true;
@@ -1316,46 +1307,41 @@ bool f_ngt1::printTime(char * name, uint32_t t)
 }
 
 
-bool f_ngt1::printTemperature(char * name, uint32_t t, uint32_t bits, double resolution, PgnFieldValues * pfv)
+bool f_ngt1::printTemperature(char * name, uint32_t t, uint32_t bits,
+			      double resolution, PgnFieldValues * pfv)
 {
   double k = t * resolution;
   pfv->push(k);
-  double c = k - 273.15;
-  double f = c * 1.8 + 32;
-
-  if ((bits == 16 && t >= 0xfffd) || (bits == 24 && t >= 0xfffffd))
-  {
-    return false;
-  }
-
-  if (showSI)
-  {
-    if (showJson)
-    {
-      mprintf("%s\"%s\":%.2f", getSep(), name, k, f);
+  if(showTxt){
+    double c = k - 273.15;
+    double f = c * 1.8 + 32;
+    
+    if ((bits == 16 && t >= 0xfffd) || (bits == 24 && t >= 0xfffffd)){
+      return false;
     }
-    else
-    {
-      ///////////////////////////////////////////////////////// insert data fetching code here
-      mprintf("%s %s = %.2f K", getSep(), name, k);
+    
+    if (showSI){
+      if (showJson){
+	mprintf("%s\"%s\":%.2f", getSep(), name, k, f);
+      }
+      else{
+	mprintf("%s %s = %.2f K", getSep(), name, k);
+      }
+      return true;
     }
-    return true;
+    
+    if (showJson){
+      mprintf("%s\"%s\":%.2f", getSep(), name, c, f);
+    }
+    else{
+      mprintf("%s %s = %.2f C (%.1f F)", getSep(), name, c, f);
+    }
   }
-
-  if (showJson)
-  {
-    mprintf("%s\"%s\":%.2f", getSep(), name, c, f);
-  }
-  else
-  {
-    ///////////////////////////////////////////////////////// insert data fetching code here
-    mprintf("%s %s = %.2f C (%.1f F)", getSep(), name, c, f);
-  }
-
   return true;
 }
 
-bool f_ngt1::printPressure(char * name, uint32_t v, Field * field, PgnFieldValues * pfv)
+bool f_ngt1::printPressure(char * name, uint32_t v, Field * field,
+			   PgnFieldValues * pfv)
 {
   int32_t pressure;
   double bar;
@@ -1401,18 +1387,22 @@ bool f_ngt1::printPressure(char * name, uint32_t v, Field * field, PgnFieldValue
       break;
     }
   }
+  
   pfv->push(pressure);
-  bar = pressure / 100000.0; /* 1000 hectopascal = 1 Bar */
-  psi = pressure / 1450.377; /* Silly but still used in some parts of the world */
 
-  if (showJson)
-  {
-    mprintf("%s\"%s\":%" PRId32 "", getSep(), name, pressure);
-  }
-  else
-  {
-    ///////////////////////////////////////////////////////// insert data fetching code here
-    mprintf("%s %s = %.3f bar (%.1f PSI)", getSep(), name, bar, psi);
+
+  if(showTxt){
+    bar = pressure / 100000.0; /* 1000 hectopascal = 1 Bar */
+    psi = pressure / 1450.377; /* Silly but still used in some parts of the world */
+    
+    if (showJson)
+      {
+	mprintf("%s\"%s\":%" PRId32 "", getSep(), name, pressure);
+      }
+    else
+      {
+	mprintf("%s %s = %.3f bar (%.1f PSI)", getSep(), name, bar, psi);
+      }
   }
   return true;
 }
@@ -1444,13 +1434,10 @@ bool f_ngt1::print6BitASCIIText(char * name, uint8_t * data, size_t startBit, si
   size_t bit;
   char buf[128];
 
-  if (showJson)
-  {
+  if (showJson){
     mprintf("%s\"%s\":\"", getSep(), name);
   }
-  else
-  {
-    ///////////////////////////////////////////////////////// insert data fetching code here
+  else{
     mprintf("%s %s = ", getSep(), name);
   }
 
@@ -1459,32 +1446,27 @@ bool f_ngt1::print6BitASCIIText(char * name, uint8_t * data, size_t startBit, si
     /* Act on the current bit */
     bool bitIsSet = (*data & bitMask) > 0;
     maxValue |= bitMagnitude;
-    if (bitIsSet)
-    {
+    if (bitIsSet){
       value |= bitMagnitude;
     }
 
     /* Find the next bit */
-    if (bitMask == 128)
-    {
+    if (bitMask == 128){
       bitMask = 1;
       data++;
     }
-    else
-    {
+    else{
       bitMask = bitMask << 1;
     }
     bitMagnitude = bitMagnitude << 1;
 
-    if (bit % 6 == 5)
-    {
+    if (bit % 6 == 5){
       print6BitASCIIChar(value);
       value = 0;
       bitMagnitude = 1;
     }
   }
-  if (showJson)
-  {
+  if (showJson){
     mprintf("\"");
   }
   return true;
@@ -1500,21 +1482,6 @@ bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits 
   size_t bit;
   char buf[128];
 
-  if (showBytes)
-  {
-    mprintf("(%s,%p,%zu,%zu) ", name, data, startBit, bits);
-  }
-
-  if (showJson)
-  {
-    mprintf("%s\"%s\":\"", getSep(), name);
-  }
-  else
-  {
-    ///////////////////////////////////////////////////////// insert data fetching code here    
-    mprintf("%s %s = ", getSep(), name);
-  }
-
   string hex;
   char hexstr[4];
   for (bit = 0; bit < bits && bit < sizeof(buf) * 8; bit++)
@@ -1522,27 +1489,21 @@ bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits 
     /* Act on the current bit */
     bool bitIsSet = (*data & bitMask) > 0;
     maxValue |= bitMagnitude;
-    if (bitIsSet)
-    {
+    if (bitIsSet){
       value |= bitMagnitude;
     }
 
     /* Find the next bit */
-    if (bitMask == 128)
-    {
+    if (bitMask == 128){
       bitMask = 1;
       data++;
     }
-    else
-    {
+    else{
       bitMask = bitMask << 1;
     }
     bitMagnitude = bitMagnitude << 1;
 
-    if (bit % 8 == 7)
-    {
-      ///////////////////////////////////////////////////////// insert data fetching code here
-      mprintf("%02x ", value);
+    if (bit % 8 == 7){
       sprintf(hexstr, "%02x ", value);
       hex += hexstr;
       value = 0;
@@ -1550,12 +1511,24 @@ bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits 
     }
   }
 
+  if(showTxt){
+    if (showBytes){
+      mprintf("(%s,%p,%zu,%zu) ", name, data, startBit, bits);
+    }
+    
+    if (showJson){
+      mprintf("%s\"%s\":\"", getSep(), name);
+    }
+    else{
+      mprintf("%s %s = ", getSep(), name);
+    }
+    mprintf("%s", hex.c_str());
+    if (showJson){
+      mprintf("\"");
+    }    
+  }
   pfv->push(hex);
   
-  if (showJson)
-  {
-    mprintf("\"");
-  }
   return true;
 }
 
@@ -1569,22 +1542,9 @@ bool f_ngt1::printDecimal(char * name, uint8_t * data, size_t startBit, size_t b
   size_t bit;
   char buf[128];
 
-  if (showBytes)
-  {
-    mprintf("(%s,%p,%zu,%zu) ", name, data, startBit, bits);
-  }
-
-  if (showJson)
-  {
-    mprintf("%s\"%s\":\"", getSep(), name);
-  }
-  else
-  {
-    ///////////////////////////////////////////////////////// insert data fetching code here    
-    mprintf("%s %s = ", getSep(), name);
-  }
-
-  unsigned long long result = 0;  
+  unsigned long long result = 0;
+  string dec;
+  char dec_str[3];
   for (bit = 0; bit < bits && bit < sizeof(buf) * 8; bit++)
   {
     /* Act on the current bit */
@@ -1611,20 +1571,32 @@ bool f_ngt1::printDecimal(char * name, uint8_t * data, size_t startBit, size_t b
     {
       if (value < 100)
       {
-	///////////////////////////////////////////////////////// insert data fetching code here
+	sprintf(dec_str, "%02u", value);
+	dec += dec_str;
         mprintf("%02u", value);
-	result *= 100;
-	result += value;
       }
       value = 0;
       bitMagnitude = 1;
     }
   }
-  pfv->push(result);
-  
-  if (showJson)
-  {
-    mprintf("\"");
+  pfv->push(dec);
+
+
+  if(showTxt){
+    if (showBytes){
+      mprintf("(%s,%p,%zu,%zu) ", name, data, startBit, bits);
+    }
+    
+    if (showJson){
+      mprintf("%s\"%s\":\"", getSep(), name);
+    }
+    else{
+      mprintf("%s %s = ", getSep(), name);
+    }
+    mprintf("%s", dec.c_str());
+    if (showJson){
+      mprintf("\"");
+    }
   }
   return true;
 }
@@ -1649,7 +1621,7 @@ bool f_ngt1::printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field 
   if (refField)
   {
     *bits = (refField->size + 7) & ~7; // Round # of bits in field refField up to complete bytes: 1->8, 7->8, 8->8 etc.
-    if (showBytes)
+    if (showTxt && showBytes)
     {
       mprintf("(refField %s size = %u in %zu bytes)", refField->name, refField->size, *bits / 8);
     }
@@ -1672,7 +1644,7 @@ bool f_ngt1::printNumber(char * fieldName, Field * field, uint8_t * data, size_t
 
   extractNumber(field, data, startBit, bits, &value, &maxValue);
   pfv->push(value);
-  
+
   /* There are max five reserved values according to ISO 11873-9 (that I gather from indirect sources)
    * but I don't yet know which datafields reserve the reserved values.
    */
@@ -1700,6 +1672,9 @@ bool f_ngt1::printNumber(char * fieldName, Field * field, uint8_t * data, size_t
     logDebug("g_variableFieldRepeat[%d]=%d\n", g_variableFieldIndex, value);
     g_variableFieldRepeat[g_variableFieldIndex++] = value;
   }
+
+  if(!showTxt)
+    return true;
 
   if (value <= maxValue - reserved)
   {
@@ -1957,7 +1932,7 @@ bool f_ngt1::printNumber(char * fieldName, Field * field, uint8_t * data, size_t
         }
         else
         {
-	      ///////////////////////////////////////////////////////// insert data fetching code here    
+	  ///////////////////////////////////////////////////////// insert data fetching code here    
           mprintf("%s %s = %.*f", getSep(), fieldName, precision, a);
           if (units)
           {

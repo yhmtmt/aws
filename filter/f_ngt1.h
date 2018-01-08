@@ -92,6 +92,7 @@ class f_ngt1: public f_base
   bool showRaw;
   bool showData;
   bool showBytes;
+  bool showTxt;
   bool showJson;
   bool showJsonValue;
   bool showSI;
