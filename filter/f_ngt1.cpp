@@ -44,6 +44,9 @@ PgnFieldValues::PgnFieldValues(const Pgn * _pgn):pgn(_pgn)
 
 PgnFieldValues::~PgnFieldValues()
 {
+  for(int ifield = 0; ifield < values.size(); ifield++)
+    delete values[ifield];
+  values.clear();
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -150,7 +153,7 @@ void f_ngt1::destroy_run()
 
   // release device-packet data
   for(int idev = 0; idev < 256; idev++){
-    if(deice[idev]){
+    if(device[idev]){
       delete device[idev];
       device[idev] = NULL;
     }
@@ -169,7 +172,7 @@ bool f_ngt1::proc()
     cout << "Received pgn " << pfv->getPgn();
     
     for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
-      FieldValueBase * pfvb = pfv->get(ifv);
+      const FieldValueBase * pfvb = pfv->get(ifv);
       cout << "Field[" << ifv << "]:";
       pfvb->print();
       cout << endl;
@@ -582,7 +585,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
     pgn = pgnList;
   }
   
-  PgnFieldValues * pfv = new PgnFieldValue(pgn);
+  PgnFieldValues * pfv = new PgnFieldValues(pgn);
   if(!pfv){
     cerr << "Failed to allocate memory" << endl;
     return false;
@@ -932,7 +935,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 	{
 	  // 100usec in 4 bytes
 	  memcpy((void *) &valueu32, data, 4);
-	  pfv->push(value32);
+	  pfv->push(valueu32);
 	  printTime(fieldName, valueu32);
 	  currentTime = valueu32;
 	}
@@ -976,7 +979,7 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
 	}
       else if (bits > BYTES(8))
 	{
-	  printHex(fieldName, data, startBit, bits, pfv));
+	  printHex(fieldName, data, startBit, bits, pfv);
 	}
       else if (field->resolution == RES_INTEGER
 	       || field->resolution == RES_LOOKUP
@@ -1488,7 +1491,7 @@ bool f_ngt1::print6BitASCIIText(char * name, uint8_t * data, size_t startBit, si
 }
 
 
-bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits , PgnFieldValues * pfv))
+bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits , PgnFieldValues * pfv)
 {
   uint8_t value = 0;
   uint8_t maxValue = 0;
@@ -1512,8 +1515,8 @@ bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits 
     mprintf("%s %s = ", getSep(), name);
   }
 
-  vector<uint8_t> hex;
-  
+  string hex;
+  char hexstr[4];
   for (bit = 0; bit < bits && bit < sizeof(buf) * 8; bit++)
   {
     /* Act on the current bit */
@@ -1540,8 +1543,9 @@ bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits 
     {
       ///////////////////////////////////////////////////////// insert data fetching code here
       mprintf("%02x ", value);
+      sprintf(hexstr, "%02x ", value);
+      hex += hexstr;
       value = 0;
-      hex.push_back(value);
       bitMagnitude = 1;
     }
   }
@@ -1556,7 +1560,7 @@ bool f_ngt1::printHex(char * name, uint8_t * data, size_t startBit, size_t bits 
 }
 
 
-bool f_ngt1::printDecimal(char * name, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv))
+bool f_ngt1::printDecimal(char * name, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv)
 {
   uint8_t value = 0;
   uint8_t maxValue = 0;

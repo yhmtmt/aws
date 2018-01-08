@@ -74,9 +74,8 @@ class f_ngt1: public f_base
     size_t size;
     size_t allocSize;
     uint8_t * data;
-  Packet():lastFastPacket(0), size(0), allocSize(0), data(NULL)
-    {
-    }
+    Packet();
+    ~Packet();
   };
   
   struct DevicePackets
@@ -85,6 +84,7 @@ class f_ngt1: public f_base
     DevicePackets();
     ~DevicePackets();
   };
+  
   DevicePackets * device[256];
   const char *manufacturer[1 << 12];
   void fillManufacturers();
@@ -135,7 +135,7 @@ class f_ngt1: public f_base
   bool print6BitASCIIText(char * name, uint8_t * data, size_t startBit, size_t bits);
 
   bool printHex(char * name, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv);
-  bool printDecimal(char * name, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv));
+  bool printDecimal(char * name, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv);
 bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field, uint8_t * data, size_t startBit, size_t * bits, PgnFieldValues * pfv);
   bool printNumber(char * fieldName, Field * field, uint8_t * data, size_t startBit, size_t bits, PgnFieldValues * pfv);
   void print_ascii_json_escaped(uint8_t *data, int len);
@@ -148,14 +148,14 @@ bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field,
   
   // these functions are from canboat.analyze -->
 
-  list<PgnFieldValue*> pgn_queue;
+  list<PgnFieldValues*> pgn_queue;
   
  public:
   f_ngt1(const char * name);
   ~f_ngt1();
   virtual bool init_run();
   virtual void destroy_run();
-  virtual bool proc();  
+  virtual bool proc();
 };
 
 
@@ -163,25 +163,28 @@ class FieldValueBase
 {
  private:
  public:
-  virtual void print() = 0;
+  virtual void print() const = 0;
 };
 
 template <class T> class FieldValue: public FieldValueBase
 {
+ private:
   T val;
+  
+ public:
  FieldValue(const T & _val):val(_val)
   {
   }
 
   const T & get(){
-    return T;
+    return val;
   }
 
   void set(const T & _val){
     val = _val;
   }
 
-  virtual void print()
+  virtual void print() const 
   {
     cout << val;
   }
@@ -193,7 +196,7 @@ class PgnFieldValues
   const Pgn * pgn;
   vector<FieldValueBase*> values;
  public:
- PgnFieldValues(const Pgn * _pgn):
+  PgnFieldValues(const Pgn * _pgn);
   ~PgnFieldValues();
 
   const uint32_t getPgn(){
@@ -217,13 +220,14 @@ class PgnFieldValues
 
     if(ifield < 0 || ifield >= values.size())
       return;
+    FieldValue<T> * pfv = dynamic_cast<FieldValue<T>*>(values[ifield]);
     
-    values[ifield]->set(val);
+    pfv->set(val);
   }
   
   template <class T > void push(const T & val)
     {
-      T * p = new FieldValue<T>(val);    
+      FieldValue<T> * p = new FieldValue<T>(val);    
       if(!p){
 	cerr << "Failed to allocate memory" << endl;
 	exit(1);
