@@ -153,7 +153,7 @@ bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field,
 
   list<PgnFieldValues*> pgn_queue;
 
-  void handle_pgn_eng_state(PgnFieldValue * pfv, ch_eng_state * ch);
+  void handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch);
   
   ////////////////////////////////////////// pgn hanler
   
@@ -226,7 +226,7 @@ class PgnFieldValues
     if(ifield < 0 || ifield >= (int)values.size())
       return NULL;
 
-    FieldValue<T> * pfv = dynamic_cast<FieldValue<T>>(values[ifield]);
+    FieldValue<T> * pfv = dynamic_cast<FieldValue<T>*>(values[ifield]);
     if(pfv)
       return &(pfv->get());
 

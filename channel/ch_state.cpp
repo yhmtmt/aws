@@ -971,7 +971,7 @@ int ch_eng_state::read(FILE * pf, long long tcur)
   }
 
   if(tdynf <= tcur){
-    set_dynamic(tdynf, poilf, toilf,
+    set_dynamic(tdynf, poilf, toilf, tempf,
 		valtf, fratef, tengf, pclntf, pflf, stat1f, stat2f, ldf, tqf);
   }
 

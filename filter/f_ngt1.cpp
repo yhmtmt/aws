@@ -191,7 +191,7 @@ bool f_ngt1::proc()
   return true;
 }
 
-void f_ngt1::handle_pgn_eng_state(PgnFieldValue * pfv, ch_eng_state * ch)
+void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch)
 {
   if(ch){
     // 127488 engine parameters(rapid)
@@ -219,41 +219,41 @@ void f_ngt1::handle_pgn_eng_state(PgnFieldValue * pfv, ch_eng_state * ch)
     // 
     // 127498 Engine Parameters(Static)
     // 0. Engine Instance, 1. Rated Engine Speed, 2. Vin, 3. Software ID
-    if(*pfv->get<int64_t>(0) == 0){
-      switch(pfv->getPgn){
+    if(*pfv->get_vptr<int64_t>(0) == 0){
+      switch(pfv->getPgn()){
       case 127488: // rapid engine parameter
 	ch->set_rapid(get_time(),
-		      (float)((double)*pfv->get<int64_t>(1) * 0.25),
-		      (char)(*pfv->get<int64_t>(3)));
+		      (float)((double)*pfv->get_vptr<int64_t>(1) * 0.25),
+		      (char)(*pfv->get_vptr<int64_t>(3)));
 	
 	break;
       case 127489:
 	ch->set_dynamic(get_time(),
-			(int)(*pfv->get<int32_t>(1)),
-			(float)(*pfv->get<double>(2)),
-			(float)(*pfv->get<double>(3)),
-			(float)((double)*pfv->get<int64_t>(4) * 0.01),
-			(float)((double)*pfv->get<int64_t>(5) * 0.1),
-			(unsigned int)(*pfv->get<int64_t>(6)),
-			(int)(*pfv->get<int32_t>(7)),
-			(int)(*pfv->get<int64_t>(8)),
-			(StatEng1)(*pfv->get<int64_t>(10)),
-			(StatEng2)(*pfv->get<int64_t>(11)),
-			(unsigned char)(*pfv->get<int64_t>(12)),
-			(unsigned char)(*pfv->get<int64_t>(13)));
+			(int)(*pfv->get_vptr<int32_t>(1)),
+			(float)(*pfv->get_vptr<double>(2)),
+			(float)(*pfv->get_vptr<double>(3)),
+			(float)((double)*pfv->get_vptr<int64_t>(4) * 0.01),
+			(float)((double)*pfv->get_vptr<int64_t>(5) * 0.1),
+			(unsigned int)(*pfv->get_vptr<int64_t>(6)),
+			(int)(*pfv->get_vptr<int32_t>(7)),
+			(int)(*pfv->get_vptr<int64_t>(8)),
+			(StatEng1)(*pfv->get_vptr<int64_t>(10)),
+			(StatEng2)(*pfv->get_vptr<int64_t>(11)),
+			(unsigned char)(*pfv->get_vptr<int64_t>(12)),
+			(unsigned char)(*pfv->get_vptr<int64_t>(13)));
 	break;
       case 127497:
 	ch->set_tran(get_time(),
-		     (StatGear)(*pfv->get<int64_t>(1)),
-		     (int)(*pfv->get<int64_t>(3)),
-		     (float)(*pfv->get<double>(4)));
+		     (StatGear)(*pfv->get_vptr<int64_t>(1)),
+		     (int)(*pfv->get_vptr<int64_t>(3)),
+		     (float)(*pfv->get_vptr<double>(4)));
 	break;
       case 127498:
 	ch->set_trip(get_time(),
-		     (int)(*pfv->get<int64_t>(1)),
-		     (float)((double)*pfv->get<int64_t>(2) * 0.1),
-		     (float)((double)*pfv->get<int64_t>(3) * 0.1),
-		     (float)((double)*pfv->get<int64_t>(4) * 0.1));			      
+		     (int)(*pfv->get_vptr<int64_t>(1)),
+		     (float)((double)*pfv->get_vptr<int64_t>(2) * 0.1),
+		     (float)((double)*pfv->get_vptr<int64_t>(3) * 0.1),
+		     (float)((double)*pfv->get_vptr<int64_t>(4) * 0.1));			      
 	break;
       }
     }
