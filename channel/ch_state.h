@@ -466,6 +466,7 @@ class ch_eng_state: public ch_base
   long long tdyn, tdynf;
   int poil, poilf; // oil pressure
   float toil, toilf; // oil temperature
+  float temp, tempf; // Engine? temperature
   float valt, valtf; // alternator potential 
   float frate, fratef; // fuel rate (L/h)
   unsigned int teng, tengf; // total engine hour
@@ -514,7 +515,7 @@ class ch_eng_state: public ch_base
   }
 
   void set_dynamic(const long long _t, const int _poil, const float _toil,
-		   const float _valt, const float _frate,
+		   const float _temp,  const float _valt, const float _frate,
 		   const unsigned int _teng, const int _pclnt, const int _pfl,
 		   const StatEng1 _stat1, const StatEng2 _stat2,
 		   const unsigned char _ld, const unsigned char _tq)
@@ -523,6 +524,7 @@ class ch_eng_state: public ch_base
     t = tdyn = _t;
     poil = _poil;
     toil = _toil;
+    temp = _temp;
     valt = _valt;
     frate = _frate;
     teng = _teng;
@@ -536,7 +538,7 @@ class ch_eng_state: public ch_base
   }
 
   void get_dynamic(long long & _t,  int & _poil,  float & _toil,
-		    float _valt,  float _frate,
+		   float & _temp, float & _valt,  float & _frate,
 		    unsigned int & _teng,  int & _pclnt,  int & _pfl,
 		    StatEng1 & _stat1,  StatEng2 & _stat2,
 		    unsigned char & _ld, unsigned char & _tq)
@@ -545,6 +547,7 @@ class ch_eng_state: public ch_base
     _t = tdyn;
     _poil = poil;
     _toil = toil;
+    _temp = temp;
     _valt = valt;
     _frate = frate;
     _teng = teng;
@@ -603,7 +606,7 @@ class ch_eng_state: public ch_base
   }
 
     virtual size_t get_dsize(){
-      return sizeof(long long)*5 + sizeof(float)*8 + sizeof(unsigned char)*3
+      return sizeof(long long)*5 + sizeof(float)*9 + sizeof(unsigned char)*3
 	+ sizeof(int)*5 + sizeof(unsigned int) + sizeof(StatEng1)
 	+ sizeof(StatEng2) + sizeof(StatGear);
     }

@@ -33,6 +33,8 @@ class f_ngt1: public f_base
   AWS_SERIAL m_hserial;
 
   bool m_verb;
+
+  ch_eng_state * eng_state, * eng_state2;
   
   //<-- these functions are from canboat.actisense-serial
   enum MSG_State
@@ -151,6 +153,8 @@ bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field,
 
   list<PgnFieldValues*> pgn_queue;
 
+  void handle_pgn_eng_state(PgnFieldValue * pfv, ch_eng_state * ch);
+  
   ////////////////////////////////////////// pgn hanler
   
  public:
@@ -218,6 +222,17 @@ class PgnFieldValues
     return values[ifield];
   }
 
+  template<class T> const T * get_vptr(const int ifield){
+    if(ifield < 0 || ifield >= (int)values.size())
+      return NULL;
+
+    FieldValue<T> * pfv = dynamic_cast<FieldValue<T>>(values[ifield]);
+    if(pfv)
+      return &(pfv->get());
+
+    return NULL;
+  }
+  
   template<class T> void set(const int ifield, const T & val)
   {
 

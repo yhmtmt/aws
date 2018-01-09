@@ -79,8 +79,10 @@ f_ngt1::DevicePackets::~DevicePackets()
 }
 
 
-f_ngt1::f_ngt1(const char * name):f_base(name), m_hserial(NULL_SERIAL), state(MSG_START), showRaw(false), showTxt(false), showData(false), showBytes(false), showJson(false), showSI(false), sep(NULL), onlyPgn(0), onlySrc(-1), clockSrc(-1), heapSize(0), showGeo(GEO_DD), mp(mbuf)
+f_ngt1::f_ngt1(const char * name):f_base(name), eng_state(NULL), m_hserial(NULL_SERIAL), state(MSG_START), showRaw(false), showTxt(false), showData(false), showBytes(false), showJson(false), showSI(false), sep(NULL), onlyPgn(0), onlySrc(-1), clockSrc(-1), heapSize(0), showGeo(GEO_DD), mp(mbuf)
 {
+  register_fpar("ch_eng_state", (ch_base**)&eng_state, typeid(ch_eng_state).name(), "Channel for engine state");
+  register_fpar("ch_eng_state2", (ch_base**)&eng_state2, typeid(ch_eng_state).name(), "Channel for second engine state");
   register_fpar("dev", m_dname, 1024, "Device file path of the serial port.");
   register_fpar("port", &m_port, "Port number of the serial port. (only for windows)");
 
@@ -174,15 +176,34 @@ bool f_ngt1::proc()
     PgnFieldValues * pfv = *itr;
     cout << "Received pgn " << pfv->getPgn();
 
+    handle_pgn_eng_state(pfv, eng_state);
+    handle_pgn_eng_state(pfv, eng_state2);
+  
+    for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
+      const FieldValueBase * pfvb = pfv->get(ifv);
+      cout << "Field[" << ifv << "]:";
+      pfvb->print();
+      cout << endl;
+    }
+    delete *itr;
+    itr = pgn_queue.erase(itr);
+  }
+  return true;
+}
+
+void f_ngt1::handle_pgn_eng_state(PgnFieldValue * pfv, ch_eng_state * ch)
+{
+  if(ch){
     // 127488 engine parameters(rapid)
     // 0. Engine Instance, 1. Engine Speed(rpm), 2. Engine Boost Pressure(hPa),
     // 3. Engine Trim(?)
     //
     // 127489 engine parameters(dynamic)
-    // 0. Oil Pressure(hPa), 1. Oil temperature(K), 2. Temperature(K),
-    // 3. Alt Potential(V), 4. Fuel Rate(L/h), 5. Total Engine hours(s),
-    // 6. Coolant Pressure(hPa), 7. Fuel Pressure(hPa), 8. Reserved, Status1,
-    // 9. Status2, Engine Load(%), 11. Engine Torque(%) 
+    // 0. Engine Instance, 1. Oil Pressure(hPa), 2. Oil temperature(K),
+    // 3. Temperature(K), 4. Alt Potential(V), 5. Fuel Rate(L/h),
+    // 6. Total Engine hours(s), 7. Coolant Pressure(hPa),
+    // 8. Fuel Pressure(hPa), 9. Reserved, 10 Status1,
+    // 11. Status2, 12. Engine Load(%), 13. Engine Torque(%) 
     //
     // 127493 Transmission Parameters (Dynamic)
     // 0. Engine Instance, 1. Transmission Gear, 2. Reserved,
@@ -198,17 +219,45 @@ bool f_ngt1::proc()
     // 
     // 127498 Engine Parameters(Static)
     // 0. Engine Instance, 1. Rated Engine Speed, 2. Vin, 3. Software ID
-    
-    for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
-      const FieldValueBase * pfvb = pfv->get(ifv);
-      cout << "Field[" << ifv << "]:";
-      pfvb->print();
-      cout << endl;
+    if(*pfv->get<int64_t>(0) == 0){
+      switch(pfv->getPgn){
+      case 127488: // rapid engine parameter
+	ch->set_rapid(get_time(),
+		      (float)((double)*pfv->get<int64_t>(1) * 0.25),
+		      (char)(*pfv->get<int64_t>(3)));
+	
+	break;
+      case 127489:
+	ch->set_dynamic(get_time(),
+			(int)(*pfv->get<int32_t>(1)),
+			(float)(*pfv->get<double>(2)),
+			(float)(*pfv->get<double>(3)),
+			(float)((double)*pfv->get<int64_t>(4) * 0.01),
+			(float)((double)*pfv->get<int64_t>(5) * 0.1),
+			(unsigned int)(*pfv->get<int64_t>(6)),
+			(int)(*pfv->get<int32_t>(7)),
+			(int)(*pfv->get<int64_t>(8)),
+			(StatEng1)(*pfv->get<int64_t>(10)),
+			(StatEng2)(*pfv->get<int64_t>(11)),
+			(unsigned char)(*pfv->get<int64_t>(12)),
+			(unsigned char)(*pfv->get<int64_t>(13)));
+	break;
+      case 127497:
+	ch->set_tran(get_time(),
+		     (StatGear)(*pfv->get<int64_t>(1)),
+		     (int)(*pfv->get<int64_t>(3)),
+		     (float)(*pfv->get<double>(4)));
+	break;
+      case 127498:
+	ch->set_trip(get_time(),
+		     (int)(*pfv->get<int64_t>(1)),
+		     (float)((double)*pfv->get<int64_t>(2) * 0.1),
+		     (float)((double)*pfv->get<int64_t>(3) * 0.1),
+		     (float)((double)*pfv->get<int64_t>(4) * 0.1));			      
+	break;
+      }
     }
-    delete *itr;
-    itr = pgn_queue.erase(itr);
   }
-  return true;
 }
 
 ///////////////////////////////////////////////////////////// from canboat
