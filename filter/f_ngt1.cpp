@@ -78,7 +78,6 @@ f_ngt1::DevicePackets::~DevicePackets()
   }
 }
 
-
 f_ngt1::f_ngt1(const char * name):f_base(name), eng_state(NULL), m_hserial(NULL_SERIAL), state(MSG_START), showRaw(false), showTxt(false), showData(false), showBytes(false), showJson(false), showSI(false), sep(NULL), onlyPgn(0), onlySrc(-1), clockSrc(-1), heapSize(0), showGeo(GEO_DD), mp(mbuf)
 {
   register_fpar("ch_eng_state", (ch_base**)&eng_state, typeid(ch_eng_state).name(), "Channel for engine state");
@@ -95,40 +94,6 @@ f_ngt1::f_ngt1(const char * name):f_base(name), eng_state(NULL), m_hserial(NULL_
 f_ngt1::~f_ngt1()
 {
 }
-void f_ngt1::fillManufacturers(void)
-{
-  size_t i;
-
-  for (i = 0; i < ARRAY_SIZE(manufacturer); i++) {
-    manufacturer[i] = 0;
-  }
-  for (i = 0; i < ARRAY_SIZE(companyList); i++)
-  {
-    manufacturer[companyList[i].id] = companyList[i].name;
-  }
-}
-
-void f_ngt1::fillFieldCounts(void)
-{
-  size_t i, j;
-
-  for (i = 0; i < pgnListSize; i++)
-  {
-    for (j = 0; pgnList[i].fieldList[j].name && j < ARRAY_SIZE(pgnList[i].fieldList); j++);
-    if (j == ARRAY_SIZE(pgnList[i].fieldList))
-    {
-      logError("Internal error: PGN %d '%s' does not have correct fieldlist.\n", pgnList[i].pgn, pgnList[i].description);
-      exit(2);
-    }
-    if (j == 0 && pgnList[i].known)
-    {
-      logError("Internal error: PGN %d '%s' does not have fields.\n", pgnList[i].pgn, pgnList[i].description);
-      exit(2);
-    }
-    pgnList[i].fieldCount = j;
-  }
-}
-
 
 bool f_ngt1::init_run()
 {
@@ -2197,4 +2162,38 @@ void f_ngt1::setSystemClock(uint16_t currentDate, uint32_t currentTime)
 
 #endif
 #endif
+}
+
+void f_ngt1::fillManufacturers(void)
+{
+  size_t i;
+
+  for (i = 0; i < ARRAY_SIZE(manufacturer); i++) {
+    manufacturer[i] = 0;
+  }
+  for (i = 0; i < ARRAY_SIZE(companyList); i++)
+  {
+    manufacturer[companyList[i].id] = companyList[i].name;
+  }
+}
+
+void f_ngt1::fillFieldCounts(void)
+{
+  size_t i, j;
+
+  for (i = 0; i < pgnListSize; i++)
+  {
+    for (j = 0; pgnList[i].fieldList[j].name && j < ARRAY_SIZE(pgnList[i].fieldList); j++);
+    if (j == ARRAY_SIZE(pgnList[i].fieldList))
+    {
+      logError("Internal error: PGN %d '%s' does not have correct fieldlist.\n", pgnList[i].pgn, pgnList[i].description);
+      exit(2);
+    }
+    if (j == 0 && pgnList[i].known)
+    {
+      logError("Internal error: PGN %d '%s' does not have fields.\n", pgnList[i].pgn, pgnList[i].description);
+      exit(2);
+    }
+    pgnList[i].fieldCount = j;
+  }
 }

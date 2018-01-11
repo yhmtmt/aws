@@ -53,69 +53,76 @@ const char * getWeekStr(int wday);
 // should be UTC.
 class c_clock
 {
-private:
-	unsigned m_period;
-	long long m_offset;
-	long long m_tcur;
-	long long m_delta;
-	int m_delta_adjust;
-	bool m_bonline;
-	enum e_state{
-		STOP, RUN, PAUSE
-	} m_state;
-
+ private:
+  unsigned m_period;
+  long long m_tcyc;
+  long long m_offset;
+  long long m_tcur, m_tprev;
+  long long m_delta;
+  int m_delta_adjust;
+  bool m_bonline;
+  enum e_state{
+    STOP, RUN, PAUSE
+  } m_state;
+  
 #ifdef _WIN32
-	IReferenceClock * m_pclk;
-	DWORD m_token;
-	HANDLE m_sem;
+  IReferenceClock * m_pclk;
+  DWORD m_token;
+  HANDLE m_sem;
 #else
-	timespec m_ts_start;
+  timespec m_ts_start;
+  
 #endif
-	int m_rate;
-public:
-	c_clock(void);
-	~c_clock(void);
+  int m_rate;
+ public:
+  c_clock(void);
+  ~c_clock(void);
+  
+  bool start(unsigned period = 166667, unsigned delay = 0,
+	     long long offset = 0, bool online = true, int rate = 1); // pause or stop to run transition
+  void stop(); // run or pause to stop transition
+  bool pause();// run to pause transition
+  bool restart(); // pause to run transition
+  bool step(int cycle);
+  bool step(long long tabs);
+  
+  const unsigned get_period()
+  {
+    return m_period;
+  }
 
-	bool start(unsigned period = 166667, unsigned delay = 0,
-		long long offset = 0, bool online = true, int rate = 1); // pause or stop to run transition
-	void stop(); // run or pause to stop transition
-	bool pause();// run to pause transition
-	bool restart(); // pause to run transition
-	bool step(int cycle);
-	bool step(long long tabs);
-
-	const unsigned get_period()
-	{
-		return m_period;
-	}
-
-	bool is_run(){
-		return m_state == RUN;
-	}
-
-	bool is_stop(){
-		return m_state == STOP;
-	}
-
-	bool is_pause(){
-		return m_state == PAUSE;
-	}
-
-	long long get_time(); // get UTC time
-	const long long get_time_from_start()
-	{
+  const long long get_resolution()
+  {
+    return m_delta_adjust;
+  }
+  
+  bool is_run(){
+    return m_state == RUN;
+  }
+  
+  bool is_stop(){
+    return m_state == STOP;
+  }
+  
+  bool is_pause(){
+    return m_state == PAUSE;
+  }
+  
+  long long get_time(); // get UTC time
+  const long long get_time_from_start()
+  {
 #ifdef _WIN32
-	  return m_tcur - m_offset;
+    return m_tcur - m_offset;
 #else
-	  return m_tcur;
+    return m_tcur;
 #endif
-	}
-	
-	void set_time(tmex & tm); // set new UTC time
-	void set_time(long long & t);	// set new UTC time
-	void set_time_delta(long long & delta); // adjust time by gradually adding delta
-
-	void wait();
+  }
+  
+  void set_time(tmex & tm); // set new UTC time
+  void set_time(long long & t);	// set new UTC time
+  void set_time_delta(long long & delta); // adjust time by gradually adding delta
+  
+  void wait();
 };
 
 #endif

@@ -579,19 +579,20 @@ bool c_aws::handle_cyc(s_cmd & cmd)
 
 bool c_aws::handle_online(s_cmd & cmd)
 {
-	bool result;
-	if(!f_base::m_clk.is_stop()){
-		sprintf(cmd.get_ret_str(), 
-			"Online/offline mode cannot be changed during execution.");
-		result = false;
-	}else{
-		if(strcmp(cmd.args[1], "yes") == 0)
-			m_bonline = true;
-		else
-			m_bonline = false;
-		result = true;
-	}
-	return result;
+  bool result;
+  if(!f_base::m_clk.is_stop()){
+    sprintf(cmd.get_ret_str(), 
+	    "Online/offline mode cannot be changed during execution.");
+    result = false;
+  }else{
+    if(strcmp(cmd.args[1], "yes") == 0)
+      m_bonline = true;
+    else
+      m_bonline = false;
+
+    result = true;
+  }
+  return result;
 }
 
 bool c_aws::handle_pause(s_cmd & cmd)
@@ -653,94 +654,90 @@ bool c_aws::handle_trat(s_cmd & cmd)
 
 bool c_aws::handle_run(s_cmd & cmd)
 {
-	f_base::set_tz(m_time_zone_minute);
-
-	if(f_base::m_clk.is_run()){
-		cout << "AWS is running." << endl;
-		return false;
-	}
-
-	if(f_base::m_clk.is_pause()){ // pause to run transition happens
-		// in pause mode only 
-		if(cmd.num_args == 3){
-			if(cmd.args[1][0] != 't' || cmd.args[1][1] != 'o'){
-				sprintf(cmd.get_ret_str(), 
-					"In pause state, \"go [to <later absolute time>]\"");
-				return false;
-			}
-			tmex tm;
-			if(decTmStr(cmd.args[2], tm))
-				m_end_time = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
-			else
-				m_end_time = (long long) atol(cmd.args[1]) * (long long) SEC;
-		}else{
-			m_end_time = LLONG_MAX;
-		}
-
-		if(m_end_time <= f_base::m_clk.get_time()){
-			sprintf(cmd.get_ret_str(), "Time should be later than current time.");
-			return false;
-		}
-
-		return f_base::m_clk.restart();
-	}
-
-	if(!check_graph()){
-		snprintf(cmd.get_ret_str(), RET_LEN, "ERROR: Failed to run filter graph.");
-		return false;
-	}
-
-	// if the starting time is given the time is decoded and stored into m_start_time 
-	if(cmd.num_args >= 2){
-		if(m_bonline){
-			snprintf(cmd.get_ret_str(), RET_LEN, 
-				"ERROR: Online mode does not support time specification.");
-			return false;
-		}
-
-		tmex tm;
-		if(decTmStr(cmd.args[1], tm))
-			m_start_time = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
-		else
-			m_start_time = (long long) atol(cmd.args[1]) * (long long) SEC;
-
-	}else{
-		// if no time specified, current time is used as the start time.
-		m_start_time = (long long) time(NULL) * SEC; 
-	}
-
-	// if the end time is given, decoded and stored into m_end_time.
-	if(cmd.num_args >= 3){
-		tmex tm;
-		if(decTmStr(cmd.args[2], tm))
-			m_end_time = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
-		else
-			m_end_time = (long long) atol(cmd.args[2]) * (long long) SEC;
-	}else{
-		m_end_time = LLONG_MAX;
-	}
-
-	f_base::m_clk.start((unsigned) m_cycle_time, 
-		(unsigned) m_cycle_time, m_start_time, 
-		m_bonline, m_time_rate);
-	m_time = f_base::m_clk.get_time();
-
-	f_base::clock(m_start_time);
-	f_base::init_run_all();
-
-	// check filter's status. 
-	for(vector<f_base*>::iterator fitr = m_filters.begin();
-		fitr != m_filters.end(); fitr++){
-	  cout << "Starting filter " << (*fitr)->get_name() << "." << endl;
-		if(!(*fitr)->run(m_start_time, m_end_time)){
-			snprintf(cmd.get_ret_str(),  RET_LEN, 
-				"Error in starting filter %s.", (*fitr)->get_name());
-			f_base::m_clk.stop();
-			return false;
-		}
-	}
-	
-	return true;
+  f_base::set_tz(m_time_zone_minute);
+  
+  if(f_base::m_clk.is_run()){
+    cout << "AWS is running." << endl;
+    return false;
+  }
+  
+  if(f_base::m_clk.is_pause()){ // pause to run transition happens
+    // in pause mode only 
+    if(cmd.num_args == 3){
+      if(cmd.args[1][0] != 't' || cmd.args[1][1] != 'o'){
+	sprintf(cmd.get_ret_str(), 
+		"In pause state, \"go [to <later absolute time>]\"");
+	return false;
+      }
+      tmex tm;
+      if(decTmStr(cmd.args[2], tm))
+	m_end_time = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
+      else
+	m_end_time = (long long) atol(cmd.args[1]) * (long long) SEC;
+    }else{
+      m_end_time = LLONG_MAX;
+    }
+    
+    if(m_end_time <= f_base::m_clk.get_time()){
+      sprintf(cmd.get_ret_str(), "Time should be later than current time.");
+      return false;
+    }
+    
+    return f_base::m_clk.restart();
+  }
+  
+  if(!check_graph()){
+    snprintf(cmd.get_ret_str(), RET_LEN, "ERROR: Failed to run filter graph.");
+    return false;
+  }
+  
+  // if the starting time is given the time is decoded and stored into m_start_time 
+  if(cmd.num_args >= 2){
+    m_bonline = false;
+    tmex tm;
+    if(decTmStr(cmd.args[1], tm))
+      m_start_time = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
+    else
+      m_start_time = (long long) atol(cmd.args[1]) * (long long) SEC;
+    
+  }else{
+    // if no time specified, current time is used as the start time.
+    m_bonline = true;
+    m_start_time = (long long) time(NULL) * SEC; 
+  }
+  
+  // if the end time is given, decoded and stored into m_end_time.
+  if(cmd.num_args >= 3){
+    tmex tm;
+    if(decTmStr(cmd.args[2], tm))
+      m_end_time = mkgmtimeex_tz(tm, f_base::get_tz()) * MSEC;
+    else
+      m_end_time = (long long) atol(cmd.args[2]) * (long long) SEC;
+  }else{
+    m_end_time = LLONG_MAX;
+  }
+  
+  f_base::m_clk.start((unsigned) m_cycle_time, 
+		      (unsigned) m_cycle_time, m_start_time, 
+		      m_bonline, m_time_rate);
+  m_time = f_base::m_clk.get_time();
+  
+  f_base::clock(m_start_time);
+  f_base::init_run_all();
+  
+  // check filter's status. 
+  for(vector<f_base*>::iterator fitr = m_filters.begin();
+      fitr != m_filters.end(); fitr++){
+    cout << "Starting filter " << (*fitr)->get_name() << "." << endl;
+    if(!(*fitr)->run(m_start_time, m_end_time)){
+      snprintf(cmd.get_ret_str(),  RET_LEN, 
+	       "Error in starting filter %s.", (*fitr)->get_name());
+      f_base::m_clk.stop();
+      return false;
+    }
+  }
+  
+  return true;
 }
 
 bool c_aws::handle_frm(s_cmd & cmd)
