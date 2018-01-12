@@ -116,6 +116,7 @@ public:
 		return m_exit;
 	}
 
+	virtual void print_title();
 	virtual bool main();
 
 };

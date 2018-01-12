@@ -147,7 +147,7 @@ c_aws::c_aws(int argc, char ** argv):CmdAppBase(argc, argv),
 {
 	set_name_app("aws");
 	set_version(0, 20);
-	set_year_copy(2016);
+	set_year_copy(2018);
 	set_name_coder("Yohei Matsumoto");
 	set_contact("matumoto (at) kaiyodai.ac.jp");
 
