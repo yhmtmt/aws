@@ -54,13 +54,14 @@ const char * getWeekStr(int wday);
 class c_clock
 {
  private:
-  unsigned m_period;
-  long long m_tcyc;
-  long long m_offset;
-  long long m_tcur, m_tprev;
-  long long m_delta;
-  int m_delta_adjust;
-  bool m_bonline;
+  long long m_tcyc;  // m_rate scaled cycle time
+  long long m_offset;// offset time (only used in offline mode)
+  long long m_tcur;  // current time.
+                     // In offline mode, elapsed time from "go" command 
+  long long m_delta; // time delta to be corrected.
+  int m_delta_adjust;// minimum precision in time delta correction.
+  bool m_bonline;    // online mode flag.
+  
   enum e_state{
     STOP, RUN, PAUSE
   } m_state;
@@ -70,8 +71,7 @@ class c_clock
   DWORD m_token;
   HANDLE m_sem;
 #else
-  timespec m_ts_start;
-  
+  timespec m_ts_start;  
 #endif
   int m_rate;
  public:
@@ -88,7 +88,7 @@ class c_clock
   
   const unsigned get_period()
   {
-    return m_period;
+    return m_tcyc;
   }
 
   const long long get_resolution()

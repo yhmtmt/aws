@@ -154,11 +154,9 @@ bool decTmStr(char * tmStr, tmex & tm)
 }
 
 c_clock::c_clock(void):
-  m_rate(1), m_delta(0), m_delta_adjust(1 * MSEC)
+  m_rate(1), m_delta(0), m_delta_adjust(1 * MSEC), m_offset(0), m_bonline(false), m_state(STOP)
 #ifdef _WIN32
-  ,m_token(NULL), m_offset(0), m_bonline(false), m_state(STOP)
-#else
-  ,m_offset(0), m_bonline(false), m_state(STOP)
+  ,m_token(NULL)
 #endif
 {
 }
@@ -175,9 +173,8 @@ bool c_clock::start(unsigned period, unsigned delay,
     m_rate = 1; // clock rate is forced to be zero.
   else
     m_rate = rate;
-  m_period = period;
   m_offset = offset;
-  m_tcyc = m_rate * m_period;
+  m_tcyc = m_rate * period;
   
   if(m_state == STOP){
 #ifdef _WIN32
@@ -238,7 +235,7 @@ bool c_clock::restart()
 bool c_clock::step(int cycle)
 {
   if(m_state == PAUSE){
-    m_tcur += (long long) m_rate * (long long) m_period * cycle;
+    m_tcur += (long long) m_tcyc * cycle;
   }else
     return false;
   return true;
