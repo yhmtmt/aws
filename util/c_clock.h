@@ -29,7 +29,7 @@
 #define MNU 600000000L
 
 struct tmex: public tm{
-	int tm_msec;
+  int tm_msec;
 };
 
 #ifdef _WIN32

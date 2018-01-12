@@ -175,9 +175,9 @@ bool c_clock::start(unsigned period, unsigned delay,
     m_rate = 1; // clock rate is forced to be zero.
   else
     m_rate = rate;
-  m_tcyc = m_rate * m_period;
   m_period = period;
   m_offset = offset;
+  m_tcyc = m_rate * m_period;
   
   if(m_state == STOP){
 #ifdef _WIN32
@@ -301,8 +301,6 @@ void c_clock::wait()
   else
     delta_adjust = (m_delta < 0 ? -m_delta_adjust : m_delta_adjust);
   
-
-  
 #ifdef _WIN32
   WaitForSingleObject(m_sem, INFINITE);
   if(m_state == RUN){
@@ -338,7 +336,6 @@ void c_clock::wait()
       + (long long)((ts.tv_nsec - m_ts_start.tv_nsec) / 100);
     tnew *= m_rate;    
   }
-  
   tdiff = tnew - m_tcur; // time consumed in this cycle
   tslp = m_tcyc - tdiff; // time to sleep
   if(tslp > 0){
