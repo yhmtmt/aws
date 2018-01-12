@@ -6,6 +6,5 @@ channel sample sample
 
 filter sample smpl -i -o
 fset smpl ch_sample sample
-online no
 cyc 1
 go

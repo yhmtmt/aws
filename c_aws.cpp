@@ -577,24 +577,6 @@ bool c_aws::handle_cyc(s_cmd & cmd)
 	return result;
 }
 
-bool c_aws::handle_online(s_cmd & cmd)
-{
-  bool result;
-  if(!f_base::m_clk.is_stop()){
-    sprintf(cmd.get_ret_str(), 
-	    "Online/offline mode cannot be changed during execution.");
-    result = false;
-  }else{
-    if(strcmp(cmd.args[1], "yes") == 0)
-      m_bonline = true;
-    else
-      m_bonline = false;
-
-    result = true;
-  }
-  return result;
-}
-
 bool c_aws::handle_pause(s_cmd & cmd)
 {
 	bool result;
@@ -842,9 +824,6 @@ void c_aws::proc_command()
 			break;
 		case CMD_CYC:
 			result = handle_cyc(cmd);
-			break;
-		case CMD_ONLINE:
-			result = handle_online(cmd);
 			break;
 		case CMD_PAUSE:
 			result = handle_pause(cmd);

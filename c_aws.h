@@ -86,7 +86,6 @@ protected:
 	bool handle_quit(s_cmd & cmd);
 	bool handle_step(s_cmd & cmd);
 	bool handle_cyc(s_cmd & cmd);
-	bool handle_online(s_cmd & cmd);
 	bool handle_pause(s_cmd & cmd);
 	bool handle_clear(s_cmd & cmd);
 	bool handle_rcmd(s_cmd & cmd);
