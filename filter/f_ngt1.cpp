@@ -79,7 +79,7 @@ f_ngt1::DevicePackets::~DevicePackets()
   }
 }
 
-f_ngt1::f_ngt1(const char * name):f_base(name), eng_state(NULL), m_hserial(NULL_SERIAL), state(MSG_START), showRaw(false), showTxt(false), showData(false), showBytes(false), showJson(false), showSI(false), sep(NULL), onlyPgn(0), onlySrc(-1), clockSrc(-1), heapSize(0), showGeo(GEO_DD), mp(mbuf)
+f_ngt1::f_ngt1(const char * name):f_base(name), eng_state(NULL), eng_state2(NULL),  m_hserial(NULL_SERIAL), state(MSG_START), showRaw(false), showTxt(false), showData(false), showBytes(false), showJson(false), showSI(false), sep(NULL), onlyPgn(0), onlySrc(-1), clockSrc(-1), heapSize(0), showGeo(GEO_DD), mp(mbuf)
 {
   register_fpar("ch_eng_state", (ch_base**)&eng_state, typeid(ch_eng_state).name(), "Channel for engine state");
   register_fpar("ch_eng_state2", (ch_base**)&eng_state2, typeid(ch_eng_state).name(), "Channel for second engine state");
@@ -110,6 +110,7 @@ bool f_ngt1::init_run()
   fillFieldCounts();
   checkPgnList();
  
+  head = buf;
   heapSize = 0;
   mp = mbuf;
   
@@ -137,21 +138,26 @@ bool f_ngt1::proc()
 {
   readNGT1(m_hserial);
 
+  cout << pgn_queue.size() << " pgns in queue." << endl;
   auto itr = pgn_queue.begin();
   while(pgn_queue.size()){
     PgnFieldValues * pfv = *itr;
-    cout << "Received pgn " << pfv->getPgn();
-
-    handle_pgn_eng_state(pfv, eng_state);
-    handle_pgn_eng_state(pfv, eng_state2);
-  
-    for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
-      const FieldValueBase * pfvb = pfv->get(ifv);
-      cout << "Field[" << ifv << "]:";
-      pfvb->print();
-      cout << endl;
+    
+    if(pfv){
+      cout << "Received pgn " << pfv->getPgn() << endl;
+      
+      handle_pgn_eng_state(pfv, eng_state);
+      cout << "Second engine" << endl;
+      handle_pgn_eng_state(pfv, eng_state2);
+      
+      for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
+	const FieldValueBase * pfvb = pfv->get(ifv);
+	cout << "Field[" << ifv << "]:";
+	pfvb->print();
+	cout << endl;
+      }
+      delete *itr;
     }
-    delete *itr;
     itr = pgn_queue.erase(itr);
   }
   return true;
@@ -194,6 +200,23 @@ void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch)
 	
 	break;
       case 127489:
+	{
+	int32_t poil=(int)(*pfv->get_vptr<int32_t>(1));
+	float toil = (float)(*pfv->get_vptr<double>(2));
+	float temp = (float)(*pfv->get_vptr<double>(3));
+	float valt = (float)((double)*pfv->get_vptr<int64_t>(4) * 0.01);
+	float frate = (float)((double)*pfv->get_vptr<int64_t>(5) * 0.1);
+	unsigned int teng = (unsigned int)(*pfv->get_vptr<int64_t>(6));
+	int pclnt = (int)(*pfv->get_vptr<int32_t>(7));
+	int pfl = (int)(*pfv->get_vptr<int64_t>(8));
+	StatEng1 stat1 = (StatEng1)(*pfv->get_vptr<int64_t>(9));
+	StatEng2 stat2 = (StatEng2)(*pfv->get_vptr<int64_t>(10));
+	unsigned char ld = (unsigned char)(*pfv->get_vptr<int64_t>(11));
+	unsigned char tq = (unsigned char)(*pfv->get_vptr<int64_t>(12));
+	ch->set_dynamic(get_time(), poil, toil, temp, valt, frate, teng, pclnt, pfl, stat1, stat2, ld, tq);
+	}
+	
+	/*
 	ch->set_dynamic(get_time(),
 			(int)(*pfv->get_vptr<int32_t>(1)),
 			(float)(*pfv->get_vptr<double>(2)),
@@ -207,6 +230,7 @@ void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch)
 			(StatEng2)(*pfv->get_vptr<int64_t>(11)),
 			(unsigned char)(*pfv->get_vptr<int64_t>(12)),
 			(unsigned char)(*pfv->get_vptr<int64_t>(13)));
+	*/
 	break;
       case 127497:
 	ch->set_tran(get_time(),
@@ -229,7 +253,6 @@ void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch)
 ///////////////////////////////////////////////////////////// from canboat
 int f_ngt1::readNGT1(AWS_SERIAL handle)
 {
-
   ssize_t r;
   unsigned char c;
   unsigned char buf_tmp[500];
@@ -249,8 +272,6 @@ int f_ngt1::readNGT1(AWS_SERIAL handle)
 
 void  f_ngt1::readNGT1Byte(unsigned char c)
 {
-  head = buf;
-
   if (state == MSG_ESCAPE)
   {
     if (c == ETX)
@@ -1383,7 +1404,7 @@ bool f_ngt1::printTemperature(char * name, uint32_t t, uint32_t bits,
 bool f_ngt1::printPressure(char * name, uint32_t v, Field * field,
 			   PgnFieldValues * pfv)
 {
-  int32_t pressure;
+  int32_t pressure = 0;
   double bar;
   double psi;
 
@@ -1391,11 +1412,13 @@ bool f_ngt1::printPressure(char * name, uint32_t v, Field * field,
   {
     if (v >= 0xfffd)
     {
+      pfv->push(pressure);
       return false;
     }
   }
   if (v >= 0xfffffffd)
   {
+    pfv->push(pressure);
     return false;
   }
 

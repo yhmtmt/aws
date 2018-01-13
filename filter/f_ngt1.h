@@ -171,6 +171,7 @@ class FieldValueBase
  private:
  public:
   virtual void print() const = 0;
+  virtual void print_type() const = 0;
 };
 
 template <class T> class FieldValue: public FieldValueBase
@@ -195,6 +196,11 @@ template <class T> class FieldValue: public FieldValueBase
   {
     cout << val;
   }
+
+  virtual void print_type() const
+  {
+    cout << typeid(T).name() << "(" << sizeof(T) << ")";
+  }
 };
 
 class PgnFieldValues
@@ -207,7 +213,10 @@ class PgnFieldValues
   ~PgnFieldValues();
 
   const uint32_t getPgn(){
-    return pgn->pgn;
+    if(pgn)
+      return pgn->pgn;
+    else
+      return 0;
   }
   
   const int getNumFields()
@@ -229,7 +238,11 @@ class PgnFieldValues
     FieldValue<T> * pfv = dynamic_cast<FieldValue<T>*>(values[ifield]);
     if(pfv)
       return &(pfv->get());
-
+    cout << "field[" << ifield << "] is null, the type is ";
+    values[ifield]->print_type();
+    cout << " val=";
+    values[ifield]->print();
+    cout << endl;
     return NULL;
   }
   
