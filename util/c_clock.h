@@ -28,6 +28,28 @@
 #define SEC 10000000L
 #define MNU 600000000L
 
+
+
+inline const long long cnvTimeNanoSec(const long long taws)
+{
+  return taws * 100;
+}
+
+inline const long long cnvTimeMicroSec(const long long taws)
+{
+  return taws / USEC;
+}
+
+inline const long long cnvTimeMilliSec(const long long taws)
+{
+  return taws / MSEC;
+}
+
+inline const long long cnvTimeSec(const long long taws)
+{
+  return taws / SEC;
+}
+
 struct tmex: public tm{
   int tm_msec;
 };
