@@ -41,9 +41,11 @@ namespace avt_vmb_cam{
   private:
     CameraPtr m_pCamera;
     ch_image_ref * pch;
+    e_imfmt fmt_out;
     long long received_frames, dropped_frames;
   public:
-  FrameObserver(CameraPtr pCamera, ch_image_ref * _pch) :IFrameObserver(pCamera), m_pCamera(pCamera), pch(_pch), received_frames(0), dropped_frames(0)
+  FrameObserver(CameraPtr pCamera, ch_image_ref * _pch, const e_imfmt _fmt_out = IMF_Undef) :IFrameObserver(pCamera), m_pCamera(pCamera), pch(_pch),
+      fmt_out(_fmt_out), received_frames(0), dropped_frames(0)
     {}
 
     const long long getNumRecievedFrames(){
@@ -54,6 +56,216 @@ namespace avt_vmb_cam{
     {
       return dropped_frames;
     }
+
+    void demosaic8(Mat & src, Mat & dst, e_imfmt & fmt, int bayer)
+    {
+      ColorConversionCodes code;
+      switch(bayer){
+      case 0://BG
+	code = (fmt_out == IMF_RGB8 ? COLOR_BayerBG2RGB : COLOR_BayerBG2BGR);
+	break;
+      case 1://GB
+	code = (fmt_out == IMF_RGB8 ? COLOR_BayerBG2RGB :COLOR_BayerGB2BGR);
+	break;
+      case 2://RG
+	code = (fmt_out == IMF_RGB8 ? COLOR_BayerBG2RGB :COLOR_BayerRG2BGR);
+	break;
+      case 3://GR
+	code = (fmt_out == IMF_RGB8 ? COLOR_BayerBG2RGB :COLOR_BayerGR2BGR);	
+      }
+		   
+      switch(fmt_out){
+      case IMF_GRAY8:
+	{
+	  Mat tmp;
+	  cvtColor(src, tmp, code);
+	  cvtColor(tmp, dst, COLOR_BGR2GRAY);
+	  fmt = fmt_out;
+	}
+	break;
+      case IMF_RGB8:
+	{
+	  cvtColor(src, dst, code);
+	  fmt = fmt_out;
+	}
+	break;
+      case IMF_BGR8:
+	{
+	  cvtColor(src, dst, code);
+	  fmt = fmt_out;
+	}
+	break;	  
+      case IMF_I420:
+	{
+	  Mat tmp;
+	  cvtColor(src, tmp, code);
+	  cvtColor(tmp, dst, COLOR_BGR2YUV_I420);
+	  fmt = fmt_out;
+	}
+      default:
+	dst = src.clone();	
+      }
+    }
+    
+    void setImg(const VmbPixelFormatType & pixelFormat,
+		VmbUint8_t * pBuffer, const VmbUint32_t Width, const VmbUint32_t Height,  const unsigned long long fid)
+    {
+      e_imfmt fmt;
+      Mat img, img_set;
+
+      switch (pixelFormat){
+      case VmbPixelFormatMono8:	      
+      case VmbPixelFormatBayerBG8:
+      case VmbPixelFormatBayerGB8:
+      case VmbPixelFormatBayerGR8:
+      case VmbPixelFormatBayerRG8:
+	img = Mat(Height, Width, CV_8UC1, pBuffer);
+	break;
+      case VmbPixelFormatMono10:
+      case VmbPixelFormatMono12:
+      case VmbPixelFormatMono14:
+      case VmbPixelFormatMono16:
+      case VmbPixelFormatBayerBG10:
+      case VmbPixelFormatBayerBG12:
+      case VmbPixelFormatBayerGB10:
+      case VmbPixelFormatBayerGB12:
+      case VmbPixelFormatBayerGR10:
+      case VmbPixelFormatBayerGR12:
+      case VmbPixelFormatBayerRG10:
+      case VmbPixelFormatBayerRG12:
+	img = Mat(Height, Width, CV_16UC1, pBuffer);
+	break;
+      case VmbPixelFormatBgr8:
+      case VmbPixelFormatRgb8:
+	img = Mat(Height, Width, CV_8UC3, pBuffer);
+	break;
+      case VmbPixelFormatBgr10:
+      case VmbPixelFormatBgr12:
+      case VmbPixelFormatBgr14:
+      case VmbPixelFormatBgr16:
+      case VmbPixelFormatRgb10:
+      case VmbPixelFormatRgb12:
+      case VmbPixelFormatRgb14:
+      case VmbPixelFormatRgb16:
+	img = Mat(Height, Width, CV_16UC3, pBuffer);
+	break;
+      }
+      
+      switch (pixelFormat){
+      case VmbPixelFormatMono8:
+	fmt = (IMF_GRAY8);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBayerBG8:
+	fmt = (IMF_BayerBG8);
+	demosaic8(img, img_set, fmt, 0);
+	break;
+      case VmbPixelFormatBayerGB8:
+	fmt = (IMF_BayerGB8);
+	demosaic8(img, img_set, fmt, 1);	
+	break;
+      case VmbPixelFormatBayerGR8:
+	fmt = (IMF_BayerGR8);
+	demosaic8(img, img_set, fmt, 3);
+	break;
+      case VmbPixelFormatBayerRG8:
+	fmt = (IMF_BayerRG8);
+	demosaic8(img, img_set, fmt, 2);
+	break;
+      case VmbPixelFormatMono10:
+	fmt = (IMF_GRAY10);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatMono12:
+	fmt = (IMF_GRAY12);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatMono14:
+	fmt = (IMF_GRAY14);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatMono16:
+	fmt = (IMF_GRAY16);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBayerBG10:
+	fmt = (IMF_BayerBG10);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBayerBG12:
+	fmt = (IMF_BayerBG12);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBayerGB10:
+	fmt = (IMF_BayerGB10);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBayerGB12:
+	fmt = (IMF_BayerGB12);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBayerGR10:
+	fmt = (IMF_BayerGR10);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBayerGR12:
+	fmt = (IMF_BayerGR12);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBayerRG10:
+	fmt = (IMF_BayerRG10);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBayerRG12:
+	fmt = (IMF_BayerRG10);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBgr8:
+	fmt = (IMF_BGR8);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatRgb8:
+	fmt = (IMF_RGB8);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBgr10:
+	fmt = (IMF_BGR10);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBgr12:
+	fmt = (IMF_BGR12);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBgr14:
+	fmt = (IMF_BGR14);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatBgr16:
+	fmt = (IMF_BGR16);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatRgb10:
+	fmt = (IMF_RGB10);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatRgb12:
+	fmt = (IMF_RGB12);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatRgb14:
+	fmt = (IMF_RGB14);
+	img_set = img.clone();
+	break;
+      case VmbPixelFormatRgb16:
+	fmt = (IMF_RGB16);
+	img_set = img.clone();
+	break;	  
+      }
+
+      pch->set_img(img_set, f_base::get_time(), (const long long)fid);
+      pch->set_fmt(fmt);
+      
+    }
     
     void FrameReceived(const FramePtr pFrame)
     {
@@ -61,7 +273,6 @@ namespace avt_vmb_cam{
       
       if (VmbErrorSuccess == pFrame->GetReceiveStatus(eReceiveStatus))
 	{
-	  Mat img;
 	  if (VmbFrameStatusComplete == eReceiveStatus){
 	    
 	    VmbUint32_t Width, Height;
@@ -71,132 +282,11 @@ namespace avt_vmb_cam{
 	    pFrame->GetBuffer(pBuffer);
 	    VmbPixelFormatType pixelFormat;
 	    pFrame->GetPixelFormat(pixelFormat);
-	    switch (pixelFormat){
-	    case VmbPixelFormatMono8:
-	      pch->set_fmt(IMF_GRAY8);
-	      break;
-	    case VmbPixelFormatBayerBG8:
-	      pch->set_fmt(IMF_BayerBG8);
-	      break;
-	    case VmbPixelFormatBayerGB8:
-	      pch->set_fmt(IMF_BayerGB8);
-	      break;
-	    case VmbPixelFormatBayerGR8:
-	      pch->set_fmt(IMF_BayerGR8);
-	      break;
-	    case VmbPixelFormatBayerRG8:
-	      pch->set_fmt(IMF_BayerRG8);
-	      break;
-	    case VmbPixelFormatMono10:
-	      pch->set_fmt(IMF_GRAY10);
-	      break;
-	    case VmbPixelFormatMono12:
-	      pch->set_fmt(IMF_GRAY12);
-	      break;
-	    case VmbPixelFormatMono14:
-	      pch->set_fmt(IMF_GRAY14);
-	      break;
-	    case VmbPixelFormatMono16:
-	      pch->set_fmt(IMF_GRAY16);
-	      break;
-	    case VmbPixelFormatBayerBG10:
-	      pch->set_fmt(IMF_BayerBG10);
-	      break;
-	    case VmbPixelFormatBayerBG12:
-	      pch->set_fmt(IMF_BayerBG12);
-	      break;
-	    case VmbPixelFormatBayerGB10:
-	      pch->set_fmt(IMF_BayerGB10);
-	      break;
-	    case VmbPixelFormatBayerGB12:
-	      pch->set_fmt(IMF_BayerGB12);
-	      break;
-	    case VmbPixelFormatBayerGR10:
-	      pch->set_fmt(IMF_BayerGR10);
-	      break;
-	    case VmbPixelFormatBayerGR12:
-	      pch->set_fmt(IMF_BayerGR12);
-	      break;
-	    case VmbPixelFormatBayerRG10:
-	      pch->set_fmt(IMF_BayerRG10);
-	      break;
-	    case VmbPixelFormatBayerRG12:
-	      pch->set_fmt(IMF_BayerRG10);
-	      break;
-	    case VmbPixelFormatBgr8:
-	      pch->set_fmt(IMF_BGR8);
-	      break;
-	    case VmbPixelFormatRgb8:
-	      pch->set_fmt(IMF_RGB8);
-	      break;
-	    case VmbPixelFormatBgr10:
-	      pch->set_fmt(IMF_BGR10);
-	      break;
-	    case VmbPixelFormatBgr12:
-	      pch->set_fmt(IMF_BGR12);
-	      break;
-	    case VmbPixelFormatBgr14:
-	      pch->set_fmt(IMF_BGR14);
-	      break;
-	    case VmbPixelFormatBgr16:
-	      pch->set_fmt(IMF_BGR16);
-	      break;
-	    case VmbPixelFormatRgb10:
-	      pch->set_fmt(IMF_RGB10);
-	      break;
-	    case VmbPixelFormatRgb12:
-	      pch->set_fmt(IMF_RGB12);
-	      break;
-	    case VmbPixelFormatRgb14:
-	      pch->set_fmt(IMF_RGB14);
-	      break;
-	    case VmbPixelFormatRgb16:
-	      pch->set_fmt(IMF_RGB16);
-	      break;
-	    }
-	    
-	    switch (pixelFormat){
-	    case VmbPixelFormatMono8:	      
-	    case VmbPixelFormatBayerBG8:
-	    case VmbPixelFormatBayerGB8:
-	    case VmbPixelFormatBayerGR8:
-	    case VmbPixelFormatBayerRG8:
-	      img = Mat(Height, Width, CV_8UC1, pBuffer);
-	      break;
-	    case VmbPixelFormatMono10:
-	    case VmbPixelFormatMono12:
-	    case VmbPixelFormatMono14:
-	    case VmbPixelFormatMono16:
-	    case VmbPixelFormatBayerBG10:
-	    case VmbPixelFormatBayerBG12:
-	    case VmbPixelFormatBayerGB10:
-	    case VmbPixelFormatBayerGB12:
-	    case VmbPixelFormatBayerGR10:
-	    case VmbPixelFormatBayerGR12:
-	    case VmbPixelFormatBayerRG10:
-	    case VmbPixelFormatBayerRG12:
-	      img = Mat(Height, Width, CV_16UC1, pBuffer);
-	      break;
-	    case VmbPixelFormatBgr8:
-	    case VmbPixelFormatRgb8:
-	      img = Mat(Height, Width, CV_8UC3, pBuffer);
-	      break;
-	    case VmbPixelFormatBgr10:
-	    case VmbPixelFormatBgr12:
-	    case VmbPixelFormatBgr14:
-	    case VmbPixelFormatBgr16:
-	    case VmbPixelFormatRgb10:
-	    case VmbPixelFormatRgb12:
-	    case VmbPixelFormatRgb14:
-	    case VmbPixelFormatRgb16:
-	      img = Mat(Height, Width, CV_16UC3, pBuffer);
-	      break;
-	    }
-	    
+	    	    
 	    unsigned long long fid;
 	    pFrame->GetFrameID(fid);
-	    Mat img_set = img.clone();
-	    pch->set_img(img_set, f_base::get_time(), (long long)fid);
+
+	    setImg(pixelFormat, pBuffer, Width, Height, fid);
 	    received_frames++;
 	  }
 	  else{
@@ -276,6 +366,7 @@ namespace avt_vmb_cam{
       update, // bool
       verb,
       channel,
+      fmt_out,
       FeatureUndef
     };
     
@@ -522,6 +613,7 @@ namespace avt_vmb_cam{
       bool update;
       bool verb;
       ch_image_ref * pch;
+      e_imfmt fmt_out;
       
       FramePtrVector frmbuf;
       IFrameObserverPtr pObserver;
@@ -744,7 +836,7 @@ namespace avt_vmb_cam{
 	
 	// allocating frame buffer
 	for (int icam = 0; icam < ncam; icam++){
-	  pcam_pars[icam]->pObserver.reset(new FrameObserver(pcam_pars[icam]->pcam, pcam_pars[icam]->pch));
+	  pcam_pars[icam]->pObserver.reset(new FrameObserver(pcam_pars[icam]->pcam, pcam_pars[icam]->pch, pcam_pars[icam]->fmt_out));
 	  pcam_pars[icam]->frmbuf.resize(pcam_pars[icam]->nfrmbuf);
 	  for (int ifrm = 0; ifrm < pcam_pars[icam]->nfrmbuf; ifrm++){
 	    pcam_pars[icam]->frmbuf[ifrm].reset(new Frame(pcam_pars[icam]->PayloadSize));

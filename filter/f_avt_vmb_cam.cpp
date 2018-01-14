@@ -84,7 +84,8 @@ namespace avt_vmb_cam{
       "addr",
       "update",
       "verb",
-      "channel"
+      "channel",
+      "fmt_out"      
     };
   
   const char * f_avt_vmb_cam::expFeature[FeatureUndef] = {
@@ -143,8 +144,9 @@ namespace avt_vmb_cam{
     "Number of frames in queue.",
     "IP address of the camera",
     "Updates dynamic parameters",
-    "Verbose for debug",
-    "Image channel"
+    "Verbose for debug",    
+    "Image channel",
+    "Output format"
   };
   
   const char * f_avt_vmb_cam::strAcquisitionMode[(unsigned long long)eAcquisitionMode::Undef] = {
@@ -307,67 +309,72 @@ namespace avt_vmb_cam{
     register_fpar(pstr[nfrmbuf], &par.nfrmbuf, expFeature[nfrmbuf]);
     register_fpar(pstr[addr], par.addr, 1024, expFeature[addr]);
     register_fpar(pstr[update], &par.update, expFeature[update]);
-    register_fpar(pstr[verb], &par.verb, expFeature[verb]);
+    register_fpar(pstr[verb], &par.verb, expFeature[verb]);    
     register_fpar(pstr[channel], (ch_base**)&par.pch, typeid(ch_image_ref).name(), "Image channel");
+
+    register_fpar(pstr[fmt_out], (int*)&par.fmt_out, (int)IMF_Undef, str_imfmt, expFeature[fmt_out]);
   }
   
   f_avt_vmb_cam::s_cam_params
-  ::s_cam_params(int _icam) : icam(_icam),
-			      GVCPCmdRetries(INT_MIN),
-			      GVCPCmdTimeout(INT_MIN),
-			      AcquisitionMode(eAcquisitionMode::Undef),
-			      AcquisitionFrameRateAbs(-FLT_MAX),
-			      SensorShutterMode(eSensorShutterMode::Undef),
-			      TriggerActivation(eTriggerActivation::Undef),
-			      TriggerDelayAbs(-FLT_MAX),
-			      TriggerMode(eTriggerMode::Undef),
-			      TriggerSelector(eTriggerSelector::Undef),
-			      TriggerSource(eTriggerSource::Undef),
-			      DSPSubregionBottom(INT_MIN),
-			      DSPSubregionLeft(INT_MIN),
-			      DSPSubregionRight(INT_MIN),
-			      DSPSubregionTop(INT_MIN),
-			      ExposureAuto(eExposureAuto::Undef),
-			      ExposureAutoAdjustTol(INT_MIN),
-			      ExposureAutoAlg(eExposureAutoAlg::Undef),
-			      ExposureAutoMax(INT_MIN),
-			      ExposureAutoMin(INT_MIN),
-			      ExposureAutoOutliers(INT_MIN),
-			      ExposureAutoRate(INT_MIN),
-			      ExposureAutoTarget(INT_MIN),
-			      ExposureMode(eExposureMode::Undef),
-			      ExposureTimeAbs(-FLT_MAX),
-			      ExposureTimePWL1(-FLT_MAX),
-			      ExposureTimePWL2(-FLT_MAX),
-			      Gain(-FLT_MAX),
-			      GainAuto(eGainAuto::Undef),
-			      GainAutoAdjustTol(INT_MIN),
-			      GainAutoMax(-FLT_MAX),
-			      GainAutoMin(-FLT_MAX),
-			      GainAutoOutliers(INT_MIN),
-			      GainAutoRate(INT_MIN),
-			      GainAutoTarget(INT_MIN),
-			      BlackLevel(-FLT_MAX),
-			      BalanceRatioAbs(-FLT_MAX),
-			      BalanceRatioSelector(eBalanceRatioSelector::Undef),
-			      BalanceWhiteAuto(eBalanceWhiteAuto::Undef),
-			      BalanceWhiteAutoAdjustTol(INT_MIN),
-			      BalanceWhiteAutoRate(INT_MIN),
-			      BandwidthControlMode(eBandwidthControlMode::Undef),
-			      GevSCPSPacketSize(INT_MIN),
-			      StreamBytesPerSecond(INT_MIN),
-			      StreamFrameRateConstrain(true),
-			      Height(INT_MIN),
-			      OffsetX(INT_MIN),
-			      OffsetY(INT_MIN),
-			      PixelFormat(ePixelFormat::Undef),
-			      Width(INT_MIN),
-			      ReverseX(false),
-			      ReverseY(false),
-			      PayloadSize(INT_MIN),
-			      nfrmbuf(3),
-			      verb(false),
-			      bopened(false)
+  ::s_cam_params(int _icam) :
+    icam(_icam),
+    GVCPCmdRetries(INT_MIN),
+    GVCPCmdTimeout(INT_MIN),
+    AcquisitionMode(eAcquisitionMode::Undef),
+    AcquisitionFrameRateAbs(-FLT_MAX),
+    SensorShutterMode(eSensorShutterMode::Undef),
+    TriggerActivation(eTriggerActivation::Undef),
+    TriggerDelayAbs(-FLT_MAX),
+    TriggerMode(eTriggerMode::Undef),
+    TriggerSelector(eTriggerSelector::Undef),
+    TriggerSource(eTriggerSource::Undef),
+    DSPSubregionBottom(INT_MIN),
+    DSPSubregionLeft(INT_MIN),
+    DSPSubregionRight(INT_MIN),
+    DSPSubregionTop(INT_MIN),
+    ExposureAuto(eExposureAuto::Undef),
+    ExposureAutoAdjustTol(INT_MIN),
+    ExposureAutoAlg(eExposureAutoAlg::Undef),
+    ExposureAutoMax(INT_MIN),
+    ExposureAutoMin(INT_MIN),
+    ExposureAutoOutliers(INT_MIN),
+    ExposureAutoRate(INT_MIN),
+    ExposureAutoTarget(INT_MIN),
+    ExposureMode(eExposureMode::Undef),
+    ExposureTimeAbs(-FLT_MAX),
+    ExposureTimePWL1(-FLT_MAX),
+    ExposureTimePWL2(-FLT_MAX),
+    Gain(-FLT_MAX),
+    GainAuto(eGainAuto::Undef),
+    GainAutoAdjustTol(INT_MIN),
+    GainAutoMax(-FLT_MAX),
+    GainAutoMin(-FLT_MAX),
+    GainAutoOutliers(INT_MIN),
+    GainAutoRate(INT_MIN),
+    GainAutoTarget(INT_MIN),
+    BlackLevel(-FLT_MAX),
+    BalanceRatioAbs(-FLT_MAX),
+    BalanceRatioSelector(eBalanceRatioSelector::Undef),
+    BalanceWhiteAuto(eBalanceWhiteAuto::Undef),
+    BalanceWhiteAutoAdjustTol(INT_MIN),
+    BalanceWhiteAutoRate(INT_MIN),
+    BandwidthControlMode(eBandwidthControlMode::Undef),
+    GevSCPSPacketSize(INT_MIN),
+    StreamBytesPerSecond(INT_MIN),
+    StreamFrameRateConstrain(true),
+    Height(INT_MIN),
+    OffsetX(INT_MIN),
+    OffsetY(INT_MIN),
+    PixelFormat(ePixelFormat::Undef),
+    Width(INT_MIN),
+    ReverseX(false),
+    ReverseY(false),
+    PayloadSize(INT_MIN),
+    nfrmbuf(3),
+    verb(false),
+    pch(NULL),
+    fmt_out(IMF_Undef),
+    bopened(false)
   {
     // creating parameter string
     if (icam > 1000){

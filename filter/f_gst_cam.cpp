@@ -307,7 +307,6 @@ bool f_gst_enc::init_run()
     char tmp[2048], descr[2048];
     fppl.getline(tmp, 2048);
     snprintf(descr, 2048, "appsrc name=src ! %s", tmp);
-    //snprintf(descr, 2048, "appsrc name=src ! video/x-raw,format=I420,width=640,height=480 ! omxh264enc ! video/x-h264,streamformat=byte-stream ! h264parse ! qtmux ! filesink location=test.mp4");
       
     m_descr = g_strdup(descr);
     cout << "gst launch with: " << m_descr << endl;
@@ -343,9 +342,6 @@ bool f_gst_enc::init_run()
 
   gst_app_src_set_caps(GST_APP_SRC(m_src), caps);
   
-  //  GstAppSrcCallbacks callbacks = {need_data, enough_data, seek_data};
-  //  gst_app_src_set_callbacks(GST_APP_SRC(m_src), &callbacks, (gpointer)this, NULL);
-  
   m_bus = gst_pipeline_get_bus(GST_PIPELINE(m_ppl));
   m_bus_watch_id = gst_bus_add_watch(m_bus, bus_callback, (gpointer)this);
   gst_object_unref(m_bus);
@@ -356,12 +352,7 @@ bool f_gst_enc::init_run()
 }
 
 void f_gst_enc::destroy_run()
-{
-#ifdef CV_VIDEO
-  return;
-  //  gst_app_src_end_of_stream(GST_APP_SRC(m_src));
-#endif
-  
+{ 
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_NULL);
   gst_object_unref(GST_OBJECT(m_src));  
   gst_object_unref(GST_OBJECT(m_ppl));
@@ -372,14 +363,7 @@ bool f_gst_enc::proc()
   Mat imsrc, imdst;
   long long t;
   imsrc = m_ch_in->get_img(t);
-#ifdef CV_VIDEO
-  if(imsrc.empty())
-    return true;
-
-  video.write(imsrc);
-  return true;
-#endif
-  
+ 
   if(imsrc.empty())
     return true;
 
@@ -390,13 +374,7 @@ bool f_gst_enc::proc()
 
   size_t sz_mem = imdst.cols * imdst.rows * imdst.channels();
   GstBuffer * buf = gst_buffer_new_allocate(NULL, sz_mem, NULL);
-
-  
-  // copy buffer data
-  //GstMapInfo map;
-  //gst_buffer_map(buf, &map, GST_MAP_WRITE);
-  //memcpy(map.data, imdst.data, sz_mem);  
-  //gst_buffer_unmap(buf, &map);
+ 
   gst_buffer_fill(buf, 0, imdst.data, sz_mem);
 
   GstFlowReturn ret;
@@ -428,7 +406,6 @@ void f_gst_enc::need_data(GstAppSrc * src, guint length)
   memcpy(map.data, imdst.data, sz_mem);
   
   gst_buffer_unmap(buf, &map);
-  cout << "need_data for " << imdst.cols << "x" << imdst.rows << " image" << endl;
   gst_app_src_push_buffer(src, buf);  
 }
 
