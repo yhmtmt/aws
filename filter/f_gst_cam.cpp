@@ -231,21 +231,6 @@ bool f_gst_cam::proc()
 
 
 ///////////////////////////////////////////////////////////////// f_gst_cam
-void f_gst_enc::need_data(GstAppSrc * src, guint length, gpointer user_data)
-{
-  ((f_gst_enc*)user_data)->need_data(src, length);
-}
-
-void f_gst_enc::enough_data(GstAppSrc * src, gpointer user_data)
-{
-    ((f_gst_enc*)user_data)->enough_data(src);
-}
-
-gboolean f_gst_enc::seek_data(GstAppSrc * src, guint64 offset, gpointer user_data)
-{
-  return ((f_gst_enc*)user_data)->seek_data(src, offset);
-}
-
 gboolean f_gst_enc::bus_callback(GstBus * bus, GstMessage * message, gpointer data)
 {
     g_print("Got %s message\n", GST_MESSAGE_TYPE_NAME(message));
@@ -383,38 +368,3 @@ bool f_gst_enc::proc()
   return true;
 }
 
-void f_gst_enc::need_data(GstAppSrc * src, guint length)
-{
-  
-  Mat imsrc, imdst;
-  long long t;
-  imsrc = m_ch_in->get_img(t);
-  if(imsrc.empty())
-    return ;
-
-  if(!cnv_imf(imsrc, imdst, fmt_in, fmt_out)){
-    return;
-  }
-
-  size_t sz_mem = imdst.cols * imdst.rows * imdst.channels();
-  GstBuffer * buf = gst_buffer_new_allocate(NULL, sz_mem, NULL);
-  GstMapInfo map;
-  
-  gst_buffer_map(buf, &map, GST_MAP_WRITE);
-  
-  // copy buffer data
-  memcpy(map.data, imdst.data, sz_mem);
-  
-  gst_buffer_unmap(buf, &map);
-  gst_app_src_push_buffer(src, buf);  
-}
-
-void f_gst_enc::enough_data(GstAppSrc * src)
-{
-  return;
-}
-
-gboolean f_gst_enc::seek_data(GstAppSrc * src, guint64 offset)
-{
-  return true;
-}

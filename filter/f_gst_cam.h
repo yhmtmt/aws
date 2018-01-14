@@ -89,13 +89,6 @@ class f_gst_enc: public f_base
   virtual void destroy_run();
   virtual bool proc();
 
-  void need_data(GstAppSrc * src, guint length);
-  void enough_data(GstAppSrc * src);
-  gboolean seek_data(GstAppSrc * src, guint64 offset);
-  gboolean bus_callback(GstBus * bus, GstMessage * message);
-  static void need_data(GstAppSrc * src, guint length, gpointer user_data);
-  static void enough_data(GstAppSrc * src, gpointer user_data);
-  static gboolean seek_data(GstAppSrc * src, guint64 offset, gpointer user_data);
   static gboolean bus_callback(GstBus * bus, GstMessage * message, gpointer data);
 };
 
