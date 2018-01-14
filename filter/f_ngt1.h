@@ -153,7 +153,8 @@ bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field,
 
   list<PgnFieldValues*> pgn_queue;
 
-  void handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch);
+  void handle_pgn_eng_state(PgnFieldValues * pfv,
+			    ch_eng_state * ch, const unsigned char ieng = 0);
   
   ////////////////////////////////////////// pgn hanler
   

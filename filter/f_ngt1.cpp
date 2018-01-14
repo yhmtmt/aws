@@ -138,23 +138,25 @@ bool f_ngt1::proc()
 {
   readNGT1(m_hserial);
 
-  cout << pgn_queue.size() << " pgns in queue." << endl;
   auto itr = pgn_queue.begin();
   while(pgn_queue.size()){
     PgnFieldValues * pfv = *itr;
     
     if(pfv){
-      cout << "Received pgn " << pfv->getPgn() << endl;
-      
-      handle_pgn_eng_state(pfv, eng_state);
-      cout << "Second engine" << endl;
-      handle_pgn_eng_state(pfv, eng_state2);
-      
-      for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
-	const FieldValueBase * pfvb = pfv->get(ifv);
-	cout << "Field[" << ifv << "]:";
-	pfvb->print();
-	cout << endl;
+     
+      handle_pgn_eng_state(pfv, eng_state, 0);
+      handle_pgn_eng_state(pfv, eng_state2, 1);
+
+      if(m_verb){
+	cout << "PGN " << pfv->getPgn() << endl;
+	for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
+	  const FieldValueBase * pfvb = pfv->get(ifv);
+	  cout << "Field[" << ifv << "]:";
+	  pfvb->print();
+	  cout << " type=";
+	  pfvb->print_type();
+	  cout << endl;
+	}
       }
       delete *itr;
     }
@@ -163,7 +165,7 @@ bool f_ngt1::proc()
   return true;
 }
 
-void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch)
+void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch, const unsigned char ieng)
 {
   if(ch){
     // 127488 engine parameters(rapid)
@@ -191,16 +193,20 @@ void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch)
     // 
     // 127498 Engine Parameters(Static)
     // 0. Engine Instance, 1. Rated Engine Speed, 2. Vin, 3. Software ID
-    if(*pfv->get_vptr<int64_t>(0) == 0){
-      switch(pfv->getPgn()){
-      case 127488: // rapid engine parameter
-	ch->set_rapid(get_time(),
-		      (float)((double)*pfv->get_vptr<int64_t>(1) * 0.25),
-		      (char)(*pfv->get_vptr<int64_t>(3)));
-	
+
+    switch(pfv->getPgn()){
+    case 127488: // rapid engine parameter
+      if(*pfv->get_vptr<int64_t>(0) != ieng)
 	break;
-      case 127489:
-	{
+      ch->set_rapid(get_time(),
+		    (float)((double)*pfv->get_vptr<int64_t>(1) * 0.25),
+		    (char)(*pfv->get_vptr<int64_t>(3)));
+      
+      break;
+    case 127489:
+      if(*pfv->get_vptr<int64_t>(0) != ieng)
+	break;
+      {
 	int32_t poil=(int)(*pfv->get_vptr<int32_t>(1));
 	float toil = (float)(*pfv->get_vptr<double>(2));
 	float temp = (float)(*pfv->get_vptr<double>(3));
@@ -214,38 +220,25 @@ void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch)
 	unsigned char ld = (unsigned char)(*pfv->get_vptr<int64_t>(11));
 	unsigned char tq = (unsigned char)(*pfv->get_vptr<int64_t>(12));
 	ch->set_dynamic(get_time(), poil, toil, temp, valt, frate, teng, pclnt, pfl, stat1, stat2, ld, tq);
-	}
-	
-	/*
-	ch->set_dynamic(get_time(),
-			(int)(*pfv->get_vptr<int32_t>(1)),
-			(float)(*pfv->get_vptr<double>(2)),
-			(float)(*pfv->get_vptr<double>(3)),
-			(float)((double)*pfv->get_vptr<int64_t>(4) * 0.01),
-			(float)((double)*pfv->get_vptr<int64_t>(5) * 0.1),
-			(unsigned int)(*pfv->get_vptr<int64_t>(6)),
-			(int)(*pfv->get_vptr<int32_t>(7)),
-			(int)(*pfv->get_vptr<int64_t>(8)),
-			(StatEng1)(*pfv->get_vptr<int64_t>(10)),
-			(StatEng2)(*pfv->get_vptr<int64_t>(11)),
-			(unsigned char)(*pfv->get_vptr<int64_t>(12)),
-			(unsigned char)(*pfv->get_vptr<int64_t>(13)));
-	*/
-	break;
-      case 127497:
-	ch->set_tran(get_time(),
-		     (StatGear)(*pfv->get_vptr<int64_t>(1)),
-		     (int)(*pfv->get_vptr<int64_t>(3)),
-		     (float)(*pfv->get_vptr<double>(4)));
-	break;
-      case 127498:
-	ch->set_trip(get_time(),
-		     (int)(*pfv->get_vptr<int64_t>(1)),
-		     (float)((double)*pfv->get_vptr<int64_t>(2) * 0.1),
-		     (float)((double)*pfv->get_vptr<int64_t>(3) * 0.1),
-		     (float)((double)*pfv->get_vptr<int64_t>(4) * 0.1));			      
-	break;
       }
+      break;
+    case 127497:
+      if(*pfv->get_vptr<int64_t>(0) != ieng)
+	break;
+      ch->set_tran(get_time(),
+		   (StatGear)(*pfv->get_vptr<int64_t>(1)),
+		   (int)(*pfv->get_vptr<int64_t>(3)),
+		   (float)(*pfv->get_vptr<double>(4)));
+      break;
+    case 127498:
+      if(*pfv->get_vptr<int64_t>(0) != ieng)
+	break;
+      ch->set_trip(get_time(),
+		   (int)(*pfv->get_vptr<int64_t>(1)),
+		   (float)((double)*pfv->get_vptr<int64_t>(2) * 0.1),
+		   (float)((double)*pfv->get_vptr<int64_t>(3) * 0.1),
+		   (float)((double)*pfv->get_vptr<int64_t>(4) * 0.1));			      
+      break;
     }
   }
 }
@@ -530,7 +523,7 @@ void f_ngt1::printPacket(size_t index, RawMessage * msg)
   {
     packet->allocSize = max(max(pgn->size, (uint32_t)8) + FASTPACKET_BUCKET_N_SIZE, (unsigned int) msg->len);
     heapSize += packet->allocSize;
-    logInfo("New PGN %u for device %u (heap %zu bytes)\n", pgn->pgn, msg->src, heapSize);
+    //logInfo("New PGN %u for device %u (heap %zu bytes)\n", pgn->pgn, msg->src, heapSize);
     packet->data = (uint8_t*)malloc(packet->allocSize);
     if (!packet->data)
     {
@@ -1082,12 +1075,12 @@ bool f_ngt1::printPgn(RawMessage* msg, uint8_t *dataStart, int length)
     }    
   }
   
-
+  /*
   if (msg->pgn == 126992 && currentDate < UINT16_MAX && currentTime < UINT32_MAX && clockSrc == msg->src)
     {
       setSystemClock(currentDate, currentTime);
     }
-
+  */
   pgn_queue.push_back(pfv);
   return r;
 }
