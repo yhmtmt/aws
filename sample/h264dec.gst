@@ -1,0 +1,1 @@
+filesrc location=test.avi ! avidemux ! h264parse ! omxh264dec 
