@@ -104,6 +104,15 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
     sz.height = height;
   }
 
+  if(pcam->m_verb){
+    cout << "Frame pts:" << GST_BUFFER_PTS(buffer);
+    cout << " width:" << width;
+    cout << " height:" << height;
+    cout << " dts:" << GST_BUFFER_DTS(buffer);
+    cout << " duration:" << GST_BUFFER_DURATION(buffer);
+    cout << " offset:" << GST_BUFFER_OFFSET(buffer);
+    cout << " offset end:" << GST_BUFFER_OFFSET_END(buffer);
+  }
   // assuming input is nv12. converting it to bgr
   Mat src;
   switch(pcam->fmt_in){
@@ -155,7 +164,7 @@ gboolean f_gst_cam::bus_callback(GstBus * bus, GstMessage * message, gpointer da
     return true;
 }
 
-f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_sink(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef)
+f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_sink(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef), m_verb(false)
 {
   m_fppl[0] = '\0';
   register_fpar("ch_out", (ch_base**)&m_ch_out, typeid(ch_image_ref).name(), "Channel for image output.");
@@ -165,6 +174,7 @@ f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0
     register_fpar("fmt_in", (int*)&fmt_in, (int)IMF_Undef, str_imfmt, "Input image format.");
   register_fpar("fmt_out", (int*)&fmt_out, (int)IMF_Undef, str_imfmt, "Output image format.");
 
+  register_fpar("verb", &m_verb, "Verbose mode for debug.");
 }
 
 f_gst_cam::~f_gst_cam()
@@ -230,7 +240,7 @@ bool f_gst_cam::proc()
 
 
 
-///////////////////////////////////////////////////////////////// f_gst_cam
+///////////////////////////////////////////////////////////////// f_gst_enc
 gboolean f_gst_enc::bus_callback(GstBus * bus, GstMessage * message, gpointer data)
 {
     g_print("Got %s message\n", GST_MESSAGE_TYPE_NAME(message));

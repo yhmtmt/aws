@@ -39,6 +39,7 @@ class f_gst_cam: public f_base
   GstBus * m_bus;
   guint m_bus_watch_id;
   GError * m_error;
+  bool m_verb;
   
   e_imfmt fmt_in, fmt_out; 
   void set_img(Mat & img)
@@ -61,7 +62,8 @@ class f_gst_cam: public f_base
 
   static GstFlowReturn new_preroll(GstAppSink * appsink, gpointer data);
   static GstFlowReturn new_sample(GstAppSink * appsink, gpointer data);
-  static gboolean bus_callback(GstBus * bus, GstMessage * message, gpointer data);
+  static gboolean bus_callback(GstBus * bus, GstMessage * message,
+			       gpointer data);
 };
 
 class f_gst_enc: public f_base
