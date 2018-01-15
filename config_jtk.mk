@@ -39,7 +39,7 @@ INC_GST = /usr/include/gstreamer-1.0
 LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
 INC_GLIB = /usr/include/glib-2.0
 INC_GLIB_CONFIG = /usr/lib/arm-linux-gnueabihf/glib-2.0/include
-INC_GLM = $(CUR_DIR)/glm
+INC_GLM = /usr/include/glm
 
 ########################################################### OpenCV Linker option
 LIB_CV = -L$(LIB_CV_DIR) -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
