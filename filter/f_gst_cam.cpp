@@ -364,7 +364,7 @@ bool f_gst_enc::proc()
 
   GstFlowReturn ret;
   g_signal_emit_by_name(m_src, "push-buffer", buf, &ret);
-  
+  gst_buffer_unref(buf); 
   return true;
 }
 
