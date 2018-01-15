@@ -282,12 +282,7 @@ f_gst_enc::~f_gst_enc()
 }
 
 bool f_gst_enc::init_run()
-{
-#ifdef CV_VIDEO
-  video.open("appsrc ! autovideoconvert ! omxh265enc ! matroskamux ! filesink location=test.mkv ", 0, (double)m_fps, cv::Size(m_sz.width, m_sz.height), true);
-  return true;
-#endif
-  
+{ 
   if(!m_ch_in){
     cerr << "No input image channel is connected." << endl;
     return false;
