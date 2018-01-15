@@ -112,6 +112,7 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
     cout << " duration:" << GST_BUFFER_DURATION(buffer);
     cout << " offset:" << GST_BUFFER_OFFSET(buffer);
     cout << " offset end:" << GST_BUFFER_OFFSET_END(buffer);
+    cout << endl;
   }
   // assuming input is nv12. converting it to bgr
   Mat src;

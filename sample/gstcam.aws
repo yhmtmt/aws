@@ -16,16 +16,19 @@ done
 
 channel imgr img
 
-curdir='pwd'
+curdir=`pwd`
 
 filter gstcam gstcam -i -o
 fset gstcam ch_out img
 fset gstcam width 1920 height 1080
 fset gstcam fppl $curdir/h264dec.gst
 
+
 if [ $nodisp != "y" ]; then
     filter glimv win -i img -o
     fset win width 1280 height 720
+else
+    fset gstcam verb yes
 fi
 
 cyc 0.033
