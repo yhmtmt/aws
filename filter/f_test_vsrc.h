@@ -26,7 +26,8 @@ class f_test_vsrc: public f_base
   int width, height;
   long long frm;
   e_imfmt fmt;
-  
+  double rdrop;
+  bool verb;
  public:
   f_test_vsrc(const char * name);  
   ~f_test_vsrc();

@@ -69,9 +69,6 @@ class f_gst_cam: public f_base
 class f_gst_enc: public f_base
 {
  protected:
-  #ifdef CV_VIDEO
-  VideoWriter video;
-  #endif
   ch_image_ref * m_ch_in;
   char m_fppl[1024];
   gchar * m_descr;
@@ -83,6 +80,7 @@ class f_gst_enc: public f_base
   int m_fps;
   Size m_sz;
   e_imfmt fmt_in, fmt_out;
+  long long tstart;
  public:
   f_gst_enc(const char * name);
   virtual ~f_gst_enc();

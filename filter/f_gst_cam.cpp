@@ -367,7 +367,8 @@ bool f_gst_enc::proc()
   GstBuffer * buf = gst_buffer_new_allocate(NULL, sz_mem, NULL);
  
   gst_buffer_fill(buf, 0, imdst.data, sz_mem);
-
+  //  GST_BUFFER_PTS(buf) = cnvTimeNanoSec(t - tstart);
+  //  GST_BUFFER_DURATION(buf) = cnvTimeNanoSec(f_base::m_clk.get_period());
   GstFlowReturn ret;
   g_signal_emit_by_name(m_src, "push-buffer", buf, &ret);
   gst_buffer_unref(buf); 

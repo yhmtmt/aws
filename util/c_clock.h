@@ -108,7 +108,7 @@ class c_clock
   bool step(int cycle);
   bool step(long long tabs);
   
-  const unsigned get_period()
+  const long long get_period()
   {
     return m_tcyc;
   }

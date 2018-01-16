@@ -31,13 +31,14 @@ using namespace cv;
 
 #include "f_test_vsrc.h"
 
-f_test_vsrc::f_test_vsrc(const char * name):f_base(name), ch_img(NULL), fmt(IMF_RGB8), width(640), height(480)
+f_test_vsrc::f_test_vsrc(const char * name):f_base(name), ch_img(NULL), fmt(IMF_RGB8), width(640), height(480), rdrop(0.0)
 {
   register_fpar("ch_img", (ch_base**)&ch_img, typeid(ch_image_ref).name(), "Output Image Channel");
   register_fpar("width", &width, "Image width");
   register_fpar("height", &height, "Image height");
   register_fpar("fmt", (int*)&fmt, (int)IMF_Undef, str_imfmt, "Image format");
-  
+  register_fpar("rdrop", &rdrop, "Rate of frame drop.");
+  register_fpar("verb", &verb, "Verbose for debug.");
 }
 
 f_test_vsrc::~f_test_vsrc()
@@ -61,6 +62,13 @@ void f_test_vsrc::destroy_run()
 
 bool f_test_vsrc::proc()
 {
+  double rdrop_try = ((double) rand() / (double) RAND_MAX);
+  if(rdrop_try < rdrop){
+    if(verb)
+      cout << "frame[" << frm << "] at " << m_time_str << " dropped." << endl;    
+    return true;
+  }   
+  
   Mat img = Mat::zeros(height, width, CV_8UC3);
   uchar * pdata = img.data;
   uchar r, g, b, sd = (uchar)(get_time() % 256);
@@ -81,7 +89,7 @@ bool f_test_vsrc::proc()
   
   putText(img, m_time_str, org, fontFace, fontScale,
 	  Scalar::all(255), thickness);
-
+  
   ch_img->set_fmt(fmt);
   ch_img->set_img(img, get_time(), frm);
   
