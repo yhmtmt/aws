@@ -165,17 +165,20 @@ gboolean f_gst_cam::bus_callback(GstBus * bus, GstMessage * message, gpointer da
     return true;
 }
 
-f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_sink(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef), m_verb(false)
+f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_sink(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef), m_verb(false), m_pfts(NULL), m_sz_frmbuf(64), live(false)
 {
   m_fppl[0] = '\0';
+  m_fts[0] = '\0';
   register_fpar("ch_out", (ch_base**)&m_ch_out, typeid(ch_image_ref).name(), "Channel for image output.");
   register_fpar("width", &m_sz.width, "Width of the image.");
   register_fpar("height", &m_sz.height, "Height of the image.");
   register_fpar("fppl", m_fppl, 1024, "File describes pipe line composition.");
-    register_fpar("fmt_in", (int*)&fmt_in, (int)IMF_Undef, str_imfmt, "Input image format.");
+  register_fpar("fts", m_fts, 1024, "Timestamp file.");
+  register_fpar("fmt_in", (int*)&fmt_in, (int)IMF_Undef, str_imfmt, "Input image format.");
   register_fpar("fmt_out", (int*)&fmt_out, (int)IMF_Undef, str_imfmt, "Output image format.");
-
+  register_fpar("sz_frmbuf", &m_sz_frmbuf, "Sizeof frame buffer.");
   register_fpar("verb", &m_verb, "Verbose mode for debug.");
+  register_fpar("live", &live, "Live source.");
 }
 
 f_gst_cam::~f_gst_cam()
@@ -192,6 +195,15 @@ bool f_gst_cam::init_run()
     return false;
   }
 
+  if(m_fts[0]){
+    m_pfts = fopen(m_fts, "rb");
+    if(!m_pfts){
+      cerr << "Failed to open timestamp for f_gst_cam " << m_fts << endl;
+      return false;
+    }
+  }
+
+  
   {
     char tmp[2048], descr[2048];
     fppl.getline(tmp, 2048);
@@ -223,7 +235,20 @@ bool f_gst_cam::init_run()
   gst_object_unref(m_bus);
   
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PLAYING);
+  paused = false;
 
+  if(live)
+    return true;
+
+  // if not live source, initial buffering  required
+  while(m_num_frmbuf < m_sz_frmbuf / 4){
+    timespec ts, tsrem;
+    ts.tv_sec = 0;
+    ts.tv_nsec = cnvTimeNanoSec(f_base::m_clk.get_period());
+    while(nanosleep(&ts, &tsrem))
+      ts = tsrem;
+  }
+  
   return true;
 }
 
@@ -236,6 +261,15 @@ void f_gst_cam::destroy_run()
 
 bool f_gst_cam::proc()
 {
+  Mat img;
+  long long t;
+  long long frm;
+
+  control_ppl();
+  
+  if(pop_frmbuf(img, t, frm))
+    m_ch_out->set_img(img, t, frm);
+     
   return true;
 }
 
@@ -265,11 +299,13 @@ gboolean f_gst_enc::bus_callback(GstBus * bus, GstMessage * message, gpointer da
     return true;  
 }
 
-f_gst_enc::f_gst_enc(const char * name):f_base(name), m_ch_in(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_src(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef)
+f_gst_enc::f_gst_enc(const char * name):f_base(name), m_ch_in(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_src(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef), m_pfts(NULL)
 {
   m_fppl[0] = '\0';
+  m_fts[0] = '\0';
   register_fpar("ch_in", (ch_base**)&m_ch_in, typeid(ch_image_ref).name(), "Channel for image input.");
   register_fpar("fppl", m_fppl, 1024, "File describes pipe line composition.");
+  register_fpar("fts", m_fts, 1024, "Timestamp file.");
   register_fpar("fmt_in", (int*)&fmt_in, (int)IMF_Undef, str_imfmt, "Input image format.");
   register_fpar("fmt_out", (int*)&fmt_out, (int)IMF_Undef, str_imfmt, "Output image format.");
   register_fpar("width", &m_sz.width, "Width of the image.");
@@ -294,6 +330,14 @@ bool f_gst_enc::init_run()
     return false;
   }
 
+  if(m_fts[0]){
+    m_pfts = fopen(m_fts, "wb");
+    if(!m_pfts){
+      cerr << "Failed to open timestamp for f_gst_cam " << m_fts << endl;
+      return false;
+    }
+  }
+  
   {
     char tmp[2048], descr[2048];
     fppl.getline(tmp, 2048);
@@ -371,6 +415,11 @@ bool f_gst_enc::proc()
   //  GST_BUFFER_DURATION(buf) = cnvTimeNanoSec(f_base::m_clk.get_period());
   GstFlowReturn ret;
   g_signal_emit_by_name(m_src, "push-buffer", buf, &ret);
+  
+  if(m_pfts){
+    fwrite((void*)&t, sizeof(t), 1, m_pfts);
+  }
+  
   gst_buffer_unref(buf); 
   return true;
 }

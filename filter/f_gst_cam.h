@@ -33,6 +33,91 @@ class f_gst_cam: public f_base
   long long m_frm_count;
   Size m_sz;
   char m_fppl[1024];
+  char m_fts[1024]; 
+  FILE * m_pfts;
+
+  bool live;
+  bool paused;
+  unsigned int m_sz_frmbuf;
+  unsigned int m_num_frmbuf;
+  unsigned int m_head_frmbuf;
+  unsigned int m_tail_frmbuf;
+  struct s_frmbuf{
+    long long t;
+    long long frm;    
+    Mat img;
+  };
+  vector<s_frmbuf> m_frmbuf;
+  mutex mtxbuf;
+  void init_frmbuf()
+  {
+    m_head_frmbuf = m_tail_frmbuf = m_num_frmbuf = 0;
+    m_frmbuf.resize(m_sz_frmbuf);
+  }
+
+  void control_ppl()
+  {
+    mtxbuf.lock();
+    if(m_num_frmbuf > m_sz_frmbuf / 2){
+      gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PAUSED);
+      if(m_verb)
+	cout << "f_gst_cam::control_ppl() paused." << endl;
+      
+      paused = true;
+    }else if(paused){
+      gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PLAYING);
+      if(m_verb)
+       	cout << "f_gst_cam::control_ppl() restarted." << endl;
+      paused = false;
+    }
+    mtxbuf.unlock();
+  }
+  
+  bool push_frmbuf(Mat & img, const long long t, const long long frm)
+  {
+    mtxbuf.lock();
+    if(m_num_frmbuf == m_sz_frmbuf){
+      mtxbuf.unlock();
+      return false;
+    }
+
+    s_frmbuf & frmbuf = m_frmbuf[m_tail_frmbuf];
+    frmbuf.img = img;
+    frmbuf.t = t;
+    frmbuf.frm = frm;
+    m_tail_frmbuf++;
+    if(m_tail_frmbuf == m_sz_frmbuf)
+      m_tail_frmbuf = 0;
+    m_num_frmbuf++;
+
+    mtxbuf.unlock();
+
+    return true;
+  }
+
+  bool pop_frmbuf(Mat & img, long long & t, long long & frm)
+  {
+    mtxbuf.lock();
+    bool success = false;
+    long long tcur = get_time();
+    while(m_head_frmbuf != m_tail_frmbuf &&
+	  m_frmbuf[m_head_frmbuf].t > tcur){
+      s_frmbuf & frmbuf = m_frmbuf[m_head_frmbuf];
+      img = frmbuf.img;
+      t = frmbuf.t;
+      frm = frmbuf.frm;
+      success = true;
+      
+      m_head_frmbuf++;
+      if(m_head_frmbuf == m_sz_frmbuf)
+	m_head_frmbuf = 0;
+      
+      m_num_frmbuf--;
+    }
+    mtxbuf.unlock();    
+  }
+  
+  
   gchar * m_descr;
   GstElement * m_ppl;
   GstElement * m_sink;
@@ -44,8 +129,15 @@ class f_gst_cam: public f_base
   e_imfmt fmt_in, fmt_out; 
   void set_img(Mat & img)
   {
-    m_frm_count++;
-    m_ch_out->set_img(img, m_cur_time, m_frm_count);
+    if(!m_pfts)
+      push_frmbuf(img, m_cur_time, m_frm_count);
+    else{
+      long long t;
+      fread((void*)&t, sizeof(t), 1, m_pfts);
+      push_frmbuf(img, m_cur_time, m_frm_count);
+    }
+      
+    m_frm_count++;    
   }
 
   const Size & get_sz(){
@@ -71,6 +163,8 @@ class f_gst_enc: public f_base
  protected:
   ch_image_ref * m_ch_in;
   char m_fppl[1024];
+  char m_fts[1024]; // timestamp file
+  FILE * m_pfts;
   gchar * m_descr;
   GstElement * m_ppl;
   GstElement * m_src;
