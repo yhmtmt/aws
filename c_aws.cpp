@@ -702,9 +702,10 @@ bool c_aws::handle_run(s_cmd & cmd)
   f_base::m_clk.start((unsigned) m_cycle_time, 
 		      (unsigned) m_cycle_time, m_start_time, 
 		      m_bonline, m_time_rate);
-  m_time = f_base::m_clk.get_time();
+  f_base::m_clk.pause();
   
-  f_base::clock(m_start_time);
+  m_time = f_base::m_clk.get_time();
+  f_base::clock(m_start_time);  
   f_base::init_run_all();
   
   // check filter's status. 
@@ -718,6 +719,8 @@ bool c_aws::handle_run(s_cmd & cmd)
       return false;
     }
   }
+
+  f_base::m_clk.restart();
   
   return true;
 }

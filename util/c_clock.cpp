@@ -227,8 +227,7 @@ bool c_clock::restart()
   if(m_state == PAUSE){
     m_state = RUN;
   }else
-    return false;
-  
+    return false;  
   return true;
 }
 
@@ -342,6 +341,7 @@ void c_clock::wait()
     while(nanosleep(&ts, &trem)){
       ts = trem;
     }
+
     m_tcur = tnew + tslp * m_rate;
   }else{
     m_tcur = tnew;
@@ -349,6 +349,8 @@ void c_clock::wait()
 
   if(m_state != PAUSE){
     m_tcur = tnew + max(tslp, (long long)0);
+  }else{
+    m_offset -= max(tslp, (long long)0);
   }
 
 #endif
