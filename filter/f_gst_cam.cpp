@@ -333,7 +333,7 @@ bool f_gst_enc::init_run()
   if(m_fts[0]){
     m_pfts = fopen(m_fts, "wb");
     if(!m_pfts){
-      cerr << "Failed to open timestamp for f_gst_cam " << m_fts << endl;
+      cerr << "Failed to open timestamp for f_gst_enc " << m_fts << endl;
       return false;
     }
   }

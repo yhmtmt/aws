@@ -133,8 +133,9 @@ class f_gst_cam: public f_base
       push_frmbuf(img, m_cur_time, m_frm_count);
     else{
       long long t;
-      fread((void*)&t, sizeof(t), 1, m_pfts);
-      push_frmbuf(img, m_cur_time, m_frm_count);
+      int res = fread((void*)&t, sizeof(t), 1, m_pfts);
+      if(res)
+	push_frmbuf(img, m_cur_time, m_frm_count);
     }
       
     m_frm_count++;    
