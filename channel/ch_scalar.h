@@ -216,8 +216,9 @@ class ch_sample: public ch_base
     char buf[get_dsize()];
     while(!feof(pbf)){
       int res = fread((void*)buf, sizeof(buf), 1, pbf);
-      if(res != get_dsize())
-	return false;
+      if(!res){
+	break;
+      }
 
       write_buf(buf);
       fprintf(ptf, "%lld, %d\n", t, val);
