@@ -2,6 +2,7 @@
 
 log=y
 tlog=0
+nodisp=n
 
 for arg in $*
 do
@@ -12,6 +13,7 @@ do
     prev_arg=$arg
     case $arg in
 	"rep")log=n;;
+	"nodisp")nodisp=y;;
     esac
 done
 
@@ -24,19 +26,21 @@ channel imgr img
 filter sample smpl -i -o
 fset smpl ch_sample_in sample ch_sample_out sample
 fset smpl increment yes
-fset smpl interval 30
+fset smpl Interval 30
 
 curdir=`pwd`
 if [ ! -d "$curdir/log" ]; then
     mkdir $curdir/log
 fi
 
-filter glimv win -i img -o
-fset win width $width height $height
+if [ $nodisp = "n" ]; then
+    filter glimv win -i img -o
+    fset win width $width height $height
+fi
 
-cyc 0.33
+cyc 0.033
 
-if [ log = "y" ]; then
+if [ $log = "y" ]; then
     # Video source
     filter test_vsrc vsrc -i -o
     fset vsrc ch_img img
@@ -65,7 +69,7 @@ else
     fset gstcam fppl $curdir/h264dec.gst
     fset gstcam fts $curdir/log/logger.ts
 
-    filter read_ch_log -i -o sample
+    filter read_ch_log log -i -o sample
     fset log path $curdir/log
     go $tlog
 fi
