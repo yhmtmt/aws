@@ -1,13 +1,37 @@
 #!/bin/sh
 
 # extract time digit from a log file and convert it to the meaningful string.
-if [ $# -ne 1 ]; then
-   echo "exltime <log file name>"
+if [ $# -lt 2 ]; then
+    echo "exltime [-s] -f <log file name>"
+    echo "\t -s : Output readable string."
    exit
 fi
 
-file=$1
+str=n
+file=
+
+for arg in $*
+do
+    case $prev_arg in
+	"-f")file=$arg;;
+    esac
+    
+    case $arg in
+	"-s")str=y;;
+    esac
+    prev_arg=$arg
+done
+
+if [ ! -f $file ]; then
+    echo "File $file is not found."
+    exit
+fi
+   
 file2=${file##*_}
 awstime=${file2%.*}
 
-t2str $awstime
+if [ $str = "y" ]; then
+    t2str $awstime
+else
+    echo $awstime
+fi
