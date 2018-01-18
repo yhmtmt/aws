@@ -1,0 +1,71 @@
+#!bin/sh
+
+log=y
+tlog=0
+
+for arg in $*
+do
+    case $prev_arg in
+	"rep")tlog=$arg;;
+    esac
+
+    prev_arg=$arg
+    case $arg in
+	"rep")log=n;;
+    esac
+done
+
+width=640
+height=480
+
+channel sample sample
+channel imgr img
+
+filter sample smpl -i -o
+fset smpl ch_sample_in sample ch_sample_out sample
+fset smpl increment yes
+fset smpl interval 30
+
+curdir=`pwd`
+if [ ! -d "$curdir/log" ]; then
+    mkdir $curdir/log
+fi
+
+filter glmv win -i img -o
+fset win width $width height $height
+
+cyc 0.33
+
+if [ log = "y" ]; then
+    # Video source
+    filter test_vsrc vsrc -i -o
+    fset vsrc ch_img img
+    fset vsrc width $width height $height
+    fset vsrc rdrop 0.1
+
+    # video logger
+    filter gstenc enc -i -o
+    fset enc ch_in img
+    fset enc width $width height $height
+    fset enc fmt_in BGR8 fmt_out I420
+    fset enc fps 30
+    fset enc fppl $curdir/h264enc.gst
+    fset enc fts $curdir/log/logger.ts
+
+    #logger for ch_sample
+    filter write_ch_log log -i sample -o
+    fset log path $curdir/log
+    go
+else
+    fset smpl increment no
+    #Video source 
+    filter gstcam gstcam -i -o
+    fset gstcam ch_out img
+    fset gstcam width $width height $height
+    fset gstcam fppl $curdir/h264dec.gst
+    fset gstcam fts $curdir/log/logger.ts
+
+    filter read_ch_log -i -o sample
+    fset log path $curdir/log
+    go $tlog
+fi
