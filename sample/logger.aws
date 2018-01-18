@@ -71,5 +71,9 @@ else
 
     filter read_ch_log log -i -o sample
     fset log path $curdir/log
+    logfile=`ls $curdir/log/sample_*`
+    tlog=`logtime -f $logfile`
+    tlogstr=`logtime -f $logfile -s`
+    echo "replaying logfile from $tlogstr"
     go $tlog
 fi
