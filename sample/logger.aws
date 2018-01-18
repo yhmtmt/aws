@@ -1,4 +1,4 @@
-#!bin/sh
+#!/bin/sh
 
 log=y
 tlog=0
@@ -31,7 +31,7 @@ if [ ! -d "$curdir/log" ]; then
     mkdir $curdir/log
 fi
 
-filter glmv win -i img -o
+filter glimv win -i img -o
 fset win width $width height $height
 
 cyc 0.33
