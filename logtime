@@ -2,12 +2,14 @@
 
 # extract time digit from a log file and convert it to the meaningful string.
 if [ $# -lt 2 ]; then
-    echo "exltime [-s] -f <log file name>"
-    echo "\t -s : Output readable string."
+    echo "exltime [options] -f <log file name>"
+    echo "\t -sec : Output in second."
+    echo "\t -str : Output readable string."
    exit
 fi
 
 str=n
+sec=n
 file=
 
 for arg in $*
@@ -17,7 +19,8 @@ do
     esac
     
     case $arg in
-	"-s")str=y;;
+	"-str")str=y;;
+	"-sec")sec=y;;
     esac
     prev_arg=$arg
 done
@@ -33,5 +36,9 @@ awstime=${file2%.*}
 if [ $str = "y" ]; then
     t2str $awstime
 else
-    echo $awstime
+    if [ $sec = "y" ]; then
+	echo "$awstime" | sed 's/.......$//'
+    else
+	echo $awstime
+    fi
 fi
