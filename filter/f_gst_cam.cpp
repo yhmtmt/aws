@@ -281,7 +281,7 @@ bool f_gst_cam::proc()
   
   if(pop_frmbuf(img, t, frm)){
     if(m_verb){
-      cout << "t=" << t << " frm=" << frm << endl;
+      cout << "set image t=" << t << " frm=" << frm << endl;
     }
     m_ch_out->set_img(img, t, frm);
   }
