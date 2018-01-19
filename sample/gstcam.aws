@@ -2,14 +2,16 @@
 
 nodisp=y
 gst=h264dec.gst
+live=n
 
 for arg in $*
 do
     case $prev_arg in
-	"gst") gst=$arg;;
+	"gst") gst=$arg;;	
     esac
     case $arg in
 	"nodisp") nodisp=y;;
+	"live") live=y;;
     esac
     prev_arg=$arg
 done
@@ -20,9 +22,9 @@ curdir=`pwd`
 
 filter gstcam gstcam -i -o
 fset gstcam ch_out img
-fset gstcam width 1920 height 1080
+fset gstcam fmt_in NV12 fmt_out BGR8
+fset gstcam width 640 height 480
 fset gstcam fppl $curdir/h264dec.gst
-
 
 if [ $nodisp != "y" ]; then
     filter glimv win -i img -o
