@@ -39,8 +39,10 @@ using namespace cv;
 // image format convertor
 inline bool cnv_imf(const Mat & src, Mat & dst, const e_imfmt & fmt_in, const e_imfmt & fmt_out)
 {
-  if(src.empty())
+  if(src.empty()){
+    cout << "In cnv_imf, src image is empty. " << endl;
     return false;
+  }
   
   if(fmt_in == fmt_out){
     dst = src;
@@ -54,14 +56,12 @@ inline bool cnv_imf(const Mat & src, Mat & dst, const e_imfmt & fmt_in, const e_
       cvtColor(src, dst, COLOR_YUV2BGR_NV12);
       return true;
     }
-    
   case IMF_I420:
     switch(fmt_out){
     case IMF_BGR8:
       cvtColor(src, dst, COLOR_YUV2BGR_I420);
       return true;
-    }
-    
+    }    
   case IMF_BGR8:
     switch(fmt_out){
     case IMF_I420:
@@ -250,6 +250,7 @@ bool f_gst_cam::init_run()
   if(!m_pfts)// if timestamp file is supplied
     return true;
 
+  cout << "Bufffering video frame ... ";
   while(m_num_frmbuf < m_sz_frmbuf / 4){
     cout << "buffer " << m_num_frmbuf << "/" << m_sz_frmbuf << endl;
     timespec ts, tsrem;
@@ -258,6 +259,7 @@ bool f_gst_cam::init_run()
     while(nanosleep(&ts, &tsrem))
       ts = tsrem;
   }
+  cout << " done." << endl;
   
   return true;
 }
@@ -277,9 +279,12 @@ bool f_gst_cam::proc()
 
   control_ppl();
   
-  if(pop_frmbuf(img, t, frm))
+  if(pop_frmbuf(img, t, frm)){
+    if(m_verb){
+      cout << "t=" << t << " frm=" << frm << endl;
+    }
     m_ch_out->set_img(img, t, frm);
-     
+  }
   return true;
 }
 
