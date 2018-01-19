@@ -189,7 +189,7 @@ class ch_sample: public ch_base
     if(!pf)
       return 0;
 
-    if(tcur < tf)
+    if(tf <= tcur)
       set(tf, valf);
     else
       return 0;
