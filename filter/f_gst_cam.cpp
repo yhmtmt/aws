@@ -276,6 +276,9 @@ bool f_gst_cam::proc()
   control_ppl();
   
   if(pop_frmbuf(img, t, frm)){
+    if(m_verb){
+      cout << "t=" << t << " frm=" << frm << endl;
+    }
     m_ch_out->set_img(img, t, frm);
   }
   return true;
