@@ -61,7 +61,7 @@ class f_gst_cam: public f_base
     if(m_num_frmbuf > m_sz_frmbuf / 2){
       gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PAUSED);
       if(m_verb)
-	cout << "f_gst_cam::control_ppl() paused." << endl;
+	cout << "f_gst_cam::control_ppl() paused. num_frmbuf=" << m_num_frmbuf << " sz_frmbuf=" << m_sz_frmbuf << endl;
       
       paused = true;
     }else if(paused){
@@ -91,7 +91,6 @@ class f_gst_cam: public f_base
     m_num_frmbuf++;
 
     mtxbuf.unlock();
-
     return true;
   }
 
@@ -101,7 +100,7 @@ class f_gst_cam: public f_base
     bool success = false;
     long long tcur = get_time();
     while(m_head_frmbuf != m_tail_frmbuf &&
-	  m_frmbuf[m_head_frmbuf].t > tcur){
+	  m_frmbuf[m_head_frmbuf].t < tcur){
       s_frmbuf & frmbuf = m_frmbuf[m_head_frmbuf];
       img = frmbuf.img;
       t = frmbuf.t;
@@ -114,7 +113,8 @@ class f_gst_cam: public f_base
       
       m_num_frmbuf--;
     }
-    mtxbuf.unlock();    
+    mtxbuf.unlock();
+    return success;
   }
   
   
@@ -135,7 +135,7 @@ class f_gst_cam: public f_base
       long long t;
       int res = fread((void*)&t, sizeof(t), 1, m_pfts);
       if(res)
-	push_frmbuf(img, m_cur_time, m_frm_count);
+	push_frmbuf(img, t, m_frm_count);
     }
       
     m_frm_count++;    

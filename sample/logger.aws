@@ -66,9 +66,11 @@ else
     filter gstcam gstcam -i -o
     fset gstcam ch_out img
     fset gstcam width $width height $height
+    fset gstcam fmt_in NV12 fmt_out BGR8
     fset gstcam fppl $curdir/h264dec.gst
     fset gstcam fts $curdir/log/logger.ts
-
+    fset gstcam verb yes
+    
     filter read_ch_log log -i -o sample
     fset log path $curdir/log
     logfile=`ls $curdir/log/sample_*`
