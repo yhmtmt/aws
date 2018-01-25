@@ -48,7 +48,7 @@ inline bool cnv_imf(const Mat & src, Mat & dst, const e_imfmt & fmt_in, const e_
     dst = src;
     return true;
   }
-
+ 
   switch(fmt_in){
   case IMF_NV12:
     switch(fmt_out){
@@ -137,6 +137,11 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
   Mat dst;
   if(cnv_imf(src, dst, pcam->fmt_in, pcam->fmt_out)){
     pcam->set_img(dst);
+  }else{
+    if(pcam->fmt_in == IMF_Undef && pcam->fmt_out == IMF_Undef)
+      cerr << "Input / output image formats are not specified." << endl;
+    else
+      cerr << "Failed to convert image format " << str_imfmt[pcam->fmt_in] << " to " << str_imfmt[pcam->fmt_out] << endl;
   }
   
   gst_buffer_unmap(buffer, &map);
@@ -169,7 +174,7 @@ gboolean f_gst_cam::bus_callback(GstBus * bus, GstMessage * message, gpointer da
     return true;
 }
 
-f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_sink(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef), m_verb(false), m_pfts(NULL), m_sz_frmbuf(64), live(false)
+f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_sink(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef), m_verb(false), m_pfts(NULL), m_sz_frmbuf(64)
 {
   m_fppl[0] = '\0';
   m_fts[0] = '\0';
@@ -182,7 +187,6 @@ f_gst_cam::f_gst_cam(const char * name): f_base(name), m_ch_out(NULL), m_sz(0, 0
   register_fpar("fmt_out", (int*)&fmt_out, (int)IMF_Undef, str_imfmt, "Output image format.");
   register_fpar("sz_frmbuf", &m_sz_frmbuf, "Sizeof frame buffer.");
   register_fpar("verb", &m_verb, "Verbose mode for debug.");
-  register_fpar("live", &live, "Live source.");
 }
 
 f_gst_cam::~f_gst_cam()
@@ -242,13 +246,13 @@ bool f_gst_cam::init_run()
   
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PLAYING);
   paused = false;
-
-  if(live)
+  
+  if(!m_pfts)// if timestamp file is supplied
     return true;
 
-  // if not live source, initial buffering  required
   cout << "Bufffering video frame ... ";
   while(m_num_frmbuf < m_sz_frmbuf / 4){
+    cout << "buffer " << m_num_frmbuf << "/" << m_sz_frmbuf << endl;
     timespec ts, tsrem;
     ts.tv_sec = 0;
     ts.tv_nsec = cnvTimeNanoSec(f_base::m_clk.get_period());
@@ -277,7 +281,7 @@ bool f_gst_cam::proc()
   
   if(pop_frmbuf(img, t, frm)){
     if(m_verb){
-      cout << "t=" << t << " frm=" << frm << endl;
+      cout << "set image t=" << t << " frm=" << frm << endl;
     }
     m_ch_out->set_img(img, t, frm);
   }

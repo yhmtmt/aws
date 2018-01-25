@@ -189,15 +189,15 @@ class ch_sample: public ch_base
     if(!pf)
       return 0;
 
-    if(tcur < tf)
-      set(tf, valf);
+    if(tf <= tcur)
+      set(tf, valf);    
     else
       return 0;
     char buf[get_dsize()];
 
     int res = fread((void*)buf, sizeof(buf), 1, pf);
 
-    if(res != get_dsize())
+    if(!res)
       return 0;
 
     lock();

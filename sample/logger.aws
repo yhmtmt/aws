@@ -24,7 +24,7 @@ channel sample sample
 channel imgr img
 
 filter sample smpl -i -o
-fset smpl ch_sample_in sample ch_sample_out sample
+fset smpl ch_sample_in sample
 fset smpl increment yes
 fset smpl Interval 30
 
@@ -69,7 +69,7 @@ else
     fset gstcam fmt_in NV12 fmt_out BGR8
     fset gstcam fppl $curdir/h264dec.gst
     fset gstcam fts $curdir/log/logger.ts
-    fset gstcam verb yes
+    fset gstcam verb y
     
     filter read_ch_log log -i -o sample
     fset log path $curdir/log

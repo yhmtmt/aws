@@ -100,7 +100,7 @@ class f_gst_cam: public f_base
     bool success = false;
     long long tcur = get_time();
     while(m_head_frmbuf != m_tail_frmbuf &&
-	  m_frmbuf[m_head_frmbuf].t < tcur){
+	  m_frmbuf[m_head_frmbuf].t <= tcur){
       s_frmbuf & frmbuf = m_frmbuf[m_head_frmbuf];
       img = frmbuf.img;
       t = frmbuf.t;
@@ -138,7 +138,7 @@ class f_gst_cam: public f_base
 	push_frmbuf(img, t, m_frm_count);
     }
       
-    m_frm_count++;    
+    m_frm_count++;
   }
 
   const Size & get_sz(){
