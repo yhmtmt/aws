@@ -278,13 +278,23 @@ void c_clock::set_time_delta(long long & delta){
 
 long long c_clock::get_time()
 {
-  if(m_state == PAUSE)
+  switch(m_state){
+  case STOP:
+    {
+      timespec ts;
+      clock_gettime(CLOCK_REALTIME, &ts);
+      return(long long)
+	((long long)ts.tv_sec * SEC + (long long) (ts.tv_nsec / 100));
+    }
+  case PAUSE:
     return m_tcur;
+  default:
 #ifdef _WIN32
   return m_tcur;
 #else
   return m_tcur + m_offset;
 #endif
+  }
 }
 
 void c_clock::wait()

@@ -861,7 +861,7 @@ void c_aws::proc_command()
 		    snprintf(cmd.get_ret_str(), RET_LEN, "%s", f_base::get_time_str());
 		    result = true;
 		  }else if(cmd.num_args == 2 && cmd.args[1][0] == 'n'){
-		    snprintf(cmd.get_ret_str(), RET_LEN, "%lld", f_base::get_time());
+		    snprintf(cmd.get_ret_str(), RET_LEN, "%lld", f_base::m_clk.get_time());
 		    result = true;
 		  }else if(cmd.num_args == 2 && cmd.args[1][0] == 's'){
 			f_base::set_sys_time();
