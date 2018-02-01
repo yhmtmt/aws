@@ -34,7 +34,7 @@ using namespace cv;
 #include "f_aws1_ap.h"
 
 f_aws1_ap::f_aws1_ap(const char * name) : f_base(name), 
-m_state(NULL), m_ctrl_inst(NULL), m_ctrl_stat(NULL), m_obst(NULL),
+					  m_state(NULL), m_engstate(NULL), m_ctrl_inst(NULL), m_ctrl_stat(NULL), m_obst(NULL),
 m_ap_inst(NULL), m_ais_obj(NULL), m_verb(false),
 m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), 
 m_smax(10), m_smin(3), 
@@ -47,6 +47,7 @@ m_pc_s(0.1f), m_ic_s(0.1f), m_dc_s(0.1f), m_ps_s(0.1f), m_is_s(0.1f), m_ds_s(0.1
 m_Lo(8), m_Wo(2), m_Lais(400), m_Wais(80), m_Rav(3), m_Tav(300), m_Cav_max(45)
 {
 	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
+	register_fpar("ch_engstate", (ch_base**)&m_engstate, typeid(ch_eng_state).name(), "Engine State channel.");	
 	register_fpar("ch_ctrl_inst", (ch_base**)&m_ctrl_inst, typeid(ch_aws1_ctrl_inst).name(), "Ctrl instruction channel");
 	register_fpar("ch_ctrl_stat", (ch_base**)&m_ctrl_stat, typeid(ch_aws1_ctrl_stat).name(), "Ctrl status channel");
 	register_fpar("ch_wp", (ch_base**)&m_wp, typeid(ch_wp).name(), "Waypoint channel");

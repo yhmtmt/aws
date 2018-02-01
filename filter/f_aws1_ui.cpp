@@ -47,8 +47,8 @@ using namespace cv;
 
 
 f_aws1_ui::f_aws1_ui(const char * name) : f_glfw_window(name),
-m_state(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL),
-m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL),
+					  m_state(NULL), m_engstate(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL),
+  m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL),
 m_ch_ap_inst(NULL),
 m_js_id(0), m_bsvw(false), m_bss(false),
 fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
@@ -63,6 +63,7 @@ m_rud_f(127.), m_meng_f(127.), m_seng_f(127.)
 
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_sys", (ch_base**)&m_ch_sys, typeid(ch_aws1_sys).name(), "System property channel");
+  register_fpar("ch_engstate", (ch_base**)&m_engstate, typeid(ch_eng_state).name(), "Engine Status channel");
   register_fpar("ch_ctrl_inst", (ch_base**)&m_ch_ctrl_inst, typeid(ch_aws1_ctrl_inst).name(), "Control input channel.");
   register_fpar("ch_ctrl_stat", (ch_base**)&m_ch_ctrl_stat, typeid(ch_aws1_ctrl_stat).name(), "Control output channel.");
   register_fpar("ch_wp", (ch_base**)&m_ch_wp, typeid(ch_wp).name(), "Waypoint channel");

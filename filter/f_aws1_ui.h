@@ -69,6 +69,7 @@ public:
 	 ////////////////////////////////////////// Channel Declaration
 
   ch_state * m_state;					// required
+  ch_eng_state * m_engstate;                         //
   ch_aws1_sys * m_ch_sys;				// is not used
   ch_aws1_ctrl_inst * m_ch_ctrl_inst;	// optional
   ch_aws1_ctrl_stat * m_ch_ctrl_stat;   // optional

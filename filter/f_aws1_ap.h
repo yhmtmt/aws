@@ -27,6 +27,7 @@ class f_aws1_ap: public f_base
 {
 protected:
 	ch_state * m_state;
+	ch_eng_state * m_engstate;
 	ch_aws1_ctrl_inst * m_ctrl_inst;
 	ch_aws1_ctrl_stat * m_ctrl_stat;
 	ch_aws1_ap_inst * m_ap_inst;
