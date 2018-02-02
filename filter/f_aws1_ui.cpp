@@ -46,18 +46,18 @@ using namespace cv;
 #include "f_aws1_ui.h"
 
 
-f_aws1_ui::f_aws1_ui(const char * name) : f_glfw_window(name),
-					  m_state(NULL), m_engstate(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL), m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL),
+f_aws1_ui::f_aws1_ui(const char * name) :
+  f_glfw_window(name),
+  m_state(NULL), m_engstate(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL),
+  m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL),
   m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL),
-m_ch_ap_inst(NULL),
-m_js_id(0), m_bsvw(false), m_bss(false),
-fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f), dir_cam_hdg_drag(0.f),
-num_max_wps(100), num_max_ais(100),
-bupdate_map(true), pt_prev_map_update(0, 0, 0),
-map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
-bmap_center_free(false),
-btn_pushed(ebtn_nul), btn_released(ebtn_nul),
-m_rud_f(127.), m_meng_f(127.), m_seng_f(127.)
+  m_ch_ap_inst(NULL), m_js_id(0), m_bsvw(false), m_bss(false),
+  fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f),
+  dir_cam_hdg_drag(0.f), num_max_wps(100), num_max_ais(100),
+  bupdate_map(true), pt_prev_map_update(0, 0, 0),
+  map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
+  bmap_center_free(false), btn_pushed(ebtn_nul), btn_released(ebtn_nul),
+  m_rud_f(127.), m_meng_f(127.), m_seng_f(127.)
 {
 	m_path_storage[0] = '.';m_path_storage[1] = '\0';
 
@@ -277,24 +277,24 @@ bool f_aws1_ui::init_run()
 
 bool f_aws1_ui::setup_shader()
 {
-	load_glsl_program(ffs, fvs, p);
-
-	loc_inv_sz_half_scrn = glGetUniformLocation(p, "inv_sz_half_scrn");
-	loc_Mmvp = glGetUniformLocation(p, "Mmvp");
-	loc_Mm = glGetUniformLocation(p, "Mm");
-	loc_Lpar = glGetUniformLocation(p, "Lpar");
-	loc_sampler = glGetUniformLocation(p, "sampler");
-	loc_depth2d = glGetUniformLocation(p, "depth2d");
-	loc_position = glGetAttribLocation(p, "position");
-	loc_normal = glGetAttribLocation(p, "normal");
-	loc_texcoord = glGetAttribLocation(p, "texcoord");
-
-	loc_mode = glGetUniformLocation(p, "mode");
-	loc_gcolor = glGetUniformLocation(p, "gcolor");
-	loc_gcolorb = glGetUniformLocation(p, "gcolorb");
-	loc_pos2d = glGetAttribLocation(p, "pos2d");
-
-	return true;
+  load_glsl_program(ffs, fvs, p);
+  
+  loc_inv_sz_half_scrn = glGetUniformLocation(p, "inv_sz_half_scrn");
+  loc_Mmvp = glGetUniformLocation(p, "Mmvp");
+  loc_Mm = glGetUniformLocation(p, "Mm");
+  loc_Lpar = glGetUniformLocation(p, "Lpar");
+  loc_sampler = glGetUniformLocation(p, "sampler");
+  loc_depth2d = glGetUniformLocation(p, "depth2d");
+  loc_position = glGetAttribLocation(p, "position");
+  loc_normal = glGetAttribLocation(p, "normal");
+  loc_texcoord = glGetAttribLocation(p, "texcoord");
+  
+  loc_mode = glGetUniformLocation(p, "mode");
+  loc_gcolor = glGetUniformLocation(p, "gcolor");
+  loc_gcolorb = glGetUniformLocation(p, "gcolorb");
+  loc_pos2d = glGetAttribLocation(p, "pos2d");
+  
+  return true;
 }
 
 
@@ -320,194 +320,196 @@ void f_aws1_ui::ui_force_ctrl_stop(c_ctrl_mode_box * pcm_box)
 
 void f_aws1_ui::cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy)
 {
-	if(!img.empty()){
-		if(sz.width != img.cols || sz.height != img.rows){
-			float ai = (float)((float) img.cols / (float) img.rows);
-			if(av > ai){
-				sz.width = (int)((float)img.cols * ((float)sz.height / (float)img.rows));
-			}else{
-				sz.height = (int)((float)img.rows * ((float)sz.width / (float)img.cols));				
-			}
-			sz.width &= 0xFFFFFFFE;
-			sz.height &= 0xFFFFFFFE;
-
-			Mat tmp;
-			resize(img, tmp, sz);
-			img = tmp;
-		}else{
-			Mat tmp;
-			tmp = img.clone();
-			img = tmp;
-		}
-
-		awsFlip(img, flipx, flipy, false);
-		GLenum fmt = GL_LUMINANCE;
-		GLenum clr = GL_UNSIGNED_BYTE;
-		switch(img.type()){
-		case CV_8U:
-			break;
-		case CV_16U:
-			clr = GL_UNSIGNED_SHORT;
-			break;
-		case CV_8UC3:
-			fmt = GL_BGR;
-			clr = GL_UNSIGNED_BYTE;
-			break;
-		case CV_16UC3:
-			fmt = GL_BGR;
-			clr = GL_UNSIGNED_SHORT;
-			break;
-		}
-		glDrawPixels(img.cols, img.rows, fmt, clr, img.data);
-	}
+  if(!img.empty()){
+    if(sz.width != img.cols || sz.height != img.rows){
+      float ai = (float)((float) img.cols / (float) img.rows);
+      if(av > ai){
+	sz.width = (int)((float)img.cols * ((float)sz.height / (float)img.rows));
+      }else{
+	sz.height = (int)((float)img.rows * ((float)sz.width / (float)img.cols));				
+      }
+      sz.width &= 0xFFFFFFFE;
+      sz.height &= 0xFFFFFFFE;
+      
+      Mat tmp;
+      resize(img, tmp, sz);
+      img = tmp;
+    }else{
+      Mat tmp;
+      tmp = img.clone();
+      img = tmp;
+    }
+    
+    awsFlip(img, flipx, flipy, false);
+    GLenum fmt = GL_LUMINANCE;
+    GLenum clr = GL_UNSIGNED_BYTE;
+    switch(img.type()){
+    case CV_8U:
+      break;
+    case CV_16U:
+      clr = GL_UNSIGNED_SHORT;
+      break;
+    case CV_8UC3:
+      fmt = GL_BGR;
+      clr = GL_UNSIGNED_BYTE;
+      break;
+    case CV_16UC3:
+      fmt = GL_BGR;
+      clr = GL_UNSIGNED_SHORT;
+      break;
+    }
+    glDrawPixels(img.cols, img.rows, fmt, clr, img.data);
+  }
 }
 
 void f_aws1_ui::print_screen()
 {
-	if(m_bsvw || m_bss){
-		if(m_simg.cols != m_sz_win.width || m_simg.rows != m_sz_win.height)
-			m_simg.create(m_sz_win.height, m_sz_win.width, CV_8UC3);
-
-		glReadPixels(0, 0, m_sz_win.width, m_sz_win.height, GL_BGR, GL_UNSIGNED_BYTE, m_simg.data);
-		awsFlip(m_simg, false, true, false);
-
-		if(m_bsvw){
-			if(!m_vw.isOpened()){
-				char fname[1024];
-				double fps = (double) SEC / (double) get_period();
-				int fourcc = CV_FOURCC('D', 'I', 'V', 'X');
-				snprintf(fname, 1024, "%s/%s_%lld.avi", m_path_storage, m_name, get_time());
-
-				m_vw.open(fname, fourcc, fps, m_sz_win, true);
-				if(!m_vw.isOpened()){
-					cerr << "Failed to create " << fname << endl;
-					m_bsvw = false;
-				}
-			}else{
-				m_vw.write(m_simg);
-			}
-		}else{
-			if(m_vw.isOpened()){
-				m_vw.release();
-			}
-		}
-
-		if(m_bss){
-			char fname[1024];
-			snprintf(fname, 1024, "%s/%s_%lld.png", m_path_storage, m_name, get_time());
-			imwrite(fname, m_simg);
-		}
+  if(m_bsvw || m_bss){
+    if(m_simg.cols != m_sz_win.width || m_simg.rows != m_sz_win.height)
+      m_simg.create(m_sz_win.height, m_sz_win.width, CV_8UC3);
+    
+    glReadPixels(0, 0, m_sz_win.width, m_sz_win.height, GL_BGR, GL_UNSIGNED_BYTE, m_simg.data);
+    awsFlip(m_simg, false, true, false);
+    
+    if(m_bsvw){
+      if(!m_vw.isOpened()){
+	char fname[1024];
+	double fps = (double) SEC / (double) get_period();
+	int fourcc = CV_FOURCC('D', 'I', 'V', 'X');
+	snprintf(fname, 1024, "%s/%s_%lld.avi", m_path_storage, m_name, get_time());
+	
+	m_vw.open(fname, fourcc, fps, m_sz_win, true);
+	if(!m_vw.isOpened()){
+	  cerr << "Failed to create " << fname << endl;
+	  m_bsvw = false;
 	}
+      }else{
+	m_vw.write(m_simg);
+      }
+    }else{
+      if(m_vw.isOpened()){
+	m_vw.release();
+      }
+    }
+    
+    if(m_bss){
+      char fname[1024];
+      snprintf(fname, 1024, "%s/%s_%lld.png", m_path_storage, m_name, get_time());
+      imwrite(fname, m_simg);
+    }
+  }
 }
 
 void f_aws1_ui::update_route(c_route_cfg_box * prc_box)
 {
-	if (!m_ch_wp)
-		return;
-
-	owp.disable();
-
-	if (!visible_obj[ui_obj_wp])
-		return;
-	m_ch_wp->lock();
-	int iwp = 0;
-	
-	for (m_ch_wp->begin(); !m_ch_wp->is_end(); m_ch_wp->next())
-	{
-		s_wp wp = m_ch_wp->cur();
-		eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
-			wp.x, wp.y, wp.z, wp.rx, wp.ry, wp.rz);
-		owp.update_wps(iwp, wp);
-		owp.enable(iwp);
-
-		iwp++;
-	}
-
-	float ddiff, cdiff;
-	m_ch_wp->get_diff(ddiff, cdiff);
-	owp.set_next(m_ch_wp->get_next(), ddiff, cdiff);
-
-	if (obj_mouse_on.type == ot_wp){
-		owp.set_focus(obj_mouse_on.handle);
-		if (obj_mouse_on.handle != m_ch_wp->get_focus()){
-			m_ch_wp->set_focus(obj_mouse_on.handle);
-			unsigned int _wp, _spd, _rt;
-			prc_box->get_params(_wp, _spd, _rt);
-			_wp = obj_mouse_on.handle;
-			prc_box->set_params(_wp, _spd, _rt);
-		}
-		obj_mouse_on.type = ot_nul;
-		obj_mouse_on.handle = -1;
-	}
-	owp.set_focus(m_ch_wp->get_focus());
-
-	m_ch_wp->unlock();
-	owp.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
-	owp.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
-
-	owp.update_drawings();
+  if (!m_ch_wp)
+    return;
+  
+  owp.disable();
+  
+  if (!visible_obj[ui_obj_wp])
+    return;
+  m_ch_wp->lock();
+  int iwp = 0;
+  
+  for (m_ch_wp->begin(); !m_ch_wp->is_end(); m_ch_wp->next())
+    {
+      s_wp wp = m_ch_wp->cur();
+      eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z,
+		 wp.x, wp.y, wp.z, wp.rx, wp.ry, wp.rz);
+      owp.update_wps(iwp, wp);
+      owp.enable(iwp);
+      
+      iwp++;
+    }
+  
+  float ddiff, cdiff;
+  m_ch_wp->get_diff(ddiff, cdiff);
+  owp.set_next(m_ch_wp->get_next(), ddiff, cdiff);
+  
+  if (obj_mouse_on.type == ot_wp){
+    owp.set_focus(obj_mouse_on.handle);
+    if (obj_mouse_on.handle != m_ch_wp->get_focus()){
+      m_ch_wp->set_focus(obj_mouse_on.handle);
+      unsigned int _wp, _spd, _rt;
+      prc_box->get_params(_wp, _spd, _rt);
+      _wp = obj_mouse_on.handle;
+      prc_box->set_params(_wp, _spd, _rt);
+    }
+    obj_mouse_on.type = ot_nul;
+    obj_mouse_on.handle = -1;
+  }
+  owp.set_focus(m_ch_wp->get_focus());
+  
+  m_ch_wp->unlock();
+  owp.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
+  owp.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+  
+  owp.update_drawings();
 }
 
 void f_aws1_ui::update_ais_objs()
 {
-	if (!m_ch_ais_obj)
-		return;
-
-	oais.disable();
-
-	if (!visible_obj[ui_obj_vsl])
-		return;
-
-	m_ch_ais_obj->lock();
-	int iobj = 0;
-	if (obj_mouse_on.type == ot_ais){
-		m_ch_ais_obj->set_track(obj_mouse_on.handle);
-		obj_mouse_on.type = ot_nul;
-		obj_mouse_on.handle = -1;
-	}
-	oais.set_focus(-1);
-	for (m_ch_ais_obj->begin(); !m_ch_ais_obj->is_end(); m_ch_ais_obj->next()){
-		{
-			float bear = 0.f, dist = 0.f;
-			if (!m_ch_ais_obj->get_pos_bd(bear, dist) || dist > map_range)
-				continue;
-		}
-
-		if (m_ch_ais_obj->get_tracking_id() >= 0)
-			oais.set_focus(iobj);
-
-		oais.enable(iobj);
-		oais.update_ais_obj(iobj, m_ch_ais_obj->cur());
-		iobj++;
-	}
-	m_ch_ais_obj->unlock();
-
-
-	oais.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
-	oais.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
-	
-	oais.update_drawings();
+  if (!m_ch_ais_obj)
+    return;
+  
+  oais.disable();
+  
+  if (!visible_obj[ui_obj_vsl])
+    return;
+  
+  m_ch_ais_obj->lock();
+  int iobj = 0;
+  if (obj_mouse_on.type == ot_ais){
+    m_ch_ais_obj->set_track(obj_mouse_on.handle);
+    obj_mouse_on.type = ot_nul;
+    obj_mouse_on.handle = -1;
+  }
+  oais.set_focus(-1);
+  for (m_ch_ais_obj->begin(); !m_ch_ais_obj->is_end(); m_ch_ais_obj->next()){
+    {
+      float bear = 0.f, dist = 0.f;
+      if (!m_ch_ais_obj->get_pos_bd(bear, dist) || dist > map_range)
+	continue;
+    }
+    
+    if (m_ch_ais_obj->get_tracking_id() >= 0)
+      oais.set_focus(iobj);
+    
+    oais.enable(iobj);
+    oais.update_ais_obj(iobj, m_ch_ais_obj->cur());
+    iobj++;
+  }
+  m_ch_ais_obj->unlock();
+  
+  
+  oais.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
+  oais.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+  
+  oais.update_drawings();
 }
 
 void f_aws1_ui::update_map()
-{
-  
+{  
   if (!m_ch_map)
     return;
   coast_line.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
-  coast_line.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+  coast_line.set_map_param(pix_per_meter, Rmap,
+			   pt_map_center_ecef.x, pt_map_center_ecef.y,
+			   pt_map_center_ecef.z);
   // bupdate_map is asserted when map_scale is changed or drawing object types are re-selected
-
-  if (glm::distance(pt_prev_map_update, pt_map_center_ecef) > 0.5 * map_range || bupdate_map){
+  
+  if (glm::distance(pt_prev_map_update, pt_map_center_ecef)
+      > 0.5 * map_range || bupdate_map){
     // update map
 
     m_ch_map->lock();
     m_ch_map->set_center(pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
     m_ch_map->set_range((float)(2 * map_range));
     m_ch_map->set_resolution(meter_per_pix);
-
+    
     m_ch_map->unlock();
-
+    
     bupdate_map = false;
   }
   if (visible_obj[ui_obj_cl])
@@ -543,6 +545,7 @@ bool f_aws1_ui::handle_btn_released()
     btn_released = ebtn_lock_cam_dir_hdg;
     return true;
   }
+  
   return false;
 }
 
@@ -635,36 +638,36 @@ void f_aws1_ui::update_button(c_view_mode_box * pvm_box)
 
 void f_aws1_ui::render_gl_objs()
 {	
-	// the image is completely fitted to the screen
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-
-	glUseProgram(p);
-	glUniform2fv(loc_inv_sz_half_scrn, 1, inv_sz_half_scrn);
-
-	// 3d rendering
-	glUniform1i(loc_mode, 0);
-
-	glUniformMatrix4fv(loc_Mmvp, 1, GL_FALSE, glm::value_ptr(pvm));
-	glUniformMatrix4fv(loc_Mm, 1, GL_FALSE, glm::value_ptr(mm));
-	glUniform3fv(loc_Lpar, 1, glm::value_ptr(light));
-
-	oline3d.render(pvm);
-
-	// 2d rendering
-	orect.render();
-	otri.render();
-	ocirc.render();
-	otxt.render(0);
-	oline.render();
-
-	// show rendering surface.
-	glfwSwapBuffers(pwin());	
+  // the image is completely fitted to the screen
+  glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  
+  glUseProgram(p);
+  glUniform2fv(loc_inv_sz_half_scrn, 1, inv_sz_half_scrn);
+  
+  // 3d rendering
+  glUniform1i(loc_mode, 0);
+  
+  glUniformMatrix4fv(loc_Mmvp, 1, GL_FALSE, glm::value_ptr(pvm));
+  glUniformMatrix4fv(loc_Mm, 1, GL_FALSE, glm::value_ptr(mm));
+  glUniform3fv(loc_Lpar, 1, glm::value_ptr(light));
+  
+  oline3d.render(pvm);
+  
+  // 2d rendering
+  orect.render();
+  otri.render();
+  ocirc.render();
+  otxt.render(0);
+  oline.render();
+  
+  // show rendering surface.
+  glfwSwapBuffers(pwin());	
 }
 
 bool f_aws1_ui::proc()
 {
-   c_view_mode_box * pvm_box =
+  c_view_mode_box * pvm_box =
     dynamic_cast<c_view_mode_box*>(uim.get_ui_box(c_aws_ui_box_manager::view_mode));
   c_ctrl_mode_box * pcm_box = 
     dynamic_cast<c_ctrl_mode_box*>(uim.get_ui_box(c_aws_ui_box_manager::ctrl_mode));
@@ -672,7 +675,7 @@ bool f_aws1_ui::proc()
     dynamic_cast<c_map_cfg_box*>(uim.get_ui_box(c_aws_ui_box_manager::map_cfg));
   c_route_cfg_box * prc_box =
     dynamic_cast<c_route_cfg_box*>(uim.get_ui_box(c_aws_ui_box_manager::route_cfg));
-
+  
   // process joypad inputs
   if(m_js.id != -1){
     m_js.set_btn();
@@ -692,70 +695,73 @@ bool f_aws1_ui::proc()
     handle_ctrl_csr();
     break;
   }
-
+  
   //m_inst to m_ch_ctrl_inst
   snd_ctrl_inst();
   
   // m_ch_ctrl_stat to m_stat
   rcv_ctrl_stat();
   
-	// Window forcus is now at this window
-	glfwMakeContextCurrent(pwin());
-
-	// UI polling.
-	glfwPollEvents();
-
-	// loading states
-	long long t;
-	float roll, pitch, yaw, cog, sog, vx, vy;
-	float xown, yown, zown;
-	m_state->get_attitude(t, roll, pitch, yaw);
+  // Window forcus is now at this window
+  glfwMakeContextCurrent(pwin());
+  
+  // UI polling.
+  glfwPollEvents();
+  
+  // loading states
+  long long t;
+  float roll, pitch, yaw, cog, sog, vx, vy;
+  float xown, yown, zown;
+  m_state->get_attitude(t, roll, pitch, yaw);
   // applying saturation 
   roll = min(max(-180.f, roll),180.f);
   pitch = min(max(-180.f, pitch), 180.f);
   yaw = min(max(-180.f, yaw), 180.f);
-
-	m_state->get_velocity(t, cog, sog);
-	m_state->get_velocity_vector(t, vx, vy);
-	m_state->get_position_ecef(t, xown, yown, zown);
-
-	float lat, lon, alt, galt;
-	Mat Rown = m_state->get_enu_rotation(t);
-	m_state->get_position(t, lat, lon, alt, galt);
-
-	float depth;
-	m_state->get_depth(t, depth);
-
-	// handling ui events
-	bool event_handled = uim.set_mouse_event(pt_mouse, mouse_button, mouse_action, mouse_mods);
-
-	// calculating mouse point coordinate
-	calc_mouse_enu_and_ecef_pos(pvm_box->get_mode(), Rown, lat, lon, xown, yown, zown, yaw);
-	if (event_handled){
-	  handle_updated_ui_box(pvm_box, pcm_box, pmc_box, prc_box);
-	}
-	else{
-	  handle_base_mouse_event(pvm_box, pcm_box, pmc_box, prc_box);
-	}
-	
- 	// update ui params 
-	update_ui_params(pvm_box, xown, yown, zown, vx, vy, yaw);
-
-	// updating indicator
-	update_indicator(cog, sog, roll, pitch, yaw);
-
-	// update route object
-	update_route(prc_box);
-
-	// update ais object
-	update_ais_objs();
-
-	// update coast line (map)
-	update_map();
-
+  
+  m_state->get_velocity(t, cog, sog);
+  m_state->get_velocity_vector(t, vx, vy);
+  m_state->get_position_ecef(t, xown, yown, zown);
+  
+  float lat, lon, alt, galt;
+  Mat Rown = m_state->get_enu_rotation(t);
+  m_state->get_position(t, lat, lon, alt, galt);
+  
+  float depth;
+  m_state->get_depth(t, depth);
+  
+  // handling ui events
+  bool event_handled = uim.set_mouse_event(pt_mouse,
+					   mouse_button, mouse_action,
+					   mouse_mods);
+  
+  // calculating mouse point coordinate
+  calc_mouse_enu_and_ecef_pos(pvm_box->get_mode(), Rown,
+			      lat, lon, xown, yown, zown, yaw);
+  if (event_handled){
+    handle_updated_ui_box(pvm_box, pcm_box, pmc_box, prc_box);
+  }
+  else{
+    handle_base_mouse_event(pvm_box, pcm_box, pmc_box, prc_box);
+  }
+  
+  // update ui params 
+  update_ui_params(pvm_box, xown, yown, zown, vx, vy, yaw);
+  
+  // updating indicator
+  update_indicator(cog, sog, roll, pitch, yaw);
+  
+  // update route object
+  update_route(prc_box);
+  
+  // update ais object
+  update_ais_objs();
+  
+  // update coast line (map)
+  update_map();
+  
   // update button
   update_button(pvm_box);
-
+  
   // rendering graphics
   render_gl_objs();
   
@@ -957,28 +963,28 @@ void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 
 void f_aws1_ui::add_waypoint(c_route_cfg_box * prc_box)
 {
-	unsigned int rt, spd, wp;
-	prc_box->get_params(wp, spd, rt);
-	// set current cursor position as the new waypoint
-	if (!m_ch_wp){
-		cerr << "No waypoint channel is connected to filter " << m_name << endl;
-		return;
-	}
-
-	m_ch_wp->lock();
-	m_ch_wp->ins(pt_mouse_bih.x, pt_mouse_bih.y, 10.0, (float)spd);
-	m_ch_wp->unlock();
+  unsigned int rt, spd, wp;
+  prc_box->get_params(wp, spd, rt);
+  // set current cursor position as the new waypoint
+  if (!m_ch_wp){
+    cerr << "No waypoint channel is connected to filter " << m_name << endl;
+    return;
+  }
+  
+  m_ch_wp->lock();
+  m_ch_wp->ins(pt_mouse_bih.x, pt_mouse_bih.y, 10.0, (float)spd);
+  m_ch_wp->unlock();
 }
 
 void f_aws1_ui::drag_waypoint()
 {
-	m_ch_wp->lock();
-	s_wp & wp = m_ch_wp->get_focused_wp();
-	wp.lat = pt_mouse_bih.x;
-	wp.lon = pt_mouse_bih.y;
-	bihtoecef(wp.lat, wp.lon, 0., wp.x, wp.y, wp.z);
-
-	m_ch_wp->unlock();
+  m_ch_wp->lock();
+  s_wp & wp = m_ch_wp->get_focused_wp();
+  wp.lat = pt_mouse_bih.x;
+  wp.lon = pt_mouse_bih.y;
+  bihtoecef(wp.lat, wp.lon, 0., wp.x, wp.y, wp.z);
+  
+  m_ch_wp->unlock();
 }
 
 void f_aws1_ui::drag_map()
@@ -1021,25 +1027,50 @@ void f_aws1_ui::drag_cam_dir()
 
 void f_aws1_ui::det_obj_collision()
 {
-	int handle;
-	obj_mouse_on.handle = -1;
-	obj_mouse_on.type = ot_nul;
+  int handle;
+  obj_mouse_on.handle = -1;
+  obj_mouse_on.type = ot_nul;
+  
+  handle = owp.collision(pt_mouse);
+  if (handle >= 0){
+    obj_mouse_on.handle = handle;
+    obj_mouse_on.type = ot_wp;
+  }
+  
+  handle = oais.collision(pt_mouse);
+  if (handle >= 0){
+    obj_mouse_on.handle = handle;
+    obj_mouse_on.type = ot_ais;
+  }
+}
 
-	handle = owp.collision(pt_mouse);
-	if (handle >= 0){
-		obj_mouse_on.handle = handle;
-		obj_mouse_on.type = ot_wp;
-	}
-
-	handle = oais.collision(pt_mouse);
-	if (handle >= 0){
-		obj_mouse_on.handle = handle;
-		obj_mouse_on.type = ot_ais;
-	}
+void f_aws1_ui::handle_base_mouse_event(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
+			       c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
+{
+  if (mouse_button == GLFW_MOUSE_BUTTON_LEFT){
+    if (mouse_action == GLFW_PRESS){
+      handle_mouse_lbtn_push(pvm_box, pcm_box, pmc_box, prc_box);
+    }
+    else if (mouse_action == GLFW_RELEASE){
+      handle_mouse_lbtn_release(pvm_box, pcm_box, pmc_box, prc_box);
+    }
+    clear_mouse_state();
+  }
+  else{
+    handle_mouse_mv(pvm_box, pcm_box, pmc_box, prc_box);
+  }
+  
+  if (obj_mouse_on.type == ot_nul){
+    ocsr.enable_pos();
+    ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
+  }
+  else {
+    ocsr.disable();
+  }
 }
 
 void f_aws1_ui::handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
+				       c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
 {
   if (handle_btn_pushed())
     return;
@@ -1060,27 +1091,27 @@ void f_aws1_ui::handle_mouse_lbtn_release(c_view_mode_box * pvm_box,
 {
   if (handle_btn_released())
     return;
-
-	s_obj obj_tmp = obj_mouse_on;
-	det_obj_collision();
-	switch (mouse_state){
-	case ms_add_wp:
-		if (obj_tmp.type == ot_nul && obj_mouse_on.type == ot_nul)
-		{
-			add_waypoint(prc_box);
-		}
-		prc_box->command_processed(c_route_cfg_box::wp_add);
-		mouse_state = ms_normal;
-		break;
-	case ms_drag:
-		handle_mouse_drag(pvm_box, obj_tmp);
-		dir_cam_hdg += dir_cam_hdg_drag;
-		dir_cam_hdg_drag = 0.f;
-		mouse_state = ms_normal;
-		break;
-	case ms_normal:
-		break;
-	}
+  
+  s_obj obj_tmp = obj_mouse_on;
+  det_obj_collision();
+  switch (mouse_state){
+  case ms_add_wp:
+    if (obj_tmp.type == ot_nul && obj_mouse_on.type == ot_nul)
+      {
+	add_waypoint(prc_box);
+      }
+    prc_box->command_processed(c_route_cfg_box::wp_add);
+    mouse_state = ms_normal;
+    break;
+  case ms_drag:
+    handle_mouse_drag(pvm_box, obj_tmp);
+    dir_cam_hdg += dir_cam_hdg_drag;
+    dir_cam_hdg_drag = 0.f;
+    mouse_state = ms_normal;
+    break;
+  case ms_normal:
+    break;
+  }
 }
 
 void f_aws1_ui::handle_mouse_mv(c_view_mode_box * pvm_box,
@@ -1113,251 +1144,251 @@ void f_aws1_ui::handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp)
 
 void f_aws1_ui::handle_updated_ui_box(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box, c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box) 
 {
-	e_mouse_state mouse_state_new = ms_normal;
-	switch (uim.get_box_updated()){
-	case c_aws_ui_box_manager::view_mode:
-		update_view_mode_box(pvm_box);
-		break;
-	case c_aws_ui_box_manager::ctrl_mode:
-		update_ctrl_mode_box(pcm_box);
-		break;
-	case c_aws_ui_box_manager::map_cfg:
-		update_map_cfg_box(pmc_box);
-		break;
-	case c_aws_ui_box_manager::route_cfg:
-		update_route_cfg_box(prc_box, mouse_state_new);
-		break;
-	}
-
-	uim.reset_box_updated();
-
-	ocsr.enable_arrow();
-	ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
-	clear_mouse_state();
+  e_mouse_state mouse_state_new = ms_normal;
+  switch (uim.get_box_updated()){
+  case c_aws_ui_box_manager::view_mode:
+    update_view_mode_box(pvm_box);
+    break;
+  case c_aws_ui_box_manager::ctrl_mode:
+    update_ctrl_mode_box(pcm_box);
+    break;
+  case c_aws_ui_box_manager::map_cfg:
+    update_map_cfg_box(pmc_box);
+    break;
+  case c_aws_ui_box_manager::route_cfg:
+    update_route_cfg_box(prc_box, mouse_state_new);
+    break;
+  }
+  
+  uim.reset_box_updated();
+  
+  ocsr.enable_arrow();
+  ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
+  clear_mouse_state();
 }
 
 
 void f_aws1_ui::update_view_mode_box(c_view_mode_box * pvm_box)
 {
-	ind.set_mode(pvm_box->get_mode());
-	owp.set_ui_mode(pvm_box->get_mode());
-	oais.set_ui_mode(pvm_box->get_mode());
-	coast_line.set_ui_mode(pvm_box->get_mode());
+  ind.set_mode(pvm_box->get_mode());
+  owp.set_ui_mode(pvm_box->get_mode());
+  oais.set_ui_mode(pvm_box->get_mode());
+  coast_line.set_ui_mode(pvm_box->get_mode());
 }
 
 void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
 {	
-	switch (pcm_box->get_mode())
-	{
-	case c_ctrl_mode_box::crz:
-		m_inst.ctrl_src = ACS_UI;
-		ctrl_mode = cm_crz;
-		break;
-	case c_ctrl_mode_box::csr:
-		m_inst.ctrl_src = ACS_AP1;
-		ctrl_mode = cm_csr;
-		m_ch_ap_inst->set_mode(EAP_CURSOR);
-		break;
-	case c_ctrl_mode_box::ctl:
-		m_inst.ctrl_src = ACS_UI;
-		ctrl_mode = cm_ctl;
-		break;
-	case c_ctrl_mode_box::sty:
-		m_inst.ctrl_src = ACS_AP1;
-		m_ch_ap_inst->set_mode(EAP_STAY);
-		{
-			long long t; 
-			float lat, lon, alt, galt;
-			m_state->get_position(t, lat, lon, alt, galt);
-			m_ch_ap_inst->set_stay_pos(lat, lon);
-		}	
-		break;
-	case c_ctrl_mode_box::fwp:
-		m_inst.ctrl_src = ACS_AP1;
-		m_ch_ap_inst->set_mode(EAP_WP);
-		break;
-	case c_ctrl_mode_box::ftg:
-		m_inst.ctrl_src = ACS_AP1;
-		m_ch_ap_inst->set_mode(EAP_FLW_TGT);
-		break;
-	}
+  switch (pcm_box->get_mode())
+    {
+    case c_ctrl_mode_box::crz:
+      m_inst.ctrl_src = ACS_UI;
+      ctrl_mode = cm_crz;
+      break;
+    case c_ctrl_mode_box::csr:
+      m_inst.ctrl_src = ACS_AP1;
+      ctrl_mode = cm_csr;
+      m_ch_ap_inst->set_mode(EAP_CURSOR);
+      break;
+    case c_ctrl_mode_box::ctl:
+      m_inst.ctrl_src = ACS_UI;
+      ctrl_mode = cm_ctl;
+      break;
+    case c_ctrl_mode_box::sty:
+      m_inst.ctrl_src = ACS_AP1;
+      m_ch_ap_inst->set_mode(EAP_STAY);
+      {
+	long long t; 
+	float lat, lon, alt, galt;
+	m_state->get_position(t, lat, lon, alt, galt);
+	m_ch_ap_inst->set_stay_pos(lat, lon);
+      }	
+      break;
+    case c_ctrl_mode_box::fwp:
+      m_inst.ctrl_src = ACS_AP1;
+      m_ch_ap_inst->set_mode(EAP_WP);
+      break;
+    case c_ctrl_mode_box::ftg:
+      m_inst.ctrl_src = ACS_AP1;
+      m_ch_ap_inst->set_mode(EAP_FLW_TGT);
+      break;
+    }
 }
 
 void f_aws1_ui::update_map_cfg_box(c_map_cfg_box * pmc_box)
 {
-	pmc_box->get_params(map_range, visible_obj);
-	switch (pmc_box->get_command())
-	{
-	case c_map_cfg_box::range_up:
-		if(map_range < 10000000){
-			map_range *= 10.f;
-			recalc_range();
-		}
-		break;
-	case c_map_cfg_box::range_down:
-		if(map_range > 100){
-			map_range *= 0.1f;
-			recalc_range();
-		}
-		break;
-	case c_map_cfg_box::wp:
-		break;
-	case c_map_cfg_box::vsl:
-		break;
-	case c_map_cfg_box::cl:
-		bupdate_map = true;
-		break;
-	case c_map_cfg_box::mrk:
-		break;
-	}
-	pmc_box->set_params(map_range, visible_obj);
+  pmc_box->get_params(map_range, visible_obj);
+  switch (pmc_box->get_command())
+    {
+    case c_map_cfg_box::range_up:
+      if(map_range < 10000000){
+	map_range *= 10.f;
+	recalc_range();
+      }
+      break;
+    case c_map_cfg_box::range_down:
+      if(map_range > 100){
+	map_range *= 0.1f;
+	recalc_range();
+      }
+      break;
+    case c_map_cfg_box::wp:
+      break;
+    case c_map_cfg_box::vsl:
+      break;
+    case c_map_cfg_box::cl:
+      bupdate_map = true;
+      break;
+    case c_map_cfg_box::mrk:
+      break;
+    }
+  pmc_box->set_params(map_range, visible_obj);
 }
 
 void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new)
 {
-	if (!m_ch_wp){
-		cerr << "No waypoint channel is connected to filter " << m_name << endl;
-		return;
-	}
-
-	m_ch_wp->lock();
-	bool bno_focused_wp = m_ch_wp->get_focus() == m_ch_wp->get_num_wps();
-	s_wp fwp;
-
-	unsigned int rt, spd, wp;
-	prc_box->get_params(wp, spd, rt);
-	if (!bno_focused_wp)
-		fwp = m_ch_wp->get_focused_wp();
-	else{
-		fwp.v = (float)spd;	
-	}
-
-	switch (prc_box->get_command())
-	{
-	case c_route_cfg_box::wp_prev:
-		m_ch_wp->prev_focus();
-		wp = m_ch_wp->get_focus();
-		owp.set_focus(wp);	
-		bno_focused_wp = wp == m_ch_wp->get_num_wps();
-		if (!bno_focused_wp)
-			fwp = m_ch_wp->get_focused_wp();
-		break;
-	case c_route_cfg_box::wp_next:
-		m_ch_wp->next_focus();
-		wp = m_ch_wp->get_focus();
-		owp.set_focus(wp);
-		bno_focused_wp = wp == m_ch_wp->get_num_wps();
-		if (!bno_focused_wp)
-			fwp = m_ch_wp->get_focused_wp();
-		break;
+  if (!m_ch_wp){
+    cerr << "No waypoint channel is connected to filter " << m_name << endl;
+    return;
+  }
+  
+  m_ch_wp->lock();
+  bool bno_focused_wp = m_ch_wp->get_focus() == m_ch_wp->get_num_wps();
+  s_wp fwp;
+  
+  unsigned int rt, spd, wp;
+  prc_box->get_params(wp, spd, rt);
+  if (!bno_focused_wp)
+    fwp = m_ch_wp->get_focused_wp();
+  else{
+    fwp.v = (float)spd;	
+  }
+  
+  switch (prc_box->get_command())
+    {
+    case c_route_cfg_box::wp_prev:
+      m_ch_wp->prev_focus();
+      wp = m_ch_wp->get_focus();
+      owp.set_focus(wp);	
+      bno_focused_wp = wp == m_ch_wp->get_num_wps();
+      if (!bno_focused_wp)
+	fwp = m_ch_wp->get_focused_wp();
+      break;
+    case c_route_cfg_box::wp_next:
+      m_ch_wp->next_focus();
+      wp = m_ch_wp->get_focus();
+      owp.set_focus(wp);
+      bno_focused_wp = wp == m_ch_wp->get_num_wps();
+      if (!bno_focused_wp)
+	fwp = m_ch_wp->get_focused_wp();
+      break;
 	case c_route_cfg_box::wp_spd_up:
-		fwp.v += 1.0;
-		fwp.v = min(fwp.v, 40.0f);
-		break;
-	case c_route_cfg_box::wp_spd_down:
-		fwp.v -= 1.0;
-		fwp.v = max(fwp.v, 0.0f);
-		break;
-	case c_route_cfg_box::wp_add:
-		mouse_state_new = ms_add_wp;
-		break;
-	case c_route_cfg_box::wp_del:
-		m_ch_wp->ers();
-		break;
-	case c_route_cfg_box::rt_prev:
-		rt = m_ch_wp->get_route_id();
-		if (rt == 0)
-			rt = MAX_RT_FILES - 1;
-		else
-			rt--;
-		m_ch_wp->set_route_id(rt);
-		break;
-	case c_route_cfg_box::rt_next:
-		rt = m_ch_wp->get_route_id();
-		if (rt == MAX_RT_FILES - 1)
-			rt = 0;
-		else
-			rt++;
-		m_ch_wp->set_route_id(rt);
-		break;
-	case c_route_cfg_box::rt_load:
-		m_ch_wp->set_cmd(ch_wp::cmd_load);
-		break;
-	case c_route_cfg_box::rt_save:
-		m_ch_wp->set_cmd(ch_wp::cmd_save);
-		break;
-	}
+	  fwp.v += 1.0;
+	  fwp.v = min(fwp.v, 40.0f);
+	  break;
+    case c_route_cfg_box::wp_spd_down:
+      fwp.v -= 1.0;
+      fwp.v = max(fwp.v, 0.0f);
+      break;
+    case c_route_cfg_box::wp_add:
+      mouse_state_new = ms_add_wp;
+      break;
+    case c_route_cfg_box::wp_del:
+      m_ch_wp->ers();
+      break;
+    case c_route_cfg_box::rt_prev:
+      rt = m_ch_wp->get_route_id();
+      if (rt == 0)
+	rt = MAX_RT_FILES - 1;
+      else
+	rt--;
+      m_ch_wp->set_route_id(rt);
+      break;
+    case c_route_cfg_box::rt_next:
+      rt = m_ch_wp->get_route_id();
+      if (rt == MAX_RT_FILES - 1)
+	rt = 0;
+      else
+	rt++;
+      m_ch_wp->set_route_id(rt);
+      break;
+    case c_route_cfg_box::rt_load:
+      m_ch_wp->set_cmd(ch_wp::cmd_load);
+      break;
+    case c_route_cfg_box::rt_save:
+      m_ch_wp->set_cmd(ch_wp::cmd_save);
+      break;
+    }
+  
+  if (mouse_state_new == mouse_state){
+    mouse_state = ms_normal;
+  }
+  else{
+    mouse_state = mouse_state_new;
+  }
+  
+  wp = m_ch_wp->get_focus();
 
-	if (mouse_state_new == mouse_state){
-		mouse_state = ms_normal;
-	}
-	else{
-		mouse_state = mouse_state_new;
-	}
-
-	wp = m_ch_wp->get_focus();
-
-	if (!bno_focused_wp && wp < (unsigned int) m_ch_wp->get_num_wps() && wp >= 0)
-		m_ch_wp->get_focused_wp() = fwp;
-	spd = (unsigned int)fwp.v;
-	prc_box->set_params(wp, spd, rt);
-	prc_box->reset_command();
-	m_ch_wp->unlock();
+  if (!bno_focused_wp && wp < (unsigned int) m_ch_wp->get_num_wps() && wp >= 0)
+    m_ch_wp->get_focused_wp() = fwp;
+  spd = (unsigned int)fwp.v;
+  prc_box->set_params(wp, spd, rt);
+  prc_box->reset_command();
+  m_ch_wp->unlock();
 
 }
 
 void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
-	const float xown, const float yown, const float zown,
-	const float vx, const float vy, const float yaw)
+				 const float xown, const float yown, const float zown,
+				 const float vx, const float vy, const float yaw)
 {
-	{
-		glm::mat4 tm(1.0);
-		tm = glm::translate(tm, -pt_map_center_ecef);
-		glm::mat4 rm(1.0);
-		double * ptr = Rmap.ptr<double>();
-		rm[0][0] = (float)ptr[0]; rm[1][0] = (float)ptr[1]; rm[2][0] = (float)ptr[2];
-		rm[0][1] = (float)ptr[3]; rm[1][1] = (float)ptr[4]; rm[2][1] = (float)ptr[5];
-		rm[0][2] = (float)ptr[6]; rm[1][2] = (float)ptr[7]; rm[2][2] = (float)ptr[8];
-		mm = rm * tm;
-	}
-
-	if (pvm_box->get_mode() == ui_mode_fpv){ // calculating projection matrix
-		float c, s, th = (float)(dir_cam_hdg + yaw * PI / 180.);
-		c = (float)cos(th);
-		s = (float)sin(th);
-
-		float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
-		pm = glm::perspective((float)(fov_cam_y * PI / 180.0f), ratio, 1.f, 30e6f);
-		vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(s, c, height_cam), glm::vec3(0, 0, 1));
-		pvm = pm * vm;
-		
-		own_ship.disable();
-	}
-	else if (pvm_box->get_mode() == ui_mode_map){
-		float rx, ry, rz;
-		eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z, xown, yown, zown, rx, ry, rz);
-		own_ship.enable();
-		own_ship.set_param(rx, ry, rz, yaw, vx, vy, pix_per_meter);
-
-		float wx = (float)(meter_per_pix * (m_sz_win.width >> 1)),
-			wy = (float)(meter_per_pix * (m_sz_win.height >> 1));
-
-		pm = glm::ortho(-wx, wx, -wy, wy, 1.f, 30e6f);
-		vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-		pvm = pm * vm;
-	}
+  {
+    glm::mat4 tm(1.0);
+    tm = glm::translate(tm, -pt_map_center_ecef);
+    glm::mat4 rm(1.0);
+    double * ptr = Rmap.ptr<double>();
+    rm[0][0] = (float)ptr[0]; rm[1][0] = (float)ptr[1]; rm[2][0] = (float)ptr[2];
+    rm[0][1] = (float)ptr[3]; rm[1][1] = (float)ptr[4]; rm[2][1] = (float)ptr[5];
+    rm[0][2] = (float)ptr[6]; rm[1][2] = (float)ptr[7]; rm[2][2] = (float)ptr[8];
+    mm = rm * tm;
+  }
+  
+  if (pvm_box->get_mode() == ui_mode_fpv){ // calculating projection matrix
+    float c, s, th = (float)(dir_cam_hdg + yaw * PI / 180.);
+    c = (float)cos(th);
+    s = (float)sin(th);
+    
+    float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
+    pm = glm::perspective((float)(fov_cam_y * PI / 180.0f), ratio, 1.f, 30e6f);
+    vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(s, c, height_cam), glm::vec3(0, 0, 1));
+    pvm = pm * vm;
+    
+    own_ship.disable();
+  }
+  else if (pvm_box->get_mode() == ui_mode_map){
+    float rx, ry, rz;
+    eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z, xown, yown, zown, rx, ry, rz);
+    own_ship.enable();
+    own_ship.set_param(rx, ry, rz, yaw, vx, vy, pix_per_meter);
+    
+    float wx = (float)(meter_per_pix * (m_sz_win.width >> 1)),
+      wy = (float)(meter_per_pix * (m_sz_win.height >> 1));
+    
+    pm = glm::ortho(-wx, wx, -wy, wy, 1.f, 30e6f);
+    vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+    pvm = pm * vm;
+  }
 }
 
 void f_aws1_ui::_cursor_position_callback(double xpos, double ypos){
-	pt_mouse.x = (float)(xpos - (double)(m_sz_win.width >> 1));
-	pt_mouse.y = (float)((double)(m_sz_win.height >> 1) - ypos);
+  pt_mouse.x = (float)(xpos - (double)(m_sz_win.width >> 1));
+  pt_mouse.y = (float)((double)(m_sz_win.height >> 1) - ypos);
 }
 
 void f_aws1_ui::_mouse_button_callback(int button, int action, int mods)
 {
-	mouse_button = button;
-	mouse_action = action;
-	mouse_mods = mods;
+  mouse_button = button;
+  mouse_action = action;
+  mouse_mods = mods;
 }
 
 void f_aws1_ui::_key_callback(int key, int scancode, int action, int mods)

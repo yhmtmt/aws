@@ -34,11 +34,11 @@
 #define MAX_RT_FILES 10
 
 enum e_ui_mode {
-	ui_mode_fpv, ui_mode_map, ui_mode_sys, ui_mode_undef
+  ui_mode_fpv, ui_mode_map, ui_mode_sys, ui_mode_undef
 };
 
 enum e_ui_obj{
-	ui_obj_wp = 0, ui_obj_vsl, ui_obj_mrk, ui_obj_cl, ui_obj_undef 
+  ui_obj_wp = 0, ui_obj_vsl, ui_obj_mrk, ui_obj_cl, ui_obj_undef 
 };
 
 #include "f_aws1_ui_util/c_ui_box.h"
@@ -46,39 +46,42 @@ enum e_ui_obj{
 
 class f_aws1_ui: public f_glfw_window
 {
-public:
-	enum e_obj_type{
-		ot_wp, ot_cl, ot_ais, ot_mark, ot_nul
-	};
-
-	struct s_obj{
-		e_obj_type type;
-		int handle;
-		s_obj():type(ot_nul), handle(-1){}
-	};
-
-	enum e_mouse_state{
-		ms_add_wp, ms_drag, ms_normal
-	} mouse_state;
-
+ public:
+  enum e_obj_type{
+    ot_wp, ot_cl, ot_ais, ot_mark, ot_nul
+  };
+  
+  struct s_obj{
+    e_obj_type type;
+    int handle;
+  s_obj():type(ot_nul), handle(-1){}
+  };
+  
+  enum e_mouse_state{
+    ms_add_wp, ms_drag, ms_normal
+  } mouse_state;
+  
  private:
-	 void cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy);
-
-	 bool m_verb;
-
-	 ////////////////////////////////////////// Channel Declaration
-
-  ch_state * m_state;					// required
-  ch_eng_state * m_engstate;                         //
-  ch_aws1_sys * m_ch_sys;				// is not used
+  void cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy);
+  
+  bool m_verb;
+  
+  ////////////////////////////////////////// Channel Declaration  
+  ch_state * m_state;			// required
+  ch_eng_state * m_engstate;            // optional
+  ch_aws1_sys * m_ch_sys;		// is not used
   ch_aws1_ctrl_inst * m_ch_ctrl_inst;	// optional
   ch_aws1_ctrl_stat * m_ch_ctrl_stat;   // optional
-  ch_wp * m_ch_wp;						// optional, ref. update_route_cfg_box(), update_route(), add_waypoint()
-  ch_map * m_ch_map;					// optional, ref. update_map()
-  ch_obj * m_ch_obj;					// is not used
-  ch_ais_obj * m_ch_ais_obj;			// optional, ref. update_ais_obj()
-  ch_obst * m_ch_obst;					// is not used
-  ch_aws1_ap_inst * m_ch_ap_inst;		// optional, ref. update_ctrl_mode_box(), handle_ctrl_csr()
+  ch_wp * m_ch_wp;	 	        // optional,
+                                        //ref. update_route_cfg_box(),
+                                        //     update_route(), add_waypoint()
+  ch_map * m_ch_map;			// optional, ref. update_map()
+  ch_obj * m_ch_obj;			// is not used
+  ch_ais_obj * m_ch_ais_obj;		// optional, ref. update_ais_obj()
+  ch_obst * m_ch_obst;			// is not used
+  ch_aws1_ap_inst * m_ch_ap_inst;	// optional,
+                                        // ref. update_ctrl_mode_box(),
+                                        //      handle_ctrl_csr()
 
   char m_path_storage[1024]; // path string to the storage
 
@@ -86,60 +89,70 @@ public:
   char fvs[1024], ffs[1024], ftex[1024], ftexinf[1024];
   GLuint p;// shader program
   GLuint loc_mode /* rendering mode flag. See glsl.*/ , 
-	  loc_gcolor /* object color */ , loc_gcolorb /* object background color */,
-	  loc_pos2d /* 2d point */, loc_inv_sz_half_scrn /* inverse half screen size */,
-	  loc_Mmvp /* transform matrix */ , loc_Mm /* object rotation/translation matrix */, 
-	  loc_Lpar /* Light direction */, loc_sampler /* Texture sampler */, 
-	  loc_depth2d, loc_position, loc_normal, loc_texcoord;
+    loc_gcolor /* object color */ , loc_gcolorb /* object background color */,
+    loc_pos2d /* 2d point */, loc_inv_sz_half_scrn /* inverse half screen size */,
+    loc_Mmvp /* transform matrix */ , loc_Mm /* object rotation/translation matrix */, 
+    loc_Lpar /* Light direction */, loc_sampler /* Texture sampler */, 
+    loc_depth2d, loc_position, loc_normal, loc_texcoord;
   float inv_sz_half_scrn[2], fov_cam_x, fov_cam_y, fcam, ifcam, height_cam, dir_cam_hdg, dir_cam_hdg_drag;
   float iRE, height_cam_ec, dhorizon_cam, dhorizon_arc, zhorizon, th_horizon;
   bool setup_shader();
-
+  
   /////////////////////////////////////////// graphics elements. 
   // The elements can be used by changing position, scale, and rotation for each graphics artifacts.
-  c_gl_2d_obj orect /* 2d rectangle */, otri /* 2d triangle */, ocirc /* 2d circle */;
-  c_gl_text_obj otxt /* Text */;
+  c_gl_2d_obj orect      /* 2d rectangle */,
+              otri       /* 2d triangle */,
+              ocirc      /* 2d circle */;
+  c_gl_text_obj otxt     /* Text */;
   c_gl_2d_line_obj oline /* 2d line */;
-  c_gl_line_obj oline3d /* 3d line */;
-
+  c_gl_line_obj oline3d  /* 3d line */;
+  
   void render_gl_objs(); // renders all elements above declared.
 
   // ui boxes
   c_aws_ui_box_manager uim;
-  void handle_updated_ui_box(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box, c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box);
+  void handle_updated_ui_box(c_view_mode_box * pvm_box,
+			     c_ctrl_mode_box * pcm_box,
+			     c_map_cfg_box * pmc_box,
+			     c_route_cfg_box * prc_box);
  
   void update_view_mode_box(c_view_mode_box * pvm_box);
   void update_ctrl_mode_box(c_ctrl_mode_box * pcm_box);
   void update_map_cfg_box(c_map_cfg_box * pmc_box);
-  void update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new);
+  void update_route_cfg_box(c_route_cfg_box * prc_box,
+			    e_mouse_state mouse_state_new);
   void update_ui_params(c_view_mode_box * pvm_box,
-	  const float xown, const float yown, const float zown,
-	  const float vx, const float vy, const float yaw);
+			const float xown, const float yown, const float zown,
+			const float vx, const float vy, const float yaw);
  
   // Indicator
   c_indicator ind;
   void update_indicator(const float cog, const float sog, 
 	  const float roll, const float pitch, const float yaw)
   {   
-    ind.set_param(m_stat.meng_aws, m_stat.seng_aws, m_stat.rud_aws, (float)(cog * (PI / 180.f)), sog,
-		  (float)(yaw * (PI / 180.f)), (float)(pitch* (PI / 180.f)), (float)(roll* (PI / 180.f)));
+    ind.set_param(m_stat.meng_aws, m_stat.seng_aws, m_stat.rud_aws,
+		  (float)(cog * (PI / 180.f)),
+		  sog,
+		  (float)(yaw * (PI / 180.f)),
+		  (float)(pitch* (PI / 180.f)),
+		  (float)(roll* (PI / 180.f)));
     ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
   }
 
   //////////////////////////////////////////// map objects
-  float sz_mark;			// Basic size of each object.
+  float sz_mark;		// Basic size of each object.
   vector<bool> visible_obj; // Visible objects (copied from map_cfg_box), the index is e_obj_type
 
   c_map_waypoint_obj owp;	// waypoint object
-  int num_max_wps;			// maximum number of waypoints user can create.
+  int num_max_wps;		// maximum number of waypoints user can create.
 
-  c_map_coast_line_obj coast_line;	// coast line object
-  bool bupdate_map;					// flag to notify reload the map 
-  glm::vec3 pt_prev_map_update;		// position previous map update invoked. 
+  c_map_coast_line_obj coast_line; // coast line object
+  bool bupdate_map;		// flag to notify reload the map 
+  glm::vec3 pt_prev_map_update;	// position previous map update invoked. 
 								    //(if the distance from the point has been larger than map range, bupdate_map is asserted.) 
 
   c_map_ais_obj oais;		// ais object
-  int num_max_ais;			// maximum number of ais objects ui can draw.
+  int num_max_ais;	        // maximum number of ais objects ui can draw.
 
   void update_ais_objs();
   void update_route(c_route_cfg_box * prc_box);
@@ -189,43 +202,32 @@ public:
   int mouse_button, mouse_action, mouse_mods;
   s_obj obj_mouse_on;
 
-  // calc_mouse_enu_and_ecef_pos calculates global position the mouse pointer is pointing on. 
+  // calc_mouse_enu_and_ecef_pos calculates global position the mouse
+  // pointer is pointing on. 
   void calc_mouse_enu_and_ecef_pos(e_ui_mode vm, Mat & Rown,
-	  const float lat, const float lon, 
-	  const float xown, const float yown, const float zown, const float yaw);
+				   const float lat, const float lon, 
+				   const float xown, const float yown,
+				   const float zown, const float yaw);
 
-  // these event handlers are called when the mouse event isnot handled in ui boxes. 
-  void handle_base_mouse_event(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-			       c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box)
-  {
-    if (mouse_button == GLFW_MOUSE_BUTTON_LEFT){
-      if (mouse_action == GLFW_PRESS){
-	handle_mouse_lbtn_push(pvm_box, pcm_box, pmc_box, prc_box);
-      }
-      else if (mouse_action == GLFW_RELEASE){
-	handle_mouse_lbtn_release(pvm_box, pcm_box, pmc_box, prc_box);
-      }
-      clear_mouse_state();
-    }
-    else{
-      handle_mouse_mv(pvm_box, pcm_box, pmc_box, prc_box);
-    }
-    
-    if (obj_mouse_on.type == ot_nul){
-      ocsr.enable_pos();
-      ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
-    }
-    else {
-      ocsr.disable();
-    }
-  }
+  // these event handlers are called when the mouse event isnot handled in
+  // ui boxes. 
+  void handle_base_mouse_event(c_view_mode_box * pvm_box,
+			       c_ctrl_mode_box * pcm_box,
+			       c_map_cfg_box * pmc_box,
+			       c_route_cfg_box * prc_box);
   
-  void handle_mouse_lbtn_push(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	  c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box);
-  void handle_mouse_lbtn_release(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	  c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box);
-  void handle_mouse_mv(c_view_mode_box * pvm_box, c_ctrl_mode_box * pcm_box,
-	  c_map_cfg_box * pmc_box, c_route_cfg_box * prc_box);
+  void handle_mouse_lbtn_push(c_view_mode_box * pvm_box,
+			      c_ctrl_mode_box * pcm_box,
+			      c_map_cfg_box * pmc_box,
+			      c_route_cfg_box * prc_box);
+  void handle_mouse_lbtn_release(c_view_mode_box * pvm_box,
+				 c_ctrl_mode_box * pcm_box,
+				 c_map_cfg_box * pmc_box,
+				 c_route_cfg_box * prc_box);
+  void handle_mouse_mv(c_view_mode_box * pvm_box,
+		       c_ctrl_mode_box * pcm_box,
+		       c_map_cfg_box * pmc_box,
+		       c_route_cfg_box * prc_box);
   void handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp);
   void clear_mouse_state()
   {
@@ -233,6 +235,7 @@ public:
 	  mouse_action = -1;
 	  mouse_mods = -1;
   }
+  
   void add_waypoint(c_route_cfg_box * prc_box);
   void drag_waypoint();
   void drag_cam_dir();
@@ -258,9 +261,9 @@ public:
 
   // video/screen capture related members
   VideoWriter m_vw;
-  bool m_bsvw; // screen video write
-  bool m_bss; // screen shot
-  Mat m_simg;	// screen img
+  bool m_bsvw;         // screen video write
+  bool m_bss;          // screen shot
+  Mat m_simg;	       // screen img
   void print_screen();
 
   // glfw event handler 
