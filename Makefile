@@ -282,10 +282,12 @@ DBoW2: $(DBOW2_OBJS)
 	$(CC) $(FLAGS) -c -MMD -MP $< -o $@
 
 clean:
-	rm -f *.o $(FDIR)/*.o $(CDIR)/*.o $(UDIR)/*.o
-	rm -f *.d $(FDIR)/*.d $(CDIR)/*.d $(UDIR)/*.d	
-	cd $(UDIR); make clean
-	cd $(RCMD_DIR); make clean
+	find . -type f -name '*.o' -delete
+	find . -type f -name '*.d' -delete
+#	rm -f *.o $(FDIR)/*.o $(CDIR)/*.o $(UDIR)/*.o
+#	rm -f *.d $(FDIR)/*.d $(CDIR)/*.d $(UDIR)/*.d	
+#	cd $(UDIR); make clean
+#	cd $(RCMD_DIR); make clean
 	rm -f aws
 	rm -f t2str
 	rm -f log2txt

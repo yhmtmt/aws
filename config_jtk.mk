@@ -8,8 +8,8 @@ GLFW_WINDOW = y
 
 # n: disable all the imaging and image processing filter later
 IMGPROC = y
-AVT_CAM = y
-VMB_CAM = n
+AVT_CAM = n
+VMB_CAM = y
 UVC_CAM = y
 GST_CAM = y
 SANYO_HD5400 = n
@@ -30,7 +30,7 @@ LIB_CV_DIR = /usr/local/lib
 INC_PVAPI_DIR = $(CUR_DIR)/PvAPI/include
 LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
-LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_64bit
+LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/arm_32bit
 INC_GLFW_DIR = $(CUR_DIR)/GLFW/include
 LIB_GLFW_DIR = $(CURDIR)/GLFW/lib
 INC_EIGEN_DIR = /usr/include/eigen3
