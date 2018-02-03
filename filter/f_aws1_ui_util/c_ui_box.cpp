@@ -1130,9 +1130,11 @@ c_indicator::~c_indicator()
 }
 
 void c_indicator::create_engine_indicator(int & heng_in, int & heng_out,
-  int & heng_n, int & heng_f, int & heng_b,
-  glm::vec2 & pos, const glm::vec2 & sz_fnt,
-  const glm::vec4 & clr)
+					  int & heng_n, int & heng_f,
+					  int & heng_b,
+					  glm::vec2 & pos,
+					  const glm::vec2 & sz_fnt,
+					  const glm::vec4 & clr)
 {
   glm::vec2
     pos_eng,
@@ -1179,8 +1181,8 @@ void c_indicator::create_engine_indicator(int & heng_in, int & heng_out,
 }
 
 void c_indicator::update_engine_indicator(int & heng_in, int & heng_n,
-  int & heng_f, int & heng_b,
-  const unsigned char val)
+					  int & heng_f, int & heng_b,
+					  const unsigned char val)
 {
   glm::vec2 scl(scl_eng.x, scl_eng.y *  abs((int)val - (int)127) * (1 / 127.));
   porect->config_scale(heng_in, scl);
@@ -1220,8 +1222,8 @@ void c_indicator::update_engine_indicator(int & heng_in, int & heng_n,
 }
 
 void c_indicator::create_rudder_indicator(glm::vec2 & pos,
-  const glm::vec2 & sz_fnt,
-  const glm::vec4 & clr)
+					  const glm::vec2 & sz_fnt,
+					  const glm::vec4 & clr)
 {
   glm::vec2 pos_rud_in, pos_rud_out, scl_rud_in, scl_rud_out;
   scl_rud_in.x = 0;
@@ -1258,7 +1260,9 @@ void c_indicator::update_rudder_indicator()
   porect->config_scale(hrud_in, scl);
 }
 
-void c_indicator::create_sog_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt, const glm::vec4 & clr)
+void c_indicator::create_sog_indicator(glm::vec2 & pos,
+				       const glm::vec2 & sz_fnt,
+				       const glm::vec4 & clr)
 {
 #define RAD_SOG_ARC 6.5
 #define NUM_SOG_SCALE (2*(SOG_STEP-1)+1)
@@ -1659,9 +1663,9 @@ void c_indicator::update_hc_indicator()
 }
 
 bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
-  c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
-  const glm::vec2 & sz_fnt, const glm::vec4 & clr,
-  const float fovx, const glm::vec2 & sz_scrn)
+		       c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
+		       const glm::vec2 & sz_fnt, const glm::vec4 & clr,
+		       const float fovx, const glm::vec2 & sz_scrn)
 {
   poline = _poline;
   potxt = _potxt;
@@ -1712,7 +1716,8 @@ bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
 }
 
 void c_indicator::set_param(
-			    const unsigned char _meng, const unsigned char _seng, const unsigned char _rud,
+			    const unsigned char _meng,
+			    const unsigned char _seng, const unsigned char _rud,
 			    const float _cog, const float _sog,
 			    const float _yaw, const float _pitch, const float _roll)
 {

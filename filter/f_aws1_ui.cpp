@@ -51,7 +51,8 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   m_state(NULL), m_engstate(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL),
   m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL),
   m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL),
-  m_ch_ap_inst(NULL), m_js_id(0), m_bsvw(false), m_bss(false),
+  m_ch_ap_inst(NULL), m_ch_cam(NULL),
+  m_js_id(0), m_bsvw(false), m_bss(false),
   fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f),
   dir_cam_hdg_drag(0.f), num_max_wps(100), num_max_ais(100),
   bupdate_map(true), pt_prev_map_update(0, 0, 0),
@@ -73,6 +74,8 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   register_fpar("ch_obst", (ch_base**)&m_ch_obst, typeid(ch_obst).name(), "Obstacle channel.");
   register_fpar("ch_ap_inst", (ch_base**)&m_ch_ap_inst, typeid(ch_aws1_ap_inst).name(), "Autopilot instruction channel");
 
+  register_fpar("ch_cam", (ch_base**)&m_ch_cam, typeid(ch_image_ref).name(), "Maincamera Image channel.");
+  
   fvs[0] = ffs[0] = '\0';
   register_fpar("fvs", fvs, 1024, "File path to the vertex shader program.");
   register_fpar("ffs", ffs, 1024, "File path to the fragment shader program.");
@@ -641,6 +644,31 @@ void f_aws1_ui::render_gl_objs()
   // the image is completely fitted to the screen
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  if(!m_cam.empty()){
+    double s = (double) m_sz_win.width / (double) m_cam.cols;
+    int w = m_sz_win.width;
+    int h = (int)(s * (double)m_cam.rows);
+    int hcut = h - m_sz_win.height;
+    Mat roi;
+    if(hcut > 0){
+      int hcut_half =  (int)(0.5 * (double) hcut / s);
+      roi = m_cam(Rect(0,  hcut_half, w, m_cam.rows - hcut_half));
+      h = m_sz_win.height;
+      hcut = 0;
+    }else{
+      roi = m_cam;
+    }
+    
+    Mat temp;
+    resize(m_cam, temp, Size(w, h));
+    cnvCVBGR8toGLRGB8(temp);
+    glRasterPos2f(-1.,
+		  (float)(1.0 + (double)hcut * 0.5 / (double)m_sz_win.height));
+    
+    glDrawPixels(temp.cols, temp.rows, GL_RGB, GL_UNSIGNED_BYTE, temp.data);   
+  }
+
+  glRasterPos2i(-1, -1);
   
   glUseProgram(p);
   glUniform2fv(loc_inv_sz_half_scrn, 1, inv_sz_half_scrn);
@@ -667,6 +695,11 @@ void f_aws1_ui::render_gl_objs()
 
 bool f_aws1_ui::proc()
 {
+  if (m_ch_cam){
+    m_fmt_cam = m_ch_cam->get_fmt();
+    m_cam = m_ch_cam->get_img_clone(m_tcam, m_frm_cam);    
+  }
+  
   c_view_mode_box * pvm_box =
     dynamic_cast<c_view_mode_box*>(uim.get_ui_box(c_aws_ui_box_manager::view_mode));
   c_ctrl_mode_box * pcm_box = 

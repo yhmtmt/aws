@@ -304,6 +304,14 @@ class ch_image_ref: public ch_image
     ifrm = m_ifrm[m_front];
     return img;
   }
+
+  virtual Mat get_img_clone(long long & t, long long & ifrm){
+    unique_lock<mutex> lock(m_mtx_fr);
+    Mat img = m_img[m_front].clone();
+    t = m_time[m_front];
+    ifrm = m_ifrm[m_front];
+    return img;   
+  }
   
   virtual void set_img(Mat & img, long long t){
     unique_lock<mutex> lock_bk(m_mtx_bk);

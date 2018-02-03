@@ -82,6 +82,7 @@ class f_aws1_ui: public f_glfw_window
   ch_aws1_ap_inst * m_ch_ap_inst;	// optional,
                                         // ref. update_ctrl_mode_box(),
                                         //      handle_ctrl_csr()
+  ch_image_ref * m_ch_cam;
 
   char m_path_storage[1024]; // path string to the storage
 
@@ -106,6 +107,9 @@ class f_aws1_ui: public f_glfw_window
   c_gl_text_obj otxt     /* Text */;
   c_gl_2d_line_obj oline /* 2d line */;
   c_gl_line_obj oline3d  /* 3d line */;
+  Mat m_cam;                   // main camera image
+  long long m_tcam, m_frm_cam; // time and frame number m_cam grabbed
+  e_imfmt m_fmt_cam;           // image format of main camera
   
   void render_gl_objs(); // renders all elements above declared.
 
