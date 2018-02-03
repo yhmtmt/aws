@@ -153,9 +153,12 @@ c_aws_ui_box_manager::~c_aws_ui_box_manager()
 }
 
 bool c_aws_ui_box_manager::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
-  c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline,
-  const glm::vec4 & _clr, const glm::vec4 & _bkgclr, const glm::vec2 & _sz_font,
-  const float fovx, const glm::vec2 & _sz_screen)
+				c_gl_text_obj * _potxt,
+				c_gl_2d_line_obj * _poline,
+				const glm::vec4 & _clr,
+				const glm::vec4 & _bkgclr,
+				const glm::vec2 & _sz_font,
+				const float fovx, const glm::vec2 & _sz_screen)
 {
   clr = _clr;
   bkgclr = _bkgclr;
