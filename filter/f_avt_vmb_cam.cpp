@@ -85,7 +85,8 @@ namespace avt_vmb_cam{
       "update",
       "verb",
       "channel",
-      "fmt_out"      
+      "fmt_out",
+      "fcampar"
     };
   
   const char * f_avt_vmb_cam::expFeature[FeatureUndef] = {
@@ -146,7 +147,8 @@ namespace avt_vmb_cam{
     "Updates dynamic parameters",
     "Verbose for debug",    
     "Image channel",
-    "Output format"
+    "Output format",
+    "File path to the camera parameter"
   };
   
   const char * f_avt_vmb_cam::strAcquisitionMode[(unsigned long long)eAcquisitionMode::Undef] = {
@@ -313,6 +315,8 @@ namespace avt_vmb_cam{
     register_fpar(pstr[channel], (ch_base**)&par.pch, typeid(ch_image_ref).name(), "Image channel");
 
     register_fpar(pstr[fmt_out], (int*)&par.fmt_out, (int)IMF_Undef, str_imfmt, expFeature[fmt_out]);
+    register_fpar(pstr[fcampar], par.fcampar, 1024, expFeature[fcampar]);
+    par.fcampar[0] = '\0';
   }
   
   f_avt_vmb_cam::s_cam_params

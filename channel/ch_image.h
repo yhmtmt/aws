@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with ch_image.h.  If not, see <http://www.gnu.org/licenses/>. 
 
+#include "../util/aws_vlib.h"
 #include "ch_base.h"
 
 enum e_imfmt{
@@ -54,26 +55,15 @@ protected:
   long long m_tfile;	 // time fwrite called
   
   mutex m_mtx_bk, m_mtx_fr;
-  bool m_bfisheye;
-  bool m_bparam[ECP_K6+1];
-  double m_param[ECP_K6+1];
-  bool m_brvec;
-  bool m_bR;
-  union{
-    double rvec[3];
-    double R[9];
-  };
-  double tvec[3];
+
+  AWSCamPar m_campar;
+  AWSAttitude m_camatt;
 	
  public:
- ch_image(const char * name) :ch_base(name), m_bfisheye(false), m_brvec(true), m_bR(false), m_front(0), m_back(1), m_tfile(0), m_offset(0, 0), m_sz_sensor(0, 0), fmt(IMF_Undef)
+ ch_image(const char * name) :ch_base(name), m_front(0), m_back(1), m_tfile(0), m_offset(0, 0), m_sz_sensor(0, 0), fmt(IMF_Undef)
   {
     m_time[0] = m_time[1] = 0;
     m_ifrm[0] = m_ifrm[1] = -1;
-    
-    for(int i = 0; i < ECP_K6 + 1; i++){
-      m_bparam[i] = false;
-    }
   }
   
   virtual ~ch_image()
@@ -105,94 +95,35 @@ protected:
     sh = m_sz_sensor.height;
   }
   
-  void reset_campar()
-  {
-    for(int i = 0; i < ECP_K6 + 1; i++){
-      m_bparam[i] = false;
-    }
-    m_brvec = m_bR = false;
-  }
   
-  void set_fisheye(bool bfisheye)
-  {
-    m_bfisheye = bfisheye;
-  }
-  
-  void set_int_campar(const e_campar & epar, const double val)
+  void set_int_campar(const AWSCamPar & _campar)
   {
     lock();
-    m_bparam[epar] = true;
-    m_param[epar] = val;
+    m_campar = _campar;
     unlock();
   }
   
-  void set_int_campar(const e_campar_fish & epar, const double val)
+  void get_int_campar(AWSCamPar & _campar)
   {
     lock();
-    m_bparam[epar] = true;
-    m_param[epar] = val;
+    _campar = m_campar;
     unlock();
   }
   
-  bool get_int_campar(const e_campar epar, double & val)
+  void set_ext_campar(const AWSAttitude & _camatt)
   {
     lock();
-    val = m_param[epar];
-    bool r = m_bparam[epar];
-    unlock();
-    return r;
-  }
-  
-  void set_ext_campar(const double * _rvec, const double * _tvec)
-  {
-    lock();
-    m_brvec = true;
-    rvec[0] = _rvec[0];
-    tvec[0] = _tvec[0];
-    rvec[1] = _rvec[1];
-    tvec[1] = _tvec[1];
-    rvec[2] = _rvec[2];
-    tvec[2] = _tvec[2];
+    m_camatt = _camatt;
     unlock();
   }
   
-  bool get_ext_campar(double * _rvec, double * _tvec)
+  void get_ext_campar(AWSAttitude & _camatt)
   {
     lock();
-    _rvec[0] = rvec[0];
-    _tvec[0] = tvec[0];
-    _rvec[1] = rvec[1];
-    _tvec[1] = tvec[1];
-    _rvec[2] = rvec[2];
-    _tvec[2] = tvec[2];
-    bool r = m_brvec;
-    unlock();
-    return 	r;
-  }
-  
-  void set_ext_campar_mat(const double * _R, const double * _tvec)
-  {
-    lock();
-    m_bR = true;
-    memcpy((void*)R, (void*)_R, sizeof(double) * 9);
-    tvec[0] = _tvec[0];
-    tvec[1] = _tvec[1];
-    tvec[2] = _tvec[2];
+    _camatt = m_camatt;
     unlock();
   }
-  
-  bool get_ext_campar_mat(double * _R, double * _tvec)
-  {
-    lock();
-    memcpy((void*)_R, (void*)R, sizeof(double) * 9);
-    _tvec[0] = tvec[0];
-    _tvec[1] = tvec[1];
-    _tvec[2] = tvec[2];
-    bool r = m_bR;
-    unlock();
-    return r;
-  }
-  
+   
   virtual Mat get_img(long long & t) = 0;
   virtual Mat get_img(long long & t, long long & ifrm) = 0;
   virtual void set_img(Mat & img, long long t) = 0;

@@ -993,254 +993,255 @@ void awsFlip(Mat & img, bool xflip, bool yflip, bool chflip);
 class AWSCamPar
 {
 protected:
-	static int version;
-	enum Param {
-		epfx, epfy, epcx, epcy, epk1, epk2, epp1, epp2, epk3, epk4, epk5, epk6
-	};
+  static int version;
+  double par[12];
 
-	enum FishEyeParam{
-		epffx, epffy, epfcx, epfcy, efpk1, epfk2, epfk3, epfk4
-	};
-
-	double par[12];
-
-	Mat P; // projection matrix
-	Mat D; // distortion coefficient
-
-	bool m_bFishEye;
-public:
-	AWSCamPar()
-	{
-		for(int ipar = 0; ipar < 12; ipar++)
-			par[ipar] = 0.;
-	};
-
-	void setFishEye(bool flag){
-		m_bFishEye = flag;
-	};
-
-	bool isFishEye(){
-		return m_bFishEye;
-	}
-
-	double * getCvPrj(){
-		return par;
-	}
-
-	Mat getCvPrjMat(){
-		P = Mat::eye(3, 3, CV_64FC1);
-		double * p = P.ptr<double>();
-		p[0] = par[0];
-		p[2] = par[2];
-		p[4] = par[1];
-		p[5] = par[3];
-		return P;
-	}
-
-	double * getCvDist(){
-		return &par[epk1];
-	}
-
-	double * getCvDistFishEye(){
-		return &par[efpk1];
-	}
-
-	Mat getCvDistMat(){
-		D = Mat(1, 8, CV_64FC1, &par[epk1]);
-		return D;
-	}
-	
-	Mat getCvDistFishEyeMat(){
-		D = Mat(1, 4, CV_64FC1, &par[efpk1]);
-		return D;
-	}
-
-	void setCvPrj(const Mat & P)
-	{
-		const double * pP = P.ptr<double>();
-		double * pPdst = getCvPrj();
-		pPdst[0] = pP[0];
-		pPdst[1] = pP[4];
-		pPdst[2] = pP[2];
-		pPdst[3] = pP[5];
-	}
-
-	void setCvDist(const Mat & D)
-	{
-		const double * pD = D.ptr<double>();
-		double * pDdst = getCvDist();
-		for(int i = 0; i < D.cols; i++){
-			pDdst[i] = pD[i];
-		}
-	}
-
-	bool read(const char * fname);
-	bool write(const char * fname);
+  Mat P; // projection matrix
+  Mat D; // distortion coefficient
+  
+  bool m_bFishEye
+    ;
+ public:
+  enum Param {
+    epfx, epfy, epcx, epcy, epk1, epk2, epp1, epp2, epk3, epk4, epk5, epk6
+  };
+  
+  enum FishEyeParam{
+    epffx, epffy, epfcx, epfcy, efpk1, epfk2, epfk3, epfk4
+  };
+  
+  AWSCamPar()
+    {
+      for(int ipar = 0; ipar < 12; ipar++)
+	par[ipar] = 0.;
+    };
+  
+  void setFishEye(bool flag){
+    m_bFishEye = flag;
+  };
+  
+  bool isFishEye(){
+    return m_bFishEye;
+  }
+  
+  double * getCvPrj(){
+    return par;
+  }
+  
+  Mat getCvPrjMat(){
+    P = Mat::eye(3, 3, CV_64FC1);
+    double * p = P.ptr<double>();
+    p[0] = par[0];
+    p[2] = par[2];
+    p[4] = par[1];
+    p[5] = par[3];
+    return P;
+  }
+  
+  double * getCvDist(){
+    return &par[epk1];
+  }
+  
+  double * getCvDistFishEye(){
+    return &par[efpk1];
+  }
+  
+  Mat getCvDistMat(){
+    D = Mat(1, 8, CV_64FC1, &par[epk1]);
+    return D;
+  }
+  
+  Mat getCvDistFishEyeMat(){
+    D = Mat(1, 4, CV_64FC1, &par[efpk1]);
+    return D;
+  }
+  
+  void setCvPrj(const Mat & P)
+  {
+    const double * pP = P.ptr<double>();
+    double * pPdst = getCvPrj();
+    pPdst[0] = pP[0];
+    pPdst[1] = pP[4];
+    pPdst[2] = pP[2];
+    pPdst[3] = pP[5];
+  }
+  
+  void setCvDist(const Mat & D)
+  {
+    const double * pD = D.ptr<double>();
+    double * pDdst = getCvDist();
+    for(int i = 0; i < D.cols; i++){
+      pDdst[i] = pD[i];
+    }
+  }
+  
+  bool read(const char * fname);
+  bool write(const char * fname);
 };
 
 // Handling attitude (rotation and translation). Representation of the Rotation can be three types: Rotation Matrix, Rotation Vector, and Quarternion.
 // Conversion between any two types are given in the method. But the conversion to quarternion has still overhead due to calculating the norm twice.
 // it could be eliminated easily but I didnt yet.
 struct AWSAttitude{
-	static int version;
-	enum attype { 
-		RMTX = 0, QTAN, RVEC
-	} type;
-
-	union{
-		double pM[9]; // Rotation Matrix
-		double pV[3]; // Rotation Vector
-		double pQ[4]; // Quarternion
-	};
-
-	double t[3];
-
-	AWSAttitude():type(RMTX)
-	{
-		pM[0] = pM[4] = pM[8] = 1.0;
-		pM[1] = pM[2] = pM[3] = pM[5] = pM[6] = pM[7] = 0.0;
-		t[0] = t[1] = t[2] = 0.0;
-	};
-
-	void setT(const Mat & M){
-		const double * ptr = M.ptr<double>();
-		t[0] = ptr[0];
-		t[1] = ptr[1];
-		t[2] = ptr[2];
-		
-	}
-	const Mat getT(){
-		return Mat(3, 1, CV_64FC1, t);
-	}
-
-	void setQtan(const Mat & Q)
-	{
-		const double * ptr = Q.ptr<double>();
-		memcpy((void*) pQ, (const void*) ptr, sizeof(double) * 4);
-		type = QTAN;
-	}
-
-	void cnvQtan()
-	{
-		Mat Q = getQtan();
-		const double * ptr = Q.ptr<double>();
-		pQ[0] = ptr[0];
-		pQ[1] = ptr[1];
-		pQ[2] = ptr[2];
-		pQ[3] = ptr[3];
-	}
-
-	const Mat getQtan(){
-		switch(type){
-		case RVEC:
-			{
-				Mat Q(4, 1, CV_64FC1);
-				double * ptr = Q.ptr<double>();
-				so3toqt(pV, ptr);
-				return Q;
-			}
-			break;
-		case RMTX:
-			{
-				double v[3];
-				Mat Q(4, 1, CV_64FC1);
-				double * ptr = Q.ptr<double>();
-				log_so3(pM, v);
-				so3toqt(v, ptr);
-				return Q;
-			}
-			break;
-		case QTAN:
-			return Mat(4, 1, CV_64FC1, pQ);
-		}
-		return Mat();
-	}
-
-	void setRmtx(const Mat & R)
-	{
-		const double * ptr = R.ptr<double>();
-		memcpy((void*) pM, (const void*) ptr, sizeof(double) * 9);
-		type = RMTX;
-	}
-
-	void cnvRmtx()
-	{
-		Mat M = getRmtx();
-		const double * ptr = M.ptr<double>();
-		for (int i = 0; i < 9; i++)
-			pM[i] = ptr[i];
-	}
-
-	const Mat getRmtx()
-	{
-		switch(type){
-		case RVEC:
-			{
-				Mat R(3, 3, CV_64FC1);
-				double * ptr = R.ptr<double>();
-				exp_so3(pV, ptr);
-				return R;
-			}
-		case RMTX:
-			return Mat(3, 3, CV_64FC1, pM);
-		case QTAN:
-			{
-				Mat Q(3, 1, CV_64FC1);
-				Mat R(3, 3, CV_64FC1);
-				double v[3];
-				double * ptr = R.ptr<double>();
-				qttoso3(pQ, v);
-				exp_so3(pV, ptr);
-				return R;
-			}
-			break;
-		}
-		return Mat();
-	}
-
-	void setRvec(const Mat & V)
-	{
-		const double * ptr = V.ptr<double>();
-		memcpy((void*) pV, (const void*) ptr, sizeof(double) * 3);
-		type = RVEC;
-	}
-
-	void cnvRvec()
-	{
-		const Mat V = getRvec();
-		const double * ptr = V.ptr<double>();
-		pV[0] = ptr[0];
-		pV[1] = ptr[1];
-		pV[2] = ptr[2];
-	}
-
-	const Mat getRvec()
-	{
-		switch(type){
-		case RVEC:
-			return Mat(3, 1, CV_64FC1, pV);
-		case RMTX:
-			{
-				Mat vec = Mat(3, 1, CV_64FC1);
-				double * ptr = vec.ptr<double>();
-				log_so3(pM, ptr);
-				return vec;
-			}
-			break;
-		case QTAN:
-			{
-				Mat Q(4, 1, CV_64FC1);
-				double * ptr = Q.ptr<double>();
-				so3toqt(pV, ptr);
-				return Q;
-			}
-			break;
-		}
-		return Mat();
-	}
-
-	bool read(const char * fname);
-	bool write(const char * fname);
+  static int version;
+  enum attype { 
+    RMTX = 0, QTAN, RVEC
+  } type;
+  
+  union{
+    double pM[9]; // Rotation Matrix
+    double pV[3]; // Rotation Vector
+    double pQ[4]; // Quarternion
+  };
+  
+  double t[3];
+  
+AWSAttitude():type(RMTX)
+  {
+    pM[0] = pM[4] = pM[8] = 1.0;
+    pM[1] = pM[2] = pM[3] = pM[5] = pM[6] = pM[7] = 0.0;
+    t[0] = t[1] = t[2] = 0.0;
+  };
+  
+  void setT(const Mat & M){
+    const double * ptr = M.ptr<double>();
+    t[0] = ptr[0];
+    t[1] = ptr[1];
+    t[2] = ptr[2];
+    
+  }
+  const Mat getT(){
+    return Mat(3, 1, CV_64FC1, t);
+  }
+  
+  void setQtan(const Mat & Q)
+  {
+    const double * ptr = Q.ptr<double>();
+    memcpy((void*) pQ, (const void*) ptr, sizeof(double) * 4);
+    type = QTAN;
+  }
+  
+  void cnvQtan()
+  {
+    Mat Q = getQtan();
+    const double * ptr = Q.ptr<double>();
+    pQ[0] = ptr[0];
+    pQ[1] = ptr[1];
+    pQ[2] = ptr[2];
+    pQ[3] = ptr[3];
+  }
+  
+  const Mat getQtan(){
+    switch(type){
+    case RVEC:
+      {
+	Mat Q(4, 1, CV_64FC1);
+	double * ptr = Q.ptr<double>();
+	so3toqt(pV, ptr);
+	return Q;
+      }
+      break;
+    case RMTX:
+      {
+	double v[3];
+	Mat Q(4, 1, CV_64FC1);
+	double * ptr = Q.ptr<double>();
+	log_so3(pM, v);
+	so3toqt(v, ptr);
+	return Q;
+      }
+      break;
+    case QTAN:
+      return Mat(4, 1, CV_64FC1, pQ);
+    }
+    return Mat();
+  }
+  
+  void setRmtx(const Mat & R)
+  {
+    const double * ptr = R.ptr<double>();
+    memcpy((void*) pM, (const void*) ptr, sizeof(double) * 9);
+    type = RMTX;
+  }
+  
+  void cnvRmtx()
+  {
+    Mat M = getRmtx();
+    const double * ptr = M.ptr<double>();
+    for (int i = 0; i < 9; i++)
+      pM[i] = ptr[i];
+  }
+  
+  const Mat getRmtx()
+  {
+    switch(type){
+    case RVEC:
+      {
+	Mat R(3, 3, CV_64FC1);
+	double * ptr = R.ptr<double>();
+	exp_so3(pV, ptr);
+	return R;
+      }
+    case RMTX:
+      return Mat(3, 3, CV_64FC1, pM);
+    case QTAN:
+      {
+	Mat Q(3, 1, CV_64FC1);
+	Mat R(3, 3, CV_64FC1);
+	double v[3];
+	double * ptr = R.ptr<double>();
+	qttoso3(pQ, v);
+	exp_so3(pV, ptr);
+	return R;
+      }
+      break;
+    }
+    return Mat();
+  }
+  
+  void setRvec(const Mat & V)
+  {
+    const double * ptr = V.ptr<double>();
+    memcpy((void*) pV, (const void*) ptr, sizeof(double) * 3);
+    type = RVEC;
+  }
+  
+  void cnvRvec()
+  {
+    const Mat V = getRvec();
+    const double * ptr = V.ptr<double>();
+    pV[0] = ptr[0];
+    pV[1] = ptr[1];
+    pV[2] = ptr[2];
+  }
+  
+  const Mat getRvec()
+  {
+    switch(type){
+    case RVEC:
+      return Mat(3, 1, CV_64FC1, pV);
+    case RMTX:
+      {
+	Mat vec = Mat(3, 1, CV_64FC1);
+	double * ptr = vec.ptr<double>();
+	log_so3(pM, ptr);
+	return vec;
+      }
+      break;
+    case QTAN:
+      {
+	Mat Q(4, 1, CV_64FC1);
+	double * ptr = Q.ptr<double>();
+	so3toqt(pV, ptr);
+	return Q;
+      }
+      break;
+    }
+    return Mat();
+  }
+  
+  bool read(const char * fname);
+  bool write(const char * fname);
 };
 
 /////////////////////////////////////////////////////////////////////// stereo related 

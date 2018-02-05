@@ -367,6 +367,7 @@ namespace avt_vmb_cam{
       verb,
       channel,
       fmt_out,
+      fcampar,
       FeatureUndef
     };
     
@@ -614,9 +615,11 @@ namespace avt_vmb_cam{
       bool verb;
       ch_image_ref * pch;
       e_imfmt fmt_out;
-      
+      char fcampar[1024];
+      AWSCamPar campar;
       FramePtrVector frmbuf;
       IFrameObserverPtr pObserver;
+      
       bool bopened;
       s_cam_params(int _icam = -1);
       ~s_cam_params();
@@ -813,21 +816,38 @@ namespace avt_vmb_cam{
       {
 	// opening and configuring cameras
 	for (int icam = 0; icam < ncam; icam++){
-	  if (VmbErrorSuccess == psys->OpenCameraByID(pcam_pars[icam]->addr, VmbAccessModeFull, pcam_pars[icam]->pcam)){
-	    cout << icam << "th camera at " << pcam_pars[icam]->addr << " is opened." << endl;
+	  if (VmbErrorSuccess == psys->OpenCameraByID(pcam_pars[icam]->addr,
+						      VmbAccessModeFull,
+						      pcam_pars[icam]->pcam)){
+	    cout << icam << "th camera at " << pcam_pars[icam]->addr
+		 << " is opened." << endl;
 	    pcam_pars[icam]->bopened = true;					
 	  }
 	  else{
-	    cout << icam << "th camera at " << pcam_pars[icam]->addr << " cannot be opened." << endl;
+	    cout << icam << "th camera at " << pcam_pars[icam]->addr
+		 << " cannot be opened." << endl;
 	    
 	    return false;
 	  }
+
+	  // load camera parameter if specified
+	  if(pcam_pars[icam]->fcampar[0]){
+	    if(!pcam_pars[icam]->campar.read(pcam_pars[icam]->fcampar)){
+	      cerr << "Failed to load camera parameter file " <<
+		pcam_pars[icam]->fcampar << endl;
+	      return false;
+	    }
+	    
+	  }
 	  
 	  FeaturePtr pFeature;
-	  if (pcam_pars[icam]->GevSCPSPacketSize == INT_MIN){ // if packet size is not specified
-	    pcam_pars[icam]->pcam->GetFeatureByName("GVSPAdjustPacketSize", pFeature);
+	  if (pcam_pars[icam]->GevSCPSPacketSize == INT_MIN){
+	    // if packet size is not specified
+	    pcam_pars[icam]->pcam->GetFeatureByName("GVSPAdjustPacketSize",
+						    pFeature);
 	    pFeature->RunCommand();
 	  }
+	  
 	  if (config_static_params(*pcam_pars[icam]) == false){
 	    return false;
 	  }
