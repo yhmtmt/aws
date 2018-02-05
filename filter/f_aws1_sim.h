@@ -30,9 +30,11 @@ class f_aws1_sim : public f_base
 {
 protected:
 	ch_state * m_state;
+	ch_eng_state * m_engstate;
 	ch_aws1_ctrl_stat * m_ch_ctrl_stat;
 	ch_aws1_ctrl_inst * m_ch_ctrl_ui, *m_ch_ctrl_ap1, *m_ch_ctrl_ap2;
 
+	long long m_tprev;
 	bool m_ahrs, m_gps;
 	float r, p, y; // roll(deg), pitch(deg), yaw(deg)
 	float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
@@ -41,18 +43,24 @@ protected:
 	s_aws1_ctrl_stat m_stat;
 
 	float m_rud_sta_sim;
-public:
-	f_aws1_sim(const char * name);
+	float m_trud_swing; // in second
+	float m_spd_rud_swing; // rud_sta value per 100n second
+	void simulate_rudder(long long tcur, long long tprev);
 
+	float m_thrtl_eng; // engine throttle
+	float m_rpm_eng;   // engine rpm
+	void simulate_engine(long long tcur, long long trepv);
+
+	float m_mass;	
+	void simulate_dynamics(long long tcur, long long tprev);
+	
 	void select_control_input();
-
-	void simulate_rudder();
-
 	void set_control_output();
 
 	void set_state();
 
-	void simulate_dynamics();
+ public:
+	f_aws1_sim(const char * name);
 
 	virtual bool init_run();
 	virtual void destroy_run();
