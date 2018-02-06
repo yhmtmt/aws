@@ -948,7 +948,6 @@ int ch_eng_state::write(FILE * pf, long long tcur)
 
   int sz = (int)get_dsize();
 
-  lock();
   tf = tcur;
   
   char buf[sz];
@@ -956,8 +955,6 @@ int ch_eng_state::write(FILE * pf, long long tcur)
   (*(long long*) buf) = tcur;
   fwrite(buf, sizeof(char), sz, pf);
   
-  unlock();
-
   return sz + sizeof(long long);
 }
 
@@ -991,11 +988,10 @@ int ch_eng_state::read(FILE * pf, long long tcur)
     if (tf > tcur){
       break;
     }
-    lock();
+
     int res;
     res = fread(buf, sizeof(char), sz, pf);
     write_buf_back(buf);
-    unlock();
   }
 
   return 0;

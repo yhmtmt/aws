@@ -663,7 +663,7 @@ void f_aws1_ui::render_gl_objs()
     resize(m_cam, temp, Size(w, h));
     cnvCVBGR8toGLRGB8(temp);
     glRasterPos2f(-1.,
-		  (float)(1.0 + (double)hcut * 0.5 / (double)m_sz_win.height));
+    		  (float)(1.0 + (double)hcut * 0.5 / (double)m_sz_win.height));
     
     glDrawPixels(temp.cols, temp.rows, GL_RGB, GL_UNSIGNED_BYTE, temp.data);   
   }

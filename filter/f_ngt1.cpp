@@ -147,6 +147,7 @@ bool f_ngt1::proc()
       handle_pgn_eng_state(pfv, eng_state, 0);
       handle_pgn_eng_state(pfv, eng_state2, 1);
 
+      /*
       if(m_verb){
 	cout << "PGN " << pfv->getPgn() << endl;
 	for(int ifv = 0; ifv < pfv->getNumFields(); ifv++){
@@ -158,6 +159,7 @@ bool f_ngt1::proc()
 	  cout << endl;
 	}
       }
+      */
       delete *itr;
     }
     itr = pgn_queue.erase(itr);
@@ -201,7 +203,8 @@ void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch, const
       ch->set_rapid(get_time(),
 		    (float)((double)*pfv->get_vptr<int64_t>(1) * 0.25),
 		    (char)(*pfv->get_vptr<int64_t>(3)));
-      
+      if(m_verb)
+	cout << 127488 << " rpm:" << (float)((double)*pfv->get_vptr<int64_t>(1) * 0.25) << " trim:" << (*pfv->get_vptr<int64_t>(3)) << endl;
       break;
     case 127489:
       if(*pfv->get_vptr<int64_t>(0) != ieng)
@@ -220,24 +223,28 @@ void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch, const
 	unsigned char ld = (unsigned char)(*pfv->get_vptr<int64_t>(11));
 	unsigned char tq = (unsigned char)(*pfv->get_vptr<int64_t>(12));
 	ch->set_dynamic(get_time(), poil, toil, temp, valt, frate, teng, pclnt, pfl, stat1, stat2, ld, tq);
+	if(m_verb)
+	  cout << 127489 << " temp:" << temp << " valt:" << valt << " poil:" << poil << endl; 
       }
       break;
-    case 127497:
+    case 127493:
       if(*pfv->get_vptr<int64_t>(0) != ieng)
 	break;
       ch->set_tran(get_time(),
 		   (StatGear)(*pfv->get_vptr<int64_t>(1)),
 		   (int)(*pfv->get_vptr<int64_t>(3)),
 		   (float)(*pfv->get_vptr<double>(4)));
+      if(m_verb)
+	cout << 127493 << " Gear:" << (*pfv->get_vptr<int64_t>(1)) << endl;
       break;
-    case 127498:
+    case 127497:
       if(*pfv->get_vptr<int64_t>(0) != ieng)
 	break;
       ch->set_trip(get_time(),
 		   (int)(*pfv->get_vptr<int64_t>(1)),
 		   (float)((double)*pfv->get_vptr<int64_t>(2) * 0.1),
 		   (float)((double)*pfv->get_vptr<int64_t>(3) * 0.1),
-		   (float)((double)*pfv->get_vptr<int64_t>(4) * 0.1));			      
+		   (float)((double)*pfv->get_vptr<int64_t>(4) * 0.1));			      if(m_verb)									  cout << 127497 << " fuel used:" << (int)(*pfv->get_vptr<int64_t>(1)) << " Fuel Rate:" << (float)((double)*pfv->get_vptr<int64_t>(2) * 0.1) << endl;
       break;
     }
   }
@@ -368,8 +375,10 @@ void  f_ngt1::ngtMessageReceived(const unsigned char * msg, size_t msgLen)
   }
   *p++ = 0;
  
-  puts(line);
-  fflush(stdout);
+  if(showTxt){
+    puts(line);
+    fflush(stdout);
+  }
 }
 
 void  f_ngt1::n2kMessageReceived(const unsigned char * msg, size_t msgLen)

@@ -296,8 +296,9 @@ bool f_base::stop()
     m_bactive = false;
   }
   if(is_main_thread()){
+    if(!m_bstopped)
+      cout << m_name << " stopped." << endl;
     m_bstopped = true;
-    cout << m_name << " stopped." << endl;
     return true;
   }
   
