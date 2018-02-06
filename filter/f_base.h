@@ -494,7 +494,7 @@ public:
 
 	void get_info(s_cmd & cmd, int ifilter){
 		// currentlly returning filter name, id, number of parameters, number of input channels and output channels.
-	  snprintf(cmd.get_ret_str(), RET_LEN, "%s %d %d %d %d", m_name, ifilter, (int) m_pars.size(), (int) m_chin.size(), (int) m_chout.size());
+	  snprintf(cmd.get_ret_str(), RET_LEN, "%s(%s) %d %d %d %d", m_name, typeid(*this).name(), ifilter, (int) m_pars.size(), (int) m_chin.size(), (int) m_chout.size());
 	}
 
 	bool get_par_info(s_cmd & cmd){

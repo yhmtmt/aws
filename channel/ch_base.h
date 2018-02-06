@@ -78,7 +78,7 @@ public:
 
 	void get_info(s_cmd & rcmd, int ich)
 	{
-		snprintf(rcmd.get_ret_str(), RET_LEN, "%s %d", m_name, ich);
+	  snprintf(rcmd.get_ret_str(), RET_LEN, "%s(%s) %d", m_name, typeid(*this).name(), ich);
 	}
 
 	virtual size_t get_dsize()

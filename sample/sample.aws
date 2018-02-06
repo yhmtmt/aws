@@ -2,9 +2,10 @@
 # This sample only add an f_sample instance and run with 1/5 Hz
 # f_sample simply prints its three parameters internally registered to stdout.
 # you can test how fset/fget work.
-channel sample sample
+channel sample samplei
+channel sample sampleo
 
 filter sample smpl -i -o
-fset smpl ch_sample sample
+fset smpl ch_sample_in samplei ch_sample_out sampleo
 cyc 1
 go
