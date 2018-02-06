@@ -47,7 +47,7 @@ f_test_aws1_ui::f_test_aws1_ui(const char * name):
   m_state(NULL), m_engstate(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL),
   m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL),
   m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL),
-  m_ch_ap_inst(NULL), m_ch_cam(NULL),
+  m_ch_ap_inst(NULL), m_ch_cam(NULL)
 {
     register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_sys", (ch_base**)&m_ch_sys, typeid(ch_aws1_sys).name(), "System property channel");

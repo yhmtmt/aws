@@ -15,6 +15,7 @@
 
 #ifndef _F_TEST_AWS1_UI_H_
 #define _F_TEST_AWS1_UI_H_
+#include "f_base.h"
 
 #include "../channel/ch_image.h"
 #include "../channel/ch_state.h"
