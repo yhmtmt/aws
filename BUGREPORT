@@ -9,6 +9,8 @@ AIS decoder
 remote command
 * Buffer overrun is not checked.
 
+AWS sys
+* chls command should show channel type
 
 #### Solved
 * in windows version, aws_mkdir is not working.

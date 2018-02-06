@@ -172,7 +172,7 @@ void ch_base::register_factory()
 	register_factory<ch_ring<char, 8192> >("crbuf8k");
 	register_factory<ch_state>("state");
 	register_factory<ch_estate>("estate");
-	register_factory<ch_eng_state>("eng_state");
+	register_factory<ch_eng_state>("engstate");
 	register_factory<ch_env>("env");
 	register_factory<ch_volt>("volt");
 	register_factory<ch_map>("map");
