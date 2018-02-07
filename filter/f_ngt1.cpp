@@ -131,6 +131,11 @@ void f_ngt1::destroy_run()
     }
   }
 
+  for(auto itr = pgn_queue.begin(); itr != pgn_queue.end(); itr++)
+    delete *itr;
+
+  pgn_queue.clear();
+  
   heapSize = 0;  
 }
 
