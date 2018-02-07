@@ -77,7 +77,6 @@ class f_gst_cam: public f_base
 
   void control_ppl()
   { 
-    lock_buf();
     if(m_num_frmbuf > (3 * m_sz_frmbuf / 4)){
       if(m_verb)
 	cout << "f_gst_cam::control_ppl() paused. num_frmbuf=" << m_num_frmbuf << " sz_frmbuf=" << m_sz_frmbuf << endl;
@@ -90,7 +89,6 @@ class f_gst_cam: public f_base
       gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PLAYING);
       paused = false;
     }
-    unlock_buf();
   }
   
   bool push_frmbuf(Mat & img, const long long t, const long long frm)
@@ -156,6 +154,8 @@ class f_gst_cam: public f_base
       int res = fread((void*)&t, sizeof(t), 1, m_pfts);
       if(res)
 	push_frmbuf(img, t, m_frm_count);
+      else
+	cout << "Time stamp file is in EOF" << endl;
     }
       
     m_frm_count++;

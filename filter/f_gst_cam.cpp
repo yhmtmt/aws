@@ -88,7 +88,6 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
   if(sample == NULL)
     return GST_FLOW_OK;
   
-  pcam->lock_ppl();  
   GstCaps * caps = gst_sample_get_caps(sample);
   GstStructure * str = gst_caps_get_structure(caps, 0);
   GstBuffer * buffer = gst_sample_get_buffer(sample);
@@ -103,7 +102,6 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
      !gst_structure_get_int(str, "height", &height)){
     if(sz.width == 0 && sz.height == 0){
       g_print("No width/height available\n");
-      pcam->unlock_ppl();
       return GST_FLOW_OK;
     }
   }else{
@@ -150,7 +148,6 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
   gst_buffer_unmap(buffer, &map);
   gst_sample_unref(sample);
 
-  pcam->unlock_ppl();
   return GST_FLOW_OK;
 }
 
@@ -281,7 +278,6 @@ bool f_gst_cam::proc()
   long long frm;
 
   control_ppl();
-  
   if(pop_frmbuf(img, t, frm)){
     if(m_verb){
       cout << "set image t=" << t << " frm=" << frm << endl;
