@@ -48,7 +48,7 @@ class f_gst_cam: public f_base
     Mat img;
   };
   vector<s_frmbuf> m_frmbuf;
-  mutex mtxbuf, mtxppl;
+  mutex mtxbuf;
   void lock_buf()
   {
     mtxbuf.lock();
@@ -59,16 +59,6 @@ class f_gst_cam: public f_base
     mtxbuf.unlock();
   }
 
-  void lock_ppl()
-  {
-    mtxppl.lock();
-  }
-
-  void unlock_ppl()
-  {
-    mtxppl.unlock();
-  }
-  
   void init_frmbuf()
   {
     m_frm_count = m_head_frmbuf = m_tail_frmbuf = m_num_frmbuf = 0;

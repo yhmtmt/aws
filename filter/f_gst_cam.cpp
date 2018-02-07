@@ -269,6 +269,10 @@ void f_gst_cam::destroy_run()
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_NULL);
   gst_object_unref(m_sink); 
   gst_object_unref(GST_OBJECT(m_ppl));
+  if(m_pfts){
+    fclose(m_pfts);
+    m_pfts = NULL;
+  }
 }
 
 bool f_gst_cam::proc()
@@ -405,6 +409,10 @@ void f_gst_enc::destroy_run()
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_NULL);
   gst_object_unref(GST_OBJECT(m_src));  
   gst_object_unref(GST_OBJECT(m_ppl));
+  if(m_pfts){
+    fclose(m_pfts);
+    m_pfts = NULL;
+  }
 }
 
 bool f_gst_enc::proc()
