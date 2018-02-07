@@ -83,10 +83,12 @@ GstFlowReturn f_gst_cam::new_preroll(GstAppSink * appsink, gpointer data)
 GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
 {
   f_gst_cam * pcam = (f_gst_cam*) data;
+
   GstSample * sample =  gst_app_sink_pull_sample(appsink);
   if(sample == NULL)
     return GST_FLOW_OK;
   
+  pcam->lock_ppl();  
   GstCaps * caps = gst_sample_get_caps(sample);
   GstStructure * str = gst_caps_get_structure(caps, 0);
   GstBuffer * buffer = gst_sample_get_buffer(sample);
@@ -101,6 +103,7 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
      !gst_structure_get_int(str, "height", &height)){
     if(sz.width == 0 && sz.height == 0){
       g_print("No width/height available\n");
+      pcam->unlock_ppl();
       return GST_FLOW_OK;
     }
   }else{
@@ -147,6 +150,7 @@ GstFlowReturn f_gst_cam::new_sample(GstAppSink * appsink, gpointer data)
   gst_buffer_unmap(buffer, &map);
   gst_sample_unref(sample);
 
+  pcam->unlock_ppl();
   return GST_FLOW_OK;
 }
 
@@ -252,7 +256,6 @@ bool f_gst_cam::init_run()
 
   cout << "Bufffering video frame ... ";
   while(m_num_frmbuf < m_sz_frmbuf / 4){
-    cout << "buffer " << m_num_frmbuf << "/" << m_sz_frmbuf << endl;
     timespec ts, tsrem;
     ts.tv_sec = 0;
     ts.tv_nsec = cnvTimeNanoSec(f_base::m_clk.get_period());

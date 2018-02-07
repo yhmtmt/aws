@@ -48,36 +48,56 @@ class f_gst_cam: public f_base
     Mat img;
   };
   vector<s_frmbuf> m_frmbuf;
-  mutex mtxbuf;
+  mutex mtxbuf, mtxppl;
+  void lock_buf()
+  {
+    mtxbuf.lock();
+  }
+
+  void unlock_buf()
+  {
+    mtxbuf.unlock();
+  }
+
+  void lock_ppl()
+  {
+    mtxppl.lock();
+  }
+
+  void unlock_ppl()
+  {
+    mtxppl.unlock();
+  }
+  
   void init_frmbuf()
   {
-    m_head_frmbuf = m_tail_frmbuf = m_num_frmbuf = 0;
+    m_frm_count = m_head_frmbuf = m_tail_frmbuf = m_num_frmbuf = 0;
     m_frmbuf.resize(m_sz_frmbuf);
   }
 
   void control_ppl()
-  {
-    mtxbuf.lock();
-    if(m_num_frmbuf > m_sz_frmbuf / 2){
-      gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PAUSED);
+  { 
+    lock_buf();
+    if(m_num_frmbuf > (3 * m_sz_frmbuf / 4)){
       if(m_verb)
 	cout << "f_gst_cam::control_ppl() paused. num_frmbuf=" << m_num_frmbuf << " sz_frmbuf=" << m_sz_frmbuf << endl;
+      gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PAUSED);
       
       paused = true;
-    }else if(paused){
-      gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PLAYING);
+    }else if(paused && m_num_frmbuf < m_sz_frmbuf / 4){
       if(m_verb)
        	cout << "f_gst_cam::control_ppl() restarted." << endl;
+      gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PLAYING);
       paused = false;
     }
-    mtxbuf.unlock();
+    unlock_buf();
   }
   
   bool push_frmbuf(Mat & img, const long long t, const long long frm)
   {
-    mtxbuf.lock();
+    lock_buf();
     if(m_num_frmbuf == m_sz_frmbuf){
-      mtxbuf.unlock();
+      unlock_buf();
       return false;
     }
 
@@ -90,13 +110,13 @@ class f_gst_cam: public f_base
       m_tail_frmbuf = 0;
     m_num_frmbuf++;
 
-    mtxbuf.unlock();
+    unlock_buf();
     return true;
   }
 
   bool pop_frmbuf(Mat & img, long long & t, long long & frm)
   {
-    mtxbuf.lock();
+    lock_buf();
     bool success = false;
     long long tcur = get_time();
     while(m_head_frmbuf != m_tail_frmbuf &&
@@ -113,7 +133,7 @@ class f_gst_cam: public f_base
       
       m_num_frmbuf--;
     }
-    mtxbuf.unlock();
+    unlock_buf();
     return success;
   }
   
