@@ -663,11 +663,9 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
     
     Mat temp;
     resize(m_cam, temp, Size(w, h));
-    //resize(m_cam, temp, m_sz_win);
     cnvCVBGR8toGLRGB8(temp);
     float ypos = -(float)(1.0 + (double)hcut * 0.5 / (double)m_sz_win.height);
     glRasterPos2f(-1.f, ypos);
-    //glRasterPos2i(-1, -1);
     glDrawPixels(temp.cols, temp.rows, GL_RGB, GL_UNSIGNED_BYTE, temp.data);   
   }
 
