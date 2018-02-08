@@ -264,10 +264,11 @@ bool f_aws1_ui::init_run()
   visible_obj.resize(ot_nul, true);
   
   // Initializing OpenGL flags
+
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
-  glEnable(GL_TEXTURE_2D);
+  //glEnable(GL_TEXTURE_2D);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
 
@@ -661,13 +662,15 @@ void f_aws1_ui::render_gl_objs()
     
     Mat temp;
     resize(m_cam, temp, Size(w, h));
+    //resize(m_cam, temp, m_sz_win);
     cnvCVBGR8toGLRGB8(temp);
-    glRasterPos2f(-1.,
-    		  (float)(1.0 + (double)hcut * 0.5 / (double)m_sz_win.height));
-    
+    float ypos = -(float)(1.0 + (double)hcut * 0.5 / (double)m_sz_win.height);
+    glRasterPos2f(-1.f, ypos);
+    //glRasterPos2i(-1, -1);
     glDrawPixels(temp.cols, temp.rows, GL_RGB, GL_UNSIGNED_BYTE, temp.data);   
   }
 
+  /*
   glRasterPos2i(-1, -1);
   
   glUseProgram(p);
@@ -688,7 +691,7 @@ void f_aws1_ui::render_gl_objs()
   ocirc.render();
   otxt.render(0);
   oline.render();
-  
+  */
   // show rendering surface.
   glfwSwapBuffers(pwin());	
 }
