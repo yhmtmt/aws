@@ -111,7 +111,7 @@ class f_aws1_ui: public f_glfw_window
   long long m_tcam, m_frm_cam; // time and frame number m_cam grabbed
   e_imfmt m_fmt_cam;           // image format of main camera
   
-  void render_gl_objs(); // renders all elements above declared.
+  void render_gl_objs(c_view_mode_box * pvm_box); // renders all elements above declared.
 
   // ui boxes
   c_aws_ui_box_manager uim;

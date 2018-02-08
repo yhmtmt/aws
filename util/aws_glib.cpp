@@ -1292,7 +1292,7 @@ void c_gl_2d_line_obj::config_depth(const int handle, const int depth)
 {
 	if (handle < lbis.size())
 	{
-		lbis[handle].z = 1.0 - (float)(depth * zstep);
+		lbis[handle].z = -1.0 + (float)(depth * zstep);
 	}
 }
 

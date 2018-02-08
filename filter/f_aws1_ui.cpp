@@ -60,7 +60,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   bmap_center_free(false), btn_pushed(ebtn_nul), btn_released(ebtn_nul),
   m_rud_f(127.), m_meng_f(127.), m_seng_f(127.)
 {
-	m_path_storage[0] = '.';m_path_storage[1] = '\0';
+  m_path_storage[0] = '.';m_path_storage[1] = '\0';
 
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_sys", (ch_base**)&m_ch_sys, typeid(ch_aws1_sys).name(), "System property channel");
@@ -640,12 +640,13 @@ void f_aws1_ui::update_button(c_view_mode_box * pvm_box)
   }
 }
 
-void f_aws1_ui::render_gl_objs()
+void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
 {	
   // the image is completely fitted to the screen
   glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
   glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  if(!m_cam.empty()){
+  
+  if(!m_cam.empty() && pvm_box->get_mode() == ui_mode_fpv){
     double s = (double) m_sz_win.width / (double) m_cam.cols;
     int w = m_sz_win.width;
     int h = (int)(s * (double)m_cam.rows);
@@ -670,7 +671,6 @@ void f_aws1_ui::render_gl_objs()
     glDrawPixels(temp.cols, temp.rows, GL_RGB, GL_UNSIGNED_BYTE, temp.data);   
   }
 
-  /*
   glRasterPos2i(-1, -1);
   
   glUseProgram(p);
@@ -691,7 +691,8 @@ void f_aws1_ui::render_gl_objs()
   ocirc.render();
   otxt.render(0);
   oline.render();
-  */
+
+  glUseProgram(0);
   // show rendering surface.
   glfwSwapBuffers(pwin());	
 }
@@ -799,7 +800,7 @@ bool f_aws1_ui::proc()
   update_button(pvm_box);
   
   // rendering graphics
-  render_gl_objs();
+  render_gl_objs(pvm_box);
   
   // screen shot or video capturue
   print_screen();
