@@ -521,7 +521,6 @@ void f_ngt1::printPacket(size_t index, RawMessage * msg)
 
   if (!device[msg->src])
   {
-    cout << "device[" << (int)msg->src << "]" << endl;
     device[msg->src] = new DevicePackets;
     heapSize += sizeof(DevicePackets);
     heapSize += sizeof(Packet)*pgnListSize;    
