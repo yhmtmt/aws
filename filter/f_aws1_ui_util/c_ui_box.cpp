@@ -1119,6 +1119,24 @@ bool c_route_cfg_box::proc(const bool bpushed, const bool breleased)
 }
 
 /////////////////////////////////////////////////////////////////// c_indicator
+const char * c_indicator::str_engstate_params[ENG_UNDEF] =
+  {
+    "REV(RPM) : %04.1f",
+    "TRIM     : %03d",
+    "Poil(Pa) : %05d",
+    "Toil(C)  : %03.1f",
+    "Teng(C)  : %03.1f",
+    "Valt(V)  : %02.1f",
+    "Fuel(L/h): %03.1f",
+    "Hours(h) : %05d",
+    "Pclnt(Pa): %05d",
+    "Pfuel(Pa): %05d",
+    "LD(N/m)  : %03d",
+    "TQ(N/m)  : %03d",
+    "%s",
+    "%s"
+  };
+
 c_indicator::c_indicator() : porect(NULL), potri(NULL), poline(NULL), potxt(NULL),
 meng(127), seng(127), rud(0), cog(0.1f), sog(10), yaw(0.05f), pitch(0.5f), roll(0.5f),
 veng_n(0x7f), veng_nf(0x7f + 0x19), veng_nb(0x7f - 0x19), dir_cam(0.f), mode(ui_mode_fpv)
@@ -1662,6 +1680,106 @@ void c_indicator::update_hc_indicator()
   }
 }
 
+void c_indicator::create_engstate_indicator( glm::vec2 & pos,
+				 const glm::vec2 & sz_fnt,
+					     const glm:: vec4 & clr)
+{
+  char buf[32];
+  buf[32] = '\0';
+  glm::vec2 mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y), rad_ptr((float)(sz_fnt.x * 0.3), sz_fnt.y);
+  for (int iparam = 0; iparam < (int)ENG_UNDEF; iparam++){
+    hengstate[iparam] = potxt->reserv(32);
+    potxt->set(hengstate[iparam], buf);
+    potxt->config(hengstate[iparam], clr, glm::vec4(0, 0, 0, 0),
+		  sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0.f);
+    potxt->enable(hengstate[iparam]);
+    pos.y += sz_fnt.y;
+  }	    
+}
+
+void c_indicator::update_engstate_indicator(
+				 const float _mrpm, const unsigned char _mtrim,
+				 const int _mpoil, const float _mtoil,
+				 const float _mtemp, const float _mvalt,
+				 const float _mfrate, const unsigned int _mteng,
+				 const int _mpclnt, const int _mpfl,
+				 const unsigned char _mld,
+				 const unsigned char _mtq,
+				 const char * _mst1,
+				 const char * _mst2)
+{
+  char buf[32];
+  buf[0] = '\0';
+  
+  for (int iparam = 0; iparam < (int)ENG_UNDEF; iparam++){
+    const char * fmt = str_engstate_params[iparam];
+    switch(iparam){
+    case ENG_RPM:
+      snprintf(buf, 32, fmt, _mrpm);break;      
+    case ENG_TRIM:
+      snprintf(buf, 32, fmt, _mtrim);break;
+    case ENG_POIL:
+      snprintf(buf, 32, fmt, _mpoil);break;
+    case ENG_TOIL:
+      snprintf(buf, 32, fmt, _mtoil);break;
+    case ENG_TEMP:
+      snprintf(buf, 32, fmt, (float)(_mtemp-273.0f));break;
+    case ENG_VALT:
+      snprintf(buf, 32, fmt, _mvalt);break;
+    case ENG_FRATE:
+      snprintf(buf, 32, fmt, _mfrate);break;
+    case ENG_TENG:
+      snprintf(buf, 32, fmt, _mteng/3600);break;
+    case ENG_PCLNT:
+      snprintf(buf, 32, fmt, _mpclnt);break;
+    case ENG_PFL:
+      snprintf(buf, 32, fmt, _mpfl);break;
+    case ENG_LD:
+      snprintf(buf, 32, fmt, (int)_mld);break;
+    case ENG_TQ:
+      snprintf(buf, 32, fmt, (int)_mtq);break;
+    case ENG_ST1:
+      if(_mst1)
+	snprintf(buf, 32, fmt, _mst1);
+      else
+	buf[0] = '\0';
+      break;
+    case ENG_ST2:
+      if(_mst2)
+	snprintf(buf, 32, fmt, _mst2); 
+      else
+	buf[0] = '\0';
+      break;
+    default:
+      break;
+    }
+    potxt->set(hengstate[iparam], buf);  
+  }
+
+}
+
+void c_indicator::create_time_indicator(int & _hclk, glm::vec2 & pos,
+					const glm::vec2 & sz_fnt,
+					const glm::vec4 & clr)
+{
+  glm::vec2 mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y), rad_ptr((float)(sz_fnt.x * 0.3), sz_fnt.y);
+  char buf[32];
+  buf[31] = '\0';
+  _hclk = potxt->reserv(32);
+  potxt->set(_hclk, buf);
+  potxt->config(_hclk, clr, glm::vec4(0, 0, 0, 0),
+		sz_fnt, mgn_fnt, c_gl_text_obj::an_cb,
+		pos, 0.f);
+  potxt->enable(_hclk);
+}
+
+void c_indicator::update_time_indicator(const char * str_time)
+{
+  potxt->set(hclk, str_time);  
+}
+
+
+
 bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
 		       c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
 		       const glm::vec2 & sz_fnt, const glm::vec4 & clr,
@@ -1681,16 +1799,21 @@ bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
   scl_rud.x = (float)(sz_scrn.x * 0.4);
   scl_rud.y = sz_fnt.y;
 
-  glm::vec2 pos_meng, pos_seng;
+  glm::vec2 pos_meng, pos_seng, pos_est;
   pos_meng.x = xmin;
   pos_meng.y = ymin;
   pos_seng.x = xmin + sz_fnt.x;
   pos_seng.y = ymin;
   pos_rud.x = 0.f;
   pos_rud.y = ymin;
+  pos_est.x = xmin + sz_fnt.x * 2;
+  pos_est.y = ymin;
   create_engine_indicator(hmeng_in, hmeng_out, hmeng_n, hmeng_f, hmeng_b, pos_meng, sz_fnt, clr);
+
   create_engine_indicator(hseng_in, hseng_out, hseng_n, hseng_f, hseng_b, pos_seng, sz_fnt, clr);
 
+  create_engstate_indicator(pos_est, sz_fnt, clr);
+  
   // create rudder indicator (bottom center)
   create_rudder_indicator(pos_rud, sz_fnt, clr);
 
@@ -1705,6 +1828,9 @@ bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
   // create hdg/cog indicator (top center, only in fpv)
   create_hc_indicator(fovx, sz_fnt, sz_scrn, clr);
 
+  glm::vec2 pos_time(pos_rud.x, pos_rud.y + sz_fnt.y * 1.5);
+  create_time_indicator(hclk, pos_time, sz_fnt, clr);
+  
   update_engine_indicator(hmeng_in, hmeng_n, hmeng_f, hmeng_b, meng);
   update_engine_indicator(hseng_in, hseng_n, hseng_f, hseng_b, seng);
   update_sog_indicator();
@@ -1715,11 +1841,19 @@ bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
   return true;
 }
 
-void c_indicator::set_param(
+void c_indicator::set_param(const char * str_time,
 			    const unsigned char _meng,
+			    const float _mrpm, const unsigned char _mtrim,
+			    const int _mpoil, const float _mtoil,
+			    const float _mtemp, const float _mvalt,
+			    const float _mfrate, const unsigned int _mteng,
+			    const int _mpclnt, const int _mpfl,
+			    const unsigned char _mld, const unsigned char _mtq,
+			    const char * _mst1, const char * _mst2,
 			    const unsigned char _seng, const unsigned char _rud,
 			    const float _cog, const float _sog,
-			    const float _yaw, const float _pitch, const float _roll)
+			    const float _yaw, const float _pitch,
+			    const float _roll)
 {
   meng = _meng;
   seng = _seng;
@@ -1732,8 +1866,12 @@ void c_indicator::set_param(
 
   update_engine_indicator(hmeng_in, hmeng_n, hmeng_f, hmeng_b, meng);
   update_engine_indicator(hseng_in, hseng_n, hseng_f, hseng_b, seng);
+  update_engstate_indicator(_mrpm, _mtrim, _mpoil, _mtoil, _mtemp,  _mvalt,
+			    _mfrate, _mteng, _mpclnt, _mpfl, _mld, _mtq,
+			    _mst1, _mst2);
   update_sog_indicator();
   update_rp_indicator();
   update_hc_indicator();
   update_rudder_indicator();
+  update_time_indicator(str_time);
 }

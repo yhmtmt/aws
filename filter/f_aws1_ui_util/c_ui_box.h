@@ -582,15 +582,50 @@ public:
   int hmeng_in, hmeng_out, hseng_in, hseng_out, hrud_in, hrud_out;
   int hmeng_n, hmeng_f, hmeng_b, hseng_n, hseng_f, hseng_b;
   glm::vec2 scl_eng, scl_rud, pos_rud;
+  
   void create_engine_indicator(int & heng_in, int & heng_out,
 			       int & heng_n, int & heng_f, int & heng_b,
 			       glm::vec2 & pos, const glm::vec2 & sz_fnt,
-			       const glm::vec4 & clr);
+			       const glm::vec4 & clr);	 
+
   void update_engine_indicator(int & heng_in, int & heng_n, int & heng_f,
 			       int & heng_b, const unsigned char val);
+
+
+  enum e_engstate_params {
+    ENG_RPM, ENG_TRIM, ENG_POIL, ENG_TOIL, ENG_TEMP, ENG_VALT, ENG_FRATE, ENG_TENG, ENG_PCLNT, ENG_PFL, ENG_LD, ENG_TQ, ENG_ST1, ENG_ST2, ENG_UNDEF
+  };
+  static const char * str_engstate_params[ENG_UNDEF];
+  int hengstate[ENG_UNDEF];
+  void create_engstate_indicator(
+				 glm::vec2 & pos,
+				 const glm::vec2 & sz_fnt,
+				 const glm:: vec4 & clr
+				 );
+  void update_engstate_indicator(
+				 const float _mrpm, const unsigned char _mtrim,
+				 const int _mpoil, const float _mtoil,
+				 const float _mtemp, const float _mvalt,
+				 const float _mfrate, const unsigned int _mteng,
+				 const int _mpclnt, const int _mpfl,
+				 const unsigned char _mld,
+				 const unsigned char _mtq,
+				 const char * _mst1,
+				 const char * _mst2);
+  
+    
+  
   void create_rudder_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
 			       const glm::vec4 & clr);
+
   void update_rudder_indicator();
+
+
+  int hclk;
+  void create_time_indicator(int & _hclk, glm::vec2 & pos, const glm::vec2 & sz_fnt, const glm::vec4 & clr);
+
+  void update_time_indicator(const char * str_time);
+    
 #define SOG_STEP 5
   glm::vec2 pos_sog;
   glm::vec2 rad_sog;
@@ -626,8 +661,16 @@ public:
 	    const glm::vec2 & sz_fnt, const glm::vec4 & clr,
 	    const float fovx, const glm::vec2 & sz_scrn);
   
-  void set_param(
-		 const unsigned char _meng, const unsigned char _seng,
+  void set_param(const char * str_time,
+		 const unsigned char _meng,
+		 const float _mrpm, const unsigned char _mtrim,
+		 const int _mpoil, const float _mtoil,
+		 const float _mtemp, const float _mvalt,
+		 const float _mfrate, const unsigned int _mteng,
+		 const int _mpclnt, const int _mpfl,
+		 const unsigned char _mld, const unsigned char _mtq,
+		 const char * _mst1, const char * _mst2,
+		 const unsigned char _seng,
 		 const unsigned char _rud,
 		 const float _cog /*radian*/, const float _sog,
 		 const float _yaw /*radian*/, const float _pitch/*radian*/,

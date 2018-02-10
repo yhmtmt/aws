@@ -133,10 +133,36 @@ class f_aws1_ui: public f_glfw_window
   c_indicator ind;
   void update_indicator(const float cog, const float sog, 
 	  const float roll, const float pitch, const float yaw)
-  {   
+  {
+    long long t = 0;
+    float rpm = 0.0f;
+    unsigned char trim = 0;
+    int poil = 0;
+    float toil = 0.0f;
+    float temp = 0.0f;
+    float valt = 0.0f;
+    float frate = 0.0f;
+    unsigned int teng = 0;
+    int pclnt = 0;
+    int pfl = 0;
+    unsigned char ld = 0;
+    unsigned char tq = 0;
+    StatEng1 steng1;
+    StatEng2 steng2;
+    if(m_engstate){ // currentlly only for main engine
+      m_engstate->get_rapid(t, rpm, trim);
+      m_engstate->get_dynamic(t, poil, toil, temp, valt, frate, teng, pclnt, pfl, steng1, steng2, ld, tq);
+    }
+    
     ind.set_param(
 		  m_time_str,
-		  m_stat.meng_aws, m_stat.seng_aws, m_stat.rud_aws,
+		  m_stat.meng_aws,
+		  rpm, trim, poil, toil, temp,
+		  valt, frate, teng, pclnt, pfl,
+		  ld, tq,
+		  (steng1 <= EmergencyStop ? strStatEng1[steng1] : NULL),
+		  (steng2 <= EngineShuttingDown ? strStatEng2[steng2] : NULL),
+		  m_stat.seng_aws, m_stat.rud_aws,
 		  (float)(cog * (PI / 180.f)),
 		  sog,
 		  (float)(yaw * (PI / 180.f)),
