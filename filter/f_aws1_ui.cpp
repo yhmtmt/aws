@@ -664,7 +664,7 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
     Mat temp;
     resize(m_cam, temp, Size(w, h));
     cnvCVBGR8toGLRGB8(temp);
-    float ypos = -(float)(1.0 + (double)hcut * 0.5 / (double)m_sz_win.height);
+    float ypos = -(float)(1.0 + (double)hcut / (double)m_sz_win.height);
     glRasterPos2f(-1.f, ypos);
     glDrawPixels(temp.cols, temp.rows, GL_RGB, GL_UNSIGNED_BYTE, temp.data);   
   }
@@ -877,16 +877,16 @@ void f_aws1_ui::rcv_ctrl_stat()
 void f_aws1_ui::handle_ctrl_crz()
 {
   if (m_js.id != -1){
-    m_rud_f += (float)(m_js.lr1 * (255. / 180.));
-    m_rud_f += (float)(m_js.lr2 * (255. / 180.));
+    m_rud_f += (float)(m_js.lr1 * (255. / 90.));
+    m_rud_f += (float)(m_js.lr2 * (255. / 90.));
     m_rud_f = min((float)255.0, m_rud_f);
     m_rud_f = max((float)0.0, m_rud_f);
     
-    m_meng_f -= (float)(m_js.ud1 * (255. / 180));
+    m_meng_f -= (float)(m_js.ud1 * (255. / 90));
     m_meng_f = min((float)255.0, m_meng_f);
     m_meng_f = max((float)0.0, m_meng_f);
     
-    m_seng_f -= (float)(m_js.ud2 * (255. / 180));
+    m_seng_f -= (float)(m_js.ud2 * (255. / 90));
     m_seng_f = min((float) 255.0, m_seng_f);
     m_seng_f = max((float)0.0, m_seng_f);
   }

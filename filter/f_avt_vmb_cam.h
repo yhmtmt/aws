@@ -65,13 +65,13 @@ namespace avt_vmb_cam{
 	code = (fmt_out == IMF_RGB8 ? COLOR_BayerBG2RGB : COLOR_BayerBG2BGR);
 	break;
       case 1://GB
-	code = (fmt_out == IMF_RGB8 ? COLOR_BayerBG2RGB :COLOR_BayerGB2BGR);
+	code = (fmt_out == IMF_RGB8 ? COLOR_BayerGB2RGB :COLOR_BayerGB2BGR);
 	break;
       case 2://RG
-	code = (fmt_out == IMF_RGB8 ? COLOR_BayerBG2RGB :COLOR_BayerRG2BGR);
+	code = (fmt_out == IMF_RGB8 ? COLOR_BayerRG2RGB :COLOR_BayerRG2BGR);
 	break;
       case 3://GR
-	code = (fmt_out == IMF_RGB8 ? COLOR_BayerBG2RGB :COLOR_BayerGR2BGR);	
+	code = (fmt_out == IMF_RGB8 ? COLOR_BayerGR2RGB :COLOR_BayerGR2BGR);	
       }
 		   
       switch(fmt_out){
@@ -158,19 +158,19 @@ namespace avt_vmb_cam{
 	break;
       case VmbPixelFormatBayerBG8:
 	fmt = (IMF_BayerBG8);
-	demosaic8(img, img_set, fmt, 0);
+	demosaic8(img, img_set, fmt, 2);
 	break;
       case VmbPixelFormatBayerGB8:
 	fmt = (IMF_BayerGB8);
-	demosaic8(img, img_set, fmt, 1);	
+	demosaic8(img, img_set, fmt, 3);	
 	break;
       case VmbPixelFormatBayerGR8:
 	fmt = (IMF_BayerGR8);
-	demosaic8(img, img_set, fmt, 3);
+	demosaic8(img, img_set, fmt, 1);
 	break;
       case VmbPixelFormatBayerRG8:
 	fmt = (IMF_BayerRG8);
-	demosaic8(img, img_set, fmt, 2);
+	demosaic8(img, img_set, fmt, 0);
 	break;
       case VmbPixelFormatMono10:
 	fmt = (IMF_GRAY10);
