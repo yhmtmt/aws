@@ -134,7 +134,9 @@ class f_aws1_ui: public f_glfw_window
   void update_indicator(const float cog, const float sog, 
 	  const float roll, const float pitch, const float yaw)
   {   
-    ind.set_param(m_stat.meng_aws, m_stat.seng_aws, m_stat.rud_aws,
+    ind.set_param(
+		  m_time_str,
+		  m_stat.meng_aws, m_stat.seng_aws, m_stat.rud_aws,
 		  (float)(cog * (PI / 180.f)),
 		  sog,
 		  (float)(yaw * (PI / 180.f)),
