@@ -106,6 +106,7 @@ bool f_ngt1::init_run()
   if (m_hserial == NULL_SERIAL)
     return false;
   
+  memset((void*)device, 0, sizeof(device));
   fillManufacturers();
   fillFieldCounts();
   checkPgnList();
@@ -135,7 +136,6 @@ void f_ngt1::destroy_run()
     delete *itr;
 
   pgn_queue.clear();
-  
   heapSize = 0;  
 }
 
@@ -521,6 +521,7 @@ void f_ngt1::printPacket(size_t index, RawMessage * msg)
 
   if (!device[msg->src])
   {
+    cout << "device[" << (int)msg->src << "]" << endl;
     device[msg->src] = new DevicePackets;
     heapSize += sizeof(DevicePackets);
     heapSize += sizeof(Packet)*pgnListSize;    
