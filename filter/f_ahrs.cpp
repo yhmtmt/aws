@@ -324,7 +324,7 @@ bool f_ahrs::proc()
   if (!check_vals(bypr, braw, bcal)){
     m_binit_9dof = false;
     m_cmd = ERC_S;
-    cerr << "AHRS may not be synchronised. Trying synchronizastion." << endl;
+    cerr << "AHRS may not be synchronised. Trying sync." << endl;
   }
 
 	return true;
