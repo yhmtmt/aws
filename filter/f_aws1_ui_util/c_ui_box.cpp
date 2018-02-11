@@ -1123,16 +1123,10 @@ const char * c_indicator::str_engstate_params[ENG_UNDEF] =
   {
     "REV(RPM) : %04.1f",
     "TRIM     : %03d",
-    "Poil(Pa) : %05d",
-    "Toil(C)  : %03.1f",
     "Teng(C)  : %03.1f",
     "Valt(V)  : %02.1f",
     "Fuel(L/h): %03.1f",
     "Hours(h) : %05d",
-    "Pclnt(Pa): %05d",
-    "Pfuel(Pa): %05d",
-    "LD(N/m)  : %03d",
-    "TQ(N/m)  : %03d",
     "%s",
     "%s"
   };
