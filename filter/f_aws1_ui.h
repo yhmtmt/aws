@@ -167,7 +167,7 @@ class f_aws1_ui: public f_glfw_window
 		  sog,
 		  (float)(yaw * (PI / 180.f)),
 		  (float)(pitch* (PI / 180.f)),
-		  (float)(roll* (PI / 180.f)));
+		  (float)(-roll* (PI / 180.f)));
     ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
   }
 
