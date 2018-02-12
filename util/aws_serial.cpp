@@ -143,6 +143,11 @@ AWS_SERIAL open_serial(const char * dname, int cbr, bool nonblk)
 	copt.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
 	copt.c_iflag &= ~(IGNCR | ICRNL | INLCR);
 	copt.c_oflag &= ~(OPOST);
+
+	copt.c_iflag |= IGNPAR;
+	copt.c_cc[VMIN] = 1;
+	copt.c_cc[VTIME] = 0;
+	
 	/*
 	cfsetispeed(&copt, enc_cbr(cbr));
 	cfsetospeed(&copt, enc_cbr(cbr));
@@ -150,8 +155,6 @@ AWS_SERIAL open_serial(const char * dname, int cbr, bool nonblk)
 	copt.c_cflag &= ~CSTOPB;
 	copt.c_cflag &= ~CSIZE;
 	copt.c_cflag |= CS8;
-	copt.c_cc[VMIN] = 0;
-	copt.c_cc[VTIME] = 1;
 	copt.c_cflag |= (CLOCAL | CREAD);
 	*/
 	cfmakeraw(&copt);
