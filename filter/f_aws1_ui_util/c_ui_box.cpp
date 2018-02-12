@@ -1515,7 +1515,7 @@ void c_indicator::update_rp_indicator()
   poline->config_rotation(hpscale, roll, c, s);
   poline->config_rotation(hpptr, roll, c, s);
 
-  glm::vec2 pos_pptr(0, lpmeas * pitch * (1.0 / (PI * 40. / 180.)));
+  glm::vec2 pos_pptr(0, lpmeas * pitch * (1.0 / (PI * 20. / 180.)));
   pos_pptr.x = -s * pos_pptr.y + pos_rp.x;
   pos_pptr.y = c * pos_pptr.y + pos_rp.y;
   poline->config_position(hpptr, pos_pptr);
@@ -1712,10 +1712,6 @@ void c_indicator::update_engstate_indicator(
       snprintf(buf, 32, fmt, _mrpm);break;      
     case ENG_TRIM:
       snprintf(buf, 32, fmt, _mtrim);break;
-    case ENG_POIL:
-      snprintf(buf, 32, fmt, _mpoil);break;
-    case ENG_TOIL:
-      snprintf(buf, 32, fmt, _mtoil);break;
     case ENG_TEMP:
       snprintf(buf, 32, fmt, (float)(_mtemp-273.0f));break;
     case ENG_VALT:
@@ -1724,14 +1720,6 @@ void c_indicator::update_engstate_indicator(
       snprintf(buf, 32, fmt, _mfrate);break;
     case ENG_TENG:
       snprintf(buf, 32, fmt, _mteng/3600);break;
-    case ENG_PCLNT:
-      snprintf(buf, 32, fmt, _mpclnt);break;
-    case ENG_PFL:
-      snprintf(buf, 32, fmt, _mpfl);break;
-    case ENG_LD:
-      snprintf(buf, 32, fmt, (int)_mld);break;
-    case ENG_TQ:
-      snprintf(buf, 32, fmt, (int)_mtq);break;
     case ENG_ST1:
       if(_mst1)
 	snprintf(buf, 32, fmt, _mst1);

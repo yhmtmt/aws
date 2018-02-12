@@ -593,7 +593,7 @@ public:
 
 
   enum e_engstate_params {
-    ENG_RPM, ENG_TRIM, ENG_POIL, ENG_TOIL, ENG_TEMP, ENG_VALT, ENG_FRATE, ENG_TENG, ENG_PCLNT, ENG_PFL, ENG_LD, ENG_TQ, ENG_ST1, ENG_ST2, ENG_UNDEF
+    ENG_RPM, ENG_TRIM, ENG_TEMP, ENG_VALT, ENG_FRATE, ENG_TENG, ENG_ST1, ENG_ST2, ENG_UNDEF
   };
   static const char * str_engstate_params[ENG_UNDEF];
   int hengstate[ENG_UNDEF];
@@ -634,7 +634,7 @@ public:
 			    const glm::vec4 & clr);
   void update_sog_indicator();
   
-#define PITCH_STEP 9
+#define PITCH_STEP 5
 #define ROLL_STEP 19
   glm::vec2 pos_rp;
   float lpmeas;
