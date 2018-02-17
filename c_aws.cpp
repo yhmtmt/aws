@@ -596,7 +596,7 @@ bool c_aws::handle_pause(s_cmd & cmd)
 bool c_aws::handle_clear(s_cmd & cmd)
 {
 	bool result;
-	if(!f_base::m_clk.is_run()){
+	if(f_base::m_clk.is_run()){
 		sprintf(cmd.get_ret_str(), "Graph cannot be cleared during execution.");
 		result = false;
 	}else{
