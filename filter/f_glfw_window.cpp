@@ -51,6 +51,7 @@ using namespace cv;
 #include "f_glfw_window.h"
 
 //////////////////////////////////////////////////////////////////////////////////////////// f_glfw_window
+bool f_glfw_window::is_init_glut = false;
 MapGLFWin f_glfw_window::m_map_glfwin;
 
 f_glfw_window::f_glfw_window(const char * name) :f_base(name), m_sz_win(640, 480), m_depth_bits(16), m_bfull(false), m_display(0)
@@ -148,19 +149,25 @@ bool f_glfw_window::init_run()
     return false;
   }
 
-  int argc = 0;
-  glutInit(&argc, NULL);
-
-	return true;	
+  if(!is_init_glut){
+    int argc = 0;
+    glutInit(&argc, NULL);
+    is_init_glut = true;
+  }
+  
+  return true;	
 }
 
 void f_glfw_window::destroy_run()
 { 
   if(!m_pwin)
     return;
-  glfwTerminate();
   MapGLFWin::iterator itr = m_map_glfwin.find(m_pwin);
   m_map_glfwin.erase(itr);
+  
+  glfwDestroyWindow(m_pwin);
+  glfwTerminate();
+
   m_pwin = NULL;
 }
 

@@ -304,6 +304,7 @@ bool f_aws1_ui::setup_shader()
 
 void f_aws1_ui::destroy_run()
 {
+  f_glfw_window::destroy_run();
 }
 
 void f_aws1_ui::ui_force_ctrl_stop(c_ctrl_mode_box * pcm_box)

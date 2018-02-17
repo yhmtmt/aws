@@ -81,6 +81,8 @@ typedef map<GLFWwindow *, f_glfw_window *, cmpglfwin> MapGLFWin;
 class f_glfw_window: public f_base
 {
 protected:
+  static bool is_init_glut;
+  
   static MapGLFWin m_map_glfwin;
   GLFWwindow * m_pwin;
   int m_depth_bits;
