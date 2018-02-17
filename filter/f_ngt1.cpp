@@ -79,6 +79,14 @@ f_ngt1::DevicePackets::~DevicePackets()
   }
 }
 
+unsigned char f_ngt1::NGT_STARTUP_SEQ[3] =
+  { 
+    0x11   /* msg byte 1, meaning ? */
+    , 0x02   /* msg byte 2, meaning ? */
+    , 0x00   /* msg byte 3, meaning ? */
+  };
+
+
 f_ngt1::f_ngt1(const char * name):f_base(name), eng_state(NULL), eng_state2(NULL),  m_hserial(NULL_SERIAL), state(MSG_START), showRaw(false), showTxt(false), showData(false), showBytes(false), showJson(false), showSI(false), sep(NULL), onlyPgn(0), onlySrc(-1), clockSrc(-1), heapSize(0), showGeo(GEO_DD), mp(mbuf)
 {
   register_fpar("ch_eng_state", (ch_base**)&eng_state, typeid(ch_eng_state).name(), "Channel for engine state");
@@ -106,6 +114,8 @@ bool f_ngt1::init_run()
   if (m_hserial == NULL_SERIAL)
     return false;
   
+  writeMessage(m_hserial, NGT_MSG_SEND, NGT_STARTUP_SEQ, sizeof(NGT_STARTUP_SEQ));
+
   memset((void*)device, 0, sizeof(device));
   fillManufacturers();
   fillFieldCounts();
@@ -264,13 +274,12 @@ int f_ngt1::readNGT1(AWS_SERIAL handle)
 
   r = read_serial(handle, (char*)buf_tmp, sizeof(buf_tmp));
   //  r = read(handle, buf, sizeof(buf));
-  
+
   for (int i = 0; i < r; i++)
   {
     c = buf_tmp[i];
     readNGT1Byte(c);
   }
-
   return r;
 }
 
@@ -2227,4 +2236,44 @@ void f_ngt1::fillFieldCounts(void)
     }
     pgnList[i].fieldCount = j;
   }
+}
+
+void f_ngt1::writeMessage(int handle, unsigned char command, const unsigned char * cmd, 
+			  const size_t len)
+{
+  unsigned char bst[255];
+  unsigned char *b = bst;
+  unsigned char *lenPtr;
+  unsigned char crc;
+
+  int i;
+
+  *b++ = DLE;
+  *b++ = STX;
+  *b++ = command;
+  crc = command;
+  lenPtr = b++;
+
+  for (i = 0; i < len; i++)
+  {
+    if (cmd[i] == DLE)
+    {
+      *b++ = DLE;
+    }
+    *b++ = cmd[i];
+    crc += (unsigned char) cmd[i];
+  }
+
+  *lenPtr = i;
+  crc += i;
+
+  *b++ = (unsigned char) (256 - (int)crc);
+  *b++ = DLE;
+  *b++ = ETX;
+
+  if (write_serial(handle, (char*)bst, b - bst) != b - bst)
+  {
+    logError("Unable to write command '%.*s' to NGT-1-A device\n", (int) len, cmd);
+  }
+  logDebug("Written command %X len %d\n", command, (int) len);
 }

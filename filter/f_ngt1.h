@@ -49,6 +49,8 @@ class f_ngt1: public f_base
     FD1_Ready = 0x0001,
     FD2_Ready = 0x0002
   };
+
+  static unsigned char NGT_STARTUP_SEQ[3];
   
   enum MSG_State state;
   unsigned char buf[500];
@@ -149,6 +151,9 @@ bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field,
   void mreset(void);
   void mwrite(FILE * stream);
   
+  void writeMessage(int handle, unsigned char command, const unsigned char * cmd, 
+		    const size_t len);
+
   // these functions are from canboat.analyze -->
 
   list<PgnFieldValues*> pgn_queue;
