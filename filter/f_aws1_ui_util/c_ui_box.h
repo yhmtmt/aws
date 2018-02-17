@@ -42,7 +42,8 @@ public:
   {
   }
 
-  bool init(const glm::vec2 & _pos, glm::vec2 _sz, const unsigned int _txt_len, const glm::vec4 & _clr, const glm::vec4 & _bkgclr);
+  bool init(const glm::vec2 & _pos, glm::vec2 _sz, const unsigned int _txt_len,
+	    const glm::vec4 & _clr, const glm::vec4 & _bkgclr);
 
   bool collision(const glm::vec2 & pt)
   {
@@ -315,7 +316,7 @@ class c_map_cfg_box : public c_aws_ui_box
 {
 public:
   enum e_btn{
-    wp = 0,		// waypoint
+    wp = 0,	// waypoint
     vsl,	// vessel
     mrk,	// mark
     cl,		// coast line
@@ -592,17 +593,17 @@ public:
 			       int & heng_b, const unsigned char val);
 
 
-  enum e_engstate_params {
-    ENG_RPM, ENG_TRIM, ENG_TEMP, ENG_VALT, ENG_FRATE, ENG_TENG, ENG_ST1, ENG_ST2, ENG_UNDEF
+  enum e_param {
+    PRM_RPM, PRM_TRIM, PRM_TEMP, PRM_VALT, PRM_FRATE, PRM_TENG, PRM_ST1, PRM_ST2, PRM_UNDEF
   };
-  static const char * str_engstate_params[ENG_UNDEF];
-  int hengstate[ENG_UNDEF];
-  void create_engstate_indicator(
+  static const char * str_params[PRM_UNDEF];
+  int hparams[PRM_UNDEF];
+  void create_params_indicator(
 				 glm::vec2 & pos,
 				 const glm::vec2 & sz_fnt,
 				 const glm:: vec4 & clr
 				 );
-  void update_engstate_indicator(
+  void update_params_indicator(
 				 const float _mrpm, const unsigned char _mtrim,
 				 const int _mpoil, const float _mtoil,
 				 const float _mtemp, const float _mvalt,

@@ -16,6 +16,7 @@
 class c_map_obj
 {
 protected:
+  static int display_depth;
   e_ui_mode mode;
   glm::mat4 pv;
   glm::vec2 sz_scrn;
@@ -119,7 +120,7 @@ private:
 	glm::vec2 sz_rect;
 	glm::vec4 clr;
 	struct s_marker{
-		int hmark, hship2d, hstr, hline_inf, hline_vel;
+		int hmark, hship2d, hstr, hline_vel;
 	};
 	vector<s_marker> hmarks;
 	vector<c_ais_obj> objs;

@@ -46,7 +46,9 @@ using namespace cv;
 #include "../f_aws1_ui.h"
 
 
-/////////////////////////////////////////////////////////////////// c_map_waypoint_obj
+int c_map_obj::display_depth = 10;
+
+//////////////////////////////////////////////////////////// c_map_waypoint_obj
 c_map_waypoint_obj::c_map_waypoint_obj() :pocirc(NULL), potxt(NULL)
 {
 }
@@ -69,7 +71,7 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
   for (int i = 0; i < nmaxwps; i++){
     hmarks[i].hmark = pocirc->add(clr, pos, 0.0f, r);
     pocirc->config_border(hmarks[i].hmark, true, 1.0);
-    pocirc->config_depth(hmarks[i].hmark, 10);
+    pocirc->config_depth(hmarks[i].hmark, display_depth);
     pocirc->disable(hmarks[i].hmark);
     hmarks[i].hstr = potxt->reserv(20);
     potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos, 0, 0);
@@ -80,7 +82,7 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
       float pts[4] = { 0, 0, 0, (float)(rmark * 2.0) };
       h = hmarks[i].hline_inf = poline->add(2, pts);
       poline->config_color(h, clr);
-      poline->config_depth(h, 10);
+      poline->config_depth(h, display_depth);
       poline->config_position(h, pos);
       poline->disable(h);
     }
@@ -238,27 +240,23 @@ bool c_map_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
   for (int i = 0; i < nmax_objs; i++){
     hmarks[i].hmark = porect->add(clr, pos, 0.0f, sz_rect);
     porect->config_border(hmarks[i].hmark, true, 1.0);
-    porect->config_depth(hmarks[i].hmark, 10);
+    porect->config_depth(hmarks[i].hmark, display_depth);
     porect->disable(hmarks[i].hmark);
 
     hmarks[i].hship2d = potri->add(clr, pos, 0.0f, sz_ship2d);
     potri->config_border(hmarks[i].hship2d, false, 1.0);
-    potri->config_depth(hmarks[i].hship2d, 11);
+    potri->config_depth(hmarks[i].hship2d, display_depth + 1);
     potri->disable(hmarks[i].hship2d);
 
     hmarks[i].hstr = potxt->reserv(64);
     potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0),
       sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, 0);
 
-    float pts[4] = { 0, 0, 0, (float)(sz_rect.y) };
-    hmarks[i].hline_inf = poline->add(2, pts);
-    poline->config_color(hmarks[i].hline_inf, clr);
-    poline->config_depth(hmarks[i].hline_inf, 10);
-    poline->config_position(hmarks[i].hline_inf, pos);
-
+    float pts[4]={0, 0, 0, 0};
+    
     hmarks[i].hline_vel = poline->add(2, pts);
     poline->config_color(hmarks[i].hline_vel, clr);
-    poline->config_depth(hmarks[i].hline_vel, 10);
+    poline->config_depth(hmarks[i].hline_vel, display_depth);
     poline->config_position(hmarks[i].hline_vel, pos);
   }
 
@@ -354,7 +352,6 @@ void c_map_ais_obj::update_drawings()
 
     potxt->set(hmarks[iobj].hstr, buf);
     potxt->config_position(hmarks[iobj].hstr, pos_inf);
-    poline->config_position(hmarks[iobj].hline_inf, pos);
     porect->config_position(hmarks[iobj].hmark, pos_rect);
 
     float pts[4] = { pos.x, pos.y, pos_future.x, pos_future.y };
@@ -365,7 +362,6 @@ void c_map_ais_obj::update_drawings()
 void c_map_ais_obj::enable(const int iobj)
 {
   porect->enable(hmarks[iobj].hmark);
-  poline->enable(hmarks[iobj].hline_inf);
   poline->enable(hmarks[iobj].hline_vel);
   potxt->enable(hmarks[iobj].hstr);
 }
@@ -374,7 +370,6 @@ void c_map_ais_obj::disable(const int iobj)
 {
   potri->disable(hmarks[iobj].hship2d);
   porect->disable(hmarks[iobj].hmark);
-  poline->disable(hmarks[iobj].hline_inf);
   poline->disable(hmarks[iobj].hline_vel);
   potxt->disable(hmarks[iobj].hstr);
 }
