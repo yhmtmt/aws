@@ -162,13 +162,16 @@ bool f_aws1_ui::init_map_mask()
       return false;
     }
 
-    glm::vec4 clrb(0, 0, 0, 0.5);
+    glm::vec4 clrb(0, 0.1f, 0, 0.5);
     glm::vec2 pos(0.f,0.f);
     hmap_mask[0] = omap_mask.add(clrb, pos, 0.f, 1.f);
     hmap_mask[1] = omap_mask.add(clrb, pos, 0.5 * PI, 1.f);
     hmap_mask[2] = omap_mask.add(clrb, pos, PI, 1.f);
     hmap_mask[3] = omap_mask.add(clrb, pos, 1.5 * PI, 1.f);
-
+    for(int i = 0; i < 4; i++){
+      omap_mask.config_border(hmap_mask[i], true, 1.0f);
+      omap_mask.config_depth(hmap_mask[i], 9);
+    }
     return true;
 }
 

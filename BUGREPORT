@@ -1,7 +1,23 @@
 User interface
-* waypoint to waypoint lines cannot be collectlly culled in fpv mode
+* in map mode, circle masking layer is not working
+* ais marker, box and line should be removed
+* scales for rudder and engine are required
+* speed indicator should be text
+* depth should be indicated
+* information for selected ais should be enlarged
+* information for selected waypoint should be enlarged
+* estimated current position of ais target should be indicated
+* life time of 0 sog ais target should be extended
+* cursor position should placed at fixed region
+* waypoint to waypoint lines are not correctlly indicated
 * The menu open/close markers are not sufficientlly sensitive. (larger size is prefered.)
 * waypoint cannot be drugged.
+* roll, pitch, yaw indicators should be on horizon related to camera parameter
+* c_ui_box_manager should expanded in f_aws1_ui.
+
+
+Util
+* c_gl_2d_obj should support texture mapping
 
 AIS decoder
 * ships are vanished as time progress.
@@ -10,7 +26,7 @@ remote command
 * Buffer overrun is not checked.
 
 AWS sys
-* chls command should show channel type
+* when init_run failed, the state should be stopped and all filters started with init_run should be stopped by calling destroy_run
 
 #### Solved
 * in windows version, aws_mkdir is not working.
@@ -21,3 +37,5 @@ AWS sys
 * during dragging map, flickers are caused frequently.
 * Menus and indicator are overwrapped with objects.
 * Map cannot be back to the own-ship centered mode.
+* chls command should show channel type
+* map range scale should be 1000, 2000 ..., 10k, 20k, ...., 200k, 300k
