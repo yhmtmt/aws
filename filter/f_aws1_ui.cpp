@@ -56,7 +56,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f),
   dir_cam_hdg_drag(0.f), num_max_wps(100), num_max_ais(100),
   bupdate_map(true), pt_prev_map_update(0, 0, 0),
-  map_range(100), sz_mark(10.0f), mouse_state(ms_normal),
+  map_range(4000), map_range_base(1000),  sz_mark(10.0f), mouse_state(ms_normal),
   bmap_center_free(false), btn_pushed(ebtn_nul), btn_released(ebtn_nul),
   m_rud_f(127.), m_meng_f(127.), m_seng_f(127.)
 {
@@ -228,10 +228,12 @@ bool f_aws1_ui::init_run()
   if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr, fov_cam_x, sz_scrn))
 	  return false;
  
-  if (!owp.init(&ocirc, &otxt, &oline, &oline3d, clr, sz_fnt_small, sz_mark, num_max_wps))
+  if (!owp.init(&ocirc, &otxt, &oline, &oline3d, clr,
+		sz_fnt_small, sz_mark, num_max_wps))
 	  return false;
 
-  if (!oais.init(&orect, &otri, &otxt, &oline, clr, sz_fnt_small, sz_mark_xy, num_max_ais))
+  if (!oais.init(&orect, &otri, &otxt, &oline, clr,
+		 sz_fnt_small, sz_mark_xy, num_max_ais))
 	  return false;
 
   if (!own_ship.init(&otri, &oline, clr, sz_ship2d))
@@ -448,7 +450,9 @@ void f_aws1_ui::update_route(c_route_cfg_box * prc_box)
   
   m_ch_wp->unlock();
   owp.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
-  owp.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
+  owp.set_map_param(pix_per_meter, Rmap,
+		    pt_map_center_ecef.x, pt_map_center_ecef.y,
+		    pt_map_center_ecef.z);
   
   owp.update_drawings();
 }
@@ -471,22 +475,22 @@ void f_aws1_ui::update_ais_objs()
     obj_mouse_on.handle = -1;
   }
   oais.set_focus(-1);
-  for (m_ch_ais_obj->begin(); !m_ch_ais_obj->is_end(); m_ch_ais_obj->next()){
+  for (m_ch_ais_obj->begin(); !m_ch_ais_obj->is_end(); m_ch_ais_obj->next()){  
+    if (m_ch_ais_obj->get_tracking_id() >= 0){
+      oais.set_focus(iobj);
+    }
     {
       float bear = 0.f, dist = 0.f;
-      if (!m_ch_ais_obj->get_pos_bd(bear, dist) || dist > map_range)
-	continue;
+      if (!m_ch_ais_obj->get_pos_bd(bear, dist) || dist > map_range){
+	oais.disable(iobj);
+      }else{ 
+	oais.enable(iobj);
+	oais.update_ais_obj(iobj, m_ch_ais_obj->cur());
+      }
     }
-    
-    if (m_ch_ais_obj->get_tracking_id() >= 0)
-      oais.set_focus(iobj);
-    
-    oais.enable(iobj);
-    oais.update_ais_obj(iobj, m_ch_ais_obj->cur());
     iobj++;
   }
-  m_ch_ais_obj->unlock();
-  
+  m_ch_ais_obj->unlock();  
   
   oais.set_fpv_param(pvm, glm::vec2(m_sz_win.width, m_sz_win.height));
   oais.set_map_param(pix_per_meter, Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
@@ -933,7 +937,8 @@ void f_aws1_ui::handle_ctrl_csr()
 void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 					    e_ui_mode vm, Mat & Rown,
 					    const float lat, const float lon,
-					    const float xown, const float yown, const float zown, const float yaw)
+					    const float xown, const float yown,
+					    const float zown, const float yaw)
 {
   if (vm == ui_mode_map)
     {
@@ -1139,7 +1144,7 @@ void f_aws1_ui::handle_mouse_lbtn_release(c_view_mode_box * pvm_box,
     prc_box->command_processed(c_route_cfg_box::wp_add);
     mouse_state = ms_normal;
     break;
-  case ms_drag:
+  case ms_drag:   
     handle_mouse_drag(pvm_box, obj_tmp);
     dir_cam_hdg += dir_cam_hdg_drag;
     dir_cam_hdg_drag = 0.f;
@@ -1164,10 +1169,8 @@ void f_aws1_ui::handle_mouse_mv(c_view_mode_box * pvm_box,
 void f_aws1_ui::handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp)
 {
   if (obj_tmp.type == ot_wp){
-    drag_waypoint();
-  }
-  else if (obj_tmp.type == ot_nul)
-  {
+    drag_waypoint();    
+  } else if (obj_tmp.type == ot_nul){
     if (pvm_box->get_mode() == ui_mode_fpv){
       // change dir_cam_hdg
       drag_cam_dir();
@@ -1252,18 +1255,29 @@ void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
 
 void f_aws1_ui::update_map_cfg_box(c_map_cfg_box * pmc_box)
 {
-  pmc_box->get_params(map_range, visible_obj);
+  {
+    float fmap_range = (float)map_range;
+    pmc_box->get_params(fmap_range, visible_obj);
+    map_range = (unsigned int)fmap_range;
+  }
   switch (pmc_box->get_command())
     {
     case c_map_cfg_box::range_up:
-      if(map_range < 10000000){
-	map_range *= 10.f;
+      if(map_range < 10000000){       
+	map_range += map_range_base;
+	
+	if(map_range == map_range_base * 10)
+	  map_range_base *= 10;
+     
 	recalc_range();
       }
       break;
     case c_map_cfg_box::range_down:
-      if(map_range > 100){
-	map_range *= 0.1f;
+      if(map_range > 100){	
+	if(map_range_base == map_range)
+	  map_range_base /= 10;
+	
+	map_range -= map_range_base;
 	recalc_range();
       }
       break;
@@ -1277,7 +1291,7 @@ void f_aws1_ui::update_map_cfg_box(c_map_cfg_box * pmc_box)
     case c_map_cfg_box::mrk:
       break;
     }
-  pmc_box->set_params(map_range, visible_obj);
+  pmc_box->set_params((float)map_range, visible_obj);
 }
 
 void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new)

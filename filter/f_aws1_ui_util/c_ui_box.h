@@ -341,7 +341,7 @@ public:
   virtual bool handle_left_push(const glm::vec2 & pt);
   virtual bool handle_left_release(const glm::vec2 & pt);
  public:
- c_map_cfg_box() : c_aws_ui_box(), range(1000), btn_pushed(nul),
+ c_map_cfg_box() : c_aws_ui_box(), range(4000), btn_pushed(nul),
     btn_released(nul), command(nul)
   {
     hstr.resize(nul);
@@ -594,7 +594,7 @@ public:
 
 
   enum e_param {
-    PRM_RPM, PRM_TRIM, PRM_TEMP, PRM_VALT, PRM_FRATE, PRM_TENG, PRM_ST1, PRM_ST2, PRM_UNDEF
+    PRM_SOG, PRM_DEPTH, PRM_RPM, PRM_TRIM, PRM_TEMP, PRM_VALT, PRM_FRATE, PRM_TENG, PRM_ST1, PRM_ST2, PRM_UNDEF
   };
   static const char * str_params[PRM_UNDEF];
   int hparams[PRM_UNDEF];
@@ -604,6 +604,7 @@ public:
 				 const glm:: vec4 & clr
 				 );
   void update_params_indicator(
+			       const float _sog, const float _depth, 
 				 const float _mrpm, const unsigned char _mtrim,
 				 const int _mpoil, const float _mtoil,
 				 const float _mtemp, const float _mvalt,
@@ -675,7 +676,7 @@ public:
 		 const unsigned char _rud,
 		 const float _cog /*radian*/, const float _sog,
 		 const float _yaw /*radian*/, const float _pitch/*radian*/,
-		 const float _roll/*radian*/);
+		 const float _roll/*radian*/, const float _depth);
   
   void set_dir_cam(const float _dir_cam)
   {

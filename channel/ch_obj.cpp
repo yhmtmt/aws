@@ -91,7 +91,8 @@ c_ais_obj::c_ais_obj(const c_ais_obj & obj)
 }
 
 
-c_ais_obj::c_ais_obj(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
+c_ais_obj::c_ais_obj(const long long t, const unsigned int mmsi,
+		     float lat, float lon, float cog, float sog, float hdg)
 {
 	set(t, mmsi, lat, lon, cog, sog, hdg);
 }

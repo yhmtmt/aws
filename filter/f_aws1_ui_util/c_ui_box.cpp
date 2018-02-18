@@ -780,7 +780,8 @@ const char * c_map_cfg_box::str_btn[nul] =
 };
 
 bool c_map_cfg_box::init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
-  const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn, const float y, const bool left)
+			 const glm::vec2 & sz_fnt, const glm::vec2 & sz_scrn,
+			 const float y, const bool left)
 {
   if (!c_aws_ui_box::init(_clr, _bkgclr, sz_fnt, sz_scrn, y, left))
     return false;
@@ -1121,6 +1122,8 @@ bool c_route_cfg_box::proc(const bool bpushed, const bool breleased)
 /////////////////////////////////////////////////////////////////// c_indicator
 const char * c_indicator::str_params[PRM_UNDEF] =
   {
+    "SOG(kts) : %02.1f",
+    "DEPTH(m) : %03.1f",
     "REV(RPM) : %04.1f",
     "TRIM     : %03d",
     "Teng(C)  : %03.1f",
@@ -1692,15 +1695,16 @@ void c_indicator::create_params_indicator( glm::vec2 & pos,
 }
 
 void c_indicator::update_params_indicator(
-				 const float _mrpm, const unsigned char _mtrim,
-				 const int _mpoil, const float _mtoil,
-				 const float _mtemp, const float _mvalt,
-				 const float _mfrate, const unsigned int _mteng,
-				 const int _mpclnt, const int _mpfl,
-				 const unsigned char _mld,
-				 const unsigned char _mtq,
-				 const char * _mst1,
-				 const char * _mst2)
+					  const float _sog, const float _depth,
+					  const float _mrpm, const unsigned char _mtrim,
+					  const int _mpoil, const float _mtoil,
+					  const float _mtemp, const float _mvalt,
+					  const float _mfrate, const unsigned int _mteng,
+					  const int _mpclnt, const int _mpfl,
+					  const unsigned char _mld,
+					  const unsigned char _mtq,
+					  const char * _mst1,
+					  const char * _mst2)
 {
   char buf[32];
   buf[0] = '\0';
@@ -1708,6 +1712,10 @@ void c_indicator::update_params_indicator(
   for (int iparam = 0; iparam < (int)PRM_UNDEF; iparam++){
     const char * fmt = str_params[iparam];
     switch(iparam){
+    case PRM_SOG:
+      snprintf(buf, 32, fmt, _sog);break;      
+    case PRM_DEPTH:
+      snprintf(buf, 32, fmt, _depth);break;            
     case PRM_RPM:
       snprintf(buf, 32, fmt, _mrpm);break;      
     case PRM_TRIM:
@@ -1835,7 +1843,7 @@ void c_indicator::set_param(const char * str_time,
 			    const unsigned char _seng, const unsigned char _rud,
 			    const float _cog, const float _sog,
 			    const float _yaw, const float _pitch,
-			    const float _roll)
+			    const float _roll, const float _depth)
 {
   meng = _meng;
   seng = _seng;
@@ -1848,9 +1856,10 @@ void c_indicator::set_param(const char * str_time,
 
   update_engine_indicator(hmeng_in, hmeng_n, hmeng_f, hmeng_b, meng);
   update_engine_indicator(hseng_in, hseng_n, hseng_f, hseng_b, seng);
-  update_params_indicator(_mrpm, _mtrim, _mpoil, _mtoil, _mtemp,  _mvalt,
-			    _mfrate, _mteng, _mpclnt, _mpfl, _mld, _mtq,
-			    _mst1, _mst2);
+  update_params_indicator(_sog, _depth,  _mrpm, _mtrim, _mpoil, _mtoil,
+			  _mtemp,  _mvalt,
+			  _mfrate, _mteng, _mpclnt, _mpfl, _mld, _mtq,
+			  _mst1, _mst2);
   update_sog_indicator();
   update_rp_indicator();
   update_hc_indicator();

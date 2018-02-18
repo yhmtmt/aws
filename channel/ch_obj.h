@@ -474,196 +474,197 @@ public:
 class c_obst : public c_obj
 {
 protected:
-	float m_r;
-	int m_update_count;
-public:
-	c_obst();
-	c_obst(const long long t, const float bear, const float dist,
-		const float r, const e_obj_src src = EOS_SV);
-	virtual ~c_obst();
-
-	void set_rad(const float rad){
-		m_r = rad;
-	}
-
-	const float get_rad(){
-		return m_r;
-	}
-
-	const int get_update_count(){
-		return m_update_count;
-	}
-
-	void update(const long long t, Point3f & Xecef, Point3f & Vecef, float rad)
-	{
-		set_time(t);
-		set_rad(rad);
-		set_pos_ecef(Xecef.x, Xecef.y, Xecef.z);
-		set_vel_ecef(Vecef.x, Vecef.y, Vecef.z);
-		if (m_update_count != INT_MAX)
-			m_update_count++;
-	}
+  float m_r;
+  int m_update_count;
+ public:
+  c_obst();
+  c_obst(const long long t, const float bear, const float dist,
+	 const float r, const e_obj_src src = EOS_SV);
+  virtual ~c_obst();
+  
+  void set_rad(const float rad){
+    m_r = rad;
+  }
+  
+  const float get_rad(){
+    return m_r;
+  }
+  
+  const int get_update_count(){
+    return m_update_count;
+  }
+  
+  void update(const long long t, Point3f & Xecef, Point3f & Vecef, float rad)
+  {
+    set_time(t);
+    set_rad(rad);
+    set_pos_ecef(Xecef.x, Xecef.y, Xecef.z);
+    set_vel_ecef(Vecef.x, Vecef.y, Vecef.z);
+    if (m_update_count != INT_MAX)
+      m_update_count++;
+  }
 };
 
 // AIS object
 class c_ais_obj: public c_obj
 {
-protected:
-	unsigned int m_mmsi;
+ protected:
+  unsigned int m_mmsi;
 public:
-	c_ais_obj();
-	c_ais_obj(const c_ais_obj & obj);
-	c_ais_obj(const long long t, const unsigned int mmsi, 
-		  float lat, float lon, float cog, float sog, float hdg);
-	virtual ~c_ais_obj();
+  c_ais_obj();
+  c_ais_obj(const c_ais_obj & obj);
+  c_ais_obj(const long long t, const unsigned int mmsi, 
+	    float lat, float lon, float cog, float sog, float hdg);
+  virtual ~c_ais_obj();
+  
+  virtual void print(ostream & out){
+    out << "AIS Object MMSI: " << m_mmsi << 
+      " lat " << m_lat << " lon " << m_lon 
+	<< " xr " << m_xr << " yr " << m_yr << " zr " << m_zr << endl;
+  }
+  
+  void set(const long long t, const unsigned int mmsi, 
+	   float lat, float lon, float cog, float sog, float hdg)
+  {
+    m_type = EOT_SHIP;
+    m_src = EOS_AIS;
+    if(m_tst == EOST_DET || m_tst == EOST_TRCK)
+      m_tst = EOST_TRCK;
+    m_dtype= (e_obj_data_type)(EOD_AIS | EOD_ATTD);
+    
+    m_yaw = hdg;
+    set_time(t);
+    m_mmsi = mmsi;
+    set_pos_bih(lat, lon, 0.);
+    set_vel_bih(cog, sog);
+    reset_ecef();
+    reset_rel();
+  }
+  
+  void update(const long long t, float lat, float lon, 
+	      float cog, float sog, float hdg){
+    m_t = t;
+    m_dtype = (e_obj_data_type)(EOD_AIS | EOD_ATTD);
+    m_yaw = hdg;
+    set_pos_bih(lat, lon, 0.);
+    set_vel_bih(cog, sog);
+    reset_ecef();
+    reset_rel();
+  }
+  
+  void set(const c_ais_obj & obj){
+    set(obj.m_t, obj.m_mmsi, obj.m_lat, obj.m_lon,
+	obj.m_cog, obj.m_sog, obj.m_yaw);
+  }
+  
+  void update(const c_ais_obj & obj){
+    update(obj.m_t, obj.m_lat, obj.m_lon, obj.m_cog, obj.m_sog, obj.m_yaw);
+  }
+  
+  const unsigned int get_mmsi(){
+    return m_mmsi;
+  }
+  
+  static size_t get_dsize()
+  {
+    return sizeof(long long) + sizeof(unsigned int) + sizeof(float) * 5;
+  }
+  
+  int write(FILE * pf)
+  {
+    fwrite((void*)&m_t , sizeof(long long), 1, pf);
+    fwrite((void*)&m_mmsi, sizeof(unsigned int), 1, pf);
+    fwrite((void*)&m_lat, sizeof(float), 1, pf);
+    fwrite((void*)&m_lon, sizeof(float), 1, pf);
+    fwrite((void*)&m_cog, sizeof(float), 1, pf);
+    fwrite((void*)&m_sog, sizeof(float), 1, pf);
+    fwrite((void*)&m_yaw, sizeof(float), 1, pf);
+    return sizeof(long long) + sizeof(unsigned int) + sizeof(float) * 5;
+  }
+  
+  int read(FILE * pf)
+  {
+    size_t res;
+    res = fread((void*)&m_t , sizeof(long long), 1, pf);
+    if(!res)
+      return 0;
+    res = fread((void*)&m_mmsi, sizeof(unsigned int), 1, pf);
+    if(!res)
+      return 0;
+    res = fread((void*)&m_lat, sizeof(float), 1, pf);
+    if(!res)
+      return 0;
+    res = fread((void*)&m_lon, sizeof(float), 1, pf);
+    if(!res)
+      return 0;
+    res = fread((void*)&m_cog, sizeof(float), 1, pf);
+    if(!res)
+      return 0;
+    res = fread((void*)&m_sog, sizeof(float), 1, pf);
+    if(!res)
+      return 0;
+    res = fread((void*)&m_yaw, sizeof(float), 1, pf);
+    if(!res)
+      return 0;
+    return sizeof(long long) + sizeof(float) * 5;		
+  }
+  
+  void write_buf(const char * buf)
+  {
+    m_t = *((long long*) buf);
+    buf += sizeof(long long);
+    
+    m_mmsi = *((unsigned int*) buf);
+    buf += sizeof(unsigned int);
+    
+    m_lat = *((float*)buf);
+    buf += sizeof(float);
+    
+    m_lon = *((float*)buf);
+    buf += sizeof(float);
+    
+    m_cog = *((float*)buf);
+    buf += sizeof(float);
+    
+    m_sog = *((float*)buf);
+    buf += sizeof(float);
 
-	virtual void print(ostream & out){
-	  out << "AIS Object MMSI: " << m_mmsi << 
-	    " lat " << m_lat << " lon " << m_lon 
-	       << " xr " << m_xr << " yr " << m_yr << " zr " << m_zr << endl;
-	}
-
-	void set(const long long t, const unsigned int mmsi, 
-		 float lat, float lon, float cog, float sog, float hdg)
-	{
-		m_type = EOT_SHIP;
-		m_src = EOS_AIS;
-		if(m_tst == EOST_DET || m_tst == EOST_TRCK)
-			m_tst = EOST_TRCK;
-		m_dtype= (e_obj_data_type)(EOD_AIS | EOD_ATTD);
-
-		m_yaw = hdg;
-		set_time(t);
-		m_mmsi = mmsi;
-		set_pos_bih(lat, lon, 0.);
-		set_vel_bih(cog, sog);
-		reset_ecef();
-		reset_rel();
-	}
-
-	void update(const long long t, float lat, float lon, 
-		    float cog, float sog, float hdg){
-		m_t = t;
-		m_dtype = (e_obj_data_type)(EOD_AIS | EOD_ATTD);
-		m_yaw = hdg;
-		set_pos_bih(lat, lon, 0.);
-		set_vel_bih(cog, sog);
-		reset_ecef();
-		reset_rel();
-	}
-
-	void set(const c_ais_obj & obj){
-		set(obj.m_t, obj.m_mmsi, obj.m_lat, obj.m_lon, obj.m_cog, obj.m_sog, obj.m_yaw);
-	}
-
-	void update(const c_ais_obj & obj){
-		update(obj.m_t, obj.m_lat, obj.m_lon, obj.m_cog, obj.m_sog, obj.m_yaw);
-	}
-
-	const unsigned int get_mmsi(){
-		return m_mmsi;
-	}
-
-	static size_t get_dsize()
-	{
-		return sizeof(long long) + sizeof(unsigned int) + sizeof(float) * 5;
-	}
-
-	int write(FILE * pf)
-	{
-		fwrite((void*)&m_t , sizeof(long long), 1, pf);
-		fwrite((void*)&m_mmsi, sizeof(unsigned int), 1, pf);
-		fwrite((void*)&m_lat, sizeof(float), 1, pf);
-		fwrite((void*)&m_lon, sizeof(float), 1, pf);
-		fwrite((void*)&m_cog, sizeof(float), 1, pf);
-		fwrite((void*)&m_sog, sizeof(float), 1, pf);
-		fwrite((void*)&m_yaw, sizeof(float), 1, pf);
-		return sizeof(long long) + sizeof(unsigned int) + sizeof(float) * 5;
-	}
-
-	int read(FILE * pf)
-	{
-	  size_t res;
-		res = fread((void*)&m_t , sizeof(long long), 1, pf);
-		if(!res)
-		  return 0;
-		res = fread((void*)&m_mmsi, sizeof(unsigned int), 1, pf);
-		if(!res)
-		  return 0;
-		res = fread((void*)&m_lat, sizeof(float), 1, pf);
-		if(!res)
-		  return 0;
-		res = fread((void*)&m_lon, sizeof(float), 1, pf);
-		if(!res)
-		  return 0;
-		res = fread((void*)&m_cog, sizeof(float), 1, pf);
-		if(!res)
-		  return 0;
-		res = fread((void*)&m_sog, sizeof(float), 1, pf);
-		if(!res)
-		  return 0;
-		res = fread((void*)&m_yaw, sizeof(float), 1, pf);
-		if(!res)
-		  return 0;
-		return sizeof(long long) + sizeof(float) * 5;		
-	}
-
-	void write_buf(const char * buf)
-	{
-		m_t = *((long long*) buf);
-		buf += sizeof(long long);
-
-		m_mmsi = *((unsigned int*) buf);
-		buf += sizeof(unsigned int);
-
-		m_lat = *((float*)buf);
-		buf += sizeof(float);
-
-		m_lon = *((float*)buf);
-		buf += sizeof(float);
-
-		m_cog = *((float*)buf);
-		buf += sizeof(float);
-
-		m_sog = *((float*)buf);
-		buf += sizeof(float);
-
-		m_yaw = *((float*)buf);
-		buf += sizeof(float);
-	}
-
-	void read_buf(char * buf)
-	{
-		*((long long*) buf) = m_t;
-		buf += sizeof(long long);
-
-		*((unsigned int*) buf) = m_mmsi;
-		buf += sizeof(unsigned int);
-
-		*((float*)buf) = m_lat;
-		buf += sizeof(float);
-
-		*((float*)buf) = m_lon;
-		buf += sizeof(float);
-
-		*((float*)buf) = m_cog;
-		buf += sizeof(float);
-
-		*((float*)buf) = m_sog;
-		buf += sizeof(float);
-
-		*((float*)buf) = m_yaw;
-		buf += sizeof(float);
-	}
-
-	static void read_buf_null(char * buf){
-	  memset((void*)buf, 0, get_dsize());
-	}
+    m_yaw = *((float*)buf);
+    buf += sizeof(float);
+  }
+  
+  void read_buf(char * buf)
+  {
+    *((long long*) buf) = m_t;
+    buf += sizeof(long long);
+    
+    *((unsigned int*) buf) = m_mmsi;
+    buf += sizeof(unsigned int);
+    
+    *((float*)buf) = m_lat;
+    buf += sizeof(float);
+    
+    *((float*)buf) = m_lon;
+    buf += sizeof(float);
+    
+    *((float*)buf) = m_cog;
+    buf += sizeof(float);
+    
+    *((float*)buf) = m_sog;
+    buf += sizeof(float);
+    
+    *((float*)buf) = m_yaw;
+    buf += sizeof(float);
+  }
+  
+  static void read_buf_null(char * buf){
+    memset((void*)buf, 0, get_dsize());
+  }
 };
 
 class ch_obst : public ch_base
 {
-protected:
+ protected:
 	list<c_obst*> objs;
 	list<c_obst*>::iterator itr;
 public:
@@ -883,7 +884,8 @@ public:
       unlock();
     }
   
-  void push(const long long t, const unsigned int mmsi, float lat, float lon, float cog, float sog, float hdg)
+  void push(const long long t, const unsigned int mmsi,
+	    float lat, float lon, float cog, float sog, float hdg)
   {
     if(mmsi == 0 || mmsi > 999999999){
 	    //cout << "illegal mmsi detected: mmsi " << mmsi <<  endl;
@@ -912,7 +914,8 @@ public:
     unlock();
   }
   
-  void update_rel_pos_and_vel(const Mat & R, const float x, const float y, const float z)
+  void update_rel_pos_and_vel(const Mat & R, const float x,
+			      const float y, const float z)
   {
     lock();
     for (itr = objs.begin(); itr != objs.end(); itr++){
@@ -930,10 +933,11 @@ public:
     int id = 0;
     for (itr = objs.begin(); itr != objs.end(); itr++){
       c_ais_obj * pobj = itr->second;
-      if (id == _id)
+      if (id == _id){
 	pobj->set_tracking_id(0);
-      else
+      }else{
 	pobj->set_tracking_id(-1);
+      }
       id++;
     }
   }
@@ -992,7 +996,8 @@ public:
   // get_cur_state, is_end, is_begin, begin, end, next, prev do not lock mutex. 
   // If you use them, lock/unlock methods should be called by their user.
   
-  bool get_cur_state(float & x, float & y, float & z, float & vx, float & vy, float & vz, float & yw){
+  bool get_cur_state(float & x, float & y, float & z,
+		     float & vx, float & vy, float & vz, float & yw){
     c_ais_obj & obj = *(itr->second);
     bool flag = true;
     float r, p;
@@ -1025,7 +1030,7 @@ public:
   
   bool get_pos_bd(float & bear, float & dist)
   {
-		return (itr->second)->get_pos_bd(bear, dist);
+    return (itr->second)->get_pos_bd(bear, dist);
   }
   
   bool get_prediction(const long long t, float & x, float & y, float & s)
@@ -1154,7 +1159,7 @@ public:
 	  c_ais_obj * pobj = new c_ais_obj(obj);
 	  objs.insert(map<unsigned int, c_ais_obj *>::value_type(obj.get_mmsi(), pobj));
 	  pobj->set_ecef_from_bih();
-					updates.push_back(pobj);
+	  updates.push_back(pobj);
 	}				
       }
       unlock();

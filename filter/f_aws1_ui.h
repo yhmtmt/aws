@@ -149,11 +149,17 @@ class f_aws1_ui: public f_glfw_window
     unsigned char tq = 0;
     StatEng1 steng1;
     StatEng2 steng2;
+    float depth = 0.f;
+    
     if(m_engstate){ // currentlly only for main engine
       m_engstate->get_rapid(t, rpm, trim);
       m_engstate->get_dynamic(t, poil, toil, temp, valt, frate, teng, pclnt, pfl, steng1, steng2, ld, tq);
     }
-    
+
+    if(m_state){
+      m_state->get_depth(t, depth);
+    }
+
     ind.set_param(
 		  m_time_str,
 		  m_stat.meng_aws,
@@ -167,7 +173,8 @@ class f_aws1_ui: public f_glfw_window
 		  sog,
 		  (float)(yaw * (PI / 180.f)),
 		  (float)(pitch* (PI / 180.f)),
-		  (float)(-roll* (PI / 180.f)));
+		  (float)(-roll* (PI / 180.f)),
+		  depth);
     ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
   }
 
@@ -279,11 +286,14 @@ class f_aws1_ui: public f_glfw_window
   Mat Rmap;
   glm::vec2 pt_map_center_bih;
   glm::vec3 pt_map_center_ecef;
-  float map_range /* radius in meter */, meter_per_pix, pix_per_meter;
+
+  unsigned int map_range_base;
+  unsigned int map_range /* radius in meter */;
+  float meter_per_pix, pix_per_meter;
   void recalc_range()
   {
 	  bupdate_map = true;
-	  meter_per_pix = (float)(map_range / (float)(m_sz_win.height >> 1));
+	  meter_per_pix = (float)((float)map_range / (float)(m_sz_win.height >> 1));
 	  pix_per_meter = (float)(1.0 / meter_per_pix);
   }
 
