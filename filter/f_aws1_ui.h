@@ -102,14 +102,19 @@ class f_aws1_ui: public f_glfw_window
   /////////////////////////////////////////// graphics elements. 
   // The elements can be used by changing position, scale, and rotation for each graphics artifacts.
   c_gl_2d_obj orect      /* 2d rectangle */,
-              otri       /* 2d triangle */,
-              ocirc      /* 2d circle */;
+    otri       /* 2d triangle */,
+    ocirc      /* 2d circle */,
+    omap_mask /* map mode mask */;
+  
   c_gl_text_obj otxt     /* Text */;
   c_gl_2d_line_obj oline /* 2d line */;
   c_gl_line_obj oline3d  /* 3d line */;
   Mat m_cam;                   // main camera image
   long long m_tcam, m_frm_cam; // time and frame number m_cam grabbed
   e_imfmt m_fmt_cam;           // image format of main camera
+
+  int hmap_mask[4];
+  bool init_map_mask();
   
   void render_gl_objs(c_view_mode_box * pvm_box); // renders all elements above declared.
 
@@ -270,9 +275,9 @@ class f_aws1_ui: public f_glfw_window
   void handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp);
   void clear_mouse_state()
   {
-	  mouse_button = -1;
-	  mouse_action = -1;
-	  mouse_mods = -1;
+    mouse_button = -1;
+    mouse_action = -1;
+    mouse_mods = -1;
   }
   
   void add_waypoint(c_route_cfg_box * prc_box);
@@ -290,11 +295,21 @@ class f_aws1_ui: public f_glfw_window
   unsigned int map_range_base;
   unsigned int map_range /* radius in meter */;
   float meter_per_pix, pix_per_meter;
+  
+  unsigned int get_max_circle_radius()
+  {
+    if(m_sz_win.height < m_sz_win.width){
+      return m_sz_win.height >> 1;
+    }
+    return m_sz_win.width >> 1;
+  }
+  
   void recalc_range()
   {
-	  bupdate_map = true;
-	  meter_per_pix = (float)((float)map_range / (float)(m_sz_win.height >> 1));
-	  pix_per_meter = (float)(1.0 / meter_per_pix);
+    bupdate_map = true;
+    meter_per_pix = (float)((float)map_range
+			    / (float)(get_max_circle_radius()));
+    pix_per_meter = (float)(1.0 / meter_per_pix);
   }
 
   // FPV related member

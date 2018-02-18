@@ -653,6 +653,7 @@ public:
     const unsigned int npts, const float * points,
     const unsigned int nids, const unsigned short * indices,
     const unsigned int buffer_size = 64);
+  
   bool init_rectangle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
     const glm::vec2 & plb, glm::vec2 & sz, const unsigned int buffer_size = 64);
   bool init_circle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,

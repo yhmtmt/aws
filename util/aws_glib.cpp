@@ -1495,663 +1495,694 @@ void c_gl_2d_obj::destroy()
 
 }
 
-bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
-	const glm::vec2 & plb, glm::vec2 & sz, const unsigned int _buffer_size)
+bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _posloc,
+				 GLuint _clrloc, GLuint _depthloc,
+				 const glm::vec2 & plb, glm::vec2 & sz,
+				 const unsigned int _buffer_size)
 {
-	type = rectangle;
-
-	modeloc = _modeloc;
-	posloc = _posloc;
-	clrloc = _clrloc;
-	depthloc = _depthloc;
-
-	buffer_size = _buffer_size;
-
-	int depth;
-	glGetIntegerv(GL_DEPTH_BITS, &depth);
-	zstep = (float)(2.0 / (float)(1 << depth));
-
-	prottype.nvtx = 4;
-	prottype.nidxs = 5;
-	prottype.nidxt = 6;
-	prottype.vtx = new s_vertex[4];
-	prottype.idxs = new unsigned short[prottype.nidxs + prottype.nidxt];
-	prottype.idxt = prottype.idxs + prottype.nidxs;
-	prottype.vtx[0].x = plb.x;
-	prottype.vtx[0].y = plb.y;
-	prottype.vtx[1].x = plb.x + sz.x;
-	prottype.vtx[1].y = plb.y;
-	prottype.vtx[2].x = plb.x + sz.x;
-	prottype.vtx[2].y = plb.y + sz.y;
-	prottype.vtx[3].x = plb.x;
-	prottype.vtx[3].y = plb.y + sz.y;
-
-	prottype.idxs[0] = 0;
-	prottype.idxs[1] = 1;
-	prottype.idxs[2] = 2;
-	prottype.idxs[3] = 3;
-	prottype.idxs[4] = 0;
-
-	prottype.idxt[0] = 0;
-	prottype.idxt[1] = 1;
-	prottype.idxt[2] = 2;
-	prottype.idxt[3] = 2;
-	prottype.idxt[4] = 3;
-	prottype.idxt[5] = 0;
-
-	vtxbuf = new s_vertex[buffer_size * prottype.nvtx];
-	idxbuf = new unsigned short[buffer_size * (prottype.nidxt + prottype.nidxs)];
-
-	// allocating vertex buffer
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	glGenBuffers(2, vbo);
-
-	return true;
+  type = rectangle;
+  
+  modeloc = _modeloc;
+  posloc = _posloc;
+  clrloc = _clrloc;
+  depthloc = _depthloc;
+  
+  buffer_size = _buffer_size;
+  
+  int depth;
+  glGetIntegerv(GL_DEPTH_BITS, &depth);
+  zstep = (float)(2.0 / (float)(1 << depth));
+  
+  prottype.nvtx = 4;
+  prottype.nidxs = 5;
+  prottype.nidxt = 6;
+  prottype.vtx = new s_vertex[4];
+  prottype.idxs = new unsigned short[prottype.nidxs + prottype.nidxt];
+  prottype.idxt = prottype.idxs + prottype.nidxs;
+  prottype.vtx[0].x = plb.x;
+  prottype.vtx[0].y = plb.y;
+  prottype.vtx[1].x = plb.x + sz.x;
+  prottype.vtx[1].y = plb.y;
+  prottype.vtx[2].x = plb.x + sz.x;
+  prottype.vtx[2].y = plb.y + sz.y;
+  prottype.vtx[3].x = plb.x;
+  prottype.vtx[3].y = plb.y + sz.y;
+  
+  prottype.idxs[0] = 0;
+  prottype.idxs[1] = 1;
+  prottype.idxs[2] = 2;
+  prottype.idxs[3] = 3;
+  prottype.idxs[4] = 0;
+  
+  // counter clockwise
+  prottype.idxt[0] = 0;
+  prottype.idxt[1] = 1;
+  prottype.idxt[2] = 2;
+  prottype.idxt[3] = 2;
+  prottype.idxt[4] = 3;
+  prottype.idxt[5] = 0;
+  
+  vtxbuf = new s_vertex[buffer_size * prottype.nvtx];
+  idxbuf = new unsigned short[buffer_size * (prottype.nidxt + prottype.nidxs)];
+  
+  // allocating vertex buffer
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glGenBuffers(2, vbo);
+  
+  return true;
 }
 
-bool c_gl_2d_obj::init_circle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
-	const unsigned int npts, const float rx, const float ry, const unsigned int _buffer_size)
+bool c_gl_2d_obj::init_circle(GLuint _modeloc, GLuint _posloc,
+			      GLuint _clrloc, GLuint _depthloc,
+			      const unsigned int npts, const float rx,
+			      const float ry, const unsigned int _buffer_size)
 {
-	type = circle;
-
-	modeloc = _modeloc;
-	posloc = _posloc;
-	clrloc = _clrloc;
-	depthloc = _depthloc;
-
-	buffer_size = _buffer_size;
-
-	int depth;
-	glGetIntegerv(GL_DEPTH_BITS, &depth);
-	zstep = (float)(2.0 / (float) (1 << depth));
-
-	prottype.nvtx = npts;
-	prottype.nidxs = npts + 1;
-	prottype.nidxt = 3 * (npts - 2);
-	prottype.vtx = new s_vertex[npts];
-	prottype.idxs = new unsigned short[prottype.nidxs + prottype.nidxt];
-	prottype.idxt = prottype.idxs + prottype.nidxs;
-	prottype.r = glm::vec2(rx, ry);
-
-	float th, thstep = (float)(2.0 * CV_PI / (float) npts);
-	for (int iv = 0; iv < npts; iv++){
-		th = (float)(thstep * (float) iv);
-		prottype.vtx[iv].x = (float)(rx * cos(th));
-		prottype.vtx[iv].y = (float)(ry * sin(th));
-	}
-
-	// triangle index
-	unsigned short p0 = 0, p1 = 1, p2 = 2;
-	for (int itri = 0; itri < npts - 2; itri++){
-		int idx0 = itri * 3, idx1 = idx0 + 1, idx2 = idx0 + 2;
-		prottype.idxt[idx0] = p0;
-		prottype.idxt[idx1] = p1;
-		prottype.idxt[idx2] = p2;
-		p1 = p2;
-		p2++;
-	}
-
-	// shape index
-	for (int idx = 0; idx < prottype.nidxs - 1; idx++){
-		prottype.idxs[idx] = (unsigned short) idx;
-	}
-	prottype.idxs[prottype.nidxs - 1] = 0;
-
-	vtxbuf = new s_vertex[buffer_size * prottype.nvtx];
-	idxbuf = new unsigned short[buffer_size * (prottype.nidxt + prottype.nidxs)];
-
-	// allocating vertex buffer
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	glGenBuffers(2, vbo);
-
-	return true;
+  type = circle;
+  
+  modeloc = _modeloc;
+  posloc = _posloc;
+  clrloc = _clrloc;
+  depthloc = _depthloc;
+  
+  buffer_size = _buffer_size;
+  
+  int depth;
+  glGetIntegerv(GL_DEPTH_BITS, &depth);
+  zstep = (float)(2.0 / (float) (1 << depth));
+  
+  prottype.nvtx = npts;
+  prottype.nidxs = npts + 1;
+  prottype.nidxt = 3 * (npts - 2);
+  prottype.vtx = new s_vertex[npts];
+  prottype.idxs = new unsigned short[prottype.nidxs + prottype.nidxt];
+  prottype.idxt = prottype.idxs + prottype.nidxs;
+  prottype.r = glm::vec2(rx, ry);
+  
+  float th, thstep = (float)(2.0 * CV_PI / (float) npts);
+  for (int iv = 0; iv < npts; iv++){
+    th = (float)(thstep * (float) iv);
+    prottype.vtx[iv].x = (float)(rx * cos(th));
+    prottype.vtx[iv].y = (float)(ry * sin(th));
+  }
+  
+  // triangle index
+  unsigned short p0 = 0, p1 = 1, p2 = 2;
+  for (int itri = 0; itri < npts - 2; itri++){
+    int idx0 = itri * 3, idx1 = idx0 + 1, idx2 = idx0 + 2;
+    // counter clockwise order
+    prottype.idxt[idx0] = p0;
+    prottype.idxt[idx1] = p1;
+    prottype.idxt[idx2] = p2;
+    p1 = p2;
+    p2++;
+  }
+  
+  // shape index
+  for (int idx = 0; idx < prottype.nidxs - 1; idx++){
+    prottype.idxs[idx] = (unsigned short) idx;
+  }
+  prottype.idxs[prottype.nidxs - 1] = 0;
+  
+  vtxbuf = new s_vertex[buffer_size * prottype.nvtx];
+  idxbuf = new unsigned short[buffer_size * (prottype.nidxt + prottype.nidxs)];
+  
+  // allocating vertex buffer
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glGenBuffers(2, vbo);
+  
+  return true;
 }
 
-bool c_gl_2d_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
-	const unsigned int npts, const float * points,
-	const unsigned int nids, const unsigned short * indices,
-	const unsigned int _buffer_size)
+bool c_gl_2d_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc,
+		       GLuint _depthloc,
+		       const unsigned int npts, const float * points,
+		       const unsigned int nids, const unsigned short * indices,
+		       const unsigned int _buffer_size)
 {
-	type = custom;
-
-	modeloc = _modeloc;
-	posloc = _posloc;
-	clrloc = _clrloc;
-	depthloc = _depthloc;
-
-	buffer_size = _buffer_size;
-
-	int depth;
-	glGetIntegerv(GL_DEPTH_BITS, &depth);
-	zstep = (float)(2.0 / (float)(1 << depth));
-
-	if (nids % 3 != 0) // triangle set is assumed.
-		return false;
-
-	prottype.nvtx = npts;
-	prottype.nidxt = nids;
-
-	// calculating shape indices
-	{
-		struct s_edge{
-			int b, e;
-		};
-
-		vector<s_edge> edges(nids);
-		for (int i = 0; i < nids; i += 3){
-			edges[i].b = indices[i]; edges[i].e = indices[i + 1];
-			edges[i + 1].b = indices[i + 1]; edges[i + 1].e = indices[i + 2];
-			edges[i + 2].b = indices[i + 2]; edges[i + 2].e = indices[i];
-		}
-
-		// eliminating identical edges
-		for (int i = 0; i < nids; i++){
-			for (int j = i; j < nids; j++){
-				if (edges[j].b < 0)
-					continue;
-				if ((edges[j].b == edges[i].b && edges[j].e == edges[i].e) ||
-					(edges[j].b == edges[i].e && edges[j].e == edges[i].b))
-					edges[j].b = -1;
-			}
-		}
-
-		// relocating edges
-		int nidxs = 0, idx_min = INT_MIN;
-		for (int i = 0, j = 0; i < nids && j < nids; i++){
-			if (edges[i].b < 0){
-				for (; j < nids; j++){
-					if (edges[j].b < 0){
-						edges[i] = edges[j];
-						edges[j].b = -1;
-					}
-				}
-			}
-
-			if (edges[i].b >= 0){
-				idx_min = min(idx_min, edges[i].b);
-				idx_min = min(idx_min, edges[i].e);
-			}
-			nidxs = i;
-		}
-		nidxs += 1;
-
-		// allocating and loading shape index array
-		prottype.nidxs = nidxs;
-		prottype.idxs = new unsigned short[nidxs + nids];
-		prottype.idxt = prottype.idxs + nidxs;
-		prottype.idxs[0] = idx_min;
-		for (int i = 0; i < nidxs - 1; i++){
-			for (int iedge = 0; iedge < nidxs - 1; iedge++){
-				if (edges[iedge].b == prottype.idxs[i]){
-					prottype.idxs[i + 1] = edges[iedge].e;
-					break;
-				}
-				else if (edges[iedge].e == prottype.idxs[i]){
-					prottype.idxs[i + 1] = edges[iedge].b;
-					break;
-				}
-			}
-		}
-		if (prottype.idxs[0] != prottype.idxs[nidxs - 1]){
-			delete[] prottype.idxs;
-			cerr << "Given 2d object is not closed shape." << endl;
-			return false;
-		}
+  type = custom;
+  
+  modeloc = _modeloc;
+  posloc = _posloc;
+  clrloc = _clrloc;
+  depthloc = _depthloc;
+  
+  buffer_size = _buffer_size;
+  
+  int depth;
+  glGetIntegerv(GL_DEPTH_BITS, &depth);
+  zstep = (float)(2.0 / (float)(1 << depth));
+  
+  if (nids % 3 != 0) // triangle set is assumed.
+    return false;
+  
+  prottype.nvtx = npts;
+  prottype.nidxt = nids;
+  
+  // calculating shape indices
+  {
+    struct s_edge{
+      int b, e;
+    };
+    
+    vector<s_edge> edges(nids);
+    for (int i = 0; i < nids; i += 3){
+      edges[i].b = indices[i]; edges[i].e = indices[i + 1];
+      edges[i + 1].b = indices[i + 1]; edges[i + 1].e = indices[i + 2];
+      edges[i + 2].b = indices[i + 2]; edges[i + 2].e = indices[i];
+    }
+    
+    // eliminating identical edges
+    for (int i = 0; i < nids; i++){
+      for (int j = i; j < nids; j++){
+	if (edges[j].b < 0)
+	  continue;
+	if ((edges[j].b == edges[i].b && edges[j].e == edges[i].e) ||
+	    (edges[j].b == edges[i].e && edges[j].e == edges[i].b))
+	  edges[j].b = -1;
+      }
+    }
+    
+    // relocating edges
+    int nidxs = 0, idx_min = INT_MIN;
+    for (int i = 0, j = 0; i < nids && j < nids; i++){
+      if (edges[i].b < 0){
+	for (; j < nids; j++){
+	  if (edges[j].b < 0){
+	    edges[i] = edges[j];
+	    edges[j].b = -1;
+	  }
 	}
-
-	prottype.vtx = new s_vertex[npts];
-	memcpy((void*)prottype.vtx, (const void*)points, sizeof(s_vertex)* npts);
-	memcpy((void*) prottype.idxt, (const void*)indices, sizeof(unsigned short)* nids);
-
-	// allocating instance buffer
-	buffer_size = _buffer_size;
-	iis.reserve(buffer_size);
-
-	vtxbuf = new s_vertex[buffer_size * prottype.nvtx];
-	idxbuf = new unsigned short[buffer_size * (prottype.nidxt + prottype.nidxs)];
-
-	// allocating vertex buffer
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	glGenBuffers(2, vbo);
-
-	return true;
-}
-
-int c_gl_2d_obj::add(const glm::vec4 & clr, const glm::vec2 & pos, 
-	const float rot, const glm::vec2 & scale)
-{
-	int handle = -1;
-	if (buffer_size == iis.size()){
-		cerr << "c_gl_2d_obj::add run out of buffer. The buffer size should be larger in initialization." << endl;
-		return handle;
+      }
+      
+      if (edges[i].b >= 0){
+	idx_min = min(idx_min, edges[i].b);
+	idx_min = min(idx_min, edges[i].e);
+      }
+      nidxs = i;
+    }
+    nidxs += 1;
+    
+    // allocating and loading shape index array
+    prottype.nidxs = nidxs;
+    prottype.idxs = new unsigned short[nidxs + nids];
+    prottype.idxt = prottype.idxs + nidxs;
+    prottype.idxs[0] = idx_min;
+    for (int i = 0; i < nidxs - 1; i++){
+      for (int iedge = 0; iedge < nidxs - 1; iedge++){
+	if (edges[iedge].b == prottype.idxs[i]){
+	  prottype.idxs[i + 1] = edges[iedge].e;
+	  break;
 	}
-
-	for (int i = 0; i < iis.size(); i++)
-	{
-		if (!iis[i].bvalid){
-			handle = i;
-			break;
-		}
+	else if (edges[iedge].e == prottype.idxs[i]){
+	  prottype.idxs[i + 1] = edges[iedge].b;
+	  break;
 	}
+      }
+    }
+    if (prottype.idxs[0] != prottype.idxs[nidxs - 1]){
+      delete[] prottype.idxs;
+      cerr << "Given 2d object is not closed shape." << endl;
+      return false;
+    }
+  }
 
-	if (handle < 0){
-		if (iis.size() == buffer_size)
-			return -1;
-		handle = (int)iis.size();
-		iis.push_back(s_inst_inf());
-		iis[handle].order = handle;
-		iis_sorted_by_depth.push_back(handle);
-		iis[handle].order = handle;
-		reorder(handle);
-	}
 
-	iis[handle].bactive = true;
-	iis[handle].bvalid = true;
-	iis[handle].bupdated = false;
-	iis[handle].bborder = false;
-	iis[handle].scale = scale;
-	iis[handle].rot = rot;
-	iis[handle].clr = clr;
-	iis[handle].pos = pos;
+  prottype.vtx = new s_vertex[npts];
+  memcpy((void*)prottype.vtx, (const void*)points, sizeof(s_vertex)* npts);
+  memcpy((void*) prottype.idxt, (const void*)indices,
+	 sizeof(unsigned short)* nids);
 
-	float s = (float)(sin(rot)), c = (float)(cos(rot));
-	iis[handle].r = glm::mat2(c, -s, s, c);
-	iis[handle].sr = iis[handle].r * glm::mat2(scale.x, 0, 0, scale.y);
-
-	if (type == circle) {
-		glm::vec2 & scale = iis[handle].scale;
-		glm::vec2 & r = prottype.r;
-		glm::vec2 & relps2inv = iis[handle].relps2inv;
-		relps2inv.x = (float)(scale.x * r.x);
-		relps2inv.y = (float)(scale.y * r.y);
-		relps2inv.x *= relps2inv.x;
-		relps2inv.y *= relps2inv.y;
-		relps2inv.x = (float)(1.0 / relps2inv.x);
-		relps2inv.y = (float)(1.0 / relps2inv.y);
-	}
-	return handle;
+  /*
+  cout << "points";
+  for (int ipt = 0; ipt < npts; ipt++){
+    cout << "[" << ipt << "](" << prottype.vtx[ipt].x << "," << prottype.vtx[ipt].y << ")";
+  }
+  cout << endl;
+  
+  cout << "tridx" << endl;
+  for(int idx = 0; idx < nids; idx+=3){
+    cout << "[" << idx / 3 << "](" << prottype.idxt[idx] << "," << prottype.idxt[idx+1] << "," << prottype.idxt[idx+2] << ")";
+  }
+  cout << endl;
+  
+  cout << "shidx" << endl;
+  for(int idx = 0; idx < prottype.nidxt; idx++){
+    cout << prottype.idxt[idx] << ",";
+  }
+  cout << endl;
+  */
+  
+  // allocating instance buffer
+  buffer_size = _buffer_size;
+  iis.reserve(buffer_size);
+  
+  vtxbuf = new s_vertex[buffer_size * prottype.nvtx];
+  idxbuf = new unsigned short[buffer_size * (prottype.nidxt + prottype.nidxs)];
+  
+  // allocating vertex buffer
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glGenBuffers(2, vbo);
+  
+  return true;
 }
 
 int c_gl_2d_obj::add(const glm::vec4 & clr, const glm::vec2 & pos, 
-	const float rot, const float scale)
+		     const float rot, const glm::vec2 & scale)
 {
-	int handle = -1;
-	for (int i = 0; i < iis.size(); i++)
-	{
-		if (!iis[i].bvalid){
-			handle = i;
-			break;
-		}
-	}
-
-	if (handle < 0){
-		if (iis.size() == buffer_size)
-			return -1;
-		handle = (int)iis.size();
-		iis.push_back(s_inst_inf());
+  int handle = -1;
+  if (buffer_size == iis.size()){
+    cerr << "c_gl_2d_obj::add run out of buffer. The buffer size should be larger in initialization." << endl;
+    return handle;
+  }
+  
+  for (int i = 0; i < iis.size(); i++)
+    {
+      if (!iis[i].bvalid){
+	handle = i;
+	break;
+      }
+    }
+  
+  if (handle < 0){
+    if (iis.size() == buffer_size)
+      return -1;
+    handle = (int)iis.size();
+    iis.push_back(s_inst_inf());
+    iis[handle].order = handle;
+    iis_sorted_by_depth.push_back(handle);
 		iis[handle].order = handle;
-		iis_sorted_by_depth.push_back(handle);
 		reorder(handle);
-	}
+  }
+  
+  iis[handle].bactive = true;
+  iis[handle].bvalid = true;
+  iis[handle].bupdated = false;
+  iis[handle].bborder = false;
+  iis[handle].scale = scale;
+  iis[handle].rot = rot;
+  iis[handle].clr = clr;
+  iis[handle].pos = pos;
+  
+  float s = (float)(sin(rot)), c = (float)(cos(rot));
+  iis[handle].r = glm::mat2(c, -s, s, c);
+  iis[handle].sr = iis[handle].r * glm::mat2(scale.x, 0, 0, scale.y);
+  
+  if (type == circle) {
+    glm::vec2 & scale = iis[handle].scale;
+    glm::vec2 & r = prottype.r;
+    glm::vec2 & relps2inv = iis[handle].relps2inv;
+    relps2inv.x = (float)(scale.x * r.x);
+    relps2inv.y = (float)(scale.y * r.y);
+    relps2inv.x *= relps2inv.x;
+    relps2inv.y *= relps2inv.y;
+    relps2inv.x = (float)(1.0 / relps2inv.x);
+    relps2inv.y = (float)(1.0 / relps2inv.y);
+  }
+  return handle;
+}
 
-	iis[handle].bactive = true;
-	iis[handle].bvalid = true;
-	iis[handle].bupdated = false;
-	iis[handle].bborder = false;
-	iis[handle].scale.x = scale;
-	iis[handle].scale.y = scale;
-	if (type == circle){
-		glm::vec2 & scale = iis[handle].scale;
-		glm::vec2 & r = prottype.r;
-		glm::vec2 & relps2inv = iis[handle].relps2inv;
-		relps2inv.x = (float)(scale.x * r.x);
-		relps2inv.y = (float)(scale.y * r.y);
-		relps2inv.x *= relps2inv.x;
-		relps2inv.y *= relps2inv.y;
-		relps2inv.x = (float)(1.0 / relps2inv.x);
-		relps2inv.y = (float)(1.0 / relps2inv.y);
-	}
+int c_gl_2d_obj::add(const glm::vec4 & clr, const glm::vec2 & pos, 
+		     const float rot, const float scale)
+{
+  int handle = -1;
+  for (int i = 0; i < iis.size(); i++)
+    {
+      if (!iis[i].bvalid){
+	handle = i;
+	break;
+      }
+    }
 
-	iis[handle].rot = rot;
-	iis[handle].clr = clr;
-	iis[handle].pos = pos;
+  if (handle < 0){
+    if (iis.size() == buffer_size)
+      return -1;
+    handle = (int)iis.size();
+    iis.push_back(s_inst_inf());
+    iis[handle].order = handle;
+    iis_sorted_by_depth.push_back(handle);
+    reorder(handle);
+  }
 
-	float s = (float)(sin(rot)), c = (float)(cos(rot));
-	iis[handle].r = glm::mat2(c, -s, s, c);
-	iis[handle].sr = iis[handle].r * glm::mat2(scale, 0, 0, scale);
-	return handle;
+  iis[handle].bactive = true;
+  iis[handle].bvalid = true;
+  iis[handle].bupdated = false;
+  iis[handle].bborder = false;
+  iis[handle].scale.x = scale;
+  iis[handle].scale.y = scale;
+  if (type == circle){
+    glm::vec2 & scale = iis[handle].scale;
+    glm::vec2 & r = prottype.r;
+    glm::vec2 & relps2inv = iis[handle].relps2inv;
+    relps2inv.x = (float)(scale.x * r.x);
+    relps2inv.y = (float)(scale.y * r.y);
+    relps2inv.x *= relps2inv.x;
+    relps2inv.y *= relps2inv.y;
+    relps2inv.x = (float)(1.0 / relps2inv.x);
+    relps2inv.y = (float)(1.0 / relps2inv.y);
+  }
+  
+  iis[handle].rot = rot;
+  iis[handle].clr = clr;
+  iis[handle].pos = pos;
+  
+  float s = (float)(sin(rot)), c = (float)(cos(rot));
+  iis[handle].r = glm::mat2(c, -s, s, c);
+  iis[handle].sr = iis[handle].r * glm::mat2(scale, 0, 0, scale);
+  return handle;
 }
 
 void c_gl_2d_obj::remove(const int handle)
 {
-	if (handle < iis.size()){
-		iis[handle].bvalid = false;
-		iis[handle].bupdated = false;
-	}
+  if (handle < iis.size()){
+    iis[handle].bvalid = false;
+    iis[handle].bupdated = false;
+  }
 }
 
 void c_gl_2d_obj::config_color(const int handle, const glm::vec4 & clr)
 {
-	if (handle < iis.size()){
-		iis[handle].clr = clr;
-	}
+  if (handle < iis.size()){
+    iis[handle].clr = clr;
+  }
 }
 
 void c_gl_2d_obj::config_position(const int handle, const glm::vec2 & pos)
 {
-	if (handle < iis.size()){
-		iis[handle].pos = pos;
-		iis[handle].bupdated = false;
-	}
+  if (handle < iis.size()){
+    iis[handle].pos = pos;
+    iis[handle].bupdated = false;
+  }
 }
 
 void c_gl_2d_obj::config_rotation(const int handle, const float rot)
 {
-	if (handle < iis.size())
-	{
-		float scalex = iis[handle].scale.x;
-		float scaley = iis[handle].scale.y;
-		iis[handle].rot = rot;
-		float s = (float)(sin(rot)), c = (float)(cos(rot));
-		iis[handle].r = glm::mat2((float)(c), (float)(-s),
-			(float)(s), (float)(c));
-		iis[handle].sr = glm::mat2(scalex, 0, 0, scaley) * iis[handle].r;
-		iis[handle].bupdated = false;
-	}
+  if (handle < iis.size())
+    {
+      float scalex = iis[handle].scale.x;
+      float scaley = iis[handle].scale.y;
+      iis[handle].rot = rot;
+      float s = (float)(sin(rot)), c = (float)(cos(rot));
+      iis[handle].r = glm::mat2((float)(c), (float)(-s),
+				(float)(s), (float)(c));
+      iis[handle].sr = glm::mat2(scalex, 0, 0, scaley) * iis[handle].r;
+      iis[handle].bupdated = false;
+    }
 }
 
 
 void c_gl_2d_obj::config_scale(const int handle, const float scale)
 {
-	if (handle < iis.size())
-	{
-		iis[handle].scale.x = scale;
-		iis[handle].scale.y = scale;
-		float rot = iis[handle].rot;
-		float s = (float)(sin(rot)), c = (float)(cos(rot));
-		iis[handle].sr = glm::mat2(scale, 0, 0, scale) * iis[handle].r;
-		iis[handle].bupdated = false;
-		if (type == circle){
-			glm::vec2 & scale = iis[handle].scale;
-			glm::vec2 & r = prottype.r;
-			glm::vec2 & relps2inv = iis[handle].relps2inv;
-			relps2inv.x = (float)(scale.x * r.x);
-			relps2inv.y = (float)(scale.y * r.y);
-			relps2inv.x *= relps2inv.x;
-			relps2inv.y *= relps2inv.y;
-			relps2inv.x = (float)(1.0 / relps2inv.x);
-			relps2inv.y = (float)(1.0 / relps2inv.y);
-		}
-	}
+  if (handle < iis.size())
+    {
+      iis[handle].scale.x = scale;
+      iis[handle].scale.y = scale;
+      float rot = iis[handle].rot;
+      float s = (float)(sin(rot)), c = (float)(cos(rot));
+      iis[handle].sr = glm::mat2(scale, 0, 0, scale) * iis[handle].r;
+      iis[handle].bupdated = false;
+      if (type == circle){
+	glm::vec2 & scale = iis[handle].scale;
+	glm::vec2 & r = prottype.r;
+	glm::vec2 & relps2inv = iis[handle].relps2inv;
+	relps2inv.x = (float)(scale.x * r.x);
+	relps2inv.y = (float)(scale.y * r.y);
+	relps2inv.x *= relps2inv.x;
+	relps2inv.y *= relps2inv.y;
+	relps2inv.x = (float)(1.0 / relps2inv.x);
+	relps2inv.y = (float)(1.0 / relps2inv.y);
+      }
+    }
 }
 
 void c_gl_2d_obj::config_scale(const int handle, const glm::vec2 & scale)
 {
-	if (handle < iis.size())
-	{
-		iis[handle].scale = scale;
-		float rot = iis[handle].rot;
-		float s = (float)(sin(rot)), c = (float)(cos(rot));
-		iis[handle].sr = glm::mat2((float)(scale.x * c), (float)(-scale.y * s),
-			(float)(scale.x * s), (float)(scale.y * c));
-		iis[handle].bupdated = false;
-		if (type == circle){
-			glm::vec2 & scale = iis[handle].scale;
-			glm::vec2 & r = prottype.r;
-			glm::vec2 & relps2inv = iis[handle].relps2inv;
-			relps2inv.x = (float)(scale.x * r.x);
-			relps2inv.y = (float)(scale.y * r.y);
-			relps2inv.x *= relps2inv.x;
-			relps2inv.y *= relps2inv.y;
-			relps2inv.x = (float)(1.0 / relps2inv.x);
-			relps2inv.y = (float)(1.0 / relps2inv.y);
-		}
-	}
+  if (handle < iis.size())
+    {
+      iis[handle].scale = scale;
+      float rot = iis[handle].rot;
+      float s = (float)(sin(rot)), c = (float)(cos(rot));
+      iis[handle].sr = glm::mat2((float)(scale.x * c), (float)(-scale.y * s),
+				 (float)(scale.x * s), (float)(scale.y * c));
+      iis[handle].bupdated = false;
+      if (type == circle){
+	glm::vec2 & scale = iis[handle].scale;
+	glm::vec2 & r = prottype.r;
+	glm::vec2 & relps2inv = iis[handle].relps2inv;
+	relps2inv.x = (float)(scale.x * r.x);
+	relps2inv.y = (float)(scale.y * r.y);
+	relps2inv.x *= relps2inv.x;
+	relps2inv.y *= relps2inv.y;
+	relps2inv.x = (float)(1.0 / relps2inv.x);
+	relps2inv.y = (float)(1.0 / relps2inv.y);
+      }
+    }
 }
 
 void c_gl_2d_obj::config_border(const int handle, const bool b, const float w)
 {
-	if (handle < iis.size())
-	{
-		iis[handle].w = w;
-		iis[handle].bborder = b;
-		iis[handle].bupdated = false;
-	}
+  if (handle < iis.size())
+    {
+      iis[handle].w = w;
+      iis[handle].bborder = b;
+      iis[handle].bupdated = false;
+    }
 }
 
 void c_gl_2d_obj::config_depth(const int handle, const int depth)
 {
-	if (handle < iis.size())
-	{
-		iis[handle].z = -1.0 + (float)(depth * zstep);
-		reorder(handle);
-	}
+  if (handle < iis.size())
+    {
+      iis[handle].z = -1.0 + (float)(depth * zstep);
+      reorder(handle);
+    }
 }
 
 void c_gl_2d_obj::reorder(const int handle)
 {
-	int order = iis[handle].order;
-	float z = iis[handle].z;
-	s_inst_inf & ii1 = iis[handle];
-	for (int iorder = order + 1; iorder < iis_sorted_by_depth.size(); iorder++){
-		s_inst_inf & ii2 = iis[iis_sorted_by_depth[iorder]];
-		if (ii1.z < ii2.z){
-			int handle2 = iis_sorted_by_depth[iorder];
-			iis_sorted_by_depth[iorder] = handle;
-			iis_sorted_by_depth[iorder - 1] = handle2;
-			ii1.order = iorder;
-			ii2.order = iorder - 1;
-	
-		}
-		else{
-			break;
-		}
-	}
-
-	for (int iorder = order - 1; iorder >= 0; iorder--){
-		s_inst_inf & ii2 = iis[iis_sorted_by_depth[iorder]];
-		if (ii1.z > ii2.z){
-			int handle2 = iis_sorted_by_depth[iorder];
-			iis_sorted_by_depth[iorder] = handle;
-			iis_sorted_by_depth[iorder + 1] = handle2;
-			ii1.order = iorder;
-			ii2.order = iorder + 1;
-		}
-	}
+  int order = iis[handle].order;
+  float z = iis[handle].z;
+  s_inst_inf & ii1 = iis[handle];
+  for (int iorder = order + 1; iorder < iis_sorted_by_depth.size(); iorder++){
+    s_inst_inf & ii2 = iis[iis_sorted_by_depth[iorder]];
+    if (ii1.z < ii2.z){
+      int handle2 = iis_sorted_by_depth[iorder];
+      iis_sorted_by_depth[iorder] = handle;
+      iis_sorted_by_depth[iorder - 1] = handle2;
+      ii1.order = iorder;
+      ii2.order = iorder - 1;
+      
+    }
+    else{
+      break;
+    }
+  }
+  
+  for (int iorder = order - 1; iorder >= 0; iorder--){
+    s_inst_inf & ii2 = iis[iis_sorted_by_depth[iorder]];
+    if (ii1.z > ii2.z){
+      int handle2 = iis_sorted_by_depth[iorder];
+      iis_sorted_by_depth[iorder] = handle;
+      iis_sorted_by_depth[iorder + 1] = handle2;
+      ii1.order = iorder;
+      ii2.order = iorder + 1;
+    }
+  }
 }
 
 bool c_gl_2d_obj::collision(const glm::vec2 & pt, const int handle)
 {
-	switch (type){
-	case circle:
-	{
-				   float px, py;
-				   s_inst_inf & ii = iis[handle];
-				   if (!ii.bvalid || !ii.bactive)
-					   return false;
-				   glm::vec2 & pos = ii.pos;
-				   px = pt.x - pos.x;
-				   py = pt.y - pos.y;
-				   float sxx, syy;
-				   glm::mat2 & r = ii.r;
-				   if (ii.rot != 0.0)
-				   {
-					   sxx = r[0][0] * px + r[1][0] * py;
-					   syy = r[0][1] * px + r[1][1] * py;
-				   }
-				   else{
-					   sxx = px;
-					   syy = py;
-				   }
-				   float n = (float)(sxx * sxx * ii.relps2inv.x +
-					   syy * syy * ii.relps2inv.y);
-				   if (n <= 1.0){
-					   return true;
-				   }
-	}
-		break;
-	case rectangle:
-	{
-					  s_inst_inf & ii = iis[handle];
-					  if (!ii.bvalid || !ii.bactive || !ii.bupdated)
-						  return false;
-					  s_vertex * vtx = vtxbuf + ii.vtxoffset;
-
-					  if (ii.rot == 0){
-						  if (vtx[0].x < pt.x && vtx[1].x > pt.x &&vtx[0].y < pt.y && vtx[2].y > pt.y){
-							  return true;
-						  }
-					  }
-
-					  glm::vec2 vbase[2];
-					  vbase[0] = glm::vec2(vtx[3].x - vtx[0].x, vtx[3].x - vtx[0].y);
-					  vbase[1] = glm::vec2(vtx[1].x - vtx[0].x, vtx[1].y - vtx[0].y);
-					  glm::vec2 vpt[4];
-					  vpt[0] = glm::vec2(pt.x - vtx[2].y, pt.y - vtx[2].y);
-					  vpt[1] = glm::vec2(pt.x - vtx[0].x, pt.y - vtx[0].y);
-					  if (glm::dot(vpt[0], vbase[0]) < 0)
-						  return false;
-
-					  if (glm::dot(vpt[0], vbase[1]) < 0)
-						  return false;
-
-					  if (glm::dot(vpt[1], vbase[0]) > 0)
-						  return false;
-
-					  if (glm::dot(vpt[1], vbase[1]) > 0)
-						  return false;
-
-					  return true;
-	}
-	}
+  switch (type){
+  case circle:
+    {
+      float px, py;
+      s_inst_inf & ii = iis[handle];
+      if (!ii.bvalid || !ii.bactive)
 	return false;
+      glm::vec2 & pos = ii.pos;
+      px = pt.x - pos.x;
+      py = pt.y - pos.y;
+      float sxx, syy;
+      glm::mat2 & r = ii.r;
+      if (ii.rot != 0.0)
+	{
+	  sxx = r[0][0] * px + r[1][0] * py;
+	  syy = r[0][1] * px + r[1][1] * py;
+	}
+      else{
+	sxx = px;
+	syy = py;
+      }
+      float n = (float)(sxx * sxx * ii.relps2inv.x +
+			syy * syy * ii.relps2inv.y);
+      if (n <= 1.0){
+	return true;
+      }
+    }
+    break;
+  case rectangle:
+    {
+      s_inst_inf & ii = iis[handle];
+      if (!ii.bvalid || !ii.bactive || !ii.bupdated)
+	return false;
+      s_vertex * vtx = vtxbuf + ii.vtxoffset;
+      
+      if (ii.rot == 0){
+	if (vtx[0].x < pt.x && vtx[1].x > pt.x &&vtx[0].y < pt.y && vtx[2].y > pt.y){
+	  return true;
+	}
+      }
+      
+      glm::vec2 vbase[2];
+      vbase[0] = glm::vec2(vtx[3].x - vtx[0].x, vtx[3].x - vtx[0].y);
+      vbase[1] = glm::vec2(vtx[1].x - vtx[0].x, vtx[1].y - vtx[0].y);
+      glm::vec2 vpt[4];
+      vpt[0] = glm::vec2(pt.x - vtx[2].y, pt.y - vtx[2].y);
+      vpt[1] = glm::vec2(pt.x - vtx[0].x, pt.y - vtx[0].y);
+      if (glm::dot(vpt[0], vbase[0]) < 0)
+	return false;
+      
+      if (glm::dot(vpt[0], vbase[1]) < 0)
+	return false;
+      
+      if (glm::dot(vpt[1], vbase[0]) > 0)
+	return false;
+      
+      if (glm::dot(vpt[1], vbase[1]) > 0)
+	return false;
+      
+      return true;
+    }
+  }
+  return false;
 }
 
 int c_gl_2d_obj::collision(const glm::vec2 & pt, const vector<int> & lst)
 {
 
-	for (int ilst = 0; ilst < lst.size(); ilst){
-		if (lst[ilst] >= iis.size())
-			continue;
-
-		iis[lst[ilst]].binlst = true;
+  for (int ilst = 0; ilst < lst.size(); ilst){
+    if (lst[ilst] >= iis.size())
+      continue;
+    
+    iis[lst[ilst]].binlst = true;
+  }
+  
+  int handle;
+  switch (type){
+  case circle:
+    for (int i = 0; i < iis_sorted_by_depth.size(); i++){
+      float px, py;
+      s_inst_inf & ii = iis[iis_sorted_by_depth[i]];
+      if (!ii.bvalid || !ii.bactive)
+	continue;
+      glm::vec2 & pos = ii.pos;
+      px = pt.x - pos.x;
+      py = pt.y - pos.y;
+      float sxx, syy;
+      glm::mat2 & r = ii.r;
+      if (ii.rot != 0.0)
+	{
+	  sxx = r[0][0] * px + r[1][0] * py;
+	  syy = r[0][1] * px + r[1][1] * py;
 	}
-
-	int handle;
-	switch (type){
-	case circle:
-		for (int i = 0; i < iis_sorted_by_depth.size(); i++){
-			float px, py;
-			s_inst_inf & ii = iis[iis_sorted_by_depth[i]];
-			if (!ii.bvalid || !ii.bactive)
-				continue;
-			glm::vec2 & pos = ii.pos;
-			px = pt.x - pos.x;
-			py = pt.y - pos.y;
-			float sxx, syy;
-			glm::mat2 & r = ii.r;
-			if (ii.rot != 0.0)
-			{
-				sxx = r[0][0] * px + r[1][0] * py;
-				syy = r[0][1] * px + r[1][1] * py;
-			}
-			else{
-				sxx = px;
-				syy = py;
-			}
-			float n = (float)(sxx * sxx * ii.relps2inv.x +
-				syy * syy * ii.relps2inv.y);
-			if (n <= 1.0){
-				handle = i;
-				break;
-			}
-		}
-
-		break;
-	case rectangle:
-		for (int i = 0; i < iis_sorted_by_depth.size(); i++){
-			s_inst_inf & ii = iis[iis_sorted_by_depth[i]];
-			if (!ii.bvalid || !ii.bactive)
-				continue;
-			s_vertex * vtx = vtxbuf + ii.vtxoffset;
-
-			if (ii.rot == 0){
-				if (vtx[0].x < pt.x && vtx[1].x > pt.x &&vtx[0].y < pt.y && vtx[2].y > pt.y){
-					handle = i;
-					break;
-				}
-			}
-
-			glm::vec2 vbase[2];
-			vbase[0] = glm::vec2(vtx[3].x - vtx[0].x, vtx[3].x - vtx[0].y);
-			vbase[1] = glm::vec2(vtx[1].x - vtx[0].x, vtx[1].y - vtx[0].y);
-			glm::vec2 vpt[4];
-			vpt[0] = glm::vec2(pt.x - vtx[2].y, pt.y - vtx[2].y);
-			vpt[1] = glm::vec2(pt.x - vtx[0].x, pt.y - vtx[0].y);
-			if (glm::dot(vpt[0], vbase[0]) < 0)
-				continue;
-
-			if (glm::dot(vpt[0], vbase[1]) < 0)
-				continue;
-
-			if (glm::dot(vpt[1], vbase[0]) > 0)
-				continue;
-
-			if (glm::dot(vpt[1], vbase[1]) > 0)
-				continue;
-
-			handle = i;
-			break;
-		}
-
-		break;
-	default:
-		handle =  -1;
-		break;
+      else{
+	sxx = px;
+	syy = py;
+      }
+      float n = (float)(sxx * sxx * ii.relps2inv.x +
+			syy * syy * ii.relps2inv.y);
+      if (n <= 1.0){
+	handle = i;
+	break;
+      }
+    }
+    
+    break;
+  case rectangle:
+    for (int i = 0; i < iis_sorted_by_depth.size(); i++){
+      s_inst_inf & ii = iis[iis_sorted_by_depth[i]];
+      if (!ii.bvalid || !ii.bactive)
+	continue;
+      s_vertex * vtx = vtxbuf + ii.vtxoffset;
+      
+      if (ii.rot == 0){
+	if (vtx[0].x < pt.x && vtx[1].x > pt.x &&vtx[0].y < pt.y && vtx[2].y > pt.y){
+	  handle = i;
+	  break;
 	}
-
-	for (int ilst = 0; ilst < lst.size(); ilst){
-		if (lst[ilst] >= iis.size())
-			continue;
-
-		iis[lst[ilst]].binlst = false;
-	}
-
-	return handle;
+      }
+      
+      glm::vec2 vbase[2];
+      vbase[0] = glm::vec2(vtx[3].x - vtx[0].x, vtx[3].x - vtx[0].y);
+      vbase[1] = glm::vec2(vtx[1].x - vtx[0].x, vtx[1].y - vtx[0].y);
+      glm::vec2 vpt[4];
+      vpt[0] = glm::vec2(pt.x - vtx[2].y, pt.y - vtx[2].y);
+      vpt[1] = glm::vec2(pt.x - vtx[0].x, pt.y - vtx[0].y);
+      if (glm::dot(vpt[0], vbase[0]) < 0)
+	continue;
+      
+      if (glm::dot(vpt[0], vbase[1]) < 0)
+	continue;
+      
+      if (glm::dot(vpt[1], vbase[0]) > 0)
+	continue;
+      
+      if (glm::dot(vpt[1], vbase[1]) > 0)
+	continue;
+      
+      handle = i;
+      break;
+    }
+    
+    break;
+  default:
+    handle =  -1;
+    break;
+  }
+  
+  for (int ilst = 0; ilst < lst.size(); ilst){
+    if (lst[ilst] >= iis.size())
+      continue;
+    
+    iis[lst[ilst]].binlst = false;
+  }
+  
+  return handle;
 }
 
 void c_gl_2d_obj::render()
 {
-	update_vertices();
-	glBindVertexArray(vao);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-	glVertexAttribPointer(posloc, 2, GL_FLOAT, GL_FALSE, sizeof(s_vertex), 0);
-	glEnableVertexAttribArray(posloc);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
-
-	glUniform1i(modeloc, 3);
-
-	for (int ih = 0; ih < iis.size(); ih++){
-		if (!iis[ih].bactive || !iis[ih].bvalid)
-			continue;
-		glUniform4fv(clrloc, 1, glm::value_ptr(iis[ih].clr));
-		glUniform1f(depthloc, iis[ih].z);
-		if (!iis[ih].bborder){
-			glDrawElements(GL_TRIANGLES, prottype.nidxt,
-				GL_UNSIGNED_SHORT, (const void*)(sizeof(unsigned short)* iis[ih].idxtoffset));
-		}
-		else{
-			glLineWidth(iis[ih].w);
-			glEnable(GL_LINE_SMOOTH);
-
-			glDrawElements(GL_LINE_STRIP, prottype.nidxs,
-				GL_UNSIGNED_SHORT, (const void*)(sizeof(unsigned short)* iis[ih].idxsoffset));
-		}
-	}
+  update_vertices();
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+  glVertexAttribPointer(posloc, 2, GL_FLOAT, GL_FALSE, sizeof(s_vertex), 0);
+  glEnableVertexAttribArray(posloc);
+  
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
+  
+  glUniform1i(modeloc, 3);
+  
+  for (int ih = 0; ih < iis.size(); ih++){
+    if (!iis[ih].bactive || !iis[ih].bvalid)
+      continue;
+    glUniform4fv(clrloc, 1, glm::value_ptr(iis[ih].clr));
+    glUniform1f(depthloc, iis[ih].z);
+    if (!iis[ih].bborder){
+      glDrawElements(GL_TRIANGLES, prottype.nidxt,
+		     GL_UNSIGNED_SHORT,
+		     (const void*)(sizeof(unsigned short)* iis[ih].idxtoffset));
+    }
+    else{
+      glLineWidth(iis[ih].w);
+      glEnable(GL_LINE_SMOOTH);
+      
+      glDrawElements(GL_LINE_STRIP, prottype.nidxs,
+		     GL_UNSIGNED_SHORT,
+		     (const void*)(sizeof(unsigned short)* iis[ih].idxsoffset));
+    }
+  }
 }
 
 void c_gl_2d_obj::update_vertices()

@@ -111,6 +111,67 @@ f_aws1_ui::~f_aws1_ui()
 {
 }
 
+bool f_aws1_ui::init_map_mask()
+{
+    
+    // initializing mask for map mode    
+#define MAP_MASK_CIRCLE_DIV 9
+#define NUM_MAP_MASK_PTS (MAP_MASK_CIRCLE_DIV+1+3)
+#define NUM_MAP_MASK_TRIS (MAP_MASK_CIRCLE_DIV+2)
+#define NUM_MAP_MASK_IDX (NUM_MAP_MASK_TRIS*3)
+    
+    struct s_pts{
+      float x, y;      
+    } pts[NUM_MAP_MASK_PTS];
+    
+    unsigned short idx[NUM_MAP_MASK_IDX];
+    double ths = 0.5 * PI / (double)MAP_MASK_CIRCLE_DIV;
+    double r = (double) get_max_circle_radius();
+    pts[NUM_MAP_MASK_PTS-3].x = (float) (m_sz_win.width >> 1);
+    pts[NUM_MAP_MASK_PTS-3].y = (float) (m_sz_win.height >> 1);
+    pts[NUM_MAP_MASK_PTS-2].x = pts[NUM_MAP_MASK_PTS-3].x;
+    pts[NUM_MAP_MASK_PTS-2].y = 0.f;
+    pts[NUM_MAP_MASK_PTS-1].x = 0.f;
+    pts[NUM_MAP_MASK_PTS-1].y = pts[NUM_MAP_MASK_PTS-3].y;
+
+    for(int i = 0; i < MAP_MASK_CIRCLE_DIV + 1; i++){
+      double th = ths * (double)i;
+      double c = cos(th);
+      double s = sin(th);
+      pts[i].x = (float)(r * s);
+      pts[i].y = (float)(r * c);
+    }
+
+    for(int i = 0; i < MAP_MASK_CIRCLE_DIV; i++){
+      idx[i*3] = NUM_MAP_MASK_PTS-3;
+      idx[i*3+1] = i;
+      idx[i*3+2] = i+1;
+    }
+
+    idx[(NUM_MAP_MASK_TRIS - 2) * 3] = NUM_MAP_MASK_PTS - 3;
+    idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 1] = NUM_MAP_MASK_PTS - 1;
+    idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 2] = 0;
+    
+    idx[(NUM_MAP_MASK_TRIS - 1) * 3] = NUM_MAP_MASK_PTS - 3;
+    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 1] = MAP_MASK_CIRCLE_DIV - 1;
+    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 2] = NUM_MAP_MASK_PTS - 4;
+    
+    if(!omap_mask.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d,
+		      NUM_MAP_MASK_PTS, (float*)pts, NUM_MAP_MASK_IDX, idx, 4)){
+      cerr << "Failed to initialize map mask." << endl;
+      return false;
+    }
+
+    glm::vec4 clrb(0, 0, 0, 0.5);
+    glm::vec2 pos(0.f,0.f);
+    hmap_mask[0] = omap_mask.add(clrb, pos, 0.f, 1.f);
+    hmap_mask[1] = omap_mask.add(clrb, pos, 0.5 * PI, 1.f);
+    hmap_mask[2] = omap_mask.add(clrb, pos, PI, 1.f);
+    hmap_mask[3] = omap_mask.add(clrb, pos, 1.5 * PI, 1.f);
+
+    return true;
+}
+
 bool f_aws1_ui::init_run()
 {
   if (!m_state)
@@ -211,6 +272,9 @@ bool f_aws1_ui::init_run()
       return false;
     
     if (!oline3d.init(loc_mode, loc_position, loc_gcolor, loc_depth2d, 8192))
+      return false;
+
+    if(!init_map_mask())
       return false;
   }
   
@@ -576,7 +640,7 @@ void f_aws1_ui::update_button(c_view_mode_box * pvm_box)
     if (bmap_center_free){
       btn_lock_cam_dir_hdg.set_invisible();
       btn_lock_map_own_ship.set_normal();
-      btn_lock_map_own_ship.set_visible();
+      btn_lock_map_own_ship.set_visible();      
     }
     else{
       btn_lock_cam_dir_hdg.set_invisible();
@@ -694,7 +758,11 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
   ocirc.render();
   otxt.render(0);
   oline.render();
-
+  
+  if(pvm_box->get_mode() == ui_mode_map){
+    omap_mask.render();
+  }
+    
   glUseProgram(0);
   // show rendering surface.
   glfwSwapBuffers(pwin());	
@@ -1213,6 +1281,13 @@ void f_aws1_ui::update_view_mode_box(c_view_mode_box * pvm_box)
   owp.set_ui_mode(pvm_box->get_mode());
   oais.set_ui_mode(pvm_box->get_mode());
   coast_line.set_ui_mode(pvm_box->get_mode());
+  if(pvm_box->get_mode() == ui_mode_map){
+    for(int i = 0; i < 4; i++)
+      omap_mask.enable(hmap_mask[i]);
+  }else{
+    for(int i = 0; i < 4; i++)
+      omap_mask.disable(hmap_mask[i]);
+  }  
 }
 
 void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
