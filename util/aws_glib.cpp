@@ -2187,57 +2187,87 @@ void c_gl_2d_obj::render()
 
 void c_gl_2d_obj::update_vertices()
 {
-	s_vertex * vtx = vtxbuf;
-	unsigned short * idxt = idxbuf;
-	unsigned short * idxs = idxbuf + prottype.nidxt;
-	unsigned int vtxoffset = 0;
-	unsigned int idxtoffset = 0;
-	unsigned int idxsoffset = prottype.nidxt;
-	unsigned int nids = prottype.nidxs + prottype.nidxt;
-	for (int ih = 0; ih < iis.size(); ih++){
-		if (!iis[ih].bvalid || !iis[ih].bactive || iis[ih].bupdated == true){
-			vtx += prottype.nvtx;
-			vtxoffset += prottype.nvtx;
-			idxtoffset += nids;
-			idxsoffset += nids;
-			idxt += nids;
-			idxs += nids;
-			continue;
-		}
+  s_vertex * vtx = vtxbuf;
+  unsigned short * idxt = idxbuf;
+  unsigned short * idxs = idxbuf + prottype.nidxt;
+  unsigned int vtxoffset = 0;
+  unsigned int idxtoffset = 0;
+  unsigned int idxsoffset = prottype.nidxt;
+  unsigned int nids = prottype.nidxs + prottype.nidxt;
+  for (int ih = 0; ih < iis.size(); ih++){
+    if (!iis[ih].bvalid || !iis[ih].bactive || iis[ih].bupdated == true){
+      vtx += prottype.nvtx;
+      vtxoffset += prottype.nvtx;
+      idxtoffset += nids;
+      idxsoffset += nids;
+      idxt += nids;
+      idxs += nids;
+      continue;
+    }
+    
+    glm::mat2 sr = iis[ih].sr;
+    glm::vec2 pos = iis[ih].pos;
+    if(prottype.nvtx==13){
+      cout << ih << "th instance" << endl;
+    }
+    for (int iv = 0; iv < prottype.nvtx; iv++){
+      s_vertex & v = prottype.vtx[iv];
+      vtx[iv].x = v.x * sr[0][0] + v.y * sr[0][1] + pos.x;
+      vtx[iv].y = v.x * sr[1][0] + v.y * sr[1][1] + pos.y;
+      if(prottype.nvtx==13)
+	cout << "[" << iv << "](" << vtx[iv].x << "," << vtx[iv].y << ")";
+    }
 
-		glm::mat2 sr = iis[ih].sr;
-		glm::vec2 pos = iis[ih].pos;
-		for (int iv = 0; iv < prottype.nvtx; iv++){
-			s_vertex & v = prottype.vtx[iv];
-			vtx[iv].x = v.x * sr[0][0] + v.y * sr[0][1] + pos.x;
-			vtx[iv].y = v.x * sr[1][0] + v.y * sr[1][1] + pos.y;
-		}
+    if(prottype.nvtx==13){
+      cout << endl;
+      cout << "tri(" << endl;
+    }
 
-		for (int iid = 0; iid < prottype.nidxt; iid++){
-			idxt[iid] = prottype.idxt[iid] + vtxoffset;
-		}
+    for (int iid = 0; iid < prottype.nidxt; iid++){
+      idxt[iid] = prottype.idxt[iid] + vtxoffset;
+      if(prottype.nvtx==13){
+	cout << idxt[iid] <<",";
+      }
+    }
+    
+    if(prottype.nvtx==13){
+      cout << ")" <<endl;
+      cout << "shp(" << endl;
+    }
+    
+    for (int iid = 0; iid < prottype.nidxs; iid++){
+      idxs[iid] = prottype.idxs[iid] + vtxoffset;
+      if(prottype.nvtx==13){
+	cout << idxs[iid] <<",";
+      }	    
+    }
+    if(prottype.nvtx==13){
+      cout << ")" << endl;
+      cout << "tri(" << endl;
+    }
 
-		for (int iid = 0; iid < prottype.nidxs; iid++){
-			idxs[iid] = prottype.idxs[iid] + vtxoffset;
-		}
+    iis[ih].vtxoffset = vtxoffset;
+    iis[ih].idxtoffset = idxtoffset;
+    iis[ih].idxsoffset = idxsoffset;
+    iis[ih].bupdated = true;
+    
+    vtx += prottype.nvtx;
+    vtxoffset += prottype.nvtx;
+    idxtoffset += nids;
+    idxsoffset += nids;
+    idxt += nids;
+    idxs += nids;
+  }
 
-		iis[ih].vtxoffset = vtxoffset;
-		iis[ih].idxtoffset = idxtoffset;
-		iis[ih].idxsoffset = idxsoffset;
-		iis[ih].bupdated = true;
-
-		vtx += prottype.nvtx;
-		vtxoffset += prottype.nvtx;
-		idxtoffset += nids;
-		idxsoffset += nids;
-		idxt += nids;
-		idxs += nids;
-	}
-	glBindVertexArray(vao);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(s_vertex) * iis.size() * prottype.nvtx, vtxbuf, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(posloc, 2, GL_FLOAT, GL_FALSE, sizeof(s_vertex), 0);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short)* iis.size() * nids, idxbuf, GL_DYNAMIC_DRAW);
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+  glBufferData(GL_ARRAY_BUFFER,
+	       sizeof(s_vertex) * iis.size() * prottype.nvtx,
+	       vtxbuf, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(posloc, 2, GL_FLOAT, GL_FALSE, sizeof(s_vertex), 0);
+  
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER,
+	       sizeof(unsigned short)* iis.size() * nids,
+	       idxbuf, GL_DYNAMIC_DRAW);
 }

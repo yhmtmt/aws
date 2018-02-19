@@ -153,8 +153,8 @@ bool f_aws1_ui::init_map_mask()
     idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 2] = 0;
     
     idx[(NUM_MAP_MASK_TRIS - 1) * 3] = NUM_MAP_MASK_PTS - 3;
-    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 1] = MAP_MASK_CIRCLE_DIV - 1;
-    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 2] = NUM_MAP_MASK_PTS - 4;
+    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 1] = MAP_MASK_CIRCLE_DIV;
+    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 2] = NUM_MAP_MASK_PTS - 2;
     
     if(!omap_mask.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d,
 		      NUM_MAP_MASK_PTS, (float*)pts, NUM_MAP_MASK_IDX, idx, 4)){
@@ -162,7 +162,7 @@ bool f_aws1_ui::init_map_mask()
       return false;
     }
 
-    glm::vec4 clrb(0, 0.1f, 0, 0.5);
+    glm::vec4 clrb(1.0f, 1.0f, 1.0f, 1.0f);
     glm::vec2 pos(0.f,0.f);
     hmap_mask[0] = omap_mask.add(clrb, pos, 0.f, 1.f);
     hmap_mask[1] = omap_mask.add(clrb, pos, 0.5 * PI, 1.f);
@@ -334,7 +334,7 @@ bool f_aws1_ui::init_run()
   
   // Initializing OpenGL flags
 
-  glEnable(GL_CULL_FACE);
+  //  glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
   //glEnable(GL_TEXTURE_2D);

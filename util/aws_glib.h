@@ -628,6 +628,8 @@ public:
   {
     if (handle < iis.size())
     {
+      if(prottype.nvtx == 13)
+	cout << "enabled." << endl;
       iis[handle].bactive = true;
     }
   }
@@ -636,6 +638,9 @@ public:
   {
     if (handle < iis.size())
     {
+      if(prottype.nvtx == 13)
+	cout << "enabled." << endl;
+
       return iis[handle].bactive;
     }
     return false;
