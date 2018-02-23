@@ -949,8 +949,6 @@ int ch_eng_state::write(FILE * pf, long long tcur)
   int sz = (int)get_dsize();
 
   tf = tcur;
-  
-  char buf[sz];
   read_buf(buf);
   (*(long long*) buf) = tcur;
   fwrite(buf, sizeof(char), sz, pf);
@@ -982,7 +980,6 @@ int ch_eng_state::read(FILE * pf, long long tcur)
 
   // reading next data record
   size_t sz = get_dsize();
-  char buf[sz];
   
   while (!feof(pf)){
     if (tf > tcur){
@@ -1001,7 +998,6 @@ bool ch_eng_state::log2txt(FILE * pbf, FILE * ptf)
 {
   fprintf(ptf, "trec, trapid, tdyn, ttran, ttrip, rpm, trim, poil, toil, valt, frate, teng, pclnt, pfl, stat1, stat2, ld, tq, gear, pgoil, tgoil, flused, flavg, fleco, flinst\n");
   size_t sz = get_dsize();
-  char buf[sz];
   while (!feof(pbf)){
 
     int res;

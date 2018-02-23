@@ -24,7 +24,7 @@ along with CANboat.  If not, see <http://www.gnu.org/licenses/>.
 #ifdef WIN32
 # include <stdio.h>
 # include <windows.h>
-# include "nonstdbool.h"
+//# include "nonstdbool.h"
 #else
 # include <stdint.h>
 # include <stdio.h>

@@ -34,6 +34,29 @@ using namespace std;
 #include <opencv2/opencv.hpp>
 using namespace cv;
 
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <sys/timeb.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+#include <ctype.h>
+#include <stdarg.h>
+#include <stdint.h>
+
+
 #include "ngt1/common.h"
 #include "f_ngt1.h"
 
@@ -268,7 +291,7 @@ void f_ngt1::handle_pgn_eng_state(PgnFieldValues * pfv, ch_eng_state * ch, const
 ///////////////////////////////////////////////////////////// from canboat
 int f_ngt1::readNGT1(AWS_SERIAL handle)
 {
-  ssize_t r;
+  int r;
   unsigned char c;
   unsigned char buf_tmp[500];
 
@@ -1476,7 +1499,11 @@ bool f_ngt1::printPressure(char * name, uint32_t v, Field * field,
     
     if (showJson)
       {
+#ifdef _WIN32
+      mprintf("%s\"%s\":%" "ld" "", getSep(), name, pressure);
+#else
 	mprintf("%s\"%s\":%" PRId32 "", getSep(), name, pressure);
+#endif
       }
     else
       {
@@ -2238,7 +2265,7 @@ void f_ngt1::fillFieldCounts(void)
   }
 }
 
-void f_ngt1::writeMessage(int handle, unsigned char command, const unsigned char * cmd, 
+void f_ngt1::writeMessage(AWS_SERIAL handle, unsigned char command, const unsigned char * cmd,
 			  const size_t len)
 {
   unsigned char bst[255];

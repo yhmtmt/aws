@@ -18,7 +18,7 @@
 #include <time.h>
 
 #include <iostream>
-
+#include <algorithm>
 using namespace std;
 
 #include "c_clock.h"
@@ -281,10 +281,15 @@ long long c_clock::get_time()
   switch(m_state){
   case STOP:
     {
+#ifdef _WIN32
+      return (long long)time(NULL) * SEC;
+#else 
       timespec ts;
       clock_gettime(CLOCK_REALTIME, &ts);
       return(long long)
 	((long long)ts.tv_sec * SEC + (long long) (ts.tv_nsec / 100));
+#endif
+
     }
   case PAUSE:
     return m_tcur;
@@ -368,13 +373,16 @@ void c_clock::wait()
 
 void c_clock::stop()
 {
-  m_state = STOP;
 #ifdef _WIN32
-  m_pclk->Unadvise(m_token);
-  m_pclk->Release();
-  CloseHandle(m_sem);
-  m_sem = NULL;
+  if (m_state == RUN){
+    m_pclk->Unadvise(m_token);
+    m_pclk->Release();
+    CloseHandle(m_sem);
+    m_sem = NULL;
+  }
 #endif
+
+  m_state = STOP;
 }
 
 bool c_clock::pause()

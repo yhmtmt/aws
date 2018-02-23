@@ -19,8 +19,32 @@ along with CANboat.  If not, see <http://www.gnu.org/licenses/>.
 
 */
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <sys/timeb.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+#include <ctype.h>
+#include <stdarg.h>
+#include <stdint.h>
 
 #include "common.h"
+
+#ifdef _WIN32
+#define snprintf _snprintf
+#endif
 
 static const char * logLevels[] =
 { "FATAL"
@@ -560,6 +584,7 @@ static void resolve_address(const char * url, char ** host, const char ** servic
   }
 }
 
+/*
 SOCKET open_socket_stream(const char * url)
 {
   int sockfd = INVALID_SOCKET;
@@ -607,6 +632,8 @@ SOCKET open_socket_stream(const char * url)
 
   return sockfd;
 }
+*/
+
 
 uint8_t scanNibble(char c)
 {

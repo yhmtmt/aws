@@ -253,11 +253,15 @@ bool f_gst_cam::init_run()
 
   cout << "Bufffering video frame ... ";
   while(m_num_frmbuf < m_sz_frmbuf / 4){
+#ifdef _WIN32
+    Sleep(cnvTimeMilliSec(f_base::get_period()));
+#else
     timespec ts, tsrem;
     ts.tv_sec = 0;
     ts.tv_nsec = cnvTimeNanoSec(f_base::m_clk.get_period());
-    while(nanosleep(&ts, &tsrem))
+    while (nanosleep(&ts, &tsrem))
       ts = tsrem;
+#endif
   }
   cout << " done." << endl;
   

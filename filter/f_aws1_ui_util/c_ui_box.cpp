@@ -1682,7 +1682,7 @@ void c_indicator::create_params_indicator( glm::vec2 & pos,
 					   const glm:: vec4 & clr)
 {
   char buf[32];
-  buf[32] = '\0';
+  buf[31] = '\0';
   glm::vec2 mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y), rad_ptr((float)(sz_fnt.x * 0.3), sz_fnt.y);
   for (int iparam = 0; iparam < (int)PRM_UNDEF; iparam++){
     hparams[iparam] = potxt->reserv(32);
