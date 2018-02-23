@@ -57,7 +57,7 @@ static LogLevel logLevel = LOGLEVEL_INFO;
 
 static char * progName;
 
-#ifndef WIN32
+#ifndef _WIN32
 
 const char * now(char str[DATE_LENGTH])
 {
