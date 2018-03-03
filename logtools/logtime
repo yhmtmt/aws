@@ -1,0 +1,44 @@
+#!/bin/sh
+
+# extract time digit from a log file and convert it to the meaningful string.
+if [ $# -lt 2 ]; then
+    echo "exltime [options] -f <log file name>"
+    echo "\t -sec : Output in second."
+    echo "\t -str : Output readable string."
+   exit
+fi
+
+str=n
+sec=n
+file=
+
+for arg in $*
+do
+    case $prev_arg in
+	"-f")file=$arg;;
+    esac
+    
+    case $arg in
+	"-str")str=y;;
+	"-sec")sec=y;;
+    esac
+    prev_arg=$arg
+done
+
+if [ ! -f $file ]; then
+    echo "File $file is not found."
+    exit
+fi
+   
+file2=${file##*_}
+awstime=${file2%.*}
+
+if [ $str = "y" ]; then
+    t2str $awstime
+else
+    if [ $sec = "y" ]; then
+	echo "$awstime" | sed 's/.......$//'
+    else
+	echo $awstime
+    fi
+fi

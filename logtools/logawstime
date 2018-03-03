@@ -1,0 +1,13 @@
+#!/bin/sh
+
+# extract time digit from a log file name given in the argument
+if [ $# -ne 1 ]; then
+   echo "logawstime <log file name>"
+   exit
+fi
+
+file=$1
+file2=${file##*_}
+awstime=${file2%.*}
+
+echo $awstime

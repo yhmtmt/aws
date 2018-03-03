@@ -1,0 +1,14 @@
+#!/bin/sh
+
+if [ $# -lt 1 ]; then
+    echo "insert_eot <end time>"
+    exit
+fi
+
+jrs=`ls *.jr`
+
+for jr in $jrs
+do
+echo "$jr < #E $1" 
+echo "#E $1" >> $jr
+done
