@@ -214,19 +214,19 @@ endif
 FOBJS = $(addsuffix .o,$(FILTER))
 COBJS = $(addsuffix .o,$(CHANNEL))
 UOBJS = $(addsuffix .o,$(UTIL))
-OBJS = command.o c_aws.o c_aws_temp.o aws.o factory.o
+OBJS = command.o c_aws.o c_aws_temp.o aws.o channel_factory.o filter_factory.o
 
 ################################################################# Source lists
 FSRCS = $(addsuffix .cpp,$(FILTER))
 CSRCS = $(addsuffix .cpp,$(CHANNEL))
 USRCS = $(addsuffix .cpp,$(UTIL))
-SRCS = command.cpp c_aws.cpp c_aws_temp.cpp aws.cpp factory.cpp
+SRCS = command.cpp c_aws.cpp c_aws_temp.cpp aws.cpp channel_factory.cpp filter_factory.cpp
 
 ######################################################## Dependency file lists
 FDEPS = $(addsuffix .d,$(FILTER))
 CDEPS = $(addsuffix .d,$(CHANNEL))
 UDEPS = $(addsuffix .d,$(UTIL))
-DEPS = command.d c_aws.d c_aws_temp.d aws.d factroy.d
+DEPS = command.d c_aws.d c_aws_temp.d aws.d channel_factroy.d filter_factory.d
 
 ############################################################## Compiler option
 FLAGS = -std=gnu++0x $(DEFS) $(INC) $(OFLAGS) $(DFLAGS) 
@@ -246,7 +246,7 @@ rcmd:
 aws: $(OBJS) $(MODS)
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS) -o $(EXE) $(LIB)
 
-log2txt: util/log2txt.o factory.o command.o c_aws.o c_aws_temp.o filter channel util orb_slam g2o DBoW2
+log2txt: util/log2txt.o channel_factory.o command.o c_aws.o c_aws_temp.o filter channel util orb_slam g2o DBoW2
 	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS)  command.o c_aws.o c_aws_temp.o factory.o util/log2txt.o -o log2txt $(LIB)
 
 t2str: util/t2str.o util/c_clock.o
