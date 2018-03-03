@@ -547,7 +547,7 @@ bool ch_state::log2txt(FILE * pbf, FILE * ptf)
 
 		fprintf(ptf, "%lld, %lld, %lld, %lld, %lld, %lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f,",
 			m_tfile, tpos, tatt, tvel, tdp, t9dof, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
-		fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,",
+		fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f\n",
 			mxf, myf, mzf, axf, ayf, azf, gxf, gyf, gzf);
 	}
 	return true;
