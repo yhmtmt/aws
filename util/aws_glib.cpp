@@ -1465,7 +1465,7 @@ void c_gl_2d_line_obj::render()
 
 
 //////////////////////////////////////////////////////////////////// c_gl_2d_obj
-c_gl_2d_obj::c_gl_2d_obj() :vtxbuf(NULL), idxbuf(NULL)
+c_gl_2d_obj::c_gl_2d_obj() :vtxbuf(NULL), idxbuf(NULL), vao(0)
 {
 }
 
