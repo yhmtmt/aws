@@ -115,9 +115,9 @@ bool f_aws1_ui::init_map_mask()
 {
     
     // initializing mask for map mode    
-#define MAP_MASK_CIRCLE_DIV 9
-#define NUM_MAP_MASK_PTS (MAP_MASK_CIRCLE_DIV+1+3)
-#define NUM_MAP_MASK_TRIS (MAP_MASK_CIRCLE_DIV+2)
+#define MAP_MASK_CIRCLE_DIV 18
+#define NUM_MAP_MASK_PTS (MAP_MASK_CIRCLE_DIV+1+4)
+#define NUM_MAP_MASK_TRIS (MAP_MASK_CIRCLE_DIV+3)
 #define NUM_MAP_MASK_IDX (NUM_MAP_MASK_TRIS*3)
     
     struct s_pts{
@@ -125,16 +125,19 @@ bool f_aws1_ui::init_map_mask()
     } pts[NUM_MAP_MASK_PTS];
     
     unsigned short idx[NUM_MAP_MASK_IDX];
-    double ths = 0.5 * PI / (double)MAP_MASK_CIRCLE_DIV;
+    double ths = PI / (double)MAP_MASK_CIRCLE_DIV;
     double r = (double) get_max_circle_radius();
-    pts[NUM_MAP_MASK_PTS-3].x = (float) (m_sz_win.width >> 1);
-    pts[NUM_MAP_MASK_PTS-3].y = (float) (m_sz_win.height >> 1);
-    pts[NUM_MAP_MASK_PTS-2].x = pts[NUM_MAP_MASK_PTS-3].x;
-    pts[NUM_MAP_MASK_PTS-2].y = 0.f;
-    pts[NUM_MAP_MASK_PTS-1].x = 0.f;
-    pts[NUM_MAP_MASK_PTS-1].y = pts[NUM_MAP_MASK_PTS-3].y;
+	pts[NUM_MAP_MASK_PTS - 4].x = (float)(m_sz_win.width >> 1);
+	pts[NUM_MAP_MASK_PTS - 4].y = (float)(m_sz_win.height >> 1);
+    pts[NUM_MAP_MASK_PTS - 3].x = (float) (m_sz_win.width >> 1);
+    pts[NUM_MAP_MASK_PTS - 3].y = -(float) (m_sz_win.height >> 1);
+    pts[NUM_MAP_MASK_PTS - 2].x = 0.f;
+    pts[NUM_MAP_MASK_PTS - 2].y = pts[NUM_MAP_MASK_PTS - 4].y;
+    pts[NUM_MAP_MASK_PTS - 1].x = 0.f;
+    pts[NUM_MAP_MASK_PTS - 1].y = -pts[NUM_MAP_MASK_PTS - 4].y;
 
-    for(int i = 0; i < MAP_MASK_CIRCLE_DIV + 1; i++){
+
+	for(int i = 0; i < MAP_MASK_CIRCLE_DIV + 1; i++){
       double th = ths * (double)i;
       double c = cos(th);
       double s = sin(th);
@@ -142,34 +145,39 @@ bool f_aws1_ui::init_map_mask()
       pts[i].y = (float)(r * c);
     }
 
-    for(int i = 0; i < MAP_MASK_CIRCLE_DIV; i++){
-      idx[i*3] = NUM_MAP_MASK_PTS-3;
-      idx[i*3+1] = i;
-      idx[i*3+2] = i+1;
-    }
+	for (int i = 0; i < MAP_MASK_CIRCLE_DIV; i++) {
+		if (i < MAP_MASK_CIRCLE_DIV / 2)
+			idx[i * 3] = NUM_MAP_MASK_PTS - 4;
+		else
+			idx[i * 3] = NUM_MAP_MASK_PTS - 3;
+		idx[i * 3 + 1] = i;
+		idx[i * 3 + 2] = i + 1;
+	}
 
-    idx[(NUM_MAP_MASK_TRIS - 2) * 3] = NUM_MAP_MASK_PTS - 3;
-    idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 1] = NUM_MAP_MASK_PTS - 1;
-    idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 2] = 0;
+	idx[(NUM_MAP_MASK_TRIS - 3) * 3] = NUM_MAP_MASK_PTS - 4;
+	idx[(NUM_MAP_MASK_TRIS - 3) * 3 + 1] = NUM_MAP_MASK_PTS - 2;
+	idx[(NUM_MAP_MASK_TRIS - 3) * 3 + 2] = 0;
+
+    idx[(NUM_MAP_MASK_TRIS - 2) * 3] = NUM_MAP_MASK_PTS - 4;
+    idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 1] = MAP_MASK_CIRCLE_DIV / 2;
+    idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 2] = NUM_MAP_MASK_PTS - 3;
     
     idx[(NUM_MAP_MASK_TRIS - 1) * 3] = NUM_MAP_MASK_PTS - 3;
     idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 1] = MAP_MASK_CIRCLE_DIV;
-    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 2] = NUM_MAP_MASK_PTS - 2;
+    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 2] = NUM_MAP_MASK_PTS - 1;
     
     if(!omap_mask.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d,
-		      NUM_MAP_MASK_PTS, (float*)pts, NUM_MAP_MASK_IDX, idx, 4)){
+		      NUM_MAP_MASK_PTS, (float*)pts, NUM_MAP_MASK_IDX, idx, 2)){
       cerr << "Failed to initialize map mask." << endl;
       return false;
     }
 
-    glm::vec4 clrb(1.0f, 1.0f, 1.0f, 1.0f);
+    glm::vec4 clrb(0.0f, 0.1f, 0.0f, 0.8f);
     glm::vec2 pos(0.f,0.f);
     hmap_mask[0] = omap_mask.add(clrb, pos, 0.f, 1.f);
-    hmap_mask[1] = omap_mask.add(clrb, pos, 0.5 * PI, 1.f);
-    hmap_mask[2] = omap_mask.add(clrb, pos, PI, 1.f);
-    hmap_mask[3] = omap_mask.add(clrb, pos, 1.5 * PI, 1.f);
-    for(int i = 0; i < 4; i++){
-      omap_mask.config_border(hmap_mask[i], true, 1.0f);
+    hmap_mask[1] = omap_mask.add(clrb, pos, PI, 1.f);
+    for(int i = 0; i < 2; i++){
+      omap_mask.config_border(hmap_mask[i], false, 1.0f);
       omap_mask.config_depth(hmap_mask[i], 9);
     }
     return true;
@@ -334,7 +342,7 @@ bool f_aws1_ui::init_run()
   
   // Initializing OpenGL flags
 
-  //  glEnable(GL_CULL_FACE);
+  glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
   //glEnable(GL_TEXTURE_2D);
@@ -1285,10 +1293,10 @@ void f_aws1_ui::update_view_mode_box(c_view_mode_box * pvm_box)
   oais.set_ui_mode(pvm_box->get_mode());
   coast_line.set_ui_mode(pvm_box->get_mode());
   if(pvm_box->get_mode() == ui_mode_map){
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < 2; i++)
       omap_mask.enable(hmap_mask[i]);
   }else{
-    for(int i = 0; i < 4; i++)
+    for(int i = 0; i < 2; i++)
       omap_mask.disable(hmap_mask[i]);
   }  
 }

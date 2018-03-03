@@ -1653,66 +1653,72 @@ bool c_gl_2d_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc,
       edges[i + 2].b = indices[i + 2]; edges[i + 2].e = indices[i];
     }
     
-    // eliminating identical edges
-    for (int i = 0; i < nids; i++){
-      for (int j = i; j < nids; j++){
-	if (edges[j].b < 0)
-	  continue;
-	if ((edges[j].b == edges[i].b && edges[j].e == edges[i].e) ||
-	    (edges[j].b == edges[i].e && edges[j].e == edges[i].b))
-	  edges[j].b = -1;
-      }
-    }
+    // eliminating same edges
+	for (int i = 0; i < nids; i++) {
+		for (int j = i + 1; j < nids; j++) {
+			if (edges[j].b < 0)
+				continue;
+			if ((edges[j].b == edges[i].b && edges[j].e == edges[i].e) ||
+				(edges[j].b == edges[i].e && edges[j].e == edges[i].b)){
+				edges[j].b = -1;
+				edges[i].b = -1;
+			}
+		}
+	}
     
     // relocating edges
-    int nidxs = 0, idx_min = INT_MIN;
-    for (int i = 0, j = 0; i < nids && j < nids; i++){
-      if (edges[i].b < 0){
-	for (; j < nids; j++){
-	  if (edges[j].b < 0){
-	    edges[i] = edges[j];
-	    edges[j].b = -1;
-	  }
-	}
-      }
-      
-      if (edges[i].b >= 0){
-	idx_min = min(idx_min, edges[i].b);
-	idx_min = min(idx_min, edges[i].e);
-      }
-      nidxs = i;
-    }
-    nidxs += 1;
-    
-    // allocating and loading shape index array
-    prottype.nidxs = nidxs;
-    prottype.idxs = new unsigned short[nidxs + nids];
-    prottype.idxt = prottype.idxs + nidxs;
-    prottype.idxs[0] = idx_min;
-    for (int i = 0; i < nidxs - 1; i++){
-      for (int iedge = 0; iedge < nidxs - 1; iedge++){
-	if (edges[iedge].b == prottype.idxs[i]){
-	  prottype.idxs[i + 1] = edges[iedge].e;
-	  break;
-	}
-	else if (edges[iedge].e == prottype.idxs[i]){
-	  prottype.idxs[i + 1] = edges[iedge].b;
-	  break;
-	}
-      }
-    }
-    if (prottype.idxs[0] != prottype.idxs[nidxs - 1]){
-      delete[] prottype.idxs;
-      cerr << "Given 2d object is not closed shape." << endl;
-      return false;
-    }
-  }
+	int nidxs = 0, idx_min = INT_MAX;
+	for (int i = 0; i < nids; i++) {
+		if (edges[i].b < 0) {
+			for (int j = i + 1; j < nids; j++) {
+				if (edges[j].b >= 0) {
+					edges[i] = edges[j];
+					edges[j].b = -1;
+					break;
+				}
+			}
+		}
 
+		if(edges[i].b >= 0){
+			idx_min = min(idx_min, edges[i].b);
+			idx_min = min(idx_min, edges[i].e);
+			nidxs++;
+		}
+	}
+	nidxs += 1;
+
+	// allocating and loading shape index array
+	prottype.nidxs = nidxs;
+	prottype.idxs = new unsigned short[nidxs + nids];
+	prottype.idxt = prottype.idxs + nidxs;
+	prottype.idxs[0] = idx_min;
+	for (int i = 0; i < nidxs - 1; i++) {
+		for (int iedge = 0; iedge < nidxs - 1; iedge++) {
+			if (edges[iedge].b == prottype.idxs[i]) {
+				prottype.idxs[i + 1] = edges[iedge].e;
+				edges[iedge].b = edges[iedge].e = -1;
+				break;
+			}
+			else if (edges[iedge].e == prottype.idxs[i]) {
+				prottype.idxs[i + 1] = edges[iedge].b;
+				edges[iedge].b = edges[iedge].e = -1;
+				break;
+			}
+		}
+	}
+
+	if (prottype.idxs[0] != prottype.idxs[nidxs - 1]) {
+		delete[] prottype.idxs;
+		cerr << "Given 2d object is not closed shape." << endl;
+		return false;
+	}
+  }
 
   prottype.vtx = new s_vertex[npts];
   memcpy((void*)prottype.vtx, (const void*)points, sizeof(s_vertex)* npts);
   memcpy((void*) prottype.idxt, (const void*)indices,
 	 sizeof(unsigned short)* nids);
+
 
   /*
   cout << "points";
@@ -2207,43 +2213,18 @@ void c_gl_2d_obj::update_vertices()
     
     glm::mat2 sr = iis[ih].sr;
     glm::vec2 pos = iis[ih].pos;
-    if(prottype.nvtx==13){
-      cout << ih << "th instance" << endl;
-    }
     for (int iv = 0; iv < prottype.nvtx; iv++){
       s_vertex & v = prottype.vtx[iv];
       vtx[iv].x = v.x * sr[0][0] + v.y * sr[0][1] + pos.x;
       vtx[iv].y = v.x * sr[1][0] + v.y * sr[1][1] + pos.y;
-      if(prottype.nvtx==13)
-	cout << "[" << iv << "](" << vtx[iv].x << "," << vtx[iv].y << ")";
-    }
-
-    if(prottype.nvtx==13){
-      cout << endl;
-      cout << "tri(" << endl;
     }
 
     for (int iid = 0; iid < prottype.nidxt; iid++){
       idxt[iid] = prottype.idxt[iid] + vtxoffset;
-      if(prottype.nvtx==13){
-	cout << idxt[iid] <<",";
-      }
-    }
-    
-    if(prottype.nvtx==13){
-      cout << ")" <<endl;
-      cout << "shp(" << endl;
     }
     
     for (int iid = 0; iid < prottype.nidxs; iid++){
       idxs[iid] = prottype.idxs[iid] + vtxoffset;
-      if(prottype.nvtx==13){
-	cout << idxs[iid] <<",";
-      }	    
-    }
-    if(prottype.nvtx==13){
-      cout << ")" << endl;
-      cout << "tri(" << endl;
     }
 
     iis[ih].vtxoffset = vtxoffset;

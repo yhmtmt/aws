@@ -113,7 +113,7 @@ class f_aws1_ui: public f_glfw_window
   long long m_tcam, m_frm_cam; // time and frame number m_cam grabbed
   e_imfmt m_fmt_cam;           // image format of main camera
 
-  int hmap_mask[4];
+  int hmap_mask[2];
   bool init_map_mask();
   
   void render_gl_objs(c_view_mode_box * pvm_box); // renders all elements above declared.
