@@ -152,8 +152,8 @@ class f_aws1_ui: public f_glfw_window
     int pfl = 0;
     unsigned char ld = 0;
     unsigned char tq = 0;
-    StatEng1 steng1;
-    StatEng2 steng2;
+    StatEng1 steng1 = (StatEng1)(EmergencyStop + 1);
+    StatEng2 steng2 = (StatEng2)(EngineShuttingDown + 1);
     float depth = 0.f;
     
     if(m_engstate){ // currentlly only for main engine
@@ -171,8 +171,8 @@ class f_aws1_ui: public f_glfw_window
 		  rpm, trim, poil, toil, temp,
 		  valt, frate, teng, pclnt, pfl,
 		  ld, tq,
-		  (steng1 <= EmergencyStop ? strStatEng1[steng1] : NULL),
-		  (steng2 <= EngineShuttingDown ? strStatEng2[steng2] : NULL),
+		  ((steng1 >= 0 && steng1 <= EmergencyStop) ? strStatEng1[steng1] : NULL),
+		  ((steng2 >= 0 && steng2 <= EngineShuttingDown) ? strStatEng2[steng2] : NULL),
 		  m_stat.seng_aws, m_stat.rud_aws,
 		  (float)(cog * (PI / 180.f)),
 		  sog,

@@ -488,12 +488,15 @@ class ch_eng_state: public ch_base
   float fleco, flecof; // fuel rate eco
   float flinst, flinstf; // Instantaneous fuel rate
   
+  char *buf;
    public:
- ch_eng_state(const char * name):ch_base(name)
+ ch_eng_state(const char * name):ch_base(name), buf(NULL)
   {
+   buf = new char[get_dsize()];
   }
   ~ch_eng_state()
     {
+    delete[] buf;
     }
 
   void set_rapid(const long long _t, const float _rpm, const unsigned char _trim)

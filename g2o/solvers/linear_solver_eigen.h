@@ -51,9 +51,15 @@ template <typename MatrixType>
 class LinearSolverEigen: public LinearSolver<MatrixType>
 {
   public:
-  typedef Eigen::SparseMatrix<double, Eigen::ColMajor, Eigen::Index> SparseMatrix;
+#ifdef _WIN32
+    typedef Eigen::SparseMatrix<double, Eigen::ColMajor> SparseMatrix;
+    typedef Eigen::Triplet<double> Triplet;
+    typedef Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic> PermutationMatrix;
+#else
+  typedef Eigen::SparseMatrix<double, Eigen::ColMajor> SparseMatrix;
     typedef Eigen::Triplet<double> Triplet;
     typedef Eigen::PermutationMatrix<Eigen::Dynamic, Eigen::Dynamic, Eigen::Index> PermutationMatrix;
+#endif
     /**
      * \brief Sub-classing Eigen's SimplicialLDLT to perform ordering with a given ordering
      */

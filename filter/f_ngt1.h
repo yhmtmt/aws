@@ -63,7 +63,7 @@ class f_ngt1: public f_base
   void n2kMessageReceived(const unsigned char * msg, size_t msgLen); /* modified to pack the result into msg_raw */
   void ngtMessageReceived(const unsigned char * msg, size_t msgLen);
   // these functions are from canboat.actisense-serial -->
-
+ 
   // <-- these functions are from canboat.analyze
   enum GeoFormats
   {
@@ -151,7 +151,7 @@ bool printVarNumber(char * fieldName, Pgn * pgn, uint32_t refPgn, Field * field,
   void mreset(void);
   void mwrite(FILE * stream);
   
-  void writeMessage(int handle, unsigned char command, const unsigned char * cmd, 
+  void writeMessage(AWS_SERIAL handle, unsigned char command, const unsigned char * cmd,
 		    const size_t len);
 
   // these functions are from canboat.analyze -->

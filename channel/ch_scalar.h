@@ -122,11 +122,15 @@ class ch_sample: public ch_base
  protected:
   long long t, tf;
   int val, valf;
+  char * buf;
  public:
- ch_sample(const char * name):ch_base(name),val(0)
+ ch_sample(const char * name):ch_base(name),val(0), buf(NULL)
     {
+   buf = new char[get_dsize()];
     }
-
+ virtual ~ch_sample(){
+   delete[] buf;
+}
   void set(const long long _t, const int _val)
   {
     lock();
@@ -173,13 +177,11 @@ class ch_sample: public ch_base
     if (!pf)
       return 0;
 
-    char buf[get_dsize()];
-
     lock();
     read_buf(buf);
     unlock();
     
-    fwrite((void*)buf, sizeof(buf), 1, pf);
+    fwrite((void*)buf, get_dsize(), 1, pf);
     
     return get_dsize();
   }
@@ -193,9 +195,7 @@ class ch_sample: public ch_base
       set(tf, valf);    
     else
       return 0;
-    char buf[get_dsize()];
-
-    int res = fread((void*)buf, sizeof(buf), 1, pf);
+    int res = fread((void*)buf, get_dsize(), 1, pf);
 
     if(!res)
       return 0;
@@ -203,6 +203,7 @@ class ch_sample: public ch_base
     lock();
     write_buf_f(buf);
     unlock();
+    return res;
   }
 
   virtual bool log2txt(FILE * pbf, FILE * ptf)
@@ -213,9 +214,8 @@ class ch_sample: public ch_base
       }
 
     fprintf(ptf, "T, val\n"); 
-    char buf[get_dsize()];
     while(!feof(pbf)){
-      int res = fread((void*)buf, sizeof(buf), 1, pbf);
+      int res = fread((void*)buf, get_dsize(), 1, pbf);
       if(!res){
 	break;
       }

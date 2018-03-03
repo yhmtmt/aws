@@ -23,25 +23,12 @@ along with CANboat.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "license.h"
 
-#ifdef WIN32
+#ifdef _WIN32
 # define _CRT_SECURE_NO_WARNINGS
 #endif
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <time.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <errno.h>
-#include <unistd.h>
-#include <stdarg.h>
-#include <ctype.h>
-
-#ifndef WIN32
+#ifndef _WIN32
 # include <arpa/inet.h>
-# include <stdint.h>
 # include <syslog.h>
 # include <sys/ioctl.h>
 # include <sys/select.h>
@@ -55,8 +42,10 @@ along with CANboat.  If not, see <http://www.gnu.org/licenses/>.
 # define HAS_SYSLOG
 typedef int SOCKET;
 #else
+/*
 # include <winsock2.h>
 # include "winport.h"
+*/
 #endif
 
 #ifndef CB_MAX
@@ -114,7 +103,9 @@ int getJSONValue( const char * message, const char * fieldName, char * value, si
 void getISO11783BitsFromCanId(unsigned int id, unsigned int * prio, unsigned int * pgn, unsigned int * src, unsigned int * dst);
 unsigned int getCanIdFromISO11783Bits(unsigned int prio, unsigned int pgn, unsigned int src, unsigned int dst);
 
+/*
 SOCKET open_socket_stream(const char * url);
+*/
 
 #define DATE_LENGTH 60
 const char * now(char str[DATE_LENGTH]);

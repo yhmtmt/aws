@@ -298,7 +298,7 @@
 #ifdef _DEBUG
 #pragma comment(lib, "VimbaCPP.lib")
 #else
-$pragma comment(lib, "VimbaCPP.lib")
+#pragma comment(lib, "VimbaCPP.lib")
 #endif
 #endif
 #ifdef GLFW_WINDOW

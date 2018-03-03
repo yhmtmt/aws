@@ -2,6 +2,28 @@
 #include <algorithm>
 using namespace std;
 
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <sys/timeb.h>
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <time.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <errno.h>
+#ifndef _WIN32
+#include <unistd.h>
+#endif
+#include <ctype.h>
+#include <stdarg.h>
+#include <stdint.h>
+
 #include "common.h"
 #define GLOBALS
 #include "analyzer.h"
@@ -518,7 +540,7 @@ int parseRawFormatChetco(char * msg, RawMessage * m, bool showJson)
   }
 
   t = (time_t) tstamp / 1000;
-  localtime_r(&t, &tm);
+  tm = *localtime(&t);
   strftime(m->timestamp, sizeof(m->timestamp), "%Y-%m-%d-%H:%M:%S", &tm);
   sprintf(m->timestamp + strlen(m->timestamp), ",%u", tstamp % 1000);
 
