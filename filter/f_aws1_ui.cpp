@@ -172,7 +172,7 @@ bool f_aws1_ui::init_map_mask()
       return false;
     }
 
-    glm::vec4 clrb(0.0f, 0.1f, 0.0f, 0.8f);
+    glm::vec4 clrb(0.0f, 0.0f, 0.0f, 1.0f);
     glm::vec2 pos(0.f,0.f);
     hmap_mask[0] = omap_mask.add(clrb, pos, 0.f, 1.f);
     hmap_mask[1] = omap_mask.add(clrb, pos, PI, 1.f);
