@@ -491,7 +491,7 @@ void f_aws1_sim::simulate(const long long tsim, const int iosv)
 	// in the current implementation, output is same as the input. 
 	// here we should insert simulation code
 	if (iosv == 0) {
-		m_output_vectors[iosv] = m_input_vectors[iosv];
+		m_output_vectors[iosv] = m_input_vectors[m_iv_head];
 	}
 	else {
 		m_output_vectors[iosv] = m_output_vectors[iosv - 1];
@@ -507,13 +507,13 @@ void f_aws1_sim::save_csv(const long long tcur)
 	m_fcsv.precision(8);
 	m_fcsv <<
 		svo.lat << "," <<
-		svo.lon << ",";
+		svo.lon << "," <<
+		svo.xe << "," <<
+		svo.ye << "," <<
+		svo.ze << ",";
 
 	m_fcsv.precision(3);
 	m_fcsv <<
-		svo.xe << "," <<
-		svo.ye << "," <<
-		svo.ze << "," <<
 		svo.roll << "," <<
 		svo.pitch << "," <<
 		svo.yaw << "," <<
@@ -527,13 +527,13 @@ void f_aws1_sim::save_csv(const long long tcur)
 	m_fcsv.precision(8);
 	m_fcsv <<
 		svi.lat << "," <<
-		svi.lon << ",";
+		svi.lon << "," <<
+		svi.xe << "," <<
+		svi.ye << "," <<
+		svi.ze << ",";
 
 	m_fcsv.precision(3);
 	m_fcsv <<
-		svi.xe << "," <<
-		svi.ye << "," <<
-		svi.ze << "," <<
 		svi.roll << "," <<
 		svi.pitch << "," <<
 		svi.yaw << "," <<
