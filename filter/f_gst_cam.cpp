@@ -321,7 +321,8 @@ gboolean f_gst_enc::bus_callback(GstBus * bus, GstMessage * message, gpointer da
     return true;  
 }
 
-f_gst_enc::f_gst_enc(const char * name):f_base(name), m_ch_in(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_src(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef), m_pfts(NULL)
+f_gst_enc::f_gst_enc(const char * name):f_base(name), m_ch_in(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_src(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef),
+m_pfts(NULL), m_fps(30)
 {
   m_fppl[0] = '\0';
   m_fts[0] = '\0';
@@ -404,7 +405,9 @@ bool f_gst_enc::init_run()
   gst_object_unref(m_bus);
 
   gst_element_set_state(GST_ELEMENT(m_ppl), GST_STATE_PLAYING);
-  
+
+  frms = 0;
+  duration = (long long)(1000000000.0f / (double)m_fps); // in nano sec
   return true;
 }
 
@@ -437,7 +440,9 @@ bool f_gst_enc::proc()
   GstBuffer * buf = gst_buffer_new_allocate(NULL, sz_mem, NULL);
  
   gst_buffer_fill(buf, 0, imdst.data, sz_mem);
-  //  GST_BUFFER_PTS(buf) = cnvTimeNanoSec(t - tstart);
+  GstClockTime ts = (GstClockTime)(frms * duration);
+  GST_BUFFER_PTS(buf) = ts ;
+  GST_BUFFER_DTS(buf) = ts;
   //  GST_BUFFER_DURATION(buf) = cnvTimeNanoSec(f_base::m_clk.get_period());
   GstFlowReturn ret;
   g_signal_emit_by_name(m_src, "push-buffer", buf, &ret);

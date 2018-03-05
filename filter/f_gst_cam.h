@@ -185,7 +185,8 @@ class f_gst_enc: public f_base
   int m_fps;
   Size m_sz;
   e_imfmt fmt_in, fmt_out;
-  long long tstart;
+  long long frms;
+  long long duration;
  public:
   f_gst_enc(const char * name);
   virtual ~f_gst_enc();
