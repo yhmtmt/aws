@@ -450,7 +450,9 @@ bool f_gst_enc::proc()
   if(m_pfts){
     fwrite((void*)&t, sizeof(t), 1, m_pfts);
   }
-  
+
+  frms++;
+
   gst_buffer_unref(buf); 
   return true;
 }
