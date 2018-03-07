@@ -75,7 +75,9 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   register_fpar("ch_ap_inst", (ch_base**)&m_ch_ap_inst, typeid(ch_aws1_ap_inst).name(), "Autopilot instruction channel");
 
   register_fpar("ch_cam", (ch_base**)&m_ch_cam, typeid(ch_image_ref).name(), "Maincamera Image channel.");
-  
+
+
+
   fvs[0] = ffs[0] = '\0';
   register_fpar("fvs", fvs, 1024, "File path to the vertex shader program.");
   register_fpar("ffs", ffs, 1024, "File path to the fragment shader program.");
@@ -85,6 +87,10 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   register_fpar("storage", m_path_storage, 1024, "Path to the storage device");
 
   register_fpar("acs", (int*) &m_stat.ctrl_src, (int) ACS_NONE, str_aws1_ctrl_src, "Control source.");
+  register_fpar("meng", &m_meng_f, "Main engine instruction value");
+  register_fpar("seng", &m_seng_f, "Sub enggine instruction value");
+  register_fpar("rud", &m_rud_f, "Rudder instruction value");
+
   register_fpar("verb", &m_verb, "Debug mode.");
   
   register_fpar("js", &m_js_id, "Joystick id");
