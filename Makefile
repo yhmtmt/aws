@@ -54,7 +54,7 @@ FILTER = f_base f_nmea \
 	f_shioji f_com f_event f_fep01 f_time \
 	f_aws1_nmea_sw f_aws1_ctrl f_aws1_sim f_ahrs f_aws1_ap f_map \
 	f_obj_manager f_wp_manager f_aws3_com f_env_sensor f_test_vsrc \
-	f_ngt1 ngt1/common ngt1/pgn f_test_aws1_ui
+	f_ngt1 ngt1/common ngt1/pgn
 
 # base channels
 CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state ch_wp
@@ -78,7 +78,7 @@ else
 	STABILIZER = n
 	MISC = n
 	DEFS += -D_C_IMG_ALIGHN_H_
-	DEFS += -D_AWS_VLIB_H_
+#	DEFS += -D_AWS_VLIB_H_
 	DEFS += -D_AWS_VOBJ_H_
 	DEFS += -D_F_CAM_H
 endif
@@ -131,7 +131,7 @@ ifeq ($(GLFW_WINDOW),y)
 	UTIL += aws_glib
 	LIB += $(LIB_GLFW_WINDOW)
 	DEFS += -DGLFW_WINDOW 
-	FILTER += f_glfw_window  f_glfw_stereo_view f_aws1_ui f_aws1_ui_util/c_map_obj f_aws1_ui_util/c_ui_box f_aws3_ui f_state_estimator
+	FILTER += f_glfw_window  f_glfw_stereo_view f_aws1_ui f_test_aws1_ui f_aws1_ui_util/c_map_obj f_aws1_ui_util/c_ui_box f_aws3_ui f_state_estimator 
 	OFLAGS += -fopenmp
 endif
 
@@ -247,7 +247,7 @@ aws: $(OBJS) $(MODS)
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS) -o $(EXE) $(LIB)
 
 log2txt: util/log2txt.o channel_factory.o command.o c_aws.o c_aws_temp.o filter channel util orb_slam g2o DBoW2
-	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS)  command.o c_aws.o c_aws_temp.o factory.o util/log2txt.o -o log2txt $(LIB)
+	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS)  command.o c_aws.o c_aws_temp.o filter_factory.o channel_factory.o util/log2txt.o -o log2txt $(LIB)
 
 t2str: util/t2str.o util/c_clock.o
 	$(CC) util/t2str.o util/c_clock.o -o t2str
