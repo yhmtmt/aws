@@ -45,11 +45,6 @@ const char * f_aws1_ctrl:: m_str_adclpf_type[ADCLPF_NONE] = {
   "avg", "gauss"
 };
 
-/*const char * str_aws1_ctrl_src[ACS_NONE] = {
-  "fset", "udp", "chan"
-};
-*/
-
 f_aws1_ctrl::f_aws1_ctrl(const char * name): 
   f_base(name),  m_fd(-1), m_sim(false), m_verb(false),
   m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL),  m_ch_ctrl_stat(NULL), 

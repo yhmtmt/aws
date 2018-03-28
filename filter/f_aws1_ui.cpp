@@ -45,6 +45,21 @@ using namespace cv;
 #include "../util/aws_glib.h"
 #include "f_aws1_ui.h"
 
+const char * f_aws1_ui::str_ctrl_mode[cm_undef] =
+  {
+    "crz", "ctl", "csr", "ap"
+  };
+
+const char * f_aws1_ui::str_crz_cmd[crz_undef] =
+  {
+    "stp",
+    "dsah", "slah", "hfah", "flah", "nf",
+    "dsas", "slas", "hfas", "flas",
+    "mds",
+    "p10", "p20", "hap",
+    "s10", "s20", "has"
+  };
+
 
 f_aws1_ui::f_aws1_ui(const char * name) :
   f_glfw_window(name),
@@ -61,7 +76,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   m_rud_f(127.), m_meng_f(127.), m_seng_f(127.)
 {
   m_path_storage[0] = '.';m_path_storage[1] = '\0';
-
+ 
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_sys", (ch_base**)&m_ch_sys, typeid(ch_aws1_sys).name(), "System property channel");
   register_fpar("ch_engstate", (ch_base**)&m_engstate, typeid(ch_eng_state).name(), "Engine Status channel");
@@ -110,6 +125,33 @@ f_aws1_ui::f_aws1_ui(const char * name) :
 
   register_fpar("ss", &m_bss, "Screen shot now.");
   register_fpar("svw", &m_bsvw, "Screen video write.");
+
+  // for cruise command
+  for(int icrz_cmd = 0; icrz_cmd < (int)crz_undef; icrz_cmd++){
+    crz_cmd_val[icrz_cmd] = 127;
+    register_fpar(str_crz_cmd[icrz_cmd], crz_cmd_val+icrz_cmd, str_crz_cmd[icrz_cmd]);
+  }
+  register_fpar("crz", (int*)&crz_cm, (int)crz_undef, str_crz_cmd, "Command for CRZ mode.");
+  // for aws1 
+  crz_cmd_val[crz_stp] = 127;   // neutral
+  crz_cmd_val[crz_ds_ah] = 141; // 700rpm
+  crz_cmd_val[crz_sl_ah] = 200; //1000rpm
+  crz_cmd_val[crz_hf_ah] = 210; //2500rpm
+  crz_cmd_val[crz_fl_ah] = 220; //4500rpm
+  crz_cmd_val[crz_nf] = 225;    //5200rpm
+  
+  crz_cmd_val[crz_ds_as] =113; 
+  crz_cmd_val[crz_sl_as] = 54;
+  crz_cmd_val[crz_hf_as] = 44;
+  crz_cmd_val[crz_fl_as] = 34;
+
+  crz_cmd_val[crz_mds] = 127;
+  crz_cmd_val[crz_s10] = 140;
+  crz_cmd_val[crz_s20] = 180;
+  crz_cmd_val[crz_has] = 255;
+  crz_cmd_val[crz_p10] = 87;
+  crz_cmd_val[crz_p20] = 47;
+  crz_cmd_val[crz_hap] = 0;
 }
 
 
@@ -980,6 +1022,33 @@ void f_aws1_ui::handle_ctrl_crz()
     m_seng_f = min((float) 255.0, m_seng_f);
     m_seng_f = max((float)0.0, m_seng_f);
   }
+  if(crz_cm != crz_undef){
+    switch(crz_cm){
+    case crz_stp:
+    case crz_ds_ah:
+    case crz_sl_ah:
+    case crz_hf_ah:
+    case crz_fl_ah:
+    case crz_nf:
+    case crz_ds_as:
+    case crz_sl_as:
+    case crz_hf_as:
+    case crz_fl_as:
+      m_meng_f = (float)crz_cmd_val[crz_cm];
+      break;
+    case crz_mds:
+    case crz_p10:
+    case crz_p20:
+    case crz_hap:
+    case crz_s10:
+    case crz_s20:
+    case crz_has:
+      m_rud_f = (float)crz_cmd_val[crz_cm];
+      break;
+    }
+    crz_cm = crz_undef;
+  }
+  
   m_inst.tcur = get_time();
   m_inst.rud_aws = (unsigned char)m_rud_f;
   m_inst.meng_aws = (unsigned char)m_meng_f;
@@ -1332,15 +1401,18 @@ void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
 	float lat, lon, alt, galt;
 	m_state->get_position(t, lat, lon, alt, galt);
 	m_ch_ap_inst->set_stay_pos(lat, lon);
-      }	
+      }
+      ctrl_mode = cm_ap;
       break;
     case c_ctrl_mode_box::fwp:
       m_inst.ctrl_src = ACS_AP1;
       m_ch_ap_inst->set_mode(EAP_WP);
+      ctrl_mode = cm_ap;
       break;
     case c_ctrl_mode_box::ftg:
       m_inst.ctrl_src = ACS_AP1;
       m_ch_ap_inst->set_mode(EAP_FLW_TGT);
+      ctrl_mode = cm_ap;
       break;
     }
 }

@@ -227,9 +227,24 @@ class f_aws1_ui: public f_glfw_window
 
   // AWS1's manual control mode, crz: Cruise mode (for usual crusing), ctl: Control mode (for precise control), csr: Cursor mode (AWS1 follows mouse cursor)
   enum e_ctrl_mode{
-	  cm_crz, cm_ctl, cm_csr
+    cm_crz, cm_ctl, cm_csr, cm_ap, cm_undef
   } ctrl_mode;
 
+  static const char * str_ctrl_mode[cm_undef];
+  
+  enum e_crz_cmd{
+    crz_stp,
+    crz_ds_ah, crz_sl_ah, crz_hf_ah, crz_fl_ah, crz_nf,
+    crz_ds_as, crz_sl_as, crz_hf_as, crz_fl_as, 
+    crz_mds,
+    crz_p10,crz_p20,crz_hap,
+    crz_s10,crz_s20, crz_has,
+    crz_undef
+  } crz_cm;
+
+  static const char * str_crz_cmd[crz_undef];
+  unsigned char crz_cmd_val[crz_undef];
+  
   float m_rud_f, m_meng_f, m_seng_f;
   void handle_ctrl_crz(); // cruise mode: sticks are used to increase/decrease engine throttle and rudder angle 
   void handle_ctrl_ctl(); // control mode: positions of sticks are the throttle values. 

@@ -1,8 +1,6 @@
 User interface
-* in map mode, circle masking layer is not working
 * ais marker, box and line should be removed
 * scales for rudder and engine are required
-* speed indicator should be text
 * depth should be indicated
 * information for selected ais should be enlarged
 * information for selected waypoint should be enlarged
@@ -14,7 +12,29 @@ User interface
 * waypoint cannot be drugged.
 * roll, pitch, yaw indicators should be on horizon related to camera parameter
 * c_ui_box_manager should expanded in f_aws1_ui.
-
+* f_aws1_ctrl should have test mode(run without actual zgpio device.)
+* aws1_ui should have representative order in crz mode(all these orders merely set corresponding control values)
+  - starboard {10,20,30} 
+  - port {10,20,30}
+  - midship
+  - navigation full
+  - full ahead/astern
+  - half ahead/astern
+  - slow ahead/astern
+  - dead slow ahead/astern
+  - stop
+* fset aws1_ui crz <command>
+* fset parameters for control values for each command
+* assignment aws1_ui's joystic cross key in crz mode
+  - up/down->ahead/astern
+  - left/right->port/starboard
+* in nutral gear state, analog sticks in crz mode should not work
+* autopilot mode is changed to crz mode when joystic input is excited
+* new autopilot mode crs mode (keep current course)
+* heartbeat check between aws1_ctrl and aws1_ui
+  - if aws1_ctrl does not detect heartbeat from aws1_ui set all control to neutral
+  - if aws1_ui does not detect heartbeat from aws1_ctrl indicate control error
+* 
 
 Util
 * c_gl_2d_obj should support texture mapping
@@ -39,3 +59,5 @@ AWS sys
 * Map cannot be back to the own-ship centered mode.
 * chls command should show channel type
 * map range scale should be 1000, 2000 ..., 10k, 20k, ...., 200k, 300k
+* in map mode, circle masking layer is not working
+* speed indicator should be text
