@@ -134,6 +134,11 @@ class f_aws1_ui: public f_glfw_window
 			const float xown, const float yown, const float zown,
 			const float vx, const float vy, const float yaw);
  
+  // for Android wear 
+  bool bwear;
+  unsigned short wmeng, wrud, wrev, wsog, wcog, wyaw, wdpt, whbt, whbt0;
+  long long twhbt, twhbt_out;
+
   // Indicator
   c_indicator ind;
   void update_indicator(const float cog, const float sog, 
@@ -165,6 +170,8 @@ class f_aws1_ui: public f_glfw_window
       m_state->get_depth(t, depth);
     }
 
+	float cogf = (float)(cog * (PI / 180.f));
+	float yawf = (float)(yaw * (PI / 180.f));
     ind.set_param(
 		  m_time_str,
 		  m_stat.meng_aws,
@@ -174,13 +181,22 @@ class f_aws1_ui: public f_glfw_window
 		  ((steng1 >= 0 && steng1 <= EmergencyStop) ? strStatEng1[steng1] : NULL),
 		  ((steng2 >= 0 && steng2 <= EngineShuttingDown) ? strStatEng2[steng2] : NULL),
 		  m_stat.seng_aws, m_stat.rud_aws,
-		  (float)(cog * (PI / 180.f)),
+		  cogf,
 		  sog,
-		  (float)(yaw * (PI / 180.f)),
+		  yawf,
 		  (float)(pitch* (PI / 180.f)),
 		  (float)(-roll* (PI / 180.f)),
 		  depth);
     ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
+
+	// for android wear
+	wmeng = (unsigned short) m_stat.meng_aws;
+	wrud = (unsigned short) m_stat.rud_aws;
+	wrev = (unsigned short) rpm;
+	wsog = (unsigned short)(sog * 10);
+	wcog = (unsigned short) cogf;
+	wyaw = (unsigned short) yawf;
+	wdpt = (unsigned short) depth * 10;
   }
 
   //////////////////////////////////////////// map objects
@@ -353,6 +369,7 @@ class f_aws1_ui: public f_glfw_window
 
   // If LT+LB+RT+RB is detected, the system forces the controls to be nutral state. Called by default.
   void ui_force_ctrl_stop(c_ctrl_mode_box * pcm_box);
+  void js_force_ctrl_stop(c_ctrl_mode_box * pcm_box);
   bool m_quit;
 };
 #endif

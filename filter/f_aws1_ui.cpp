@@ -73,7 +73,8 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   bupdate_map(true), pt_prev_map_update(0, 0, 0),
   map_range(4000), map_range_base(1000),  sz_mark(10.0f), mouse_state(ms_normal),
   bmap_center_free(false), btn_pushed(ebtn_nul), btn_released(ebtn_nul),
-  m_rud_f(127.), m_meng_f(127.), m_seng_f(127.)
+  m_rud_f(127.), m_meng_f(127.), m_seng_f(127.),
+	bwear(false), twhbt_out(5 * SEC), twhbt(0), whbt0(USHRT_MAX), whbt(0)
 {
   m_path_storage[0] = '.';m_path_storage[1] = '\0';
  
@@ -152,6 +153,17 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   crz_cmd_val[crz_p10] = 87;
   crz_cmd_val[crz_p20] = 47;
   crz_cmd_val[crz_hap] = 0;
+
+  register_fpar("wear", &bwear, "Enable Android Wear control");
+  register_fpar("wmeng", &wmeng, "Main engine value accessed from Android Wear.");
+  register_fpar("wrud", &wrud, "Rudder value accessed from Android Wear");
+  register_fpar("wrev", &wrev, "Engine rev accessed from Android Wear");
+  register_fpar("wsog", &wsog, "Speed over ground accessed from Android Wear");
+  register_fpar("wcog", &wcog, "Course over ground accessed from Android Wear");
+  register_fpar("wyaw", &wyaw, "Yaw accessed from Android Wear");
+  register_fpar("wdpt", &wdpt, "Depth accessed from Android Wear");
+  register_fpar("whbt", &whbt, "Heartbeat value sat from Android wear");
+  register_fpar("twhbt_out", &twhbt_out, "Android wear heartbeat timeout.");
 }
 
 
@@ -434,19 +446,25 @@ void f_aws1_ui::destroy_run()
 
 void f_aws1_ui::ui_force_ctrl_stop(c_ctrl_mode_box * pcm_box)
 {
-  if(m_js.id != -1){
-    if(m_js.elb & s_jc_u3613m::EB_STDOWN &&
-       m_js.elt & s_jc_u3613m::EB_STDOWN &&
-       m_js.erb & s_jc_u3613m::EB_STDOWN &&
-       m_js.ert & s_jc_u3613m::EB_STDOWN){
-      m_inst.ctrl_src = ACS_UI;
-      m_meng_f = m_seng_f = m_rud_f = 127.f;
-      m_inst.rud_aws = m_inst.meng_aws = m_inst.seng_aws = 127;
-      ctrl_mode = cm_crz;
-      pcm_box->set_mode(c_ctrl_mode_box::crz);
-    }
-  }
+	m_inst.ctrl_src = ACS_UI;
+	m_meng_f = m_seng_f = m_rud_f = 127.f;
+	m_inst.rud_aws = m_inst.meng_aws = m_inst.seng_aws = 127;
+	ctrl_mode = cm_crz;
+	pcm_box->set_mode(c_ctrl_mode_box::crz);
 }
+
+void f_aws1_ui::js_force_ctrl_stop(c_ctrl_mode_box * pcm_box)
+{
+	if (m_js.id != -1) {
+		if (m_js.elb & s_jc_u3613m::EB_STDOWN &&
+			m_js.elt & s_jc_u3613m::EB_STDOWN &&
+			m_js.erb & s_jc_u3613m::EB_STDOWN &&
+			m_js.ert & s_jc_u3613m::EB_STDOWN) {
+			ui_force_ctrl_stop(pcm_box);
+		}
+	}
+}
+
 
 void f_aws1_ui::cnv_img_to_view(Mat & img, float av, Size & sz, bool flipx, bool flipy)
 {
@@ -849,8 +867,18 @@ bool f_aws1_ui::proc()
     m_js.set_stk();
   }
 
-  ui_force_ctrl_stop(pcm_box);
-  
+  js_force_ctrl_stop(pcm_box);
+
+  if (bwear) {
+	  if (whbt0 != whbt) {
+		  twhbt = get_time();
+		  whbt0 = whbt;
+	  }
+	  if (twhbt + twhbt_out < get_time()) {
+		  ui_force_ctrl_stop(pcm_box);
+	  }
+  }
+
   switch (ctrl_mode){
   case cm_crz:
     handle_ctrl_crz();
