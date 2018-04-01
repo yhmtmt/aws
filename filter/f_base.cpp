@@ -428,6 +428,10 @@ bool f_base::get_par(s_cmd & cmd){
 		}
 
 		len += (int) strlen(valsubstr);
+		if (len >= RET_LEN - 3) {
+			snprintf(cmd.get_ret_str(), RET_LEN, "Too long parameter lists. Return values cannot be packed.");
+			return false;
+		}
 		valstr[len] = ' ';
 		len += 1;
 		valsubstr = valstr + len;
