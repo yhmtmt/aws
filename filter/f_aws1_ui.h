@@ -194,8 +194,8 @@ class f_aws1_ui: public f_glfw_window
 	wrud = (unsigned short) m_stat.rud_aws;
 	wrev = (unsigned short) rpm;
 	wsog = (unsigned short)(sog * 10);
-	wcog = (unsigned short) cogf;
-	wyaw = (unsigned short) yawf;
+	wcog = (unsigned short) cog;
+	wyaw = (unsigned short) yaw;
 	wdpt = (unsigned short) depth * 10;
   }
 
