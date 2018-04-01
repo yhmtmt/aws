@@ -1106,7 +1106,7 @@ c_rcmd::~c_rcmd(){
 // wait_connection waits connection to socket s. The function don't return
 // until session opened or timeout.
 bool c_rcmd::wait_connection(SOCKET & s){
-	m_to.tv_sec = 10;
+	m_to.tv_sec = 3;
 	m_to.tv_usec = 0;
 	FD_ZERO(&m_fdread);
 	FD_ZERO(&m_fderr);
@@ -1135,7 +1135,7 @@ bool c_rcmd::wait_connection(SOCKET & s){
 // wait_receive receives data to buf from socket s. Data length is returned
 // to the argument "total". This function should be called after session opened.
 bool c_rcmd::wait_receive(SOCKET & s, char * buf, int & total){
-	m_to.tv_sec = 10;
+	m_to.tv_sec = 3;
 	m_to.tv_usec = 0;
 	FD_ZERO(&m_fdread);
 	FD_ZERO(&m_fderr);
@@ -1172,7 +1172,7 @@ bool c_rcmd::push_command(const char * cmd_str, char * ret_str, bool ret_stat){
 // wait_send send is used to send return string to the sender of the command.
 // This function returns after sending data or timeout
 bool c_rcmd::wait_send(SOCKET & s, char * buf){
-	m_to.tv_sec = 10;
+	m_to.tv_sec = 3;
 	m_to.tv_usec = 0;
 	FD_ZERO(&m_fdwrite);
 	FD_ZERO(&m_fderr);
@@ -1205,7 +1205,8 @@ void c_rcmd::thrcmd(c_rcmd * prcmd)
 
 		while(1){
 			int total = 0;
-			while(!prcmd->wait_receive(s, prcmd->m_buf_recv, total));
+			if (!prcmd->wait_receive(s, prcmd->m_buf_recv, total))
+				break;
 			if(strcmp("eoc", prcmd->m_buf_recv) == 0){
 				break;
 			}
@@ -1217,6 +1218,9 @@ void c_rcmd::thrcmd(c_rcmd * prcmd)
 					prcmd->m_buf_send, stat)){
 						cerr << "Unknown command " << prcmd->m_buf_recv << endl;
 				}
+			}
+			else {
+				break;
 			}
 
 			// return
