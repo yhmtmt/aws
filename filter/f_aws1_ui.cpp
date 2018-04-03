@@ -681,40 +681,31 @@ void f_aws1_ui::update_map()
     }
 }
 
+f_aws1_ui::e_button f_aws1_ui::get_col_button()
+{
+	if (btn_lock_map_own_ship.collision(pt_mouse)) {
+		return ebtn_lock_map_own_ship;
+	}
+	else if (btn_lock_cam_dir_hdg.collision(pt_mouse)) {
+		return ebtn_lock_cam_dir_hdg;
+	}
+	else if (btn_wear_dev_ctrl.collision(pt_mouse))
+	{
+		return ebtn_wear_dev_ctrl;
+	}
+	return ebtn_nul;
+}
+
 bool f_aws1_ui::handle_btn_pushed()
 {
-  if (btn_lock_map_own_ship.collision(pt_mouse)){
-    btn_pushed = ebtn_lock_map_own_ship;
-    return true;
-  }
-  else if (btn_lock_cam_dir_hdg.collision(pt_mouse)){
-    btn_pushed = ebtn_lock_cam_dir_hdg;
-    return true;
-  }
-  else if (btn_wear_dev_ctrl.collision(pt_mouse))
-  {
-	  btn_pushed = ebtn_wear_dev_ctrl;
-	  return true;
-  }
-  return false;
+  btn_pushed = get_col_button();
+  return btn_pushed != ebtn_nul;
 }
 
 bool f_aws1_ui::handle_btn_released()
 {
-  if (btn_lock_map_own_ship.collision(pt_mouse)){
-    btn_released = ebtn_lock_map_own_ship;
-    return true;
-  }
-  else if (btn_lock_cam_dir_hdg.collision(pt_mouse)){
-    btn_released = ebtn_lock_cam_dir_hdg;
-    return true;
-  }
-  else if (btn_wear_dev_ctrl.collision(pt_mouse)) {
-	  btn_released = ebtn_wear_dev_ctrl;
-	  return true;
-  }
-
-  return false;
+  btn_released = get_col_button();
+  return btn_released != ebtn_nul;
 }
 
 void f_aws1_ui::update_button(c_view_mode_box * pvm_box)

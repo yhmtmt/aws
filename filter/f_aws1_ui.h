@@ -226,6 +226,7 @@ class f_aws1_ui: public f_glfw_window
   };
   e_button btn_pushed, btn_released;
   c_aws_ui_button btn_lock_map_own_ship, btn_lock_cam_dir_hdg, btn_wear_dev_ctrl;
+  e_button get_col_button();
   bool handle_btn_pushed();
   bool handle_btn_released();
   void update_button(c_view_mode_box * pvm_box);
