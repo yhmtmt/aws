@@ -222,10 +222,10 @@ class f_aws1_ui: public f_glfw_window
   c_cursor ocsr;		  // cursor 
  
   enum e_button{
-    ebtn_lock_map_own_ship, ebtn_lock_cam_dir_hdg, ebtn_wear_dev_ctrl, ebtn_nul
+    ebtn_lock_map_own_ship, ebtn_lock_cam_dir_hdg, ebtn_wear_dev_ctrl, ebtn_js_ctrl, ebtn_nul
   };
   e_button btn_pushed, btn_released;
-  c_aws_ui_button btn_lock_map_own_ship, btn_lock_cam_dir_hdg, btn_wear_dev_ctrl;
+  c_aws_ui_button btn_lock_map_own_ship, btn_lock_cam_dir_hdg, btn_wear_dev_ctrl, btn_js_ctrl;
   e_button get_col_button();
   bool handle_btn_pushed();
   bool handle_btn_released();
@@ -269,6 +269,7 @@ class f_aws1_ui: public f_glfw_window
 
   ///////////////////////////////////////////////// joypad handlers (used for manual control)
   s_jc_u3613m m_js;			// joystick wrapper. (Now i only support jc_u3613) 
+  bool bjs;					// joystick control enable flag (switched from fset, touch panel, and js's start button)
   int m_js_id;				// joystick id (glfw's ordering)
   const char * m_js_name;	// joystick name (glfw's naming)
 

@@ -67,7 +67,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL),
   m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL),
   m_ch_ap_inst(NULL), m_ch_cam(NULL),
-  m_js_id(0), m_bsvw(false), m_bss(false),
+  m_js_id(0), bjs(false), m_bsvw(false), m_bss(false),
   fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f),
   dir_cam_hdg_drag(0.f), num_max_wps(100), num_max_ais(100),
   bupdate_map(true), pt_prev_map_update(0, 0, 0),
@@ -110,6 +110,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   register_fpar("verb", &m_verb, "Debug mode.");
   
   register_fpar("js", &m_js_id, "Joystick id");
+  register_fpar("bjs", &bjs, "Joystick enable flag.");
 
   register_fpar("nwps", &num_max_wps, "Maximum number of waypoints.");
   register_fpar("nais", &num_max_ais, "Maximum number of ais objects.");
@@ -405,6 +406,13 @@ bool f_aws1_ui::init_run()
   btn_wear_dev_ctrl.set_visible();
   btn_wear_dev_ctrl.set_text("WEAR");
 
+  pos.x -= sz.x;
+  if (!btn_js_ctrl.init(pos, sz, 5, clr, clrb))
+  {
+	  return false;
+  }
+  btn_js_ctrl.set_visible();
+  btn_js_ctrl.set_text("JS");
 
   // Visible object
   visible_obj.resize(ot_nul, true);
@@ -693,6 +701,11 @@ f_aws1_ui::e_button f_aws1_ui::get_col_button()
 	{
 		return ebtn_wear_dev_ctrl;
 	}
+	else if (btn_js_ctrl.collision(pt_mouse))
+	{
+		return ebtn_js_ctrl;
+	}
+
 	return ebtn_nul;
 }
 
@@ -793,6 +806,9 @@ void f_aws1_ui::update_button(c_view_mode_box * pvm_box)
 	case ebtn_wear_dev_ctrl:
 		bwear = !bwear;
 		break;
+	case ebtn_js_ctrl:
+		bjs = !bjs;
+		break;
     }
     btn_pushed = btn_released = ebtn_nul;
   }
@@ -801,6 +817,11 @@ void f_aws1_ui::update_button(c_view_mode_box * pvm_box)
 	  btn_wear_dev_ctrl.set_check();
   else
 	  btn_wear_dev_ctrl.set_normal();
+
+  if (bjs) 
+	  btn_js_ctrl.set_check();
+  else
+	  btn_js_ctrl.set_normal();
 }
 
 void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
@@ -883,6 +904,9 @@ bool f_aws1_ui::proc()
     m_js.set_btn();
     m_js.set_stk();
   }
+
+  if (m_js.estart & s_jc_u3613m::EB_EVUP)
+	  bjs = !bjs;
 
   js_force_ctrl_stop(pcm_box);
 
@@ -1054,16 +1078,51 @@ void f_aws1_ui::rcv_ctrl_stat()
 
 void f_aws1_ui::handle_ctrl_crz()
 {
-  if (m_js.id != -1){
+	// Joystic assignment
+	// left stick up/down -> main engine throttle (disabled when neutral state)
+	// right stic up/down -> sub engine throttle (disabled when neutral state)
+	// x up/down -> engine command (up->ahead, down->astern)
+	// left or right left/right -> rudder control
+
+  if (m_js.id != -1 && bjs){
     m_rud_f += (float)(m_js.lr1 * (255. / 90.));
     m_rud_f += (float)(m_js.lr2 * (255. / 90.));
     m_rud_f = min((float)255.0, m_rud_f);
     m_rud_f = max((float)0.0, m_rud_f);
-    
-    m_meng_f -= (float)(m_js.ud1 * (255. / 90));
-    m_meng_f = min((float)255.0, m_meng_f);
-    m_meng_f = max((float)0.0, m_meng_f);
-    
+    if(m_meng_f >= crz_cmd_val[crz_ds_ah] || m_meng_f <= crz_cmd_val[crz_ds_as]){
+		m_meng_f -= (float)(m_js.ud1 * (255. / 90));
+		m_meng_f = min((float)255.0, m_meng_f);
+		m_meng_f = max((float)0.0, m_meng_f);
+	}
+
+	if (m_js.eux & s_jc_u3613m::EB_EVUP) {
+		if (m_meng_f < crz_cmd_val[crz_stp])
+			crz_cm = crz_stp;
+		else if (m_meng_f < crz_cmd_val[crz_ds_ah])
+			crz_cm = crz_ds_ah;
+		else if (m_meng_f < crz_cmd_val[crz_sl_ah])
+			crz_cm = crz_sl_ah;
+		else if (m_meng_f < crz_cmd_val[crz_hf_ah])
+			crz_cm = crz_hf_ah;
+		else if (m_meng_f < crz_cmd_val[crz_fl_ah])
+			crz_cm = crz_fl_ah;
+		else if (m_meng_f < crz_cmd_val[crz_nf])
+			crz_cm = crz_nf;
+	}
+
+	if (m_js.edx & s_jc_u3613m::EB_EVUP) {
+		if (m_meng_f > crz_cmd_val[crz_stp])
+			crz_cm = crz_stp;
+		else if (m_meng_f > crz_cmd_val[crz_ds_as])
+			crz_cm = crz_ds_as;
+		else if (m_meng_f < crz_cmd_val[crz_sl_as])
+			crz_cm = crz_sl_as;
+		else if (m_meng_f < crz_cmd_val[crz_hf_as])
+			crz_cm = crz_hf_as;
+		else if (m_meng_f < crz_cmd_val[crz_fl_as])
+			crz_cm = crz_fl_as;
+	}
+
     m_seng_f -= (float)(m_js.ud2 * (255. / 90));
     m_seng_f = min((float) 255.0, m_seng_f);
     m_seng_f = max((float)0.0, m_seng_f);
