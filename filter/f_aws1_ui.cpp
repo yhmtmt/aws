@@ -397,6 +397,15 @@ bool f_aws1_ui::init_run()
   btn_lock_map_own_ship.set_invisible();
   btn_lock_map_own_ship.set_text("LOCK");
 
+  pos.x -= sz.x;
+  if (!btn_wear_dev_ctrl.init(pos, sz, 5, clr, clrb))
+  {
+	  return false;
+  }
+  btn_wear_dev_ctrl.set_visible();
+  btn_wear_dev_ctrl.set_text("WEAR");
+
+
   // Visible object
   visible_obj.resize(ot_nul, true);
   
@@ -682,6 +691,11 @@ bool f_aws1_ui::handle_btn_pushed()
     btn_pushed = ebtn_lock_cam_dir_hdg;
     return true;
   }
+  else if (btn_wear_dev_ctrl.collision(pt_mouse))
+  {
+	  btn_pushed = ebtn_wear_dev_ctrl;
+	  return true;
+  }
   return false;
 }
 
@@ -695,7 +709,11 @@ bool f_aws1_ui::handle_btn_released()
     btn_released = ebtn_lock_cam_dir_hdg;
     return true;
   }
-  
+  else if (btn_wear_dev_ctrl.collision(pt_mouse)) {
+	  btn_released = ebtn_wear_dev_ctrl;
+	  return true;
+  }
+
   return false;
 }
 
@@ -781,9 +799,17 @@ void f_aws1_ui::update_button(c_view_mode_box * pvm_box)
     case ebtn_lock_map_own_ship:
       bmap_center_free = false;
       break;
+	case ebtn_wear_dev_ctrl:
+		bwear = !bwear;
+		break;
     }
     btn_pushed = btn_released = ebtn_nul;
   }
+
+  if (bwear)
+	  btn_wear_dev_ctrl.set_check();
+  else
+	  btn_wear_dev_ctrl.set_normal();
 }
 
 void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
@@ -875,6 +901,7 @@ bool f_aws1_ui::proc()
 		  whbt0 = whbt;
 	  }
 	  if (twhbt + twhbt_out < get_time()) {
+		  cout << "Wear device is not alive" << endl;
 		  ui_force_ctrl_stop(pcm_box);
 	  }
   }
