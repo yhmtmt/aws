@@ -217,12 +217,19 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 	char * ptr1 = m_cmd.mem;
 
 	while (itok < CMD_ARGS) {
-		m_cmd.args[itok] = ptr1;
-		while (*ptr0 == ' ' || *ptr0 == '\t') // skipping space
-			ptr0++;
+		// Skip space and tab
+		int len_skip = skip_space(ptr0, CMD_LEN - total_len);
+		total_len += len_skip;
+		if (total_len >= CMD_LEN) {
+			ret_stat = false;
+			return false;
+		}
+		ptr0 = ptr0 + len_skip;
 
-		int len = 0;
-		int bq = 0;
+		// extract token (continuous string or [] bounded strings)
+		m_cmd.args[itok] = ptr1;
+		int len = 0; // token length
+		int bq = 0;  // non-zero value in []
 		while (bq || *ptr0 != ' ' && *ptr0 != '\t' && *ptr0 != '\0') {
 			if (*ptr0 == '[') {
 				bq++;
@@ -231,33 +238,28 @@ bool c_aws::push_command(const char * cmd_str, char * ret_str,
 				bq--;
 			}
 
-			if (total_len == CMD_LEN) {
-				ret_stat = false;
-				return false;
-			}
-
 			*ptr1 = *ptr0;
 			ptr0++;
 			ptr1++;
 			total_len++;
 			len++;
-		}
 
-		if (len != 0) {
 			if (total_len == CMD_LEN) {
 				ret_stat = false;
 				return false;
 			}
+		}
 
+		// store token 
+		if (len != 0) {
 			*ptr1 = '\0'; // terminating the token
 			ptr1++;
-			total_len++;
 			itok++;
 		}
 
-		if (*ptr0 == '\0') // break if the command string ends
+		// the command should terminate with null character
+		if (*ptr0 == '\0') 
 			break;
-		ptr0++;
 	}
 
 	if (itok == 0) { // no token.
