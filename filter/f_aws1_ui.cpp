@@ -142,10 +142,10 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   crz_cmd_val[crz_fl_ah] = 220; //4500rpm
   crz_cmd_val[crz_nf] = 225;    //5200rpm
   
-  crz_cmd_val[crz_ds_as] =113; 
-  crz_cmd_val[crz_sl_as] = 54;
-  crz_cmd_val[crz_hf_as] = 44;
-  crz_cmd_val[crz_fl_as] = 34;
+  crz_cmd_val[crz_ds_as] =112; 
+  crz_cmd_val[crz_sl_as] = 53;
+  crz_cmd_val[crz_hf_as] = 43;
+  crz_cmd_val[crz_fl_as] = 33;
 
   crz_cmd_val[crz_mds] = 127;
   crz_cmd_val[crz_s10] = 140;
@@ -1089,39 +1089,42 @@ void f_aws1_ui::handle_ctrl_crz()
     m_rud_f += (float)(m_js.lr2 * (255. / 90.));
     m_rud_f = min((float)255.0, m_rud_f);
     m_rud_f = max((float)0.0, m_rud_f);
-    if(m_meng_f >= crz_cmd_val[crz_ds_ah] || m_meng_f <= crz_cmd_val[crz_ds_as]){
-		m_meng_f -= (float)(m_js.ud1 * (255. / 90));
-		m_meng_f = min((float)255.0, m_meng_f);
-		m_meng_f = max((float)0.0, m_meng_f);
-	}
+    if(m_meng_f >= crz_cmd_val[crz_ds_ah]){
+      m_meng_f -= (float)(m_js.ud1 * (255. / 90));
+    }
+    if(m_meng_f <= crz_cmd_val[crz_ds_as]){
+      m_meng_f += (float)(m_js.ud1 * (255. / 90));
+    }
+    m_meng_f = min((float)255.0, m_meng_f);
+    m_meng_f = max((float)0.0, m_meng_f);
 
-	if (m_js.eux & s_jc_u3613m::EB_EVUP) {
-		if (m_meng_f < crz_cmd_val[crz_stp])
-			crz_cm = crz_stp;
-		else if (m_meng_f < crz_cmd_val[crz_ds_ah])
-			crz_cm = crz_ds_ah;
-		else if (m_meng_f < crz_cmd_val[crz_sl_ah])
-			crz_cm = crz_sl_ah;
-		else if (m_meng_f < crz_cmd_val[crz_hf_ah])
-			crz_cm = crz_hf_ah;
-		else if (m_meng_f < crz_cmd_val[crz_fl_ah])
-			crz_cm = crz_fl_ah;
-		else if (m_meng_f < crz_cmd_val[crz_nf])
-			crz_cm = crz_nf;
-	}
-
-	if (m_js.edx & s_jc_u3613m::EB_EVUP) {
-		if (m_meng_f > crz_cmd_val[crz_stp])
-			crz_cm = crz_stp;
-		else if (m_meng_f > crz_cmd_val[crz_ds_as])
-			crz_cm = crz_ds_as;
-		else if (m_meng_f < crz_cmd_val[crz_sl_as])
-			crz_cm = crz_sl_as;
-		else if (m_meng_f < crz_cmd_val[crz_hf_as])
-			crz_cm = crz_hf_as;
-		else if (m_meng_f < crz_cmd_val[crz_fl_as])
-			crz_cm = crz_fl_as;
-	}
+    if (m_js.eux & s_jc_u3613m::EB_EVUP) {
+      if (m_meng_f < crz_cmd_val[crz_stp])
+	crz_cm = crz_stp;
+      else if (m_meng_f < crz_cmd_val[crz_ds_ah])
+	crz_cm = crz_ds_ah;
+      else if (m_meng_f < crz_cmd_val[crz_sl_ah])
+	crz_cm = crz_sl_ah;
+      else if (m_meng_f < crz_cmd_val[crz_hf_ah])
+	crz_cm = crz_hf_ah;
+      else if (m_meng_f < crz_cmd_val[crz_fl_ah])
+	crz_cm = crz_fl_ah;
+      else if (m_meng_f < crz_cmd_val[crz_nf])
+	crz_cm = crz_nf;
+    }
+    
+    if (m_js.edx & s_jc_u3613m::EB_EVUP) {
+      if (m_meng_f > crz_cmd_val[crz_stp])
+	crz_cm = crz_stp;
+      else if (m_meng_f > crz_cmd_val[crz_ds_as])
+	crz_cm = crz_ds_as;
+      else if (m_meng_f > crz_cmd_val[crz_sl_as])
+	crz_cm = crz_sl_as;
+      else if (m_meng_f > crz_cmd_val[crz_hf_as])
+	crz_cm = crz_hf_as;
+      else if (m_meng_f > crz_cmd_val[crz_fl_as])
+	crz_cm = crz_fl_as;
+    }
 
     m_seng_f -= (float)(m_js.ud2 * (255. / 90));
     m_seng_f = min((float) 255.0, m_seng_f);
