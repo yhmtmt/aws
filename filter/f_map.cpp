@@ -39,10 +39,10 @@ const char * f_map::m_str_dtype[edt_undef] =
 
 const char * f_map::m_str_cmd[emc_undef] =
 {
-	"update", "add_data"
+	"update", "add_data", "set_pos", "render"
 };
 
-f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis)
+f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis), lat(35.0), lon(140.0), res(1.0), range(5000)
 {
 	m_path[0] = '.';
 	m_path[1] = '\0';
@@ -56,6 +56,11 @@ f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis
 	register_fpar("max_num_nodes", &m_max_num_nodes, "Maximum number of nodes.");
 	register_fpar("max_total_size_layer_data", &m_max_total_size_layer_data, "Maximum total size of layer data.");
 	register_fpar("max_size_coast_line", &m_max_size_layer_data[AWSMap2::lt_coast_line], "Max data size of coast line layer data per node.");
+
+	register_fpar("lat", &lat, "lattitude configured by set_pos");
+	register_fpar("lon", &lon, "longitude configured by set_pos");
+	register_fpar("res", &res, "Resolution configured by set_pos");
+	register_fpar("range", &range, "Range configured by set_pos");
 }
 
 f_map::~f_map()
@@ -97,6 +102,10 @@ bool f_map::proc()
       m_fdata[0] = '\0';
     }
     break;
+  case emc_set_pos:
+	  set_pos();
+  case emc_render:
+	  render_data();
   }
   m_cmd = emc_undef;
 
@@ -168,4 +177,19 @@ AWSMap2::LayerData * f_map::load_jpjis()
 	}
 
 	return pcl;
+}
+
+
+void f_map::render_data()
+{
+
+}
+
+void f_map::set_pos()
+{
+	double x, y, z;
+	bihtoecef(lat, lon, 0, x, y, z);
+	m_ch_map->set_center((float)x, (float)y, (float)z);
+	m_ch_map->set_range((float)range);
+	m_ch_map->set_resolution((float)res);
 }
