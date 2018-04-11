@@ -188,7 +188,7 @@ void f_map::render_data()
 void f_map::set_pos()
 {
 	double x, y, z;
-	bihtoecef(lat, lon, 0, x, y, z);
+	bihtoecef(lat * PI/180.f, lon * PI/180.f, 0, x, y, z);
 	m_ch_map->set_center((float)x, (float)y, (float)z);
 	m_ch_map->set_range((float)range);
 	m_ch_map->set_resolution((float)res);
