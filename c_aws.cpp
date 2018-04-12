@@ -1179,6 +1179,7 @@ bool c_rcmd::wait_send(SOCKET & s, char * buf){
 	FD_SET(s, &m_fdwrite);
 	FD_SET(s, &m_fderr);
 	int n = select((int)s+1, NULL, &m_fdwrite, &m_fderr, &m_to);
+
 	if(n > 0){
 		if(FD_ISSET(s, &m_fdwrite)){
 			send(s, buf, CMD_LEN, 0);
