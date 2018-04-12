@@ -193,7 +193,7 @@ namespace AWSMap2 {
   
   MapDataBase::~MapDataBase()
   {
-    for (int i = 0; i < 12; i++)
+    for (int i = 0; i < 20; i++)
       delete pNodes[i];
   }
 
@@ -512,7 +512,6 @@ Node * Node::load(Node * pNodeUp, unsigned int idChild)
     
     // the top 20 nodes
     const char * path = MapDataBase::getPath();
-    char fname[2048];
     snprintf(fname, 2048, "%s/N%02d/N%02d.index", path, (int)idChild, (int)idChild);
   }
   else{
