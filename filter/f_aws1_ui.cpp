@@ -1099,7 +1099,15 @@ void f_aws1_ui::handle_ctrl_crz()
     m_meng_f = max((float)0.0, m_meng_f);
 
     if (m_js.eux & s_jc_u3613m::EB_EVUP) {
-      if (m_meng_f < crz_cmd_val[crz_stp])
+      if(m_meng_f < crz_cmd_val[crz_fl_as])
+	crz_cm = crz_fl_as;
+      else if(m_meng_f < crz_cmd_val[crz_hf_as])
+	crz_cm = crz_hf_as;
+      else if(m_meng_f < crz_cmd_val[crz_sl_as])
+	crz_cm = crz_sl_as;
+      else if(m_meng_f < crz_cmd_val[crz_ds_as])
+	crz_cm = crz_ds_as;
+      else if (m_meng_f < crz_cmd_val[crz_stp])
 	crz_cm = crz_stp;
       else if (m_meng_f < crz_cmd_val[crz_ds_ah])
 	crz_cm = crz_ds_ah;
@@ -1114,7 +1122,17 @@ void f_aws1_ui::handle_ctrl_crz()
     }
     
     if (m_js.edx & s_jc_u3613m::EB_EVUP) {
-      if (m_meng_f > crz_cmd_val[crz_stp])
+      if (m_meng_f > crz_cmd_val[crz_nf])
+	crz_cm = crz_nf;
+      else if (m_meng_f > crz_cmd_val[crz_fl_ah])
+	crz_cm = crz_fl_ah;
+      else if (m_meng_f > crz_cmd_val[crz_hf_ah])
+	crz_cm = crz_hf_ah;
+      else if (m_meng_f > crz_cmd_val[crz_sl_ah])
+	crz_cm = crz_sl_ah;
+      else if (m_meng_f > crz_cmd_val[crz_ds_ah])
+	crz_cm = crz_ds_ah;
+      else if (m_meng_f > crz_cmd_val[crz_stp])
 	crz_cm = crz_stp;
       else if (m_meng_f > crz_cmd_val[crz_ds_as])
 	crz_cm = crz_ds_as;
