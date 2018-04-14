@@ -109,7 +109,7 @@ namespace AWSMap2 {
   inline double l2Norm2(const vec3 & pt0, const vec3 & pt1)
   {
     double tmp, result = 0.0;
-    tmp = pt0.x - pt0.x;
+    tmp = pt0.x - pt1.x;
     result = tmp * tmp;
     
     tmp = pt0.y - pt1.y;
@@ -368,6 +368,8 @@ namespace AWSMap2 {
   {
   protected:
     static const vector<vec3> null_vec_vec3;
+	static const vector<vec2> null_vec_vec2;
+
     struct s_line {
       unsigned int id;
       vector<vec2> pts;
@@ -380,7 +382,9 @@ namespace AWSMap2 {
     size_t total_size;
     double dist_min;
     double pt_radius;
-    vec3 pt_center;
+	vec3 pt_center;
+	vec2 pt_center_bih;
+
     vector<s_line*> lines;
     void add(list<vec2> & line);
     int try_reduce(int nred);
@@ -400,6 +404,13 @@ namespace AWSMap2 {
 	return null_vec_vec3;
       return lines[id]->pts_ecef;
     }
+
+	const vector<vec2> & getPointsBIH(unsigned int id) const
+	{
+		if (id >= lines.size())
+			return null_vec_vec2;
+		return lines[id]->pts;
+	}
     
     bool loadJPJIS(const char * fname);
   protected:

@@ -219,44 +219,47 @@ namespace AWSMap2 {
     unsigned int ** f = new unsigned int*[20];
     
     float lat0 = (float)atan2(GR, 1), lat1 = (float)atan2(1, GR);
-    float lon = (float)atan2(GR, 1);
+  
+    q[0] = vec2(lat1, 0.5 * PI);  // x=0 y=GR (lon=90) z=1 (lat=32)
+    q[1] = vec2(lat1, -0.5 * PI); // x=0 y=-GR (lon=-90) z=1 (lat=32)
+    q[2] = vec2(-lat1, 0.5 * PI); // x=0 y=GR (lon=90) z=-1 (lat=-32)
+    q[3] = vec2(-lat1, -0.5 * PI);// x=0 y=-GR (lon=-90) z=-1 (lat=-32)
     
-    q[0] = vec2(lat0, 0.5 * PI);
-    q[1] = vec2(lat0, -0.5 * PI);
-    q[2] = vec2(-lat0, 0.5 * PI);
-    q[3] = vec2(-lat0, -0.5 * PI);
+    q[4] = vec2(0, atan2(1, GR)); // x=GR, y=1 (lon=32) z=0 (lat=0)
+    q[5] = vec2(0, atan2(-1, GR)); // x=GR, y=-1 (lon=-32) z=0 (lat=0)
+    q[6] = vec2(0, atan2(1, -GR)); // x=-GR, y=1 (lon=148) z=0 (lat=0)
+    q[7] = vec2(0, atan2(-1, -GR)); // x=-GR y=-1 (lon=-148) z=0 (lat=0)
     
-    q[4] = vec2(0, atan2(GR, 1));
-    q[5] = vec2(0, atan2(GR, -1));
-    q[6] = vec2(0, atan2(-GR, 1));
-    q[7] = vec2(0, atan2(-GR, -1));
-    
-    q[8] = vec2(lat1, 0);
-    q[9] = vec2(-lat1, 0);
-    q[10] = vec2(lat1, PI);
-    q[11] = vec2(-lat1, PI);
-    
-    pNodes[0] = new Node(q[0], q[1], q[8]);
-    pNodes[1] = new Node(q[1], q[0], q[10]);
-    pNodes[2] = new Node(q[2], q[3], q[11]);
-    pNodes[3] = new Node(q[3], q[2], q[9]);
-    pNodes[4] = new Node(q[0], q[4], q[5]);
-    pNodes[5] = new Node(q[1], q[7], q[6]);
-    pNodes[6] = new Node(q[2], q[5], q[4]);
-    pNodes[7] = new Node(q[3], q[6], q[7]);
-    pNodes[8] = new Node(q[0], q[8], q[4]);
-    pNodes[9] = new Node(q[1], q[10], q[7]);
-    pNodes[10] = new Node(q[2], q[11], q[5]);
-    pNodes[11] = new Node(q[3], q[9], q[6]);
-    pNodes[12] = new Node(q[0], q[5], q[10]);
-    pNodes[13] = new Node(q[1], q[6], q[8]);
-    pNodes[14] = new Node(q[2], q[4], q[9]);
-    pNodes[15] = new Node(q[3], q[7], q[11]);
-    pNodes[16] = new Node(q[4], q[8], q[9]);
-    pNodes[17] = new Node(q[5], q[11], q[10]);
-    pNodes[18] = new Node(q[6], q[9], q[8]);
-    pNodes[19] = new Node(q[7], q[10], q[11]);
-    
+    q[8] = vec2(lat0, 0); // x=1 y=0 (lon=0) z=GR (lat=58)
+    q[9] = vec2(-lat0, 0); // x=1 y=0 (lon=0) z=-GR (lat=-58)
+    q[10] = vec2(lat0, PI); // x=-1 y=0 (lon=180) z=GR (lat=58)
+    q[11] = vec2(-lat0, PI); // x=-1 y=0 (lon=180) z=-GR (lat=-58)
+
+	// north half
+	pNodes[0] = new Node(q[8], q[5], q[4]);
+	pNodes[1] = new Node(q[8], q[4], q[0]);
+	pNodes[2] = new Node(q[8], q[0], q[10]); // Japan?
+	pNodes[3] = new Node(q[8], q[10], q[1]);
+	pNodes[4] = new Node(q[8], q[1], q[5]);
+	pNodes[5] = new Node(q[10], q[0], q[6]); // Japan?
+	pNodes[6] = new Node(q[10], q[6], q[7]);
+	pNodes[7] = new Node(q[10], q[7], q[1]);
+
+	// midle
+	pNodes[8] = new Node(q[0], q[4], q[2]); // shallow east
+	pNodes[9] = new Node(q[0], q[2], q[6]); // deep east
+	pNodes[10] = new Node(q[1], q[7], q[3]); // deep west
+	pNodes[11] = new Node(q[1], q[3], q[5]); // shallow west
+
+	// south half
+	pNodes[12] = new Node(q[9], q[4], q[3]);
+	pNodes[13] = new Node(q[9], q[5], q[3]);
+	pNodes[14] = new Node(q[9], q[3], q[11]);
+	pNodes[15] = new Node(q[9], q[11], q[2]);
+	pNodes[16] = new Node(q[9], q[2], q[4]);
+	pNodes[17] = new Node(q[11], q[3], q[7]);
+	pNodes[18] = new Node(q[11], q[7], q[6]);
+	pNodes[19] = new Node(q[11], q[6], q[2]);
     for (unsigned int id = 0; id < 20; id++){
       pNodes[id]->setId((unsigned char)id);
     }
@@ -916,6 +919,7 @@ bool LayerData::merge(const LayerData & layerData)
 ///////////////////////////////////////////////////////////////////// CoastLine
 
   const vector<vec3> CoastLine::null_vec_vec3;
+  const vector<vec2> CoastLine::null_vec_vec2;
   
   CoastLine::CoastLine() :dist_min(FLT_MAX), total_size(0)
 {
@@ -1297,7 +1301,8 @@ LayerData * CoastLine::clone() const
 			num_total_points += (unsigned int)pts.size();
 		}
 		pt_center *= (1.0 / (double)num_total_points);
-
+		double alt;
+		eceftobih(pt_center.x, pt_center.y, pt_center.z, pt_center_bih.lat, pt_center_bih.lon, alt);
 		total_size = 0;
 		pt_radius = 0;
 		for (int iline = 0; iline < lines.size(); iline++){

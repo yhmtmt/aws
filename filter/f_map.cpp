@@ -104,8 +104,10 @@ bool f_map::proc()
     break;
   case emc_set_pos:
 	  set_pos();
+	  break;
   case emc_render:
 	  render_data();
+	  break;
   }
   m_cmd = emc_undef;
 
@@ -179,10 +181,46 @@ AWSMap2::LayerData * f_map::load_jpjis()
 	return pcl;
 }
 
-
 void f_map::render_data()
 {
+	m_ch_map->lock();
+	AWSMap2::vec3 cecef = m_ch_map->get_center();
+	AWSMap2::vec2 cbih;
+	double calt = 0;
+	eceftobih(cecef.x, cecef.y, cecef.z, cbih.lat, cbih.lon, calt);
+	Mat Rwrld;
+	getwrldrot(cbih.lat, cbih.lon, Rwrld);
 
+	float mres = m_ch_map->get_resolution();
+	float mrng = m_ch_map->get_range();
+
+	Mat img = Mat::zeros(1024, 1024, CV_8UC3);
+	double scl = (double)(img.cols / 2) / (double) mrng;
+
+	const list<const AWSMap2::LayerData*> cl = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
+	for (auto itr = cl.begin(); itr != cl.end(); itr++) {
+		const AWSMap2::CoastLine * pcl = dynamic_cast<const AWSMap2::CoastLine*>(*itr);
+		for(int id = 0; id < pcl->getNumLines(); id++){
+			const vector<AWSMap2::vec2> & pts_bih = pcl->getPointsBIH(id);
+			const vector<AWSMap2::vec3> & pts = pcl->getPointsECEF(id);
+			vector<Point2f> pts_wrld(pts.size());
+		
+			auto iwpt = pts_wrld.begin();
+			for (auto ipt = pts.begin(); ipt != pts.end(); ipt++, iwpt++){
+				double wx, wy, wz;
+				eceftowrld(Rwrld, cecef.x, cecef.y, cecef.z, ipt->x, ipt->y, ipt->z, wx, wy, wz);
+				iwpt->x = (float)scl * wx;
+				iwpt->y = (float)scl * wy;
+			}
+
+			polylines(img, pts_wrld, false, Scalar(255, 255, 255));
+		}
+	}
+
+	char frender[1024];
+	snprintf(frender, 1024, "%s/%f03.5-%f04.5.png", cbih.lat, cbih.lon);
+	imwrite(frender, img);
+	m_ch_map->unlock();
 }
 
 void f_map::set_pos()
