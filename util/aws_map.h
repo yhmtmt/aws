@@ -133,6 +133,7 @@ namespace AWSMap2 {
   enum LayerType {
     lt_coast_line=0, lt_undef
   };
+
   extern const char * strLayerType[lt_undef];
   LayerType getLayerType(const char * str);
   class Node;
@@ -212,11 +213,12 @@ namespace AWSMap2 {
     static Node * head, * tail;
     static unsigned int numNodesAlive;
     static void insert(Node * pNode);
-    static void pop(Node * pNode);
-    static void accessed(Node * pNode);
+    static void pop(Node * pNode);      // remove pNode from node list.
+    static void accessed(Node * pNode); // move pNode to the tail of the node list.
   public:
-    static void restruct();
-    static Node * load(Node * pNodeUp, unsigned int idChild);
+    static void restruct();				// remove nodes if the limit of  maximum number of nodes are violated. 
+	                                    // Nodes without downlink nodes instantiated and least recently used are removed.
+    static Node * load(Node * pNodeUp, unsigned int idChild); // loads child node.
     
   private:
     Node * prev, * next;// link pointers for memory management
@@ -239,10 +241,7 @@ namespace AWSMap2 {
     void getPath(list<unsigned char> & path_id);
     
     // insertLayerData helps addLayerData. 
-    void insertLayerData(const LayerType layerType, LayerData * pLayerData)
-    {
-      layerDataList.insert(pair<LayerType, LayerData*>(layerType, pLayerData));
-    }
+	void insertLayerData(LayerData * pLayerData);
     
     // getLayerData returns layerData of layerType in this node 
     const LayerData * getLayerData(const LayerType layerType);

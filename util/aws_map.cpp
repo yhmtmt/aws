@@ -596,7 +596,7 @@ Node * Node::load(Node * pNodeUp, unsigned int idChild)
     LayerData * layerData = LayerData::create(layerType);
     if (layerData){
       layerData->setNode(pNode);
-      pNode->insertLayerData(layerType, layerData);
+      pNode->insertLayerData(layerData);
     }
     num_layer_datum--;
   }
@@ -761,61 +761,62 @@ const bool Node::collision(const vec3 & center, const float radius)
 
 	LayerData::accessed(layerData);
 	return layerData;
-}
+  }
+
+  void Node::insertLayerData(LayerData * pLayerData)
+  {
+	  layerDataList.insert(pair<LayerType, LayerData*>(pLayerData->getLayerType(), pLayerData));
+  }
 
 bool Node::addLayerData(const LayerData & layerData, 
 			const size_t sz_node_data_lim)
 {
 	bupdate = true;
-	auto itrDstLayerData = layerDataList.find(layerData.getLayerType());
-	LayerData * pDstLayerData = NULL;
 
-	if (itrDstLayerData != layerDataList.end()){
+	if (bdownLink) {
+		// downlink nodes have already been created.
+		// new layer data should be distributed first to the downlinks.
+		distributeLayerData(layerData);
+	}
+
+	// merge new layer data to the layer data in this node. 
+	// if the layer data object is not exist in this node, create empty that and merge.
+
+	auto itrDstLayerData = layerDataList.find(layerData.getLayerType());
+	LayerData * pDstLayerData = NULL; // The layer data object in this node.
+
+	if (itrDstLayerData != layerDataList.end()){ 
+		// LayerData exists in this node.
 		pDstLayerData = itrDstLayerData->second;
 		if (!pDstLayerData->isActive())
+			// if the data is not active, activate it by loading.
 			pDstLayerData->load();
 	}
-	else{ // create LayerData instance
+	else{ 
+		// the layer data object is not in the node, create new one.
 		pDstLayerData = LayerData::create(layerData.getLayerType());
 		pDstLayerData->setNode(this);
 		pDstLayerData->setActive();
-		insertLayerData(layerData.getLayerType(), pDstLayerData);
+		insertLayerData(pDstLayerData);
 	}
-	vec3 vec;
-
-	if (bdownLink){
-		distributeLayerData(layerData);
-		list<Node*> nodes;
-		for (int idown = 0; idown < 4; idown++)
-			nodes.push_back(downLink[idown]);
-		layerData.split(nodes);
-
-		if (pDstLayerData){
-			for (int idown = 0; idown < 4; idown++){
-				pDstLayerData->merge(*downLink[idown]->getLayerData(layerData.getLayerType()));
-			}
-			
-			pDstLayerData->reduce(sz_node_data_lim);
-		}
-
-		return true;
-	}
-
+		
 	if (pDstLayerData){
 		pDstLayerData->merge(layerData);
-		if (pDstLayerData->size() > sz_node_data_lim){
-
-			if (!bdownLink)
+		if (pDstLayerData->size() > sz_node_data_lim){ 
+			if (!bdownLink) {
+				// the first experience the layer data in this node exceed the limit. 
+				// create 4 lower nodes 
 				createDownLink();
+			}
 
-			distributeLayerData(layerData);
-
+			// if the data size exceeds the limit, 
+			// reduce the data in this node with certain abstraction, 
+			// and create downlink for detailed data.
 			pDstLayerData->reduce(sz_node_data_lim);
 		}
-		return true;
 	}
 
-	return false;
+	return true;
 }
 
 ///////////////////////////////////////////////////////////////////// LayerData
@@ -850,19 +851,16 @@ void LayerData::pop(LayerData * pLayerData)
   LayerData * prev = pLayerData->prev, *next = pLayerData->next;
   pLayerData->prev = pLayerData->next = NULL;
   
-  if (next == NULL){
-    prev->next = NULL;
-    tail = prev;
-  }
-  
-  // reconnect 
-  if (prev == NULL){
-    head = next;
-  }
-  else{
-    prev->next = next;
-  }
-  next->prev = prev;
+  if (next == NULL) 
+	  tail = prev;
+  else
+	  next->prev = prev;
+
+  if (prev == NULL) 
+	  head = next;
+  else
+	  prev->next = next;
+
   totalSize -= (unsigned int) pLayerData->size();
 }
   
@@ -1049,46 +1047,72 @@ vec3 CoastLine::center() const
 
 bool CoastLine::split(list<Node*> & nodes) const
 {
-	vector<CoastLine*> cls(nodes.size(), NULL);
-	list<vec2> line_new;
-	int inode_line_new = 0;
-	Node * pNode_line_new = NULL;
-	for (int iline = 0; iline < lines.size(); iline++) {
+	vector<CoastLine> cls(nodes.size());
+	vector<Node*> vnodes(nodes.size()); // vector version of nodes
+	{
+		int inode = 0;
+		for (auto itr = nodes.begin(); itr != nodes.end(); itr++, inode++) {
+			vnodes[inode] = *itr;
+		}
+	}
 
+	for (int iline = 0; iline < lines.size(); iline++) {
 		vector<vec3> & pts = lines[iline]->pts_ecef;
+		vector<int> asgn(lines[iline]->pts_ecef.size()); // node the point in the line is distributed to.
+
+		// first find correspondance between points in the line and nodes.
 		for (int ipt = 0; ipt < pts.size(); ipt++) {
-			if (pNode_line_new != NULL) {
-				line_new.push_back(lines[iline]->pts[ipt]);
-				if (!pNode_line_new->collision(pts[ipt])) {
-					if (cls[inode_line_new] == NULL) {
-						cls[inode_line_new] = new CoastLine;
-					}
-					cls[inode_line_new]->add(line_new);
-					pNode_line_new = NULL;
-					line_new.clear();
+			int inode = 0;
+			for (auto itr = nodes.begin(); itr != nodes.end(); itr++) {
+				Node * pNode = *itr;
+				if (pNode->collision(pts[ipt])) {
+					asgn[ipt] = inode;
 				}
-			}
-			else {
-				inode_line_new = 0;
-				for (list<Node*>::iterator itr = nodes.begin(); itr != nodes.end(); itr++) {
-					Node * pNode = *itr;
-					if (pNode->collision(pts[ipt])) {
-						if (pNode_line_new == NULL) {
-							line_new.push_back(lines[iline]->pts[ipt]);
-							pNode_line_new = pNode;
-							break;
-						}
-					}
-					inode_line_new++;
+				else {
+					asgn[ipt] = -1;
 				}
 			}
 		}
+
+		// second split line into lines, while doubling boundary points not to miss links between nodes
+		int in = -1, inn = -1; // node index "in" and next node index "inn"
+		int ipts = 0, ipte = 0; // start point index "ipts" and end point index "ipte".
+		list<vec2> line_new; // newly added line partially extracted from lines[iline]
+		for (int ipt = 0; ipt < pts.size(); ipt++) {
+			inn = asgn[ipt];
+
+			if (in < 0) {
+				in = inn;
+				ipts = ipt;
+				continue;
+			}
+
+			if (in != inn || ipt == pts.size() - 1) {
+				ipte = ipt + 1;
+
+				if (ipts > 0) // if there exists previous point in other nodes, insert it for reserving connectivity
+					ipts--;
+
+				if (ipte < pts.size()) // if there exist next point in other nodes, insert it for reserving connectivity
+					ipte++;
+
+				// form new line contains points ipts to ipte.
+				for (int iptl = ipts; iptl < ipte; iptl++) {
+					line_new.push_back(lines[iline]->pts[iptl]);
+				}
+
+				cls[in].add(line_new);
+				line_new.clear();
+				in = inn;
+				continue;
+			}
+		}
 	}
-	int inode = 0;
-	for (list<Node*>::iterator itr = nodes.begin(); itr != nodes.end(); itr++) {
-		if (cls[inode]->size())
-		(*itr)->addLayerData(*cls[inode], MapDataBase::getMaxSizeLayerData(cls[inode]->getLayerType()));
-		inode++;
+
+	for (int inode = 0; inode < nodes.size(); inode++) {
+		cls[inode].update_properties();
+		if (cls[inode].size())
+			vnodes[inode]->addLayerData(cls[inode], MapDataBase::getMaxSizeLayerData(cls[inode].getLayerType()));
 	}
 
 	return true;
