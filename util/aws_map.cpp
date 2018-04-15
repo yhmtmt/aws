@@ -41,7 +41,7 @@ using namespace cv;
 // 0 < t < 1 and |S - L| < R
 namespace AWSMap2 {
 
-	inline bool det_collision_line_and_sphere_mid(const vec3 & v0, const vec3 & v1, const vec3 & s, const float r2)
+	inline bool det_collision_line_and_sphere_mid(const vec3 & v0, const vec3 & v1, const vec3 & s, const double r2)
 	{
 		double n = (l2Norm(v1, v0));
 		double invn = (1.0 / n);
@@ -75,23 +75,70 @@ namespace AWSMap2 {
 
 	inline bool det_collision_tri_and_sphere(const vec3 & v0, const vec3 & v1, const vec3 & v2, const vec3 & s, const float r2)
 	{
-		if (l2Norm2(v0, s) < r2)
+		// check around three points
+		double d0 = l2Norm2(v0, s);
+		if (d0 < r2)
 			return true;
 
-		if (l2Norm2(v1, s) < r2)
+		double d1 = l2Norm2(v1, s);
+		if (d1 < r2)
 			return true;
 
-		if (l2Norm2(v2, s) < r2)
+		double d2 = l2Norm2(v1, s);
+		if (d2 < r2)
 			return true;
 
-		if (det_collision_line_and_sphere_mid(v0, v1, s, r2))
-			return true;
+		if (d0 > BE * BE && d1 > BE * BE && d2 > BE * BE)
+			return false;
 
-		if (det_collision_line_and_sphere_mid(v1, v2, s, r2))
-			return true;
+		// inside flag is asserted when s projects on both edge 01 and edge 02
+		bool binside = false;
 
-		if (det_collision_line_and_sphere_mid(v2, v0, s, r2))
-			return true;
+		// check around edge 01
+		double n01 = l2Norm(v0, v1);
+		double invn01 = 1.0 / n01;
+		vec3 d01 = (v1 - v0) * invn01;
+		double t01 = dot(d01, s - v0);
+
+		if (t01 > 0.f && t01 < n01) {
+			d01 *= t01;
+			d01 += v0;
+			if (l2Norm2(d01, s) < r2) // s is near around edge 01
+				return true;
+
+			binside = true;
+		}
+
+		// check around edge 02
+		double n02 = l2Norm(v2, v0);
+		double invn02 = 1.0 / n02;
+		vec3 d02 = (v2 - v0) * invn02;
+		double t02 = dot(d02, s - v0);
+		d02 *= t02;
+		d02 += v0;
+		if (t02 > 0.f && t02 < n02) {
+			if (binside) // s is projected on both edge 01 and 02
+				return true;
+
+			d02 *= t02;
+			d02 += v0;
+			if (l2Norm2(d02, s) < r2) // s is near around edge 02
+				return true;
+		}
+
+		// check outside near edge 12
+		double n12 = l2Norm(v1, v2);
+		double invn12 = 1.0 / n12;
+		vec3 d12 = (v2 - v1) * invn12;
+		double t12 = dot(d12, s - v1);
+		d12 *= t12;
+		d12 += v1;
+		if (t12 > 0.f && t12 < n12) {
+			d12 *= t12;
+			d12 += v1;
+			if (l2Norm2(d12, s) < r2) // s is near around edge 12 (actually only the outside case is reached here.)
+				return true;
+		}
 
 		return false;
 	}
