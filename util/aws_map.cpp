@@ -1225,11 +1225,18 @@ bool CoastLine::_merge(const LayerData & layerData)
 	const CoastLine * src = dynamic_cast<const CoastLine*>(&layerData);
 	const vector<s_line*> & lines_src = src->lines;
 
+	// this loop finds connection between lines in layerData and this object.
 	for (int iline0 = 0; iline0 < lines_src.size(); iline0++){
+		
 		s_line & line_src = *lines_src[iline0];
 		vector<vec2> & pts_src = line_src.pts;
 		vec2 & pt_src_begin = pts_src.front() , & pt_src_end = pts_src.back();
-		int iline_con_begin = -1, iline_con_end = -1;
+
+		// iline_con_begin is the line index of existing line connected with newly added line lines_src[iline0]
+		// and bdst_begin_con_begin is true if lines[iline_con_begin] and lines_src[iline0] is connected with their starting points.
+		// iline_con_end is the line index of existing line connected with newly added line lines_src[iline0]
+		// and bdst_begin_con_end is true if the start point of lines[iline_con_end] is connected with the end point of lines_src[iline0]
+		int iline_con_begin = -1, iline_con_end = -1; 
 		bool bdst_begin_con_begin = true, bdst_begin_con_end = true;
 		// check connection
 		for (int iline1 = 0; iline1 < lines.size(); iline1++){
@@ -1262,41 +1269,64 @@ bool CoastLine::_merge(const LayerData & layerData)
 		}
 
 		s_line * pline_begin = NULL, *pline_end = NULL, *pline_new;
-		pline_new = new s_line;
+
 		if (iline_con_begin >= 0){
+			pline_new = new s_line;
+			// the starting point of lines_src[iline0] is connected with lines[iline_con_begin]
 			pline_begin = lines[iline_con_begin];
 			if (bdst_begin_con_begin){
+				// if the connection is head to head, first reverse the lines[iline_con_begin]
 				reverse(pline_begin->pts.begin(), pline_begin->pts.end());
 				reverse(pline_begin->pts_ecef.begin(), pline_begin->pts_ecef.end());
 			}
+			// copy lines[iline_con_begin] to newly created object *pline_new
 			*pline_new = *pline_begin;
+
+			// insert lines_src[iline0] at the end of pline_new 
+			// note that the end point is exactly the point of lines_src[iline0]. This is very important later if the end point is connected with other line.
 			pline_new->pts.insert(pline_new->pts.end(), pts_src.begin(), pts_src.end());
 			pline_new->pts_ecef.insert(pline_new->pts_ecef.end(), line_src.pts_ecef.begin(), line_src.pts_ecef.end());
+
+			// delete old object lines[iline_con_begin] and replace it with pline_new
 			delete lines[iline_con_begin];
 			lines[iline_con_begin] = pline_new;
 		}
+
 		if (iline_con_end >= 0){
+			
+
+			// the end point of lines_src[iline0] is connected with lines[iline_con_end]
 			pline_end = lines[iline_con_end];
-			vector<vec2> pts = pline_end->pts;
-			vector<vec3> pts_ecef = pline_end->pts_ecef;
-			if (pline_new->pts.size() == 0){
-				pline_new->pts = pts_src;
-				pline_new->pts_ecef = line_src.pts_ecef;
-				pline_new->id = pline_end->id;
-				delete lines[iline_con_end];
-				lines[iline_con_end] = pline_new;
-			}
-			else{
-				delete lines[iline_con_end];
-				lines[iline_con_end] = NULL;
-			}
+			vector<vec2> & pts = pline_end->pts;
+			vector<vec3> & pts_ecef = pline_end->pts_ecef;
 
 			if (!bdst_begin_con_end){
+				// if lines_src[iline0] is connected with the end point of lines[iline_con_end] reverse it.
 				reverse(pts.begin(), pts.end());
 				reverse(pts_ecef.begin(), pts_ecef.end());
 			}
+
+			if (iline_con_begin >= 0) {
+				// if previously start point of lines_src[iline0] is connected with lines[iline_con_begin], 
+				// the end point of lines_src[iline0] is reserved as that of lines[iline_con_begin]
+				pline_new = lines[iline_con_begin];
+				lines[iline_con_begin] = NULL;
+
+			}else {
+				pline_new = new s_line;
+				*pline_new = line_src;
+			}
+
 			pline_new->pts.insert(pline_new->pts.end(), pts.begin(), pts.end());
 			pline_new->pts_ecef.insert(pline_new->pts_ecef.end(), pts_ecef.begin(), pts_ecef.end());
+			delete lines[iline_con_end];
+			lines[iline_con_end] = pline_new;
+		}
+
+		if (iline_con_begin < 0 && iline_con_end < 0) {
+			pline_new = new s_line;
+			*pline_new = line_src;
+			lines.push_back(pline_new);
 		}
 	}
 
