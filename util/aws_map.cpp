@@ -209,7 +209,7 @@ namespace AWSMap2 {
 	////////////////////////////////////////////////////////////// MapDataBase
 	unsigned int MapDataBase::maxSizeLayerData[lt_undef] =
 	{
-		0x4FFFFF
+		0x000FFFFF
 	};
 	unsigned int MapDataBase::maxNumNodes = 64;
 	unsigned int MapDataBase::maxTotalSizeLayerData = 0x4FFFFF0;
@@ -283,30 +283,30 @@ namespace AWSMap2 {
     q[11] = vec2(-lat0, PI); // x=-1 y=0 (lon=180) z=-GR (lat=-58)
 
 	// north half
-	pNodes[0] = new Node(q[8], q[5], q[4]);
-	pNodes[1] = new Node(q[8], q[4], q[0]);
-	pNodes[2] = new Node(q[8], q[0], q[10]); // Japan?
-	pNodes[3] = new Node(q[8], q[10], q[1]);
-	pNodes[4] = new Node(q[8], q[1], q[5]);
-	pNodes[5] = new Node(q[10], q[0], q[6]); // Japan?
-	pNodes[6] = new Node(q[10], q[6], q[7]);
-	pNodes[7] = new Node(q[10], q[7], q[1]);
+	pNodes[0] = new Node(0, NULL, q[8], q[5], q[4]);
+	pNodes[1] = new Node(1, NULL, q[8], q[4], q[0]);
+	pNodes[2] = new Node(2, NULL, q[8], q[0], q[10]); // Japan?
+	pNodes[3] = new Node(3, NULL, q[8], q[10], q[1]);
+	pNodes[4] = new Node(4, NULL, q[8], q[1], q[5]);
+	pNodes[5] = new Node(5, NULL, q[10], q[0], q[6]); // Japan?
+	pNodes[6] = new Node(6, NULL, q[10], q[6], q[7]);
+	pNodes[7] = new Node(7, NULL, q[10], q[7], q[1]);
 
 	// midle
-	pNodes[8] = new Node(q[0], q[4], q[2]); // shallow east
-	pNodes[9] = new Node(q[0], q[2], q[6]); // deep east
-	pNodes[10] = new Node(q[1], q[7], q[3]); // deep west
-	pNodes[11] = new Node(q[1], q[3], q[5]); // shallow west
+	pNodes[8] = new Node(8, NULL, q[0], q[4], q[2]); // shallow east
+	pNodes[9] = new Node(9, NULL, q[0], q[2], q[6]); // deep east
+	pNodes[10] = new Node(10, NULL, q[1], q[7], q[3]); // deep west
+	pNodes[11] = new Node(11, NULL, q[1], q[3], q[5]); // shallow west
 
 	// south half
-	pNodes[12] = new Node(q[9], q[4], q[3]);
-	pNodes[13] = new Node(q[9], q[5], q[3]);
-	pNodes[14] = new Node(q[9], q[3], q[11]);
-	pNodes[15] = new Node(q[9], q[11], q[2]);
-	pNodes[16] = new Node(q[9], q[2], q[4]);
-	pNodes[17] = new Node(q[11], q[3], q[7]);
-	pNodes[18] = new Node(q[11], q[7], q[6]);
-	pNodes[19] = new Node(q[11], q[6], q[2]);
+	pNodes[12] = new Node(12, NULL, q[9], q[4], q[3]);
+	pNodes[13] = new Node(13, NULL, q[9], q[5], q[3]);
+	pNodes[14] = new Node(14, NULL, q[9], q[3], q[11]);
+	pNodes[15] = new Node(15, NULL, q[9], q[11], q[2]);
+	pNodes[16] = new Node(16, NULL, q[9], q[2], q[4]);
+	pNodes[17] = new Node(17, NULL, q[11], q[3], q[7]);
+	pNodes[18] = new Node(18, NULL, q[11], q[7], q[6]);
+	pNodes[19] = new Node(19, NULL, q[11], q[6], q[2]);
     for (unsigned int id = 0; id < 20; id++){
       pNodes[id]->setId((unsigned char)id);
     }
@@ -471,7 +471,7 @@ Node::Node() : prev(NULL), next(NULL), upLink(NULL), bdownLink(false), bupdate(t
 	downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
 }
 
-Node::Node(const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2) : prev(NULL), next(NULL), upLink(NULL),bupdate(true), bdownLink(false)
+Node::Node(const unsigned char _id, Node * _upLink, const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2) : prev(NULL), next(NULL), id(_id), upLink(_upLink),bupdate(true), bdownLink(false)
 {
 		downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
 		vtx_bih[0] = vtx_bih0;
@@ -481,6 +481,9 @@ Node::Node(const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2) : prev
 		for (int i = 0; i < 3; i++){
 			bihtoecef(vtx_bih[i].x, vtx_bih[i].y, 0.0f, vtx_ecef[i].x, vtx_ecef[i].y, vtx_ecef[i].z);
 		}
+		char path[2048];
+		getPath(path, 2048);
+		aws_mkdir(path);
 }
 
 Node::~Node()
@@ -615,21 +618,10 @@ bool Node::createDownLink()
 	for (int i = 0; i < 3; i++)
 		eceftobih(vtx_ecef_mid[i].x, vtx_ecef_mid[i].y, vtx_ecef_mid[i].z, vtx_bih_mid[i].x, vtx_bih_mid[i].y, alt);
 
-	downLink[0] = new Node(vtx_bih[0], vtx_bih_mid[0], vtx_bih_mid[2]);
-	downLink[0]->upLink = this;
-	downLink[0]->id = 0;
-
-	downLink[1] = new Node(vtx_bih[1], vtx_bih_mid[1], vtx_bih_mid[0]);
-	downLink[1]->upLink = this;
-	downLink[1]->id = 1;
-
-	downLink[2] = new Node(vtx_bih[2], vtx_bih_mid[2], vtx_bih_mid[1]);
-	downLink[2]->upLink = this;
-	downLink[2]->id = 2;
-
-	downLink[3] = new Node(vtx_bih_mid[0], vtx_bih_mid[1], vtx_bih_mid[2]);
-	downLink[3]->upLink = this;
-	downLink[3]->id = 3;
+	downLink[0] = new Node(0, this, vtx_bih[0], vtx_bih_mid[2], vtx_bih_mid[0]);
+	downLink[1] = new Node(1, this, vtx_bih[1], vtx_bih_mid[0], vtx_bih_mid[1]);
+	downLink[2] = new Node(2, this, vtx_bih[2], vtx_bih_mid[1], vtx_bih_mid[2]);
+	downLink[3] = new Node(3, this, vtx_bih_mid[0], vtx_bih_mid[2], vtx_bih_mid[1]);
 
 	list<Node*> nodes;
 	for (int idown = 0; idown < 4; idown++){
@@ -655,7 +647,7 @@ void Node::getPath(char * path, unsigned int maxlen)
 	for (auto itr = path_id.begin(); itr != path_id.end(); itr++){
 		if (len + 3 > maxlen)
 			return;
-		len += snprintf(path + len, maxlen - len, "/N%02d", (int)id);
+		len += snprintf(path + len, maxlen - len, "/N%02d", (int)*itr);
 	}
 }
 
@@ -698,6 +690,9 @@ const bool Node::collision(const vec3 & center, const float radius)
 }
 
 
+// return layer datum corresponding to layer types specified as a list of LayerType,
+// datum with the largest resolutions less than the resolution specified are selected.
+// If there is no data satisfying the constraint of the resolution, null data is returned.
   const void Node::getLayerData(
 				list<list<const LayerData*>> & layerData,
 				const list<LayerType> & layerType, 
@@ -708,45 +703,39 @@ const bool Node::collision(const vec3 & center, const float radius)
     if (!collision(center, radius))
       return;
     
+
     if (layerData.size() != layerType.size()){
       layerData.resize(layerType.size());
     }
     // retrieving more detailed data than this node
     list<list<const LayerData*>> detailedLayerData;
+	detailedLayerData.resize(layerType.size());
     if(bdownLink){
       for (int idown = 0; idown < 4; idown++){
-	downLink[idown]->getLayerData(detailedLayerData, layerType,
+		downLink[idown]->getLayerData(detailedLayerData, layerType,
 				      center, radius, resolution);
       }
     }
     
-    auto itrType = layerData.begin();
-    auto itrTypeVal = layerType.begin();
-    for (auto itrTypeLow = detailedLayerData.begin();
-	 itrTypeLow != detailedLayerData.end();
-	 itrTypeLow++, itrType++, itrTypeVal++){
-      const LayerData * data = getLayerData(*itrTypeVal);
-      if(!data){
-	continue;
-      }
-      if (data->resolution() < resolution)
-	continue;
-      
-      float min_res = FLT_MAX;
-      for (auto itrData = itrTypeLow->begin(); itrData != itrTypeLow->end(); itrData++){
-	min_res = min((*itrData)->resolution(), min_res);
-      }
-      
-      if (min_res < resolution){
-	itrType->push_back(data);
-      }
-      else{
-	for (auto itrData = itrTypeLow->begin();
-	     itrData != itrTypeLow->end(); itrData++){
-	  itrType->push_back((*itrData));
+	auto itrData = layerData.begin();
+	auto itrType = layerType.begin();
+	for (auto itrDatumLow = detailedLayerData.begin();
+		itrDatumLow != detailedLayerData.end();
+		itrDatumLow++, itrData++, itrType++) {
+		const LayerData * data = getLayerData(*itrType);
+		if (!data) {
+			continue;
+		}
+		if (data->resolution() < resolution){
+			itrData->push_back(data);
+			continue;
+		}
+
+		for (auto itrDataLow = itrDatumLow->begin();
+			itrDataLow != itrDatumLow->end(); itrDataLow++) {
+			itrData->push_back((*itrDataLow));
+		}
 	}
-      }
-    }
   }
   
   const LayerData * Node::getLayerData(const LayerType layerType)
@@ -833,7 +822,7 @@ void LayerData::insert(LayerData * pLayerData)
 	if (totalSize >= MapDataBase::getMaxTotalSizeLayerData())
 		restruct();
 
-	totalSize = (unsigned int) pLayerData->size();
+	totalSize += (unsigned int) pLayerData->size();
 
 	if (head == NULL && tail == NULL){
 		pLayerData->next = pLayerData->prev = NULL;
@@ -950,7 +939,12 @@ bool LayerData::reduce(const size_t sz_lim)
 	bupdate = true;
 	if (isActive())
 		LayerData::accessed(this);
-	return _reduce(sz_lim);
+	else
+		return false;
+	unsigned int size_prev = size();
+	bool result = _reduce(sz_lim);
+	resize(size() - size_prev);
+	return result;
 }
 
 bool LayerData::merge(const LayerData & layerData)
@@ -958,7 +952,14 @@ bool LayerData::merge(const LayerData & layerData)
 	bupdate = true;
 	if (isActive())
 		LayerData::accessed(this);
-	return _merge(layerData);
+	else
+		return false;
+
+	unsigned int size_prev = size();
+	bool result = _merge(layerData);
+	resize(size() - size_prev);
+
+	return result;
 }
 
 ///////////////////////////////////////////////////////////////////// CoastLine
@@ -998,15 +999,22 @@ bool CoastLine::load(ifstream & ifile)
 	lines.resize(nlines);
 
 	for (auto itr = lines.begin(); itr != lines.end(); itr++){
-		vector<vec2> & pts = (*itr)->pts;
-		unsigned int length;
-		ifile.read((char*)&length, sizeof(unsigned int));
-		ifile.read((char*)&((*itr)->id), sizeof(unsigned int));
-		pts.resize(length);
-		for (auto itr_pt = pts.begin(); itr_pt != pts.end(); itr_pt++){
-			vec2 pt;
-			ifile.read((char*)(&pt), sizeof(vec2));
+		(*itr) = new s_line;
 
+		vector<vec2> & pts = (*itr)->pts;
+		vector<vec3> & pts_ecef = (*itr)->pts_ecef;
+		unsigned int length;
+		ifile.read((char*)&((*itr)->id), sizeof(unsigned int));
+		ifile.read((char*)&length, sizeof(unsigned int));
+		pts.resize(length);
+		pts_ecef.resize(length);
+		auto itr_pt_ecef = pts_ecef.begin();
+		for (auto itr_pt = pts.begin(); itr_pt != pts.end(); itr_pt++, itr_pt_ecef++){
+			vec2 pt;
+			vec3 pt_ecef;
+			ifile.read((char*)(&pt), sizeof(vec2));
+			bihtoecef(pt.lat, pt.lon, 0, pt_ecef.x, pt_ecef.y, pt_ecef.z);
+			(*itr_pt_ecef) = pt_ecef;
 			(*itr_pt) = pt;
 		}
 	}
@@ -1067,10 +1075,12 @@ bool CoastLine::split(list<Node*> & nodes) const
 				Node * pNode = *itr;
 				if (pNode->collision(pts[ipt])) {
 					asgn[ipt] = inode;
+					break;
 				}
 				else {
 					asgn[ipt] = -1;
 				}
+				inode++;
 			}
 		}
 
@@ -1136,7 +1146,7 @@ int CoastLine::try_reduce(int nred)
 	for (int iline = 0; iline < lines.size(); iline++){
 		redpts[iline].resize(lines[iline]->pts.size());
 		vector<vec3> & pts = lines[iline]->pts_ecef;
-		npts_list = (int)pts.size() - 2;
+		npts_list += (int)pts.size() - 2;
 	}
 
 	// creating sort list
@@ -1151,7 +1161,7 @@ int CoastLine::try_reduce(int nred)
 			redpts[iline][ipt]->ipt = ipt;
 			redpts[iline][ipt]->dist =
 				l2Norm(pts[ipt], pts[ipt - 1]) + l2Norm(pts[ipt], pts[ipt + 1]);
-			sortlist[npts_list] = &mblock[npts_list];;
+			sortlist[npts_list] = &mblock[npts_list];
 			npts_list++;
 		}
 	}
@@ -1173,18 +1183,19 @@ int CoastLine::try_reduce(int nred)
 		vector<vec2> & pts = line.pts;
 		vector<vec3> & pts_ecef = line.pts_ecef;
 
+		double dist_bridge = l2Norm(pts_ecef[ipt0], pts_ecef[ipt1]);
 		redpts[iline][ipt0]->dist = l2Norm(pts_ecef[ipt0], pts_ecef[ipt0 - 1]) +
-			l2Norm(pts_ecef[ipt0], pts_ecef[ipt1]);
+			dist_bridge;
 	
-		redpts[iline][ipt1]->dist = l2Norm(pts_ecef[ipt1], pts_ecef[ipt0]) +
+		redpts[iline][ipt1]->dist = dist_bridge +
 			l2Norm(pts_ecef[ipt1], pts_ecef[ipt1 + 1]);
-		for (; ipt < line.pts.size(); ipt++){
-			redpts[iline][ipt]->ipt = ipt - 1;
+		for (; ipt1 < line.pts.size()-1; ipt1++){
+			redpts[iline][ipt1]->ipt = ipt1 - 1;
 		}
-		ipt = sortlist[nredd]->ipt;
+		redpts[iline].erase(redpts[iline].begin() + ipt);
 		pts.erase(pts.begin() + ipt);
 		pts_ecef.erase(pts_ecef.begin() + ipt);
-		sortlist.erase(sortlist.begin());
+	
 		nredd++;
 
 		sort(sortlist.begin() + nredd, sortlist.end(), lessthan);
@@ -1208,11 +1219,11 @@ bool CoastLine::_reduce(const size_t sz_lim)
 	unsigned int sz_pts_lim = (unsigned int)(sz_lim - sz_ids);	
 	unsigned int sz_pt = (unsigned int)(sizeof(vec2)+sizeof(vec3));
 	unsigned int npts = 0;
-	for (unsigned int iline = 0; iline < npts; iline++){
+	for (unsigned int iline = 0; iline < lines.size(); iline++){
 		npts += (unsigned int) lines[iline]->pts.size();
 	}
 
-	unsigned int nred = (sz_pts_lim / sz_pt) - npts;
+	unsigned int nred = npts - (sz_pts_lim / sz_pt);
 	if (try_reduce(nred) != 0){
 		return false;
 	}
@@ -1282,6 +1293,8 @@ bool CoastLine::_merge(const LayerData & layerData)
 			// copy lines[iline_con_begin] to newly created object *pline_new
 			*pline_new = *pline_begin;
 
+			pline_new->pts.pop_back();
+			pline_new->pts_ecef.pop_back();
 			// insert lines_src[iline0] at the end of pline_new 
 			// note that the end point is exactly the point of lines_src[iline0]. This is very important later if the end point is connected with other line.
 			pline_new->pts.insert(pline_new->pts.end(), pts_src.begin(), pts_src.end());
@@ -1316,7 +1329,8 @@ bool CoastLine::_merge(const LayerData & layerData)
 				pline_new = new s_line;
 				*pline_new = line_src;
 			}
-
+			pline_new->pts.pop_back();
+			pline_new->pts_ecef.pop_back();
 			pline_new->pts.insert(pline_new->pts.end(), pts.begin(), pts.end());
 			pline_new->pts_ecef.insert(pline_new->pts_ecef.end(), pts_ecef.begin(), pts_ecef.end());
 			delete lines[iline_con_end];
@@ -1404,8 +1418,11 @@ LayerData * CoastLine::clone() const
 		pt_center *= (1.0 / (double)num_total_points);
 		double alt;
 		eceftobih(pt_center.x, pt_center.y, pt_center.z, pt_center_bih.lat, pt_center_bih.lon, alt);
+		
+
 		total_size = 0;
 		pt_radius = 0;
+		dist_min = DBL_MAX;
 		for (int iline = 0; iline < lines.size(); iline++){
 			// calculating resolution and size
 			vector<vec3> & pts = lines[iline]->pts_ecef;
@@ -1413,7 +1430,13 @@ LayerData * CoastLine::clone() const
 			for (int i = 1; i < pts.size(); i++) {
 				vec3 & pt0 = pts[i - 1];
 				vec3 & pt1 = pts[i];
-				dist_min = min(dist_min, l2Norm(pt0, pt1));
+				double dist = l2Norm(pt0, pt1);
+				if (dist == 0) {
+					pts.erase(pts.begin() + i);
+					i--;
+					continue;
+				}
+				dist_min = min(dist_min, dist);
 				pt_radius = max(pt_radius, l2Norm(pt_center, pts[i]));
 			}
 			total_size += lines[iline]->size();
@@ -1454,7 +1477,9 @@ LayerData * CoastLine::clone() const
 				p++;
 				pt.x = (float)(atof(buf) * PI / 180.);
 				pt.y = (float)(atof(p) * PI / 180.);
-				line.push_back(pt);
+				
+				if(line.size() == 0 || (pt.x != line.back().x && pt.y != line.back().y))
+					line.push_back(pt);
 			}
 		}
 

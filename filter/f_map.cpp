@@ -42,7 +42,9 @@ const char * f_map::m_str_cmd[emc_undef] =
 	"update", "add_data", "set_pos", "render"
 };
 
-f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis), lat(35.0), lon(140.0), res(1.0), range(5000)
+f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis), 
+m_max_total_size_layer_data(0x00FFFFFF)/*16MB*/, m_max_num_nodes(64),
+lat(35.0), lon(140.0), res(1.0), range(5000)
 {
 	m_path[0] = '.';
 	m_path[1] = '\0';
@@ -54,6 +56,8 @@ f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis
 	register_fpar("path", m_path, 1024, "Path to map data.");
 	register_fpar("fdata", m_fdata, 1024, "File path to data file.");
 	register_fpar("max_num_nodes", &m_max_num_nodes, "Maximum number of nodes.");
+	m_max_size_layer_data[AWSMap2::lt_coast_line] = (0x00000FFF) /*4KB*/;
+
 	register_fpar("max_total_size_layer_data", &m_max_total_size_layer_data, "Maximum total size of layer data.");
 	register_fpar("max_size_coast_line", &m_max_size_layer_data[AWSMap2::lt_coast_line], "Max data size of coast line layer data per node.");
 
@@ -200,17 +204,18 @@ void f_map::render_data()
 	const list<const AWSMap2::LayerData*> cl = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
 	for (auto itr = cl.begin(); itr != cl.end(); itr++) {
 		const AWSMap2::CoastLine * pcl = dynamic_cast<const AWSMap2::CoastLine*>(*itr);
+	
 		for(int id = 0; id < pcl->getNumLines(); id++){
 			const vector<AWSMap2::vec2> & pts_bih = pcl->getPointsBIH(id);
 			const vector<AWSMap2::vec3> & pts = pcl->getPointsECEF(id);
-			vector<Point2f> pts_wrld(pts.size());
-		
+			vector<Point2i> pts_wrld(pts.size());
+
 			auto iwpt = pts_wrld.begin();
 			for (auto ipt = pts.begin(); ipt != pts.end(); ipt++, iwpt++){
 				double wx, wy, wz;
 				eceftowrld(Rwrld, cecef.x, cecef.y, cecef.z, ipt->x, ipt->y, ipt->z, wx, wy, wz);
-				iwpt->x = (float)scl * wx;
-				iwpt->y = (float)scl * wy;
+				iwpt->x = (int)(scl * wx);
+				iwpt->y = (int)(scl * wy);
 			}
 
 			polylines(img, pts_wrld, false, Scalar(255, 255, 255));
@@ -218,7 +223,7 @@ void f_map::render_data()
 	}
 
 	char frender[1024];
-	snprintf(frender, 1024, "%s/%f03.5-%f04.5.png", cbih.lat, cbih.lon);
+	snprintf(frender, 1024, "%s/%f03.5-%f04.5.png", m_path, cbih.lat, cbih.lon);
 	imwrite(frender, img);
 	m_ch_map->unlock();
 }

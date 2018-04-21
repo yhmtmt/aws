@@ -254,7 +254,7 @@ namespace AWSMap2 {
     
   public:
     Node();
-    Node(const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2);
+    Node(const unsigned char _id, Node * _upLink, const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2);
     
     virtual ~Node();
     
@@ -304,6 +304,10 @@ namespace AWSMap2 {
     static void pop(LayerData * pLayerData);
   public:
     static void accessed(LayerData * pLayerData);
+	static void resize(unsigned int size_diff)
+	{
+		totalSize += size_diff;
+	}
     static void restruct();
     static LayerData * create(const LayerType layerType); // factory function
     
