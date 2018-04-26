@@ -60,7 +60,7 @@ public:
 	void set_resolution(const float resolution)
 	{
 		bupdate = true;
-		m_resolution = m_resolution;
+		m_resolution = resolution;
 	}
 
 	const float get_resolution()

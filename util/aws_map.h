@@ -54,7 +54,8 @@ namespace AWSMap2 {
       return *this;
     }
   };
-  
+
+
   inline bool operator == (const vec3 & l, const vec3 & r)
   {
     return l.x == r.x && l.y == r.y && l.z == r.z;
@@ -212,6 +213,7 @@ namespace AWSMap2 {
   private:
     static Node * head, * tail;
     static unsigned int numNodesAlive;
+
     static void insert(Node * pNode);
     static void pop(Node * pNode);      // remove pNode from node list.
     static void accessed(Node * pNode); // move pNode to the tail of the node list.
@@ -219,17 +221,32 @@ namespace AWSMap2 {
     static void restruct();				// remove nodes if the limit of  maximum number of nodes are violated. 
 	                                    // Nodes without downlink nodes instantiated and least recently used are removed.
     static Node * load(Node * pNodeUp, unsigned int idChild); // loads child node.
-    
+	static const unsigned int getNumNodesAlive()
+	{
+		return numNodesAlive;
+	}
+
+	static const int getMaxLevel()
+	{
+		char maxLevel = 0;
+		for (Node * pn = head; pn != NULL; pn = pn->next)
+			maxLevel = max((int)pn->level, (int)maxLevel);
+		return (int) maxLevel;
+	}
+
   private:
     Node * prev, * next;// link pointers for memory management
-    
+	unsigned char level;
     bool bupdate;		// update flag. asserted when the layerDataList or downLink is updated
     unsigned char id;	// id of the node in the upper node. (0 to 3 for ordinal nodes. 0 to 19 for top level nodes.)
     Node * upLink;		// Up link. NULL for top 20 nodes
     bool bdownLink;		// false until the downLink is created.
     Node * downLink[4]; // Down link. 
     vec2 vtx_bih[3];	// bih coordinte of the node's triangle
+	void calc_ecef();
     vec3 vtx_ecef[3];   // ecef coordinate of the node's triangle (calculated automatically in construction phase) 
+	vec3 vec_ecef[2];		// vtx_ecef[1] - vtx_ecef[0], vtx_ecef[2] - vtx_ecef[0]
+
     map<LayerType, LayerData*> layerDataList;
     
     // create downLink nodes, and assert bdownLink flag. 
@@ -263,6 +280,11 @@ namespace AWSMap2 {
       id = _id;
     }
     
+	int getLevel()
+	{
+		return level;
+	}
+
     // getPath(char*, unsigned int) returns the path string the length is less than the specified limit.
     void getPath(char * path, unsigned int maxlen);
     
@@ -271,11 +293,14 @@ namespace AWSMap2 {
     bool save();
     
     // collision(vec3) determines whether the specified point collides with the node.
-    const bool collision(const vec3 & location);
+    const bool collision(const vec3 & location, const double err = 0.0f);
     
     // collision(vec3, float) determines whether the specified circle collides with the node.
     const bool collision(const vec3 & center, const float radius);
     
+
+	const void collision_downlink(const vector<vec3> & pts, vector<char> & inodes);
+
     // getLayerData called from MapDataBase::request
     const void getLayerData(list<list<const LayerData*>> & layerData, 
 			    const list<LayerType> & layerType, const vec3 & center,
@@ -308,6 +333,12 @@ namespace AWSMap2 {
 	{
 		totalSize += size_diff;
 	}
+
+	static const unsigned int getTotalSize()
+	{
+		return totalSize;
+	}
+
     static void restruct();
     static LayerData * create(const LayerType layerType); // factory function
     
@@ -359,12 +390,13 @@ namespace AWSMap2 {
     virtual const LayerType getLayerType() const = 0; // returns LayerType value.
     virtual bool save(ofstream & ofile) = 0;// save data to ofile stream.
     virtual bool load(ifstream & ifile) = 0;// load data from ifile stream.
-    virtual bool split(list<Node*> & nodes) const = 0; // split the layer data into nodes given
+    virtual bool split(list<Node*> & nodes, Node * pParentNode = NULL) const = 0; // split the layer data into nodes given
     virtual LayerData * clone() const = 0;	// returns clone of the instance
     virtual size_t size() const = 0;		// returns size in memory 
     virtual float resolution() const = 0;	// returns minimum distance between objects in meter		
     virtual float radius() const = 0;		// returns radius of the object's distribution in meter
     virtual vec3 center() const = 0;	// returns center of the object's distribution
+	virtual void print() const = 0;
   };
   
   class CoastLine : public LayerData
@@ -374,7 +406,6 @@ namespace AWSMap2 {
 	static const vector<vec2> null_vec_vec2;
 
     struct s_line {
-      unsigned int id;
       vector<vec2> pts;
       vector<vec3> pts_ecef;
       
@@ -424,12 +455,13 @@ namespace AWSMap2 {
     virtual const LayerType getLayerType() const { return lt_coast_line; };
     virtual bool save(ofstream & ofile);
     virtual bool load(ifstream & ifile);
-    virtual bool split(list<Node*> & nodes) const;
+    virtual bool split(list<Node*> & nodes, Node * pParentNode = NULL) const;
     virtual LayerData * clone() const;
     virtual size_t size() const;
     virtual float resolution() const;
     virtual float radius() const; // returns radius of the object's distribution in meter
     virtual vec3 center() const; // returns center of the object's distribution
+	virtual void print() const;
   };
 };
 

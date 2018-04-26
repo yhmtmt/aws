@@ -25,8 +25,8 @@
 class f_map: public f_base
 {
 protected:
-
 	AWSMap2::MapDataBase m_db;
+	bool m_verb;
 	char m_path[1024];
 
 	char m_fdata[1024];

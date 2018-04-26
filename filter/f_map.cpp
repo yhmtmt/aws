@@ -44,7 +44,7 @@ const char * f_map::m_str_cmd[emc_undef] =
 
 f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis), 
 m_max_total_size_layer_data(0x00FFFFFF)/*16MB*/, m_max_num_nodes(64),
-lat(35.0), lon(140.0), res(1.0), range(5000)
+lat(35.0), lon(140.0), res(1.0), range(5000), m_verb(false)
 {
 	m_path[0] = '.';
 	m_path[1] = '\0';
@@ -56,7 +56,7 @@ lat(35.0), lon(140.0), res(1.0), range(5000)
 	register_fpar("path", m_path, 1024, "Path to map data.");
 	register_fpar("fdata", m_fdata, 1024, "File path to data file.");
 	register_fpar("max_num_nodes", &m_max_num_nodes, "Maximum number of nodes.");
-	m_max_size_layer_data[AWSMap2::lt_coast_line] = (0x00000FFF) /*4KB*/;
+	m_max_size_layer_data[AWSMap2::lt_coast_line] = (0x00FFFFF) /*64KB*/;
 
 	register_fpar("max_total_size_layer_data", &m_max_total_size_layer_data, "Maximum total size of layer data.");
 	register_fpar("max_size_coast_line", &m_max_size_layer_data[AWSMap2::lt_coast_line], "Max data size of coast line layer data per node.");
@@ -65,6 +65,8 @@ lat(35.0), lon(140.0), res(1.0), range(5000)
 	register_fpar("lon", &lon, "longitude configured by set_pos");
 	register_fpar("res", &res, "Resolution configured by set_pos");
 	register_fpar("range", &range, "Range configured by set_pos");
+
+	register_fpar("verb", &m_verb, "Verbose for debug");
 }
 
 f_map::~f_map()
@@ -146,9 +148,20 @@ bool f_map::update_channel()
 	       m_ch_map->get_center(), 
 	       m_ch_map->get_range(), 
 	       m_ch_map->get_resolution());
+  if (m_verb) {
+	  cout << "MapManager Information" << endl;
+	  cout << "\tNumber of Nodes Alive: " << AWSMap2::Node::getNumNodesAlive() << endl;
+	  cout << "\tMaximum Node Level: " << AWSMap2::Node::getMaxLevel() << endl;
+	  cout << "\tLayer Data Size: " << AWSMap2::LayerData::getTotalSize() << endl;
+
+  }
   auto itrData = layerDatum.begin(); 
   for (auto itrType = layerTypes.begin(); itrType != layerTypes.end();
        itrType++, itrData++){
+	  if (m_verb) {
+		  for (auto itr = itrData->begin(); itr != itrData->end(); itr++)
+			  (*itr)->print();
+	  }
     m_ch_map->set_layer_data(*itrType, *itrData);
   }
   m_ch_map->unlock();
@@ -214,8 +227,8 @@ void f_map::render_data()
 			for (auto ipt = pts.begin(); ipt != pts.end(); ipt++, iwpt++){
 				double wx, wy, wz;
 				eceftowrld(Rwrld, cecef.x, cecef.y, cecef.z, ipt->x, ipt->y, ipt->z, wx, wy, wz);
-				iwpt->x = (int)(scl * wx);
-				iwpt->y = (int)(scl * wy);
+				iwpt->x = (int)(scl * wx) + 512;
+				iwpt->y = -(int)(scl * wy) + 512;
 			}
 
 			polylines(img, pts_wrld, false, Scalar(255, 255, 255));
