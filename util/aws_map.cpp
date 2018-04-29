@@ -444,6 +444,11 @@ namespace AWSMap2 {
 	}
 	
 	if (itr != NULL){
+#ifdef _AWS_MAP_DEBUG
+		char path[1024];
+		itr->getPath(path, 1024);
+		cout << "Release node " << path << endl;
+#endif
 	  itr->releaseLayerData();
 	  pop(itr);
 	  delete itr;
@@ -480,7 +485,7 @@ Node::Node() : prev(NULL), next(NULL), level(0), upLink(NULL), bdownLink(false),
 	downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
 }
 
-Node::Node(const unsigned char _id, Node * _upLink, const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2) : prev(NULL), next(NULL), level(0), id(_id), upLink(_upLink),bupdate(true), bdownLink(false)
+Node::Node(const unsigned char _id, Node * _upLink, const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2) : prev(NULL), next(NULL), id(_id), upLink(_upLink),bupdate(true), bdownLink(false)
 {
 		downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
 		vtx_bih[0] = vtx_bih0;
@@ -490,8 +495,10 @@ Node::Node(const unsigned char _id, Node * _upLink, const vec2 vtx_bih0, const v
 		calc_ecef();
 		
 		if (upLink) {
-			level = upLink->level + 1;
+			level = _upLink->level + 1;
 		}
+		else
+			level = 0;
 
 		char path[2048];
 		getPath(path, 2048);
@@ -535,7 +542,10 @@ bool Node::save()
   snprintf(fname, 2048, "%s/N%02d.index", path, (int)id);
   
   ofstream ofile;
-  
+#ifdef _AWS_MAP_DEBUG
+  cout << "Saving " << fname << endl;
+#endif
+
   ofile.open(fname, ios::binary);
   if (!ofile.is_open()){
     aws_mkdir(path);
@@ -593,7 +603,10 @@ Node * Node::load(Node * pNodeUp, unsigned int idChild)
     pNodeUp->getPath(path, 2048);
     snprintf(fname, 2048, "%s/N%02d/N%02d.index", path, (int)idChild, (int)idChild);
   }
-  
+#ifdef _AWS_MAP_DEBUG
+  cout << "Loading " << fname << endl;
+#endif
+
   ifstream findex(fname, ios::binary);
   if (!findex.is_open()){
     return NULL;
@@ -642,6 +655,9 @@ bool Node::createDownLink()
 	downLink[2] = new Node(2, this, vtx_bih[2], vtx_bih_mid[1], vtx_bih_mid[2]);
 	downLink[3] = new Node(3, this, vtx_bih_mid[0], vtx_bih_mid[2], vtx_bih_mid[1]);
 	bdownLink = true;
+
+	for(int i = 0; i < 4; i++)
+		Node::insert(downLink[i]);
 
 	return true;
 }
@@ -749,7 +765,6 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
     
     if (!collision(center, radius))
       return;
-    
 
     if (layerData.size() != layerType.size()){
       layerData.resize(layerType.size());
@@ -766,7 +781,7 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 			if (!data) {
 				continue;
 			}
-			if (data->resolution() < resolution) {
+			if (data->resolution() < resolution || !bdownLink) {
 				itrData->push_back(data);
 				(*itrFilled) = true;
 				continue;
@@ -857,24 +872,53 @@ bool Node::addLayerData(const LayerData & layerData,
 		pDstLayerData->setActive();
 		insertLayerData(pDstLayerData);
 	}
-		
+
+
+#ifdef _AWS_MAP_DEBUG
+	char path[1024];
+	getPath(path, 1024);
+#endif
+
+
+	if (bdownLink) {
+#ifdef _AWS_MAP_DEBUG
+		cout << "Distributing " << strLayerType[layerData.getLayerType()] << " on " << path << endl;
+#endif
+		distributeLayerData(layerData);
+#ifdef _AWS_MAP_DEBUG
+		cout << "Distributed " << strLayerType[layerData.getLayerType()] << " on " << path << endl;
+#endif
+	}
+
 	if (pDstLayerData){
+		cout << "Merge: src size " << layerData.size() << " dst size " << pDstLayerData->size() << endl;
 		pDstLayerData->merge(layerData);
+		cout << "Merged: size " << pDstLayerData->size() << endl;
 		if (pDstLayerData->size() > sz_node_data_lim){ 
 			if (!bdownLink) {
 				// the first experience the layer data in this node exceed the limit. 
 				// create 4 lower nodes 
+#ifdef _AWS_MAP_DEBUG
+				cout << "Creating Downlink on " << path << endl;
+#endif
 				createDownLink();
+				distributeLayerData(*pDstLayerData);
+#ifdef _AWS_MAP_DEBUG
+				cout << "Downlink Created on " << path << endl;
+#endif
 			}
 
 			// if the data size exceeds the limit, 
 			// reduce the data in this node with certain abstraction, 
 			// and create downlink for detailed data.
+#ifdef _AWS_MAP_DEBUG
+			cout << strLayerType[pDstLayerData->getLayerType()] << " Reduction in " << path << endl;
+#endif
 			pDstLayerData->reduce(sz_node_data_lim);
+#ifdef _AWS_MAP_DEBUG
+			cout << "Finished " << strLayerType[pDstLayerData->getLayerType()] << " Reduction in " << path << endl;
+#endif
 		}
-
-		if(bdownLink)
-			distributeLayerData(layerData);
 	}
 
 	return true;
@@ -962,7 +1006,9 @@ bool LayerData::save(){
 
 	char fname[2048];
 	genFileName(fname, 2048);
-
+#ifdef _AWS_MAP_DEBUG
+	cout << "saving " << fname << endl;
+#endif
 	ofstream ofile(fname, ios::binary);
 	if (!ofile.is_open())
 		return false;
@@ -980,7 +1026,9 @@ bool LayerData::load(){
 
 	char fname[2048];
 	genFileName(fname, 2048);
-
+#ifdef _AWS_MAP_DEBUG
+	cout << "loading " << fname << endl;
+#endif
 	ifstream ifile(fname, ios::binary);
 	if (!ifile.is_open())
 		return false;
@@ -997,6 +1045,13 @@ bool LayerData::load(){
 
 void LayerData::release()
 {
+	if (!isActive())
+		return;
+
+#ifdef _AWS_MAP_DEBUG
+	cout << "releasing " << strLayerType[getLayerType()] << ": " << endl;
+	print();
+#endif
 	if (bupdate){
 		save();
 	}
@@ -1006,30 +1061,29 @@ void LayerData::release()
 }
 
 bool LayerData::reduce(const size_t sz_lim)
-{
-	bupdate = true;
-	if (isActive())
-		LayerData::accessed(this);
-	else
+{	
+	if (!isActive())
 		return false;
+
 	unsigned int size_prev = size();
 	bool result = _reduce(sz_lim);
 	resize(size() - size_prev);
+	LayerData::accessed(this);
+	bupdate = true;
 	return result;
 }
 
 bool LayerData::merge(const LayerData & layerData)
 {
-	bupdate = true;
-	if (isActive())
-		LayerData::accessed(this);
-	else
+	
+	if (!isActive())
 		return false;
 
 	unsigned int size_prev = size();
 	bool result = _merge(layerData);
 	resize(size() - size_prev);
-
+	LayerData::accessed(this);
+	bupdate = true;
 	return result;
 }
 
@@ -1095,8 +1149,9 @@ bool CoastLine::load(ifstream & ifile)
 
 void CoastLine::print() const
 {
-	char path[2048];
-	pNode->getPath(path, 2048);
+	char path[2048] = "Not Active";
+	if(pNode)
+		pNode->getPath(path, 2048);
 	cout << "CoastLine:" << path << endl;
 	cout << "\t pos:" << pt_center_bih.lat * 180. / PI << "," << pt_center_bih.lon * 180. / PI
 		<< " radius:" << radius()
@@ -1193,7 +1248,11 @@ bool CoastLine::split(list<Node*> & nodes, Node * pParentNode) const
 
 	for (int inode = 0; inode < nodes.size(); inode++) {
 		cls[inode].update_properties();
-		if (cls[inode].size())
+		cout << "Adding layer data: " << endl;
+		cls[inode].print();
+		cout << " \tsize: " << cls[inode].size() << endl;
+
+		if (cls[inode].size() > 0)
 			vnodes[inode]->addLayerData(cls[inode], MapDataBase::getMaxSizeLayerData(cls[inode].getLayerType()));
 	}
 
@@ -1208,15 +1267,16 @@ int CoastLine::try_reduce(int nred)
 		int iline;
 		int ipt;
 		double dist;
-		s_red_pt() :iline(-1), ipt(-1), dist(DBL_MAX){};
+		s_red_pt * prev, *next;
+		s_red_pt() :iline(-1), ipt(-1), dist(DBL_MAX), prev(NULL), next(NULL){};
 	};
 
 	// creating distance data 
 	int npts_list = 0;
-	vector<vector<s_red_pt*>> redpts(lines.size());
+	vector<s_red_pt*> redpts(lines.size());
 
 	for (int iline = 0; iline < lines.size(); iline++){
-		redpts[iline].resize(lines[iline]->pts.size());
+		redpts[iline] = NULL;
 		vector<vec3> & pts = lines[iline]->pts_ecef;
 		if(pts.size() > 3)
 			npts_list += (int)pts.size() - 3;
@@ -1228,29 +1288,54 @@ int CoastLine::try_reduce(int nred)
 	npts_list = 0;
 	for (int iline = 0; iline < lines.size(); iline++){
 		vector<vec3> & pts = lines[iline]->pts_ecef;
+		s_red_pt * redpt = NULL, * redpt_prev = NULL;
 		for (int ipt = 2; ipt < pts.size() - 1; ipt++){
-			redpts[iline][ipt] = &mblock[npts_list];
-			redpts[iline][ipt]->iline = iline;
-			redpts[iline][ipt]->ipt = ipt;
-			redpts[iline][ipt]->dist = l2Norm(pts[ipt], pts[ipt - 1]);
-			sortlist[npts_list] = &mblock[npts_list];
+			redpt = &mblock[npts_list];
+			redpt->iline = iline;
+			redpt->ipt = ipt;
+			redpt->dist = l2Norm(pts[ipt], pts[ipt - 1]);
+			sortlist[npts_list] = redpt;
+			if (!redpt_prev) {
+				redpts[iline] = redpt;
+			}
+			else {
+				redpt_prev->next = redpt;
+				redpt->prev = redpt_prev;
+			}
+			redpt_prev = redpt;
 			npts_list++;
 		}
 	}
+
 	struct {
 		bool operator () (const s_red_pt * p0, const s_red_pt * p1) const
 		{
 			return p0->dist < p1->dist;
 		}
 	} lessthan;
+
 	sort(sortlist.begin(), sortlist.end(), lessthan);
 
 	// reduction phase
 	int nredd = 0;
+	int prog = 0;
+	
+	cout << "Progress(";
+	cout << nred << "/" << sortlist.size() << "):";
 	while (nredd < nred){
-		int iline = sortlist[nredd]->iline;
-		int ipt = sortlist[nredd]->ipt;
-		int ipt0 = ipt - 1, ipt1 = ipt + 1;
+		if ((nredd * 10 / nred) > prog) {
+			prog ++;
+			cout << "*";
+		}
+
+		s_red_pt * redpt = sortlist[nredd];
+		s_red_pt * redpt0 = redpt->prev;
+		s_red_pt * redpt1 = redpt->next;
+		int iline = redpt->iline;
+		int ipt = redpt->ipt;
+		int ipt0 = (redpt0 ? redpt0->ipt : 1);
+		int ipt1 = (redpt1 ? redpt1->ipt : lines[iline]->pts.size() - 1);
+
 		s_line & line = *lines[iline];
 		vector<vec2> & pts = line.pts;
 		vector<vec3> & pts_ecef = line.pts_ecef;
@@ -1261,28 +1346,30 @@ int CoastLine::try_reduce(int nred)
 		double alt;
 		eceftobih(pt_ecef_m.x, pt_ecef_m.y, pt_ecef_m.z, pt_m.lat, pt_m.lon, alt);
 
-		if (redpts[iline][ipt0])
-			redpts[iline][ipt0]->dist = l2Norm(pt_ecef_m, pts_ecef[ipt0 - 1]);
-		if (redpts[iline][ipt1])
-			redpts[iline][ipt1]->dist = l2Norm(pt_ecef_m, pts_ecef[ipt1]);
+		if (redpt0){
+			int iptm1 = (redpt0->prev ? redpt0->prev->ipt : 1);
+			redpt0->dist = l2Norm(pt_ecef_m, pts_ecef[iptm1]);
+			redpt0->next = redpt1;
+		}
+		else {
+			redpts[iline] = redpt1;
+		}
+
+		if (redpt1){
+			redpt1->dist = l2Norm(pt_ecef_m, pts_ecef[ipt1]);
+			redpt1->prev = redpt0;
+		}
 		pts[ipt0] = pt_m;
 		pts_ecef[ipt0] = pt_ecef_m;
 
-		for (; ipt1 < line.pts.size() - 1; ipt1++){
-			redpts[iline][ipt1]->ipt = ipt1 - 1;
-		}
-		redpts[iline].erase(redpts[iline].begin() + ipt);
-		pts.erase(pts.begin() + ipt);
-		pts_ecef.erase(pts_ecef.begin() + ipt);
-	
-		if (pts.size() == 3) {
-			vec2 & pt0 = pts[0];
-			vec2 & pt1 = pts[2];
+		if (redpts[iline] == NULL) { // points has already been 3
+			vec2 & pt0 = pts.front();
+			vec2 & pt1 = pts.back();
 			if (pt0.x == pt1.x && pt0.y == pt1.y) {
 				delete lines[iline];
 				lines[iline] = NULL;
 				nredd += 3;
-			}				
+			}
 		}
 
 		nredd++;
@@ -1290,6 +1377,29 @@ int CoastLine::try_reduce(int nred)
 		sort(sortlist.begin() + nredd, sortlist.end(), lessthan);
 		if (sortlist.size() == 0)
 			break;
+	}
+
+	cout << endl;
+	for (int iline = 0; iline < lines.size(); iline++) {
+		if (!lines[iline])
+			continue;
+		
+		vector<vec2> & pts = lines[iline]->pts;
+		vector<vec3> & pts_ecef = lines[iline]->pts_ecef;
+
+		if (pts.size() < 3)
+			continue;
+
+		s_red_pt * redpt = redpts[iline];
+		int ipt = 2;
+		for (; redpt != NULL; redpt = redpt->next, ipt++){
+			pts[ipt] = pts[redpt->ipt];
+			pts_ecef[ipt] = pts_ecef[redpt->ipt];
+		}
+		pts[ipt] = pts.back();
+		pts_ecef[ipt] = pts_ecef.back();
+		pts.resize(ipt + 1);
+		pts_ecef.resize(ipt + 1);
 	}
 
 	update_properties();
@@ -1560,7 +1670,7 @@ LayerData * CoastLine::clone() const
 				if (strcmp(buf, "\t\t\t</gml:posList>") == 0) {
 					add(line);
 					line.clear();
-          bline = false;
+					bline = false;
 					continue;
 				}
 
@@ -1571,15 +1681,13 @@ LayerData * CoastLine::clone() const
 				p++;
 				pt.x = (float)(atof(buf) * PI / 180.);
 				pt.y = (float)(atof(p) * PI / 180.);
-//				if (strcmp(buf, "35.14999944") == 0 && strcmp(p, "139.82066305") == 0)
-//					cout << "stop";
 
-				if(line.size() == 0 || (pt.x != line.back().x || pt.y != line.back().y))
+				if (line.size() == 0 || (pt.x != line.back().x || pt.y != line.back().y))
 					line.push_back(pt);
 			}
 		}
 
-    update_properties();
+		update_properties();
 		return true;
 	}
 }

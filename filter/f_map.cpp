@@ -217,6 +217,131 @@ void f_map::render_data()
 	const list<const AWSMap2::LayerData*> cl = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
 	for (auto itr = cl.begin(); itr != cl.end(); itr++) {
 		const AWSMap2::CoastLine * pcl = dynamic_cast<const AWSMap2::CoastLine*>(*itr);
+		{
+			cout << "Rendering ";
+			pcl->print();
+			const AWSMap2::Node * pn = pcl->getNode();
+			vector<Point2i> ptn(4);
+			for (int i = 0; i < 3; i++) {
+				const AWSMap2::vec3 & pte = pn->getVtxECEF(i);
+				double wx, wy, wz;
+				eceftowrld(Rwrld, cecef.x, cecef.y, cecef.z, pte.x, pte.y, pte.z, wx, wy, wz);
+				ptn[i].x = (int)(scl * wx) + 512;
+				ptn[i].y = -(int)(scl * wy) + 512;
+			}
+			ptn[3] = ptn[0];
+			for (int i = 0; i < 3; i++) {
+				Point pt[2];
+				int vx, vy;
+				int j = 0;
+				if (ptn[i].x >= 0 && ptn[i].x < 1024 && ptn[i].y >= 0 && ptn[i].x < 1024){
+					pt[j].x = ptn[i].x;
+					pt[j].y = ptn[i].y;
+					j++;
+				}
+				else {
+					vx = ptn[i].x - ptn[i + 1].x;
+					vy = ptn[i].y - ptn[i + 1].y;
+				}
+
+				if(ptn[i + 1].x >= 0 && ptn[i + 1].x < 1024 && ptn[i + 1].y >= 0 && ptn[i + 1].y < 1024) {
+					pt[j].x = ptn[i + 1].x;
+					pt[j].y = ptn[i + 1].y;
+					j++;
+				}else{
+					vx = ptn[i + 1].x - ptn[i].x;
+					vy = ptn[i + 1].y - ptn[i].y;
+				}
+
+
+				double a = (double)(ptn[i].y - ptn[i + 1].y) / (double)(ptn[i].x - ptn[i + 1].x);
+				double b = (double)ptn[i].y - a * (double)ptn[i].x;
+				double y0 = b, y1 = a * 1023 + b;
+				double x0 = -b / a, x1 = (1023 - b) / a;
+				if (j == 1) {
+					if (vx == 0) {
+						pt[j].x = pt[0].x;
+						if (vy > 0)
+							pt[j].y = 1023;
+						else
+							pt[j].y = 0;
+						j++;
+					}
+					else if (vy == 0) {
+						pt[j].y = pt[0].y;
+						if (vx > 0)
+							pt[j].x = 1023;
+						else
+							pt[j].x = 0;
+						j++;
+					}
+					else {
+						if (vx > 0) {//pt[j].x > pt[0].x  -> 1023 or x0 or x1
+							if (y1 >= 0 && y1 < 1024) {
+								pt[j].x = 1023;
+								pt[j].y = (int)y1;
+								j++;
+							}
+							else if (x0 > pt[0].x && x0 >= 0 && x0 < 1024) {
+								pt[j].x = (int)x0;
+								pt[j].y = 0;
+								j++;
+							}
+							else if (x1 > pt[0].x && x1 >= 0 && x1 < 1024) {
+								pt[j].x = (int)x1;
+								pt[j].y = 1023;
+								j++;
+							}
+						}
+						else {// pt[j].x < pt[0].x
+							if (y0 >= 0 && y0 < 1024) {
+								pt[j].x = 0;
+								pt[j].y = (int)y0;
+								j++;
+							}
+							else if (x0 < pt[0].x && x0 >= 0 && x0 < 1024) {
+								pt[j].x = (int)x0;
+								pt[j].y = 0;
+								j++;
+							}
+							else if (x1 < pt[0].x && x1 >= 0 && x1 < 1024) {
+								pt[j].x = (int)x1;
+								pt[j].y = 1023;
+								j++;
+							}
+						}
+					}
+				}
+				else if (j == 0) {
+					if (0 <= y0 && y0 < 1024 && j < 2) {
+						pt[j].x = 0;
+						pt[j].y = y0;
+						j++;
+					}
+
+					if (0 <= y1 && y1 < 1024 && j < 2) {
+						pt[j].x = 1023;
+						pt[j].y = y1;
+						j++;
+					}
+
+					if (0 <= x0 && x0 < 1024 && j < 2) {
+						pt[j].x = x1;
+						pt[j].y = 0;
+						j++;
+					}
+
+					if (0 <= x1 && x1 < 1024 && j < 2) {
+						pt[j].x = x1;
+						pt[j].y = 1023;
+						j++;
+					}
+				}
+				if(j == 2){
+					line(img, pt[0], pt[1], Scalar(255, 0, 0), 3);
+				}
+			}
+		}
 	
 		for(int id = 0; id < pcl->getNumLines(); id++){
 			const vector<AWSMap2::vec2> & pts_bih = pcl->getPointsBIH(id);

@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with aws_map.h.  If not, see <http://www.gnu.org/licenses/>. 
 #define GR 1.61803398875 // golden ratio
+#define _AWS_MAP_DEBUG
 
 namespace AWSMap2 {
 
@@ -280,6 +281,13 @@ namespace AWSMap2 {
       id = _id;
     }
     
+	const vec3 & getVtxECEF(int i) const
+	{
+		if (i >= 0 && i < 3)
+			return vtx_ecef[i];
+		return vtx_ecef[0];
+	}
+
 	int getLevel()
 	{
 		return level;
@@ -357,10 +365,9 @@ namespace AWSMap2 {
     }
     
   public:
-  LayerData() : prev(NULL), next(NULL), pNode(NULL), bupdate(true), bactive(false) {};
+  LayerData() : prev(NULL), next(NULL), pNode(NULL), bupdate(false), bactive(false) {};
     virtual ~LayerData() {};
-
-    
+ 
     void setNode(Node * _pNode) { pNode = _pNode; };
     Node * getNode() const { return pNode; };
     
