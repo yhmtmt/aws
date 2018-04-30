@@ -361,7 +361,7 @@ bool f_aws1_ui::init_run()
     if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 8192))
       return false;
     
-    if (!oline3d.init(loc_mode, loc_position, loc_gcolor, loc_depth2d, 0x0001FFFF))
+    if (!oline3d.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 0x0001FFFF))
       return false;
 
     if(!init_map_mask())
@@ -898,11 +898,11 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
   ocirc.render();
   otxt.render(0);
  
-  /*
+  
    if(pvm_box->get_mode() == ui_mode_map){
     omap_mask.render();
   }
- */
+ 
   glUseProgram(0);
   // show rendering surface.
   glfwSwapBuffers(pwin());	
