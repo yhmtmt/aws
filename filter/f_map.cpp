@@ -39,7 +39,7 @@ const char * f_map::m_str_dtype[edt_undef] =
 
 const char * f_map::m_str_cmd[emc_undef] =
 {
-	"update", "add_data", "set_pos", "render"
+	"update", "add_data", "set_pos", "render", "save"
 };
 
 f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis), 
@@ -94,6 +94,12 @@ void f_map::destroy_run()
 bool f_map::proc()
 {
   bool success = false;
+
+  m_ch_map->lock();
+  if(m_ch_map->is_update())
+    m_cmd = emc_update;
+  m_ch_map->unlock();
+  
   switch (m_cmd)
   {
   case emc_update:
@@ -113,6 +119,9 @@ bool f_map::proc()
 	  break;
   case emc_render:
 	  render_data();
+	  break;
+  case emc_save:
+	  m_db.save();
 	  break;
   }
   m_cmd = emc_undef;
@@ -164,6 +173,8 @@ bool f_map::update_channel()
 	  }
     m_ch_map->set_layer_data(*itrType, *itrData);
   }
+  m_ch_map->reset_update();
+  m_ch_map->set_ready();
   m_ch_map->unlock();
   return true;
 }

@@ -615,7 +615,9 @@ Node * Node::load(Node * pNodeUp, unsigned int idChild)
   Node * pNode = new Node();
   pNode->upLink = pNodeUp;
   pNode->id = idChild;
-  
+  if (pNodeUp)
+	  pNode->level = pNodeUp->level + 1;
+
   ////////////////////// loading index file to the Node
   findex.read((char*)&(pNode->bdownLink), sizeof(bool));
   findex.read((char*)(pNode->vtx_bih), sizeof(vec2) * 3);
@@ -634,7 +636,9 @@ Node * Node::load(Node * pNodeUp, unsigned int idChild)
     }
     num_layer_datum--;
   }
-  
+
+  pNode->bupdate = false;
+
   Node::insert(pNode);
   return pNode;
 }
@@ -1248,10 +1252,11 @@ bool CoastLine::split(list<Node*> & nodes, Node * pParentNode) const
 
 	for (int inode = 0; inode < nodes.size(); inode++) {
 		cls[inode].update_properties();
+#ifdef _AWS_MAP_DEBUG
 		cout << "Adding layer data: " << endl;
 		cls[inode].print();
 		cout << " \tsize: " << cls[inode].size() << endl;
-
+#endif
 		if (cls[inode].size() > 0)
 			vnodes[inode]->addLayerData(cls[inode], MapDataBase::getMaxSizeLayerData(cls[inode].getLayerType()));
 	}
@@ -1317,17 +1322,19 @@ int CoastLine::try_reduce(int nred)
 	sort(sortlist.begin(), sortlist.end(), lessthan);
 
 	// reduction phase
+#ifdef _AWS_MAP_DEBUG
 	int nredd = 0;
-	int prog = 0;
-	
+	int prog = 0;	
 	cout << "Progress(";
 	cout << nred << "/" << sortlist.size() << "):";
+#endif
 	while (nredd < nred){
+#ifdef _AWS_MAP_DEBUG
 		if ((nredd * 10 / nred) > prog) {
 			prog ++;
 			cout << "*";
 		}
-
+#endif
 		s_red_pt * redpt = sortlist[nredd];
 		s_red_pt * redpt0 = redpt->prev;
 		s_red_pt * redpt1 = redpt->next;
@@ -1378,8 +1385,9 @@ int CoastLine::try_reduce(int nred)
 		if (sortlist.size() == 0)
 			break;
 	}
-
+#ifdef _AWS_MAP_DEBUG
 	cout << endl;
+#endif
 	for (int iline = 0; iline < lines.size(); iline++) {
 		if (!lines[iline])
 			continue;

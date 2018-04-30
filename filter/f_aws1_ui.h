@@ -260,6 +260,7 @@ class f_aws1_ui: public f_glfw_window
   } crz_cm;
 
   static const char * str_crz_cmd[crz_undef];
+  static const char * str_crz_cmd_exp[crz_undef];
   unsigned char crz_cmd_val[crz_undef];
   
   float m_rud_f, m_meng_f, m_seng_f;

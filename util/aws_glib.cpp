@@ -1197,9 +1197,12 @@ void c_gl_line_obj::render(const glm::mat4 & PV)
     s_line_buffer_inf & lbi = lbis[ih];
     if (!lbi.bvalid || !lbi.bactive)
       continue;
+
     T = glm::translate(T, lbi.t);
     glm::mat4 m = PV * T * lbi.R;
+
     glUniformMatrix4fv(Mmvploc, 1, GL_FALSE, glm::value_ptr(m));
+
     glUniform4fv(clrloc, 1, glm::value_ptr(lbi.clr));
     
     glLineWidth(lbi.w);

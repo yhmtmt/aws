@@ -180,8 +180,6 @@ public:
 
 	bool init(c_gl_line_obj * poline, const glm::vec4 & clr, const unsigned int max_num_points);
 	bool update_points(list<const AWSMap2::LayerData*> & coast_lines);
-	void enable();
-	void disable();
 
 	void update_drawings();
 	virtual int collision(const glm::vec2 pos)
