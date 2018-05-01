@@ -143,13 +143,13 @@ bool f_map::update_channel()
 
   m_db.restruct();
 
-  list < list<const AWSMap2::LayerData *>> layerDatum;
+  list < list<AWSMap2::LayerDataPtr>> layerDatum;
   list<AWSMap2::LayerType> layerTypes;
   
   for (int layer_type = 0; layer_type < (int)AWSMap2::lt_undef; layer_type++){
     if (m_ch_map->is_layer_enabled((AWSMap2::LayerType)layer_type)){
       layerTypes.push_back((AWSMap2::LayerType)layer_type);
-      layerDatum.push_back(list<const AWSMap2::LayerData*>());
+      layerDatum.push_back(list<AWSMap2::LayerDataPtr>());
     }
   }
 
@@ -225,13 +225,14 @@ void f_map::render_data()
 	Mat img = Mat::zeros(1024, 1024, CV_8UC3);
 	double scl = (double)(img.cols / 2) / (double) mrng;
 
-	const list<const AWSMap2::LayerData*> cl = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
-	for (auto itr = cl.begin(); itr != cl.end(); itr++) {
-		const AWSMap2::CoastLine * pcl = dynamic_cast<const AWSMap2::CoastLine*>(*itr);
+	const list<AWSMap2::LayerDataPtr> cls = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
+	for (auto itr = cls.begin(); itr != cls.end(); itr++) {
+		
+		const AWSMap2::CoastLine & cl = dynamic_cast<const AWSMap2::CoastLine&>(**itr);
 		{
 			cout << "Rendering ";
-			pcl->print();
-			const AWSMap2::Node * pn = pcl->getNode();
+			cl.print();
+			const AWSMap2::Node * pn = cl.getNode();
 			vector<Point2i> ptn(4);
 			for (int i = 0; i < 3; i++) {
 				const AWSMap2::vec3 & pte = pn->getVtxECEF(i);
@@ -354,9 +355,9 @@ void f_map::render_data()
 			}
 		}
 	
-		for(int id = 0; id < pcl->getNumLines(); id++){
-			const vector<AWSMap2::vec2> & pts_bih = pcl->getPointsBIH(id);
-			const vector<AWSMap2::vec3> & pts = pcl->getPointsECEF(id);
+		for(int id = 0; id < cl.getNumLines(); id++){
+			const vector<AWSMap2::vec2> & pts_bih = cl.getPointsBIH(id);
+			const vector<AWSMap2::vec3> & pts = cl.getPointsECEF(id);
 			vector<Point2i> pts_wrld(pts.size());
 
 			auto iwpt = pts_wrld.begin();

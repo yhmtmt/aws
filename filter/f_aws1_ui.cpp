@@ -702,7 +702,7 @@ void f_aws1_ui::update_map()
 	  if (visible_obj[ui_obj_cl])
 	  {
 		  cout << "Map ready, Updating points." << endl;
-		  list<const AWSMap2::LayerData *> layerData;
+		  list<AWSMap2::LayerDataPtr> layerData;
 		  m_ch_map->lock();
 		  layerData = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
 		  coast_line.update_points(layerData);

@@ -314,23 +314,43 @@ namespace AWSMap2 {
     return true;
   }
   
-  void MapDataBase::request(list<list<const LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
-			    const vec3 & center, const float radius,  const float resolution)
+  void MapDataBase::request(list<list<LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
+	  const vec3 & center, const float radius, const float resolution)
   {
-    for (int iface = 0; iface < 20; iface++)
-      {
-	pNodes[iface]->getLayerData(layerDatum, layerTypes,
-				    center, radius, resolution);
-      }
-    
-    for (auto itrType = layerDatum.begin();
-	 itrType != layerDatum.end(); itrType++){
-      for (auto itrData = itrType->begin();
-	   itrData != itrType->end(); itrData++)
-	LayerData::accessed(const_cast<LayerData*>(*itrData));
-    }			
+	  for (int iface = 0; iface < 20; iface++)
+	  {
+		  pNodes[iface]->getLayerData(layerDatum, layerTypes,
+			  center, radius, resolution);
+	  }
+
+	  for (auto itrType = layerDatum.begin();
+		  itrType != layerDatum.end(); itrType++) {
+		  for (auto itrData = itrType->begin();
+			  itrData != itrType->end(); itrData++){
+			  LayerData::accessed(*itrData);
+		  }
+	  }
   }
-  
+
+  void MapDataBase::request(list<list<LayerDataPtr>> & layerDatum, const list<LayerType> & layerTypes,
+	  const vec3 & center, const float radius, const float resolution)
+  {
+	  list<list<LayerData*>> _layerDatum;
+
+	  request(_layerDatum, layerTypes, center, radius, resolution);
+
+	  layerDatum.resize(layerTypes.size());
+	  auto itrDatumPtr = layerDatum.begin();
+
+	  for (auto itrDatum = _layerDatum.begin();
+		  itrDatum != _layerDatum.end(); itrDatum++, itrDatumPtr++) {
+		  for (auto itrData = itrDatum->begin();
+			  itrData != itrDatum->end(); itrData++) {
+			  itrDatumPtr->push_back(LayerDataPtr(*itrData));
+		  }
+	  }
+  }
+
   bool MapDataBase::insert(const LayerData * layerData)
   {
     list<Node*> nodes;
@@ -428,12 +448,24 @@ namespace AWSMap2 {
 		insert(pNode);
 	}
 
+
+	bool Node::isLocked()
+	{
+		for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++) {
+			if (itr->second->isLocked())
+				return true;
+		}
+		return refcount > 0;
+	}
+
   void Node::restruct()
   {
     while (numNodesAlive >= MapDataBase::getMaxNumNodes())
       {
 	Node * itr = head;
 	for (; itr != NULL; itr = itr->next){
+		if (itr->isLocked())
+			continue;
 	  if (!itr->bdownLink ||
 	      (itr->downLink[0] == NULL &&
 	       itr->downLink[1] == NULL &&
@@ -480,12 +512,13 @@ namespace AWSMap2 {
 		layerDataList.clear();
 	}
 
-Node::Node() : prev(NULL), next(NULL), level(0), upLink(NULL), bdownLink(false), bupdate(true)
+Node::Node() : prev(NULL), next(NULL), level(0), upLink(NULL), bdownLink(false), bupdate(false), refcount(0)
 {
 	downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
 }
 
-Node::Node(const unsigned char _id, Node * _upLink, const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2) : prev(NULL), next(NULL), id(_id), upLink(_upLink),bupdate(true), bdownLink(false)
+Node::Node(const unsigned char _id, Node * _upLink, const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2) : prev(NULL), next(NULL), id(_id), upLink(_upLink),
+bupdate(false), refcount(0), bdownLink(false)
 {
 		downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
 		vtx_bih[0] = vtx_bih0;
@@ -760,8 +793,8 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 // return layer datum corresponding to layer types specified as a list of LayerType,
 // datum with the largest resolutions less than the resolution specified are selected.
 // If there is no data satisfying the constraint of the resolution, null data is returned.
-  const void Node::getLayerData(
-				list<list<const LayerData*>> & layerData,
+  void Node::getLayerData(
+				list<list<LayerData*>> & layerData,
 				const list<LayerType> & layerType, 
 				const vec3 & center, const float radius,
 				const float resolution)
@@ -781,7 +814,7 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 		auto itrType = layerType.begin();
 		auto itrFilled = filled.begin();
 		for (; itrData != layerData.end(); itrData++, itrType++) {
-			const LayerData * data = getLayerData(*itrType);
+			LayerData * data = getLayerData(*itrType);
 			if (!data) {
 				continue;
 			}
@@ -797,7 +830,7 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 	}
 
     // retrieving more detailed data than this node
-    list<list<const LayerData*>> detailedLayerData;
+    list<list<LayerData*>> detailedLayerData;
 
 	detailedLayerData.resize(layerType.size());
     if(bdownLink){
@@ -831,7 +864,7 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 	}
   }
   
-  const LayerData * Node::getLayerData(const LayerType layerType)
+  LayerData * Node::getLayerData(const LayerType layerType)
   {
 	auto itrLayerData = layerDataList.find(layerType);
 	if (itrLayerData == layerDataList.end())
@@ -853,6 +886,7 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 bool Node::addLayerData(const LayerData & layerData, 
 			const size_t sz_node_data_lim)
 {
+	lock();
 	bupdate = true;
 	Node::accessed(this);
 
@@ -862,27 +896,10 @@ bool Node::addLayerData(const LayerData & layerData,
 	auto itrDstLayerData = layerDataList.find(layerData.getLayerType());
 	LayerData * pDstLayerData = NULL; // The layer data object in this node.
 
-	if (itrDstLayerData != layerDataList.end()){ 
-		// LayerData exists in this node.
-		pDstLayerData = itrDstLayerData->second;
-		if (!pDstLayerData->isActive())
-			// if the data is not active, activate it by loading.
-			pDstLayerData->load();
-	}
-	else{ 
-		// the layer data object is not in the node, create new one.
-		pDstLayerData = LayerData::create(layerData.getLayerType());
-		pDstLayerData->setNode(this);
-		pDstLayerData->setActive();
-		insertLayerData(pDstLayerData);
-	}
-
-
 #ifdef _AWS_MAP_DEBUG
 	char path[1024];
 	getPath(path, 1024);
 #endif
-
 
 	if (bdownLink) {
 #ifdef _AWS_MAP_DEBUG
@@ -894,7 +911,23 @@ bool Node::addLayerData(const LayerData & layerData,
 #endif
 	}
 
+	if (itrDstLayerData != layerDataList.end()) {
+		// LayerData exists in this node.
+		pDstLayerData = itrDstLayerData->second;
+		if (!pDstLayerData->isActive())
+			// if the data is not active, activate it by loading.
+			pDstLayerData->load();
+	}
+	else {
+		// the layer data object is not in the node, create new one.
+		pDstLayerData = LayerData::create(layerData.getLayerType());
+		pDstLayerData->setNode(this);
+		pDstLayerData->setActive();
+		insertLayerData(pDstLayerData);
+	}
+
 	if (pDstLayerData){
+		pDstLayerData->lock();
 		cout << "Merge: src size " << layerData.size() << " dst size " << pDstLayerData->size() << endl;
 		pDstLayerData->merge(layerData);
 		cout << "Merged: size " << pDstLayerData->size() << endl;
@@ -923,8 +956,10 @@ bool Node::addLayerData(const LayerData & layerData,
 			cout << "Finished " << strLayerType[pDstLayerData->getLayerType()] << " Reduction in " << path << endl;
 #endif
 		}
+		pDstLayerData->unlock();
 	}
 
+	unlock();
 	return true;
 }
 
@@ -982,12 +1017,14 @@ void LayerData::accessed(LayerData * pLayerData)
 
 void LayerData::restruct()
 {
-	while (totalSize >= MapDataBase::getMaxTotalSizeLayerData())
+	LayerData * p = head;
+
+	while (totalSize >= MapDataBase::getMaxTotalSizeLayerData() && p != NULL)
 	{
-	  if(head){
-	    LayerData * pLayerData = head;
-	    pLayerData->release();
-	  }
+		if (!p->isLocked()) {
+			p->release();
+		}else
+			p = p->next;
 	}
 }
 

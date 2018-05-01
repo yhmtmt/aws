@@ -402,7 +402,7 @@ bool c_map_coast_line_obj::init(c_gl_line_obj * _poline, const glm::vec4 & _clr,
   return true;
 }
 
-bool c_map_coast_line_obj::update_points(list<const AWSMap2::LayerData*> & coast_lines)
+bool c_map_coast_line_obj::update_points(list<AWSMap2::LayerDataPtr> & coast_lines)
 {
   // clear line object
   for (auto itr = handle.begin(); itr != handle.end(); itr++)
@@ -424,10 +424,10 @@ bool c_map_coast_line_obj::update_points(list<const AWSMap2::LayerData*> & coast
   pts.reserve(128);
   int index = 0;
   for (auto itr = coast_lines.begin(); itr != coast_lines.end(); itr++){
-    const AWSMap2::CoastLine * pcl = dynamic_cast<const AWSMap2::CoastLine*>(*itr);
-    unsigned int num_lines = pcl->getNumLines();
+    const AWSMap2::CoastLine & cl = dynamic_cast<const AWSMap2::CoastLine&>(**itr);
+    unsigned int num_lines = cl.getNumLines();
     for (unsigned int iline = 0; iline < num_lines; iline++, index++){
-      const vector<AWSMap2::vec3> & pts_ecef = pcl->getPointsECEF(iline);
+      const vector<AWSMap2::vec3> & pts_ecef = cl.getPointsECEF(iline);
       pts.resize(pts_ecef.size());
       bcull.resize(pts_ecef.size());
 

@@ -27,7 +27,7 @@ protected:
   bool bupdate, bready;
 	float m_range, m_resolution;
 	bool m_blayer_type[AWSMap2::lt_undef];
-	list<const AWSMap2::LayerData*> m_layer_datum[AWSMap2::lt_undef];
+	list<AWSMap2::LayerDataPtr> m_layer_datum[AWSMap2::lt_undef];
 
 	AWSMap2::vec3 m_cecef; // x, y, z
 public:
@@ -35,7 +35,6 @@ public:
 	{
 		m_blayer_type[AWSMap2::lt_coast_line] = true;
 	}
-
 
 	virtual ~ch_map()
 	{
@@ -113,14 +112,14 @@ public:
 		return m_cecef;
 	}
 
-	void set_layer_data(const AWSMap2::LayerType layer_type, list<const AWSMap2::LayerData*> & layer_data)
+	void set_layer_data(const AWSMap2::LayerType layer_type, list<AWSMap2::LayerDataPtr> & layer_data)
 	{
 	  m_layer_datum[layer_type].clear();
 	  //m_layer_datum[layer_type].insert(m_layer_datum[layer_type].end(), layer_data.begin(), layer_data.end());	    
 	  m_layer_datum[layer_type] = layer_data;  
 	}
 
-	const list<const AWSMap2::LayerData*> & get_layer_data(const AWSMap2::LayerType layer_type)
+	const list<AWSMap2::LayerDataPtr> & get_layer_data(const AWSMap2::LayerType layer_type)
 	{
 		return m_layer_datum[layer_type];
 	}

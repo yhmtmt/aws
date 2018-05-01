@@ -140,7 +140,8 @@ namespace AWSMap2 {
   LayerType getLayerType(const char * str);
   class Node;
   class LayerData;
-  
+  class LayerDataPtr;
+
   class MapDataBase
   {
   private:
@@ -192,9 +193,13 @@ namespace AWSMap2 {
     bool init();
     
     // request layerData within the circle specified with (center, radius).
-    void request(list<list<const LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
+    void request(list<list<LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
 		 const vec3 & center, const float radius, const float resolution = 0);
-    
+
+	// request layerData within the circle specified with (center, radius).
+	void request(list<list<LayerDataPtr>> & layerDatum, const list<LayerType> & layerTypes,
+		const vec3 & center, const float radius, const float resolution = 0);
+
     // insert an instance of LayerData to the location.
     bool insert(const LayerData * layerData);
     
@@ -238,6 +243,7 @@ namespace AWSMap2 {
   private:
     Node * prev, * next;// link pointers for memory management
 	unsigned char level;
+	int refcount;
     bool bupdate;		// update flag. asserted when the layerDataList or downLink is updated
     unsigned char id;	// id of the node in the upper node. (0 to 3 for ordinal nodes. 0 to 19 for top level nodes.)
     Node * upLink;		// Up link. NULL for top 20 nodes
@@ -262,7 +268,7 @@ namespace AWSMap2 {
 	void insertLayerData(LayerData * pLayerData);
     
     // getLayerData returns layerData of layerType in this node 
-    const LayerData * getLayerData(const LayerType layerType);
+    LayerData * getLayerData(LayerType layerType);
     
     // distributeLayerData helps addLayerData. 
     bool distributeLayerData(const LayerData & layerData);
@@ -293,6 +299,18 @@ namespace AWSMap2 {
 		return level;
 	}
 
+	bool isLocked();
+
+	void lock()
+	{
+		refcount++;
+	}
+
+	void unlock()
+	{
+		refcount++;
+	}
+
     // getPath(char*, unsigned int) returns the path string the length is less than the specified limit.
     void getPath(char * path, unsigned int maxlen);
     
@@ -310,7 +328,7 @@ namespace AWSMap2 {
 	const void collision_downlink(const vector<vec3> & pts, vector<char> & inodes);
 
     // getLayerData called from MapDataBase::request
-    const void getLayerData(list<list<const LayerData*>> & layerData, 
+    void getLayerData(list<list<LayerData*>> & layerData, 
 			    const list<LayerType> & layerType, const vec3 & center,
 			    const float radius, const float resolution = 0);
     
@@ -352,6 +370,7 @@ namespace AWSMap2 {
     
   protected:
     LayerData * prev, * next;
+	int  refcount;
     bool bupdate;
     bool bactive;
     
@@ -365,7 +384,7 @@ namespace AWSMap2 {
     }
     
   public:
-  LayerData() : prev(NULL), next(NULL), pNode(NULL), bupdate(false), bactive(false) {};
+  LayerData() : prev(NULL), next(NULL), pNode(NULL), refcount(0), bupdate(false), bactive(false) {};
     virtual ~LayerData() {};
  
     void setNode(Node * _pNode) { pNode = _pNode; };
@@ -380,6 +399,19 @@ namespace AWSMap2 {
       return bactive;
     }
     
+	bool isLocked()
+	{
+		return refcount > 0;
+	}
+
+	void lock() {
+		refcount++;
+	}
+
+	void unlock() {
+		refcount--;
+	}
+
     // major interfaces 
     bool save();
     bool load();
@@ -469,6 +501,36 @@ namespace AWSMap2 {
     virtual float radius() const; // returns radius of the object's distribution in meter
     virtual vec3 center() const; // returns center of the object's distribution
 	virtual void print() const;
+  };
+
+  class LayerDataPtr
+  {
+  private:
+	  const LayerData * ptr;
+  public:
+	  LayerDataPtr() :ptr(NULL)
+	  {
+	  }
+
+	  LayerDataPtr(const LayerData * _ptr) :ptr(_ptr)
+	  {
+		  const_cast<LayerData*>(ptr)->lock();
+	  }
+
+	  ~LayerDataPtr()
+	  {
+		  const_cast<LayerData*>(ptr)->unlock();
+	  }
+
+	  const LayerData & operator * () const
+	  {
+		  return *ptr;
+	  }
+
+	  const LayerData * operator ->() const
+	  {
+		  return ptr;
+	  }
   };
 };
 
