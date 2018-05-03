@@ -691,7 +691,8 @@ void f_aws1_ui::update_map()
     m_ch_map->lock();
     m_ch_map->set_center(pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
     m_ch_map->set_range((float)(2 * map_range));
-    m_ch_map->set_resolution(meter_per_pix);
+    m_ch_map->set_resolution((float)(meter_per_pix/4.0));
+	cout << "meter_per_pix:" << meter_per_pix << " range:" << map_range << endl;
     m_ch_map->set_update();
     m_ch_map->unlock();
 	pt_prev_map_update = pt_map_center_ecef;

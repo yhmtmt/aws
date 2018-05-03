@@ -314,40 +314,13 @@ namespace AWSMap2 {
     return true;
   }
   
-  void MapDataBase::request(list<list<LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
+  void MapDataBase::request(list<list<LayerDataPtr>> & layerDatum, const list<LayerType> & layerTypes,
 	  const vec3 & center, const float radius, const float resolution)
   {
 	  for (int iface = 0; iface < 20; iface++)
 	  {
 		  pNodes[iface]->getLayerData(layerDatum, layerTypes,
 			  center, radius, resolution);
-	  }
-
-	  for (auto itrType = layerDatum.begin();
-		  itrType != layerDatum.end(); itrType++) {
-		  for (auto itrData = itrType->begin();
-			  itrData != itrType->end(); itrData++){
-			  LayerData::accessed(*itrData);
-		  }
-	  }
-  }
-
-  void MapDataBase::request(list<list<LayerDataPtr>> & layerDatum, const list<LayerType> & layerTypes,
-	  const vec3 & center, const float radius, const float resolution)
-  {
-	  list<list<LayerData*>> _layerDatum;
-
-	  request(_layerDatum, layerTypes, center, radius, resolution);
-
-	  layerDatum.resize(layerTypes.size());
-	  auto itrDatumPtr = layerDatum.begin();
-
-	  for (auto itrDatum = _layerDatum.begin();
-		  itrDatum != _layerDatum.end(); itrDatum++, itrDatumPtr++) {
-		  for (auto itrData = itrDatum->begin();
-			  itrData != itrDatum->end(); itrData++) {
-			  itrDatumPtr->push_back(LayerDataPtr(*itrData));
-		  }
 	  }
   }
 
@@ -458,35 +431,43 @@ namespace AWSMap2 {
 		return refcount > 0;
 	}
 
-  void Node::restruct()
-  {
-    while (numNodesAlive >= MapDataBase::getMaxNumNodes())
-      {
-	Node * itr = head;
-	for (; itr != NULL; itr = itr->next){
-		if (itr->isLocked())
-			continue;
-	  if (!itr->bdownLink ||
-	      (itr->downLink[0] == NULL &&
-	       itr->downLink[1] == NULL &&
-	       itr->downLink[2] == NULL &&
-	       itr->downLink[3] == NULL)){
-	    break;
-	  }
-	}
-	
-	if (itr != NULL){
+	void Node::restruct()
+	{
+		while (numNodesAlive >= MapDataBase::getMaxNumNodes())
+		{
+			Node * itr = head;
+			for (; itr != NULL; itr = itr->next) {
+				if (itr->isLocked())
+					continue;
+				if (!itr->bdownLink ||
+					(itr->downLink[0] == NULL &&
+						itr->downLink[1] == NULL &&
+						itr->downLink[2] == NULL &&
+						itr->downLink[3] == NULL)) {
+					break;
+				}
+			}
+
+			if (itr != NULL) {
 #ifdef _AWS_MAP_DEBUG
-		char path[1024];
-		itr->getPath(path, 1024);
-		cout << "Release node " << path << endl;
+				char path[1024];
+				itr->getPath(path, 1024);
+				cout << "Release node " << path << endl;
 #endif
-	  itr->releaseLayerData();
-	  pop(itr);
-	  delete itr;
+				itr->releaseLayerData();
+				if (itr->upLink) {
+					itr->upLink->downLink[itr->id] = NULL;
+				}
+				itr->save();
+				pop(itr);
+				delete itr;
+			}
+			else {
+				cerr << "Failed to release nodes." << endl;
+				break;
+			}
+		}
 	}
-      }
-  }
   
   bool Node::deleteLayerData(const LayerData * layerData)
   {
@@ -518,7 +499,7 @@ Node::Node() : prev(NULL), next(NULL), level(0), upLink(NULL), bdownLink(false),
 }
 
 Node::Node(const unsigned char _id, Node * _upLink, const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2) : prev(NULL), next(NULL), id(_id), upLink(_upLink),
-bupdate(false), refcount(0), bdownLink(false)
+bupdate(true), refcount(0), bdownLink(false)
 {
 		downLink[0] = downLink[1] = downLink[2] = downLink[3] = NULL;
 		vtx_bih[0] = vtx_bih0;
@@ -536,6 +517,10 @@ bupdate(false), refcount(0), bdownLink(false)
 		char path[2048];
 		getPath(path, 2048);
 		aws_mkdir(path);
+		
+		if (!save()) {
+			cerr << "Save node " << path << " failed." << endl;
+		}
 }
 
 Node::~Node()
@@ -543,8 +528,11 @@ Node::~Node()
 	save();
 
 	for (auto itr = layerDataList.begin(); itr != layerDataList.end(); itr++){
-		itr->second->release();
-		delete itr->second;
+		itr->second->setNode(NULL);
+		if (!itr->second->isLocked()) {
+			itr->second->release();
+			delete itr->second;
+		}
 	}
 
 	for (int i = 0; i < 4; i++) {
@@ -616,6 +604,8 @@ bool Node::save()
     }
   }
   
+  if (result)
+	  bupdate = false;
   return result;
 }
   
@@ -735,9 +725,15 @@ bool Node::distributeLayerData(const LayerData & layerData)
 		if (!downLink[idown]){
 			downLink[idown] = Node::load(this, idown);
 		}
+		downLink[idown]->lock();
 		nodes.push_back(downLink[idown]);
 	}
 	layerData.split(nodes, this);
+
+	for (int idown = 0; idown < 4; idown++) {
+		downLink[idown]->unlock();
+	}
+	Node::restruct();
 
 	return true;
 }
@@ -794,7 +790,7 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 // datum with the largest resolutions less than the resolution specified are selected.
 // If there is no data satisfying the constraint of the resolution, null data is returned.
   void Node::getLayerData(
-				list<list<LayerData*>> & layerData,
+				list<list<LayerDataPtr>> & layerData,
 				const list<LayerType> & layerType, 
 				const vec3 & center, const float radius,
 				const float resolution)
@@ -819,7 +815,7 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 				continue;
 			}
 			if (data->resolution() < resolution || !bdownLink) {
-				itrData->push_back(data);
+				itrData->push_back(LayerDataPtr(data));
 				(*itrFilled) = true;
 				continue;
 			}
@@ -830,7 +826,7 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 	}
 
     // retrieving more detailed data than this node
-    list<list<LayerData*>> detailedLayerData;
+    list<list<LayerDataPtr>> detailedLayerData;
 
 	detailedLayerData.resize(layerType.size());
     if(bdownLink){
@@ -857,7 +853,7 @@ const void Node::collision_downlink(const vector<vec3> & pts, vector<char> & ino
 
 		for (auto itrDetailedData = itrDetailedDatum->begin();
 			itrDetailedData != itrDetailedDatum->end(); itrDetailedData++) {
-			itrData->push_back((*itrDetailedData));
+			itrData->push_back(LayerDataPtr(*itrDetailedData));
 		}
 		itrDetailedDatum++;
 		itrDetailedType++;
@@ -899,6 +895,7 @@ bool Node::addLayerData(const LayerData & layerData,
 #ifdef _AWS_MAP_DEBUG
 	char path[1024];
 	getPath(path, 1024);
+	cout << "Adding on " << path << endl;
 #endif
 
 	if (bdownLink) {
@@ -949,17 +946,20 @@ bool Node::addLayerData(const LayerData & layerData,
 			// reduce the data in this node with certain abstraction, 
 			// and create downlink for detailed data.
 #ifdef _AWS_MAP_DEBUG
-			cout << strLayerType[pDstLayerData->getLayerType()] << " Reduction in " << path << endl;
+			cout << strLayerType[pDstLayerData->getLayerType()] << " Reduction in " << path << " with size " << pDstLayerData->size() << endl;
 #endif
 			pDstLayerData->reduce(sz_node_data_lim);
 #ifdef _AWS_MAP_DEBUG
-			cout << "Finished " << strLayerType[pDstLayerData->getLayerType()] << " Reduction in " << path << endl;
+			cout << "Finished " << strLayerType[pDstLayerData->getLayerType()] << " Reduction in " << path << " with size " << pDstLayerData->size() << endl;
 #endif
 		}
 		pDstLayerData->unlock();
 	}
 
 	unlock();
+#ifdef _AWS_MAP_DEBUG
+	cout << "Added on " << path << endl;
+#endif
 	return true;
 }
 
@@ -1023,6 +1023,7 @@ void LayerData::restruct()
 	{
 		if (!p->isLocked()) {
 			p->release();
+			p = head;
 		}else
 			p = p->next;
 	}
@@ -1197,7 +1198,8 @@ void CoastLine::print() const
 	cout << "\t pos:" << pt_center_bih.lat * 180. / PI << "," << pt_center_bih.lon * 180. / PI
 		<< " radius:" << radius()
 		<< " mindim:" << dist_min
-		<< " lines:" << lines.size() << endl;
+		<< " lines:" << lines.size() 
+		<< " size:" << size() << endl;
 }
 
 void CoastLine::_release()
@@ -1329,6 +1331,15 @@ int CoastLine::try_reduce(int nred)
 	vector<s_red_pt*> sortlist(npts_list, NULL);
 	npts_list = 0;
 	for (int iline = 0; iline < lines.size(); iline++){
+		if (lines[iline]->pts.size() <= 3) {
+			vec2 &pt0 = lines[iline]->pts.front();
+			vec2 &pt1 = lines[iline]->pts.back();
+			if (pt0.x == pt1.x && pt0.y == pt1.y) {
+				delete lines[iline];
+				lines[iline] = NULL;
+			}
+			continue;
+		}
 		vector<vec3> & pts = lines[iline]->pts_ecef;
 		s_red_pt * redpt = NULL, * redpt_prev = NULL;
 		for (int ipt = 2; ipt < pts.size() - 1; ipt++){
@@ -1365,7 +1376,7 @@ int CoastLine::try_reduce(int nred)
 	cout << "Progress(";
 	cout << nred << "/" << sortlist.size() << "):";
 #endif
-	while (nredd < nred){
+	while (nredd < nred && nredd < sortlist.size()){
 #ifdef _AWS_MAP_DEBUG
 		if ((nredd * 10 / nred) > prog) {
 			prog ++;
@@ -1424,6 +1435,9 @@ int CoastLine::try_reduce(int nred)
 	}
 #ifdef _AWS_MAP_DEBUG
 	cout << endl;
+	if (nredd < nred) {
+		cout << "Reduction is not completed because of many fragment" << endl;
+	}
 #endif
 	for (int iline = 0; iline < lines.size(); iline++) {
 		if (!lines[iline])
@@ -1475,6 +1489,9 @@ bool CoastLine::_reduce(const size_t sz_lim)
 
 bool CoastLine::_merge(const LayerData & layerData)
 {
+#ifdef _AWS_MAP_DEBUG
+	print();
+#endif
 	bupdate = true;
 	const CoastLine * src = dynamic_cast<const CoastLine*>(&layerData);
 	const vector<s_line*> & lines_src = src->lines;
@@ -1584,6 +1601,9 @@ bool CoastLine::_merge(const LayerData & layerData)
 			pline_new = new s_line;
 			*pline_new = line_src;
 			lines.push_back(pline_new);
+			if (pline_new->pts.size() != line_src.pts.size() ||
+				pline_new->pts_ecef.size() != line_src.pts_ecef.size())
+				cout << "break";
 		}
 	}
 
@@ -1596,6 +1616,9 @@ bool CoastLine::_merge(const LayerData & layerData)
 	}
 
 	update_properties();
+#ifdef _AWS_MAP_DEBUG
+	print();
+#endif
 	return true;
 }
 
@@ -1706,13 +1729,19 @@ LayerData * CoastLine::clone() const
 		while (!fjpgis.eof())
 		{
 			fjpgis.getline(buf, 1024);
+			
 			if (!bline) {
-				if (strcmp(buf, "\t\t\t<gml:posList>") == 0) {
+				char * p = buf;
+				for (; *p != '<' && *p != '\0'; p++);
+
+				if (strcmp(p, "<gml:posList>") == 0) {
 					bline = true;
 				}
 			}
 			else {
-				if (strcmp(buf, "\t\t\t</gml:posList>") == 0) {
+				char * p = buf;
+				for (; *p != '<' && *p != '\0'; p++);
+				if (strcmp(buf, "</gml:posList>") == 0) {
 					add(line);
 					line.clear();
 					bline = false;
@@ -1720,7 +1749,6 @@ LayerData * CoastLine::clone() const
 				}
 
 				vec2 pt;
-				char * p;
 				for (p = buf; *p != ' ' && *p != '\0'; p++);
 				*p = '\0';
 				p++;

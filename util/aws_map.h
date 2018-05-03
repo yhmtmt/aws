@@ -192,10 +192,6 @@ namespace AWSMap2 {
 
     bool init();
     
-    // request layerData within the circle specified with (center, radius).
-    void request(list<list<LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
-		 const vec3 & center, const float radius, const float resolution = 0);
-
 	// request layerData within the circle specified with (center, radius).
 	void request(list<list<LayerDataPtr>> & layerDatum, const list<LayerType> & layerTypes,
 		const vec3 & center, const float radius, const float resolution = 0);
@@ -287,6 +283,11 @@ namespace AWSMap2 {
       id = _id;
     }
     
+	const unsigned char getId()
+	{
+		return id;
+	}
+
 	const vec3 & getVtxECEF(int i) const
 	{
 		if (i >= 0 && i < 3)
@@ -328,7 +329,7 @@ namespace AWSMap2 {
 	const void collision_downlink(const vector<vec3> & pts, vector<char> & inodes);
 
     // getLayerData called from MapDataBase::request
-    void getLayerData(list<list<LayerData*>> & layerData, 
+    void getLayerData(list<list<LayerDataPtr>> & layerData, 
 			    const list<LayerType> & layerType, const vec3 & center,
 			    const float radius, const float resolution = 0);
     
@@ -346,6 +347,7 @@ namespace AWSMap2 {
   
   class LayerData
   {
+	  friend class LayerDataPtr;
     // static section
   private:
     static LayerData * head, * tail;
@@ -512,6 +514,11 @@ namespace AWSMap2 {
 	  {
 	  }
 
+	  LayerDataPtr(const LayerDataPtr & ldp) :ptr(ldp.ptr)
+	  {
+		  const_cast<LayerData*>(ptr)->lock();
+	  }
+
 	  LayerDataPtr(const LayerData * _ptr) :ptr(_ptr)
 	  {
 		  const_cast<LayerData*>(ptr)->lock();
@@ -519,7 +526,12 @@ namespace AWSMap2 {
 
 	  ~LayerDataPtr()
 	  {
+		  const_cast<LayerData*>(ptr)->accessed(const_cast<LayerData*>(ptr));
 		  const_cast<LayerData*>(ptr)->unlock();
+		  if (!const_cast<LayerData*>(ptr)->getNode()) {
+			  const_cast<LayerData*>(ptr)->pop(const_cast<LayerData*>(ptr));
+			  delete ptr;
+		  }
 	  }
 
 	  const LayerData & operator * () const
