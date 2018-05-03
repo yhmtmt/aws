@@ -1057,6 +1057,12 @@ c_gl_line_obj::~c_gl_line_obj()
 	destroy();
 }
 
+void c_gl_line_obj::clear()
+{
+	lbis.clear();
+	num_total_vertices = 0;
+}
+
 void c_gl_line_obj::destroy()
 {
   if (vao != 0)
@@ -1122,28 +1128,28 @@ int c_gl_line_obj::add(const int npts, const float * pts)
     lbis[ih].offset = offset;
     offset += lbis[ih].npts;
   }
-  
+
   for (int ih = lbis.size() - 1; ih >= 0; ih--)
-    {
-      if (lbis[ih].offset + vertices == lbis[ih].vtx)
-	continue;
-      if (ih == handle){			
-	s_vertex * vtx = vertices + lbis[ih].offset;
-	memcpy((void*)vtx, (void*)pts, sizeof(float)* npts * 3);
-	lbis[ih].vtx = vtx;
-      }
-      else{
-	s_vertex * vtx = lbis[ih].vtx + lbis[ih].npts - 1;
-	s_vertex * vtx_src = vertices + lbis[ih].offset + lbis[ih].npts - 1;
-	for (int iv = 0; iv < lbis[ih].npts; iv++)
-	  {
-	    *vtx = *vtx_src;
-	    vtx--;
-	    vtx_src--;
+  {
+	  if (lbis[ih].offset + vertices == lbis[ih].vtx)
+		  continue;
+	  if (ih == handle) {
+		  s_vertex * vtx = vertices + lbis[ih].offset;
+		  memcpy((void*)vtx, (void*)pts, sizeof(float)* npts * 3);
+		  lbis[ih].vtx = vtx;
 	  }
-	lbis[ih].vtx = vertices + lbis[ih].offset;
-      }
-    }
+	  else {
+		  s_vertex * vtx = lbis[ih].vtx + lbis[ih].npts - 1;
+		  s_vertex * vtx_src = vertices + lbis[ih].offset + lbis[ih].npts - 1;
+		  for (int iv = 0; iv < lbis[ih].npts; iv++)
+		  {
+			  *vtx = *vtx_src;
+			  vtx--;
+			  vtx_src--;
+		  }
+		  lbis[ih].vtx = vertices + lbis[ih].offset;
+	  }
+  }
   
   num_total_vertices += npts;
   

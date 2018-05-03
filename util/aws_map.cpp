@@ -1511,32 +1511,40 @@ bool CoastLine::_merge(const LayerData & layerData)
 		bool bdst_begin_con_begin = true, bdst_begin_con_end = true;
 		// check connection
 		for (int iline1 = 0; iline1 < lines.size(); iline1++){
+			if (!lines[iline1])
+				continue;
 			s_line & line_dst = *lines[iline1];
 			vector<vec2> & pts_dst = line_dst.pts;
 			vec2 & pt_dst_begin = pts_dst.front(), & pt_dst_end = pts_dst.back();
-			if (pt_src_begin == pt_dst_begin){
-				iline_con_begin = iline1;
-				bdst_begin_con_begin = true;
+			if (iline_con_begin < 0) {
+				if (pt_src_begin == pt_dst_begin) {
+					iline_con_begin = iline1;
+					bdst_begin_con_begin = true;
+				}
+				else if (pt_src_begin == pt_dst_end) {
+					iline_con_begin = iline1;
+					bdst_begin_con_begin = false;
+				}
+				else {
+					iline_con_begin = -1;
+				}
 			}
-			else if (pt_src_begin == pt_dst_end){
-				iline_con_begin = iline1;
-				bdst_begin_con_begin = false;
-			}
-			else{
-				iline_con_begin = -1;
+			if (iline_con_end < 0) {
+				if (pt_src_end == pt_dst_begin) {
+					iline_con_end = iline1;
+					bdst_begin_con_end = true;
+				}
+				else if (pt_src_end == pt_dst_end) {
+					iline_con_end = iline1;
+					bdst_begin_con_end = false;
+				}
+				else {
+					iline_con_end = -1;
+				}
 			}
 
-			if (pt_src_end == pt_dst_begin){
-				iline_con_end = iline1;
-				bdst_begin_con_end = true;
-			}
-			else if (pt_src_end == pt_dst_end){
-				iline_con_end = iline1;
-				bdst_begin_con_end = false;
-			}
-			else{
-				iline_con_end = -1;
-			}
+			if (iline_con_end > 0 && iline_con_begin > 0)
+				break;
 		}
 
 		s_line * pline_begin = NULL, *pline_end = NULL, *pline_new;
@@ -1552,13 +1560,14 @@ bool CoastLine::_merge(const LayerData & layerData)
 			}
 			// copy lines[iline_con_begin] to newly created object *pline_new
 			*pline_new = *pline_begin;
-
+			assert(pline_new->pts.back() == pts_src.front());
 			pline_new->pts.pop_back();
 			pline_new->pts_ecef.pop_back();
-			// insert lines_src[iline0] at the end of pline_new 
+						// insert lines_src[iline0] at the end of pline_new 
 			// note that the end point is exactly the point of lines_src[iline0]. This is very important later if the end point is connected with other line.
 			pline_new->pts.insert(pline_new->pts.end(), pts_src.begin(), pts_src.end());
-			pline_new->pts_ecef.insert(pline_new->pts_ecef.end(), line_src.pts_ecef.begin(), line_src.pts_ecef.end());
+			pline_new->pts_ecef.insert(pline_new->pts_ecef.end(), line_src.pts_ecef.begin(),
+				line_src.pts_ecef.end());
 
 			// delete old object lines[iline_con_begin] and replace it with pline_new
 			delete lines[iline_con_begin];
@@ -1566,8 +1575,6 @@ bool CoastLine::_merge(const LayerData & layerData)
 		}
 
 		if (iline_con_end >= 0){
-			
-
 			// the end point of lines_src[iline0] is connected with lines[iline_con_end]
 			pline_end = lines[iline_con_end];
 			vector<vec2> & pts = pline_end->pts;
@@ -1589,10 +1596,12 @@ bool CoastLine::_merge(const LayerData & layerData)
 				pline_new = new s_line;
 				*pline_new = line_src;
 			}
+
+			assert(pline_new->pts.back() == pts.front());
 			pline_new->pts.pop_back();
 			pline_new->pts_ecef.pop_back();
-			pline_new->pts.insert(pline_new->pts.end(), pts.begin(), pts.end());
-			pline_new->pts_ecef.insert(pline_new->pts_ecef.end(), pts_ecef.begin(), pts_ecef.end());
+			pline_new->pts.insert(pline_new->pts.end(), pts.begin()+1, pts.end());
+			pline_new->pts_ecef.insert(pline_new->pts_ecef.end(), pts_ecef.begin()+1, pts_ecef.end());
 			delete lines[iline_con_end];
 			lines[iline_con_end] = pline_new;
 		}
@@ -1601,9 +1610,6 @@ bool CoastLine::_merge(const LayerData & layerData)
 			pline_new = new s_line;
 			*pline_new = line_src;
 			lines.push_back(pline_new);
-			if (pline_new->pts.size() != line_src.pts.size() ||
-				pline_new->pts_ecef.size() != line_src.pts_ecef.size())
-				cout << "break";
 		}
 	}
 

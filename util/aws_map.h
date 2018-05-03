@@ -309,7 +309,7 @@ namespace AWSMap2 {
 
 	void unlock()
 	{
-		refcount++;
+		refcount--;
 	}
 
     // getPath(char*, unsigned int) returns the path string the length is less than the specified limit.
@@ -502,6 +502,14 @@ namespace AWSMap2 {
     virtual float resolution() const;
     virtual float radius() const; // returns radius of the object's distribution in meter
     virtual vec3 center() const; // returns center of the object's distribution
+	virtual void setCenter(const vec3 & _center)
+	{
+		pt_center = _center;
+	}
+	virtual void setRadius(const float _radius)
+	{
+		pt_radius = _radius;
+	}
 	virtual void print() const;
   };
 
@@ -543,6 +551,7 @@ namespace AWSMap2 {
 	  {
 		  return ptr;
 	  }
+
   };
 };
 

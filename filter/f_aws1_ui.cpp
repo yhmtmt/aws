@@ -361,10 +361,13 @@ bool f_aws1_ui::init_run()
     if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 8192))
       return false;
     
-    if (!oline3d.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 0x0001FFFF))
+    if (!oline3d.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 256))
       return false;
 
-    if(!init_map_mask())
+	if (!oline3d_map.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 0x0001FFFF))
+		return false;
+
+	if(!init_map_mask())
       return false;
   }
   
@@ -396,7 +399,7 @@ bool f_aws1_ui::init_run()
   if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
 	  return false;
   
-  if (!coast_line.init(&oline3d, clr, 4096))
+  if (!coast_line.init(&oline3d_map, clr, 4096))
 	  return false;
 
   glm::vec2 sz((float)(sz_fnt.x * 7), (float)(sz_fnt.y * 2)),
@@ -692,7 +695,7 @@ void f_aws1_ui::update_map()
     m_ch_map->set_center(pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
     m_ch_map->set_range((float)(2 * map_range));
     m_ch_map->set_resolution((float)(meter_per_pix/4.0));
-	cout << "meter_per_pix:" << meter_per_pix << " range:" << map_range << endl;
+	//cout << "meter_per_pix:" << meter_per_pix << " range:" << map_range << endl;
     m_ch_map->set_update();
     m_ch_map->unlock();
 	pt_prev_map_update = pt_map_center_ecef;
@@ -891,6 +894,7 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
   glUniform3fv(loc_Lpar, 1, glm::value_ptr(light));
 
   oline3d.render(pvm);
+  oline3d_map.render(pvm);
 
   // 2d rendering
   oline.render();

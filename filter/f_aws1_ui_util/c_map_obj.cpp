@@ -405,8 +405,12 @@ bool c_map_coast_line_obj::init(c_gl_line_obj * _poline, const glm::vec4 & _clr,
 bool c_map_coast_line_obj::update_points(list<AWSMap2::LayerDataPtr> & coast_lines)
 {
   // clear line object
+	/*
   for (auto itr = handle.begin(); itr != handle.end(); itr++)
     poline->remove(itr->handle);
+	*/
+	poline->clear();
+
   handle.clear();
 
   // add new lines
@@ -424,6 +428,7 @@ bool c_map_coast_line_obj::update_points(list<AWSMap2::LayerDataPtr> & coast_lin
   pts.reserve(128);
   int index = 0;
   for (auto itr = coast_lines.begin(); itr != coast_lines.end(); itr++){
+	  (*itr)->print();
     const AWSMap2::CoastLine & cl = dynamic_cast<const AWSMap2::CoastLine&>(**itr);
     unsigned int num_lines = cl.getNumLines();
     for (unsigned int iline = 0; iline < num_lines; iline++, index++){
