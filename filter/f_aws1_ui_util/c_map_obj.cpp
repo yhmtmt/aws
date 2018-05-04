@@ -74,7 +74,7 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
     pocirc->config_depth(hmarks[i].hmark, display_depth);
     pocirc->disable(hmarks[i].hmark);
     hmarks[i].hstr = potxt->reserv(20);
-    potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos, 0, 0);
+    potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos, 0, display_depth);
     potxt->disable(hmarks[i].hstr);
 
     {
@@ -257,7 +257,7 @@ bool c_map_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
 
     hmarks[i].hstr = potxt->reserv(64);
     potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0),
-      sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, 0);
+      sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, display_depth);
 
     float pts[4]={0, 0, 0, 0};
     

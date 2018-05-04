@@ -1336,7 +1336,7 @@ void c_indicator::create_sog_indicator(glm::vec2 & pos,
         snprintf(str, 4, "%d", iscl * 10);
         hstr_sog_scale[iscl] = potxt->reserv(2);
         potxt->set(hstr_sog_scale[iscl], str);
-        potxt->config(hstr_sog_scale[iscl], clr, glm::vec4(0, 0, 0, 0),
+        potxt->config(hstr_sog_scale[iscl], clr, glm::vec4(0, 0, 0, 0.5),
           sz_fnt, mgn_fnt, c_gl_text_obj::an_ct, pos_str, (float)(th - 0.5 * PI));
         potxt->config_depth(hstr_sog_scale[iscl], 0);
         potxt->enable(hstr_sog_scale[iscl]);
@@ -1435,7 +1435,7 @@ void c_indicator::create_rp_indicator(glm::vec2 & pos,
         char str[4];
         snprintf(str, 4, "%d", abs((ip - PITCH_STEP / 2) * 10));
         potxt->set(hstr_pscale[ip], str);
-        potxt->config(hstr_pscale[ip], clr, glm::vec4(0, 0, 0, 0),
+        potxt->config(hstr_pscale[ip], clr, glm::vec4(0, 0, 0, 0.5),
           sz_sfnt, mgn_sfnt, c_gl_text_obj::an_lc,
           pos_pscale[ip] + pos_rp, 0.f);
         potxt->enable(hstr_pscale[ip]);
@@ -1494,7 +1494,7 @@ void c_indicator::create_rp_indicator(glm::vec2 & pos,
         hstr_rscale[ir - 1] = potxt->reserv(3);
         snprintf(buf, 4, "%d", abs((ir - 10) * 10));
         potxt->set(hstr_rscale[ir - 1], buf);
-        potxt->config(hstr_rscale[ir - 1], clr, glm::vec4(0, 0, 0, 0),
+        potxt->config(hstr_rscale[ir - 1], clr, glm::vec4(0, 0, 0, 0.5),
           sz_sfnt, mgn_sfnt, c_gl_text_obj::an_ct, pos_str, (float)(-0.5 * PI + ths * i));
         potxt->enable(hstr_rscale[ir - 1]);
         ir--;
@@ -1757,7 +1757,7 @@ void c_indicator::create_time_indicator(int & _hclk, glm::vec2 & pos,
   buf[31] = '\0';
   _hclk = potxt->reserv(32);
   potxt->set(_hclk, buf);
-  potxt->config(_hclk, clr, glm::vec4(0, 0, 0, 0),
+  potxt->config(_hclk, clr, glm::vec4(0, 0, 0, 0.5),
 		sz_fnt, mgn_fnt, c_gl_text_obj::an_cb,
 		pos, 0.f);
   potxt->enable(_hclk);

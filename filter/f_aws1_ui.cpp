@@ -688,7 +688,7 @@ void f_aws1_ui::update_map()
   // bupdate_map is asserted when map_scale is changed or drawing object types are re-selected
   
   if (glm::distance(pt_prev_map_update, pt_map_center_ecef)
-      > 0.5 * map_range || bupdate_map){
+      > map_range || bupdate_map){
     // update map
 	  cout << "Updating map" << endl;
     m_ch_map->lock();
@@ -896,6 +896,10 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
   oline3d.render(pvm);
   oline3d_map.render(pvm);
 
+  if (pvm_box->get_mode() == ui_mode_map) {
+	  omap_mask.render();
+  }
+
   // 2d rendering
   oline.render();
   orect.render();
@@ -904,9 +908,6 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
   otxt.render(0);
  
   
-   if(pvm_box->get_mode() == ui_mode_map){
-    omap_mask.render();
-  }
  
   glUseProgram(0);
   // show rendering surface.
