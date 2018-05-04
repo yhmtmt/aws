@@ -39,7 +39,7 @@ const char * f_map::m_str_dtype[edt_undef] =
 
 const char * f_map::m_str_cmd[emc_undef] =
 {
-	"update", "add_data", "set_pos", "render", "save"
+	"update", "add_data", "set_pos", "render", "save", "check"
 };
 
 f_map::f_map(const char * name) :f_base(name), m_ch_map(NULL), m_dtype(edt_jpjis), 
@@ -123,10 +123,26 @@ bool f_map::proc()
   case emc_save:
 	  m_db.save();
 	  break;
+  case emc_check:
+	  check_data();
   }
   m_cmd = emc_undef;
 
   return true;
+}
+
+void f_map::check_data()
+{
+	AWSMap2::CoastLine cl;
+	cl.setCenter(m_ch_map->get_center());
+	cl.setRadius(m_ch_map->get_range());
+
+	const list<AWSMap2::LayerDataPtr> cls = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
+	for (auto itr = cls.begin(); itr != cls.end(); itr++) {
+		const AWSMap2::CoastLine & cld = dynamic_cast<const AWSMap2::CoastLine&>(**itr);
+
+		const_cast<AWSMap2::CoastLine*>(&cld)->merge(cl);
+	}
 }
 
 bool f_map::update_channel()
@@ -361,14 +377,31 @@ void f_map::render_data()
 			vector<Point2i> pts_wrld(pts.size());
 
 			auto iwpt = pts_wrld.begin();
+			bool binside = false;
 			for (auto ipt = pts.begin(); ipt != pts.end(); ipt++, iwpt++){
 				double wx, wy, wz;
 				eceftowrld(Rwrld, cecef.x, cecef.y, cecef.z, ipt->x, ipt->y, ipt->z, wx, wy, wz);
 				iwpt->x = (int)(scl * wx) + 512;
 				iwpt->y = -(int)(scl * wy) + 512;
+				if (iwpt->x < 1024 && iwpt->x > 0 && iwpt->y < 1024 && iwpt->y > 0) {
+					binside = true;
+				}
 			}
-
-			polylines(img, pts_wrld, false, Scalar(255, 255, 255));
+			/*
+			if (binside) {
+				cout << "line[" << id << "]:";
+				cout.precision(12);
+				cout << "bih (" <<pts_bih.front().x <<"," << pts_bih.front().y << ")-(" <<pts_bih.back().x << "," << pts_bih.back().y << ")";
+				cout << "ecef(" <<pts.front().x << "," <<pts.front().y <<  ")-(" << pts.back().x << "," << pts.back().y << ")";
+				cout << "wrld(" <<pts_wrld.front().x << "," << pts_wrld.front().y <<  ")-(" << pts_wrld.back().x << "," << pts_wrld.back().y << ")";
+				cout << endl;
+			}
+			*/
+			unsigned char r, g, b;
+			r = rand() % 128 + 128;
+			g = rand() % 128 + 128;
+			b = rand() % 128 + 128;
+			polylines(img, pts_wrld, false, Scalar(r, g, b));
 		}
 	}
 

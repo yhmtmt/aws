@@ -37,7 +37,7 @@ protected:
 	static const char * m_str_dtype[edt_undef];
 
 	enum e_map_cmd{
-		emc_update = 0, emc_add_data, emc_set_pos, emc_render, emc_save, emc_undef
+		emc_update = 0, emc_add_data, emc_set_pos, emc_render, emc_save, emc_check, emc_undef
 	} m_cmd;
 	static const char * m_str_cmd[emc_undef];
 
@@ -49,6 +49,7 @@ protected:
 	bool update_channel();
 	bool add_data();
 	void render_data();
+	void check_data();
 	void set_pos();
 	AWSMap2::LayerData * load_jpjis();
 
