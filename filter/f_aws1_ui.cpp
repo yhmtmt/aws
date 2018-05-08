@@ -907,8 +907,6 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
   ocirc.render();
   otxt.render(0);
  
-  
- 
   glUseProgram(0);
   // show rendering surface.
   glfwSwapBuffers(pwin());	
