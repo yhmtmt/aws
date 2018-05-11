@@ -175,6 +175,7 @@ using namespace cv;
 #include "filter/f_fep01.h"
 #include "filter/f_ahrs.h"
 #include "filter/f_map.h"
+#include "filter/f_router.h"
 #include "filter/f_time.h"
 #include "filter/f_aws1_ap.h"
 #include "filter/f_obj_manager.h"
@@ -355,6 +356,7 @@ void f_base::register_factory()
 	register_factory<f_obj_manager>("obj_manager");
 
 	register_factory<f_map>("map");
+	register_factory<f_router>("router");
 	register_factory<f_wp_manager>("wp_manager");
 #ifdef ORB_SLAM
 	// orb slam

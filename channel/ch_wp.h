@@ -276,4 +276,19 @@ public:
 	}
 };
 
+
+class ch_route :public ch_base
+{
+private:
+public:
+	ch_route(const char * name) : ch_base(name)
+	{
+	}
+
+	virtual ~ch_route()
+	{
+
+	}
+};
+
 #endif
