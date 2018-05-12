@@ -77,7 +77,6 @@ public:
 	enum e_cmd{
 		cmd_save, cmd_load, cmd_none
 	};
-
 protected:
 	e_cmd cmd;
 
