@@ -154,13 +154,13 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   register_fpar("crz", (int*)&crz_cm, (int)crz_undef, str_crz_cmd, "Command for CRZ mode.");
   // for aws1 
   crz_cmd_val[crz_stp] = 127;   // neutral
-  crz_cmd_val[crz_ds_ah] = 141; // 700rpm
+  crz_cmd_val[crz_ds_ah] = 152; // 700rpm
   crz_cmd_val[crz_sl_ah] = 200; //1000rpm
   crz_cmd_val[crz_hf_ah] = 210; //2500rpm
   crz_cmd_val[crz_fl_ah] = 220; //4500rpm
   crz_cmd_val[crz_nf] = 225;    //5200rpm
   
-  crz_cmd_val[crz_ds_as] =112; 
+  crz_cmd_val[crz_ds_as] =102; 
   crz_cmd_val[crz_sl_as] = 53;
   crz_cmd_val[crz_hf_as] = 43;
   crz_cmd_val[crz_fl_as] = 33;

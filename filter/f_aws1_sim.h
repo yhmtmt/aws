@@ -47,6 +47,7 @@ protected:
 		double lat, lon, xe, ye, ze, roll, pitch, yaw, cog, sog;		
 		Mat Rwrld;
 		float eng, rud, rev, fuel; 
+		float thro_pos, gear_pos, rud_pos;
 		s_state_vector(const long long & _t, const double & _lat, const double & _lon, const double & _roll,
 			const double & _pitch, const double & _yaw, const double & _cog, const double & _sog,
 			const float & _eng, const float & _rud, const float & _rev, const float & _fuel) :
@@ -57,7 +58,7 @@ protected:
 		}
 
 		s_state_vector() :lat(135.f), lon(35.f), roll(0.f), pitch(0.f), yaw(0.f), cog(0.f), sog(0.f),
-			eng(127.0f), rud(127.0f), rev(700.f), fuel(0.1f)
+			eng(127.0f), rud(127.0f), rev(700.f), fuel(0.1f), thro_pos(0.f), gear_pos(0), rud_pos(0)
 		{
 			update_coordinates();
 		}
@@ -87,22 +88,68 @@ protected:
 
 	float m_rud_sta_sim;
 	float m_trud_swing; // in second
+	float m_tgear_swing; // in second
+	float m_tthro_swing; // in second
 	float m_spd_rud_swing; // rud_sta value per 100n second
-	void simulate_rudder(long long tcur, long long tprev);
-
-	float m_thrtl_eng; // engine throttle
-	float m_rpm_eng;   // engine rpm
-	void simulate_engine(long long tcur, long long trepv);
+	float m_spd_gear_swing; 
+	float m_spd_thro_swing;
+	float m_rud_pos; // [-1:1]
+	float m_gear_pos; //[-1:1]
+	float m_thro_pos; //[0:1]
+	float m_tau_sog; // time constant for final value of sog by rev
 
 	float m_mass;	
-	void simulate_dynamics(long long tcur, long long tprev);
 	
 	void set_control_input();
 	void set_control_output();
 	void set_input_state_vector(const long long & tcur);
 	void set_output_state_vector();
 
-	void simulate(const long long tsim, const int iosv);
+	void simulate(const long long tcur, const int iosv);
+	void simulate_rudder(const float rud, const float rud_pos, float & rud_pos_next);
+	void simulate_engine(const float eng, const float eng_pos, const float gear_pos, float & eng_pos_next, float & gear_pos_next);
+	const float final_rev(const float thr_pos)
+	{
+		if (thr_pos < 0.417)
+			return 700;
+		if (thr_pos < 0.709)
+			return (5000 - 700) * (thr_pos - 0.417) / (0.709 - 0.417) + 700;
+		if (thr_pos < 0.854)
+			return (5600 - 5000) * (thr_pos - 0.709) / (0.854 - 0.709) + 5000;
+		return 5600;
+	}
+
+	float simulate_sog(const float gear_pos, const float rev,  const float sog) {
+		// speed over ground is modeled as first order differential equation.
+		// sog_final = sog + tau (d sog/d t) ---(1)
+		// (1) is transformed as
+		// sog_final = sog_next  + tau (sog_next - sog_prev) / delta_t
+		// here delta_t is m_int_smpl_sec, then we can solve the equation for sog
+		// sog_next = [sog_prev + (delta_t / tau) sog_final]/[1 + (delta_t / tau)]
+		float sog_final = final_sog(gear_pos, rev);
+		float tdt = (float)((float)m_int_smpl_sec / m_tau_sog );
+		return (float)(sog  + tdt * sog_final) / (1.0f + tdt);
+	}
+
+	float final_sog(const float gear_pos, const float rev)
+	{
+		if (gear_pos <= -1.f) {
+			return 2.5f;
+		}
+		else if (gear_pos >= 1.f) {
+			if (rev < 700)
+				return 2.5f;
+			if (rev < 3500)
+				return (float)((11.f - 2.5f)*(rev - (float)700) / (double)(3500 - 700) + 2.5f);
+			if(rev < 4800)
+				return (float)((19.5f - 11.f)*(rev - (float)3500) / (double)(4800 - 3500) + 11.f);
+			if (rev < 5500)
+				return (float)((22.5f - 19.5f)*(rev - (float)4800) / (double)(5500 - 4800) + 19.5f);
+			return 22.5f;
+		}
+
+		return 0.0f;
+	}
 
 	bool m_bcsv_out;
 	char m_fcsv_out[1024];

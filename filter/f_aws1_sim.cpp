@@ -45,7 +45,10 @@ f_aws1_sim::f_aws1_sim(const char * name) :
 	m_state(NULL), m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL),
 	m_ch_ctrl_stat(NULL),
 	m_state_sim(NULL), m_engstate_sim(NULL), m_ch_ctrl_stat_sim(NULL),
-	m_rud_sta_sim(0.f), m_trud_swing((float)(5.0)), m_tprev(0), m_bcsv_out(false), m_int_smpl_sec(0.1), m_wismpl(100), m_wosmpl(100)
+	m_rud_sta_sim(0.f), m_trud_swing((float)(5.0)), 
+	m_tgear_swing((float)(2.0)), m_tthro_swing((float)(2.0)),
+	m_rud_pos(0.f), m_gear_pos(0.f), m_thro_pos(0.f), m_tau_sog(5.0),
+	m_tprev(0), m_bcsv_out(false), m_int_smpl_sec(0.1), m_wismpl(100), m_wosmpl(100)
 {
 	// input channels for simulation results
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
@@ -145,7 +148,10 @@ f_aws1_sim::f_aws1_sim(const char * name) :
   register_fpar("rud_sta_out", &m_ctrl_stat.rud_sta_out, "Output value for rudder status.");
   
   register_fpar("trud_swing", &m_trud_swing, "Full swing duration of aws1 rudder");
- 
+  register_fpar("tgear_swing", &m_tgear_swing, "Half swing duration of aws1 gear");
+  register_fpar("tthro_swing", &m_tthro_swing, "Full swing duration of aws1 throttle");
+  register_fpar("tau_sog", &m_tau_sog, "Time constant for sog to its final value.");
+
   m_fcsv_out[0] = '\0';
   register_fpar("fcsv", m_fcsv_out, 1024, "CSV output file.");
 
@@ -154,7 +160,9 @@ f_aws1_sim::f_aws1_sim(const char * name) :
 bool f_aws1_sim::init_run()
 {
   int rud_val_swing = abs((int)m_ctrl_stat.rud_sta_max - (int)m_ctrl_stat.rud_sta_min);
-  float m_spd_rud_swing = (float)(((double)rud_val_swing / m_trud_swing) * SEC);
+  float m_spd_rud_swing = (float)(((double)2.0 / m_trud_swing) * (double)(SEC*m_int_smpl));
+  float m_spd_gear_swing = (float)((double)(1.0 / m_tgear_swing) * (double)(SEC*m_int_smpl));
+  float m_spd_thro_swing = (float)((double)(1.0 / m_tthro_swing) * (double)(SEC*m_int_smpl));
 
   m_int_smpl = (unsigned int)(m_int_smpl_sec * SEC);
 
@@ -273,34 +281,77 @@ void f_aws1_sim::set_control_output()
   }
 }
 
-void f_aws1_sim::simulate_rudder(long long tcur, long long tprev)
+void f_aws1_sim::simulate_rudder(const float rud, const float rud_pos, float & rud_pos_next)
 {
 	// Rudder response simulation
-  unsigned rud_inst = map_oval(m_ctrl_stat.rud,
-			       m_ctrl_stat.rud_max, m_ctrl_stat.rud_nut, m_ctrl_stat.rud_min,
-			       m_ctrl_stat.rud_sta_max, m_ctrl_stat.rud_sta_nut, m_ctrl_stat.rud_sta_min);
-  long long tdiff = tcur - tprev;
-  if (rud_inst > m_ctrl_stat.rud_sta){
-    m_rud_sta_sim += tdiff * m_spd_rud_swing;
+  double tgt_rud = (double)(m_ctrl_stat.rud - 0x7f)*(1.0f / 255.f);
+
+  if(fabs(tgt_rud) > rud_pos){
+	  if (tgt_rud > rud_pos)
+		  rud_pos_next = rud_pos + m_spd_rud_swing;
+	  else
+		  rud_pos_next = rud_pos - m_spd_rud_swing;
   }
-  else{
-    m_rud_sta_sim -= tdiff * m_spd_rud_swing;
+  else {
+	  rud_pos_next = tgt_rud;
   }
-  
-  m_ctrl_stat.rud_sta = (unsigned char)m_rud_sta_sim;
 }
 
 
-void f_aws1_sim::simulate_engine(long long tcur, long long tprev)
+void f_aws1_sim::simulate_engine(const float eng, const float thro_pos, const float gear_pos, float & thro_pos_next, float & gear_pos_next)
 {
+	const int fpos = 0x7f + 0x19;
+	const int fthrange = 255 - fpos;
+	const int bpos = 0x7f - 0x19;
+	const int bthrange = bpos;
+
+  if (bpos >= eng) {
+	  if (gear_pos > -1.0) {
+		  gear_pos_next = gear_pos - m_spd_gear_swing;
+		  gear_pos_next = max(gear_pos_next, -1.0f);
+	  }
+	  else {
+		  float tgt_thro_pos = ((float)(((float)bpos - m_sv_cur.eng)/(float)bthrange));
+		  if (fabs(thro_pos) >= m_spd_thro_swing) {
+			  if (thro_pos < tgt_thro_pos)
+				  thro_pos_next = thro_pos + m_spd_thro_swing;
+			  else
+				  thro_pos_next = thro_pos - m_spd_thro_swing;
+		  }
+		  else
+			  thro_pos_next = thro_pos;
+	  }
+  }
+  else if (fpos <= eng) {
+	  if (gear_pos < 1.0) {
+		  gear_pos_next = gear_pos + m_spd_gear_swing;
+		  gear_pos_next = min(gear_pos_next, 1.0f);
+	  }
+	  else {
+		  float tgt_thro_pos = (float)((m_sv_cur.eng - (float)fpos)/(float)fthrange);
+		  if (fabs(thro_pos) >= m_spd_thro_swing) {
+			  if (thro_pos < tgt_thro_pos)
+				  thro_pos_next = thro_pos + m_spd_thro_swing;
+			  else
+				  thro_pos_next = thro_pos - m_spd_thro_swing;
+		  }
+	  }
+  }
+  else {
+	  if (fabs(gear_pos) < m_spd_gear_swing)
+		  gear_pos_next = 0.f;
+	  else if (m_gear_pos < 0)
+		  gear_pos_next = gear_pos + m_spd_gear_swing;
+	  else
+		  gear_pos_next = gear_pos + m_spd_gear_swing;
+  }
+
   // to calculate engine rpm, we need to know
   // 1. log speed or engine load  (not available) 
   // 2. engine control value
   // But the first one is not available because we do not have sensors for it.
   // So we assume that the log speed is the same as speed over ground,
   // in other words, the sea current is zero.
-
-  long long tdiff = tcur - tprev;
 
   // Np: Propeller rotations per sec
   // G: Gear ratio
@@ -342,11 +393,6 @@ void f_aws1_sim::simulate_engine(long long tcur, long long tprev)
   //
 }
 
-void f_aws1_sim::simulate_dynamics(long long tcur, long long tprev)
-{
-  simulate_rudder(tcur, tprev);
-  simulate_engine(tcur, tprev);
-}
 
 void f_aws1_sim::set_input_state_vector(const long long & tcur)
 {
@@ -482,19 +528,31 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
 	// here the simulation data
 	for (int iosv = 0; iosv < m_wosmpl; iosv++) {
 		// simulation at tcur + ios * m_int_smpl using m_wismpl past samples.
-		simulate(tcur + iosv * m_int_smpl, iosv);
+		simulate(tcur, iosv);
 	}
 }
 
-void f_aws1_sim::simulate(const long long tsim, const int iosv)
+void f_aws1_sim::simulate(const long long tcur, const int iosv)
 {
+	long long tsim = tcur + iosv * m_int_smpl;
 	// in the current implementation, output is same as the input. 
 	// here we should insert simulation code
 	if (iosv == 0) {
-		m_output_vectors[iosv] = m_input_vectors[m_iv_head];
-	}
-	else {
-		m_output_vectors[iosv] = m_output_vectors[iosv - 1];
+		s_state_vector & stprev = m_input_vectors[m_iv_head];
+		s_state_vector & stcur = m_output_vectors[iosv];
+		stcur = stprev;
+		simulate_engine(stprev.eng, stprev.thro_pos, stprev.gear_pos, stcur.thro_pos, stcur.gear_pos);
+		simulate_rudder(stprev.rud, stprev.rud_pos, stcur.rud_pos);
+		stcur.rev = final_rev(stcur.thro_pos);
+		stcur.sog = simulate_sog(stcur.gear_pos, stcur.rev, stprev.sog);
+	}else{
+		s_state_vector & stprev = m_output_vectors[iosv-1];
+		s_state_vector & stcur = m_output_vectors[iosv];
+		stcur = stprev;
+		simulate_engine(stprev.eng, stprev.thro_pos, stprev.gear_pos, stcur.thro_pos, stcur.gear_pos);
+		simulate_rudder(stprev.rud, stprev.rud_pos, stcur.rud_pos);
+		stcur.rev = final_rev(stcur.thro_pos);
+		stcur.sog = simulate_sog(stcur.gear_pos, stcur.rev, stprev.sog);
 	}
 }
 
