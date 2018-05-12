@@ -35,12 +35,12 @@ using namespace cv;
 
 #include "f_router.h"
 
-f_router::f_router(const char * name) : f_base(name), ch_state(NULL), ch_wp(NULL), ch_map(NULL), ch_route(NULL)
+f_router::f_router(const char * name) : f_base(name), m_state(NULL), m_wp(NULL), m_map(NULL), m_route(NULL)
 {
-	register_fpar("ch_state", (ch_base**)&ch_state, typeid(ch_state).name(), "State channel");
-	register_fpar("ch_wp", (ch_base**)&ch_wp, typeid(ch_wp).name(), "Waypoint channel");
-	register_fpar("ch_map", (ch_base**)&ch_map, typeid(ch_map).name(), "Map channel");
-	register_fpar("ch_route", (ch_base**)&ch_route, typeid(ch_route).name(), "Route channel");
+	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
+	register_fpar("ch_wp", (ch_base**)&m_wp, typeid(ch_wp).name(), "Waypoint channel");
+	register_fpar("ch_map", (ch_base**)&m_map, typeid(ch_map).name(), "Map channel");
+	register_fpar("ch_route", (ch_base**)&m_route, typeid(ch_route).name(), "Route channel");
 }
 
 f_router::~f_router()

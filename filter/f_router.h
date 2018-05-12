@@ -23,10 +23,10 @@
 class f_router : public f_base
 {
 protected:
-	ch_state * ch_state;
-	ch_wp * ch_wp;
-	ch_map * ch_map;
-	ch_route * ch_route;
+	ch_state * m_state;
+	ch_wp * m_wp;
+	ch_map * m_map;
+	ch_route * m_route;
 public:
 	f_router(const char * name);
 	virtual ~f_router();
