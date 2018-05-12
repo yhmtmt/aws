@@ -93,9 +93,6 @@ protected:
 	float m_spd_rud_swing; // rud_sta value per 100n second
 	float m_spd_gear_swing; 
 	float m_spd_thro_swing;
-	float m_rud_pos; // [-1:1]
-	float m_gear_pos; //[-1:1]
-	float m_thro_pos; //[0:1]
 	float m_tau_sog; // time constant for final value of sog by rev
 
 	float m_mass;	

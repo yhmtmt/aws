@@ -46,8 +46,7 @@ f_aws1_sim::f_aws1_sim(const char * name) :
 	m_ch_ctrl_stat(NULL),
 	m_state_sim(NULL), m_engstate_sim(NULL), m_ch_ctrl_stat_sim(NULL),
 	m_rud_sta_sim(0.f), m_trud_swing((float)(5.0)), 
-	m_tgear_swing((float)(2.0)), m_tthro_swing((float)(2.0)),
-	m_rud_pos(0.f), m_gear_pos(0.f), m_thro_pos(0.f), m_tau_sog(5.0),
+	m_tgear_swing((float)(2.0)), m_tthro_swing((float)(2.0)), m_tau_sog(5.0),
 	m_tprev(0), m_bcsv_out(false), m_int_smpl_sec(0.1), m_wismpl(100), m_wosmpl(100)
 {
 	// input channels for simulation results
@@ -179,7 +178,9 @@ bool f_aws1_sim::init_run()
 	  // first row of the csv file
 	  m_fcsv <<
 		  "t,lat_o,lon_o,xe_o,ye_o,ze_o,roll_o,pitch_o,yaw_o,sog_o,cog_o,eng_o,rud_o,rev_o,fuel_o,"
-		  <<"lat_i,lon_i,xe_i,ye_i,ze_i,roll_i,pitch_i,yaw_i,sog_i,cog_i,eng_i,rud_i,rev_i,fuel_i," << endl;
+		  << "thro,gear,rud,"
+		  <<"lat_i,lon_i,xe_i,ye_i,ze_i,roll_i,pitch_i,yaw_i,sog_i,cog_i,eng_i,rud_i,rev_i,fuel_i," 
+		  << endl;
 	  m_fcsv.precision(3);
   }
 
@@ -340,7 +341,7 @@ void f_aws1_sim::simulate_engine(const float eng, const float thro_pos, const fl
   else {
 	  if (fabs(gear_pos) < m_spd_gear_swing)
 		  gear_pos_next = 0.f;
-	  else if (m_gear_pos < 0)
+	  else if (gear_pos < 0)
 		  gear_pos_next = gear_pos + m_spd_gear_swing;
 	  else
 		  gear_pos_next = gear_pos + m_spd_gear_swing;
@@ -581,6 +582,10 @@ void f_aws1_sim::save_csv(const long long tcur)
 		svo.rud << "," <<
 		svo.rev << "," <<
 		svo.fuel << ",";
+	m_fcsv <<
+		svo.thro_pos << "," <<
+		svo.gear_pos << "," <<
+		svo.rud_pos << ",";
 
 	m_fcsv.precision(8);
 	m_fcsv <<
@@ -600,7 +605,9 @@ void f_aws1_sim::save_csv(const long long tcur)
 		svi.eng << "," <<
 		svi.rud << "," <<
 		svi.rev << "," <<
-		svi.fuel << "," << endl;
+		svi.fuel << ",";
+
+	m_fcsv << endl;
 }
 
 bool f_aws1_sim::proc()
