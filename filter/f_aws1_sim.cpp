@@ -158,10 +158,10 @@ f_aws1_sim::f_aws1_sim(const char * name) :
 
 bool f_aws1_sim::init_run()
 {
-  int rud_val_swing = abs((int)m_ctrl_stat.rud_sta_max - (int)m_ctrl_stat.rud_sta_min);
-  float m_spd_rud_swing = (float)(((double)2.0 / m_trud_swing) * (double)(SEC*m_int_smpl));
-  float m_spd_gear_swing = (float)((double)(1.0 / m_tgear_swing) * (double)(SEC*m_int_smpl));
-  float m_spd_thro_swing = (float)((double)(1.0 / m_tthro_swing) * (double)(SEC*m_int_smpl));
+ // int rud_val_swing = abs((int)m_ctrl_stat.rud_sta_max - (int)m_ctrl_stat.rud_sta_min);
+  m_spd_rud_swing = (float)((double)(2.0 / m_trud_swing) * (double)(m_int_smpl_sec));
+  m_spd_gear_swing = (float)((double)(1.0 / m_tgear_swing) * (double)(m_int_smpl_sec));
+  m_spd_thro_swing = (float)((double)(1.0 / m_tthro_swing) * (double)(m_int_smpl_sec));
 
   m_int_smpl = (unsigned int)(m_int_smpl_sec * SEC);
 
@@ -227,6 +227,9 @@ void f_aws1_sim::set_control_input()
   default:
     break;
   }
+  m_sv_cur.thro_pos = m_output_vectors[0].thro_pos;
+  m_sv_cur.gear_pos = m_output_vectors[0].gear_pos;
+  m_sv_cur.rud_pos = m_output_vectors[0].rud_pos;
 }
 
 
@@ -285,9 +288,9 @@ void f_aws1_sim::set_control_output()
 void f_aws1_sim::simulate_rudder(const float rud, const float rud_pos, float & rud_pos_next)
 {
 	// Rudder response simulation
-  double tgt_rud = (double)(m_ctrl_stat.rud - 0x7f)*(1.0f / 255.f);
+  double tgt_rud = (double) (rud - 0x7f)*(2.0f / 255.f);
 
-  if(fabs(tgt_rud) > rud_pos){
+  if(fabs(tgt_rud-rud_pos) < m_spd_rud_swing){
 	  if (tgt_rud > rud_pos)
 		  rud_pos_next = rud_pos + m_spd_rud_swing;
 	  else
@@ -313,7 +316,7 @@ void f_aws1_sim::simulate_engine(const float eng, const float thro_pos, const fl
 	  }
 	  else {
 		  float tgt_thro_pos = ((float)(((float)bpos - m_sv_cur.eng)/(float)bthrange));
-		  if (fabs(thro_pos) >= m_spd_thro_swing) {
+		  if (fabs(thro_pos-tgt_thro_pos) >= m_spd_thro_swing) {
 			  if (thro_pos < tgt_thro_pos)
 				  thro_pos_next = thro_pos + m_spd_thro_swing;
 			  else
@@ -330,7 +333,7 @@ void f_aws1_sim::simulate_engine(const float eng, const float thro_pos, const fl
 	  }
 	  else {
 		  float tgt_thro_pos = (float)((m_sv_cur.eng - (float)fpos)/(float)fthrange);
-		  if (fabs(thro_pos) >= m_spd_thro_swing) {
+		  if (fabs(thro_pos-tgt_thro_pos) >= m_spd_thro_swing) {
 			  if (thro_pos < tgt_thro_pos)
 				  thro_pos_next = thro_pos + m_spd_thro_swing;
 			  else
