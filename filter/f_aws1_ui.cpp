@@ -1667,6 +1667,7 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
       break;
     case c_route_cfg_box::wp_del:
       m_ch_wp->ers();
+	  fwp = m_ch_wp->get_focused_wp();
       break;
     case c_route_cfg_box::rt_prev:
       rt = m_ch_wp->get_route_id();
