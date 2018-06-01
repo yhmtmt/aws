@@ -290,7 +290,7 @@ void f_aws1_sim::simulate_rudder(const float rud, const float rud_pos, float & r
 	// Rudder response simulation
   double tgt_rud = (double) (rud - 0x7f)*(2.0f / 255.f);
 
-  if(fabs(tgt_rud-rud_pos) < m_spd_rud_swing){
+  if(fabs(tgt_rud-rud_pos) > m_spd_rud_swing){
 	  if (tgt_rud > rud_pos)
 		  rud_pos_next = rud_pos + m_spd_rud_swing;
 	  else

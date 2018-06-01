@@ -26,6 +26,152 @@
 //////////////////////////////////////////////////////// f_aws1_sim
 #define RUD_PER_CYCLE 0.45f
 
+class c_model_3dof
+{
+private:
+	double xg, yg, iz;
+	double m; // mass matrix
+	double ma[9]; // added mass matrix
+	double dl[9]; // linear drag matrix
+	double dq[9]; // quadratic drag matrix
+
+	Mat M;
+	Mat Minv;
+	Mat Dl;
+	Mat Dq;
+	Mat V;
+	Mat C;
+
+	double mxx;
+	double myy;
+	double mxg;
+	double ny;
+
+	double v[3]; // state vector (u, v, r)
+public:
+	c_model_3dof():xg(0), yg(0)
+	{
+		for (int i = 0; i < 9; i++)
+			ma[i] = dl[i] = dq[i] = 0;
+	}
+
+	~c_model_3dof()
+	{
+	}
+
+	double & Iz()
+	{
+		return iz;
+	}
+
+	double & xgrav()
+	{
+		return xg;
+	}
+
+	double & ygrav()
+	{
+		return yg;
+	}
+
+	double & mass()
+	{
+		return m;
+	}
+
+	double & mass_a(int i, int j)
+	{
+		return ma[i * 3 + j];
+	}
+
+	double & drag_l(int i, int j)
+	{
+		return dl[i * 3 + j];
+	}
+
+	double & drag_q(int i, int j)
+	{
+		return dq[i * 3 + j];
+	}
+
+	void init_matrix()
+	{
+		M = Mat::zeros(3, 3, CV_64FC1);
+		double * data = M.ptr<double>();
+		
+		for (int i = 0; i < 9; i++)
+			data[i] = ma[i];
+		data[0] += m;
+		data[4] += m; 
+		data[8] += iz;
+
+		mxx = data[0];
+		myy = data[4];
+		mxg = m * xg;
+		ny = (ma[5] + ma[7]) * 0.5;
+
+		Dl = Mat::zeros(3, 3, CV_64FC1);
+		data = Dl.ptr<double>();
+		for (int i = 0; i < 9; i++) {
+			data[i] = dl[i];		
+		}
+
+		Dq = Mat::zeros(3, 3, CV_64FC1);
+		C = Mat(3, 3, CV_64FC1);
+
+		V = Mat(3, 1, CV_64FC1, v);	
+	}
+
+	void set_state(const double * _v)
+	{
+		v[0] = _v[0];
+		v[1] = _v[1];
+		v[2] = _v[2];
+	}
+
+	void get_sate(double * _v)
+	{
+		_v[0] = v[0];
+		_v[1] = v[1];
+		_v[2] = v[2];
+	}
+
+	bool update_state(double * f, const double dt)
+	{
+		if (Dq.empty() || M.empty() || Dl.empty()) {
+			cerr << "Matrix should be initialized!" << endl;
+			return false;
+		}
+		// initializing quadratic drag
+		double * data = Dq.ptr<double>();
+		for (int i = 0; i < 9; i++) {
+			data[i] = v[i % 3] * dq[i];
+		}
+		data = C.ptr<double>();
+
+		double * mdata = M.ptr<double>();
+		double mxxu = mxx * v[0];
+		double myyv = myy * v[1];
+		double mxgr = mxg * v[2];
+		double nyr = ny * v[2];
+		data[2] = -mxgr - myyv + nyr;
+		data[5] = mxxu;
+		data[6] = -data[2];
+		data[7] = -data[5];
+
+		Mat T(3, 1, CV_64FC1, f);
+		Mat Vnext;
+		Vnext = V + M.inv() * (T + (C + Dl + Dq) * V) * dt;
+
+		data = Vnext.ptr<double>();
+		v[0] = data[0];
+		v[1] = data[1];
+		v[2] = data[2];
+
+		return true;
+	}
+};
+
 class f_aws1_sim : public f_base
 {
 protected:
