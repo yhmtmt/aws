@@ -1004,6 +1004,7 @@ bool f_aws1_ui::proc()
   calc_mouse_enu_and_ecef_pos(pvm_box->get_mode(), Rown,
 			      lat, lon, xown, yown, zown, yaw);
   if (event_handled){
+	  clear_mouse_state(prc_box);
     handle_updated_ui_box(pvm_box, pcm_box, pmc_box, prc_box);
   }
   else{
@@ -1404,7 +1405,7 @@ void f_aws1_ui::handle_base_mouse_event(c_view_mode_box * pvm_box, c_ctrl_mode_b
     else if (mouse_action == GLFW_RELEASE){
       handle_mouse_lbtn_release(pvm_box, pcm_box, pmc_box, prc_box);
     }
-    clear_mouse_state();
+    clear_mouse_event();
   }
   else{
     handle_mouse_mv(pvm_box, pcm_box, pmc_box, prc_box);
@@ -1451,17 +1452,17 @@ void f_aws1_ui::handle_mouse_lbtn_release(c_view_mode_box * pvm_box,
 	add_waypoint(prc_box);
       }
     prc_box->command_processed(c_route_cfg_box::wp_add);
-    mouse_state = ms_normal;
     break;
   case ms_drag:   
     handle_mouse_drag(pvm_box, obj_tmp);
     dir_cam_hdg += dir_cam_hdg_drag;
     dir_cam_hdg_drag = 0.f;
-    mouse_state = ms_normal;
     break;
   case ms_normal:
     break;
   }
+
+  clear_mouse_state(prc_box);
 }
 
 void f_aws1_ui::handle_mouse_mv(c_view_mode_box * pvm_box,
@@ -1512,7 +1513,7 @@ void f_aws1_ui::handle_updated_ui_box(c_view_mode_box * pvm_box, c_ctrl_mode_box
   
   ocsr.enable_arrow();
   ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
-  clear_mouse_state();
+  clear_mouse_event();
 }
 
 
