@@ -183,7 +183,7 @@ public:
 	void set_focus(int i)
 	{
 		int j;
-		for(j = 0, itr_focus = wps.begin(); itr_focus != wps.end() && j < i; j++);
+		for(j = 0, itr_focus = wps.begin(); itr_focus != wps.end() && j < i; j++, itr_focus++);
 		focus = j;
 	}
 
