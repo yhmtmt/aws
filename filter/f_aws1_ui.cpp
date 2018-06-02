@@ -932,6 +932,7 @@ bool f_aws1_ui::proc()
   if(m_js.id != -1){
     m_js.set_btn();
     m_js.set_stk();
+    //    m_js.print(cout);
   }
 
   if (m_js.estart & s_jc_u3613m::EB_EVUP)
