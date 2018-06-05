@@ -136,33 +136,46 @@ public:
 		_v[2] = v[2];
 	}
 
-	bool update_state(double * f, const double dt)
+	bool update_state(double * f /* x-y force and z moment applied */, 
+		const double dt /* time step */)
 	{
 		if (Dq.empty() || M.empty() || Dl.empty()) {
 			cerr << "Matrix should be initialized!" << endl;
 			return false;
 		}
+
 		// initializing quadratic drag
+		// q00|v0| q01|v1| q02|v2|
+		// q10|v0| q11|v1| q12|v2|
+		// q20|v0| q21|v1| q22|v2|
 		double * data = Dq.ptr<double>();
 		for (int i = 0; i < 9; i++) {
-			data[i] = v[i % 3] * dq[i];
+			data[i] = abs(v[i % 3]) * dq[i];
 		}
-		data = C.ptr<double>();
 
+		// initializing coriolis and centrifugal force matrix
+		data = C.ptr<double>();
 		double * mdata = M.ptr<double>();
 		double mxxu = mxx * v[0];
 		double myyv = myy * v[1];
 		double mxgr = mxg * v[2];
 		double nyr = ny * v[2];
-		data[2] = -mxgr - myyv + nyr;
-		data[5] = mxxu;
-		data[6] = -data[2];
-		data[7] = -data[5];
+		data[2] = -mxgr - myyv + nyr; // c02
+		data[5] = mxxu;               // c12
+		data[6] = -data[2];           // c20
+		data[7] = -data[5];           // c21
 
+		// initializing force vector T
 		Mat T(3, 1, CV_64FC1, f);
-		Mat Vnext;
-		Vnext = V + M.inv() * (T + (C + Dl + Dq) * V) * dt;
 
+		// Calculating next velocity
+		// Mv'+(C+Dl+Dq)v=T
+		// v'=M^-1 * (T-(C+Dl+Dq)v)
+		// v=v+v'dt
+		Mat Vnext;
+		Vnext = V + M.inv() * (T - (C + Dl + Dq) * V) * dt;
+
+		// Updating velocity
 		data = Vnext.ptr<double>();
 		v[0] = data[0];
 		v[1] = data[1];
