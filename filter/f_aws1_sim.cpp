@@ -530,9 +530,46 @@ void f_aws1_sim::init_output_sample()
 void f_aws1_sim::update_output_sample(const long long & tcur)
 {
 	// here the simulation data
-	for (int iosv = 0; iosv < m_wosmpl; iosv++) {
-		// simulation at tcur + ios * m_int_smpl using m_wismpl past samples.
-		simulate(tcur, iosv);
+
+	double dt = (double) m_int_smpl / (double) SEC;
+	for (int iosv = 0; iosv < m_wosmpl; iosv++) {		
+		s_state_vector & stprev = (iosv == 0 ? m_input_vectors[m_iv_head] : m_output_vectors[iosv-1]);
+		s_state_vector & stcur = m_output_vectors[iosv];
+
+		// simulate actuator and pump
+		simulate_engine(stprev.eng, stprev.thro_pos, stprev.gear_pos, stcur.thro_pos, stcur.gear_pos);
+		simulate_rudder(stprev.rud, stprev.rud_pos, stcur.rud_pos);
+
+		double v[3];
+		double f[3];
+		double phi = (stprev.cog - stprev.yaw) * (PI / 180.);
+		double th = stprev.cog * (PI / 180.);
+
+		double sog_ms = stprev.sog * (1852. / 3600.);
+		double dx = sog_ms * dt * sin(th), dy = sog_ms * dt * cos(th); //next position in enu coordinate
+		double alt = 0.;
+		wrldtoecef(stprev.Rwrld, stprev.xe, stprev.ye, stprev.ze, dx, dy, 0., stcur.xe, stcur.ye, stcur.ze);
+		eceftobih(stcur.xe, stcur.ye, stcur.ze, stcur.lat, stcur.lon, alt);
+		stcur.lat *= 180. / PI;
+		stcur.lon *= 180. / PI;
+
+		v[0] = sog_ms * cos(phi);
+		v[1] = sog_ms * sin(phi);
+		v[2] = stprev.ryaw * (PI / 180.);
+
+		mobf.update(stprev.rud_pos, stprev.gear_pos, stprev.thro_pos, stprev.rev, dt, f);
+
+		m3dof.set_state(v);
+		m3dof.update_state(f, dt);
+		m3dof.get_state(v);
+
+		phi = atan2(v[0], v[1]);
+		stcur.yaw += v[2] * dt * (180. / PI);
+		stcur.cog = stcur.yaw + phi * (180. / PI);
+		stcur.sog = sqrt(v[0] * v[0] + v[1] * v[1]) * (3600. / 1852.);
+
+// simulation at tcur + ios * m_int_smpl using m_wismpl past samples.
+//		simulate(tcur, iosv);
 	}
 }
 

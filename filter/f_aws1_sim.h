@@ -26,11 +26,53 @@
 //////////////////////////////////////////////////////// f_aws1_sim
 #define RUD_PER_CYCLE 0.45f
 
+class c_model_outboard_force
+{
+private:
+	double xr, yr; // rudder position from rotation center
+public:
+	c_model_outboard_force() :xr(0.f), yr(-3.f)
+	{
+	}
+
+	~c_model_outboard_force()
+	{
+	}
+
+	double & xrud()
+	{
+		return xr;
+	}
+
+	double & yrud()
+	{
+		return yr;
+	}
+
+
+	void update(const double _rud, const double _gear, const double _thro, const double _rev, const double dt, double * f)
+	{
+		// update rev
+		// calculate thrust angle phi (positive toward port)
+		double phi = 0.;
+
+		// calculate x, y thrust force T(v, rev), and decompose Tx = T cos phi, Ty=T sin phi
+		double T = 0.;
+		double Tx = cos(phi) * T, Ty = sin(phi) * T;
+
+		// calculate disturbance Dx(vx,vy,rev), Dy(vx,vy,rev)
+		double Dx = 0., Dy = 0.;
+
+		// calculate moment xr * Ty + yr * Ty
+		double N = xr * (Ty + Dy) + yr * (Tx * Dx);
+	}
+};
+
 class c_model_3dof
 {
 private:
 	double xg, yg, iz;
-	double m; // mass matrix
+	double m;     // mass
 	double ma[9]; // added mass matrix
 	double dl[9]; // linear drag matrix
 	double dq[9]; // quadratic drag matrix
@@ -129,7 +171,7 @@ public:
 		v[2] = _v[2];
 	}
 
-	void get_sate(double * _v)
+	void get_state(double * _v)
 	{
 		_v[0] = v[0];
 		_v[1] = v[1];
@@ -188,6 +230,9 @@ public:
 class f_aws1_sim : public f_base
 {
 protected:
+	c_model_outboard_force mobf;
+	c_model_3dof m3dof;
+
 	// input channels
 	ch_state * m_state;
 	ch_eng_state * m_engstate;
@@ -203,7 +248,7 @@ protected:
 
 	struct s_state_vector {
 		long long t;
-		double lat, lon, xe, ye, ze, roll, pitch, yaw, cog, sog;		
+		double lat, lon, xe, ye, ze, roll, pitch, yaw, cog, sog, ryaw;		
 		Mat Rwrld;
 		float eng, rud, rev, fuel; 
 		float thro_pos, gear_pos, rud_pos;
@@ -211,7 +256,7 @@ protected:
 			const double & _pitch, const double & _yaw, const double & _cog, const double & _sog,
 			const float & _eng, const float & _rud, const float & _rev, const float & _fuel) :
 			t(_t), lat(_lat), lon(_lon), roll(_roll), pitch(_pitch), yaw(_yaw), cog(_cog), sog(_sog),
-			eng(_eng), rud(_rud), rev(_rev), fuel(_fuel)
+			eng(_eng), rud(_rud), rev(_rev), fuel(_fuel), ryaw(0)
 		{
 			update_coordinates();
 		}
