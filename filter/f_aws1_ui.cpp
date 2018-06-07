@@ -561,7 +561,7 @@ void f_aws1_ui::print_screen()
       if(!m_vw.isOpened()){
 	char fname[1024];
 	double fps = (double) SEC / (double) get_period();
-	int fourcc = CV_FOURCC('D', 'I', 'V', 'X');
+	int fourcc = VideoWriter::fourcc('D', 'I', 'V', 'X');
 	snprintf(fname, 1024, "%s/%s_%lld.avi", m_path_storage, m_name, get_time());
 	
 	m_vw.open(fname, fourcc, fps, m_sz_win, true);

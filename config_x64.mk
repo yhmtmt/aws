@@ -32,7 +32,7 @@ LIB_PVAPI_DIR = $(CUR_DIR)/PvAPI/lib
 INC_VMB_DIR = /mnt/ssd1/Vimba_2_1
 LIB_VMB_DIR = /mnt/ssd1/Vimba_2_1/VimbaCPP/DynamicLib/x86_64bit
 INC_GLFW_DIR = /usr/include
-LIB_GLFW_DIR = /usr/lib
+LIB_GLFW_DIR = /usr/x86_64-linux-gnu
 INC_EIGEN_DIR = /usr/include/eigen3
 INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
 INC_GST = /usr/include/gstreamer-1.0
@@ -46,4 +46,4 @@ INC_GLM = /usr/include/glm
 LIB_CV = -L$(LIB_CV_DIR) -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
 
 ############################################################ GLFW_WINDOW Linker option
-LIB_GLFW_WINDOW = -lGLEW -lglfw3 -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lGLU -lglut 
+LIB_GLFW_WINDOW = -lGLEW -lglfw -lGL -ldl  -lX11 -lXi -lXrandr -lXxf86vm -lXinerama -lXcursor -lrt -lm -pthread -lGLU -lglut 

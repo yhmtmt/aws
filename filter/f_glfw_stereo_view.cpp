@@ -237,7 +237,7 @@ bool f_glfw_stereo_view::proc()
 		m_img1 = img1.clone();
 		awsFlip(m_img1, m_bflipx, m_bflipy, false);
 		if (m_budl && m_bcpl){
-			remap(m_img1, m_img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+			remap(m_img1, m_img1, m_mapl1, m_mapl2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
 		}
 
 		m_bnew = true;
@@ -250,7 +250,7 @@ bool f_glfw_stereo_view::proc()
 		m_img2 = img2.clone();
 		awsFlip(m_img2, m_bflipx, m_bflipy, false);
 		if (m_budr && m_bcpr){
-			remap(m_img2, m_img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+			remap(m_img2, m_img2, m_mapr1, m_mapr2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
 		}
 		m_bnew = true;
 	}
@@ -1214,27 +1214,27 @@ void f_glfw_stereo_view::calibrate(int icam)
 		int flag = 0;
 		pcp->setFishEye(false);
 		if (m_bfix_k1)
-			flag |= CV_CALIB_FIX_K1;
+			flag |= CALIB_FIX_K1;
 		if (m_bfix_k2)
-			flag |= CV_CALIB_FIX_K2;
+			flag |= CALIB_FIX_K2;
 		if (m_bfix_k3)
-			flag |= CV_CALIB_FIX_K3;
+			flag |= CALIB_FIX_K3;
 		if (m_bfix_k4)
-			flag |= CV_CALIB_FIX_K4;
+			flag |= CALIB_FIX_K4;
 		if (m_bfix_k5)
-			flag |= CV_CALIB_FIX_K5;
+			flag |= CALIB_FIX_K5;
 		if (m_bfix_k6)
-			flag |= CV_CALIB_FIX_K6;
+			flag |= CALIB_FIX_K6;
 		if (m_bfix_pp)
-			flag |= CV_CALIB_FIX_PRINCIPAL_POINT;
+			flag |= CALIB_FIX_PRINCIPAL_POINT;
 		if (m_brat_mdl)
-			flag |= CV_CALIB_RATIONAL_MODEL;
+			flag |= CALIB_RATIONAL_MODEL;
 		if (m_bzr_tng)
-			flag |= CV_CALIB_ZERO_TANGENT_DIST;
+			flag |= CALIB_ZERO_TANGENT_DIST;
 		if (m_bguess_int)
-			flag |= CV_CALIB_USE_INTRINSIC_GUESS;
+			flag |= CALIB_USE_INTRINSIC_GUESS;
 		if (m_bfix_ar)
-			flag |= CV_CALIB_FIX_ASPECT_RATIO;
+			flag |= CALIB_FIX_ASPECT_RATIO;
 
 		err = calibrateCamera(pt3ds, *ppts, sz, K,
 			D, rvecs, tvecs, flag);
@@ -1477,7 +1477,7 @@ void f_glfw_stereo_view::calc_dline(ushort disp_max)
 		double idisp_max = 1.0 / (double)disp_max;
 		double * pPl = m_Pl.ptr<double>();
 		double fx = pPl[0], fy = pPl[5];
-		double L = norm(m_Tlr, CV_L2);
+		double L = norm(m_Tlr, NORM_L2);
 		double Dmax = L * fx;
 		double iDmax = 1.0 / Dmax;
 		int Dmax_int = (int)(Dmax + 0.5);

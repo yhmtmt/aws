@@ -1450,12 +1450,12 @@ bool f_imwrite::proc()
 		imwrite(buf, img);
 		break;
 	case eitJPG:
-		param[0] = CV_IMWRITE_JPEG_QUALITY;
+		param[0] = IMWRITE_JPEG_QUALITY;
 		param[1] = m_qjpg;
 		imwrite(buf, img, param);
 		break;
 	case eitPNG:
-		param[0] = CV_IMWRITE_PNG_COMPRESSION;
+		param[0] = IMWRITE_PNG_COMPRESSION;
 		param[1] = m_qpng;
 		imwrite(buf, img, param);
 		break;
@@ -1489,7 +1489,7 @@ bool f_gry::proc()
     return true;
   
   Mat out;
-  cvtColor(img, out, CV_BGR2GRAY);
+  cvtColor(img, out, COLOR_BGR2GRAY);
   
   pout->set_img(out, timg);
   pclrout->set_img(img, timg);

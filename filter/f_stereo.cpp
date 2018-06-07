@@ -242,8 +242,8 @@ bool f_stereo::proc()
 	awsFlip(m_img1, m_bflipx, m_bflipy, false);
 	awsFlip(m_img2, m_bflipx, m_bflipy, false);
 
-	remap(m_img1, m_img1, m_mapl1, m_mapl2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
-	remap(m_img2, m_img2, m_mapr1, m_mapr2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+	remap(m_img1, m_img1, m_mapl1, m_mapl2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+	remap(m_img2, m_img2, m_mapr1, m_mapr2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
 
 	if (m_ch_rimg1)
 		m_ch_rimg1->set_img(m_img1, m_timg1, m_ifrm1);
