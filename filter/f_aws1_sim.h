@@ -31,10 +31,10 @@ class c_model_outboard_force
 private:
 	double xr, yr; // rudder position from rotation center
 	double rud_max, rud_min; // rudder angle, maximum (at rud=1.0) and minimum (at rud=-1.0)
-	double cl, cq; // linear and quadratic coefficient for thrust force model
-	double cd, cl; // rudder  drag and lift coefficient
+	double CTL, CTQ; // linear and quadratic coefficient for thrust force model
+	double CD, CL; // rudder  drag and lift coefficient
 public:
-	c_model_outboard_force() :xr(0.f), yr(-3.f), rud_max(-30.*PI/180.), rud_min(+30.*PI/180.), cl(0.), cq(0.)
+	c_model_outboard_force() :xr(0.f), yr(-3.f), rud_max(-30.*PI/180.), rud_min(+30.*PI/180.), CTL(0.), CTQ(0.), CD(0.), CL(0.)
 	{
 	}
 
@@ -62,6 +62,25 @@ public:
 		return yr;
 	}
 
+	double & coef_thr_lin()
+	{
+		return CTL;
+	}
+
+	double & coef_thr_qd()
+	{
+		return CTQ;
+	}
+
+	double & coef_lift()
+	{
+		return CL;
+	}
+
+	double & coef_drag()
+	{
+		return CD;
+	}
 
 	void update(const double _rud, const double _gear, const double _thro, const double _rev, const double * v, double * f)
 	{
@@ -82,7 +101,7 @@ public:
 		double vro = -vx * nry + vy * nrx;
 
 		// calculate x, y thrust force T(v, rev), and decompose Tx = T cos phi, Ty=T sin phi
-		double T = (cl * vr * _rev + cq * _rev * _rev) * _gear;
+		double T = (CTL * vr * _rev + CTQ * _rev * _rev) * _gear;
 		double Tx = nrx * T, Ty = nry * T;
 		
 		// flow to rudder angle psi
@@ -91,13 +110,13 @@ public:
 		double spsi = vro * iva;
 
 		// calculate disturbance D and lift L
-		double D = -cd * va2 * spsi;                                                                                                                                                                                                                                                                             cd * va2 * spsi;
+		double D = -CD * va2 * spsi;                                                                                                                                                                                                                                                                             cd * va2 * spsi;
 		double Dx = D * nvx, Dy = D * nvy;
 		
 		double L = 
 			(nvx * nrx + nvy * nry > 0  ? 1.0 /*forward*/: -1.0/*backward*/) * 
 			(-nvy * nrx + nvx * nry > 0 ? 1.0 /* port */: -1.0/*starboard*/) * 
-			cl * va2 * spsi;
+			CL * va2 * spsi;
 		double Lx = - L * nvy, Ly = L * nvx;
 
 		f[0] = Tx + Dx + Lx;
