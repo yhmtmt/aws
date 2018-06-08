@@ -30,13 +30,26 @@ class c_model_outboard_force
 {
 private:
 	double xr, yr; // rudder position from rotation center
+	double rud_max, rud_min; // rudder angle, maximum (at rud=1.0) and minimum (at rud=-1.0)
+	double cl, cq; // linear and quadratic coefficient for thrust force model
+	double cd, cl; // rudder  drag and lift coefficient
 public:
-	c_model_outboard_force() :xr(0.f), yr(-3.f)
+	c_model_outboard_force() :xr(0.f), yr(-3.f), rud_max(-30.*PI/180.), rud_min(+30.*PI/180.), cl(0.), cq(0.)
 	{
 	}
 
 	~c_model_outboard_force()
 	{
+	}
+
+	double & rud_max()
+	{
+		return rud_max;
+	}
+
+	double & rud_min()
+	{
+		return rud_min;
 	}
 
 	double & xrud()
@@ -50,21 +63,47 @@ public:
 	}
 
 
-	void update(const double _rud, const double _gear, const double _thro, const double _rev, const double dt, double * f)
+	void update(const double _rud, const double _gear, const double _thro, const double _rev, const double * v, double * f)
 	{
 		// update rev
-		// calculate thrust angle phi (positive toward port)
-		double phi = 0.;
+		// calculate rudder angle phi (positive toward port) and direction vector (nrx,nry)
+		double phi = 0.5 * (rud_max - rud_min) * _rud + 0.5 * (rud_max + rud_min);
+		double nrx = cos(phi), nry = sin(phi);
+
+		// calculate velocity of rudder center
+		double vx = v[0] + v[2] * yr, vy = v[1] + v[2] * xr;
+		double va2 = vx * vx + vy * vy, va = sqrt(va2);
+		double iva = 1.0 / va;
+		double nvx = vx * iva, nvy = vy * iva; // normal velocity vector at rudder 
+
+		double vr = vx * nrx + vy * nry;         // rudder speed along rudder
+		double vrx = vr * nrx, vry = vr * nry;   // rudder velocity along rudder
+		double vrox = vx - vrx, vroy = vy - vry; // rudder velocity perpendicular to rudder
+		double vro = -vx * nry + vy * nrx;
 
 		// calculate x, y thrust force T(v, rev), and decompose Tx = T cos phi, Ty=T sin phi
-		double T = 0.;
-		double Tx = cos(phi) * T, Ty = sin(phi) * T;
+		double T = (cl * vr * _rev + cq * _rev * _rev) * _gear;
+		double Tx = nrx * T, Ty = nry * T;
+		
+		// flow to rudder angle psi
+		// double psi = acos(cpsi);
+		double cpsi = vr * iva;
+		double spsi = vro * iva;
 
-		// calculate disturbance Dx(vx,vy,rev), Dy(vx,vy,rev)
-		double Dx = 0., Dy = 0.;
+		// calculate disturbance D and lift L
+		double D = -cd * va2 * spsi;                                                                                                                                                                                                                                                                             cd * va2 * spsi;
+		double Dx = D * nvx, Dy = D * nvy;
+		
+		double L = 
+			(nvx * nrx + nvy * nry > 0  ? 1.0 /*forward*/: -1.0/*backward*/) * 
+			(-nvy * nrx + nvx * nry > 0 ? 1.0 /* port */: -1.0/*starboard*/) * 
+			cl * va2 * spsi;
+		double Lx = - L * nvy, Ly = L * nvx;
 
+		f[0] = Tx + Dx + Lx;
+		f[1] = Ty + Dy + Ly;
 		// calculate moment xr * Ty + yr * Ty
-		double N = xr * (Ty + Dy) + yr * (Tx * Dx);
+		f[2] = xr * f[1] + yr * f[0];
 	}
 };
 

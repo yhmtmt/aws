@@ -551,13 +551,13 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
 		wrldtoecef(stprev.Rwrld, stprev.xe, stprev.ye, stprev.ze, dx, dy, 0., stcur.xe, stcur.ye, stcur.ze);
 		eceftobih(stcur.xe, stcur.ye, stcur.ze, stcur.lat, stcur.lon, alt);
 		stcur.lat *= 180. / PI;
-		stcur.lon *= 180. / PI;
+		stcur.lon *= 180. / PI;                        
 
 		v[0] = sog_ms * cos(phi);
 		v[1] = sog_ms * sin(phi);
 		v[2] = stprev.ryaw * (PI / 180.);
 
-		mobf.update(stprev.rud_pos, stprev.gear_pos, stprev.thro_pos, stprev.rev, dt, f);
+		mobf.update(stprev.rud_pos, stprev.gear_pos, stprev.thro_pos, stprev.rev, v, f);
 
 		m3dof.set_state(v);
 		m3dof.update_state(f, dt);
@@ -567,6 +567,7 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
 		stcur.yaw += v[2] * dt * (180. / PI);
 		stcur.cog = stcur.yaw + phi * (180. / PI);
 		stcur.sog = sqrt(v[0] * v[0] + v[1] * v[1]) * (3600. / 1852.);
+		stcur.rev = final_rev(stcur.thro_pos);
 
 // simulation at tcur + ios * m_int_smpl using m_wismpl past samples.
 //		simulate(tcur, iosv);
