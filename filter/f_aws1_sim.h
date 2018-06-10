@@ -42,12 +42,12 @@ public:
 	{
 	}
 
-	double & rud_max()
+	double & rudder_max()
 	{
 		return rud_max;
 	}
 
-	double & rud_min()
+	double & rudder_min()
 	{
 		return rud_min;
 	}
@@ -110,7 +110,7 @@ public:
 		double spsi = vro * iva;
 
 		// calculate disturbance D and lift L
-		double D = -CD * va2 * spsi;                                                                                                                                                                                                                                                                             cd * va2 * spsi;
+		double D = -CD * va2 * spsi;                                                                                                                                                                                                                                                                             CD * va2 * spsi;
 		double Dx = D * nvx, Dy = D * nvy;
 		
 		double L = 
