@@ -236,8 +236,8 @@ const float f_aws1_ap::calc_course_change_for_ais_ship(const float crs)
 void f_aws1_ap::ctrl_to_location(const float sog, const float d, const float cdiff)
 {
 	m_dcdiff = (float)(cdiff - m_cdiff);
-	if(m_icdiff < 255.f && m_icdiff > 0)
-	  m_icdiff += cdiff;
+	//	if(m_icdiff < 255.f && m_icdiff > 0)
+	//  m_icdiff += cdiff;
 	m_cdiff = cdiff;
 
 	m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255. + 127.);
