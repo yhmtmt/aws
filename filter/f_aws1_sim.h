@@ -110,12 +110,12 @@ public:
 		double spsi = vro * iva;
 
 		// calculate disturbance D and lift L
-		double D = -CD * va2 * spsi;                                                                                                                                                                                                                                                                             CD * va2 * spsi;
+		double D = -CD * va2 * spsi;
 		double Dx = D * nvx, Dy = D * nvy;
 		
 		double L = 
-			(nvx * nrx + nvy * nry > 0  ? 1.0 /*forward*/: -1.0/*backward*/) * 
-			(-nvy * nrx + nvx * nry > 0 ? 1.0 /* port */: -1.0/*starboard*/) * 
+			- (nvx * nrx + nvy * nry > 0  ? 1.0 /*forward*/: -1.0/*backward*/) * 
+			(-nvx * nry + nvy * nrx > 0 ? 1.0 /* port */: -1.0/*starboard*/) * 
 			CL * va2 * spsi;
 		double Lx = - L * nvy, Ly = L * nvx;
 
