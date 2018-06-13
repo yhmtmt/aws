@@ -163,7 +163,7 @@ bool f_camcalib::proc()
 	     << "Chessboard was detected" << endl;
 
 	cornerSubPix(img, corners, Size(11, 11), Size(-1, -1),
-		TermCriteria(CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 30, 0.1));
+		     TermCriteria(TermCriteria::EPS | TermCriteria::COUNT, 30, 0.1));
 
 	m_2dchsbd.push_back(corners);
 

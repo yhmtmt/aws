@@ -11,7 +11,7 @@ IMGPROC = y
 AVT_CAM = n
 VMB_CAM = n
 UVC_CAM = y
-GST_CAM = n
+GST_CAM = y
 SANYO_HD5400 = n
 ORB_SLAM = y
 STEREO = y
@@ -35,10 +35,10 @@ INC_GLFW_DIR = /usr/include
 LIB_GLFW_DIR = /usr/x86_64-linux-gnu
 INC_EIGEN_DIR = /usr/include/eigen3
 INC_MAVLINK = $(CUR_DIR)/mavlink/include_1.0/ardupilotmega
-INC_GST = /usr/include/gstreamer-1.0
+INC_GST = /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include -I/usr/include/gstreamer-1.0
 LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
 INC_GLIB = /usr/include/glib-2.0
-INC_GLIB_CONFIG = /usr/lib/arm-linux-gnueabihf/glib-2.0/include
+INC_GLIB_CONFIG = /usr/lib/x86_64-linux-gnu/glib-2.0/include
 INC_GLM = /usr/include/glm
 
 ########################################################### OpenCV Linker option

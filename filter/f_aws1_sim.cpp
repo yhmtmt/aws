@@ -184,6 +184,10 @@ bool f_aws1_sim::init_run()
 	  m_fcsv.precision(3);
   }
 
+
+  m3dof.init_matrix();
+  mobf;
+  
   return true;
 }
 
