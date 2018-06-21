@@ -25,8 +25,8 @@
 class f_map: public f_base
 {
 protected:
-
 	AWSMap2::MapDataBase m_db;
+	bool m_verb;
 	char m_path[1024];
 
 	char m_fdata[1024];
@@ -37,7 +37,7 @@ protected:
 	static const char * m_str_dtype[edt_undef];
 
 	enum e_map_cmd{
-		emc_update = 0, emc_add_data, emc_undef
+		emc_update = 0, emc_add_data, emc_set_pos, emc_render, emc_save, emc_check, emc_undef
 	} m_cmd;
 	static const char * m_str_cmd[emc_undef];
 
@@ -48,7 +48,12 @@ protected:
 
 	bool update_channel();
 	bool add_data();
+	void render_data();
+	void check_data();
+	void set_pos();
 	AWSMap2::LayerData * load_jpjis();
+
+	double lat, lon, res, range;
 public:
 	f_map(const char * name);
 	virtual ~f_map();

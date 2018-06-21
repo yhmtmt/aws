@@ -109,6 +109,7 @@ class f_aws1_ui: public f_glfw_window
   c_gl_text_obj otxt     /* Text */;
   c_gl_2d_line_obj oline /* 2d line */;
   c_gl_line_obj oline3d  /* 3d line */;
+  c_gl_line_obj oline3d_map; /* 3d lin for map*/
   Mat m_cam;                   // main camera image
   long long m_tcam, m_frm_cam; // time and frame number m_cam grabbed
   e_imfmt m_fmt_cam;           // image format of main camera
@@ -260,6 +261,7 @@ class f_aws1_ui: public f_glfw_window
   } crz_cm;
 
   static const char * str_crz_cmd[crz_undef];
+  static const char * str_crz_cmd_exp[crz_undef];
   unsigned char crz_cmd_val[crz_undef];
   
   float m_rud_f, m_meng_f, m_seng_f;
@@ -306,11 +308,19 @@ class f_aws1_ui: public f_glfw_window
 		       c_map_cfg_box * pmc_box,
 		       c_route_cfg_box * prc_box);
   void handle_mouse_drag(c_view_mode_box * pvm_box, s_obj & obj_tmp);
-  void clear_mouse_state()
+  void clear_mouse_event()
   {
     mouse_button = -1;
     mouse_action = -1;
     mouse_mods = -1;
+  }
+
+  void clear_mouse_state(c_route_cfg_box * prc_box)
+  {
+	  if (mouse_state == ms_add_wp) {
+		  prc_box->command_processed(c_route_cfg_box::wp_add);
+	  }
+	  mouse_state = ms_normal;
   }
   
   void add_waypoint(c_route_cfg_box * prc_box);

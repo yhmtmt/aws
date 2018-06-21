@@ -322,7 +322,7 @@ gboolean f_gst_enc::bus_callback(GstBus * bus, GstMessage * message, gpointer da
 }
 
 f_gst_enc::f_gst_enc(const char * name):f_base(name), m_ch_in(NULL), m_sz(0, 0), m_descr(NULL), m_ppl(NULL), m_src(NULL), m_bus(NULL), m_bus_watch_id(-1), m_error(NULL), fmt_in(IMF_Undef), fmt_out(IMF_Undef),
-m_pfts(NULL), m_fps(30)
+					m_pfts(NULL), m_fps(30), tprev(0)
 {
   m_fppl[0] = '\0';
   m_fts[0] = '\0';
@@ -427,9 +427,15 @@ bool f_gst_enc::proc()
   Mat imsrc, imdst;
   long long t;
   imsrc = m_ch_in->get_img(t);
- 
+
   if(imsrc.empty())
     return true;
+
+  if(tprev == t){
+    cout << "same frame at " << t << endl;
+    return true;
+  }
+  tprev = t;
 
   if(!cnv_imf(imsrc, imdst, fmt_in, fmt_out)){
     cerr << m_name << " failed to convert image format" << endl;

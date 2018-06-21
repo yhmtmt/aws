@@ -26,9 +26,271 @@
 //////////////////////////////////////////////////////// f_aws1_sim
 #define RUD_PER_CYCLE 0.45f
 
+class c_model_outboard_force
+{
+private:
+	double xr, yr; // rudder position from rotation center
+	double rud_max, rud_min; // rudder angle, maximum (at rud=1.0) and minimum (at rud=-1.0)
+	double CTL, CTQ; // linear and quadratic coefficient for thrust force model
+	double CD, CL; // rudder  drag and lift coefficient
+public:
+	c_model_outboard_force() :xr(0.f), yr(-3.f), rud_max(-30.*PI/180.), rud_min(+30.*PI/180.), CTL(0.), CTQ(0.), CD(0.), CL(0.)
+	{
+	}
+
+	~c_model_outboard_force()
+	{
+	}
+
+	double & rudder_max()
+	{
+		return rud_max;
+	}
+
+	double & rudder_min()
+	{
+		return rud_min;
+	}
+
+	double & xrud()
+	{
+		return xr;
+	}
+
+	double & yrud()
+	{
+		return yr;
+	}
+
+	double & coef_thr_lin()
+	{
+		return CTL;
+	}
+
+	double & coef_thr_qd()
+	{
+		return CTQ;
+	}
+
+	double & coef_lift()
+	{
+		return CL;
+	}
+
+	double & coef_drag()
+	{
+		return CD;
+	}
+
+	void update(const double _rud, const double _gear, const double _thro, const double _rev, const double * v, double * f)
+	{
+		// update rev
+		// calculate rudder angle phi (positive toward port) and direction vector (nrx,nry)
+		double phi = 0.5 * (rud_max - rud_min) * _rud + 0.5 * (rud_max + rud_min);
+		double nrx = cos(phi), nry = sin(phi);
+
+		// calculate velocity of rudder center
+		double vx = v[0] + v[2] * yr, vy = v[1] + v[2] * xr;
+		double va2 = vx * vx + vy * vy, va = sqrt(va2);
+		double iva = 1.0 / va;
+		double nvx = vx * iva, nvy = vy * iva; // normal velocity vector at rudder 
+
+		double vr = vx * nrx + vy * nry;         // rudder speed along rudder
+		double vrx = vr * nrx, vry = vr * nry;   // rudder velocity along rudder
+		double vrox = vx - vrx, vroy = vy - vry; // rudder velocity perpendicular to rudder
+		double vro = -vx * nry + vy * nrx;
+
+		// calculate x, y thrust force T(v, rev), and decompose Tx = T cos phi, Ty=T sin phi
+		double T = (CTL * vr * _rev + CTQ * _rev * _rev) * _gear;
+		double Tx = nrx * T, Ty = nry * T;
+		
+		// flow to rudder angle psi
+		// double psi = acos(cpsi);
+		double cpsi = vr * iva;
+		double spsi = vro * iva;
+
+		// calculate disturbance D and lift L
+		double D = -CD * va2 * spsi;
+		double Dx = D * nvx, Dy = D * nvy;
+		
+		double L = 
+			- (nvx * nrx + nvy * nry > 0  ? 1.0 /*forward*/: -1.0/*backward*/) * 
+			(-nvx * nry + nvy * nrx > 0 ? 1.0 /* port */: -1.0/*starboard*/) * 
+			CL * va2 * spsi;
+		double Lx = - L * nvy, Ly = L * nvx;
+
+		f[0] = Tx + Dx + Lx;
+		f[1] = Ty + Dy + Ly;
+		// calculate moment xr * Ty + yr * Ty
+		f[2] = xr * f[1] + yr * f[0];
+	}
+};
+
+class c_model_3dof
+{
+private:
+	double xg, yg, iz;
+	double m;     // mass
+	double ma[9]; // added mass matrix
+	double dl[9]; // linear drag matrix
+	double dq[9]; // quadratic drag matrix
+
+	Mat M;
+	Mat Minv;
+	Mat Dl;
+	Mat Dq;
+	Mat V;
+	Mat C;
+
+	double mxx;
+	double myy;
+	double mxg;
+	double ny;
+
+	double v[3]; // state vector (u, v, r)
+public:
+	c_model_3dof():xg(0), yg(0)
+	{
+		for (int i = 0; i < 9; i++)
+			ma[i] = dl[i] = dq[i] = 0;
+	}
+
+	~c_model_3dof()
+	{
+	}
+
+	double & Iz()
+	{
+		return iz;
+	}
+
+	double & xgrav()
+	{
+		return xg;
+	}
+
+	double & ygrav()
+	{
+		return yg;
+	}
+
+	double & mass()
+	{
+		return m;
+	}
+
+	double & mass_a(int i, int j)
+	{
+		return ma[i * 3 + j];
+	}
+
+	double & drag_l(int i, int j)
+	{
+		return dl[i * 3 + j];
+	}
+
+	double & drag_q(int i, int j)
+	{
+		return dq[i * 3 + j];
+	}
+
+	void init_matrix()
+	{
+		M = Mat::zeros(3, 3, CV_64FC1);
+		double * data = M.ptr<double>();
+		
+		for (int i = 0; i < 9; i++)
+			data[i] = ma[i];
+		data[0] += m;
+		data[4] += m; 
+		data[8] += iz;
+
+		mxx = data[0];
+		myy = data[4];
+		mxg = m * xg;
+		ny = (ma[5] + ma[7]) * 0.5;
+
+		Dl = Mat::zeros(3, 3, CV_64FC1);
+		data = Dl.ptr<double>();
+		for (int i = 0; i < 9; i++) {
+			data[i] = dl[i];		
+		}
+
+		Dq = Mat::zeros(3, 3, CV_64FC1);
+		C = Mat(3, 3, CV_64FC1);
+
+		V = Mat(3, 1, CV_64FC1, v);	
+	}
+
+	void set_state(const double * _v)
+	{
+		v[0] = _v[0];
+		v[1] = _v[1];
+		v[2] = _v[2];
+	}
+
+	void get_state(double * _v)
+	{
+		_v[0] = v[0];
+		_v[1] = v[1];
+		_v[2] = v[2];
+	}
+
+	bool update_state(double * f /* x-y force and z moment applied */, 
+		const double dt /* time step */)
+	{
+		if (Dq.empty() || M.empty() || Dl.empty()) {
+			cerr << "Matrix should be initialized!" << endl;
+			return false;
+		}
+
+		// initializing quadratic drag
+		// q00|v0| q01|v1| q02|v2|
+		// q10|v0| q11|v1| q12|v2|
+		// q20|v0| q21|v1| q22|v2|
+		double * data = Dq.ptr<double>();
+		for (int i = 0; i < 9; i++) {
+			data[i] = abs(v[i % 3]) * dq[i];
+		}
+
+		// initializing coriolis and centrifugal force matrix
+		data = C.ptr<double>();
+		double * mdata = M.ptr<double>();
+		double mxxu = mxx * v[0];
+		double myyv = myy * v[1];
+		double mxgr = mxg * v[2];
+		double nyr = ny * v[2];
+		data[2] = -mxgr - myyv + nyr; // c02
+		data[5] = mxxu;               // c12
+		data[6] = -data[2];           // c20
+		data[7] = -data[5];           // c21
+
+		// initializing force vector T
+		Mat T(3, 1, CV_64FC1, f);
+
+		// Calculating next velocity
+		// Mv'+(C+Dl+Dq)v=T
+		// v'=M^-1 * (T-(C+Dl+Dq)v)
+		// v=v+v'dt
+		Mat Vnext;
+		Vnext = V + M.inv() * (T - (C + Dl + Dq) * V) * dt;
+
+		// Updating velocity
+		data = Vnext.ptr<double>();
+		v[0] = data[0];
+		v[1] = data[1];
+		v[2] = data[2];
+
+		return true;
+	}
+};
+
 class f_aws1_sim : public f_base
 {
 protected:
+	c_model_outboard_force mobf;
+	c_model_3dof m3dof;
+
 	// input channels
 	ch_state * m_state;
 	ch_eng_state * m_engstate;
@@ -44,20 +306,21 @@ protected:
 
 	struct s_state_vector {
 		long long t;
-		double lat, lon, xe, ye, ze, roll, pitch, yaw, cog, sog;		
+		double lat, lon, xe, ye, ze, roll, pitch, yaw, cog, sog, ryaw;		
 		Mat Rwrld;
 		float eng, rud, rev, fuel; 
+		float thro_pos, gear_pos, rud_pos;
 		s_state_vector(const long long & _t, const double & _lat, const double & _lon, const double & _roll,
 			const double & _pitch, const double & _yaw, const double & _cog, const double & _sog,
 			const float & _eng, const float & _rud, const float & _rev, const float & _fuel) :
 			t(_t), lat(_lat), lon(_lon), roll(_roll), pitch(_pitch), yaw(_yaw), cog(_cog), sog(_sog),
-			eng(_eng), rud(_rud), rev(_rev), fuel(_fuel)
+			eng(_eng), rud(_rud), rev(_rev), fuel(_fuel), ryaw(0)
 		{
 			update_coordinates();
 		}
 
 		s_state_vector() :lat(135.f), lon(35.f), roll(0.f), pitch(0.f), yaw(0.f), cog(0.f), sog(0.f),
-			eng(127.0f), rud(127.0f), rev(700.f), fuel(0.1f)
+			eng(127.0f), rud(127.0f), rev(700.f), fuel(0.1f), thro_pos(0.f), gear_pos(0), rud_pos(0)
 		{
 			update_coordinates();
 		}
@@ -87,22 +350,65 @@ protected:
 
 	float m_rud_sta_sim;
 	float m_trud_swing; // in second
+	float m_tgear_swing; // in second
+	float m_tthro_swing; // in second
 	float m_spd_rud_swing; // rud_sta value per 100n second
-	void simulate_rudder(long long tcur, long long tprev);
-
-	float m_thrtl_eng; // engine throttle
-	float m_rpm_eng;   // engine rpm
-	void simulate_engine(long long tcur, long long trepv);
+	float m_spd_gear_swing; 
+	float m_spd_thro_swing;
+	float m_tau_sog; // time constant for final value of sog by rev
 
 	float m_mass;	
-	void simulate_dynamics(long long tcur, long long tprev);
 	
 	void set_control_input();
 	void set_control_output();
 	void set_input_state_vector(const long long & tcur);
 	void set_output_state_vector();
 
-	void simulate(const long long tsim, const int iosv);
+	void simulate(const long long tcur, const int iosv);
+	void simulate_rudder(const float rud, const float rud_pos, float & rud_pos_next);
+	void simulate_engine(const float eng, const float eng_pos, const float gear_pos, float & eng_pos_next, float & gear_pos_next);
+	const float final_rev(const float thr_pos)
+	{
+		if (thr_pos < 0.417)
+			return 700;
+		if (thr_pos < 0.709)
+			return (5000 - 700) * (thr_pos - 0.417) / (0.709 - 0.417) + 700;
+		if (thr_pos < 0.854)
+			return (5600 - 5000) * (thr_pos - 0.709) / (0.854 - 0.709) + 5000;
+		return 5600;
+	}
+
+	float simulate_sog(const float gear_pos, const float rev,  const float sog) {
+		// speed over ground is modeled as first order differential equation.
+		// sog_final = sog + tau (d sog/d t) ---(1)
+		// (1) is transformed as
+		// sog_final = sog_next  + tau (sog_next - sog_prev) / delta_t
+		// here delta_t is m_int_smpl_sec, then we can solve the equation for sog
+		// sog_next = [sog_prev + (delta_t / tau) sog_final]/[1 + (delta_t / tau)]
+		float sog_final = final_sog(gear_pos, rev);
+		float tdt = (float)((float)m_int_smpl_sec / m_tau_sog );
+		return (float)(sog  + tdt * sog_final) / (1.0f + tdt);
+	}
+
+	float final_sog(const float gear_pos, const float rev)
+	{
+		if (gear_pos <= -1.f) {
+			return 2.5f;
+		}
+		else if (gear_pos >= 1.f) {
+			if (rev < 700)
+				return 2.5f;
+			if (rev < 3500)
+				return (float)((11.f - 2.5f)*(rev - (float)700) / (double)(3500 - 700) + 2.5f);
+			if(rev < 4800)
+				return (float)((19.5f - 11.f)*(rev - (float)3500) / (double)(4800 - 3500) + 11.f);
+			if (rev < 5500)
+				return (float)((22.5f - 19.5f)*(rev - (float)4800) / (double)(5500 - 4800) + 19.5f);
+			return 22.5f;
+		}
+
+		return 0.0f;
+	}
 
 	bool m_bcsv_out;
 	char m_fcsv_out[1024];

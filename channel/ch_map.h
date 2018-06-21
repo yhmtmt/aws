@@ -24,26 +24,49 @@
 class ch_map: public ch_base
 {
 protected:
-	bool bupdate;
+  bool bupdate, bready;
 	float m_range, m_resolution;
 	bool m_blayer_type[AWSMap2::lt_undef];
-	list<const AWSMap2::LayerData*> m_layer_datum[AWSMap2::lt_undef];
+	list<AWSMap2::LayerDataPtr> m_layer_datum[AWSMap2::lt_undef];
 
 	AWSMap2::vec3 m_cecef; // x, y, z
 public:
-	ch_map(const char * name):ch_base(name), bupdate(true), m_resolution(10), m_range(10000), m_cecef()
+ ch_map(const char * name):ch_base(name), bupdate(true), bready(false), m_resolution(10), m_range(10000), m_cecef()
 	{
 		m_blayer_type[AWSMap2::lt_coast_line] = true;
 	}
-
 
 	virtual ~ch_map()
 	{
 	}
 
+	bool is_update(){
+	  return bupdate;
+	}
+
+	void set_update(){
+	  bupdate = true;
+	}
+
+	void reset_update(){
+	  bupdate = false;
+	}
+
+	bool is_ready(){
+	  return bready;
+	}
+
+	void set_ready(){
+	  bready = true;
+	}
+
+	void reset_ready(){
+	  bready = false;
+	}
+
+
 	void enable_layer(const AWSMap2::LayerType layer_type)
 	{
-		bupdate = true;
 		m_blayer_type[layer_type] = true;
 	}
 
@@ -59,8 +82,7 @@ public:
 
 	void set_resolution(const float resolution)
 	{
-		bupdate = true;
-		m_resolution = m_resolution;
+		m_resolution = resolution;
 	}
 
 	const float get_resolution()
@@ -70,7 +92,6 @@ public:
 
 	void set_range(const float range)
 	{
-		bupdate = true;
 		m_range = range;
 	}
 
@@ -81,7 +102,6 @@ public:
 
 	void set_center(const float x, const float y, const float z)
 	{
-		bupdate = true;
 		m_cecef.x = x;
 		m_cecef.y = y;
 		m_cecef.z = z;
@@ -92,14 +112,14 @@ public:
 		return m_cecef;
 	}
 
-	void set_layer_data(const AWSMap2::LayerType layer_type, list<const AWSMap2::LayerData*> & layer_data)
+	void set_layer_data(const AWSMap2::LayerType layer_type, list<AWSMap2::LayerDataPtr> & layer_data)
 	{
 	  m_layer_datum[layer_type].clear();
 	  //m_layer_datum[layer_type].insert(m_layer_datum[layer_type].end(), layer_data.begin(), layer_data.end());	    
 	  m_layer_datum[layer_type] = layer_data;  
 	}
 
-	const list<const AWSMap2::LayerData*> & get_layer_data(const AWSMap2::LayerType layer_type)
+	const list<AWSMap2::LayerDataPtr> & get_layer_data(const AWSMap2::LayerType layer_type)
 	{
 		return m_layer_datum[layer_type];
 	}

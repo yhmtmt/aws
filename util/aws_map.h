@@ -15,6 +15,7 @@
 // You should have received a copy of the GNU General Public License
 // along with aws_map.h.  If not, see <http://www.gnu.org/licenses/>. 
 #define GR 1.61803398875 // golden ratio
+#define _AWS_MAP_DEBUG
 
 namespace AWSMap2 {
 
@@ -54,7 +55,8 @@ namespace AWSMap2 {
       return *this;
     }
   };
-  
+
+
   inline bool operator == (const vec3 & l, const vec3 & r)
   {
     return l.x == r.x && l.y == r.y && l.z == r.z;
@@ -109,7 +111,7 @@ namespace AWSMap2 {
   inline double l2Norm2(const vec3 & pt0, const vec3 & pt1)
   {
     double tmp, result = 0.0;
-    tmp = pt0.x - pt0.x;
+    tmp = pt0.x - pt1.x;
     result = tmp * tmp;
     
     tmp = pt0.y - pt1.y;
@@ -133,11 +135,13 @@ namespace AWSMap2 {
   enum LayerType {
     lt_coast_line=0, lt_undef
   };
+
   extern const char * strLayerType[lt_undef];
   LayerType getLayerType(const char * str);
   class Node;
   class LayerData;
-  
+  class LayerDataPtr;
+
   class MapDataBase
   {
   private:
@@ -188,10 +192,10 @@ namespace AWSMap2 {
 
     bool init();
     
-    // request layerData within the circle specified with (center, radius).
-    void request(list<list<const LayerData*>> & layerDatum, const list<LayerType> & layerTypes,
-		 const vec3 & center, const float radius, const float resolution = 0);
-    
+	// request layerData within the circle specified with (center, radius).
+	void request(list<list<LayerDataPtr>> & layerDatum, const list<LayerType> & layerTypes,
+		const vec3 & center, const float radius, const float resolution = 0);
+
     // insert an instance of LayerData to the location.
     bool insert(const LayerData * layerData);
     
@@ -211,23 +215,41 @@ namespace AWSMap2 {
   private:
     static Node * head, * tail;
     static unsigned int numNodesAlive;
+
     static void insert(Node * pNode);
-    static void pop(Node * pNode);
-    static void accessed(Node * pNode);
+    static void pop(Node * pNode);      // remove pNode from node list.
+    static void accessed(Node * pNode); // move pNode to the tail of the node list.
   public:
-    static void restruct();
-    static Node * load(Node * pNodeUp, unsigned int idChild);
-    
+    static void restruct();				// remove nodes if the limit of  maximum number of nodes are violated. 
+	                                    // Nodes without downlink nodes instantiated and least recently used are removed.
+    static Node * load(Node * pNodeUp, unsigned int idChild); // loads child node.
+	static const unsigned int getNumNodesAlive()
+	{
+		return numNodesAlive;
+	}
+
+	static const int getMaxLevel()
+	{
+		char maxLevel = 0;
+		for (Node * pn = head; pn != NULL; pn = pn->next)
+			maxLevel = max((int)pn->level, (int)maxLevel);
+		return (int) maxLevel;
+	}
+
   private:
     Node * prev, * next;// link pointers for memory management
-    
+	unsigned char level;
+	int refcount;
     bool bupdate;		// update flag. asserted when the layerDataList or downLink is updated
     unsigned char id;	// id of the node in the upper node. (0 to 3 for ordinal nodes. 0 to 19 for top level nodes.)
     Node * upLink;		// Up link. NULL for top 20 nodes
     bool bdownLink;		// false until the downLink is created.
     Node * downLink[4]; // Down link. 
     vec2 vtx_bih[3];	// bih coordinte of the node's triangle
+	void calc_ecef();
     vec3 vtx_ecef[3];   // ecef coordinate of the node's triangle (calculated automatically in construction phase) 
+	vec3 vec_ecef[2];		// vtx_ecef[1] - vtx_ecef[0], vtx_ecef[2] - vtx_ecef[0]
+
     map<LayerType, LayerData*> layerDataList;
     
     // create downLink nodes, and assert bdownLink flag. 
@@ -239,13 +261,10 @@ namespace AWSMap2 {
     void getPath(list<unsigned char> & path_id);
     
     // insertLayerData helps addLayerData. 
-    void insertLayerData(const LayerType layerType, LayerData * pLayerData)
-    {
-      layerDataList.insert(pair<LayerType, LayerData*>(layerType, pLayerData));
-    }
+	void insertLayerData(LayerData * pLayerData);
     
     // getLayerData returns layerData of layerType in this node 
-    const LayerData * getLayerData(const LayerType layerType);
+    LayerData * getLayerData(LayerType layerType);
     
     // distributeLayerData helps addLayerData. 
     bool distributeLayerData(const LayerData & layerData);
@@ -255,7 +274,7 @@ namespace AWSMap2 {
     
   public:
     Node();
-    Node(const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2);
+    Node(const unsigned char _id, Node * _upLink, const vec2 vtx_bih0, const vec2 vtx_bih1, const vec2 vtx_bih2);
     
     virtual ~Node();
     
@@ -264,6 +283,35 @@ namespace AWSMap2 {
       id = _id;
     }
     
+	const unsigned char getId()
+	{
+		return id;
+	}
+
+	const vec3 & getVtxECEF(int i) const
+	{
+		if (i >= 0 && i < 3)
+			return vtx_ecef[i];
+		return vtx_ecef[0];
+	}
+
+	int getLevel()
+	{
+		return level;
+	}
+
+	bool isLocked();
+
+	void lock()
+	{
+		refcount++;
+	}
+
+	void unlock()
+	{
+		refcount--;
+	}
+
     // getPath(char*, unsigned int) returns the path string the length is less than the specified limit.
     void getPath(char * path, unsigned int maxlen);
     
@@ -272,13 +320,16 @@ namespace AWSMap2 {
     bool save();
     
     // collision(vec3) determines whether the specified point collides with the node.
-    const bool collision(const vec3 & location);
+    const bool collision(const vec3 & location, const double err = 0.0f);
     
     // collision(vec3, float) determines whether the specified circle collides with the node.
     const bool collision(const vec3 & center, const float radius);
     
+
+	const void collision_downlink(const vector<vec3> & pts, vector<char> & inodes);
+
     // getLayerData called from MapDataBase::request
-    const void getLayerData(list<list<const LayerData*>> & layerData, 
+    void getLayerData(list<list<LayerDataPtr>> & layerData, 
 			    const list<LayerType> & layerType, const vec3 & center,
 			    const float radius, const float resolution = 0);
     
@@ -296,6 +347,7 @@ namespace AWSMap2 {
   
   class LayerData
   {
+	  friend class LayerDataPtr;
     // static section
   private:
     static LayerData * head, * tail;
@@ -305,11 +357,22 @@ namespace AWSMap2 {
     static void pop(LayerData * pLayerData);
   public:
     static void accessed(LayerData * pLayerData);
+	static void resize(unsigned int size_diff)
+	{
+		totalSize += size_diff;
+	}
+
+	static const unsigned int getTotalSize()
+	{
+		return totalSize;
+	}
+
     static void restruct();
     static LayerData * create(const LayerType layerType); // factory function
     
   protected:
     LayerData * prev, * next;
+	int  refcount;
     bool bupdate;
     bool bactive;
     
@@ -323,10 +386,9 @@ namespace AWSMap2 {
     }
     
   public:
-  LayerData() : prev(NULL), next(NULL), pNode(NULL), bupdate(true), bactive(false) {};
+  LayerData() : prev(NULL), next(NULL), pNode(NULL), refcount(0), bupdate(false), bactive(false) {};
     virtual ~LayerData() {};
-
-    
+ 
     void setNode(Node * _pNode) { pNode = _pNode; };
     Node * getNode() const { return pNode; };
     
@@ -339,6 +401,19 @@ namespace AWSMap2 {
       return bactive;
     }
     
+	bool isLocked()
+	{
+		return refcount > 0;
+	}
+
+	void lock() {
+		refcount++;
+	}
+
+	void unlock() {
+		refcount--;
+	}
+
     // major interfaces 
     bool save();
     bool load();
@@ -356,20 +431,22 @@ namespace AWSMap2 {
     virtual const LayerType getLayerType() const = 0; // returns LayerType value.
     virtual bool save(ofstream & ofile) = 0;// save data to ofile stream.
     virtual bool load(ifstream & ifile) = 0;// load data from ifile stream.
-    virtual bool split(list<Node*> & nodes) const = 0; // split the layer data into nodes given
+    virtual bool split(list<Node*> & nodes, Node * pParentNode = NULL) const = 0; // split the layer data into nodes given
     virtual LayerData * clone() const = 0;	// returns clone of the instance
     virtual size_t size() const = 0;		// returns size in memory 
     virtual float resolution() const = 0;	// returns minimum distance between objects in meter		
     virtual float radius() const = 0;		// returns radius of the object's distribution in meter
     virtual vec3 center() const = 0;	// returns center of the object's distribution
+	virtual void print() const = 0;
   };
   
   class CoastLine : public LayerData
   {
   protected:
     static const vector<vec3> null_vec_vec3;
+	static const vector<vec2> null_vec_vec2;
+
     struct s_line {
-      unsigned int id;
       vector<vec2> pts;
       vector<vec3> pts_ecef;
       
@@ -380,7 +457,9 @@ namespace AWSMap2 {
     size_t total_size;
     double dist_min;
     double pt_radius;
-    vec3 pt_center;
+	vec3 pt_center;
+	vec2 pt_center_bih;
+
     vector<s_line*> lines;
     void add(list<vec2> & line);
     int try_reduce(int nred);
@@ -400,6 +479,13 @@ namespace AWSMap2 {
 	return null_vec_vec3;
       return lines[id]->pts_ecef;
     }
+
+	const vector<vec2> & getPointsBIH(unsigned int id) const
+	{
+		if (id >= lines.size())
+			return null_vec_vec2;
+		return lines[id]->pts;
+	}
     
     bool loadJPJIS(const char * fname);
   protected:
@@ -410,12 +496,62 @@ namespace AWSMap2 {
     virtual const LayerType getLayerType() const { return lt_coast_line; };
     virtual bool save(ofstream & ofile);
     virtual bool load(ifstream & ifile);
-    virtual bool split(list<Node*> & nodes) const;
+    virtual bool split(list<Node*> & nodes, Node * pParentNode = NULL) const;
     virtual LayerData * clone() const;
     virtual size_t size() const;
     virtual float resolution() const;
     virtual float radius() const; // returns radius of the object's distribution in meter
     virtual vec3 center() const; // returns center of the object's distribution
+	virtual void setCenter(const vec3 & _center)
+	{
+		pt_center = _center;
+	}
+	virtual void setRadius(const float _radius)
+	{
+		pt_radius = _radius;
+	}
+	virtual void print() const;
+  };
+
+  class LayerDataPtr
+  {
+  private:
+	  const LayerData * ptr;
+  public:
+	  LayerDataPtr() :ptr(NULL)
+	  {
+	  }
+
+	  LayerDataPtr(const LayerDataPtr & ldp) :ptr(ldp.ptr)
+	  {
+		  const_cast<LayerData*>(ptr)->lock();
+	  }
+
+	  LayerDataPtr(const LayerData * _ptr) :ptr(_ptr)
+	  {
+		  const_cast<LayerData*>(ptr)->lock();
+	  }
+
+	  ~LayerDataPtr()
+	  {
+		  const_cast<LayerData*>(ptr)->accessed(const_cast<LayerData*>(ptr));
+		  const_cast<LayerData*>(ptr)->unlock();
+		  if (!const_cast<LayerData*>(ptr)->getNode()) {
+			  const_cast<LayerData*>(ptr)->pop(const_cast<LayerData*>(ptr));
+			  delete ptr;
+		  }
+	  }
+
+	  const LayerData & operator * () const
+	  {
+		  return *ptr;
+	  }
+
+	  const LayerData * operator ->() const
+	  {
+		  return ptr;
+	  }
+
   };
 };
 

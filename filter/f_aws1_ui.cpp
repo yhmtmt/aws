@@ -60,6 +60,26 @@ const char * f_aws1_ui::str_crz_cmd[crz_undef] =
     "s10", "s20", "has"
   };
 
+const char * f_aws1_ui::str_crz_cmd_exp[crz_undef] =
+  {
+    "Clutch to Neutral.",
+    "Clutch to Forward, Throttle to Dead Slow",
+    "Clutch to Forward, Throttle to Slow",
+    "Clutch to Forward, Throttle to Half",
+    "Clutch to Forward, Throttle to Full",
+    "Clutch to Forward, Throttle to Navigation Full",
+    "Clutch to Backward, Throttle to Dead Slow",
+    "Clutch to Backward, Throttle to Slow",
+    "Clutch to Backward, Throttle to Half",
+    "Clutch to Backward, Throttle to Full",
+    "Steer to Amidship",
+    "Steer to Port 10",
+    "Steer to Port 20",
+    "Steer to Hard a Port",
+    "Steer to Starboard 10",
+    "Steer to Starboard 20",
+    "Steer to Hard a Starboard"    
+  };
 
 f_aws1_ui::f_aws1_ui(const char * name) :
   f_glfw_window(name),
@@ -91,8 +111,6 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   register_fpar("ch_ap_inst", (ch_base**)&m_ch_ap_inst, typeid(ch_aws1_ap_inst).name(), "Autopilot instruction channel");
 
   register_fpar("ch_cam", (ch_base**)&m_ch_cam, typeid(ch_image_ref).name(), "Maincamera Image channel.");
-
-
 
   fvs[0] = ffs[0] = '\0';
   register_fpar("fvs", fvs, 1024, "File path to the vertex shader program.");
@@ -131,18 +149,18 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   // for cruise command
   for(int icrz_cmd = 0; icrz_cmd < (int)crz_undef; icrz_cmd++){
     crz_cmd_val[icrz_cmd] = 127;
-    register_fpar(str_crz_cmd[icrz_cmd], crz_cmd_val+icrz_cmd, str_crz_cmd[icrz_cmd]);
+    register_fpar(str_crz_cmd[icrz_cmd], crz_cmd_val+icrz_cmd, str_crz_cmd_exp[icrz_cmd]);
   }
   register_fpar("crz", (int*)&crz_cm, (int)crz_undef, str_crz_cmd, "Command for CRZ mode.");
   // for aws1 
   crz_cmd_val[crz_stp] = 127;   // neutral
-  crz_cmd_val[crz_ds_ah] = 141; // 700rpm
+  crz_cmd_val[crz_ds_ah] = 152; // 700rpm
   crz_cmd_val[crz_sl_ah] = 200; //1000rpm
   crz_cmd_val[crz_hf_ah] = 210; //2500rpm
   crz_cmd_val[crz_fl_ah] = 220; //4500rpm
   crz_cmd_val[crz_nf] = 225;    //5200rpm
   
-  crz_cmd_val[crz_ds_as] =112; 
+  crz_cmd_val[crz_ds_as] =102; 
   crz_cmd_val[crz_sl_as] = 53;
   crz_cmd_val[crz_hf_as] = 43;
   crz_cmd_val[crz_fl_as] = 33;
@@ -343,10 +361,13 @@ bool f_aws1_ui::init_run()
     if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 8192))
       return false;
     
-    if (!oline3d.init(loc_mode, loc_position, loc_gcolor, loc_depth2d, 8192))
+    if (!oline3d.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 256))
       return false;
 
-    if(!init_map_mask())
+	if (!oline3d_map.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 0x0001FFFF))
+		return false;
+
+	if(!init_map_mask())
       return false;
   }
   
@@ -378,7 +399,7 @@ bool f_aws1_ui::init_run()
   if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
 	  return false;
   
-  if (!coast_line.init(&oline3d, clr, 4096))
+  if (!coast_line.init(&oline3d_map, clr, 4096))
 	  return false;
 
   glm::vec2 sz((float)(sz_fnt.x * 7), (float)(sz_fnt.y * 2)),
@@ -540,7 +561,7 @@ void f_aws1_ui::print_screen()
       if(!m_vw.isOpened()){
 	char fname[1024];
 	double fps = (double) SEC / (double) get_period();
-	int fourcc = CV_FOURCC('D', 'I', 'V', 'X');
+	int fourcc = VideoWriter::fourcc('D', 'I', 'V', 'X');
 	snprintf(fname, 1024, "%s/%s_%lld.avi", m_path_storage, m_name, get_time());
 	
 	m_vw.open(fname, fourcc, fps, m_sz_win, true);
@@ -667,26 +688,33 @@ void f_aws1_ui::update_map()
   // bupdate_map is asserted when map_scale is changed or drawing object types are re-selected
   
   if (glm::distance(pt_prev_map_update, pt_map_center_ecef)
-      > 0.5 * map_range || bupdate_map){
+      > map_range || bupdate_map){
     // update map
-
+	  cout << "Updating map" << endl;
     m_ch_map->lock();
     m_ch_map->set_center(pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z);
     m_ch_map->set_range((float)(2 * map_range));
-    m_ch_map->set_resolution(meter_per_pix);
-    
+    m_ch_map->set_resolution((float)(meter_per_pix/4.0));
+	//cout << "meter_per_pix:" << meter_per_pix << " range:" << map_range << endl;
+    m_ch_map->set_update();
     m_ch_map->unlock();
-    
+	pt_prev_map_update = pt_map_center_ecef;
     bupdate_map = false;
   }
-  if (visible_obj[ui_obj_cl])
-    {
-      list<const AWSMap2::LayerData *> layerData;
-      m_ch_map->lock();
-      layerData = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
-      coast_line.update_points(layerData);
-      m_ch_map->unlock();
-    }
+
+  if (m_ch_map->is_ready()) {
+	  if (visible_obj[ui_obj_cl])
+	  {
+		  cout << "Map ready, Updating points." << endl;
+		  list<AWSMap2::LayerDataPtr> layerData;
+		  m_ch_map->lock();
+		  layerData = m_ch_map->get_layer_data(AWSMap2::lt_coast_line);
+		  coast_line.update_points(layerData);
+		  m_ch_map->unlock();
+		  m_ch_map->reset_ready();
+	  }
+  }
+  coast_line.update_drawings();
 }
 
 f_aws1_ui::e_button f_aws1_ui::get_col_button()
@@ -864,20 +892,21 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
   glUniformMatrix4fv(loc_Mmvp, 1, GL_FALSE, glm::value_ptr(pvm));
   glUniformMatrix4fv(loc_Mm, 1, GL_FALSE, glm::value_ptr(mm));
   glUniform3fv(loc_Lpar, 1, glm::value_ptr(light));
-  
+
   oline3d.render(pvm);
-  
+  oline3d_map.render(pvm);
+
+  if (pvm_box->get_mode() == ui_mode_map) {
+	  omap_mask.render();
+  }
+
   // 2d rendering
+  oline.render();
   orect.render();
   otri.render();
   ocirc.render();
   otxt.render(0);
-  oline.render();
-  
-  if(pvm_box->get_mode() == ui_mode_map){
-    omap_mask.render();
-  }
-    
+ 
   glUseProgram(0);
   // show rendering surface.
   glfwSwapBuffers(pwin());	
@@ -903,6 +932,7 @@ bool f_aws1_ui::proc()
   if(m_js.id != -1){
     m_js.set_btn();
     m_js.set_stk();
+    //    m_js.print(cout);
   }
 
   if (m_js.estart & s_jc_u3613m::EB_EVUP)
@@ -975,6 +1005,7 @@ bool f_aws1_ui::proc()
   calc_mouse_enu_and_ecef_pos(pvm_box->get_mode(), Rown,
 			      lat, lon, xown, yown, zown, yaw);
   if (event_handled){
+	  clear_mouse_state(prc_box);
     handle_updated_ui_box(pvm_box, pcm_box, pmc_box, prc_box);
   }
   else{
@@ -1099,7 +1130,15 @@ void f_aws1_ui::handle_ctrl_crz()
     m_meng_f = max((float)0.0, m_meng_f);
 
     if (m_js.eux & s_jc_u3613m::EB_EVUP) {
-      if (m_meng_f < crz_cmd_val[crz_stp])
+      if(m_meng_f < crz_cmd_val[crz_fl_as])
+	crz_cm = crz_fl_as;
+      else if(m_meng_f < crz_cmd_val[crz_hf_as])
+	crz_cm = crz_hf_as;
+      else if(m_meng_f < crz_cmd_val[crz_sl_as])
+	crz_cm = crz_sl_as;
+      else if(m_meng_f < crz_cmd_val[crz_ds_as])
+	crz_cm = crz_ds_as;
+      else if (m_meng_f < crz_cmd_val[crz_stp])
 	crz_cm = crz_stp;
       else if (m_meng_f < crz_cmd_val[crz_ds_ah])
 	crz_cm = crz_ds_ah;
@@ -1114,7 +1153,17 @@ void f_aws1_ui::handle_ctrl_crz()
     }
     
     if (m_js.edx & s_jc_u3613m::EB_EVUP) {
-      if (m_meng_f > crz_cmd_val[crz_stp])
+      if (m_meng_f > crz_cmd_val[crz_nf])
+	crz_cm = crz_nf;
+      else if (m_meng_f > crz_cmd_val[crz_fl_ah])
+	crz_cm = crz_fl_ah;
+      else if (m_meng_f > crz_cmd_val[crz_hf_ah])
+	crz_cm = crz_hf_ah;
+      else if (m_meng_f > crz_cmd_val[crz_sl_ah])
+	crz_cm = crz_sl_ah;
+      else if (m_meng_f > crz_cmd_val[crz_ds_ah])
+	crz_cm = crz_ds_ah;
+      else if (m_meng_f > crz_cmd_val[crz_stp])
 	crz_cm = crz_stp;
       else if (m_meng_f > crz_cmd_val[crz_ds_as])
 	crz_cm = crz_ds_as;
@@ -1357,7 +1406,7 @@ void f_aws1_ui::handle_base_mouse_event(c_view_mode_box * pvm_box, c_ctrl_mode_b
     else if (mouse_action == GLFW_RELEASE){
       handle_mouse_lbtn_release(pvm_box, pcm_box, pmc_box, prc_box);
     }
-    clear_mouse_state();
+    clear_mouse_event();
   }
   else{
     handle_mouse_mv(pvm_box, pcm_box, pmc_box, prc_box);
@@ -1404,17 +1453,17 @@ void f_aws1_ui::handle_mouse_lbtn_release(c_view_mode_box * pvm_box,
 	add_waypoint(prc_box);
       }
     prc_box->command_processed(c_route_cfg_box::wp_add);
-    mouse_state = ms_normal;
     break;
   case ms_drag:   
     handle_mouse_drag(pvm_box, obj_tmp);
     dir_cam_hdg += dir_cam_hdg_drag;
     dir_cam_hdg_drag = 0.f;
-    mouse_state = ms_normal;
     break;
   case ms_normal:
     break;
   }
+
+  clear_mouse_state(prc_box);
 }
 
 void f_aws1_ui::handle_mouse_mv(c_view_mode_box * pvm_box,
@@ -1465,7 +1514,7 @@ void f_aws1_ui::handle_updated_ui_box(c_view_mode_box * pvm_box, c_ctrl_mode_box
   
   ocsr.enable_arrow();
   ocsr.set_cursor_position(pt_mouse, pt_mouse_bih);
-  clear_mouse_state();
+  clear_mouse_event();
 }
 
 
@@ -1527,43 +1576,47 @@ void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
 
 void f_aws1_ui::update_map_cfg_box(c_map_cfg_box * pmc_box)
 {
-  {
-    float fmap_range = (float)map_range;
-    pmc_box->get_params(fmap_range, visible_obj);
-    map_range = (unsigned int)fmap_range;
-  }
-  switch (pmc_box->get_command())
-    {
-    case c_map_cfg_box::range_up:
-      if(map_range < 10000000){       
-	map_range += map_range_base;
-	
-	if(map_range == map_range_base * 10)
-	  map_range_base *= 10;
-     
-	recalc_range();
-      }
-      break;
-    case c_map_cfg_box::range_down:
-      if(map_range > 100){	
-	if(map_range_base == map_range)
-	  map_range_base /= 10;
-	
-	map_range -= map_range_base;
-	recalc_range();
-      }
-      break;
-    case c_map_cfg_box::wp:
-      break;
-    case c_map_cfg_box::vsl:
-      break;
-    case c_map_cfg_box::cl:
-      bupdate_map = true;
-      break;
-    case c_map_cfg_box::mrk:
-      break;
-    }
-  pmc_box->set_params((float)map_range, visible_obj);
+	{
+		float fmap_range = (float)map_range;
+		pmc_box->get_params(fmap_range, visible_obj);
+		map_range = (unsigned int)fmap_range;
+	}
+	switch (pmc_box->get_command())
+	{
+	case c_map_cfg_box::range_up:
+		if (map_range < 10000000) {
+			map_range += map_range_base;
+
+			if (map_range == map_range_base * 10)
+				map_range_base *= 10;
+
+			recalc_range();
+			bupdate_map = true;
+		}
+		break;
+	case c_map_cfg_box::range_down:
+		if (map_range > 100) {
+			if (map_range_base == map_range)
+				map_range_base /= 10;
+
+			map_range -= map_range_base;
+			recalc_range();
+			bupdate_map = true;
+		}
+		break;
+	case c_map_cfg_box::wp:
+		break;
+	case c_map_cfg_box::vsl:
+		break;
+	case c_map_cfg_box::cl:
+		bupdate_map = true;
+		break;
+	case c_map_cfg_box::mrk:
+		break;
+	}
+
+
+	pmc_box->set_params((float)map_range, visible_obj);
 }
 
 void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mouse_state_new)
@@ -1616,6 +1669,7 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
       break;
     case c_route_cfg_box::wp_del:
       m_ch_wp->ers();
+	  fwp = m_ch_wp->get_focused_wp();
       break;
     case c_route_cfg_box::rt_prev:
       rt = m_ch_wp->get_route_id();
@@ -1680,7 +1734,7 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
     s = (float)sin(th);
     
     float ratio = (float)((float)m_sz_win.width / (float)m_sz_win.height);
-    pm = glm::perspective((float)(fov_cam_y * PI / 180.0f), ratio, 1.f, 30e6f);
+    pm = glm::perspective((float)(fov_cam_y * PI / 180.0f), ratio, 1.f, 10000.f/*30e6f*/);
     vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(s, c, height_cam), glm::vec3(0, 0, 1));
     pvm = pm * vm;
     
@@ -1695,10 +1749,11 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
     float wx = (float)(meter_per_pix * (m_sz_win.width >> 1)),
       wy = (float)(meter_per_pix * (m_sz_win.height >> 1));
     
-    pm = glm::ortho(-wx, wx, -wy, wy, 1.f, 30e6f);
-    vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+    pm = glm::ortho(-wx, wx, -wy, wy, 1.f, 10000.f/*30e6f*/);
+    vm = glm::lookAt(glm::vec3(0, 0, 100*height_cam), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
     pvm = pm * vm;
   }
+  pvm *= mm;
 }
 
 void f_aws1_ui::_cursor_position_callback(double xpos, double ypos){

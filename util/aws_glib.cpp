@@ -1057,6 +1057,12 @@ c_gl_line_obj::~c_gl_line_obj()
 	destroy();
 }
 
+void c_gl_line_obj::clear()
+{
+	lbis.clear();
+	num_total_vertices = 0;
+}
+
 void c_gl_line_obj::destroy()
 {
   if (vao != 0)
@@ -1118,32 +1124,10 @@ int c_gl_line_obj::add(const int npts, const float * pts)
   lbi.bvalid = true;	
   lbi.npts = npts;
   unsigned int offset = 0;
-  for (int ih = 0; ih < lbis.size(); ih++){
-    lbis[ih].offset = offset;
-    offset += lbis[ih].npts;
-  }
-  
-  for (int ih = lbis.size() - 1; ih >= 0; ih--)
-    {
-      if (lbis[ih].offset + vertices == lbis[ih].vtx)
-	continue;
-      if (ih == handle){			
-	s_vertex * vtx = vertices + lbis[ih].offset;
-	memcpy((void*)vtx, (void*)pts, sizeof(float)* npts * 3);
-	lbis[ih].vtx = vtx;
-      }
-      else{
-	s_vertex * vtx = lbis[ih].vtx + lbis[ih].npts - 1;
-	s_vertex * vtx_src = vertices + lbis[ih].offset + lbis[ih].npts - 1;
-	for (int iv = 0; iv < lbis[ih].npts; iv++)
-	  {
-	    *vtx = *vtx_src;
-	    vtx--;
-	    vtx_src--;
-	  }
-	lbis[ih].vtx = vertices + lbis[ih].offset;
-      }
-    }
+  lbis[handle].offset = num_total_vertices;
+  s_vertex * vtx = vertices + lbis[handle].offset;
+  memcpy((void*)vtx, (void*)pts, sizeof(float)* npts * 3);
+  lbis[handle].vtx = vtx;
   
   num_total_vertices += npts;
   
@@ -1164,11 +1148,12 @@ void c_gl_line_obj::config_points(const int handle, const float * pts)
 void c_gl_line_obj::remove(const int handle)
 {
   if (handle < lbis.size()){
-    num_total_vertices -= lbis[handle].npts;
-    lbis[handle].bvalid = false;
-    lbis[handle].npts = 0;
-    lbis[handle].offset = 0;
-    lbis[handle].vtx = 0;
+	  memcpy(lbis[handle].vtx, lbis[handle].vtx + lbis[handle].offset, buffer_size - (lbis[handle].offset + lbis[handle].npts));
+	  num_total_vertices -= lbis[handle].npts;
+	  lbis[handle].bvalid = false;
+	  lbis[handle].npts = 0;
+	  lbis[handle].offset = 0;
+	  lbis[handle].vtx = 0;
   }
 }
 
@@ -1197,9 +1182,12 @@ void c_gl_line_obj::render(const glm::mat4 & PV)
     s_line_buffer_inf & lbi = lbis[ih];
     if (!lbi.bvalid || !lbi.bactive)
       continue;
+
     T = glm::translate(T, lbi.t);
     glm::mat4 m = PV * T * lbi.R;
+
     glUniformMatrix4fv(Mmvploc, 1, GL_FALSE, glm::value_ptr(m));
+
     glUniform4fv(clrloc, 1, glm::value_ptr(lbi.clr));
     
     glLineWidth(lbi.w);

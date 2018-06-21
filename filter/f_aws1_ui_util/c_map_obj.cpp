@@ -74,7 +74,7 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
     pocirc->config_depth(hmarks[i].hmark, display_depth);
     pocirc->disable(hmarks[i].hmark);
     hmarks[i].hstr = potxt->reserv(20);
-    potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos, 0, 0);
+    potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos, 0, display_depth);
     potxt->disable(hmarks[i].hstr);
 
     {
@@ -139,7 +139,8 @@ void c_map_waypoint_obj::update_drawings()
     if (iwp > 0) {
       {
         s_wp & wp_prev = wps[iwp - 1];
-        float x[6] = { wp_prev.rx, wp_prev.ry, wp_prev.rz, wp.rx, wp.ry, wp.rz };
+		
+        float x[6] = { wp_prev.x, wp_prev.y, wp_prev.z, wp.x, wp.y, wp.z };
         poline3d->config_points(hmarks[iwp].hline_next_3d, x);
         poline3d->enable(hmarks[iwp].hline_next_3d);
       }
@@ -239,6 +240,12 @@ bool c_map_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
   objs.resize(nmax_objs);
   for (int i = 0; i < nmax_objs; i++){
     hmarks[i].hmark = porect->add(clr, pos, 0.0f, sz_rect);
+	if (i == 0) {
+		cout << "First index of map line is " << hmarks[i].hmark << endl;
+	}
+	else if (i == nmax_objs - 1) {
+		cout << "Last index of map line is " << hmarks[i].hmark << endl;
+	}
     porect->config_border(hmarks[i].hmark, true, 1.0);
     porect->config_depth(hmarks[i].hmark, display_depth);
     porect->disable(hmarks[i].hmark);
@@ -250,7 +257,7 @@ bool c_map_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
 
     hmarks[i].hstr = potxt->reserv(64);
     potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0),
-      sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, 0);
+      sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, display_depth);
 
     float pts[4]={0, 0, 0, 0};
     
@@ -395,11 +402,15 @@ bool c_map_coast_line_obj::init(c_gl_line_obj * _poline, const glm::vec4 & _clr,
   return true;
 }
 
-bool c_map_coast_line_obj::update_points(list<const AWSMap2::LayerData*> & coast_lines)
+bool c_map_coast_line_obj::update_points(list<AWSMap2::LayerDataPtr> & coast_lines)
 {
   // clear line object
+	/*
   for (auto itr = handle.begin(); itr != handle.end(); itr++)
     poline->remove(itr->handle);
+	*/
+	poline->clear();
+
   handle.clear();
 
   // add new lines
@@ -417,23 +428,20 @@ bool c_map_coast_line_obj::update_points(list<const AWSMap2::LayerData*> & coast
   pts.reserve(128);
   int index = 0;
   for (auto itr = coast_lines.begin(); itr != coast_lines.end(); itr++){
-    const AWSMap2::CoastLine * pcl = dynamic_cast<const AWSMap2::CoastLine*>(*itr);
-    unsigned int num_lines = pcl->getNumLines();
+	  (*itr)->print();
+    const AWSMap2::CoastLine & cl = dynamic_cast<const AWSMap2::CoastLine&>(**itr);
+    unsigned int num_lines = cl.getNumLines();
     for (unsigned int iline = 0; iline < num_lines; iline++, index++){
-      const vector<AWSMap2::vec3> & pts_ecef = pcl->getPointsECEF(iline);
+      const vector<AWSMap2::vec3> & pts_ecef = cl.getPointsECEF(iline);
       pts.resize(pts_ecef.size());
       bcull.resize(pts_ecef.size());
 
       for (int ipt = 0; ipt < pts.size(); ipt++){
         const AWSMap2::vec3 & pte = pts_ecef[ipt];
-        float rx, ry, rz;
-        eceftowrld(Rmap, xmap, ymap, zmap,
-          (const float)pte.x, (const float)pte.y, (const float)pte.z,
-          rx, ry, rz);
-        pts[ipt].x = rx;
-        pts[ipt].y = ry;
-        pts[ipt].z = rz;
-      }
+		pts[ipt].x = (float)pte.x;
+		pts[ipt].y = (float)pte.y;
+		pts[ipt].z = (float)pte.z;
+	  }
 
       if (!add_new_line(index, pts.size(), (const float*)pts.data()))
         return false;
@@ -442,6 +450,20 @@ bool c_map_coast_line_obj::update_points(list<const AWSMap2::LayerData*> & coast
 
   return true;
 }
+
+void c_map_coast_line_obj::update_drawings()
+{
+  if(mode == ui_mode_sys){
+    for(int iline = 0; iline < handle.size(); iline++){
+      poline->disable(handle[iline].handle);
+    }
+  }else{
+    for(int iline = 0; iline < handle.size(); iline++){
+      poline->enable(handle[iline].handle);
+    }
+  }
+}
+
 
 /////////////////////////////////////////////////////////////////// c_own_ship
 bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,

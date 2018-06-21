@@ -32,13 +32,24 @@ using namespace cv;
 
 #include "f_wp_manager.h"
 
-f_wp_manager::f_wp_manager(const char * name) :f_base(name), m_aws1_waypoint_file_version("#aws1_waypoint_v_0.00"), 
-m_state(NULL), m_wp(NULL)
+const char * f_wp_manager::str_cmd[cmd_null] = {
+	"ins", "ers", "save", "load", "next", "prev"
+};
+
+f_wp_manager::f_wp_manager(const char * name) :f_base(name), m_aws1_waypoint_file_version("#aws1_waypoint_v_0.00"), id(0),
+m_state(NULL), m_wp(NULL), cmd(cmd_null), lat(0.f), lon(0.f), rarv(10.f), vel(10.f)
 {
 	path[0] = '\0';
 	register_fpar("path", path, 1024, "Path to the route file.");
 	register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
 	register_fpar("ch_wp", (ch_base**)&m_wp, typeid(ch_wp).name(), "Waypoint channel");
+
+	register_fpar("cmd", (int*)&cmd, (int)cmd_null, str_cmd, "Command.");
+	register_fpar("id", &id, "Route id");
+	register_fpar("lat", &lat, "Lattitude");
+	register_fpar("lon", &lon, "Logitude");
+	register_fpar("rarv", &rarv, "Radius for arrival detection.");
+	register_fpar("vel", &vel, "Velocity for navigation.");
 }
 
 f_wp_manager::~f_wp_manager()
@@ -66,6 +77,31 @@ bool f_wp_manager::proc()
 
 	// process command
 	m_wp->lock();
+	switch (cmd) {
+	case cmd_save:
+		m_wp->set_route_id(id);
+		m_wp->set_cmd(ch_wp::e_cmd::cmd_save);
+		break;
+	case cmd_load:
+		m_wp->set_route_id(id);
+		m_wp->set_cmd(ch_wp::e_cmd::cmd_load);
+		break;
+	case cmd_ers:
+		m_wp->ers();
+		break;
+	case cmd_ins:
+		m_wp->ins((float)(lat * (PI/180.f)), (float)(lon * (PI/180.f)), (float)rarv, (float)vel);
+		break;
+	case cmd_next:
+		m_wp->next();
+		break;
+	case cmd_prev:
+		m_wp->prev();
+		break;
+		
+	}
+	cmd = cmd_null;
+
 	switch (m_wp->get_cmd())
 	{
 	case ch_wp::cmd_load:

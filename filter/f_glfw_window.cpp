@@ -415,7 +415,7 @@ bool f_glfw_calib::proc()
 		m_bthact = true;
 
 		if (img.channels() == 3)
-			cvtColor(img, m_img_det, CV_RGB2GRAY);
+			cvtColor(img, m_img_det, COLOR_RGB2GRAY);
 		else
 			m_img_det = img.clone();
 
@@ -443,7 +443,7 @@ bool f_glfw_calib::proc()
 
 	if (bnew && m_bundist){
 		unique_lock<mutex> lock(m_mtx);
-		remap(img, img, m_map1, m_map2, CV_INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
+		remap(img, img, m_map1, m_map2, INTER_LINEAR, BORDER_CONSTANT, Scalar(0, 0, 0));
 	}
 
 	m_timg = timg;
@@ -896,17 +896,17 @@ int f_glfw_calib::gen_calib_flag()
 		flag |= (m_bcalib_fix_k3 ? fisheye::CALIB_FIX_K3 : 0);
 		flag |= (m_bcalib_fix_k4 ? fisheye::CALIB_FIX_K4 : 0);
 	}else{
-		flag |= (m_bcalib_use_intrinsic_guess ? CV_CALIB_USE_INTRINSIC_GUESS : 0);
-		flag |= (m_bcalib_fix_principal_point ? CV_CALIB_FIX_PRINCIPAL_POINT : 0);
-		flag |= (m_bcalib_fix_aspect_ratio ? CV_CALIB_FIX_ASPECT_RATIO : 0);
-		flag |= (m_bcalib_zero_tangent_dist ? CV_CALIB_ZERO_TANGENT_DIST : 0);
-		flag |= (m_bcalib_fix_k1 ? CV_CALIB_FIX_K1 : 0);
-		flag |= (m_bcalib_fix_k2 ? CV_CALIB_FIX_K2 : 0);
-		flag |= (m_bcalib_fix_k3 ? CV_CALIB_FIX_K3 : 0);
-		flag |= (m_bcalib_fix_k4 ? CV_CALIB_FIX_K4 : 0);
-		flag |= (m_bcalib_fix_k5 ? CV_CALIB_FIX_K5 : 0);
-		flag |= (m_bcalib_fix_k6 ? CV_CALIB_FIX_K6 : 0);
-		flag |= (m_bcalib_rational_model ? CV_CALIB_RATIONAL_MODEL : 0);
+		flag |= (m_bcalib_use_intrinsic_guess ? CALIB_USE_INTRINSIC_GUESS : 0);
+		flag |= (m_bcalib_fix_principal_point ? CALIB_FIX_PRINCIPAL_POINT : 0);
+		flag |= (m_bcalib_fix_aspect_ratio ? CALIB_FIX_ASPECT_RATIO : 0);
+		flag |= (m_bcalib_zero_tangent_dist ? CALIB_ZERO_TANGENT_DIST : 0);
+		flag |= (m_bcalib_fix_k1 ? CALIB_FIX_K1 : 0);
+		flag |= (m_bcalib_fix_k2 ? CALIB_FIX_K2 : 0);
+		flag |= (m_bcalib_fix_k3 ? CALIB_FIX_K3 : 0);
+		flag |= (m_bcalib_fix_k4 ? CALIB_FIX_K4 : 0);
+		flag |= (m_bcalib_fix_k5 ? CALIB_FIX_K5 : 0);
+		flag |= (m_bcalib_fix_k6 ? CALIB_FIX_K6 : 0);
+		flag |= (m_bcalib_rational_model ? CALIB_RATIONAL_MODEL : 0);
 	}
 	return flag;
 }

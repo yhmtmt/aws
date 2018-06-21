@@ -267,7 +267,10 @@ public:
 
   void destroy();
 
+  void clear();
+
   void remove(const int handle);
+
 
   void enable(const int handle)
   {

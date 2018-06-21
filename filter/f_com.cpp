@@ -30,6 +30,7 @@ using namespace std;
 #include "../util/c_clock.h"
 
 #include <opencv2/opencv.hpp>
+#include <opencv2/highgui.hpp>
 using namespace cv;
 
 #include "f_com.h"
@@ -676,18 +677,18 @@ bool f_trn_img::proc()
 	vector<uchar> buf;
 	if(m_fmt == 1)/* jpeg image */{
 		vector<int> param = vector<int>(2);
-		param[0] = CV_IMWRITE_JPEG_QUALITY;
+		param[0] = IMWRITE_JPEG_QUALITY;
 		param[1] = min(100, max(0, m_qjpeg));
 		imencode(".jpg", data, buf, param);
 		data = Mat(buf);
 	}else if(m_fmt == 2){
 		vector<int> param = vector<int>(2);
-		param[0] = CV_IMWRITE_PNG_COMPRESSION;
+		param[0] = IMWRITE_PNG_COMPRESSION;
 		param[1] = min(9, max(0, m_qpng));
 		imencode(".png", data, buf, param);
 		data = Mat(buf);
 	}
-	Mat imgtest = imdecode(data, CV_LOAD_IMAGE_COLOR);
+	Mat imgtest = imdecode(data, IMREAD_COLOR);
 	sz = data.size();
 	int size_elem = (int) data.elemSize();
 	int channel = (int) data.channels();
@@ -914,7 +915,7 @@ bool f_rcv_img::proc()
 	switch(h0.fmt){
 	case 1: //jpg
 	case 2: //png
-		img = imdecode(data, CV_LOAD_IMAGE_COLOR);
+		img = imdecode(data, IMREAD_COLOR);
 		break;
 	case 0:
 	default:

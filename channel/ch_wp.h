@@ -77,7 +77,6 @@ public:
 	enum e_cmd{
 		cmd_save, cmd_load, cmd_none
 	};
-
 protected:
 	e_cmd cmd;
 
@@ -184,7 +183,7 @@ public:
 	void set_focus(int i)
 	{
 		int j;
-		for(j = 0, itr_focus = wps.begin(); itr_focus != wps.end() && j < i; j++);
+		for(j = 0, itr_focus = wps.begin(); itr_focus != wps.end() && j < i; j++, itr_focus++);
 		focus = j;
 	}
 
@@ -273,6 +272,21 @@ public:
 	int get_num_wps(){
 		int r = (int) wps.size();
 		return r;
+	}
+};
+
+
+class ch_route :public ch_base
+{
+private:
+public:
+	ch_route(const char * name) : ch_base(name)
+	{
+	}
+
+	virtual ~ch_route()
+	{
+
 	}
 };
 

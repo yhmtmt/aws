@@ -26,6 +26,15 @@
 class f_wp_manager: public f_base
 {
 protected:
+	enum e_cmd {
+		cmd_ins, cmd_ers, cmd_save, cmd_load, cmd_next, cmd_prev, cmd_null
+	} cmd;
+
+	int id;
+	double lat, lon, rarv, vel;
+
+	static const char * str_cmd[cmd_null];
+
 	const char * m_aws1_waypoint_file_version;
 	char path[1024];
 	ch_state * m_state;

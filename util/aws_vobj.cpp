@@ -314,7 +314,7 @@ bool s_model::s_chsbd::detect(Mat & img, vector<Point2f> & pt2d)
 		return false;
 	Size winSize = Size( 5, 5 );
 	Size zeroZone = Size( -1, -1 );
-	TermCriteria criteria = TermCriteria( CV_TERMCRIT_EPS + CV_TERMCRIT_ITER, 40, 0.001 );
+	TermCriteria criteria = TermCriteria( TermCriteria::EPS + TermCriteria::COUNT, 40, 0.001 );
 	cornerSubPix(img, pt2d, winSize, zeroZone, criteria); 
 	return true;
 }

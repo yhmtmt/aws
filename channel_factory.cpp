@@ -180,6 +180,7 @@ void ch_base::register_factory()
 	register_factory<ch_obst>("obst");
 	register_factory<ch_ais_obj>("ais_obj");
 	register_factory<ch_wp>("wp");
+	register_factory<ch_route>("route");
 	register_factory<ch_aws1_sys>("aws1_sys");
 
 #ifdef ORB_SLAM	
