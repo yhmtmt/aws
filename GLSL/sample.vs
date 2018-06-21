@@ -1,4 +1,4 @@
-#version 150
+#version 130
 
  
 uniform vec2 inv_sz_half_scrn; 
