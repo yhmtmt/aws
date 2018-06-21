@@ -19,6 +19,7 @@
 #include "CmdAppBase/CmdAppBase.h"
 class c_rcmd;
 
+
 //////////////////////////////////////////////////////////// class c_aws
 // c_aws is the main class of automatic watch system.
 // main() instantiate a c_aws objects and runs c_aws::run(). 
@@ -57,6 +58,7 @@ protected:
 	vector<ch_base *> m_channels;
 
 	bool m_blk_cmd;
+  
 	int skip_space(const char * ptr, int len)
 	{
 		int len_skip = 0;
