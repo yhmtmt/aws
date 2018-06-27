@@ -285,6 +285,31 @@ public:
 	}
 };
 
+class c_model_engine_ctrl
+{
+ private:
+  int fth, bth, umax, umin, fslack, bslack;
+  double rgamma, rfdelta, rbdelta;
+  
+  enum e_gear_state{
+    gs_n, gs_f, gs_b, gs_none
+  };
+
+  enum e_action_mode{
+    am_nf, am_nb, am_fn, am_bn, am_fu, am_fd, am_bu, am_bd, am_none
+  };
+  
+ public:
+ c_model_engine_ctrl():fth(0x7f+0x19), bth(0x7f - 0x19), umax(0x00ff), umin(0x0000), rgamma(0.5), rfdelta(0.5), rbdelta(0.5), fslack(0.05), bslack(0.05)
+    {      
+    }
+
+  
+  void update(const int u, const double gamma, const double delta,
+	      const double slack, const double dt,
+	      double & gamma_new, double & delta_new, double slack_new);
+};
+
 class f_aws1_sim : public f_base
 {
 protected:
@@ -327,7 +352,7 @@ protected:
 
 		void update_coordinates() {
 			bihtoecef(lat, lon, 0, xe, ye, ze);
-			getwrldrot(lat, lon, Rwrld);
+			getwrldrot(lat, lon, Rwrld);			
 		}
 	};
 

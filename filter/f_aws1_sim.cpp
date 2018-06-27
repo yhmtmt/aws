@@ -38,6 +38,159 @@ using namespace cv;
 
 #include "f_aws1_sim.h"
 
+
+void c_model_engine_ctrl::update(const int u, const double gamma,
+				 const double delta,
+				 const double slack, const double dt,
+				 double & gamma_new, double & delta_new,
+				 double slack_new)
+{
+  e_gear_state gs, gs_inf;
+  if(gamma == -1.0){
+    gs = gs_b;
+  }else if(gamma == 1.0){
+    gs = gs_f;
+  }else{
+    gs = gs_n;
+  }
+  
+  double unorm, rdelta;
+  double gamma_inf, delta_inf, slack_inf;
+  if(u <= bth){
+    unorm = (bth - u) /  (bth - umin);
+    gs_inf = gs_b;
+    gamma_inf = -1.0;
+  }if (u >= fth){
+    unorm = (u - fth) / (umax - fth);
+    gs_inf = gs_f;
+    gamma_inf = 1.0;
+  }else{
+    unorm = 0;
+    gs_inf = gs_n;
+    gamma_inf = 0.0;      
+  }
+
+  // determining action mode, and final (gamma, delta) for the input u.
+  e_action_mode am;
+  switch(gs){
+  case gs_f:
+    switch(gs_inf){
+    case gs_n:
+    case gs_b:
+      delta_inf = 0.f;
+      if(delta == 0.f){
+	am = am_fn;
+      }else{
+	am = am_fd;
+	rdelta = rfdelta;
+	delta_inf = 0.f;
+	slack_inf = 0.f;
+      }
+      break;
+    case gs_f:
+      delta_inf = unorm;
+      rdelta = rfdelta;
+      if(delta_inf > delta){
+	am = am_fu;
+	slack_inf = fslack;	    
+      }else if(delta_inf < delta){
+	am = am_fd;
+	slack_inf = 0.f;
+      }else{
+	am = am_none;
+      }      
+      break;
+    }
+    break;
+  case gs_n:
+    switch(gs_inf){
+    case gs_f:
+      am = am_nf;
+      break;
+    case gs_n:
+      am = am_none;
+      break;
+    case gs_b:
+      am = am_nb;
+      break;
+    }
+    break;
+  case gs_b:
+    switch(gs_inf){
+    case gs_f:
+    case gs_n:
+      if(delta == 0.f){
+	am = am_bn;
+      }else{
+	am = am_bd;
+	rdelta = rbdelta;
+	delta_inf = 0.f;
+	slack_inf = 0.f;
+      }
+      
+      break;
+    case gs_b:
+      delta_inf = unorm;
+      rdelta = rbdelta;
+      if(delta_inf > delta){
+	am = am_bu;
+	slack_inf = bslack;
+      }else if(delta_inf < delta){
+	am = am_bd;
+	slack_inf = 0.0;
+      }else{
+	am = am_none;
+      }
+      break;
+    }
+    break;
+  }
+  
+  double dgamma, egamma, eslack, ddelta, edelta;
+  switch(am){
+  case am_fn:
+  case am_nf:
+  case am_bn:
+  case am_nb:
+    // gamma -> gamma_inf
+    dgamma = rgamma * dt;
+    egamma = gamma_inf - gamma;
+    if(abs(egamma) < dgamma){
+      gamma_new = gamma_inf;	
+    }else if(egamma < 0){
+      gamma_new = gamma - rgamma * dt;
+    }else{
+      gamma_new = gamma + rgamma * dt;
+    }
+    break;
+  case am_fu:
+  case am_fd:
+  case am_bu:
+  case am_bd:
+    // delta, slack -> delta_inf, slack_inf
+    ddelta = rdelta * dt;
+    eslack = slack_inf - slack;
+    edelta = delta_inf - delta;
+    
+    if(abs(eslack) < ddelta){
+      slack_new = slack_inf;
+    }else if(eslack < 0){
+      slack_new = slack + ddelta;
+    }else{
+      slack_new = slack - ddelta;
+    }
+    
+    if(abs(edelta) < ddelta){
+      delta_new = delta_inf;
+    }else if(edelta < 0){
+      delta_new = delta + ddelta;
+    }else{
+      delta_new = delta - ddelta;
+    }     
+    break;
+  }    
+}
+
 /////////////////////////////////////////////////////////////////////////// f_aws1_sim members
 
 f_aws1_sim::f_aws1_sim(const char * name) :
@@ -411,13 +564,13 @@ void f_aws1_sim::set_input_state_vector(const long long & tcur)
 	m_state->get_attitude(t, roll, pitch, yaw);
 	m_state->get_position(t, lat, lon, alt, galt);
 	m_state->get_velocity(t, cog, sog);
-	m_sv_cur.roll = roll;
-	m_sv_cur.pitch = pitch;
-	m_sv_cur.yaw = yaw;
-	m_sv_cur.cog = cog;
+	m_sv_cur.roll = roll * (PI / 180.f);
+	m_sv_cur.pitch = pitch * (PI / 180.f);
+	m_sv_cur.yaw = yaw * (PI / 180.f);
+	m_sv_cur.cog = cog * (PI / 180.f);
 	m_sv_cur.sog = sog;
-	m_sv_cur.lat = lat;
-	m_sv_cur.lon = lon;
+	m_sv_cur.lat = lat * (PI / 180.f);
+	m_sv_cur.lon = lon * (PI / 180.f);
 	m_sv_cur.update_coordinates();
   }
 
@@ -482,9 +635,9 @@ void f_aws1_sim::set_output_state_vector()
 	{
 		float alt = 0.f, galt = 0.f;
 		// output simulated lat, lon, roll, pitch, yaw, cog, sog
-		m_state_sim->set_attitude(sv.t, sv.roll, sv.pitch, sv.yaw);
-		m_state_sim->set_position(sv.t, sv.lat, sv.lon, alt, galt);
-		m_state_sim->set_velocity(sv.t, sv.cog, sv.sog);
+		m_state_sim->set_attitude(sv.t, sv.roll * (180.f / PI), sv.pitch * (180.f / PI), sv.yaw * (180.f / PI));
+		m_state_sim->set_position(sv.t, sv.lat * (180.f / PI), sv.lon * (180.f / PI), alt, galt);
+		m_state_sim->set_velocity(sv.t, sv.cog * (180.f / PI), sv.sog);
 	}
 
 	if (m_ch_ctrl_stat_sim)
@@ -610,19 +763,19 @@ void f_aws1_sim::save_csv(const long long tcur)
 
 	m_fcsv.precision(8);
 	m_fcsv <<
-		svo.lat << "," <<
-		svo.lon << "," <<
-		svo.xe << "," <<
-		svo.ye << "," <<
-		svo.ze << ",";
-
+	  svo.lat * (180.f/PI) << "," <<
+	  svo.lon * (180.f/PI) << "," <<
+	  svo.xe << "," <<
+	  svo.ye << "," <<
+	  svo.ze << ",";
+	
 	m_fcsv.precision(3);
 	m_fcsv <<
-		svo.roll << "," <<
-		svo.pitch << "," <<
-		svo.yaw << "," <<
+		svo.roll * (180.f/PI)<< "," <<
+		svo.pitch * (180.f/PI)<< "," <<
+		svo.yaw  * (180.f/PI)<< "," <<
 		svo.sog << "," <<
-		svo.cog << "," <<
+		svo.cog  * (180.f/PI)<< "," <<
 		svo.eng << "," <<
 		svo.rud << "," <<
 		svo.rev << "," <<
@@ -634,19 +787,19 @@ void f_aws1_sim::save_csv(const long long tcur)
 
 	m_fcsv.precision(8);
 	m_fcsv <<
-		svi.lat << "," <<
-		svi.lon << "," <<
+		svi.lat * (180.f/PI) << "," <<
+		svi.lon * (180.f/PI) << "," <<
 		svi.xe << "," <<
 		svi.ye << "," <<
 		svi.ze << ",";
 
 	m_fcsv.precision(3);
 	m_fcsv <<
-		svi.roll << "," <<
-		svi.pitch << "," <<
-		svi.yaw << "," <<
+		svi.roll * (180.f/PI) << "," <<
+		svi.pitch * (180.f/PI) << "," <<
+		svi.yaw * (180.f/PI) << "," <<
 		svi.sog << "," <<
-		svi.cog << "," <<
+		svi.cog * (180.f/PI) << "," <<
 		svi.eng << "," <<
 		svi.rud << "," <<
 		svi.rev << "," <<
