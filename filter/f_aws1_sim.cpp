@@ -39,11 +39,60 @@ using namespace cv;
 #include "f_aws1_sim.h"
 
 
-void c_model_engine_ctrl::update(const int u, const double gamma,
-				 const double delta,
-				 const double slack, const double dt,
-				 double & gamma_new, double & delta_new,
-				 double slack_new)
+void c_model_3dof::update(double * _v,
+			  double * f /* x-y force and z moment applied */,
+			  const double dt /* time step */, double * _vnew)
+{
+  if (Dq.empty() || M.empty() || Dl.empty()) {
+    cerr << "Matrix should be initialized!" << endl;
+    _vnew[0] = _vnew[1] = _vnew[2] = 0.;
+    return;
+  }
+  
+  // initializing quadratic drag
+  // q00|v0| q01|v1| q02|v2|
+  // q10|v0| q11|v1| q12|v2|
+  // q20|v0| q21|v1| q22|v2|
+  double * data = Dq.ptr<double>();
+  for (int i = 0; i < 9; i++) {
+    data[i] = abs(_v[i % 3]) * dq[i];
+  }
+  
+  // initializing coriolis and centrifugal force matrix
+  data = C.ptr<double>();
+  double * mdata = M.ptr<double>();
+  double mxxu = mxx * _v[0];
+  double myyv = myy * _v[1];
+  double mxgr = mxg * _v[2];
+  double nyr = ny * _v[2];
+  data[2] = -mxgr - myyv + nyr; // c02
+  data[5] = mxxu;               // c12
+  data[6] = -data[2];           // c20
+  data[7] = -data[5];           // c21
+  
+  // initializing force vector T
+  Mat T(3, 1, CV_64FC1, f);
+  
+  // Calculating next velocity
+  // Mv'+(C+Dl+Dq)v=T
+  // v'=M^-1 * (T-(C+Dl+Dq)v)
+  // v=v+v'dt
+  Mat V(3, 1, CV_64FC1, _v);
+  Mat Vnext;
+  Vnext = V + M.inv() * (T - (C + Dl + Dq) * V) * dt;
+  
+  // Updating velocity
+  data = Vnext.ptr<double>();
+  _vnew[0] = data[0];
+  _vnew[1] = data[1];
+  _vnew[2] = data[2];
+}
+
+void c_model_engine_ctrl::update(const int u, const float gamma,
+				 const float delta,
+				 const float slack, const float dt,
+				 float & gamma_new, float & delta_new,
+				 float & slack_new)
 {
   e_gear_state gs, gs_inf;
   if(gamma == -1.0){
@@ -53,24 +102,24 @@ void c_model_engine_ctrl::update(const int u, const double gamma,
   }else{
     gs = gs_n;
   }
-  
+
+  // determining action mode, and final (gamma, delta) for the input u.
   double unorm, rdelta;
   double gamma_inf, delta_inf, slack_inf;
   if(u <= bth){
-    unorm = (bth - u) /  (bth - umin);
     gs_inf = gs_b;
+    unorm = (bth - u) /  (bth - umin);
     gamma_inf = -1.0;
   }if (u >= fth){
-    unorm = (u - fth) / (umax - fth);
     gs_inf = gs_f;
+    unorm = (u - fth) / (umax - fth);
     gamma_inf = 1.0;
   }else{
-    unorm = 0;
     gs_inf = gs_n;
+    unorm = 0;
     gamma_inf = 0.0;      
   }
 
-  // determining action mode, and final (gamma, delta) for the input u.
   e_action_mode am;
   switch(gs){
   case gs_f:
@@ -145,7 +194,8 @@ void c_model_engine_ctrl::update(const int u, const double gamma,
     }
     break;
   }
-  
+
+  // calculating next (gamma, delta, slack)
   double dgamma, egamma, eslack, ddelta, edelta;
   switch(am){
   case am_fn:
@@ -156,11 +206,11 @@ void c_model_engine_ctrl::update(const int u, const double gamma,
     dgamma = rgamma * dt;
     egamma = gamma_inf - gamma;
     if(abs(egamma) < dgamma){
-      gamma_new = gamma_inf;	
+      gamma_new = (float)(gamma_inf);	
     }else if(egamma < 0){
-      gamma_new = gamma - rgamma * dt;
+      gamma_new = (float)(gamma - rgamma * dt);
     }else{
-      gamma_new = gamma + rgamma * dt;
+      gamma_new = (float)(gamma + rgamma * dt);
     }
     break;
   case am_fu:
@@ -173,23 +223,100 @@ void c_model_engine_ctrl::update(const int u, const double gamma,
     edelta = delta_inf - delta;
     
     if(abs(eslack) < ddelta){
-      slack_new = slack_inf;
+      slack_new = (float)(slack_inf);
     }else if(eslack < 0){
-      slack_new = slack + ddelta;
+      slack_new = (float)(slack + ddelta);
     }else{
-      slack_new = slack - ddelta;
+      slack_new = (float)(slack - ddelta);
     }
     
     if(abs(edelta) < ddelta){
-      delta_new = delta_inf;
+      delta_new = (float)delta_inf;
     }else if(edelta < 0){
-      delta_new = delta + ddelta;
+      delta_new = (float)(delta + ddelta);
     }else{
-      delta_new = delta - ddelta;
+      delta_new = (float)(delta - ddelta);
     }     
     break;
   }    
 }
+
+void c_model_rudder_ctrl::update(const int u, const float ra,
+				 const float slack, const float dt,
+				 float & ra_new, float & slack_new)
+{
+  // Note that rudder control input u [0,255] increases in starboard
+  double alpha = (double) u * (1.0f / 255.f);
+  double ra_inf = ras * alpha + rap * (1.0 - alpha);
+  double dra = rra * dt;
+  double era = ra_inf - ra;
+  if(abs(era) < dra){
+    ra_new = (float)ra_inf;
+    slack_new = (float)(slack + era);
+  }else if(era < 0){    
+    ra_new = (float)(ra - dra);
+    slack_new = (float)(slack - dra);
+  }else if(era > 0){
+    ra_new = (float)(ra + dra);
+    slack_new = (float)(slack + dra);
+  }
+
+  if(rslack < 0){
+    slack_new = min((float)rslack, slack_new);
+    slack_new = max(0.f, slack_new);
+  }else{
+    slack_new = max((float)rslack, slack_new);
+    slack_new = min(0.f, slack_new);
+  }
+}
+
+void c_model_outboard_force::update(const double _rud, const double _gear,
+				    const double _thro, const double _rev,
+				    const double * v, double * f)
+{
+  // update rev
+  // calculate rudder angle (port positive) and direction vector (nrx,nry)
+  double nrx = cos(_rud), nry = sin(_rud);
+  
+  // calculate velocity of rudder center
+  double vx = v[0] + v[2] * yr, vy = v[1] + v[2] * xr;
+  double va2 = vx * vx + vy * vy, va = sqrt(va2);
+  double iva = 1.0 / va;
+  double nvx = vx * iva, nvy = vy * iva; // normal velocity vector at rudder 
+  
+  double vr = vx * nrx + vy * nry;         // rudder speed along rudder
+  double vrx = vr * nrx, vry = vr * nry;   // rudder velocity along rudder
+  double vrox = vx - vrx, vroy = vy - vry; // rudder velocity perpendicular to rudder
+  double vro = -vx * nry + vy * nrx;
+  
+  // calculate x, y thrust force T(v, rev), and
+  // decompose Tx = T cos phi, Ty=T sin phi
+  double T = (CTL * vr * _rev + CTQ * _rev * _rev) * _gear;
+  double Tx = nrx * T, Ty = nry * T;
+  
+  // flow to rudder angle psi
+  // double psi = acos(cpsi);
+  double cpsi = vr * iva;
+  double spsi = vro * iva;
+  
+  // calculate disturbance D and lift L
+  double D = -CD * va2 * spsi;
+  double Dx = D * nvx, Dy = D * nvy;
+  
+  double L = 
+    - (nvx * nrx + nvy * nry > 0  ? 1.0 /*forward*/: -1.0/*backward*/) * 
+    (-nvx * nry + nvy * nrx > 0 ? 1.0 /* port */: -1.0/*starboard*/) * 
+    CL * va2 * spsi;
+  double Lx = - L * nvy, Ly = L * nvx;
+  
+  // Forces in x, y axes
+  f[0] = Tx + Dx + Lx;
+  f[1] = Ty + Dy + Ly;
+  
+  // calculate moment xr * Ty + yr * Ty
+  f[2] = xr * f[1] + yr * f[0];
+}
+
 
 /////////////////////////////////////////////////////////////////////////// f_aws1_sim members
 
@@ -338,7 +465,7 @@ bool f_aws1_sim::init_run()
   }
 
 
-  m3dof.init_matrix();
+  m3dof.init();
   mobf;
   
   return true;
@@ -602,230 +729,227 @@ void f_aws1_sim::set_input_state_vector(const long long & tcur)
 
 void f_aws1_sim::set_output_state_vector()
 {
-	s_state_vector sv = m_output_vectors[0];
-	if (m_engstate_sim)
-	{
-		// output simulated engine state
-		long long t = 0;
-		unsigned char trim = 0;
-		int poil = 0;
-		float toil = 0.0f;
-		float temp = 0.0f;
-		float valt = 0.0f;
-		float frate = 0.0f;
-		float rev = 0.0f;
-		unsigned int teng = 0;
-		int pclnt = 0;
-		int pfl = 0;
-		unsigned char ld = 0;
-		unsigned char tq = 0;
-		StatEng1 steng1 = (StatEng1)(EmergencyStop + 1);
-		StatEng2 steng2 = (StatEng2)(EngineShuttingDown + 1);
-
-		// overwrite only rev 
-		m_engstate->get_rapid(t, rev, trim); 
-		m_engstate_sim->set_rapid(sv.t, sv.rev, trim);
-
-		// overwrite only frate
-		m_engstate->get_dynamic(t, poil, toil, temp, valt, frate, teng, pclnt, pfl, steng1, steng2, ld, tq);
-		m_engstate_sim->set_dynamic(sv.t, poil, toil, temp, valt, sv.fuel, teng, pclnt, pfl, steng1, steng2, ld, tq);
-	}
-
-	if (m_state_sim)
-	{
-		float alt = 0.f, galt = 0.f;
-		// output simulated lat, lon, roll, pitch, yaw, cog, sog
-		m_state_sim->set_attitude(sv.t, sv.roll * (180.f / PI), sv.pitch * (180.f / PI), sv.yaw * (180.f / PI));
-		m_state_sim->set_position(sv.t, sv.lat * (180.f / PI), sv.lon * (180.f / PI), alt, galt);
-		m_state_sim->set_velocity(sv.t, sv.cog * (180.f / PI), sv.sog);
-	}
-
-	if (m_ch_ctrl_stat_sim)
-	{
-		// output control stat meng, rud is from (directry from ctrl_ui, ctrl_ap1, ctrl_ap2), otherwise, from m_ctrl_stat
-		set_control_output();
-	}
+  s_state_vector sv = m_output_vectors[0];
+  if (m_engstate_sim)
+    {
+      // output simulated engine state
+      long long t = 0;
+      unsigned char trim = 0;
+      int poil = 0;
+      float toil = 0.0f;
+      float temp = 0.0f;
+      float valt = 0.0f;
+      float frate = 0.0f;
+      float rev = 0.0f;
+      unsigned int teng = 0;
+      int pclnt = 0;
+      int pfl = 0;
+      unsigned char ld = 0;
+      unsigned char tq = 0;
+      StatEng1 steng1 = (StatEng1)(EmergencyStop + 1);
+      StatEng2 steng2 = (StatEng2)(EngineShuttingDown + 1);
+      
+      // overwrite only rev 
+      m_engstate->get_rapid(t, rev, trim); 
+      m_engstate_sim->set_rapid(sv.t, sv.rev, trim);
+      
+      // overwrite only frate
+      m_engstate->get_dynamic(t, poil, toil, temp, valt, frate, teng, pclnt, pfl, steng1, steng2, ld, tq);
+      m_engstate_sim->set_dynamic(sv.t, poil, toil, temp, valt, sv.fuel, teng, pclnt, pfl, steng1, steng2, ld, tq);
+    }
+  
+  if (m_state_sim)
+    {
+      float alt = 0.f, galt = 0.f;
+      // output simulated lat, lon, roll, pitch, yaw, cog, sog
+      m_state_sim->set_attitude(sv.t, sv.roll * (180.f / PI), sv.pitch * (180.f / PI), sv.yaw * (180.f / PI));
+      m_state_sim->set_position(sv.t, sv.lat * (180.f / PI), sv.lon * (180.f / PI), alt, galt);
+      m_state_sim->set_velocity(sv.t, sv.cog * (180.f / PI), sv.sog);
+    }
+  
+  if (m_ch_ctrl_stat_sim)
+    {
+      // output control stat meng, rud is from (directry from ctrl_ui, ctrl_ap1, ctrl_ap2), otherwise, from m_ctrl_stat
+      set_control_output();
+    }
 }
 
 void f_aws1_sim::init_input_sample()
 {
-	m_sv_init.update_coordinates();
-	m_input_vectors.resize(m_wismpl);
-	m_iv_head = m_wismpl - 1;
-	long long t = get_time();
-
-	for (int iv = m_iv_head, nv = 0; nv < m_wismpl; nv++) {
-		m_input_vectors[iv] = m_sv_init;
-		m_input_vectors[iv].t = t - nv * m_int_smpl;
-		if (iv == 0)
-			iv = m_wismpl - 1;
-		else
-			iv = iv - 1;
-	}
+  m_sv_init.update_coordinates();
+  m_input_vectors.resize(m_wismpl);
+  m_iv_head = m_wismpl - 1;
+  long long t = get_time();
+  
+  for (int iv = m_iv_head, nv = 0; nv < m_wismpl; nv++) {
+    m_input_vectors[iv] = m_sv_init;
+    m_input_vectors[iv].t = t - nv * m_int_smpl;
+    if (iv == 0)
+      iv = m_wismpl - 1;
+    else
+      iv = iv - 1;
+  }
 }
 
 void f_aws1_sim::update_input_sample()
 {
-	m_iv_head++;
-	if (m_iv_head == m_wismpl)
-		m_iv_head = 0;
-
-	m_input_vectors[m_iv_head] = m_sv_cur;
+  m_iv_head++;
+  if (m_iv_head == m_wismpl)
+    m_iv_head = 0;
+  
+  m_input_vectors[m_iv_head] = m_sv_cur;
 }
 
 void f_aws1_sim::init_output_sample()
 {
-	m_sv_init.update_coordinates();
-	m_output_vectors.resize(m_wosmpl);
-	long long t = get_time();
-	for (int ov = 0; ov < m_wosmpl; ov++) {
-		m_output_vectors[ov] = m_sv_init;
-		m_output_vectors[ov].t = t + ov * m_int_smpl;
-	}
+  m_sv_init.update_coordinates();
+  m_output_vectors.resize(m_wosmpl);
+  long long t = get_time();
+  for (int ov = 0; ov < m_wosmpl; ov++) {
+    m_output_vectors[ov] = m_sv_init;
+    m_output_vectors[ov].t = t + ov * m_int_smpl;
+  }
 }
 
 void f_aws1_sim::update_output_sample(const long long & tcur)
 {
-	// here the simulation data
+  double dt = (double) m_int_smpl / (double) SEC;
+  for (int iosv = 0; iosv < m_wosmpl; iosv++) {		
+    s_state_vector & stprev = (iosv == 0 ? m_input_vectors[m_iv_head] : m_output_vectors[iosv-1]);
+    s_state_vector & stcur = m_output_vectors[iosv];
+    
+    // simulate actuator and pump
+    simulate_engine(stprev.eng, stprev.thro_pos, stprev.gear_pos, stcur.thro_pos, stcur.gear_pos);
+    simulate_rudder(stprev.rud, stprev.rud_pos, stcur.rud_pos);
+    
+    double v[3];
+    double f[3];
+    double phi = (stprev.cog - stprev.yaw);
+    double th = stprev.cog;
+    
+    double sog_ms = stprev.sog * (1852. / 3600.);
+    double dx = sog_ms * dt * sin(th), dy = sog_ms * dt * cos(th); //next position in enu coordinate
+    double alt = 0.;
+    wrldtoecef(stprev.Rwrld, stprev.xe, stprev.ye, stprev.ze, dx, dy, 0., stcur.xe, stcur.ye, stcur.ze);
+    eceftobih(stcur.xe, stcur.ye, stcur.ze, stcur.lat, stcur.lon, alt);
+    
+    v[0] = sog_ms * cos(phi);
+    v[1] = sog_ms * sin(phi);
+    v[2] = stprev.ryaw;
 
-	double dt = (double) m_int_smpl / (double) SEC;
-	for (int iosv = 0; iosv < m_wosmpl; iosv++) {		
-		s_state_vector & stprev = (iosv == 0 ? m_input_vectors[m_iv_head] : m_output_vectors[iosv-1]);
-		s_state_vector & stcur = m_output_vectors[iosv];
-
-		// simulate actuator and pump
-		simulate_engine(stprev.eng, stprev.thro_pos, stprev.gear_pos, stcur.thro_pos, stcur.gear_pos);
-		simulate_rudder(stprev.rud, stprev.rud_pos, stcur.rud_pos);
-
-		double v[3];
-		double f[3];
-		double phi = (stprev.cog - stprev.yaw) * (PI / 180.);
-		double th = stprev.cog * (PI / 180.);
-
-		double sog_ms = stprev.sog * (1852. / 3600.);
-		double dx = sog_ms * dt * sin(th), dy = sog_ms * dt * cos(th); //next position in enu coordinate
-		double alt = 0.;
-		wrldtoecef(stprev.Rwrld, stprev.xe, stprev.ye, stprev.ze, dx, dy, 0., stcur.xe, stcur.ye, stcur.ze);
-		eceftobih(stcur.xe, stcur.ye, stcur.ze, stcur.lat, stcur.lon, alt);
-		stcur.lat *= 180. / PI;
-		stcur.lon *= 180. / PI;                        
-
-		v[0] = sog_ms * cos(phi);
-		v[1] = sog_ms * sin(phi);
-		v[2] = stprev.ryaw * (PI / 180.);
-
-		mobf.update(stprev.rud_pos, stprev.gear_pos, stprev.thro_pos, stprev.rev, v, f);
-
-		m3dof.set_state(v);
-		m3dof.update_state(f, dt);
-		m3dof.get_state(v);
-
-		phi = atan2(v[0], v[1]);
-		stcur.yaw += v[2] * dt * (180. / PI);
-		stcur.cog = stcur.yaw + phi * (180. / PI);
-		stcur.sog = sqrt(v[0] * v[0] + v[1] * v[1]) * (3600. / 1852.);
-		stcur.rev = final_rev(stcur.thro_pos);
-
-// simulation at tcur + ios * m_int_smpl using m_wismpl past samples.
-//		simulate(tcur, iosv);
-	}
+    mrctrl.update(stprev.rud, stprev.rud_pos, stprev.rud_slack, dt,
+		  stcur.rud_pos, stcur.rud_slack);
+    mectrl.update(stprev.eng, stprev.gear_pos, stprev.thro_pos,
+		  stprev.thro_slack, dt,
+		  stcur.gear_pos, stcur.thro_pos, stcur.thro_slack);
+    mobf.update(stprev.rud_pos - stprev.rud_slack,
+		stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
+		stprev.rev, v, f);    
+    m3dof.update(v, f, dt, v);
+    
+    phi = atan2(v[0], v[1]);
+    stcur.yaw += v[2] * dt * (180. / PI);
+    stcur.cog = stcur.yaw + phi * (180. / PI);
+    stcur.sog = sqrt(v[0] * v[0] + v[1] * v[1]) * (3600. / 1852.);
+    stcur.rev = final_rev(stcur.thro_pos);
+  }
 }
 
 void f_aws1_sim::simulate(const long long tcur, const int iosv)
 {
-	long long tsim = tcur + iosv * m_int_smpl;
-	// in the current implementation, output is same as the input. 
-	// here we should insert simulation code
-	if (iosv == 0) {
-		s_state_vector & stprev = m_input_vectors[m_iv_head];
-		s_state_vector & stcur = m_output_vectors[iosv];
-		stcur = stprev;
-		simulate_engine(stprev.eng, stprev.thro_pos, stprev.gear_pos, stcur.thro_pos, stcur.gear_pos);
-		simulate_rudder(stprev.rud, stprev.rud_pos, stcur.rud_pos);
-		stcur.rev = final_rev(stcur.thro_pos);
-		stcur.sog = simulate_sog(stcur.gear_pos, stcur.rev, stprev.sog);
-	}else{
-		s_state_vector & stprev = m_output_vectors[iosv-1];
-		s_state_vector & stcur = m_output_vectors[iosv];
-		stcur = stprev;
-		simulate_engine(stprev.eng, stprev.thro_pos, stprev.gear_pos, stcur.thro_pos, stcur.gear_pos);
-		simulate_rudder(stprev.rud, stprev.rud_pos, stcur.rud_pos);
-		stcur.rev = final_rev(stcur.thro_pos);
-		stcur.sog = simulate_sog(stcur.gear_pos, stcur.rev, stprev.sog);
-	}
+  long long tsim = tcur + iosv * m_int_smpl;
+  // in the current implementation, output is same as the input. 
+  // here we should insert simulation code
+  if (iosv == 0) {
+    s_state_vector & stprev = m_input_vectors[m_iv_head];
+    s_state_vector & stcur = m_output_vectors[iosv];
+    stcur = stprev;
+    simulate_engine(stprev.eng, stprev.thro_pos, stprev.gear_pos, stcur.thro_pos, stcur.gear_pos);
+    simulate_rudder(stprev.rud, stprev.rud_pos, stcur.rud_pos);
+    stcur.rev = final_rev(stcur.thro_pos);
+    stcur.sog = simulate_sog(stcur.gear_pos, stcur.rev, stprev.sog);
+  }else{
+    s_state_vector & stprev = m_output_vectors[iosv-1];
+    s_state_vector & stcur = m_output_vectors[iosv];
+    stcur = stprev;
+    simulate_engine(stprev.eng, stprev.thro_pos, stprev.gear_pos, stcur.thro_pos, stcur.gear_pos);
+    simulate_rudder(stprev.rud, stprev.rud_pos, stcur.rud_pos);
+    stcur.rev = final_rev(stcur.thro_pos);
+    stcur.sog = simulate_sog(stcur.gear_pos, stcur.rev, stprev.sog);
+  }
 }
 
 void f_aws1_sim::save_csv(const long long tcur)
 {
-	s_state_vector & svo = m_output_vectors[0];
-	s_state_vector & svi = m_input_vectors[m_iv_head];
-	m_fcsv << tcur << ",";
+  s_state_vector & svo = m_output_vectors[0];
+  s_state_vector & svi = m_input_vectors[m_iv_head];
+  m_fcsv << tcur << ",";
+  
+  m_fcsv.precision(8);
+  m_fcsv <<
+    svo.lat * (180.f/PI) << "," <<
+    svo.lon * (180.f/PI) << "," <<
+    svo.xe << "," <<
+    svo.ye << "," <<
+    svo.ze << ",";
+  
+  m_fcsv.precision(3);
+  m_fcsv <<
+    svo.roll * (180.f/PI)<< "," <<
+    svo.pitch * (180.f/PI)<< "," <<
+    svo.yaw  * (180.f/PI)<< "," <<
+    svo.sog << "," <<
+    svo.cog  * (180.f/PI)<< "," <<
+    svo.eng << "," <<
+    svo.rud << "," <<
+    svo.rev << "," <<
+    svo.fuel << ",";
+  m_fcsv <<
+    svo.thro_pos << "," <<
+    svo.gear_pos << "," <<
+    svo.rud_pos << ",";
+  
+  m_fcsv.precision(8);
+  m_fcsv <<
+    svi.lat * (180.f/PI) << "," <<
+    svi.lon * (180.f/PI) << "," <<
+    svi.xe << "," <<
+    svi.ye << "," <<
+    svi.ze << ",";
+  
+  m_fcsv.precision(3);
+  m_fcsv <<
+    svi.roll * (180.f/PI) << "," <<
+    svi.pitch * (180.f/PI) << "," <<
+    svi.yaw * (180.f/PI) << "," <<
+    svi.sog << "," <<
+    svi.cog * (180.f/PI) << "," <<
+    svi.eng << "," <<
+    svi.rud << "," <<
+    svi.rev << "," <<
+    svi.fuel << ",";
 
-	m_fcsv.precision(8);
-	m_fcsv <<
-	  svo.lat * (180.f/PI) << "," <<
-	  svo.lon * (180.f/PI) << "," <<
-	  svo.xe << "," <<
-	  svo.ye << "," <<
-	  svo.ze << ",";
-	
-	m_fcsv.precision(3);
-	m_fcsv <<
-		svo.roll * (180.f/PI)<< "," <<
-		svo.pitch * (180.f/PI)<< "," <<
-		svo.yaw  * (180.f/PI)<< "," <<
-		svo.sog << "," <<
-		svo.cog  * (180.f/PI)<< "," <<
-		svo.eng << "," <<
-		svo.rud << "," <<
-		svo.rev << "," <<
-		svo.fuel << ",";
-	m_fcsv <<
-		svo.thro_pos << "," <<
-		svo.gear_pos << "," <<
-		svo.rud_pos << ",";
-
-	m_fcsv.precision(8);
-	m_fcsv <<
-		svi.lat * (180.f/PI) << "," <<
-		svi.lon * (180.f/PI) << "," <<
-		svi.xe << "," <<
-		svi.ye << "," <<
-		svi.ze << ",";
-
-	m_fcsv.precision(3);
-	m_fcsv <<
-		svi.roll * (180.f/PI) << "," <<
-		svi.pitch * (180.f/PI) << "," <<
-		svi.yaw * (180.f/PI) << "," <<
-		svi.sog << "," <<
-		svi.cog * (180.f/PI) << "," <<
-		svi.eng << "," <<
-		svi.rud << "," <<
-		svi.rev << "," <<
-		svi.fuel << ",";
-
-	m_fcsv << endl;
+  m_fcsv << endl;
 }
 
 bool f_aws1_sim::proc()
 {
-	long long tcur = get_time();
-	if (tcur < m_tprev + m_int_smpl)
-		return true;
-
-	// simulate state vector Vt(eng, rud, lat, lon, pitch, yaw, cog, sog, rev, fuel) from {Vt-1, Vt-2, ..., Vt-n)
-	update_output_sample(tcur);
-	set_output_state_vector();
-
-	set_input_state_vector(tcur);
-	update_input_sample();
-
-	if (m_fcsv.is_open()) {
-		save_csv(tcur);
-	}
-
-	m_tprev = tcur;
-	return true;
+  long long tcur = get_time();
+  if (tcur < m_tprev + m_int_smpl)
+    return true;
+  
+  // simulate state vector Vt(eng, rud, lat, lon, pitch, yaw, cog, sog, rev, fuel) from {Vt-1, Vt-2, ..., Vt-n)
+  update_output_sample(tcur);
+  set_output_state_vector();
+  
+  set_input_state_vector(tcur);
+  update_input_sample();
+  
+  if (m_fcsv.is_open()) {
+    save_csv(tcur);
+  }
+  
+  m_tprev = tcur;
+  return true;
 }
 
