@@ -233,17 +233,6 @@ protected:
   // time of previous sampling 
   long long m_tprev;
   
-  float m_rud_sta_sim;
-  float m_trud_swing; // in second
-  float m_tgear_swing; // in second
-  float m_tthro_swing; // in second
-  float m_spd_rud_swing; // rud_sta value per 100n second
-  float m_spd_gear_swing; 
-  float m_spd_thro_swing;
-  float m_tau_sog; // time constant for final value of sog by rev
-  
-  float m_mass;	
-  
   void set_control_input();
   void set_control_output();
   void set_input_state_vector(const long long & tcur);
@@ -262,39 +251,7 @@ protected:
 	    return (5600 - 5000) * (thr_pos - 0.709) / (0.854 - 0.709) + 5000;
 		return 5600;
 	}
-  
-  float simulate_sog(const float gear_pos, const float rev,  const float sog) {
-    // speed over ground is modeled as first order differential equation.
-    // sog_final = sog + tau (d sog/d t) ---(1)
-    // (1) is transformed as
-    // sog_final = sog_next  + tau (sog_next - sog_prev) / delta_t
-    // here delta_t is m_int_smpl_sec, then we can solve the equation for sog
-    // sog_next = [sog_prev + (delta_t / tau) sog_final]/[1 + (delta_t / tau)]
-    float sog_final = final_sog(gear_pos, rev);
-    float tdt = (float)((float)m_int_smpl_sec / m_tau_sog );
-    return (float)(sog  + tdt * sog_final) / (1.0f + tdt);
-  }
-  
-  float final_sog(const float gear_pos, const float rev)
-  {
-    if (gear_pos <= -1.f) {
-      return 2.5f;
-    }
-    else if (gear_pos >= 1.f) {
-      if (rev < 700)
-	return 2.5f;
-      if (rev < 3500)
-	return (float)((11.f - 2.5f)*(rev - (float)700) / (double)(3500 - 700) + 2.5f);
-      if(rev < 4800)
-	return (float)((19.5f - 11.f)*(rev - (float)3500) / (double)(4800 - 3500) + 11.f);
-      if (rev < 5500)
-	return (float)((22.5f - 19.5f)*(rev - (float)4800) / (double)(5500 - 4800) + 19.5f);
-      return 22.5f;
-    }
-    
-    return 0.0f;
-  }
-  
+   
   bool m_bcsv_out;
   char m_fcsv_out[1024];
   ofstream m_fcsv;
