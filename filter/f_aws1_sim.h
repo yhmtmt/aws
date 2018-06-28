@@ -26,21 +26,37 @@
 //////////////////////////////////////////////////////// f_aws1_sim
 #define RUD_PER_CYCLE 0.45f
 
+class f_aws1_sim;
+
 class c_model_outboard_force
 {
-private:
+ private:
   double xr, yr; // rudder position from rotation center
   double CTL, CTQ; // linear and quadratic coefficient for thrust force model
-  double CD, CL; // rudder  drag and lift coefficient
+  double CD, CL; // rudder drag and lift coefficient
+  enum {
+    num_params = 6
+  };
+  static const char * _str_par[num_params];
+  char * str_par[num_params];
  public:
  c_model_outboard_force() :xr(0.f), yr(-3.f), CTL(0.), CTQ(0.), CD(0.), CL(0.)
     {
+      for(int i = 0; i < num_params; i++){
+	str_par[i] = NULL;
+      }
     }
   
   ~c_model_outboard_force()
     {
+      for(int i = 0; i < num_params; i++){
+	if(str_par[i])
+	  delete[] str_par[i];
+	str_par[i] = NULL;
+      }
     }
-  
+
+  void register_params(f_aws1_sim * psim, int index = -1);
   
   void update(const double _rud, const double _gear,
 	      const double _thro, const double _rev, const double * v,
@@ -140,7 +156,8 @@ class c_model_engine_ctrl
   };
   
  public:
- c_model_engine_ctrl():fth(0x7f+0x19), bth(0x7f - 0x19), umax(0x00ff), umin(0x0000),
+ c_model_engine_ctrl():fth(0x7f+0x19), bth(0x7f - 0x19),
+    umax(0x00ff), umin(0x0000),
     rgamma(0.5), rfdelta(0.5), rbdelta(0.5), fslack(0.05), bslack(0.05)
     {      
     }
@@ -160,6 +177,9 @@ class c_model_engine_ctrl
 class f_aws1_sim : public f_base
 {
 protected:
+
+  friend class c_model_outboard_force;
+  
   // simulation models
   c_model_rudder_ctrl mrctrl; // rudder control model
   c_model_engine_ctrl mectrl; // engine control model

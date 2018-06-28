@@ -270,6 +270,31 @@ void c_model_rudder_ctrl::update(const int u, const float ra,
   }
 }
 
+const char * c_model_outboard_force::_str_par[6] = {
+  "xr", "yr", "CTL", "CTQ", "CD", "CL"
+};
+
+void c_model_outboard_force::register_params(f_aws1_sim * psim, int index)
+{
+  if(index >= 0 && index < 10){
+    for(int i = 0; i < num_params; i++){
+      unsigned int len = strlen(_str_par[i]) + 2;
+      str_par[i] = new char [len];
+      if(index < 0)
+	snprintf(str_par[i], len, "%s", _str_par[i]);
+      else
+	snprintf(str_par[i], len, "%s%d", _str_par[i], index);
+    }
+  }
+    
+  psim->register_fpar(str_par[0], &xr, "Rudder center in x");
+  psim->register_fpar(str_par[1], &yr, "Rudder center in y");
+  psim->register_fpar(str_par[2], &CTL, "Linear coefficient for thrust force model");  
+  psim->register_fpar(str_par[3], &CTQ, "Quadratic coefficient for thrust force model");
+  psim->register_fpar(str_par[4], &CD, "Rudder drag force coefficient");
+  psim->register_fpar(str_par[5], &CL, "Rudder lift force coefficient");
+}
+
 void c_model_outboard_force::update(const double _rud, const double _gear,
 				    const double _thro, const double _rev,
 				    const double * v, double * f)
