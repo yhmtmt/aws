@@ -28,45 +28,128 @@
 
 class f_aws1_sim;
 
-class c_model_outboard_force
+class c_model_base
+{
+ private:
+  char ** str_param;
+  int index;
+  
+  virtual const char * get_str_param(int iparam) = 0;
+  virtual const char * get_str_param_exp(int iparam) = 0;
+  virtual double * get_param(int iparam) = 0;
+  
+  virtual int get_num_params() = 0;
+  
+  char * gen_str_indexed_param(int iparam)
+  {  
+    if(index >= 10 || index < 0)
+      return NULL;
+    
+    const char * base_str_param = get_str_param(iparam);
+    if(!base_str_param)
+      return NULL;
+
+    int len = strlen(base_str_param) + 2;
+    char * indexed_str_param = new char[len];
+    snprintf(indexed_str_param, len, "%s%d", base_str_param, index);
+    return indexed_str_param;
+  }
+  
+ public:
+ c_model_base():str_param(NULL), index(-1)
+    {
+    }
+  
+  virtual ~c_model_base()
+    {
+      release_param();
+    }
+
+  bool register_param(f_aws1_sim * psim, int _index = -1);
+
+  void release_param()
+  {
+    if(index == -1)
+      return;
+
+    if(str_param){
+      int npars = get_num_params();
+      for(int ipar = 0; ipar < npars; ipar++){
+	delete[] str_param[ipar];
+      }
+      delete[] str_param;
+      str_param = NULL;
+    }
+  }
+  
+};
+
+class c_model_outboard_force: public c_model_base
 {
  private:
   double xr, yr; // rudder position from rotation center
   double CTL, CTQ; // linear and quadratic coefficient for thrust force model
   double CD, CL; // rudder drag and lift coefficient
   enum {
-    num_params = 6
+    par_xr, par_yr, par_CTL, par_CTQ, par_CD, par_CL, num_params
   };
   static const char * _str_par[num_params];
-  char * str_par[num_params];
+  static const char * _str_par_exp[num_params];
+  virtual const char * get_str_param(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par[iparam];
+  }
+
+  virtual const char * get_str_param_exp(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par_exp[iparam];
+  }
+  
+  virtual double * get_param(int iparam)
+  {
+    switch(iparam){
+    case par_xr:
+      return &xr;
+    case par_yr:
+      return &yr;
+    case par_CTL:
+      return &CTL;
+    case par_CTQ:
+      return &CTQ;
+    case par_CD:
+      return &CD;
+    case par_CL:
+      return &CL;
+    }
+  }
+  
+  virtual int get_num_params()
+  {
+    return num_params;
+  }
+
  public:
  c_model_outboard_force() :xr(0.f), yr(-3.f), CTL(0.), CTQ(0.), CD(0.), CL(0.)
     {
-      for(int i = 0; i < num_params; i++){
-	str_par[i] = NULL;
-      }
     }
   
-  ~c_model_outboard_force()
+  virtual ~c_model_outboard_force()
     {
-      for(int i = 0; i < num_params; i++){
-	if(str_par[i])
-	  delete[] str_par[i];
-	str_par[i] = NULL;
-      }
     }
 
-  void register_params(f_aws1_sim * psim, int index = -1);
-  
   void update(const double _rud, const double _gear,
 	      const double _thro, const double _rev, const double * v,
 	      double * f);
 };
 
-class c_model_3dof
+class c_model_3dof: public c_model_base
 {
  private:
-  double xg, yg, iz;
+  double xg, yg;
   double m;     // mass
   double ma[9]; // added mass matrix
   double dl[9]; // linear drag matrix
@@ -77,12 +160,85 @@ class c_model_3dof
   Mat Dl;
   Mat Dq;
   Mat C;
-  
+
+  double iz;
   double mxx;
   double myy;
-  double mxg;
+  double mxg, myg;
   double ny;
   
+  enum {
+    par_xg, par_yg,
+    par_m,
+    par_ma_xu, par_ma_yv, par_ma_yr, par_ma_nv, par_ma_nr,
+    par_dl_xu, par_dl_yv, par_dl_yr, par_dl_nv, par_dl_nr,
+    par_dq_xu, par_dq_yv, par_dq_yr, par_dq_nv, par_dq_nr,
+    num_params
+  };
+  static const char * _str_par[num_params];
+  static const char * _str_par_exp[num_params];
+  virtual const char * get_str_param(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par[iparam];
+  }
+
+  virtual const char * get_str_param_exp(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par_exp[iparam];
+  }
+  
+  virtual double * get_param(int iparam)
+  {
+    switch(iparam){
+    case par_xg:
+      return &xg;
+    case par_yg:
+      return &yg;
+    case par_m:
+      return &m;
+    case par_ma_xu:
+      return ma;
+    case par_ma_yv:
+      return ma+4;
+    case par_ma_yr:
+      return ma+5;
+    case par_ma_nv:
+      return ma+7;
+    case par_ma_nr:
+      return ma+8;
+    case par_dl_xu:
+      return dl;
+    case par_dl_yv:
+      return dl+4;
+    case par_dl_yr:
+      return dl+5;
+    case par_dl_nv:
+      return dl+7;
+    case par_dl_nr:
+      return dl+8;
+    case par_dq_xu:
+      return dq;
+    case par_dq_yv:
+      return dq+4;
+    case par_dq_yr:
+      return dq+5;
+    case par_dq_nv:
+      return dq+7;
+    case par_dq_nr:
+      return dq+8;
+    }
+    return NULL;
+  }
+  
+  virtual int get_num_params()
+  {
+    return num_params;
+  }
+
  public:
  c_model_3dof():xg(0), yg(0)
     {
@@ -90,7 +246,7 @@ class c_model_3dof
 	ma[i] = dl[i] = dq[i] = 0;
     }
   
-  ~c_model_3dof()
+  virtual ~c_model_3dof()
     {
     }  
   
@@ -102,12 +258,14 @@ class c_model_3dof
     for (int i = 0; i < 9; i++)
       data[i] = ma[i];
     data[0] += m;
-    data[4] += m; 
+    data[4] += m;
+    iz = m * (xg * xg + yg * yg);
     data[8] += iz;
     
     mxx = data[0];
     myy = data[4];
     mxg = m * xg;
+    myg = m * yg;
     ny = (ma[5] + ma[7]) * 0.5;
     
     Dl = Mat::zeros(3, 3, CV_64FC1);
@@ -125,13 +283,57 @@ class c_model_3dof
 	      const double dt /* time step */, double * _vnew);
 };
 
-class c_model_rudder_ctrl
+class c_model_rudder_ctrl: public c_model_base
 {
  private:
-  double rslack, rra, ras, rap;
+  double rslack, rrud, ruds, rudp;
+  enum {
+    par_rslack, par_rrud, par_ruds, par_rudp,
+    num_params
+  };
+  static const char * _str_par[num_params];
+  static const char * _str_par_exp[num_params];
+  virtual const char * get_str_param(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par[iparam];
+  }
+
+  virtual const char * get_str_param_exp(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par_exp[iparam];
+  }
+  
+  virtual double * get_param(int iparam)
+  {
+    switch(iparam){
+    case par_rslack:
+      return &rslack;
+    case par_rrud:
+      return &rrud;
+    case par_ruds:
+      return &ruds;
+    case par_rudp:
+      return &rudp;
+    }
+    return NULL;
+  }
+  
+  virtual int get_num_params()
+  {
+    return num_params;
+  }
+
  public:
- c_model_rudder_ctrl():rslack(0.f), rra(12*PI/180.f),
-    rap(30*PI/180.f), ras(-30*PI/180.f)
+ c_model_rudder_ctrl():rslack(0.f), rrud(12*PI/180.f),
+    rudp(30*PI/180.f), ruds(-30*PI/180.f)
+    {
+    }
+
+  virtual ~c_model_rudder_ctrl()
     {
     }
   
@@ -141,11 +343,62 @@ class c_model_rudder_ctrl
 	      float & ra_new, float & slack_new);
 };
 
-class c_model_engine_ctrl
+class c_model_engine_ctrl: public c_model_base
 {
  private:
-  int fth, bth, umax, umin;
+  double fth, bth, umax, umin;
   double rgamma, rfdelta, rbdelta, fslack, bslack;
+  enum {
+    par_fth, par_bth, par_umax, par_umin,
+    par_rgamma, par_rfdelta, par_rbdelta, par_fslack, par_bslack,
+    num_params
+  };
+  static const char * _str_par[num_params];
+  static const char * _str_par_exp[num_params];
+  
+  virtual const char * get_str_param(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par[iparam];
+  }
+
+  virtual const char * get_str_param_exp(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par_exp[iparam];
+  }
+  
+  virtual double * get_param(int iparam)
+  {
+    switch(iparam){
+    case par_fth:
+      return &fth;
+    case par_bth:
+      return &bth;
+    case par_umax:
+      return &umax;
+    case par_umin:
+      return &umin;
+    case par_rgamma:
+      return &rgamma;
+    case par_rfdelta:
+      return &rfdelta;
+    case par_rbdelta:
+      return &rbdelta;
+    case par_fslack:
+      return &fslack;
+    case par_bslack:
+      return &bslack;      
+    }
+    return NULL;
+  }
+
+  virtual int get_num_params()
+  {
+    return num_params;
+  }
   
   enum e_gear_state{
     gs_n, gs_f, gs_b, gs_none
@@ -162,6 +415,10 @@ class c_model_engine_ctrl
     {      
     }
 
+  virtual ~c_model_engine_ctrl()
+    {
+    }
+  
   // u: control input [0,255]
   // gamma: gear position [-1,1]; Forward: 1, Backward: -1, Neutral: 0
   // delta: throttle position [0,1]
@@ -177,9 +434,6 @@ class c_model_engine_ctrl
 class f_aws1_sim : public f_base
 {
 protected:
-
-  friend class c_model_outboard_force;
-  
   // simulation models
   c_model_rudder_ctrl mrctrl; // rudder control model
   c_model_engine_ctrl mectrl; // engine control model
@@ -278,7 +532,12 @@ protected:
   void save_csv(const long long tcur);
  public:
   f_aws1_sim(const char * name);
-  
+
+  void register_model_params(const char * par_str, double * par,
+			     const char * par_exp_str)
+  {
+    register_fpar(par_str, par, par_exp_str);
+  }
   virtual bool init_run();
   virtual void destroy_run();
   virtual bool proc();

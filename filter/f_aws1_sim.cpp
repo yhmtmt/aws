@@ -38,6 +38,41 @@ using namespace cv;
 
 #include "f_aws1_sim.h"
 
+bool c_model_base::register_param(f_aws1_sim * psim, int _index)
+{
+  index = _index;
+  int n = get_num_params();
+  str_param = new char*[n];
+  for(int ipar = 0; ipar < n; ipar++){
+    if(index == -1){
+      psim->register_model_params(get_str_param(ipar),
+			  get_param(ipar),
+			  get_str_param_exp(ipar));
+      continue;
+    }
+    str_param[ipar] = gen_str_indexed_param(ipar);
+    psim->register_model_params(str_param[ipar], get_param(ipar),
+				get_str_param_exp(ipar));
+  }
+}
+
+
+const char * c_model_3dof::_str_par[num_params] = {
+  "xg", "yg",
+  "m",
+  "ma_xu", "ma_yv", "ma_yr", "ma_nv", "ma_nr",
+  "dl_xu", "dl_yv", "dl_yr", "dl_nv", "dl_nr",
+  "dq_xu", "dq_yv", "dq_yr", "dq_nv", "dq_nr" 
+};
+
+const char * c_model_3dof::_str_par_exp[num_params] = {
+  "Center of gravity in x", "Center of gravity in y",
+  "Mass",
+  "Added mass in x for x speed", "Added mass in y for y speed", "Added mass in y for yaw rate", "Added mass in yaw for y speed", "Added mass in yaw for yaw rate",
+  "Linear drag coefficient in x for x speed", "Linear drag in y for y speed", "Linear drag in y for yaw rate", "Linear drag in yaw for y speed", "Linear drag in yaw for yaw rate",
+  "Quadratic drag coefficient in x for x speed", "Quadratic drag in y for y speed", "Quadratic drag in y for yaw rate", "Quadratic drag in yaw for y speed", "Quadratic drag in yaw for yaw rate"
+
+};
 
 void c_model_3dof::update(double * _v,
 			  double * f /* x-y force and z moment applied */,
@@ -64,9 +99,10 @@ void c_model_3dof::update(double * _v,
   double mxxu = mxx * _v[0];
   double myyv = myy * _v[1];
   double mxgr = mxg * _v[2];
+  double mygr = myg * _v[2];
   double nyr = ny * _v[2];
   data[2] = -mxgr - myyv + nyr; // c02
-  data[5] = mxxu;               // c12
+  data[5] = -mygr + mxxu;       // c12
   data[6] = -data[2];           // c20
   data[7] = -data[5];           // c21
   
@@ -87,6 +123,19 @@ void c_model_3dof::update(double * _v,
   _vnew[1] = data[1];
   _vnew[2] = data[2];
 }
+
+const char * c_model_engine_ctrl::_str_par[num_params] =
+  {
+    "fth", "bth", "umax", "umin",
+    "rgamma", "rfdelta", "rbdelta", "fslack", "bslack"    
+  };
+
+const char * c_model_engine_ctrl::_str_par_exp[num_params] =
+  {
+    "Threshold, neutral to forward", "Threshold neutral to backward",
+    "Maximum value of control input", "Minimum value of control input",
+    "Speed of gear switching (rate per second)", "Speed of throttle control in forward gear (rate per second)", "Speed of throttle control in backward gear (rate per second)", "Throttle slack in forward gear", "Throttle slack in backward gear"    
+  };
 
 void c_model_engine_ctrl::update(const int u, const float gamma,
 				 const float delta,
@@ -241,14 +290,27 @@ void c_model_engine_ctrl::update(const int u, const float gamma,
   }    
 }
 
+const char * c_model_rudder_ctrl::_str_par[num_params] =
+  {
+    "rslack", "rrud", "ruds", "rudp"
+  };
+
+const char * c_model_rudder_ctrl::_str_par_exp[num_params] =
+  {
+    "Rudder slack",
+    "Speed of rudder rotation (rate per second)",
+    "Full starboard rudder angle (negative value).",
+    "Full port rudder angle (positive value)"
+  };
+
 void c_model_rudder_ctrl::update(const int u, const float ra,
 				 const float slack, const float dt,
 				 float & ra_new, float & slack_new)
 {
   // Note that rudder control input u [0,255] increases in starboard
   double alpha = (double) u * (1.0f / 255.f);
-  double ra_inf = ras * alpha + rap * (1.0 - alpha);
-  double dra = rra * dt;
+  double ra_inf = ruds * alpha + rudp * (1.0 - alpha);
+  double dra = rrud * dt;
   double era = ra_inf - ra;
   if(abs(era) < dra){
     ra_new = (float)ra_inf;
@@ -270,30 +332,23 @@ void c_model_rudder_ctrl::update(const int u, const float ra,
   }
 }
 
-const char * c_model_outboard_force::_str_par[6] = {
-  "xr", "yr", "CTL", "CTQ", "CD", "CL"
+const char * c_model_outboard_force::_str_par[num_params] = {
+  "xr",
+  "yr",
+  "CTL",
+  "CTQ",
+  "CD",
+  "CL"
 };
 
-void c_model_outboard_force::register_params(f_aws1_sim * psim, int index)
-{
-  if(index >= 0 && index < 10){
-    for(int i = 0; i < num_params; i++){
-      unsigned int len = strlen(_str_par[i]) + 2;
-      str_par[i] = new char [len];
-      if(index < 0)
-	snprintf(str_par[i], len, "%s", _str_par[i]);
-      else
-	snprintf(str_par[i], len, "%s%d", _str_par[i], index);
-    }
-  }
-    
-  psim->register_fpar(str_par[0], &xr, "Rudder center in x");
-  psim->register_fpar(str_par[1], &yr, "Rudder center in y");
-  psim->register_fpar(str_par[2], &CTL, "Linear coefficient for thrust force model");  
-  psim->register_fpar(str_par[3], &CTQ, "Quadratic coefficient for thrust force model");
-  psim->register_fpar(str_par[4], &CD, "Rudder drag force coefficient");
-  psim->register_fpar(str_par[5], &CL, "Rudder lift force coefficient");
-}
+const char * c_model_outboard_force::_str_par_exp[num_params] = {
+  "Rudder center in x",
+  "Rudder center in y",
+  "Linear coefficient for thrust force model",
+  "Quadratic coefficient for thrust force model",
+  "Rudder drag force coefficient",
+  "Rudder lift force coefficient"
+};
 
 void c_model_outboard_force::update(const double _rud, const double _gear,
 				    const double _thro, const double _rev,
@@ -452,6 +507,10 @@ f_aws1_sim::f_aws1_sim(const char * name) :
   m_fcsv_out[0] = '\0';
   register_fpar("fcsv", m_fcsv_out, 1024, "CSV output file.");
 
+  mrctrl.register_param(this);
+  mectrl.register_param(this);
+  mobf.register_param(this);
+  m3dof.register_param(this);
 }
 
 bool f_aws1_sim::init_run()
@@ -479,7 +538,6 @@ bool f_aws1_sim::init_run()
   
 
   m3dof.init();
-  mobf;
   
   return true;
 }
