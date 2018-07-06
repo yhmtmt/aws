@@ -192,7 +192,7 @@ const char * c_model_rudder_ctrl::_str_par[num_params] =
 
 const char * c_model_rudder_ctrl::_str_par_exp[num_params] =
   {
-    "Rudder slack",
+    "Rudder slack (degree)",
     "Speed of rudder rotation (rate per second)",
     "Full starboard rudder angle (negative value).",
     "Full port rudder angle (positive value)"
@@ -880,7 +880,7 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     mectrl.update(stprev.eng, stprev.gear_pos, stprev.thro_pos,
 		  stprev.thro_slack, dt,
 		  stcur.gear_pos, stcur.thro_pos, stcur.thro_slack);
-    mobf.update(stprev.rud_pos - stprev.rud_slack,
+    mobf.update((stprev.rud_pos - stprev.rud_slack)*(PI/180.),
 		stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
 		stprev.rev, v, f);    
     m3dof.update(v, f, dt, v);
@@ -889,7 +889,7 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     stcur.yaw += v[2] * dt * (180. / PI);
     stcur.cog = stcur.yaw + phi * (180. / PI);
     stcur.sog = sqrt(v[0] * v[0] + v[1] * v[1]) * (3600. / 1852.);
-    stcur.rev = final_rev(stcur.thro_pos);
+    stcur.rev = final_rev(stcur.thro_pos - stcur.thro_slack);
   }
 }
 
