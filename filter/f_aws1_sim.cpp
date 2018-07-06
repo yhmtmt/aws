@@ -38,6 +38,7 @@ using namespace cv;
 
 #include "f_aws1_sim.h"
 
+///////////////////////////////// base of  simulation model for boat parts
 bool c_model_base::register_param(f_aws1_sim * psim, int _index)
 {
   index = _index;
@@ -56,7 +57,37 @@ bool c_model_base::register_param(f_aws1_sim * psim, int _index)
   }
 }
 
+char * c_model_base::gen_str_indexed_param(int iparam)
+{
+  if(index >= 10 || index < 0)
+    return NULL;
+  
+  const char * base_str_param = get_str_param(iparam);
+  if(!base_str_param)
+    return NULL;
+  
+  int len = strlen(base_str_param) + 2;
+  char * indexed_str_param = new char[len];
+  snprintf(indexed_str_param, len, "%s%d", base_str_param, index);
+  return indexed_str_param;
+}
 
+void c_model_base::release_param()
+{
+  if(index == -1)
+    return;
+  
+  if(str_param){
+    int npars = get_num_params();
+    for(int ipar = 0; ipar < npars; ipar++){
+      delete[] str_param[ipar];
+    }
+    delete[] str_param;
+    str_param = NULL;
+  }
+}  
+
+//////////////////////////////////// 3dof kinetic model
 const char * c_model_3dof::_str_par[num_params] = {
   "xg", "yg",
   "m",
@@ -73,6 +104,35 @@ const char * c_model_3dof::_str_par_exp[num_params] = {
   "Quadratic drag coefficient in x for x speed", "Quadratic drag in y for y speed", "Quadratic drag in y for yaw rate", "Quadratic drag in yaw for y speed", "Quadratic drag in yaw for yaw rate"
 
 };
+
+void c_model_3dof::init()
+{
+  M = Mat::zeros(3, 3, CV_64FC1);
+  double * data = M.ptr<double>();
+  
+  for (int i = 0; i < 9; i++)
+    data[i] = ma[i];
+  data[0] += m;
+  data[4] += m;
+  iz = m * (xg * xg + yg * yg);
+  data[8] += iz;
+  
+  mxx = data[0];
+  myy = data[4];
+  mxg = m * xg;
+  myg = m * yg;
+  ny = (ma[5] + ma[7]) * 0.5;
+  
+  Dl = Mat::zeros(3, 3, CV_64FC1);
+  data = Dl.ptr<double>();
+  for (int i = 0; i < 9; i++) {
+    data[i] = dl[i];		
+  }
+  
+  Dq = Mat::zeros(3, 3, CV_64FC1);
+  C = Mat(3, 3, CV_64FC1);
+}
+
 
 void c_model_3dof::update(double * _v,
 			  double * f /* x-y force and z moment applied */,
@@ -124,6 +184,50 @@ void c_model_3dof::update(double * _v,
   _vnew[2] = data[2];
 }
 
+////////////////////////////////////////////// rudder control model
+const char * c_model_rudder_ctrl::_str_par[num_params] =
+  {
+    "rslack", "rrud", "ruds", "rudp"
+  };
+
+const char * c_model_rudder_ctrl::_str_par_exp[num_params] =
+  {
+    "Rudder slack",
+    "Speed of rudder rotation (rate per second)",
+    "Full starboard rudder angle (negative value).",
+    "Full port rudder angle (positive value)"
+  };
+
+void c_model_rudder_ctrl::update(const int u, const float ra,
+				 const float slack, const float dt,
+				 float & ra_new, float & slack_new)
+{
+  // Note that rudder control input u [0,255] increases in starboard
+  double alpha = (double) u * (1.0f / 255.f);
+  double ra_inf = ruds * alpha + rudp * (1.0 - alpha);
+  double dra = rrud * dt;
+  double era = ra_inf - ra;
+  if(abs(era) < dra){
+    ra_new = (float)ra_inf;
+    slack_new = (float)(slack + era);
+  }else if(era < 0){    
+    ra_new = (float)(ra - dra);
+    slack_new = (float)(slack - dra);
+  }else if(era > 0){
+    ra_new = (float)(ra + dra);
+    slack_new = (float)(slack + dra);
+  }
+
+  if(rslack < 0){
+    slack_new = min((float)rslack, slack_new);
+    slack_new = max(0.f, slack_new);
+  }else{
+    slack_new = max((float)rslack, slack_new);
+    slack_new = min(0.f, slack_new);
+  }
+}
+
+///////////////////////////////////// engine control model
 const char * c_model_engine_ctrl::_str_par[num_params] =
   {
     "fth", "bth", "umax", "umin",
@@ -290,48 +394,8 @@ void c_model_engine_ctrl::update(const int u, const float gamma,
   }    
 }
 
-const char * c_model_rudder_ctrl::_str_par[num_params] =
-  {
-    "rslack", "rrud", "ruds", "rudp"
-  };
 
-const char * c_model_rudder_ctrl::_str_par_exp[num_params] =
-  {
-    "Rudder slack",
-    "Speed of rudder rotation (rate per second)",
-    "Full starboard rudder angle (negative value).",
-    "Full port rudder angle (positive value)"
-  };
-
-void c_model_rudder_ctrl::update(const int u, const float ra,
-				 const float slack, const float dt,
-				 float & ra_new, float & slack_new)
-{
-  // Note that rudder control input u [0,255] increases in starboard
-  double alpha = (double) u * (1.0f / 255.f);
-  double ra_inf = ruds * alpha + rudp * (1.0 - alpha);
-  double dra = rrud * dt;
-  double era = ra_inf - ra;
-  if(abs(era) < dra){
-    ra_new = (float)ra_inf;
-    slack_new = (float)(slack + era);
-  }else if(era < 0){    
-    ra_new = (float)(ra - dra);
-    slack_new = (float)(slack - dra);
-  }else if(era > 0){
-    ra_new = (float)(ra + dra);
-    slack_new = (float)(slack + dra);
-  }
-
-  if(rslack < 0){
-    slack_new = min((float)rslack, slack_new);
-    slack_new = max(0.f, slack_new);
-  }else{
-    slack_new = max((float)rslack, slack_new);
-    slack_new = min(0.f, slack_new);
-  }
-}
-
+//////////////////////////////////////// force model for outboard mortor
 const char * c_model_outboard_force::_str_par[num_params] = {
   "xr",
   "yr",

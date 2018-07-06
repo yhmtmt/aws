@@ -23,11 +23,11 @@
 #include "../channel/ch_aws1_ctrl.h"
 #include "../channel/ch_aws1_sys.h"
 
-//////////////////////////////////////////////////////// f_aws1_sim
 #define RUD_PER_CYCLE 0.45f
 
 class f_aws1_sim;
 
+///////////////////////////////// base of  simulation model for boat parts
 class c_model_base
 {
  private:
@@ -40,20 +40,7 @@ class c_model_base
   
   virtual int get_num_params() = 0;
   
-  char * gen_str_indexed_param(int iparam)
-  {  
-    if(index >= 10 || index < 0)
-      return NULL;
-    
-    const char * base_str_param = get_str_param(iparam);
-    if(!base_str_param)
-      return NULL;
-
-    int len = strlen(base_str_param) + 2;
-    char * indexed_str_param = new char[len];
-    snprintf(indexed_str_param, len, "%s%d", base_str_param, index);
-    return indexed_str_param;
-  }
+  char * gen_str_indexed_param(int iparam);
   
  public:
  c_model_base():str_param(NULL), index(-1)
@@ -64,88 +51,14 @@ class c_model_base
     {
       release_param();
     }
-
+  
   bool register_param(f_aws1_sim * psim, int _index = -1);
 
-  void release_param()
-  {
-    if(index == -1)
-      return;
-
-    if(str_param){
-      int npars = get_num_params();
-      for(int ipar = 0; ipar < npars; ipar++){
-	delete[] str_param[ipar];
-      }
-      delete[] str_param;
-      str_param = NULL;
-    }
-  }
-  
+  void release_param();
 };
 
-class c_model_outboard_force: public c_model_base
-{
- private:
-  double xr, yr; // rudder position from rotation center
-  double CTL, CTQ; // linear and quadratic coefficient for thrust force model
-  double CD, CL; // rudder drag and lift coefficient
-  enum {
-    par_xr, par_yr, par_CTL, par_CTQ, par_CD, par_CL, num_params
-  };
-  static const char * _str_par[num_params];
-  static const char * _str_par_exp[num_params];
-  virtual const char * get_str_param(int iparam)
-  {
-    if(iparam >= num_params || iparam < 0)
-      return NULL;
-    return _str_par[iparam];
-  }
 
-  virtual const char * get_str_param_exp(int iparam)
-  {
-    if(iparam >= num_params || iparam < 0)
-      return NULL;
-    return _str_par_exp[iparam];
-  }
-  
-  virtual double * get_param(int iparam)
-  {
-    switch(iparam){
-    case par_xr:
-      return &xr;
-    case par_yr:
-      return &yr;
-    case par_CTL:
-      return &CTL;
-    case par_CTQ:
-      return &CTQ;
-    case par_CD:
-      return &CD;
-    case par_CL:
-      return &CL;
-    }
-  }
-  
-  virtual int get_num_params()
-  {
-    return num_params;
-  }
-
- public:
- c_model_outboard_force() :xr(0.f), yr(-3.f), CTL(0.), CTQ(0.), CD(0.), CL(0.)
-    {
-    }
-  
-  virtual ~c_model_outboard_force()
-    {
-    }
-
-  void update(const double _rud, const double _gear,
-	      const double _thro, const double _rev, const double * v,
-	      double * f);
-};
-
+//////////////////////////////////// 3dof kinetic model
 class c_model_3dof: public c_model_base
 {
  private:
@@ -250,39 +163,13 @@ class c_model_3dof: public c_model_base
     {
     }  
   
-  void init()
-  {
-    M = Mat::zeros(3, 3, CV_64FC1);
-    double * data = M.ptr<double>();
-    
-    for (int i = 0; i < 9; i++)
-      data[i] = ma[i];
-    data[0] += m;
-    data[4] += m;
-    iz = m * (xg * xg + yg * yg);
-    data[8] += iz;
-    
-    mxx = data[0];
-    myy = data[4];
-    mxg = m * xg;
-    myg = m * yg;
-    ny = (ma[5] + ma[7]) * 0.5;
-    
-    Dl = Mat::zeros(3, 3, CV_64FC1);
-    data = Dl.ptr<double>();
-    for (int i = 0; i < 9; i++) {
-      data[i] = dl[i];		
-    }
-    
-    Dq = Mat::zeros(3, 3, CV_64FC1);
-    C = Mat(3, 3, CV_64FC1);    
-  }
-  
+  void init();  
   void update(double * _v,
 	      double * f /* x-y force and z moment applied */,
 	      const double dt /* time step */, double * _vnew);
 };
 
+////////////////////////////////////////////// rudder control model
 class c_model_rudder_ctrl: public c_model_base
 {
  private:
@@ -343,6 +230,8 @@ class c_model_rudder_ctrl: public c_model_base
 	      float & ra_new, float & slack_new);
 };
 
+
+///////////////////////////////////// engine control model
 class c_model_engine_ctrl: public c_model_base
 {
  private:
@@ -431,6 +320,71 @@ class c_model_engine_ctrl: public c_model_base
 	      float & gamma_new, float & delta_new, float & slack_new);
 };
 
+//////////////////////////////////////// force model for outboard mortor
+class c_model_outboard_force: public c_model_base
+{
+ private:
+  double xr, yr; // rudder position from rotation center
+  double CTL, CTQ; // linear and quadratic coefficient for thrust force model
+  double CD, CL; // rudder drag and lift coefficient
+  enum {
+    par_xr, par_yr, par_CTL, par_CTQ, par_CD, par_CL, num_params
+  };
+  static const char * _str_par[num_params];
+  static const char * _str_par_exp[num_params];
+  virtual const char * get_str_param(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par[iparam];
+  }
+
+  virtual const char * get_str_param_exp(int iparam)
+  {
+    if(iparam >= num_params || iparam < 0)
+      return NULL;
+    return _str_par_exp[iparam];
+  }
+  
+  virtual double * get_param(int iparam)
+  {
+    switch(iparam){
+    case par_xr:
+      return &xr;
+    case par_yr:
+      return &yr;
+    case par_CTL:
+      return &CTL;
+    case par_CTQ:
+      return &CTQ;
+    case par_CD:
+      return &CD;
+    case par_CL:
+      return &CL;
+    }
+  }
+  
+  virtual int get_num_params()
+  {
+    return num_params;
+  }
+
+ public:
+ c_model_outboard_force() :xr(0.f), yr(-3.f), CTL(0.), CTQ(0.), CD(0.), CL(0.)
+    {
+    }
+  
+  virtual ~c_model_outboard_force()
+    {
+    }
+
+  void update(const double _rud, const double _gear,
+	      const double _thro, const double _rev, const double * v,
+	      double * f);
+};
+
+
+//////////////////////////////////////////////////////// f_aws1_sim
 class f_aws1_sim : public f_base
 {
 protected:
