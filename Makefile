@@ -5,7 +5,7 @@ EXE = aws
 LD	= ld
 
 #debug option (y: build as debug binary)
-DEBUG = n
+DEBUG = y
 
 #install Directory
 INST_DIR = ./bin
@@ -36,7 +36,8 @@ endif
 
 # for debug mode
 ifeq ($(DEBUG), y)
-	DFLAGS = -g 	
+	DFLAGS = -g
+	OFLAGS = -O0
 endif
 
 
