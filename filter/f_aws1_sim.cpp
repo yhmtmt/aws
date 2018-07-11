@@ -130,7 +130,7 @@ void c_model_3dof::init()
   }
   
   Dq = Mat::zeros(3, 3, CV_64FC1);
-  C = Mat(3, 3, CV_64FC1);
+  C = Mat::zeros(3, 3, CV_64FC1);
 }
 
 
@@ -176,7 +176,15 @@ void c_model_3dof::update(double * _v,
   Mat V(3, 1, CV_64FC1, _v);
   Mat Vnext;
   Vnext = V + M.inv() * (T - (C + Dl + Dq) * V) * dt;
-  
+  /*
+  cout << "V:" << V << endl;
+  cout << "T:" << T << endl;
+  cout << "C:" << C << endl;
+  cout << "Dl:" << Dl << endl;
+  cout << "Dq:" << Dq << endl;
+  cout << "M:" << M << endl;
+  cout << "Mi:" << M.inv() << endl;
+  */
   // Updating velocity
   data = Vnext.ptr<double>();
   _vnew[0] = data[0];
@@ -421,17 +429,13 @@ void c_model_outboard_force::update(const double _rud, const double _gear,
   // update rev
   // calculate rudder angle (port positive) and direction vector (nrx,nry)
   double nrx = cos(_rud), nry = sin(_rud);
+  double nrox = -nry, nroy = nrx;
   
   // calculate velocity of rudder center
-  double vx = v[0] + v[2] * yr, vy = v[1] + v[2] * xr;
-  double va2 = vx * vx + vy * vy, va = sqrt(va2);
-  double iva = 1.0 / va;
-  double nvx = vx * iva, nvy = vy * iva; // normal velocity vector at rudder 
+  double vrx = v[0] - v[2] * yr, vry = v[1] + v[2] * xr;
+  double vrox = -vry, vroy = vrx;
   
-  double vr = vx * nrx + vy * nry;         // rudder speed along rudder
-  double vrx = vr * nrx, vry = vr * nry;   // rudder velocity along rudder
-  double vrox = vx - vrx, vroy = vy - vry; // rudder velocity perpendicular to rudder
-  double vro = -vx * nry + vy * nrx;
+  double vr2 = vrx * vrx + vry * vry, vr = sqrt(vr2);
   
   // calculate x, y thrust force T(v, rev), and
   // decompose Tx = T cos phi, Ty=T sin phi
@@ -440,22 +444,31 @@ void c_model_outboard_force::update(const double _rud, const double _gear,
   
   // flow to rudder angle psi
   // double psi = acos(cpsi);
-  double cpsi = vr * iva;
-  double spsi = vro * iva;
+  double D, Dx, Dy, L, Lx, Ly;
+  D = Dx = Dy = L = Lx = Ly = 0.0;
+
+
+  f[0] = Tx;
+  f[1] = Ty;
   
-  // calculate disturbance D and lift L
-  double D = -CD * va2 * spsi;
-  double Dx = D * nvx, Dy = D * nvy;
-  
-  double L = 
-    - (nvx * nrx + nvy * nry > 0  ? 1.0 /*forward*/: -1.0/*backward*/) * 
-    (-nvx * nry + nvy * nrx > 0 ? 1.0 /* port */: -1.0/*starboard*/) * 
-    CL * va2 * spsi;
-  double Lx = - L * nvy, Ly = L * nvx;
-  
-  // Forces in x, y axes
-  f[0] = Tx + Dx + Lx;
-  f[1] = Ty + Dy + Ly;
+  if(vr != 0){
+    // nr.vr
+    double nrvr = nrx * vrx + nry * vry;
+    double nrovr = nrox * vrx + nroy * vry;
+   
+    // calculate disturbance D and lift L
+    D = -0.5 * CD * abs(nrovr);
+    Dx = D * vrx;
+    Dy = D * vry;
+    
+    L = 
+      - (nrvr > 0  ? 0.5 /*forward*/: -0.5/*backward*/) * CL * nrovr;
+    Lx = L * vrox;
+    Ly = L * vroy;
+    
+    f[0] += Dx + Lx;
+    f[1] += Dy + Ly;
+  }
   
   // calculate moment xr * Ty + yr * Ty
   f[2] = xr * f[1] + yr * f[0];
@@ -735,6 +748,7 @@ void f_aws1_sim::set_input_state_vector(const long long & tcur)
 	m_sv_cur.lat = lat * (PI / 180.f);
 	m_sv_cur.lon = lon * (PI / 180.f);
 	m_sv_cur.update_coordinates();
+	cout << "get t=" << m_sv_cur.t << "lat=" << m_sv_cur.lat << "lon=" << m_sv_cur.lon << endl;
   }
 
   if (m_engstate)
@@ -804,6 +818,8 @@ void f_aws1_sim::set_output_state_vector()
       m_state_sim->set_attitude(sv.t, sv.roll * (180.f / PI), sv.pitch * (180.f / PI), sv.yaw * (180.f / PI));
       m_state_sim->set_position(sv.t, sv.lat * (180.f / PI), sv.lon * (180.f / PI), alt, galt);
       m_state_sim->set_velocity(sv.t, sv.cog * (180.f / PI), sv.sog);
+
+      cout << "set t=" << sv.t << "lat=" << sv.lat << "lon=" << sv.lon << endl;
     }
   
   if (m_ch_ctrl_stat_sim)
@@ -867,14 +883,15 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     double sog_ms = stprev.sog * (1852. / 3600.);
     double dx = sog_ms * dt * sin(th), dy = sog_ms * dt * cos(th); //next position in enu coordinate
     double alt = 0.;
+    
     wrldtoecef(stprev.Rwrld, stprev.xe, stprev.ye, stprev.ze, dx, dy, 0.,
 	       stcur.xe, stcur.ye, stcur.ze);
     eceftobih(stcur.xe, stcur.ye, stcur.ze, stcur.lat, stcur.lon, alt);
-    
+    cout << "new position enu(" << dx << "," << dy << ") ecef(" << stcur.xe << "," << stcur.ye << "," << stcur.ze << ") bih(" << stcur.lat << "," << stcur.lon << ")" << endl;
     v[0] = sog_ms * cos(phi);
     v[1] = sog_ms * sin(phi);
     v[2] = stprev.ryaw;
-
+    cout << "sog_ms " << sog_ms << " phi " << phi <<  " v(" << v[0] << "," << v[1] << "," << v[2] << ") ";
     mrctrl.update(stprev.rud, stprev.rud_pos, stprev.rud_slack, dt,
 		  stcur.rud_pos, stcur.rud_slack);
     mectrl.update(stprev.eng, stprev.gear_pos, stprev.thro_pos,
@@ -884,6 +901,7 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
 		stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
 		stprev.rev, v, f);    
     m3dof.update(v, f, dt, v);
+    cout << "updated v(" << v[0] << "," << v[1] << "," << v[2] << ")" << endl;
     
     phi = atan2(v[0], v[1]);
     stcur.yaw += v[2] * dt * (180. / PI);
