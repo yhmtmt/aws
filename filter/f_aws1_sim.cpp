@@ -175,16 +175,25 @@ void c_model_3dof::update(double * _v,
   // v=v+v'dt
   Mat V(3, 1, CV_64FC1, _v);
   Mat Vnext;
-  Vnext = V + M.inv() * (T - (C + Dl + Dq) * V) * dt;
-  /*
+  Mat R1 = (C + Dl + Dq) * V;
+  Mat R2 = T - R1;
+  Mat R3 = M.inv() * R2;
+  Mat R4 = R3 * dt;
+  Vnext = V + R3 * dt;
+
   cout << "V:" << V << endl;
+  cout << "Vnext:" << Vnext << endl;
   cout << "T:" << T << endl;
   cout << "C:" << C << endl;
   cout << "Dl:" << Dl << endl;
   cout << "Dq:" << Dq << endl;
   cout << "M:" << M << endl;
   cout << "Mi:" << M.inv() << endl;
-  */
+  cout << "R1:" << R1 << endl;
+  cout << "R2:" << R2 << endl;
+  cout << "R3:" << R3 << endl;
+  cout << "R4:" << R4 << endl;
+  cout << "dt:" << dt << endl;
   // Updating velocity
   data = Vnext.ptr<double>();
   _vnew[0] = data[0];
@@ -255,151 +264,58 @@ void c_model_engine_ctrl::update(const int u, const float gamma,
 				 float & gamma_new, float & delta_new,
 				 float & slack_new)
 {
-  e_gear_state gs, gs_inf;
-  if(gamma == -1.0){
-    gs = gs_b;
-  }else if(gamma == 1.0){
-    gs = gs_f;
-  }else{
-    gs = gs_n;
-  }
+  gamma_new = gamma;
+  delta_new = delta;
+  slack_new = slack;      
 
   // determining action mode, and final (gamma, delta) for the input u.
   double unorm, rdelta;
   double gamma_inf, delta_inf, slack_inf;
   if(u <= bth){
-    gs_inf = gs_b;
-    unorm = (bth - u) /  (bth - umin);
+    delta_inf = (gamma == -1.0 ? (bth - u) /  (bth - umin) : 0.0);
     gamma_inf = -1.0;
-  }if (u >= fth){
-    gs_inf = gs_f;
-    unorm = (u - fth) / (umax - fth);
+    slack_inf = bslack;
+  }else if (u >= fth){
+    delta_inf = (gamma == 1.0 ? (u - fth) / (umax - fth) : 0.0);
     gamma_inf = 1.0;
+    slack_inf = fslack;
   }else{
-    gs_inf = gs_n;
-    unorm = 0;
+    delta_inf = 0.0;
     gamma_inf = 0.0;      
   }
+  
+  if(gamma != gamma_inf && delta == 0.0)
+    {
+      // gamma -> gamma_inf
+      double dgamma = rgamma * dt;
+      double egamma = gamma_inf - gamma;
+      if(abs(egamma) < dgamma){
+	gamma_new = (float)(gamma_inf);	
+      }else if(egamma < 0){
+	gamma_new = (float)(gamma - dgamma);
+      }else{
+	gamma_new = (float)(gamma + dgamma);
+      }
+      return;
+    }
 
-  e_action_mode am;
-  switch(gs){
-  case gs_f:
-    switch(gs_inf){
-    case gs_n:
-    case gs_b:
-      delta_inf = 0.f;
-      if(delta == 0.f){
-	am = am_fn;
-      }else{
-	am = am_fd;
-	rdelta = rfdelta;
-	delta_inf = 0.f;
-	slack_inf = 0.f;
-      }
-      break;
-    case gs_f:
-      delta_inf = unorm;
-      rdelta = rfdelta;
-      if(delta_inf > delta){
-	am = am_fu;
-	slack_inf = fslack;	    
-      }else if(delta_inf < delta){
-	am = am_fd;
-	slack_inf = 0.f;
-      }else{
-	am = am_none;
-      }      
-      break;
-    }
-    break;
-  case gs_n:
-    switch(gs_inf){
-    case gs_f:
-      am = am_nf;
-      break;
-    case gs_n:
-      am = am_none;
-      break;
-    case gs_b:
-      am = am_nb;
-      break;
-    }
-    break;
-  case gs_b:
-    switch(gs_inf){
-    case gs_f:
-    case gs_n:
-      if(delta == 0.f){
-	am = am_bn;
-      }else{
-	am = am_bd;
-	rdelta = rbdelta;
-	delta_inf = 0.f;
-	slack_inf = 0.f;
-      }
-      
-      break;
-    case gs_b:
-      delta_inf = unorm;
-      rdelta = rbdelta;
-      if(delta_inf > delta){
-	am = am_bu;
-	slack_inf = bslack;
-      }else if(delta_inf < delta){
-	am = am_bd;
-	slack_inf = 0.0;
-      }else{
-	am = am_none;
-      }
-      break;
-    }
-    break;
+  if(delta_inf == delta)
+    return;
+
+  double ddelta = rdelta * dt;
+  double edelta = delta_inf - delta;
+  
+  if(abs(edelta) < ddelta){
+    delta_new = (float)delta_inf;
+  }else if(edelta > 0){
+    delta_new = (float)(delta + ddelta);
+  }else{
+    delta_new = (float)(delta - ddelta);
   }
 
-  // calculating next (gamma, delta, slack)
-  double dgamma, egamma, eslack, ddelta, edelta;
-  switch(am){
-  case am_fn:
-  case am_nf:
-  case am_bn:
-  case am_nb:
-    // gamma -> gamma_inf
-    dgamma = rgamma * dt;
-    egamma = gamma_inf - gamma;
-    if(abs(egamma) < dgamma){
-      gamma_new = (float)(gamma_inf);	
-    }else if(egamma < 0){
-      gamma_new = (float)(gamma - rgamma * dt);
-    }else{
-      gamma_new = (float)(gamma + rgamma * dt);
-    }
-    break;
-  case am_fu:
-  case am_fd:
-  case am_bu:
-  case am_bd:
-    // delta, slack -> delta_inf, slack_inf
-    ddelta = rdelta * dt;
-    eslack = slack_inf - slack;
-    edelta = delta_inf - delta;
-    
-    if(abs(eslack) < ddelta){
-      slack_new = (float)(slack_inf);
-    }else if(eslack < 0){
-      slack_new = (float)(slack + ddelta);
-    }else{
-      slack_new = (float)(slack - ddelta);
-    }
-    
-    if(abs(edelta) < ddelta){
-      delta_new = (float)delta_inf;
-    }else if(edelta < 0){
-      delta_new = (float)(delta + ddelta);
-    }else{
-      delta_new = (float)(delta - ddelta);
-    }     
-    break;
-  }    
+  slack_new = slack + delta_new - delta;
+  slack_new = min((float)slack_inf, slack_new);
+  slack_new = max(0.f, slack_new);
 }
 
 
@@ -426,6 +342,13 @@ void c_model_outboard_force::update(const double _rud, const double _gear,
 				    const double _thro, const double _rev,
 				    const double * v, double * f)
 {
+  double g = 0.0;
+  if(_gear != 1.0 &&  _gear != -1.0){
+    g = 0.0;
+  }else{
+    cout << "debug" << endl;
+    g = _gear;
+  }
   // update rev
   // calculate rudder angle (port positive) and direction vector (nrx,nry)
   double nrx = cos(_rud), nry = sin(_rud);
@@ -439,14 +362,13 @@ void c_model_outboard_force::update(const double _rud, const double _gear,
   
   // calculate x, y thrust force T(v, rev), and
   // decompose Tx = T cos phi, Ty=T sin phi
-  double T = (CTL * vr * _rev + CTQ * _rev * _rev) * _gear;
+  double T = (CTL * vr * _rev + CTQ * _rev * _rev) * g;
   double Tx = nrx * T, Ty = nry * T;
   
   // flow to rudder angle psi
   // double psi = acos(cpsi);
   double D, Dx, Dy, L, Lx, Ly;
   D = Dx = Dy = L = Lx = Ly = 0.0;
-
 
   f[0] = Tx;
   f[1] = Ty;
@@ -482,7 +404,7 @@ f_aws1_sim::f_aws1_sim(const char * name) :
 	m_state(NULL), m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL),
 	m_ch_ctrl_stat(NULL),
 	m_state_sim(NULL), m_engstate_sim(NULL), m_ch_ctrl_stat_sim(NULL),
-	m_tprev(0), m_bcsv_out(false), m_int_smpl_sec(0.1), m_wismpl(100), m_wosmpl(100)
+	m_tprev(0), m_bcsv_out(false), m_int_smpl_sec(0.1), m_wismpl(100), m_wosmpl(1)
 {
 	// input channels for simulation results
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
@@ -660,8 +582,13 @@ void f_aws1_sim::set_control_input()
     break;
   }
   m_sv_cur.thro_pos = m_output_vectors[0].thro_pos;
+  m_sv_cur.thro_slack = m_output_vectors[0].thro_slack;
   m_sv_cur.gear_pos = m_output_vectors[0].gear_pos;
   m_sv_cur.rud_pos = m_output_vectors[0].rud_pos;
+  m_sv_cur.rud_slack = m_output_vectors[0].rud_slack;
+
+  cout << "sv_cur" << endl;
+  m_sv_cur.print();
 }
 
 
@@ -887,11 +814,11 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     wrldtoecef(stprev.Rwrld, stprev.xe, stprev.ye, stprev.ze, dx, dy, 0.,
 	       stcur.xe, stcur.ye, stcur.ze);
     eceftobih(stcur.xe, stcur.ye, stcur.ze, stcur.lat, stcur.lon, alt);
-    cout << "new position enu(" << dx << "," << dy << ") ecef(" << stcur.xe << "," << stcur.ye << "," << stcur.ze << ") bih(" << stcur.lat << "," << stcur.lon << ")" << endl;
+    
     v[0] = sog_ms * cos(phi);
     v[1] = sog_ms * sin(phi);
     v[2] = stprev.ryaw;
-    cout << "sog_ms " << sog_ms << " phi " << phi <<  " v(" << v[0] << "," << v[1] << "," << v[2] << ") ";
+
     mrctrl.update(stprev.rud, stprev.rud_pos, stprev.rud_slack, dt,
 		  stcur.rud_pos, stcur.rud_slack);
     mectrl.update(stprev.eng, stprev.gear_pos, stprev.thro_pos,
@@ -899,15 +826,36 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
 		  stcur.gear_pos, stcur.thro_pos, stcur.thro_slack);
     mobf.update((stprev.rud_pos - stprev.rud_slack)*(PI/180.),
 		stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
-		stprev.rev, v, f);    
+		stprev.rev, v, f);
+
     m3dof.update(v, f, dt, v);
-    cout << "updated v(" << v[0] << "," << v[1] << "," << v[2] << ")" << endl;
     
-    phi = atan2(v[0], v[1]);
-    stcur.yaw += v[2] * dt * (180. / PI);
-    stcur.cog = stcur.yaw + phi * (180. / PI);
+    phi = atan2(v[1], v[0]);
+    stcur.yaw += v[2] * dt;
+    if(stcur.yaw > PI)
+      stcur.yaw -= 2 * PI;
+    else if(stcur.yaw < -PI)
+      stcur.yaw += 2 * PI;      
+    
+    stcur.ryaw = v[2];
+    stcur.cog = stcur.yaw + phi;
+    if(stcur.cog < 0)
+      stcur.cog += 2 * PI;
+    else if(stcur.cog > 2 *PI)
+      stcur.cog -= 2 * PI;
+    
     stcur.sog = sqrt(v[0] * v[0] + v[1] * v[1]) * (3600. / 1852.);
     stcur.rev = final_rev(stcur.thro_pos - stcur.thro_slack);
+    if(iosv == 0){
+      cout << "previous: ";
+      stprev.print();
+      cout << endl << "next:";
+      stcur.print();
+      
+      cout << " sog_ms:" << sog_ms << " phi:" << phi;
+      cout << "new position enu(" << dx << "," << dy << ") ecef(" << stcur.xe << "," << stcur.ye << "," << stcur.ze << ") bih(" << stcur.lat << "," << stcur.lon << ")" << endl;
+      cout << " f(" << f[0] << "," << f[1] << "," << f[2] << ") v(" << v[0] << "," << v[1] << "," << v[2] << ")" << endl;      
+    }
   }
 }
 

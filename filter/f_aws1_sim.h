@@ -288,15 +288,7 @@ class c_model_engine_ctrl: public c_model_base
   {
     return num_params;
   }
-  
-  enum e_gear_state{
-    gs_n, gs_f, gs_b, gs_none
-  };
-
-  enum e_action_mode{
-    am_nf, am_nb, am_fn, am_bn, am_fu, am_fd, am_bu, am_bd, am_none
-  };
-  
+    
  public:
  c_model_engine_ctrl():fth(0x7f+0x19), bth(0x7f - 0x19),
     umax(0x00ff), umin(0x0000),
@@ -441,6 +433,18 @@ protected:
     void update_coordinates() {
       bihtoecef(lat, lon, 0, xe, ye, ze);
       getwrldrot(lat, lon, Rwrld);			
+    }
+
+    void print()
+    {
+      cout << " rud:" << rud << " rud_pos:" << rud_pos
+	   << " rud_slack:" << rud_slack;
+      cout << " eng: " << eng << " gear_pos:" << gear_pos
+	   << " thro_pos: " << thro_pos << " thro_slack:" << thro_slack;
+      cout << " rev:" << rev;
+      cout << " yaw:" << yaw;
+      cout << " cog:" << cog;
+      cout << " sog:" << sog;
     }
   };
 
