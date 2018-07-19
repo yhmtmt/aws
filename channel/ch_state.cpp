@@ -1005,11 +1005,25 @@ bool ch_eng_state::log2txt(FILE * pbf, FILE * ptf)
     write_buf(buf);
 
     fprintf(ptf, "%lld, %lld, %lld, %lld, %lld,", t, trapid, tdyn, ttran, ttrip);
-    fprintf(ptf, "%d, %03.2f, %02.2f, %03.2f, %u, %d, %d, %s, %s, %u, %u,",
-	    poil, toil, valt, frate, teng, pclnt, pfl, strStatEng1[stat1],
-	    strStatEng2[stat2], (unsigned int)ld, (unsigned int)tq);
+    const char * str1, * str2, * str3;
+    str1 = str2 = str3 = "null";
+    
+    if((int)stat1 <= (int)EmergencyStop && (int)stat1 >= 0){
+      str1 = strStatEng1[stat1];
+    }
+    if((int)stat2 <= (int)EngineShuttingDown && (int)stat2 >= 0){
+      str2 = strStatEng2[stat2];
+    }
+    if((int)gear <= (int)Reverse && (int) gear >= 0){
+      str3 = strStatGear[gear];
+    }
+    
+    fprintf(ptf, "%f, %d, %d, %03.2f, %02.2f, %03.2f, %u, %d, %d, %s, %s, %u, %u,",
+	    rpm, (int)trim,
+	    poil, toil, valt, frate, teng, pclnt, pfl, str1,
+	    str2, (unsigned int)ld, (unsigned int)tq);
 
-    fprintf(ptf, "%s, %d, %03.2f,", strStatGear[gear], pgoil, tgoil);
+    fprintf(ptf, "%s, %d, %03.2f,", str3, pgoil, tgoil);
     fprintf(ptf, "%d, %03.2f, %03.2f, %03.2f", flused, flavg, fleco, flinst);
     
     fprintf(ptf, "\n");
