@@ -247,7 +247,7 @@ rcmd:
 aws: $(OBJS) $(MODS)
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS) -o $(EXE) $(LIB)
 
-log2txt: util/log2txt.o channel_factory.o command.o c_aws.o c_aws_temp.o filter channel util orb_slam g2o DBoW2
+log2txt: util/log2txt.o channel_factory.o filter_factory.o command.o c_aws.o c_aws_temp.o filter channel util orb_slam g2o DBoW2
 	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS)  command.o c_aws.o c_aws_temp.o filter_factory.o channel_factory.o util/log2txt.o -o log2txt $(LIB)
 
 t2str: util/t2str.o util/c_clock.o
