@@ -1,0 +1,11 @@
+#!/bin/sh
+
+logs=`ls`
+
+i=0
+
+for log in $logs
+do
+	echo ${i}th log: $log:`t2str $log`
+	i=`expr $i + 1`		
+done
