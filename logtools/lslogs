@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 logs=`ls`
 
@@ -6,6 +6,9 @@ i=0
 
 for log in $logs
 do
+    if [[ $log =~ [0-9]{17} ]] ;
+    then
 	echo ${i}th log: $log:`t2str $log`
-	i=`expr $i + 1`		
+	i=`expr $i + 1`
+    fi
 done
