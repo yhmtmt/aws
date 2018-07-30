@@ -996,7 +996,7 @@ int ch_eng_state::read(FILE * pf, long long tcur)
 
 bool ch_eng_state::log2txt(FILE * pbf, FILE * ptf)
 {
-  fprintf(ptf, "trec, trapid, tdyn, ttran, ttrip, rpm, trim, poil, toil, valt, frate, teng, pclnt, pfl, stat1, stat2, ld, tq, gear, pgoil, tgoil, flused, flavg, fleco, flinst\n");
+  fprintf(ptf, "trec, trapid, tdyn, ttran, ttrip, rpm, trim, poil, toil, temp, valt, frate, teng, pclnt, pfl, stat1, stat2, ld, tq, gear, pgoil, tgoil, flused, flavg, fleco, flinst\n");
   size_t sz = get_dsize();
   while (!feof(pbf)){
 
@@ -1018,9 +1018,9 @@ bool ch_eng_state::log2txt(FILE * pbf, FILE * ptf)
       str3 = strStatGear[gear];
     }
     
-    fprintf(ptf, "%f, %d, %d, %03.2f, %02.2f, %03.2f, %u, %d, %d, %s, %s, %u, %u,",
+    fprintf(ptf, "%f, %d, %d, %03.2f, %02.1f, %02.2f, %03.2f, %u, %d, %d, %s, %s, %u, %u,",
 	    rpm, (int)trim,
-	    poil, toil, valt, frate, teng, pclnt, pfl, str1,
+	    poil, toil, temp, valt, frate, teng, pclnt, pfl, str1,
 	    str2, (unsigned int)ld, (unsigned int)tq);
 
     fprintf(ptf, "%s, %d, %03.2f,", str3, pgoil, tgoil);
