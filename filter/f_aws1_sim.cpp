@@ -264,8 +264,8 @@ void c_model_engine_ctrl::update(const int u, const float gamma,
 				 float & gamma_new, float & delta_new,
 				 float & slack_new)
 {
-  gamma_new = gamma;
-  delta_new = delta;
+  gamma_new = gamma;// gear position
+  delta_new = delta;// throttle position
   slack_new = slack;      
 
   // determining action mode, and final (gamma, delta) for the input u.
@@ -275,10 +275,12 @@ void c_model_engine_ctrl::update(const int u, const float gamma,
     delta_inf = (gamma == -1.0 ? (bth - u) /  (bth - umin) : 0.0);
     gamma_inf = -1.0;
     slack_inf = bslack;
+    rdelta = rbdelta;
   }else if (u >= fth){
     delta_inf = (gamma == 1.0 ? (u - fth) / (umax - fth) : 0.0);
     gamma_inf = 1.0;
     slack_inf = fslack;
+    rdelta = rfdelta;
   }else{
     delta_inf = 0.0;
     gamma_inf = 0.0;      
