@@ -313,7 +313,7 @@ bool f_ch_share::proc()
     for(int ich = 0; ich < m_chin.size(); ich++)
       m_wbuf_tail += (int)(m_chin[ich]->read_buf(m_wbuf + m_wbuf_tail));
     
-    while(m_wbuf_tail != m_wbuf_head){
+    while(m_wbuf_tail > m_wbuf_head){
       FD_ZERO(&fe);
       FD_ZERO(&fw);
       FD_SET(m_sock, &fe);
@@ -324,16 +324,21 @@ bool f_ch_share::proc()
       res = select((int) m_sock + 1, NULL, &fw, &fe, &tv);
       
       if(FD_ISSET(m_sock, &fw)){
-	m_wbuf_head += sendto(m_sock, 
-			      (char*) m_wbuf + m_wbuf_head, 
-			      m_wbuf_tail - m_wbuf_head, 0, 
-			      (sockaddr*) &m_sock_addr_snd, m_sz_sock_addr_snd);  
+	res = sendto(m_sock, 
+		     (char*) m_wbuf + m_wbuf_head, 
+		     m_wbuf_tail - m_wbuf_head, 0, 
+		     (sockaddr*) &m_sock_addr_snd, m_sz_sock_addr_snd);
+	if(res == -1)
+	  break;
+	else if (res == 0){
+	  cerr << "Socket has been closed, trying reconnect." << endl;	  
+	  return reconnect();
+	}
+	m_wbuf_head += res;
       }else if(FD_ISSET(m_sock, & fe)){
 	cerr << "Socket error during sending packet in " << m_name;
 	cerr << ". Now closing socket." << endl;
-	destroy_run();
-	
-	return init_run();
+	return reconnect();
       }else{
 	// time out;
 	break;
@@ -370,7 +375,10 @@ bool f_ch_share::proc()
 	
 	if(res == -1)
 	  break;
-	else
+	else if (res == 0){
+	  cerr << "Socket has been closed, trying reconnect." << endl;
+	  return reconnect();
+	}else
 	  m_rbuf_tail += res;
 
 	if(m_rbuf_tail == m_len_pkt_rcv){
@@ -391,8 +399,8 @@ bool f_ch_share::proc()
       }else if(FD_ISSET(m_sock, &fe)){
 	cerr << "Socket error during recieving packet in " << m_name;
 	cerr << ". Now closing socket." << endl;
-	destroy_run();
-	return init_run();
+
+	return reconnect();
       }else{
 	// time out;
 	return true;

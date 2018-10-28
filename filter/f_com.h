@@ -266,6 +266,11 @@ class f_ch_share: public f_base
   ofstream m_fin;
 
   long long m_tshare;
+  bool reconnect(){
+    destroy_run();
+    return init_run();
+  }
+  
  public:
 	 f_ch_share(const char * fname) : f_base(fname), m_verb(false),
 		 m_port(20100), m_port_dst(20101),
