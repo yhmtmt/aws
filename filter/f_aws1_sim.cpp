@@ -402,11 +402,11 @@ void c_model_outboard_force::update(const double _rud, const double _gear,
 /////////////////////////////////////////////////////////////////////////// f_aws1_sim members
 
 f_aws1_sim::f_aws1_sim(const char * name) :
-	f_base(name),
-	m_state(NULL), m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL),
-	m_ch_ctrl_stat(NULL),
-	m_state_sim(NULL), m_engstate_sim(NULL), m_ch_ctrl_stat_sim(NULL),
-	m_tprev(0), m_bcsv_out(false), m_int_smpl_sec(0.1), m_wismpl(100), m_wosmpl(1)
+  f_base(name), vplane(10.0),
+  m_state(NULL), m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL),
+  m_ch_ctrl_stat(NULL),
+  m_state_sim(NULL), m_engstate_sim(NULL), m_ch_ctrl_stat_sim(NULL),
+  m_tprev(0), m_bcsv_out(false), m_int_smpl_sec(0.1), m_wismpl(100), m_wosmpl(1)
 {
 	// input channels for simulation results
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
@@ -507,11 +507,14 @@ f_aws1_sim::f_aws1_sim(const char * name) :
   
   m_fcsv_out[0] = '\0';
   register_fpar("fcsv", m_fcsv_out, 1024, "CSV output file.");
-
+  register_fpar("vplane", &vplane, "Planing Velocity in kts");
+  
   mrctrl.register_param(this);
   mectrl.register_param(this);
-  mobf.register_param(this);
-  m3dof.register_param(this);
+  mobf.register_param(this, 0);
+  mobfp.register_param(this, 1);
+  m3dof.register_param(this, 0);
+  m3dofp.register_param(this, 1);
 }
 
 bool f_aws1_sim::init_run()
@@ -826,12 +829,21 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     mectrl.update(stprev.eng, stprev.gear_pos, stprev.thro_pos,
 		  stprev.thro_slack, dt,
 		  stcur.gear_pos, stcur.thro_pos, stcur.thro_slack);
-    mobf.update((stprev.rud_pos - stprev.rud_slack)*(PI/180.),
-		stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
-		stprev.rev, v, f);
-
-    m3dof.update(v, f, dt, v);
-    
+    if(stprev.sog < vplane){
+      // displacement model parameters
+      mobf.update((stprev.rud_pos - stprev.rud_slack)*(PI/180.),
+		  stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
+		  stprev.rev, v, f);
+          m3dof.update(v, f, dt, v);
+    }
+    else{
+      // plaing model parameters
+      mobfp.update((stprev.rud_pos - stprev.rud_slack)*(PI/180.),
+		   stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
+		   stprev.rev, v, f);
+      m3dofp.update(v, f, dt, v);
+    }
+  
     phi = atan2(v[1], v[0]);
     stcur.yaw += v[2] * dt;
     if(stcur.yaw > PI)
