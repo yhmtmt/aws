@@ -159,7 +159,18 @@ class c_model_3dof: public c_model_base
     return num_params;
   }
 
-  void init();  
+  void init();
+  void update(double & _u, double & _v, double & _r, double & _taux, double & _tauy, double & _taun, double dt, double & _unew, double & _vnew, double & _rnew)
+  {
+    double v[3]={_u,_v,_r};
+    double vnew[3];
+    double f[3]={_taux,_tauy,_taun};
+    update(v, f, dt, vnew);
+    _unew=vnew[0];
+    _vnew=vnew[1];
+    _rnew=vnew[2];
+  }
+  
   void update(double * _v,
 	      double * f /* x-y force and z moment applied */,
 	      const double dt /* time step */, double * _vnew);
@@ -370,6 +381,10 @@ public:
   void update(const double _rud, const double _gear,
 	      const double _thro, const double _rev, const double * v,
 	      double * f);
+  void update(const double _rud, const double _gear,
+	      const double _thro, const double _rev,
+	       const double _u, const double _v, const double _r,
+	       double & _taux, double & _tauy, double & _taun);
 };
 
 #endif

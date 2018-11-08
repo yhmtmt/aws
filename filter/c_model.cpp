@@ -29,7 +29,7 @@ using namespace cv;
 ///////////////////////////////// base of  simulation model for boat parts
 bool c_model_base::alloc_param(int _index)
 {
-  index = _index;
+index = _index;
   if (index < 0)
     return true;
 
@@ -80,7 +80,7 @@ const char * c_model_3dof::_str_par[num_params] = {
 };
 
 const char * c_model_3dof::_str_par_exp[num_params] = {
-  "Center of gravity in x", "Center of gravity in y",
+"Center of gravity in x", "Center of gravity in y",
   "Mass",
   "Added mass in x for x speed", "Added mass in y for y speed", "Added mass in y for yaw rate", "Added mass in yaw for y speed", "Added mass in yaw for yaw rate",
   "Linear drag coefficient in x for x speed", "Linear drag in y for y speed", "Linear drag in y for yaw rate", "Linear drag in yaw for y speed", "Linear drag in yaw for yaw rate",
@@ -90,7 +90,7 @@ const char * c_model_3dof::_str_par_exp[num_params] = {
 
 void c_model_3dof::init()
 {
-  M = Mat::zeros(3, 3, CV_64FC1);
+M = Mat::zeros(3, 3, CV_64FC1);
   double * data = M.ptr<double>();
   
   for (int i = 0; i < 9; i++)
@@ -115,7 +115,6 @@ void c_model_3dof::init()
   Dq = Mat::zeros(3, 3, CV_64FC1);
   C = Mat::zeros(3, 3, CV_64FC1);
 }
-
 
 void c_model_3dof::update(double * _v,
 			  double * f /* x-y force and z moment applied */,
@@ -322,6 +321,16 @@ const char * c_model_outboard_force::_str_par_exp[num_params] = {
   "Rudder drag force coefficient",
   "Rudder lift force coefficient"
 };
+
+void c_model_outboard_force::update(const double _rud, const double _gear,
+				      const double _thro, const double _rev,
+				      const double _u, const double _v, const double _r,
+				      double & _taux, double & _tauy, double & _taun)
+{
+double v[3]={_u, _v, _r};
+double f[3];
+update(_rud, _gear, _thro, _rev, v, f);
+}
 
 void c_model_outboard_force::update(const double _rud, const double _gear,
 				    const double _thro, const double _rev,

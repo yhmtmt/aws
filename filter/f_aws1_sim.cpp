@@ -65,7 +65,6 @@ f_aws1_sim::f_aws1_sim(const char * name) :
   register_fpar("wismpl", &m_wismpl, "Width of input sampling window");
   register_fpar("wosmpl", &m_wosmpl, "Width of output sampling window");
 
-
   // initial values of input vector
   register_fpar("lat0", &m_sv_init.lat, "Initial Latitude(deg)");
   register_fpar("lon0", &m_sv_init.lon, "Initial Longitude(deg)");
