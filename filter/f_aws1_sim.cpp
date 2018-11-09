@@ -183,9 +183,13 @@ bool f_aws1_sim::init_run()
 	   << endl;
     m_fcsv.precision(3);
   }
-  
 
+  mrctrl.init();
+  mectrl.init();
+  mobf.init();
+  mobfp.init();
   m3dof.init();
+  m3dofp.init();
   
   return true;
 }

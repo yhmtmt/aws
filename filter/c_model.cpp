@@ -322,15 +322,17 @@ const char * c_model_outboard_force::_str_par_exp[num_params] = {
   "Rudder lift force coefficient"
 };
 
-void c_model_outboard_force::update(const double _rud, const double _gear,
-				      const double _thro, const double _rev,
-				      const double _u, const double _v, const double _r,
-				      double & _taux, double & _tauy, double & _taun)
+#ifdef PY_EXPORT
+void c_model_outboard_force::update_py(const double _rud, const double _gear,
+				       const double _thro, const double _rev,
+				       const double _u, const double _v, const double _r,
+				       double & _taux, double & _tauy, double & _taun)
 {
-double v[3]={_u, _v, _r};
-double f[3];
-update(_rud, _gear, _thro, _rev, v, f);
+  double v[3]={_u, _v, _r};
+  double f[3];
+  update(_rud, _gear, _thro, _rev, v, f);
 }
+#endif
 
 void c_model_outboard_force::update(const double _rud, const double _gear,
 				    const double _thro, const double _rev,

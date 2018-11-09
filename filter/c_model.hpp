@@ -15,6 +15,19 @@
 // You should have received a copy of the GNU General Public License
 // along with c_model.hpp.  If not, see <http://www.gnu.org/licenses/>. 
 
+#ifdef PY_EXPORT
+#include <boost/python.hpp>
+
+template<class T> void dict2map(boost::python::dict & d, map<string, T> & m){
+  int len = boost::python::len(d);
+  boost::python::list keys = d.keys();
+  for (int i = 0; i < len; i++){
+    string key = boost::python::extract<string>(keys[i]);
+    m[key] = boost::python::extract<double>(d[key]);
+  }
+}
+
+#endif
 
 ///////////////////////////////// base of  simulation model for boat parts
 class c_model_base
@@ -31,6 +44,12 @@ class c_model_base
     {
       release_param();
     }
+
+  virtual void init()
+  {
+    return;
+  }
+  
   virtual const char * get_str_param(int iparam)
   {
     if (index < 0)
@@ -40,11 +59,61 @@ class c_model_base
     return NULL;
   }
   
-  virtual const char * _get_str_param(int iparam) = 0;
-  virtual const char * get_str_param_exp(int iparam) = 0;
-  virtual double * get_param(int iparam) = 0;
+  virtual const char * _get_str_param(int iparam){return NULL;};
+  virtual const char * get_str_param_exp(int iparam){return NULL;};
+  virtual double * get_param(int iparam){return NULL;};  
+  virtual int get_num_params(){return 0;};
+
+  void set_params(map<string,double> & vals)
+  {
+    int npars = get_num_params();
+    for (int iparam = 0; iparam < npars; iparam++){
+      if(vals.find(get_str_param(iparam)) == vals.end())
+	continue;
+      *get_param(iparam) = vals[get_str_param(iparam)];      
+    }
+    init();
+  }
+
+  map<string, double> get_params()
+  {
+    map<string, double> mvals;
+    int npars = get_num_params();
+    for (int iparam = 0; iparam < npars; iparam++){
+      mvals[get_str_param(iparam)] = *get_param(iparam);
+    }
+    return mvals;
+  }
+
+  #ifdef PY_EXPORT
+  void set_params_py(boost::python::dict & dvals)
+  {
+    map<string,double> mvals;
+    dict2map(dvals, mvals);
+    set_params(mvals);
+  }
   
-  virtual int get_num_params() = 0;
+  boost::python::dict get_params_py()
+  {
+    boost::python::dict dvals;
+    int npars = get_num_params();
+    for (int iparam = 0; iparam < npars; iparam++){
+      dvals[get_str_param(iparam)] = *get_param(iparam);
+    }
+    return dvals;    
+  }
+
+  boost::python::dict get_str_params_py()
+  {
+    boost::python::dict dstrs;
+    int npars = get_num_params();
+    for (int iparam = 0; iparam < npars; iparam++){
+      dstrs[get_str_param(iparam)] = string(get_str_param_exp(iparam));
+    }
+    return dstrs;
+  }
+  
+  #endif
   
   char * gen_str_indexed_param(int iparam);
   
@@ -159,8 +228,10 @@ class c_model_3dof: public c_model_base
     return num_params;
   }
 
-  void init();
-  void update(double & _u, double & _v, double & _r, double & _taux, double & _tauy, double & _taun, double dt, double & _unew, double & _vnew, double & _rnew)
+  virtual void init();
+
+  #ifdef PY_EXPORT
+  void update_py(double & _u, double & _v, double & _r, double & _taux, double & _tauy, double & _taun, double dt, double & _unew, double & _vnew, double & _rnew)
   {
     double v[3]={_u,_v,_r};
     double vnew[3];
@@ -170,6 +241,7 @@ class c_model_3dof: public c_model_base
     _vnew=vnew[1];
     _rnew=vnew[2];
   }
+  #endif
   
   void update(double * _v,
 	      double * f /* x-y force and z moment applied */,
@@ -381,10 +453,40 @@ public:
   void update(const double _rud, const double _gear,
 	      const double _thro, const double _rev, const double * v,
 	      double * f);
-  void update(const double _rud, const double _gear,
+  #ifdef PY_EXPORT
+  void update_py(const double _rud, const double _gear,
 	      const double _thro, const double _rev,
 	       const double _u, const double _v, const double _r,
 	       double & _taux, double & _tauy, double & _taun);
+  #endif
 };
+
+#ifdef PY_EXPORT
+BOOST_PYTHON_MODULE( aws_sim ){
+  namespace python = boost::python;
+  python::class_<c_model_base>("model_base")
+    .def("set_params", &c_model_base::set_params_py)
+    .def("get_params", &c_model_base::get_params_py)
+    .def("get_str_params", &c_model_base::get_str_params_py)
+    ;
+  
+  python::class_<c_model_3dof>("model_3dof")
+    .def("update", &c_model_3dof::update_py)
+    ;
+  
+  python::class_<c_model_rudder_ctrl>("model_rudder_ctrl")
+    .def("update", &c_model_rudder_ctrl::update)
+    ;
+
+  python::class_<c_model_engine_ctrl>("model_engine_ctrl")
+    .def("update", &c_model_engine_ctrl::update)
+    ;
+
+  python::class_<c_model_outboard_force>("model_outboard_force")
+    .def("update", &c_model_outboard_force::update_py)
+    ;
+}
+
+#endif
 
 #endif
