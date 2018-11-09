@@ -253,6 +253,9 @@ log2txt: util/log2txt.o channel_factory.o filter_factory.o command.o c_aws.o c_a
 t2str: util/t2str.o util/c_clock.o
 	$(CC) util/t2str.o util/c_clock.o -o t2str
 
+pyawssim: filter/c_model.cpp
+	$(CC) -I$(INC_PYTHON) -shared -fPIC -DPY_EXPORT -o pyawssim.so filter/c_model.cpp $(LIB_BOOST_PYTHON) $(LIB_CV)
+
 .PHONY: filter
 .PHONY: channel
 .PHONY: util

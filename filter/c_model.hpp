@@ -462,7 +462,7 @@ public:
 };
 
 #ifdef PY_EXPORT
-BOOST_PYTHON_MODULE( aws_sim ){
+BOOST_PYTHON_MODULE( pyawssim ){
   namespace python = boost::python;
   python::class_<c_model_base>("model_base")
     .def("set_params", &c_model_base::set_params_py)
@@ -470,19 +470,19 @@ BOOST_PYTHON_MODULE( aws_sim ){
     .def("get_str_params", &c_model_base::get_str_params_py)
     ;
   
-  python::class_<c_model_3dof>("model_3dof")
+  python::class_<c_model_3dof, python::bases<c_model_base> >("model_3dof")
     .def("update", &c_model_3dof::update_py)
     ;
   
-  python::class_<c_model_rudder_ctrl>("model_rudder_ctrl")
+  python::class_<c_model_rudder_ctrl, python::bases<c_model_base> >("model_rudder_ctrl")
     .def("update", &c_model_rudder_ctrl::update)
     ;
 
-  python::class_<c_model_engine_ctrl>("model_engine_ctrl")
+  python::class_<c_model_engine_ctrl, python::bases<c_model_base> >("model_engine_ctrl")
     .def("update", &c_model_engine_ctrl::update)
     ;
 
-  python::class_<c_model_outboard_force>("model_outboard_force")
+  python::class_<c_model_outboard_force, python::bases<c_model_base> >("model_outboard_force")
     .def("update", &c_model_outboard_force::update_py)
     ;
 }
