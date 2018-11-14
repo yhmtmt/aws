@@ -323,14 +323,14 @@ const char * c_model_outboard_force::_str_par_exp[num_params] = {
 };
 
 #ifdef PY_EXPORT
-void c_model_outboard_force::update_py(const double _rud, const double _gear,
+boost::python::tuple c_model_outboard_force::update_py(const double _rud, const double _gear,
 				       const double _thro, const double _rev,
-				       const double _u, const double _v, const double _r,
-				       double & _taux, double & _tauy, double & _taun)
+				       const double _u, const double _v, const double _r)
 {
   double v[3]={_u, _v, _r};
   double f[3];
   update(_rud, _gear, _thro, _rev, v, f);
+  return boost::python::make_tuple(f[0],f[1],f[2]);
 }
 #endif
 

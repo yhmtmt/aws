@@ -231,15 +231,13 @@ class c_model_3dof: public c_model_base
   virtual void init();
 
   #ifdef PY_EXPORT
-  void update_py(double & _u, double & _v, double & _r, double & _taux, double & _tauy, double & _taun, double dt, double & _unew, double & _vnew, double & _rnew)
+  boost::python::tuple update_py(double & _u, double & _v, double & _r, double & _taux, double & _tauy, double & _taun, double dt)
   {
     double v[3]={_u,_v,_r};
     double vnew[3];
     double f[3]={_taux,_tauy,_taun};
     update(v, f, dt, vnew);
-    _unew=vnew[0];
-    _vnew=vnew[1];
-    _rnew=vnew[2];
+    return boost::python::make_tuple(vnew[0],vnew[1],vnew[2]);
   }
   #endif
   
@@ -307,6 +305,16 @@ class c_model_rudder_ctrl: public c_model_base
 	      const float ra, const float slack,
 	      const float dt,
 	      float & ra_new, float & slack_new);
+  #ifdef PY_EXPORT
+  boost::python::tuple update_py(const int u,
+	      const float ra, const float slack,
+				 const float dt)
+  {
+    float ra_new=0., slack_new=0.;
+    update(u,ra,slack,dt, ra_new, slack_new);
+    return boost::python::make_tuple(ra_new, slack_new);
+  }
+  #endif
 };
 
 
@@ -389,6 +397,15 @@ public:
   void update(const int u, const float gamma, const float delta,
 	      const float slack, const float dt,
 	      float & gamma_new, float & delta_new, float & slack_new);
+  #ifdef PY_EXPORT
+  boost::python::tuple update_py(const int u, const float gamma, const float delta,
+			      const float slack, const float dt)
+  {
+    float gamma_new=0., delta_new=0., slack_new=0.;
+    update(u, gamma, delta, slack, dt, gamma_new, delta_new, slack_new);
+    return boost::python::make_tuple(gamma_new, delta_new, slack_new);
+  }
+  #endif
 };
 
 //////////////////////////////////////// force model for outboard mortor
@@ -454,35 +471,34 @@ public:
 	      const double _thro, const double _rev, const double * v,
 	      double * f);
   #ifdef PY_EXPORT
-  void update_py(const double _rud, const double _gear,
+  boost::python::tuple update_py(const double _rud, const double _gear,
 	      const double _thro, const double _rev,
-	       const double _u, const double _v, const double _r,
-	       double & _taux, double & _tauy, double & _taun);
+	       const double _u, const double _v, const double _r);
   #endif
 };
 
 #ifdef PY_EXPORT
 BOOST_PYTHON_MODULE( pyawssim ){
   namespace python = boost::python;
-  python::class_<c_model_base>("model_base")
+  python::class_<c_model_base>("c_model_base")
     .def("set_params", &c_model_base::set_params_py)
     .def("get_params", &c_model_base::get_params_py)
     .def("get_str_params", &c_model_base::get_str_params_py)
     ;
   
-  python::class_<c_model_3dof, python::bases<c_model_base> >("model_3dof")
+  python::class_<c_model_3dof, python::bases<c_model_base> >("c_model_3dof")
     .def("update", &c_model_3dof::update_py)
     ;
   
-  python::class_<c_model_rudder_ctrl, python::bases<c_model_base> >("model_rudder_ctrl")
-    .def("update", &c_model_rudder_ctrl::update)
+  python::class_<c_model_rudder_ctrl, python::bases<c_model_base> >("c_model_rudder_ctrl")
+    .def("update", &c_model_rudder_ctrl::update_py)
     ;
 
-  python::class_<c_model_engine_ctrl, python::bases<c_model_base> >("model_engine_ctrl")
-    .def("update", &c_model_engine_ctrl::update)
+  python::class_<c_model_engine_ctrl, python::bases<c_model_base> >("c_model_engine_ctrl")
+    .def("update", &c_model_engine_ctrl::update_py)
     ;
 
-  python::class_<c_model_outboard_force, python::bases<c_model_base> >("model_outboard_force")
+  python::class_<c_model_outboard_force, python::bases<c_model_base> >("c_model_outboard_force")
     .def("update", &c_model_outboard_force::update_py)
     ;
 }
