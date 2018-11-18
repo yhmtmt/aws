@@ -72,6 +72,7 @@ protected:
 	void stay(const float sog, const float cog, const float yaw);
 	void cursor(const float sog, const float cog, const float yaw, bool bav = false);
 
+	void calc_stat();
 public:
 	f_aws1_ap(const char * name);
 	virtual ~f_aws1_ap();

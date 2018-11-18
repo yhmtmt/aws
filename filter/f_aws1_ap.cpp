@@ -111,6 +111,15 @@ void f_aws1_ap::destroy_run()
 {
 }
 
+void f_aws1_ap::calc_stat()
+{
+  // yaw bias (average cog-yaw, where  bias+yaw=cog)
+  // midship instruction value (left to right, right to left)
+  // enging control table (instruction value vs rpm)
+  // local flow (dir, spd) 
+  // stable speed table (rpm vs speed)
+}
+
 bool f_aws1_ap::proc()
 {
 	float cog, sog, yaw;
@@ -120,6 +129,8 @@ bool f_aws1_ap::proc()
 	if(!m_ctrl_stat){
 		return false;
 	}
+
+	calc_stat();
 
 	s_aws1_ctrl_stat stat;
 	long long t = 0;
