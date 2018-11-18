@@ -41,7 +41,16 @@ protected:
 	float m_Rav; // range for avoidance(multiple of ship size)
 	float m_Tav; // time for avoidance
 	float m_Cav_max; // maximum course change in degree
+
 	bool m_verb;
+
+	// control situation estimate
+	char fname_situation_estimate[1024];
+	float dyaw, dcog, byaw;
+	float rudmidlr, rudmidrl;
+	float dir_local_flow, spd_local_flow;
+	float tbl_stable_rpm[256];
+	float tbl_stable_spd[60];
 
 	// for wp mode
 	float m_cdiff, m_sdiff; // differences to the target values of course and speed.

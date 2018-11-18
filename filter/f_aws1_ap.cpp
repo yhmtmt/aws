@@ -113,11 +113,18 @@ void f_aws1_ap::destroy_run()
 
 void f_aws1_ap::calc_stat()
 {
-  // yaw bias (average cog-yaw, where  bias+yaw=cog)
-  // midship instruction value (left to right, right to left)
-  // enging control table (instruction value vs rpm)
-  // local flow (dir, spd) 
-  // stable speed table (rpm vs speed)
+  // Assumption: 
+  // v=vboat+vflow
+  // dyaw=0,dcog=0 (straight motion) -> byaw + yaw = cog
+    
+  // calculate parameters below
+  // dyaw: yaw rate deg/sec
+  // dcog: cog rate deg/sec
+  // byaw: yaw bias deg (average cog-yaw, where  bias+yaw=cog)
+  // rudmidlr, rudmidrl: midship instruction value (left to right, right to left)
+  // local_flow_dir, local_flow_spd: local flow (estimated during engine cutoff)
+  // tbl_stable_rpm[256]: enging control table (instruction value vs rpm)
+  // tbl_stable_spd[60]: stable speed table (rpm vs speed)
 }
 
 bool f_aws1_ap::proc()
