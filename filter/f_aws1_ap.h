@@ -65,7 +65,8 @@ protected:
 	float m_pc_s, m_ic_s, m_dc_s;
 	float m_ps_s, m_is_s, m_ds_s;
 	const float calc_course_change_for_ais_ship(const float yaw);
-	void ctrl_to_location(const float sog, const float d, const float cdiff);
+	void ctrl_to_location(const float sog, const float d,
+			      const float cdiff, float smax, float smin);
 	void flw_tgt(const float sog, const float cog, const float yaw, bool bav = false);
 	void wp(const float sog, const float cog, const float yaw, bool bav = false);
 	void stay(const float sog, const float cog, const float yaw);

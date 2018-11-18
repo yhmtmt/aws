@@ -233,7 +233,7 @@ const float f_aws1_ap::calc_course_change_for_ais_ship(const float crs)
 	return cc;
 }
 
-void f_aws1_ap::ctrl_to_location(const float sog, const float d, const float cdiff)
+void f_aws1_ap::ctrl_to_location(const float sog, const float d, const float cdiff, float smax, float smin)
 {
 	m_dcdiff = (float)(cdiff - m_cdiff);
 	//	if(m_icdiff < 255.f && m_icdiff > 0)
@@ -244,7 +244,7 @@ void f_aws1_ap::ctrl_to_location(const float sog, const float d, const float cdi
 	m_rud = (float)min(m_rud, 255.f);
 	m_rud = (float)max(m_rud, 0.f);
 
-	float stgt = (float)((m_smax - m_smin) *(1.0 - abs(m_rud - 127.) * (1 / 127.)) + m_smin);
+	float stgt = (float)((smax - smin) *(1.0 - abs(m_rud - 127.) * (1 / 127.)) + smin);
 	float sdiff = (float)(stgt - sog);
 	sdiff *= (float)(1. / stgt);
 
@@ -286,7 +286,7 @@ void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
 		cdiff += cc;
 		cdiff *= (float)(1. / 180.); // normalize
 
-		ctrl_to_location(sog, d, cdiff);
+		ctrl_to_location(sog, d, cdiff, m_smax, m_smin);
 	}
 
 	m_wp->unlock();
@@ -305,7 +305,7 @@ void f_aws1_ap::cursor(const float sog, const float cog, const float yaw, bool b
 	}
 
 	cdiff *= (float)(1. / 180.);
-	ctrl_to_location(sog, d, cdiff);
+	ctrl_to_location(sog, d, cdiff, m_smax, m_smin);
 }
 
 void f_aws1_ap::flw_tgt(const float sog, const float cog, const float yaw, bool bav)
@@ -321,29 +321,33 @@ void f_aws1_ap::flw_tgt(const float sog, const float cog, const float yaw, bool 
 	}
 
 	cdiff *= (float)(1. / 180.);
-	ctrl_to_location(sog, d, cdiff);
+	ctrl_to_location(sog, d, cdiff, m_smax, m_smin);
 }
 
 void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
 {
-	{ // updating relative position of the stay point.
-		long long t;
-		Mat Rorg;
-		float xorg, yorg, zorg;
-		Rorg = m_state->get_enu_rotation(t);
-		m_state->get_position_ecef(t, xorg, yorg, zorg);
-		m_ap_inst->update_pos_rel(Rorg, xorg, yorg, zorg);
-	}
+  { // updating relative position of the stay point.
+    long long t;
+    Mat Rorg;
+    float xorg, yorg, zorg;
+    Rorg = m_state->get_enu_rotation(t);
+    m_state->get_position_ecef(t, xorg, yorg, zorg);
+    m_ap_inst->update_pos_rel(Rorg, xorg, yorg, zorg);
+  }
 
-	float cy = (float)((cog - yaw) * PI / 180);
-	float ysog = cos(cy) * sog; // the speed in yaw direction
+  float rx, ry, d, dir;
+  m_ap_inst->get_stay_pos_rel(rx, ry, d, dir);
+  float cdiff = (float)(dir - cog);
 
-	float rx, ry, d, dir;
-	m_ap_inst->get_stay_pos_rel(rx, ry, d, dir);
+  if(d > 5.0)
+    ctrl_to_location(sog, d, cdiff, 5.0f, 3.0f);
+  
+  /*
+    float cy = (float)((cog - yaw) * PI / 180);
+    float ysog = cos(cy) * sog; // the speed in yaw direction
 
-	float cdiff = (float)(dir - cog);
-	if (abs(cdiff) > 180.){
-		if (cdiff < 0)
+    if (abs(cdiff) > 180.){
+    if (cdiff < 0)
 			cdiff += 360.;
 		else
 			cdiff -= 360.;
@@ -417,4 +421,5 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
 	  cout << "r d " << m_dcdiff << " i " << m_icdiff << " p " << m_cdiff << endl;	  
 	  cout << "ydiff " << ydiff << endl;
 	}
+	*/
 }

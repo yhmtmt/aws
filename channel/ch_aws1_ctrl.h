@@ -568,12 +568,12 @@ public:
 
 	void update_pos_rel(const Mat & Rorg, float & xorg, float & yorg, float & zorg)
 	{
-		lock();
-		eceftowrld(Rorg, xorg, yorg, zorg, x_stay, y_stay, z_stay, rx_stay, ry_stay, rz_stay);
-		d_stay = (float)(sqrt(rx_stay * rx_stay + ry_stay * ry_stay));
-		dir_stay = (float)(atan2(rx_stay, ry_stay) * 180. / PI);
-		brpos = true;
-		unlock();
+	  lock();
+	  eceftowrld(Rorg, xorg, yorg, zorg, x_stay, y_stay, z_stay, rx_stay, ry_stay, rz_stay);
+	  d_stay = (float)(sqrt(rx_stay * rx_stay + ry_stay * ry_stay));
+	  dir_stay = (float)(atan2(rx_stay, ry_stay) * 180. / PI);
+	  brpos = true;
+	  unlock();
 	}
 };
 
