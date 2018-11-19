@@ -438,7 +438,7 @@ public:
 
 enum e_ap_mode
 {
-	EAP_CURSOR, EAP_WP, EAP_WPAV, EAP_STAY, EAP_FLW_TGT, EAP_NONE
+  EAP_CURSOR, EAP_WP, EAP_WPAV, EAP_STAY, EAP_FLW_TGT, EAP_STB_MAN, EAP_NONE
 };
 
 extern const char * str_aws1_ap_mode[EAP_NONE];
@@ -446,135 +446,153 @@ extern const char * str_aws1_ap_mode[EAP_NONE];
 class ch_aws1_ap_inst : public ch_base
 {
 protected:
-	e_ap_mode mode;
-	float smax; // maximum speed
-	float meng_max, meng_min; // main engine max/min value
-	float seng_max, seng_min; // sub engine's max/min value
+  e_ap_mode mode;
+  float smax; // maximum speed
+  float meng_max, meng_min; // main engine max/min value
+  float seng_max, seng_min; // sub engine's max/min value
 
-	// Stay position (used only in EAP_STAY)
-	float lat_stay, lon_stay;
-	float x_stay, y_stay, z_stay;
-	float rx_stay, ry_stay, rz_stay;
-	float d_stay, dir_stay;
+  // Stay position (used only in EAP_STAY)
+  float lat_stay, lon_stay;
+  float x_stay, y_stay, z_stay;
+  float rx_stay, ry_stay, rz_stay;
+  float d_stay, dir_stay;
 
-	// Cursor position (used only in EAP_CURSOR)
-	float lat_csr, lon_csr;
-	float rx_csr, ry_csr;
-	float d_csr, dir_csr;
+  // Cursor position (used only in EAP_CURSOR)
+  float lat_csr, lon_csr;
+  float rx_csr, ry_csr;
+  float d_csr, dir_csr;
 
-	// Target position (used only in EAP_FLW_TGT)
-	float lat_tgt, lon_tgt;
-	float rx_tgt, ry_tgt;
-	float d_tgt, dir_tgt;
+  // Target position (used only in EAP_FLW_TGT)
+  float lat_tgt, lon_tgt;
+  float rx_tgt, ry_tgt;
+  float d_tgt, dir_tgt;
 
-	bool brpos;
+  // Target course and Target rpm (used only in EAP_STB_MAN)
+  float cog_tgt, rpm_tgt;
+  
+  bool brpos;
 public:
-	ch_aws1_ap_inst(const char * name) :ch_base(name),
-		mode(EAP_WP), lat_stay(0.f), lon_stay(0.f), brpos(false)
-	{
-	}
-	virtual ~ch_aws1_ap_inst()
-	{
-	}
+ ch_aws1_ap_inst(const char * name) :ch_base(name),
+    mode(EAP_WP), lat_stay(0.f), lon_stay(0.f), brpos(false)
+    {
+    }
+  virtual ~ch_aws1_ap_inst()
+    {
+    }
+  
+  const e_ap_mode get_mode()
+  {
+    return mode;
+  }
+  
+  void set_mode(const e_ap_mode _mode)
+  {
+    lock();
+    mode = _mode;
+    unlock();
+  }
 
-	const e_ap_mode get_mode()
-	{
-		return mode;
-	}
+  void set_tgt_cog_and_rev(const float cog, const float rpm)
+  {
+    lock();
+    cog_tgt = cog;
+    rpm_tgt = rpm;
+    unlock();
+  }
 
-	void set_mode(const e_ap_mode _mode)
-	{
-		lock();
-		mode = _mode;
-		unlock();
-	}
+  void get_tgt_cog_and_rev(float & cog, float & rpm)
+  {
+    lock();
+    cog = cog_tgt;
+    rpm = rpm_tgt;
+    unlock();
+  }
+  void set_csr_pos(
+		   const float lat, const float lon,
+		   const float rx, const float ry, 
+		   const float d, const float dir)
+  {
+    lock();
+    lat_csr = lat;
+    lon_csr = lon;
+    rx_csr = rx;
+    ry_csr = ry;
+    d_csr = d;
+    dir_csr = dir;
+    unlock();
+  }
 
-	void set_csr_pos(
-		const float lat, const float lon,
-		const float rx, const float ry, 
-		const float d, const float dir)
-	{
-		lock();
-		lat_csr = lat;
-		lon_csr = lon;
-		rx_csr = rx;
-		ry_csr = ry;
-		d_csr = d;
-		dir_csr = dir;
-		unlock();
-	}
+  void get_csr_pos_rel(float & xr, float & yr, float & d, float & dir)
+  {
+    lock();
+    xr = rx_csr;
+    yr = ry_csr;
+    d = d_csr;
+    dir = dir_csr;
+    unlock();
+  }
 
-	void get_csr_pos_rel(float & xr, float & yr, float & d, float & dir)
-	{
-		lock();
-		xr = rx_csr;
-		yr = ry_csr;
-		d = d_csr;
-		dir = dir_csr;
-		unlock();
-	}
+  void set_stay_pos(const float lat, const float lon)
+  {
+    lock();
+    lat_stay = lat;
+    lon_stay = lon;
+    bihtoecef(lat, lon, 0., x_stay, y_stay, z_stay);
+    brpos = false;
+    unlock();
+  }
+  
+  void get_stay_pos(float & lat, float & lon)
+  {
+    lock();
+    lat = lat_stay;
+    lon = lon_stay;
+    unlock();
+  }
 
-	void set_stay_pos(const float lat, const float lon)
-	{
-		lock();
-		lat_stay = lat;
-		lon_stay = lon;
-		bihtoecef(lat, lon, 0., x_stay, y_stay, z_stay);
-		brpos = false;
-		unlock();
-	}
+  bool get_stay_pos_rel(float & xr, float & yr, float & d, float & dir)
+  {
+    lock();
+    xr = rx_stay;
+    yr = ry_stay;
+    d = d_stay;
+    dir = dir_stay;
+    unlock();
+    return brpos;
+  }
 
-	void get_stay_pos(float & lat, float & lon)
-	{
-		lock();
-		lat = lat_stay;
-		lon = lon_stay;
-		unlock();
-	}
-
-	bool get_stay_pos_rel(float & xr, float & yr, float & d, float & dir)
-	{
-		lock();
-		xr = rx_stay;
-		yr = ry_stay;
-		d = d_stay;
-		dir = dir_stay;
-		unlock();
-		return brpos;
-	}
-
-	void set_tgt_pos(const float lat, const float lon, const float xr, const float yr, const float d, const float dir)
-	{
-		lock();
-		lat_tgt = lat;
-		lon_tgt = lon;
-		rx_tgt = xr;
-		ry_tgt = yr;
-		d_tgt = d;
-		dir_tgt = dir;
-		unlock();
-	}
-
-	bool get_tgt_pos_rel(float & xr, float & yr, float & d, float & dir)
-	{
-		lock();
-		xr = rx_tgt;
-		yr = ry_tgt;
-		d = d_tgt;
-		dir = dir_tgt;
-		unlock();
-		return brpos;
-	}
-
-	void update_pos_rel(const Mat & Rorg, float & xorg, float & yorg, float & zorg)
-	{
-	  lock();
-	  eceftowrld(Rorg, xorg, yorg, zorg, x_stay, y_stay, z_stay, rx_stay, ry_stay, rz_stay);
-	  d_stay = (float)(sqrt(rx_stay * rx_stay + ry_stay * ry_stay));
-	  dir_stay = (float)(atan2(rx_stay, ry_stay) * 180. / PI);
-	  brpos = true;
-	  unlock();
-	}
+  void set_tgt_pos(const float lat, const float lon, const float xr, const float yr, const float d, const float dir)
+  {
+    lock();
+    lat_tgt = lat;
+    lon_tgt = lon;
+    rx_tgt = xr;
+    ry_tgt = yr;
+    d_tgt = d;
+    dir_tgt = dir;
+    unlock();
+  }
+  
+  bool get_tgt_pos_rel(float & xr, float & yr, float & d, float & dir)
+  {
+    lock();
+    xr = rx_tgt;
+    yr = ry_tgt;
+    d = d_tgt;
+    dir = dir_tgt;
+    unlock();
+    return brpos;
+  }
+  
+  void update_pos_rel(const Mat & Rorg, float & xorg, float & yorg, float & zorg)
+  {
+    lock();
+    eceftowrld(Rorg, xorg, yorg, zorg, x_stay, y_stay, z_stay, rx_stay, ry_stay, rz_stay);
+    d_stay = (float)(sqrt(rx_stay * rx_stay + ry_stay * ry_stay));
+    dir_stay = (float)(atan2(rx_stay, ry_stay) * 180. / PI);
+    brpos = true;
+    unlock();
+  }
 };
 
 #endif

@@ -190,16 +190,16 @@ class f_aws1_ui: public f_glfw_window
 		  depth);
     ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
 
-	// for android wear
-	wmeng = (unsigned short) m_stat.meng_aws;
-	wrud = (unsigned short) m_stat.rud_aws;
-	wrev = (unsigned short) rpm;
-	wsog = (unsigned short)(sog * 10);
-	wcog = (unsigned short) cog;
-	wyaw = (unsigned short) (yaw < 0 ? yaw + 360: yaw);
-	wdpt = (unsigned short) depth * 10;
+    // for android wear
+    wmeng = (unsigned short) m_stat.meng_aws;
+    wrud = (unsigned short) m_stat.rud_aws;
+    wrev = (unsigned short) rpm;
+    wsog = (unsigned short)(sog * 10);
+    wcog = (unsigned short) cog;
+    wyaw = (unsigned short) (yaw < 0 ? yaw + 360: yaw);
+    wdpt = (unsigned short) depth * 10;
   }
-
+  
   //////////////////////////////////////////// map objects
   float sz_mark;		// Basic size of each object.
   vector<bool> visible_obj; // Visible objects (copied from map_cfg_box), the index is e_obj_type

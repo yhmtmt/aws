@@ -41,47 +41,65 @@ protected:
 	float m_Rav; // range for avoidance(multiple of ship size)
 	float m_Tav; // time for avoidance
 	float m_Cav_max; // maximum course change in degree
-
+	
 	bool m_verb;
 
 	// control situation estimate
 	char fname_situation_estimate[1024];
-	float dyaw, dcog, byaw;
+	float dyaw, dcog, byaw, drev; // derivative of yaw, cog, rev and bias of yaw
+	bool is_rud_ltor;
+	float yaw_prev, cog_prev, rev_prev;
+	long long tyaw_prev, tcog_prev, trev_prev;
+	float devyaw, devcog, devrev;      // deviation of stable yaw, cog, rev
+
+	long long twindow_stability_check;  // time window for stability check
+	int twindow_stability_check_sec;   // second version of twindow_stability_check
+	long long tbegin_stable;           // the time yaw/cog/rev stabilized
+	float yaw_stbl, cog_stbl, rev_stbl;
+	bool is_yaw_cog_rev_stable(const float cog,
+				   const float yaw, const float rev);
+	
 	float rudmidlr, rudmidrl;
 	float dir_local_flow, spd_local_flow;
-	float tbl_stable_rpm[256];
-	float tbl_stable_spd[60];
-
+	float tbl_stable_rpm[60];	
+	float alpha_tbl_stable_rpm;
+	float alpha_rud_mid;
+	
 	// for wp mode
-	float m_cdiff, m_sdiff; // differences to the target values of course and speed.
-	float m_dcdiff, m_dsdiff; // difference of cdiff and sdiff
-	float m_icdiff, m_isdiff; // integral of cdiff and sdiff
-	float m_pc, m_ic, m_dc;
-	float m_ps, m_is, m_ds;
+	float m_cdiff, m_sdiff, m_revdiff; 
+	float m_dcdiff, m_dsdiff, m_drevdiff; 
+	float m_icdiff, m_isdiff, m_irevdiff;
+	float m_prev, m_irev, m_drev; // PID for rev control
+	float m_pc, m_ic, m_dc; // PID for course control
+	float m_ps, m_is, m_ds; // PID for speed control
+	
 	float m_meng, m_seng, m_rud;
+	unsigned short  dmeng, dseng, drud;
+	unsigned short meng_prev, seng_prev, rud_prev;
+	
+	// control limitter 
 	float m_smax, m_smin;
+	float m_rev_max, m_rev_min;
 	float m_meng_max, m_meng_min;
 	float m_seng_max, m_seng_min;
 
-	// for stay mode
-	float m_ydiff;
-	float m_dydiff;
-	float m_iydiff;
-	float m_meng_max_stay, m_meng_min_stay;
-	float m_rud_max_stay, m_rud_min_stay;
-	float m_ssmax; // maximum speed
-	float m_dssmax; //distance maximum speed allowed
-	float m_pc_s, m_ic_s, m_dc_s;
-	float m_ps_s, m_is_s, m_ds_s;
 	const float calc_course_change_for_ais_ship(const float yaw);
-	void ctrl_to_location(const float sog, const float d,
-			      const float cdiff, float smax, float smin);
+	void ctrl_to_sog_cog(const float sog,
+			      const float cdiff, const float smax, const float smin);
+	void ctrl_to_cog(const float cdiff);
+	void ctrl_to_sog(const float sog, const float smax, const float smin);
+	void ctrl_to_rev(const float rev, const float rev_tgt,
+			 const float rev_max, const float rev_min);
+	void stb_man(const float cog, const float rev);
 	void flw_tgt(const float sog, const float cog, const float yaw, bool bav = false);
 	void wp(const float sog, const float cog, const float yaw, bool bav = false);
 	void stay(const float sog, const float cog, const float yaw);
 	void cursor(const float sog, const float cog, const float yaw, bool bav = false);
 
-	void calc_stat();
+	void calc_stat(const long long tcog, const float cog,
+		       const long long tyaw, const float yaw,
+		       const long long trev, const float rev,
+		       const s_aws1_ctrl_stat & stat);
 public:
 	f_aws1_ap(const char * name);
 	virtual ~f_aws1_ap();
