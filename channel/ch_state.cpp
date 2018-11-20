@@ -1033,4 +1033,5 @@ bool ch_eng_state::log2txt(FILE * pbf, FILE * ptf)
 
 void ch_eng_state::print(ostream & out)
 {
+  out << "engstate rpm=" << rpm << endl;
 }

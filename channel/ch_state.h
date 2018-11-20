@@ -490,7 +490,7 @@ class ch_eng_state: public ch_base
   
   char *buf;
    public:
- ch_eng_state(const char * name):ch_base(name), buf(NULL)
+ ch_eng_state(const char * name):ch_base(name), buf(NULL), tf(0)
   {
    buf = new char[get_dsize()];
   }
