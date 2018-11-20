@@ -245,7 +245,7 @@ class f_aws1_ui: public f_glfw_window
 
   // AWS1's manual control mode, crz: Cruise mode (for usual crusing), ctl: Control mode (for precise control), csr: Cursor mode (AWS1 follows mouse cursor)
   enum e_ctrl_mode{
-    cm_crz, cm_ctl, cm_csr, cm_ap, cm_undef
+    cm_crz, cm_ctl, cm_csr, cm_ap, cm_stb, cm_undef
   } ctrl_mode;
 
   static const char * str_ctrl_mode[cm_undef];
@@ -263,12 +263,16 @@ class f_aws1_ui: public f_glfw_window
   static const char * str_crz_cmd[crz_undef];
   static const char * str_crz_cmd_exp[crz_undef];
   unsigned char crz_cmd_val[crz_undef];
+  float sog_max, sog_min, rev_min, rev_max;
+  float cog_tgt, sog_tgt, rev_tgt;
   
   float m_rud_f, m_meng_f, m_seng_f;
   void handle_ctrl_crz(); // cruise mode: sticks are used to increase/decrease engine throttle and rudder angle 
   void handle_ctrl_ctl(); // control mode: positions of sticks are the throttle values. 
   void handle_ctrl_csr(); // cursor mode: follows cursor position 
 
+  void handle_ctrl_stb(); // stabilized mode: instruct cog and rpm
+  
   ///////////////////////////////////////////////// joypad handlers (used for manual control)
   s_jc_u3613m m_js;			// joystick wrapper. (Now i only support jc_u3613) 
   bool bjs;					// joystick control enable flag (switched from fset, touch panel, and js's start button)

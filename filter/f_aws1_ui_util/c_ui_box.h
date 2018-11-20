@@ -260,6 +260,7 @@ public:
     fwp,	// follow way point mode
     sty,	// stay mode
     ftg,	// follow target mode
+    stb,        // stabilized manual mode
     nul
   };
  private:

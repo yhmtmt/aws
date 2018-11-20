@@ -54,7 +54,7 @@ class c_model_base
   {
     if (index < 0)
       return _get_str_param(iparam);
-    if (iparam > 0 && iparam < get_num_params())
+    if (iparam >= 0 && iparam < get_num_params())
       return str_param[iparam];
     return NULL;
   }

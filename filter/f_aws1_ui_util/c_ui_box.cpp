@@ -637,7 +637,7 @@ bool c_view_mode_box::proc(const bool bpushed, const bool breleased)
 /////////////////////////////////////////////////////////////////// c_ctrl_mode_box
 const char * c_ctrl_mode_box::str_btn[nul] =
 {
-  "CRZ", "CTL", "CSR", "FWP", "STY", "FTG"
+  "CRZ", "CTL", "CSR", "FWP", "STY", "FTG", "STB"
 };
 
 bool c_ctrl_mode_box::init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
@@ -661,7 +661,8 @@ bool c_ctrl_mode_box::init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
   pos.y = y;
 
   for (int ibtn = 0; ibtn < nul; ibtn++){
-    add_btn(hbtn[ibtn], hstr[ibtn], str_btn[ibtn], pos, sz_btn, sz_fnt);
+    add_btn(hbtn[ibtn], hstr[ibtn], str_btn[ibtn],
+	    pos, sz_btn, sz_fnt);
     pos.y += sz_btn.y;
   }
 
@@ -767,8 +768,7 @@ bool c_ctrl_mode_box::proc(const bool bpushed, const bool breleased)
       return true;
     }
   }
-
-
+  
   return false;
 }
 
