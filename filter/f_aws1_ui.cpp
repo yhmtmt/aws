@@ -47,7 +47,7 @@ using namespace cv;
 
 const char * f_aws1_ui::str_ctrl_mode[cm_undef] =
   {
-    "crz", "ctl", "csr", "ap"
+    "crz", "ctl", "csr", "ap", "stb"
   };
 
 const char * f_aws1_ui::str_crz_cmd[crz_undef] =
@@ -94,7 +94,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   map_range(4000), map_range_base(1000),  sz_mark(10.0f), mouse_state(ms_normal),
   bmap_center_free(false), btn_pushed(ebtn_nul), btn_released(ebtn_nul),
   m_rud_f(127.), m_meng_f(127.), m_seng_f(127.),
-	bwear(false), twhbt_out(5 * SEC), twhbt(0), whbt0(USHRT_MAX), whbt(0)
+  bwear(false), twhbt_out(5 * SEC), twhbt(0), whbt0(USHRT_MAX), whbt(0)
 {
   m_path_storage[0] = '.';m_path_storage[1] = '\0';
  
@@ -961,6 +961,9 @@ bool f_aws1_ui::proc()
   case cm_csr:
     handle_ctrl_csr();
     break;
+  case cm_stb:
+    handle_ctrl_stb();
+    break;
   }
   
   //m_inst to m_ch_ctrl_inst
@@ -1237,6 +1240,21 @@ void f_aws1_ui::handle_ctrl_ctl()
   m_inst.seng_aws = (unsigned char)m_seng_f;
 }
 
+void f_aws1_ui::handle_ctrl_stb()
+{
+  int irev = (float) (rev_tgt * 0.01);
+  
+  if (m_js.id != -1){   
+    cog_tgt += (float)(m_js.lr2 * (255. / 90.));
+    irev += (float)( m_js.ud1 * (55. / 90.));
+    rev_tgt = (float)(irev * 100);
+    rev_tgt = (float) max(min(rev_tgt, rev_max), rev_min);
+    cog_tgt = (float)(cog_tgt < 0 ? cog_tgt + 360.0 : (cog_tgt >= 360.0 ? cog_tgt - 360.0 : cog_tgt));
+  }
+  m_ch_ap_inst->set_tgt_cog_and_rev(cog_tgt, rev_tgt);
+}
+
+
 void f_aws1_ui::handle_ctrl_csr()
 {
   float th_mouse = (float)(atan2(pt_mouse.y, pt_mouse.x) * 180.0 / PI);
@@ -1244,6 +1262,7 @@ void f_aws1_ui::handle_ctrl_csr()
   
   m_ch_ap_inst->set_csr_pos(pt_mouse_bih.x, pt_mouse_bih.y, pt_mouse_enu.x, pt_mouse_enu.y, d_mouse, th_mouse);
 }
+
 
 void f_aws1_ui::calc_mouse_enu_and_ecef_pos(
 					    e_ui_mode vm, Mat & Rown,
@@ -1319,7 +1338,7 @@ void f_aws1_ui::add_waypoint(c_route_cfg_box * prc_box)
   prc_box->get_params(wp, spd, rt);
   // set current cursor position as the new waypoint
   if (!m_ch_wp){
-    cerr << "No waypoint channel is connected to filter " << m_name << endl;
+    cerr << "No waypoint channel is connected to " << m_name << endl;
     return;
   }
   
@@ -1571,6 +1590,10 @@ void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
       m_ch_ap_inst->set_mode(EAP_FLW_TGT);
       ctrl_mode = cm_ap;
       break;
+    case c_ctrl_mode_box::stb:
+      m_inst.ctrl_src = ACS_AP1;
+      m_ch_ap_inst->set_mode(EAP_STB_MAN);
+      ctrl_mode = cm_stb;
     }
 }
 

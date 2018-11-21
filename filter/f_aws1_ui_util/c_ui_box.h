@@ -422,6 +422,7 @@ class c_route_cfg_box : public c_aws_ui_box
     wp_add, wp_del,
     rt_prev, rt_next,
     rt_load, rt_save,
+    rt_route,
     nul
   };
  private:

@@ -776,7 +776,7 @@ bool c_ctrl_mode_box::proc(const bool bpushed, const bool breleased)
 //////////////////////////////////////////////////////////////////// c_map_cfg_box
 const char * c_map_cfg_box::str_btn[nul] =
 {
-  "WP", "VSL", "MRK", "CL", "-", "+"
+  "WP", "VSL", "MRK", "CL", "+", "-"
 };
 
 bool c_map_cfg_box::init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
@@ -958,7 +958,7 @@ bool c_map_cfg_box::proc(const bool bpushed, const bool breleased)
 /////////////////////////////////////////////////////////////////// c_route_cfg_box
 const char * c_route_cfg_box::str_btn[nul] =
 {
-  "<", ">", "-", "+", "ADD", "DEL", "<", ">", "LOAD", "SAVE"
+  "<", ">", "-", "+", "ADD", "DEL", "<", ">", "LOAD", "SAVE", "ROUTE"
 };
 
 bool c_route_cfg_box::init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
@@ -1013,6 +1013,11 @@ bool c_route_cfg_box::init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
   pos.x += sz_btn.x;
   add_btn(hbtn[rt_load], hstr[rt_load], str_btn[rt_load], pos, sz_btn, sz_fnt);
 
+  // route button
+  pos.x = (float)(left ? xmin : xmax - sz_box.x);  
+  pos.y = y + sz_box.y - 6 * sz_btn.y;
+  add_btn(hbtn[rt_route], hstr[rt_route], str_btn[rt_route], pos, sz_btn, sz_fnt);
+  
   close();
   return true;
 }
@@ -1090,7 +1095,7 @@ bool c_route_cfg_box::proc(const bool bpushed, const bool breleased)
       set_normal_color(hbtn[btn_pushed]);
       if (btn_released == btn_pushed){
         command = btn_pushed;
-        if (command == wp_add)
+        if (command == wp_add || command == rt_route)
           set_checked_color(hbtn[btn_pushed], hstr[btn_pushed]);
         else
           set_normal_color(hbtn[btn_pushed], hstr[btn_pushed]);
