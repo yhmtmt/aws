@@ -1149,6 +1149,115 @@ c_indicator::~c_indicator()
 {
 }
 
+void c_indicator::create_engine_state_indicator(glm::vec2 & pos,
+						const glm::vec2 & sz_fnt,
+						const glm::vec4 & clr)
+{
+#define RAD_RPM_ARC 6.5
+#define NUM_RPM_SCALE (2*(RPM_STEP-1)+1)
+#define NUM_RPM_ARC_PTS (2*(NUM_RPM_SCALE-1)+1)
+  rad_rpm = sz_fnt;
+  rad_rpm.x *= (RAD_RPM_ARC + 0.5);
+  rad_rpm.y *= (RAD_RPM_ARC + 0.5);
+
+  pos_rpm = pos;
+  glm::vec2 mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y);
+  struct s_vertex{
+    float x, y;
+  };
+  // arc
+  {
+    s_vertex pts[NUM_RPM_ARC_PTS];
+    float c, s, ths = (float)(PI / (float)(NUM_RPM_ARC_PTS - 1));
+    for (int i = 0; i < NUM_RPM_ARC_PTS; i++)
+    {
+      float th = (float)(i * ths);
+      c = cos(th);
+      s = sin(th);
+      pts[i].x = (float)(c * sz_fnt.x * RAD_RPM_ARC);
+      pts[i].y = (float)(s * sz_fnt.y * RAD_RPM_ARC);
+    }
+
+    hrpm_arc = poline->add(NUM_RPM_ARC_PTS, (float*)pts);
+    poline->config_position(hrpm_arc, pos);
+    poline->config_rotation(hrpm_arc, 0);
+    poline->config_width(hrpm_arc, 1.0);
+    poline->config_color(hrpm_arc, clr);
+    poline->config_depth(hrpm_arc, 0);
+  }
+
+  // scale
+  {
+    float c, s, ths = (float)(PI / (float)(NUM_RPM_SCALE - 1));
+    s_vertex pts[NUM_RPM_SCALE * 2];
+
+    for (int i = 0, iscl = RPM_STEP - 1; i < NUM_RPM_SCALE; i++){
+      float th = (float)(ths * i);
+      c = (float)(cos(th) * sz_fnt.x);
+      s = (float)(sin(th) * sz_fnt.y);
+      s_vertex & vtx0 = pts[2 * i];
+      s_vertex & vtx1 = pts[2 * i + 1];
+      vtx0.x = (float)(c * RAD_RPM_ARC);
+      vtx0.y = (float)(s * RAD_RPM_ARC);
+      float rscl = (i % 2 == 0 ? (float)(RAD_RPM_ARC - 0.5) : (float)(RAD_RPM_ARC - 0.25));
+      vtx1.x = (float)(c * rscl);
+      vtx1.y = (float)(s * rscl);
+
+      if (i % 2 == 0){ // creating scale string
+        char str[4];
+        float rstr = (float)(rscl - 0.25);
+        glm::vec2 pos_str(c * rstr + pos.x, s * rstr + pos.y);
+        snprintf(str, 4, "%d", iscl * 10);
+        hstr_rpm_scale[iscl] = potxt->reserv(2);
+        potxt->set(hstr_rpm_scale[iscl], str);
+        potxt->config(hstr_rpm_scale[iscl], clr, glm::vec4(0, 0, 0, 0),
+          sz_fnt, mgn_fnt, c_gl_text_obj::an_ct, pos_str, (float)(th - 0.5 * PI));
+        potxt->config_depth(hstr_rpm_scale[iscl], 0);
+        potxt->enable(hstr_rpm_scale[iscl]);
+        iscl--;
+      }
+    }
+
+    hrpm_scale = poline->add(NUM_RPM_SCALE * 2, (float*)pts, true);
+    poline->config_depth(hrpm_scale, 0);
+    poline->config_position(hrpm_scale, pos);
+    poline->config_rotation(hrpm_scale, 0.0);
+    poline->config_color(hrpm_scale, clr);
+    poline->config_width(hrpm_scale, 1.0f);
+  }
+  //indicator
+  hrpm_ptr = potri->add(clr, pos, 0.0f, 0.0f);
+  hrpm_tgt_ptr = potri->add(clr, pos, 0.0f, 0.0f);
+  potri->config_border(hrpm_ptr, false, 1.0);
+  glm::vec2 sz_ptr((float)(sz_fnt.x * 0.5), (float)(sz_fnt.y * 0.5));
+  potri->config_scale(hrpm_ptr, sz_ptr);
+  potri->config_depth(hrpm_ptr, 0);
+  potri->enable(hrpm_ptr);
+  potri->config_border(hrpm_ptr, true, 1.0);
+  potri->config_scale(hrpm_tgt_ptr, sz_ptr);
+  potri->config_depth(hrpm_tgt_ptr, 0);
+  potri->enable(hrpm_ptr);
+}
+
+void c_indicator::update_engine_state_indicator()
+{
+  float thtri = (float)(-mrpm * PI / 60.0);
+  potri->config_rotation(hrpm_ptr, thtri);
+  float th = (float)(PI + thtri);
+  glm::vec2 pos((float)(cos(th) * rad_rpm.x + pos_rpm.x),
+    (float)(sin(th) * rad_rpm.y + pos_rpm.y));
+
+  potri->config_position(hrpm_ptr, pos);
+
+  thtri = (float)(-mrpm_tgt * PI / 60.0);
+  potri->config_rotation(hrpm_tgt_ptr, thtri);
+  th = (float)(PI + thtri);
+  pos = glm::vec2((float)(cos(th) * rad_rpm.x + pos_rpm.x),
+		(float)(sin(th) * rad_rpm.y + pos_rpm.y));
+
+  potri->config_position(hrpm_tgt_ptr, pos); 
+}
+
 void c_indicator::create_engine_indicator(int & heng_in, int & heng_out,
 					  int & heng_n, int & heng_f,
 					  int & heng_b,
@@ -1358,11 +1467,17 @@ void c_indicator::create_sog_indicator(glm::vec2 & pos,
   }
   //indicator
   hsog_ptr = potri->add(clr, pos, 0.0f, 0.0f);
+  hsog_tgt_ptr = potri->add(clr, pos, 0.0f, 0.0f);
   potri->config_border(hsog_ptr, false, 1.0);
   glm::vec2 sz_ptr((float)(sz_fnt.x * 0.5), (float)(sz_fnt.y * 0.5));
   potri->config_scale(hsog_ptr, sz_ptr);
   potri->config_depth(hsog_ptr, 0);
   potri->enable(hsog_ptr);
+  potri->config_border(hsog_ptr, true, 1.0);
+  potri->config_scale(hsog_tgt_ptr, sz_ptr);
+  potri->config_depth(hsog_tgt_ptr, 0);
+  potri->enable(hsog_ptr);
+  
 }
 
 void c_indicator::update_sog_indicator()
@@ -1372,7 +1487,16 @@ void c_indicator::update_sog_indicator()
   float th = (float)(PI + thtri);
   glm::vec2 pos((float)(cos(th) * rad_sog.x + pos_sog.x),
     (float)(sin(th) * rad_sog.y + pos_sog.y));
+
   potri->config_position(hsog_ptr, pos);
+
+  thtri = (float)(-sog_tgt * PI / 40.0);
+  potri->config_rotation(hsog_tgt_ptr, thtri);
+  th = (float)(PI + thtri);
+  pos = glm::vec2((float)(cos(th) * rad_sog.x + pos_sog.x),
+		  (float)(sin(th) * rad_sog.y + pos_sog.y));
+
+  potri->config_position(hsog_tgt_ptr, pos);
 }
 
 void c_indicator::create_rp_indicator(glm::vec2 & pos,
@@ -1544,11 +1668,11 @@ void c_indicator::create_hc_indicator(const float fov,
   fxcam = (float)(0.5 * sz_scrn.x / tan(0.5 * fov * PI / 180.f));
   float xmin = (float)(-sz_scrn.x * 0.5), xmax = -xmin,
     ymin = (float)(-sz_scrn.y * 0.5), ymax = -ymin;
-
+  
   struct s_vertex{
     float x, y;
   };
-
+  
   glm::vec2 mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y), rad_ptr((float)(sz_fnt.x * 0.3), sz_fnt.y);
   glm::vec2 pos_str, pos_scale, pos_ptr;
   {
@@ -1568,6 +1692,7 @@ void c_indicator::create_hc_indicator(const float fov,
     vtx[1].y = pos_str.y = pos_ystr = (float)(sz_fnt.y * 0.5);
     pos_ptr.y = pos_yptr = (float)(-sz_fnt.y);
     float ths = (float)(2 * PI / (float)YAW_STEP);
+    
     for (int i = 0; i < YAW_STEP; i++)
     {
       char str[3];
@@ -1593,6 +1718,17 @@ void c_indicator::create_hc_indicator(const float fov,
     }
   }
 
+  char str[4];
+  glm::vec2 pos_str_ctgt(0, sz_fnt.y);
+  hstr_ctgt = potxt->reserv(4);
+  
+  snprintf(str, 4, "T%02d", 0);
+  potxt->set(hstr_ctgt, str);
+  potxt->config(hstr_ctgt, clr, glm::vec4(0, 0, 0, 0),
+		sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos_str_ctgt, 0);
+  potxt->config_depth(hstr_ctgt, 0);
+  potxt->enable(hstr_ctgt);
+  
   hhptr = potri->add(clr, pos_ptr, (float)(0.5 * PI), rad_ptr);
   potri->config_border(hhptr, false, 1.0);
   potri->config_depth(hhptr, 0);
@@ -1601,6 +1737,11 @@ void c_indicator::create_hc_indicator(const float fov,
   potri->config_border(hcptr, true, 1.0);
   potri->config_depth(hcptr, 0);
   potri->enable(hcptr);
+  pos_ptr.y = sz_fnt.y;
+  hctgt_ptr =potri->add(clr, pos_ptr, (float)(-0.5 * PI), rad_ptr);
+  potri->config_border(hctgt_ptr, true, 1.0);
+  potri->config_depth(hctgt_ptr, 0);
+  potri->enable(hctgt_ptr);
 }
 
 void c_indicator::update_hc_indicator()
@@ -1614,7 +1755,7 @@ void c_indicator::update_hc_indicator()
   glm::vec2 pos_cam((float)sin(dir_cam_abs), (float)cos(dir_cam_abs));
   glm::vec2 pos_crs((float)sin(cog), (float)cos(cog));
   glm::vec2 pos_yaw((float)sin(yaw), (float)cos(yaw));
-
+  glm::vec2 pos_crs_tgt((float)sin(cog_tgt), (float)cos(cog_tgt));
 
   if (mode == ui_mode_fpv){// calculating hc indicator for first person view mode
     poline->enable(hhlzn);
@@ -1651,6 +1792,26 @@ void c_indicator::update_hc_indicator()
       potri->disable(hhptr);
     }
 
+    // converting the course vector to the camera coordinate
+    glm::vec2 pos_crs_tgt_tmp(
+      (float)(pos_cam.y * pos_crs_tgt.x - pos_cam.x * pos_crs_tgt.y),
+      (float)(pos_cam.x * pos_crs_tgt.x + pos_cam.y * pos_crs_tgt.y));
+    if (pos_crs_tgt_tmp.y > 0){ // don't calculate if the indicator is not in the camera direction
+      // projecting the vector's x position using the focal length fxcam given in the initialization.
+      pos_crs_tgt_tmp.y /= pos_crs_tgt_tmp.x;
+      pos_crs_tgt_tmp.x *= fxcam;
+      pos_crs_tgt_tmp.y = pos_yptr;
+      potri->config_position(hctgt_ptr, pos_crs_tgt_tmp);
+      potri->enable(hctgt_ptr);
+    }
+    else{
+      potri->disable(hctgt_ptr);
+    }
+
+    char str_ctgt[5];
+    snprintf(str_ctgt, 5, "T%02d", (int)(cog_tgt * (18.0 / PI) + 0.5));
+    potxt->set(hstr_ctgt, str_ctgt);
+    
     for (int i = 0; i < YAW_STEP; i++){
       // projectig the scale vectors in the camera coordinate
       pos_yscl_tmp[i].x = (float)(pos_cam.y * pos_yscl[i].x - pos_cam.x * pos_yscl[i].y);
@@ -1675,6 +1836,8 @@ void c_indicator::update_hc_indicator()
     poline->disable(hhlzn);
     potri->disable(hhptr);
     potri->disable(hcptr);
+    potri->disable(hctgt_ptr);
+    potxt->disable(hstr_ctgt);
     for (int i = 0; i < YAW_STEP; i++){
       poline->disable(hyscale[i]);
       potxt->disable(hstr_yscale[i]);
@@ -1807,6 +1970,9 @@ bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
 
   create_engine_indicator(hseng_in, hseng_out, hseng_n, hseng_f, hseng_b, pos_seng, sz_fnt, clr);
 
+  glm::vec2 pos_meng_state(xmin + 8 * sz_fnt.x, ymin + 10 * sz_fnt.y);  
+  create_engine_state_indicator(pos_meng_state, sz_fnt, clr);
+  
   create_params_indicator(pos_est, sz_fnt, clr);
   
   // create rudder indicator (bottom center)
@@ -1828,6 +1994,7 @@ bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
   
   update_engine_indicator(hmeng_in, hmeng_n, hmeng_f, hmeng_b, meng);
   update_engine_indicator(hseng_in, hseng_n, hseng_f, hseng_b, seng);
+  update_engine_state_indicator();
   update_sog_indicator();
   update_rp_indicator();
   update_hc_indicator();
@@ -1838,7 +2005,8 @@ bool c_indicator::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
 
 void c_indicator::set_param(const char * str_time,
 			    const unsigned char _meng,
-			    const float _mrpm, const unsigned char _mtrim,
+			    const float _mrpm, const float _mrpm_tgt,
+			    const unsigned char _mtrim,
 			    const int _mpoil, const float _mtoil,
 			    const float _mtemp, const float _mvalt,
 			    const float _mfrate, const unsigned int _mteng,
@@ -1846,7 +2014,8 @@ void c_indicator::set_param(const char * str_time,
 			    const unsigned char _mld, const unsigned char _mtq,
 			    const char * _mst1, const char * _mst2,
 			    const unsigned char _seng, const unsigned char _rud,
-			    const float _cog, const float _sog,
+			    const float _cog, const float _cog_tgt, 
+			    const float _sog, const float _sog_tgt,
 			    const float _yaw, const float _pitch,
 			    const float _roll, const float _depth)
 {
@@ -1854,13 +2023,18 @@ void c_indicator::set_param(const char * str_time,
   seng = _seng;
   rud = _rud;
   cog = _cog;
+  mrpm = _mrpm;
+  mrpm_tgt = _mrpm_tgt;
+  cog_tgt = _cog_tgt;
   sog = _sog;
+  sog_tgt = _sog_tgt;
   yaw = _yaw;
   pitch = _pitch;
   roll = _roll;
 
   update_engine_indicator(hmeng_in, hmeng_n, hmeng_f, hmeng_b, meng);
   update_engine_indicator(hseng_in, hseng_n, hseng_f, hseng_b, seng);
+  update_engine_state_indicator();
   update_params_indicator(_sog, _depth,  _mrpm, _mtrim, _mpoil, _mtoil,
 			  _mtemp,  _mvalt,
 			  _mfrate, _mteng, _mpclnt, _mpfl, _mld, _mtq,

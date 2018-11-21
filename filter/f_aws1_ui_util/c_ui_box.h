@@ -580,11 +580,18 @@ public:
   
   const unsigned char veng_n, veng_nf, veng_nb;
   unsigned char meng, seng, rud;
-  float cog /*radian*/, sog, yaw /*radian*/, pitch /*radian*/, roll /*radian*/;
+  float cog /*radian*/, sog, mrpm, yaw /*radian*/, pitch /*radian*/, roll /*radian*/;
+  float cog_tgt, sog_tgt, mrpm_tgt;
   
   int hmeng_in, hmeng_out, hseng_in, hseng_out, hrud_in, hrud_out;
   int hmeng_n, hmeng_f, hmeng_b, hseng_n, hseng_f, hseng_b;
   glm::vec2 scl_eng, scl_rud, pos_rud;
+
+  void create_engine_state_indicator(glm::vec2 & pos,
+				     const glm::vec2 & sz_fnt,
+				     const glm::vec4 & clr);
+  
+  void update_engine_state_indicator();
   
   void create_engine_indicator(int & heng_in, int & heng_out,
 			       int & heng_n, int & heng_f, int & heng_b,
@@ -606,18 +613,18 @@ public:
 				 const glm:: vec4 & clr
 				 );
   void update_params_indicator(
-			       const float _sog, const float _depth, 
-				 const float _mrpm, const unsigned char _mtrim,
-				 const int _mpoil, const float _mtoil,
-				 const float _mtemp, const float _mvalt,
-				 const float _mfrate, const unsigned int _mteng,
-				 const int _mpclnt, const int _mpfl,
-				 const unsigned char _mld,
-				 const unsigned char _mtq,
-				 const char * _mst1,
-				 const char * _mst2);
-  
-    
+			       const float _sog,
+			       const float _depth, 
+			       const float _mrpm,
+			       const unsigned char _mtrim,
+			       const int _mpoil, const float _mtoil,
+			       const float _mtemp, const float _mvalt,
+			       const float _mfrate, const unsigned int _mteng,
+			       const int _mpclnt, const int _mpfl,
+			       const unsigned char _mld,
+			       const unsigned char _mtq,
+			       const char * _mst1,
+			       const char * _mst2);    
   
   void create_rudder_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
 			       const glm::vec4 & clr);
@@ -629,11 +636,16 @@ public:
   void create_time_indicator(int & _hclk, glm::vec2 & pos, const glm::vec2 & sz_fnt, const glm::vec4 & clr);
 
   void update_time_indicator(const char * str_time);
-    
+
+#define RPM_STEP 7
+  glm::vec2 pos_rpm;
+  glm::vec2 rad_rpm;
+  int hrpm_arc, hrpm_scale, hstr_rpm_scale[RPM_STEP], hrpm_ptr, hrpm_tgt_ptr;
+  
 #define SOG_STEP 5
   glm::vec2 pos_sog;
   glm::vec2 rad_sog;
-  int hsog_arc, hsog_scale, hstr_sog_scale[SOG_STEP], hsog_ptr;
+  int hsog_arc, hsog_scale, hstr_sog_scale[SOG_STEP], hsog_ptr, hsog_tgt_ptr;
   void create_sog_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
 			    const glm::vec4 & clr);
   void update_sog_indicator();
@@ -653,7 +665,7 @@ public:
   float dir_cam, pos_ystr, pos_yptr, fxcam;
   
   glm::vec2 pos_yscl[YAW_STEP], pos_yscl_tmp[YAW_STEP];
-  int hhlzn, hyscale[YAW_STEP], hstr_yscale[YAW_STEP], hhptr, hcptr;
+  int hhlzn, hyscale[YAW_STEP], hstr_yscale[YAW_STEP], hhptr, hcptr, hstr_ctgt, hctgt_ptr;
   void create_hc_indicator(const float fovx, const glm::vec2 & sz_fnt,
 			   const glm::vec2 & sz_scrn, const glm::vec4 & clr);
   void update_hc_indicator();
@@ -667,7 +679,8 @@ public:
   
   void set_param(const char * str_time,
 		 const unsigned char _meng,
-		 const float _mrpm, const unsigned char _mtrim,
+		 const float _mrpm, const float _mrpm_tgt,
+		 const unsigned char _mtrim,
 		 const int _mpoil, const float _mtoil,
 		 const float _mtemp, const float _mvalt,
 		 const float _mfrate, const unsigned int _mteng,
@@ -676,7 +689,8 @@ public:
 		 const char * _mst1, const char * _mst2,
 		 const unsigned char _seng,
 		 const unsigned char _rud,
-		 const float _cog /*radian*/, const float _sog,
+		 const float _cog /*radian*/, const float _cog_tgt,
+		 const float _sog, const float sog_tgt,
 		 const float _yaw /*radian*/, const float _pitch/*radian*/,
 		 const float _roll/*radian*/, const float _depth);
   

@@ -94,7 +94,8 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   map_range(4000), map_range_base(1000),  sz_mark(10.0f), mouse_state(ms_normal),
   bmap_center_free(false), btn_pushed(ebtn_nul), btn_released(ebtn_nul),
   m_rud_f(127.), m_meng_f(127.), m_seng_f(127.),
-  bwear(false), twhbt_out(5 * SEC), twhbt(0), whbt0(USHRT_MAX), whbt(0)
+  bwear(false), twhbt_out(5 * SEC), twhbt(0), whbt0(USHRT_MAX), whbt(0),
+  sog_max(23),  rev_max(5600)
 {
   m_path_storage[0] = '.';m_path_storage[1] = '\0';
  
@@ -183,6 +184,9 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   register_fpar("wdpt", &wdpt, "Depth accessed from Android Wear");
   register_fpar("whbt", &whbt, "Heartbeat value sat from Android wear");
   register_fpar("twhbt_out", &twhbt_out, "Android wear heartbeat timeout.");
+
+  register_fpar("sog_max", &sog_max, "Maximum allowed SOG in kts");
+  register_fpar("rev_max", &rev_max, "Maximum allowed REV in rpm");
 }
 
 
@@ -1248,7 +1252,7 @@ void f_aws1_ui::handle_ctrl_stb()
     cog_tgt += (float)(m_js.lr2 * (255. / 90.));
     irev += (float)( m_js.ud1 * (55. / 90.));
     rev_tgt = (float)(irev * 100);
-    rev_tgt = (float) max(min(rev_tgt, rev_max), rev_min);
+    rev_tgt = (float) max(min(rev_tgt, rev_max), 0.f);
     cog_tgt = (float)(cog_tgt < 0 ? cog_tgt + 360.0 : (cog_tgt >= 360.0 ? cog_tgt - 360.0 : cog_tgt));
   }
   m_ch_ap_inst->set_tgt_cog_and_rev(cog_tgt, rev_tgt);

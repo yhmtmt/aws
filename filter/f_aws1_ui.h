@@ -171,19 +171,19 @@ class f_aws1_ui: public f_glfw_window
       m_state->get_depth(t, depth);
     }
 
-	float cogf = (float)(cog * (PI / 180.f));
-	float yawf = (float)(yaw * (PI / 180.f));
+    float cogf = (float)(cog * (PI / 180.f));
+    float yawf = (float)(yaw * (PI / 180.f));
     ind.set_param(
 		  m_time_str,
 		  m_stat.meng_aws,
-		  rpm, trim, poil, toil, temp,
+		  rpm, rev_tgt, trim, poil, toil, temp,
 		  valt, frate, teng, pclnt, pfl,
 		  ld, tq,
 		  ((steng1 >= 0 && steng1 <= EmergencyStop) ? strStatEng1[steng1] : NULL),
 		  ((steng2 >= 0 && steng2 <= EngineShuttingDown) ? strStatEng2[steng2] : NULL),
 		  m_stat.seng_aws, m_stat.rud_aws,
-		  cogf,
-		  sog,
+		  cogf, (float)(cog_tgt * (PI/180.f)),
+		  sog, sog_tgt,
 		  yawf,
 		  (float)(pitch* (PI / 180.f)),
 		  (float)(-roll* (PI / 180.f)),
@@ -263,7 +263,7 @@ class f_aws1_ui: public f_glfw_window
   static const char * str_crz_cmd[crz_undef];
   static const char * str_crz_cmd_exp[crz_undef];
   unsigned char crz_cmd_val[crz_undef];
-  float sog_max, sog_min, rev_min, rev_max;
+  float sog_max, rev_max;
   float cog_tgt, sog_tgt, rev_tgt;
   
   float m_rud_f, m_meng_f, m_seng_f;
