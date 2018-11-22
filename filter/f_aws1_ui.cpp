@@ -187,6 +187,9 @@ f_aws1_ui::f_aws1_ui(const char * name) :
 
   register_fpar("sog_max", &sog_max, "Maximum allowed SOG in kts");
   register_fpar("rev_max", &rev_max, "Maximum allowed REV in rpm");
+  register_fpar("sog_tgt", &sog_tgt, "Target SOG in kts");
+  register_fpar("rev_tgt", &rev_tgt, "Target REV in rpm");
+  register_fpar("cog_tgt", &cog_tgt, "Target COG in degree");
 }
 
 
