@@ -1227,12 +1227,13 @@ void c_indicator::create_engine_state_indicator(glm::vec2 & pos,
   }
   //indicator
   hrpm_ptr = potri->add(clr, pos, 0.0f, 0.0f);
-  hrpm_tgt_ptr = potri->add(clr, pos, 0.0f, 0.0f);
   potri->config_border(hrpm_ptr, false, 1.0);
   glm::vec2 sz_ptr((float)(sz_fnt.x * 0.5), (float)(sz_fnt.y * 0.5));
   potri->config_scale(hrpm_ptr, sz_ptr);
   potri->config_depth(hrpm_ptr, 0);
   potri->enable(hrpm_ptr);
+  
+  hrpm_tgt_ptr = potri->add(clr, pos, 0.0f, 0.0f);  
   potri->config_border(hrpm_ptr, true, 1.0);
   potri->config_scale(hrpm_tgt_ptr, sz_ptr);
   potri->config_depth(hrpm_tgt_ptr, 0);
@@ -1241,7 +1242,7 @@ void c_indicator::create_engine_state_indicator(glm::vec2 & pos,
 
 void c_indicator::update_engine_state_indicator()
 {
-  float thtri = (float)(-mrpm * PI / 60.0);
+  float thtri = (float)(-mrpm * PI / 6000.0);
   potri->config_rotation(hrpm_ptr, thtri);
   float th = (float)(PI + thtri);
   glm::vec2 pos((float)(cos(th) * rad_rpm.x + pos_rpm.x),
@@ -1249,7 +1250,7 @@ void c_indicator::update_engine_state_indicator()
 
   potri->config_position(hrpm_ptr, pos);
 
-  thtri = (float)(-mrpm_tgt * PI / 60.0);
+  thtri = (float)(-mrpm_tgt * PI / 6000.0);
   potri->config_rotation(hrpm_tgt_ptr, thtri);
   th = (float)(PI + thtri);
   pos = glm::vec2((float)(cos(th) * rad_rpm.x + pos_rpm.x),
@@ -1467,17 +1468,17 @@ void c_indicator::create_sog_indicator(glm::vec2 & pos,
   }
   //indicator
   hsog_ptr = potri->add(clr, pos, 0.0f, 0.0f);
-  hsog_tgt_ptr = potri->add(clr, pos, 0.0f, 0.0f);
   potri->config_border(hsog_ptr, false, 1.0);
   glm::vec2 sz_ptr((float)(sz_fnt.x * 0.5), (float)(sz_fnt.y * 0.5));
   potri->config_scale(hsog_ptr, sz_ptr);
   potri->config_depth(hsog_ptr, 0);
   potri->enable(hsog_ptr);
+  
+  hsog_tgt_ptr = potri->add(clr, pos, 0.0f, 0.0f);
   potri->config_border(hsog_ptr, true, 1.0);
   potri->config_scale(hsog_tgt_ptr, sz_ptr);
   potri->config_depth(hsog_tgt_ptr, 0);
   potri->enable(hsog_ptr);
-  
 }
 
 void c_indicator::update_sog_indicator()
@@ -1487,7 +1488,6 @@ void c_indicator::update_sog_indicator()
   float th = (float)(PI + thtri);
   glm::vec2 pos((float)(cos(th) * rad_sog.x + pos_sog.x),
     (float)(sin(th) * rad_sog.y + pos_sog.y));
-
   potri->config_position(hsog_ptr, pos);
 
   thtri = (float)(-sog_tgt * PI / 40.0);
@@ -1495,7 +1495,6 @@ void c_indicator::update_sog_indicator()
   th = (float)(PI + thtri);
   pos = glm::vec2((float)(cos(th) * rad_sog.x + pos_sog.x),
 		  (float)(sin(th) * rad_sog.y + pos_sog.y));
-
   potri->config_position(hsog_tgt_ptr, pos);
 }
 
@@ -1719,7 +1718,7 @@ void c_indicator::create_hc_indicator(const float fov,
   }
 
   char str[4];
-  glm::vec2 pos_str_ctgt(0, sz_fnt.y);
+  glm::vec2 pos_str_ctgt(0, 2 * sz_fnt.y);
   hstr_ctgt = potxt->reserv(4);
   
   snprintf(str, 4, "T%02d", 0);
@@ -1737,7 +1736,7 @@ void c_indicator::create_hc_indicator(const float fov,
   potri->config_border(hcptr, true, 1.0);
   potri->config_depth(hcptr, 0);
   potri->enable(hcptr);
-  pos_ptr.y = sz_fnt.y;
+
   hctgt_ptr =potri->add(clr, pos_ptr, (float)(-0.5 * PI), rad_ptr);
   potri->config_border(hctgt_ptr, true, 1.0);
   potri->config_depth(hctgt_ptr, 0);
@@ -1765,7 +1764,7 @@ void c_indicator::update_hc_indicator()
       (float)(pos_cam.x * pos_crs.x + pos_cam.y * pos_crs.y));
     if (pos_crs_tmp.y > 0){ // don't calculate if the indicator is not in the camera direction
       // projecting the vector's x position using the focal length fxcam given in the initialization.
-      pos_crs_tmp.y /= pos_crs_tmp.x;
+      pos_crs_tmp.x /= pos_crs_tmp.y;
       pos_crs_tmp.x *= fxcam;
       pos_crs_tmp.y = pos_yptr;
       potri->config_position(hcptr, pos_crs_tmp);
@@ -1798,9 +1797,9 @@ void c_indicator::update_hc_indicator()
       (float)(pos_cam.x * pos_crs_tgt.x + pos_cam.y * pos_crs_tgt.y));
     if (pos_crs_tgt_tmp.y > 0){ // don't calculate if the indicator is not in the camera direction
       // projecting the vector's x position using the focal length fxcam given in the initialization.
-      pos_crs_tgt_tmp.y /= pos_crs_tgt_tmp.x;
+      pos_crs_tgt_tmp.x /= pos_crs_tgt_tmp.y;
       pos_crs_tgt_tmp.x *= fxcam;
-      pos_crs_tgt_tmp.y = pos_yptr;
+      pos_crs_tgt_tmp.y = -pos_yptr;
       potri->config_position(hctgt_ptr, pos_crs_tgt_tmp);
       potri->enable(hctgt_ptr);
     }
