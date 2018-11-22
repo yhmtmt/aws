@@ -980,7 +980,7 @@ bool c_route_cfg_box::init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
   sz_udbtn.x = (float)(2 * sz_fnt.x);
 
   sz_box.x = (float)(sz_btn.x * 2);
-  sz_box.y = (float)(sz_btn.y * 5);
+  sz_box.y = (float)(sz_btn.y * 6);
 
   glm::vec2 pos;
 
@@ -1016,6 +1016,7 @@ bool c_route_cfg_box::init(const glm::vec4 & _clr, const glm::vec4 & _bkgclr,
   // route button
   pos.x = (float)(left ? xmin : xmax - sz_box.x);  
   pos.y = y + sz_box.y - 6 * sz_btn.y;
+  sz_btn.x *= 2.0;
   add_btn(hbtn[rt_route], hstr[rt_route], str_btn[rt_route], pos, sz_btn, sz_fnt);
   
   close();

@@ -371,8 +371,8 @@ bool f_aws1_ui::init_run()
     if (!oline3d.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 256))
       return false;
 
-	if (!oline3d_map.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 0x0001FFFF))
-		return false;
+    if (!oline3d_map.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 0x0001FFFF))
+      return false;
 
 	if(!init_map_mask())
       return false;
@@ -389,6 +389,9 @@ bool f_aws1_ui::init_run()
   uim.init(&orect, &otri, &otxt, &oline, 
 	  clr, clrb, sz_fnt, fov_cam_x, sz_scrn);
 
+  if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
+	  return false;
+  
   if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr, fov_cam_x, sz_scrn))
 	  return false;
  
@@ -403,8 +406,6 @@ bool f_aws1_ui::init_run()
   if (!own_ship.init(&otri, &oline, clr, sz_ship2d))
 	  return false;
 
-  if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
-	  return false;
   
   if (!coast_line.init(&oline3d_map, clr, 4096))
 	  return false;

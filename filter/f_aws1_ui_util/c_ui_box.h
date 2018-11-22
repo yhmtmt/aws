@@ -459,7 +459,7 @@ class c_route_cfg_box : public c_aws_ui_box
     sz_btn.y = (float)(1.5 * sz_fnt.y);
     
     sz_box.x = (float)(sz_btn.x * 2);
-    sz_box.y = (float)(sz_btn.y * 5);
+    sz_box.y = (float)(sz_btn.y * 6);
     return sz_box;
   }
   virtual bool proc(const bool bpushed, const bool breleased);
