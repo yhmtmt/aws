@@ -93,6 +93,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   bupdate_map(true), pt_prev_map_update(0, 0, 0),
   map_range(4000), map_range_base(1000),  sz_mark(10.0f), mouse_state(ms_normal),
   bmap_center_free(false), btn_pushed(ebtn_nul), btn_released(ebtn_nul),
+  ctrl_mode(cm_crz),
   m_rud_f(127.), m_meng_f(127.), m_seng_f(127.),
   bwear(false), twhbt_out(5 * SEC), twhbt(0), whbt0(USHRT_MAX), whbt(0),
   sog_max(23),  rev_max(5600)
