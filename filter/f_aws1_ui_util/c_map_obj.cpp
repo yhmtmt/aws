@@ -405,12 +405,11 @@ bool c_map_coast_line_obj::init(c_gl_line_obj * _poline, const glm::vec4 & _clr,
 bool c_map_coast_line_obj::update_points(list<AWSMap2::LayerDataPtr> & coast_lines)
 {
   // clear line object
-	/*
-  for (auto itr = handle.begin(); itr != handle.end(); itr++)
+  /*
+    for (auto itr = handle.begin(); itr != handle.end(); itr++)
     poline->remove(itr->handle);
-	*/
-	poline->clear();
-
+  */
+  poline->clear();	
   handle.clear();
 
   // add new lines
@@ -519,7 +518,6 @@ bool c_cursor::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
     float x, y;
   };
 
-
   s_vertex arrow[8] = {
     { (float)(sz.x * 0.25), (float)(sz.y * 0.25) }, { (float)(sz.x * 0.5), (float)(sz.y * 0.5) },
     { (float)(-sz.x * 0.25), (float)(sz.y * 0.25) }, { (float)(-sz.x * 0.5), (float)(sz.y * 0.5) },
@@ -551,14 +549,16 @@ bool c_cursor::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
 }
 
 
-void c_cursor::set_cursor_position(const glm::vec2 & _pos_mouse, const glm::vec2 & _pos_bih)
+void c_cursor::set_cursor_position(const glm::vec2 & _pos_mouse,
+				   const glm::vec2 & _pos_bih)
 {
   glm::vec2 pos = _pos_mouse + pos_str;
   potxt->config_position(hpos_str, pos);
   poline->config_position(hpos, _pos_mouse);
   poline->config_position(harrow, _pos_mouse);
   char buf[64];
-  snprintf(buf, 64, "%3.8f\n%3.8f\n", _pos_bih.x * 180.f / PI, _pos_bih.y * 180.0f / PI);
+  snprintf(buf, 64, "%3.8f\n%3.8f\n",
+	   _pos_bih.x * 180.f / PI, _pos_bih.y * 180.0f / PI);
   potxt->set(hpos_str, buf);
 }
 

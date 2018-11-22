@@ -79,113 +79,113 @@ protected:
 class c_map_waypoint_obj : public c_map_obj
 {
 private:
-
-	c_gl_2d_obj * pocirc;
-	c_gl_text_obj * potxt;
-	c_gl_2d_line_obj * poline;
-	c_gl_line_obj * poline3d;
-	glm::vec4 clr;
-	vector<s_wp> wps;
-	struct s_marker{
-		int hmark, hstr, hline_inf, hline_next_3d;
-	};
-	vector<s_marker> hmarks;
-	int focus, next;
-	float dist, crs;
-	int nmaxwps;
-	float rmark;
-public:
-	c_map_waypoint_obj();
-	bool init(c_gl_2d_obj * pocirc, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
-		c_gl_line_obj * poline3d, 
-		const glm::vec4 & clr, const glm::vec2 & sz_fnt, const float _rmark,
-		const unsigned int _nmaxwps = 100);
-	void update_wps(const int iwp, const s_wp & wp);
-	void update_drawings();
-	void enable(const int iwp);
-	void disable(const int iwp);
-	void disable();
-	void set_focus(const int iwp);
-	void set_next(const int iwp, const float dist, const float crs);
-	virtual int collision(const glm::vec2 pos);
+  c_gl_2d_obj * pocirc;
+  c_gl_text_obj * potxt;
+  c_gl_2d_line_obj * poline;
+  c_gl_line_obj * poline3d;
+  glm::vec4 clr;
+  vector<s_wp> wps;
+  struct s_marker{
+    int hmark, hstr, hline_inf, hline_next_3d;
+  };
+  vector<s_marker> hmarks;
+  int focus, next;
+  float dist, crs;
+  int nmaxwps;
+  float rmark;
+ public:
+  c_map_waypoint_obj();
+  bool init(c_gl_2d_obj * pocirc, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
+	    c_gl_line_obj * poline3d, 
+	    const glm::vec4 & clr, const glm::vec2 & sz_fnt, const float _rmark,
+	    const unsigned int _nmaxwps = 100);
+  void update_wps(const int iwp, const s_wp & wp);
+  void update_drawings();
+  void enable(const int iwp);
+  void disable(const int iwp);
+  void disable();
+  void set_focus(const int iwp);
+  void set_next(const int iwp, const float dist, const float crs);
+  virtual int collision(const glm::vec2 pos);
 };
 
 class c_map_ais_obj : public c_map_obj
 {
 private:
-	c_gl_2d_obj * porect, *potri;
-	c_gl_text_obj * potxt;
-	c_gl_2d_line_obj * poline;
-
-	glm::vec2 sz_rect;
-	glm::vec4 clr;
-	struct s_marker{
-		int hmark, hship2d, hstr, hline_vel;
-	};
-	vector<s_marker> hmarks;
-	vector<c_ais_obj> objs;
-	int nmax_objs;
-	int focus;
-	float tvel;
-public:
-	c_map_ais_obj() : tvel(300)
+  c_gl_2d_obj * porect, *potri;
+  c_gl_text_obj * potxt;
+  c_gl_2d_line_obj * poline;
+  
+  glm::vec2 sz_rect;
+  glm::vec4 clr;
+  struct s_marker{
+    int hmark, hship2d, hstr, hline_vel;
+  };
+  vector<s_marker> hmarks;
+  vector<c_ais_obj> objs;
+  int nmax_objs;
+  int focus;
+  float tvel;
+ public:
+ c_map_ais_obj() : tvel(300)
 	{
 	}
-
-	bool init(c_gl_2d_obj * porect, c_gl_2d_obj * potri, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
-		const glm::vec4 & clr, const glm::vec2 & sz_fnt, const glm::vec2 & sz_rect,
-		const unsigned int _nmax_objs = 100);
-	void update_ais_obj(const int iobj, const c_ais_obj & ais_obj);
-	void update_drawings();
-	void enable(const int iobj);
-	void disable(const int iobj);
-	void disable();
-	void set_focus(const int iobj);
-	void set_vel_len(const float t = 300){ tvel = t; };
-	virtual int collision(const glm::vec2 pos);
+  
+  bool init(c_gl_2d_obj * porect, c_gl_2d_obj * potri, c_gl_text_obj * potxt, c_gl_2d_line_obj * poline,
+	    const glm::vec4 & clr, const glm::vec2 & sz_fnt, const glm::vec2 & sz_rect,
+	    const unsigned int _nmax_objs = 100);
+  void update_ais_obj(const int iobj, const c_ais_obj & ais_obj);
+  void update_drawings();
+  void enable(const int iobj);
+  void disable(const int iobj);
+  void disable();
+  void set_focus(const int iobj);
+  void set_vel_len(const float t = 300){ tvel = t; };
+  virtual int collision(const glm::vec2 pos);
 };
 
 class c_map_coast_line_obj : public c_map_obj
 {
 private:
-	c_gl_line_obj * poline;
-	glm::vec4 clr;
-	struct s_line{
-		int index;
-		int handle;
-		s_line(const int _index, const int _handle) : index(_index), handle(_handle)
-		{}
-	};
-
-	vector<s_line> handle;
-
-	bool add_new_line(int index, int npts, const float * pts)
-	{
-		int h = poline->add(npts, pts);
-		if (h < 0)
-			return false;
-		handle.push_back(s_line(index, h));
-		poline->config_width(h, 1.0);
-		poline->config_color(h, clr);
-		return true;
-	}
-public:
-	c_map_coast_line_obj()
-	{
-	}
-
-	virtual ~c_map_coast_line_obj()
-	{
-	}
-
-	bool init(c_gl_line_obj * poline, const glm::vec4 & clr, const unsigned int max_num_points);
-	bool update_points(list<AWSMap2::LayerDataPtr> & coast_lines);
-
-	void update_drawings();
-	virtual int collision(const glm::vec2 pos)
-	{
-		return -1;
-	}
+  c_gl_line_obj * poline;
+  glm::vec4 clr;
+  struct s_line{
+    int index;
+    int handle;
+  s_line(const int _index, const int _handle) : index(_index), handle(_handle)
+    {}
+  };
+  
+  vector<s_line> handle;
+  
+  bool add_new_line(int index, int npts, const float * pts)
+  {
+    int h = poline->add(npts, pts);
+    if (h < 0)
+      return false;
+    handle.push_back(s_line(index, h));
+    poline->config_width(h, 1.0);
+    poline->config_color(h, clr);
+    return true;
+  }
+ public:
+  c_map_coast_line_obj()
+    {
+    }
+  
+  virtual ~c_map_coast_line_obj()
+    {
+    }
+  
+  bool init(c_gl_line_obj * poline, const glm::vec4 & clr,
+	    const unsigned int max_num_points);
+  bool update_points(list<AWSMap2::LayerDataPtr> & coast_lines);
+  
+  void update_drawings();
+  virtual int collision(const glm::vec2 pos)
+  {
+    return -1;
+  }
 };
 
 class c_own_ship

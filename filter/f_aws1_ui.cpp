@@ -390,28 +390,28 @@ bool f_aws1_ui::init_run()
 	  clr, clrb, sz_fnt, fov_cam_x, sz_scrn);
 
   if (!ocsr.init(&oline, &otxt, clr, sz_fnt, sz_fnt))
-	  return false;
+    return false;
   
-  if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr, fov_cam_x, sz_scrn))
-	  return false;
- 
   if (!owp.init(&ocirc, &otxt, &oline, &oline3d, clr,
 		sz_fnt_small, sz_mark, num_max_wps))
-	  return false;
+    return false;
 
   if (!oais.init(&orect, &otri, &otxt, &oline, clr,
 		 sz_fnt_small, sz_mark_xy, num_max_ais))
-	  return false;
+    return false;
+  
+  if (!ind.init(&oline, &otxt, &orect, &otri, sz_fnt, clr,
+		fov_cam_x, sz_scrn))
+    return false; 
 
   if (!own_ship.init(&otri, &oline, clr, sz_ship2d))
-	  return false;
+    return false;
 
-  
   if (!coast_line.init(&oline3d_map, clr, 4096))
-	  return false;
+    return false;
 
   glm::vec2 sz((float)(sz_fnt.x * 7), (float)(sz_fnt.y * 2)),
-        pos((float)(-sz.x * 0.5), (float)((m_sz_win.height >> 1) - sz.y));
+    pos((float)(-sz.x * 0.5), (float)((m_sz_win.height >> 1) - sz.y));
 
   c_aws_ui_button::set_gl_element(&orect, &otxt);
   if (!btn_lock_cam_dir_hdg.init(pos, sz, 5, clr, clrb)){
@@ -419,35 +419,35 @@ bool f_aws1_ui::init_run()
   }
   btn_lock_cam_dir_hdg.set_invisible();
   btn_lock_cam_dir_hdg.set_text("LOCK");
-
+  
   if (!btn_lock_map_own_ship.init(pos, sz, 5, clr, clrb))
-  {
-    return false;
-  }
+    {
+      return false;
+    }
   btn_lock_map_own_ship.set_invisible();
   btn_lock_map_own_ship.set_text("LOCK");
-
+  
   pos.x -= sz.x;
   if (!btn_wear_dev_ctrl.init(pos, sz, 5, clr, clrb))
-  {
-	  return false;
-  }
+    {
+      return false;
+    }
   btn_wear_dev_ctrl.set_visible();
   btn_wear_dev_ctrl.set_text("WEAR");
-
+  
   pos.x -= sz.x;
   if (!btn_js_ctrl.init(pos, sz, 5, clr, clrb))
-  {
-	  return false;
-  }
+    {
+      return false;
+    }
   btn_js_ctrl.set_visible();
   btn_js_ctrl.set_text("JS");
-
+  
   // Visible object
   visible_obj.resize(ot_nul, true);
   
   // Initializing OpenGL flags
-
+  
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
@@ -459,6 +459,7 @@ bool f_aws1_ui::init_run()
   mouse_action = -1;
   mouse_mods = -1;
 
+  
   return true;
 }
 

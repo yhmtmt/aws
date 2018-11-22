@@ -250,7 +250,7 @@ private:
     glm::mat4 R;
 
     s_line_buffer_inf() :offset(0), npts(0), vtx(NULL),
-      bvalid(false), bactive(false), w(1.f)
+      bvalid(false), bactive(false), w(1.f), t(0,0,0), R(1.0)
     {}
   };
 
@@ -401,7 +401,8 @@ public:
 
 };
 
-class c_gl_2d_line_obj{
+class c_gl_2d_line_obj
+{
   GLuint vao, vbo;
   struct s_vertex
   {
@@ -431,7 +432,7 @@ class c_gl_2d_line_obj{
     glm::mat2 R;
     unsigned int offset;
     unsigned int npts;
-    s_line_buffer_inf() :offset(0), npts(0), vtx(NULL), bvalid(false), bactive(false), bupdated(false), w(1.0), z(1.0), rot(0.f)
+  s_line_buffer_inf() :offset(0), npts(0), vtx(NULL), bvalid(false), bactive(false), bupdated(false), w(1.0), z(1.0), rot(0.f), t(0,0)
     {}
   };
 
