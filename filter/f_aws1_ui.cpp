@@ -1252,12 +1252,12 @@ void f_aws1_ui::handle_ctrl_ctl()
 
 void f_aws1_ui::handle_ctrl_stb()
 {
-  int irev = (float) (rev_tgt * 0.01);
+  if(!bjs)
+    return;
   
   if (m_js.id != -1){   
     cog_tgt += (float)(m_js.lr2 * (255. / 90.));
-    irev += (float)( m_js.ud1 * (55. / 90.));
-    rev_tgt = (float)(irev * 100);
+    rev_tgt -= (float)( m_js.ud1 * (rev_max / 90.));
     rev_tgt = (float) max(min(rev_tgt, rev_max), 0.f);
     cog_tgt = (float)(cog_tgt < 0 ? cog_tgt + 360.0 : (cog_tgt >= 360.0 ? cog_tgt - 360.0 : cog_tgt));
   }
