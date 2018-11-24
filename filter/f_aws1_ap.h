@@ -45,7 +45,6 @@ protected:
 	bool m_verb;
 
 	// control situation estimate
-	char fname_situation_estimate[1024];
 	float dyaw, dcog, byaw, drev; // derivative of yaw, cog, rev and bias of yaw
 	bool is_rud_ltor;
 	float yaw_prev, cog_prev, rev_prev;
@@ -61,6 +60,7 @@ protected:
 	
 	float rudmidlr, rudmidrl;
 	float dir_local_flow, spd_local_flow;
+	char * str_tbl_stable_rpm[60];
 	float tbl_stable_rpm[60];	
 	float alpha_tbl_stable_rpm;
 	float alpha_rud_mid;

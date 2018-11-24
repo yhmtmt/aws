@@ -96,10 +96,25 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   register_fpar("alpha_tbl_stable_rpm", &alpha_tbl_stable_rpm, "Update rate of stable rpm table");
   register_fpar("alpha_rud_mid", &alpha_rud_mid, "Update rate of midship rudder position.");
   register_fpar("twindow_stability_check", &twindow_stability_check_sec, "Window stability check in second.");  
+  for (int itbl = 0; itbl < 60; itbl++){
+    tbl_stable_rpm[itbl] = 127.0;
+    str_tbl_stable_rpm[itbl] = new char[9];
+    if(!str_tbl_stable_rpm[itbl]){
+      cerr << "Error in allocating memory for rpmtbl registration in aws1_ap" << endl;
+      exit(1);
+    }
+    snprintf(str_tbl_stable_rpm[itbl], 9, "rpmtbl%02d", itbl);
+    register_fpar(str_tbl_stable_rpm[itbl], tbl_stable_rpm + itbl, "Stable RPM engine control value");
+  }
 }
 
 f_aws1_ap::~f_aws1_ap()
 {
+  for (int itbl = 0; itbl < 60; itbl++){
+    if(str_tbl_stable_rpm[itbl])
+      delete str_tbl_stable_rpm[itbl];
+    str_tbl_stable_rpm[itbl] = 0;
+  }
 }
 
 bool f_aws1_ap::init_run()
@@ -199,11 +214,17 @@ void f_aws1_ap::calc_stat(const long long tcog, const float cog,
     tbl_stable_rpm[irev] = (float)(tbl_stable_rpm[irev]
 				   * ialpha
 				   +alpha_tbl_stable_rpm * m_meng);
+    if(m_verb)
+      cout << "rpmtbl[" << irev << "] is updated to " << tbl_stable_rpm[irev] << endl;
     ialpha = (float)(1.0 - alpha_rud_mid);
     if (is_rud_ltor){
       rudmidlr = (float)(rudmidlr * ialpha + alpha_rud_mid * m_rud);      
+      if(m_verb)
+	cout << "rudmidlr is updated to " << rudmidlr << endl;
     }else{
       rudmidrl = (float)(rudmidrl * ialpha + alpha_rud_mid * m_rud);
+      if(m_verb)
+	cout << "rudmidrl is updated to " << rudmidrl << endl;
     }
   }
 }
@@ -377,6 +398,8 @@ void f_aws1_ap::ctrl_to_rev(const float rev, const float rev_tgt,
   m_drevdiff = (float)(revdiff - m_revdiff);
   m_irevdiff += revdiff;
   m_meng += (float)((m_prev * m_revdiff + m_irev * m_irevdiff + m_drev * m_drevdiff) * 255. + tbl_stable_rpm[irev]);
+  m_meng = max(127.0f, m_meng);
+  m_meng = min(m_meng_max, m_meng);
 }
 
 void f_aws1_ap::ctrl_to_sog(const float sog, const float smax, const float smin)
