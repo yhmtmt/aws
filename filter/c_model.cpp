@@ -162,7 +162,7 @@ void c_model_3dof::update(double * _v,
   Mat R3 = M.inv() * R2;
   Mat R4 = R3 * dt;
   Vnext = V + R3 * dt;
-
+  /*
   cout << "V:" << V << endl;
   cout << "Vnext:" << Vnext << endl;
   cout << "T:" << T << endl;
@@ -176,6 +176,7 @@ void c_model_3dof::update(double * _v,
   cout << "R3:" << R3 << endl;
   cout << "R4:" << R4 << endl;
   cout << "dt:" << dt << endl;
+  */
   // Updating velocity
   data = Vnext.ptr<double>();
   _vnew[0] = data[0];
@@ -342,7 +343,6 @@ void c_model_outboard_force::update(const double _rud, const double _gear,
   if(_gear != 1.0 &&  _gear != -1.0){
     g = 0.0;
   }else{
-    cout << "debug" << endl;
     g = _gear;
   }
   // update rev

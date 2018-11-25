@@ -264,12 +264,19 @@ void f_aws1_ap::calc_stat(const long long tcog, const float cog,
   trev_prop_prev = trev;
 
   if (is_yaw_cog_rev_stable(cog, yaw, rev_prop)){
-    int irev =  (int)(rev * 0.01);
+    int irev =  (int)(rev_prop * 0.01);
     float ialpha = (float)(1.0 - alpha_tbl_stable_rpm);
-    tbl_stable_rpm[irev] = (float)(tbl_stable_rpm[irev] * ialpha
-				   +alpha_tbl_stable_rpm * m_meng);
+    if(irev >= 0){
+      tbl_stable_rpm[irev] = (float)(tbl_stable_rpm[irev] * ialpha
+				     +alpha_tbl_stable_rpm * m_meng);
     if(m_verb)
       cout << "rpmtbl[" << irev << "] is updated to " << tbl_stable_rpm[irev] << endl;
+    }else{
+      tbl_stable_nrpm[-irev] = (float)(float)(tbl_stable_nrpm[irev] * ialpha
+				     +alpha_tbl_stable_rpm * m_meng);
+    if(m_verb)
+      cout << "nrpmtbl[" << irev << "] is updated to " << tbl_stable_nrpm[irev] << endl;
+    }
     ialpha = (float)(1.0 - alpha_rud_mid);
     if (is_rud_ltor){
       rudmidlr = (float)(rudmidlr * ialpha + alpha_rud_mid * m_rud);      
@@ -419,6 +426,7 @@ const float f_aws1_ap::calc_course_change_for_ais_ship(const float crs)
 
 void f_aws1_ap::ctrl_to_cog(const float cdiff)
 {
+  float rudmid = (is_rud_ltor ? rudmidlr : rudmidrl);
   float _cdiff = cdiff;
   // cdiff is normalized to [-180f,180f] 
   if (abs(_cdiff) > 180.0f){
@@ -427,16 +435,21 @@ void f_aws1_ap::ctrl_to_cog(const float cdiff)
     else
       _cdiff -= 360.f;
   }
-  
+  _cdiff *= (float)(1.0f/180.0f);
   m_dcdiff = (float)(_cdiff - m_cdiff);
-  m_icdiff += cdiff;
+  if((cdiff < 0 && m_rud > 0.f) ||
+     cdiff > 0 && m_rud < 255.f)    
+    m_icdiff += cdiff;
   m_cdiff = cdiff;
   
   m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255.);
-  if (is_rud_ltor) // port 
-    m_rud += rudmidlr;
-  else
-    m_rud += rudmidrl;
+
+  m_rud += rudmid;  
+  m_rud = max(m_rud, 0.f);
+  m_rud = min(m_rud, 255.f);
+  if (m_verb)
+    printf("ap rud=%3.1f c=%2.2f dc=%2.2f ic=%2.2f\n", m_rud, m_cdiff, m_dcdiff, m_icdiff);
+
 }
 
 
@@ -458,9 +471,12 @@ void f_aws1_ap::ctrl_to_rev(const float rev, const float rev_tgt,
 
 void f_aws1_ap::ctrl_to_sog(const float sog, const float smax, const float smin)
 {
-  float stgt = (float)((smax - smin) *(1.0 - abs(m_rud - 127.) * (1 / 127.)) + smin);
+  float rudmid = (is_rud_ltor ? rudmidlr : rudmidrl);
+  float srange = (float)(smax - smin);
+  
+  float stgt = (float)(srange * (1.0 - max(0.f, min(1.f, abs(m_rud - rudmid) * (1.0f / rudmid)))) + smin);
   float sdiff = (float)(stgt - sog);
-  sdiff *= (float)(1. / stgt);
+  sdiff *= (float)(1. / srange);
   
   m_dsdiff = (float)(sdiff - m_sdiff);
   m_isdiff += sdiff;
@@ -468,8 +484,10 @@ void f_aws1_ap::ctrl_to_sog(const float sog, const float smax, const float smin)
   
   m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
   m_meng = (float)min(m_meng, m_meng_max);
-  //m_meng = (float)max(m_meng, m_meng_min);
   m_meng = (float)max(m_meng, 127.f);  
+  if(m_verb){
+    printf("ap meng=%3.1f stgt=%2.1f sog=%2.1f s=%2.2f ds=%2.2f is=%2.2f \n", m_meng, stgt, sog, m_sdiff, m_dsdiff, m_isdiff);
+  }
 }
 
 void f_aws1_ap::ctrl_to_sog_cog(const float sog, 
@@ -477,13 +495,7 @@ void f_aws1_ap::ctrl_to_sog_cog(const float sog,
 				const float smax, const float smin)
 {
   ctrl_to_cog(cdiff);
-  ctrl_to_sog(sog, smax, smin);
-  
-  if (m_verb){
-    printf("ap rud=%3.1f c=%2.2f dc=%2.2f ic=%2.2f", m_rud, m_cdiff, m_dcdiff, m_icdiff);
-    printf(" meg=%3.1f s=%2.2f ds=%2.2f is=%2.2f \n", m_meng, m_sdiff, m_dsdiff, m_isdiff);
-  }
-  
+  ctrl_to_sog(sog, smax, smin);  
 }
 
 void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
@@ -553,9 +565,14 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
   float rx, ry, d, dir;
   m_ap_inst->get_stay_pos_rel(rx, ry, d, dir);
   float cdiff = (float)(dir - cog);
+  if(m_verb){
+    printf("ap stay d=%02.1f", d);
+  }
 
   if(d > 5.0)
-    ctrl_to_sog_cog(sog, cdiff, 5.0f, 3.0f);  
+    ctrl_to_sog_cog(sog, cdiff, 2.0f, 1.0f);  
+  else
+    m_meng = 127.f;
 }
 
 

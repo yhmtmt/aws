@@ -240,8 +240,7 @@ void f_aws1_sim::set_control_input()
   m_sv_cur.rud_pos = m_output_vectors[0].rud_pos;
   m_sv_cur.rud_slack = m_output_vectors[0].rud_slack;
 
-  cout << "sv_cur" << endl;
-  m_sv_cur.print();
+  //  m_sv_cur.print();
 }
 
 
@@ -328,7 +327,6 @@ void f_aws1_sim::set_input_state_vector(const long long & tcur)
 	m_sv_cur.lat = lat * (PI / 180.f);
 	m_sv_cur.lon = lon * (PI / 180.f);
 	m_sv_cur.update_coordinates();
-	cout << "get t=" << m_sv_cur.t << "lat=" << m_sv_cur.lat << "lon=" << m_sv_cur.lon << endl;
   }
 
   if (m_engstate)
@@ -398,8 +396,6 @@ void f_aws1_sim::set_output_state_vector()
       m_state_sim->set_attitude(sv.t, sv.roll * (180.f / PI), sv.pitch * (180.f / PI), sv.yaw * (180.f / PI));
       m_state_sim->set_position(sv.t, sv.lat * (180.f / PI), sv.lon * (180.f / PI), alt, galt);
       m_state_sim->set_velocity(sv.t, sv.cog * (180.f / PI), sv.sog);
-
-      cout << "set t=" << sv.t << "lat=" << sv.lat << "lon=" << sv.lon << endl;
     }
   
   if (m_ch_ctrl_stat_sim)
@@ -508,16 +504,6 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     
     stcur.sog = sqrt(v[0] * v[0] + v[1] * v[1]) * (3600. / 1852.);
     stcur.rev = final_rev(stcur.thro_pos - stcur.thro_slack);
-    if(iosv == 0){
-      cout << "previous: ";
-      stprev.print();
-      cout << endl << "next:";
-      stcur.print();
-      
-      cout << " sog_ms:" << sog_ms << " phi:" << phi;
-      cout << "new position enu(" << dx << "," << dy << ") ecef(" << stcur.xe << "," << stcur.ye << "," << stcur.ze << ") bih(" << stcur.lat << "," << stcur.lon << ")" << endl;
-      cout << " f(" << f[0] << "," << f[1] << "," << f[2] << ") v(" << v[0] << "," << v[1] << "," << v[2] << ")" << endl;      
-    }
   }
 }
 

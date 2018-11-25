@@ -535,9 +535,9 @@ public:
   void set_stay_pos(const float lat, const float lon)
   {
     lock();
-    lat_stay = lat;
-    lon_stay = lon;
-    bihtoecef(lat, lon, 0., x_stay, y_stay, z_stay);
+    lat_stay = lat * (PI / 180.f);
+    lon_stay = lon * (PI / 180.f);
+    bihtoecef(lat_stay, lon_stay, 0., x_stay, y_stay, z_stay);
     brpos = false;
     unlock();
   }
