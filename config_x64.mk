@@ -7,6 +7,7 @@ FWINDOW = n
 GLFW_WINDOW = y
 
 # n: disable all the imaging and image processing filter later
+AWS1_AP = y
 IMGPROC = y
 AVT_CAM = n
 VMB_CAM = n
@@ -24,6 +25,8 @@ CUR_DIR = $(shell pwd)
 FDIR = $(CUR_DIR)/filter
 CDIR = $(CUR_DIR)/channel
 UDIR = $(CUR_DIR)/util
+PROTO_DIR = $(CUR_DIR)/proto
+LIB_PROTO = -lprotobuf
 RCMD_DIR = $(CUR_DIR)/rcmd
 INC_CV_DIR = /usr/local/include
 LIB_CV_DIR = /usr/local/lib

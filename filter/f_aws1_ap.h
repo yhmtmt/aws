@@ -80,6 +80,7 @@ protected:
 	float rev_prop, u, v, angle_drift, yaw_bias;
 	unsigned short  dmeng, dseng, drud;
 	unsigned short meng_prev, seng_prev, rud_prev;
+	float alpha_yaw_bias;
 	
 	// control limitter 
 	float m_smax, m_smin;
@@ -105,6 +106,10 @@ protected:
 		       const long long tyaw, const float yaw,
 		       const long long trev, const float rev,
 		       const s_aws1_ctrl_stat & stat);
+
+	char fctrl_state[1024];	
+	void save_ctrl_state();
+	void load_ctrl_state();
 public:
 	f_aws1_ap(const char * name);
 	virtual ~f_aws1_ap();

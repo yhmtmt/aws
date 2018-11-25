@@ -32,6 +32,7 @@ using namespace std;
 using namespace cv;
 
 #include "f_aws1_ap.h"
+#include "../proto/aws1_ap.pb.h"
 
 f_aws1_ap::f_aws1_ap(const char * name) :
   f_base(name), 
@@ -51,6 +52,7 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   alpha_tbl_stable_rpm(0.01f),
   alpha_rud_mid(0.01f),
   alpha_flw(0.1f),
+  alpha_yaw_bias(0.1f),
   twindow_stability_check_sec(3),
   m_Lo(8), m_Wo(2), m_Lais(400), m_Wais(80), m_Rav(3), m_Tav(300), m_Cav_max(45),
   yaw_bias(0.0f)
@@ -104,9 +106,13 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   
   register_fpar("alpha_tbl_stable_rpm", &alpha_tbl_stable_rpm, "Update rate of stable rpm table");
   register_fpar("alpha_rud_mid", &alpha_rud_mid, "Update rate of midship rudder position.");
-  register_fpar("alpha_flw", &alpha_flw, "Update rate of local flow");  
+  register_fpar("alpha_flw", &alpha_flw, "Update rate of local flow");
+  register_fpar("alpha_yaw_bias", &alpha_yaw_bias, "Update rate of yaw bias");
   register_fpar("twindow_stability_check", &twindow_stability_check_sec, "Window stability check in second.");
 
+  fctrl_state[0] = '\0';
+  register_fpar("fctrl_state", fctrl_state, sizeof(fctrl_state), "Autopilot Control State");
+  
   // registering rpm tables
   for (int itbl = 0; itbl < 60; itbl++){
     tbl_stable_rpm[itbl] = 127.0;
@@ -179,12 +185,42 @@ bool f_aws1_ap::init_run()
   yaw_prev = cog_prev = sog_prev = rev_prop_prev = 0.0f;
   tyaw_prev = tcog_prev = tsog_prev = trev_prop_prev = 0;
   tbegin_stable = -1;
- 
+
+  if(fctrl_state[0] != '\0'){
+    load_ctrl_state();
+  }
   return true;
 }
 
 void f_aws1_ap::destroy_run()
 {
+  if(fctrl_state[0] != '\0'){
+    save_ctrl_state();
+  }
+}
+
+void f_aws1_ap::save_ctrl_state()
+{
+  ofstream file(fctrl_state);
+  if(!file.is_open()){
+    cerr << "f_aws1_ap::save_ctrl_state() failed to open file " << fctrl_state << "." << endl;
+    return;
+  }
+  // yaw_bias
+  // rudmidlr, rudmidrl
+  // str_tbl_stable_rpm, str_tbl_stable_nrpm
+}
+
+void f_aws1_ap::load_ctrl_state()
+{
+  ifstream file(fctrl_state);
+  if(!file.is_open()){
+    cerr << "f_aws1_ap::load_ctrl_state() failed to open file " << fctrl_state << "." << endl;
+    return;
+  }
+  // yaw_bias
+  // rudmidlr, rudmidrl
+  // str_tbl_stable_rpm, str_tbl_stable_nrpm
 }
 
 bool f_aws1_ap::is_stable(const float cog, const float sog,
@@ -319,14 +355,17 @@ void f_aws1_ap::calc_stat(const long long tvel, const float cog,
       if(m_verb)
 	cout << "rudmidrl is updated to " << rudmidrl << endl;
     }
-
+    
     if(rev_prop == 0){
       ialpha = (float)(1.0 - alpha_flw);
       crs_flw = crs_flw * ialpha + alpha_flw * cog;
       spd_flw = spd_flw * ialpha + alpha_flw * sog;
       if(m_verb)
 	cout << "local flow updated to C" << crs_flw << ",S" << spd_flw << endl;
-    }    
+    }else{
+      ialpha = (float)(1.0 - alpha_yaw_bias);
+      yaw_bias = yaw_bias * ialpha + alpha_yaw_bias * angle_drift;      
+    }
   }
 }
 
@@ -360,8 +399,7 @@ bool f_aws1_ap::proc()
 	switch (mode){
 	case EAP_STB_MAN: // stabilized manual mode
 	  stb_man(cog, rpm);
-	  break;
-	  
+	  break;	  
 	case EAP_CURSOR:
 	  cursor(sog, cog, yaw, false);
 	  break;

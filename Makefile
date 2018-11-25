@@ -42,18 +42,18 @@ endif
 
 
 # modules
-MODS = filter channel util
+MODS = filter channel util proto
 
 # base include paths
 INC = -I$(INC_CV_DIR) -I$(INC_GLIB) -I$(INC_EIGEN_DIR) -I$(INC_GLM) -I$(INC_MAVLINK)
 
 # base libs
-LIB = -lrt -lpthread $(LIB_CV)
+LIB = -lrt -lpthread $(LIB_CV) $(LIB_PROTO)
 
 # base filters
 FILTER = f_base f_nmea \
 	f_shioji f_com f_event f_fep01 f_time \
-	f_aws1_nmea_sw f_aws1_ctrl f_aws1_sim c_model f_ahrs f_aws1_ap f_map \
+	f_aws1_nmea_sw f_aws1_ctrl f_aws1_sim c_model f_ahrs  f_map \
 	f_obj_manager f_wp_manager f_aws3_com f_env_sensor f_test_vsrc \
 	f_ngt1 ngt1/common ngt1/pgn f_router
 
@@ -63,7 +63,14 @@ CHANNEL = ch_base ch_image ch_aws1_ctrl ch_obj ch_aws3 ch_state ch_wp
 # base utilities
 UTIL =  c_clock  aws_nmea aws_nmea_gps aws_nmea_ais c_ship aws_coord aws_serial aws_sock aws_stdlib aws_map
 
+PROTO =
+
 ################################################# Image processing configuration
+ifeq ($(AWS1_AP),y)
+	FILTER += f_aws1_ap
+	PROTO += aws1_ap
+endif
+
 ifeq ($(IMGPROC),y)
 	UTIL += aws_vlib aws_vobj c_imgalign 
 	FILTER += f_cam
@@ -215,18 +222,23 @@ endif
 FOBJS = $(addsuffix .o,$(FILTER))
 COBJS = $(addsuffix .o,$(CHANNEL))
 UOBJS = $(addsuffix .o,$(UTIL))
+PROTO_OBJS = $(addsuffix .o,$(PROTO))
+PROTO_SRC = $(addsuffix .cc,$(PROTO))
+
 OBJS = command.o c_aws.o c_aws_temp.o aws.o channel_factory.o filter_factory.o
 
 ################################################################# Source lists
 FSRCS = $(addsuffix .cpp,$(FILTER))
 CSRCS = $(addsuffix .cpp,$(CHANNEL))
 USRCS = $(addsuffix .cpp,$(UTIL))
+PROTO_PROTO = $(addsuffix .proto,$(PROTO))
 SRCS = command.cpp c_aws.cpp c_aws_temp.cpp aws.cpp channel_factory.cpp filter_factory.cpp
 
 ######################################################## Dependency file lists
 FDEPS = $(addsuffix .d,$(FILTER))
 CDEPS = $(addsuffix .d,$(CHANNEL))
 UDEPS = $(addsuffix .d,$(UTIL))
+PROTO_DEPS = $(addsuffix .d,$(PROTO))
 DEPS = command.d c_aws.d c_aws_temp.d aws.d channel_factroy.d filter_factory.d
 
 ############################################################## Compiler option
@@ -245,7 +257,7 @@ rcmd:
 	cd $(RCMD_DIR); make CC="$(CC)"; 
 
 aws: $(OBJS) $(MODS)
-	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS) -o $(EXE) $(LIB)
+	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(addprefix $(PROTO_DIR)/,$(PROTO_OBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS) -o $(EXE) $(LIB)
 
 log2txt: util/log2txt.o channel_factory.o filter_factory.o command.o c_aws.o c_aws_temp.o filter channel util orb_slam g2o DBoW2
 	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS)  command.o c_aws.o c_aws_temp.o filter_factory.o channel_factory.o util/log2txt.o -o log2txt $(LIB)
@@ -259,6 +271,7 @@ pyawssim: filter/c_model.cpp
 .PHONY: filter
 .PHONY: channel
 .PHONY: util
+.PHONY: proto
 .PHONY: orb_slam
 .PHONY: g2o
 .PHONY: DBoW2
@@ -272,6 +285,9 @@ channel:
 
 util:
 	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)" DEPS="$(UDEPS)"
+
+proto:
+	cd $(PROTO_DIR); make PROTO_OBJS="$(PROTO_OBJS)" PROTO_DIR="$(PROTO_DIR)"
 
 orb_slam: $(ORB_SLAM_OBJS)
 
