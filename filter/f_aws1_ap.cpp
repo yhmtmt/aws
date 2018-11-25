@@ -38,7 +38,7 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   m_state(NULL), m_engstate(NULL), m_ctrl_inst(NULL), m_ctrl_stat(NULL), m_obst(NULL),
   m_ap_inst(NULL), m_ais_obj(NULL), m_verb(false),
   m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), 
-  m_smax(10), m_smin(3), m_rev_max(55), m_rev_min(0),
+  m_smax(10), m_smin(3), m_rev_max(5500), m_rev_min(700),
   m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
   devyaw(5.0f), devcog(5.0f), devrev(500.f),
   m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
@@ -72,6 +72,8 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   register_fpar("meng_min", &m_meng_min, "The minimum value for engine control.");
   register_fpar("seng_max", &m_seng_max, "The maximum value for engine control.");
   register_fpar("seng_min", &m_seng_min, "The minimum value for engine control.");
+  register_fpar("rev_max", &m_rev_max, "Maximum rev value in RPM");
+  register_fpar("rev_min", &m_rev_min, "Minimum rev value in RPM");
 
   register_fpar("pc", &m_pc, "Coefficient P in the course control with PID.");
   register_fpar("ic", &m_ic, "Coefficient I in the course control with PID.");
@@ -103,8 +105,18 @@ f_aws1_ap::f_aws1_ap(const char * name) :
       cerr << "Error in allocating memory for rpmtbl registration in aws1_ap" << endl;
       exit(1);
     }
+
+    tbl_stable_nrpm[itbl] = 127.0;
+    str_tbl_stable_nrpm[itbl] = new char[10];
+    if(!str_tbl_stable_nrpm[itbl]){
+      cerr << "Error in allocating memory for rpmtbl registration in aws1_ap" << endl;
+      exit(1);
+    }
     snprintf(str_tbl_stable_rpm[itbl], 9, "rpmtbl%02d", itbl);
     register_fpar(str_tbl_stable_rpm[itbl], tbl_stable_rpm + itbl, "Stable RPM engine control value");
+    snprintf(str_tbl_stable_rpm[itbl], 10, "nrpmtbl%02d", itbl);
+    register_fpar(str_tbl_stable_rpm[itbl], tbl_stable_rpm + itbl, "Stable RPM engine control value (negative)");
+
   }
 }
 
@@ -113,7 +125,10 @@ f_aws1_ap::~f_aws1_ap()
   for (int itbl = 0; itbl < 60; itbl++){
     if(str_tbl_stable_rpm[itbl])
       delete str_tbl_stable_rpm[itbl];
+    if(str_tbl_stable_nrpm[itbl])
+      delete str_tbl_stable_nrpm[itbl];
     str_tbl_stable_rpm[itbl] = 0;
+    str_tbl_stable_nrpm[itbl] = 0;
   }
 }
 
@@ -149,10 +164,9 @@ bool f_aws1_ap::init_run()
     return false;
   }
 
-
   twindow_stability_check = twindow_stability_check_sec * SEC;
-  yaw_prev = cog_prev = rev_prev = 0.0f;
-  tyaw_prev = tcog_prev = trev_prev = 0;
+  yaw_prev = cog_prev = rev_prop_prev = 0.0f;
+  tyaw_prev = tcog_prev = trev_prop_prev = 0;
   tbegin_stable = -1;
  
   return true;
@@ -187,8 +201,18 @@ void f_aws1_ap::calc_stat(const long long tcog, const float cog,
 {
   unsigned short meng, seng, rud;
   meng = stat.meng_aws;
-  seng = stat.seng_aws;
+  seng = stat.seng_aws;  
+  float rev_prop; 
+  if(meng <= stat.meng_nuf && meng >= stat.meng_nub)
+    rev_prop = 0;
+  else if(meng < stat.meng_nub){
+    rev_prop = -rev;
+  }else{
+    rev_prop = rev;
+  }
+
   rud = stat.rud_aws;
+  
   if(meng_prev != meng){
     dmeng = meng - meng_prev;
   }else
@@ -229,21 +253,20 @@ void f_aws1_ap::calc_stat(const long long tcog, const float cog,
   if(tyaw > tyaw_prev)
     dyaw = (double) SEC * (yaw - yaw_prev) / (double)(tyaw - tyaw_prev);
 
-  if(trev > trev_prev)
-    drev = (double) SEC * (rev - rev_prev) / (double)(trev - trev_prev);
+  if(trev > trev_prop_prev)
+    drev = (double) SEC * (rev_prop - rev_prop_prev) / (double)(trev - trev_prop_prev);
 
   cog_prev = cog;
   tcog_prev = tcog;
   yaw_prev = yaw;
   tyaw_prev = tyaw;
-  rev_prev = rev;
-  trev_prev = trev;
+  rev_prop_prev = rev_prop;
+  trev_prop_prev = trev;
 
-  if (is_yaw_cog_rev_stable(cog, yaw, rev)){
+  if (is_yaw_cog_rev_stable(cog, yaw, rev_prop)){
     int irev =  (int)(rev * 0.01);
     float ialpha = (float)(1.0 - alpha_tbl_stable_rpm);
-    tbl_stable_rpm[irev] = (float)(tbl_stable_rpm[irev]
-				   * ialpha
+    tbl_stable_rpm[irev] = (float)(tbl_stable_rpm[irev] * ialpha
 				   +alpha_tbl_stable_rpm * m_meng);
     if(m_verb)
       cout << "rpmtbl[" << irev << "] is updated to " << tbl_stable_rpm[irev] << endl;
@@ -289,9 +312,9 @@ bool f_aws1_ap::proc()
     m_state->get_attitude(tatt, roll, pitch, yaw);
   }
   
-  calc_stat(tvel, cog, tatt, yaw, teng, rpm, stat);
-  
   m_ctrl_stat->get(stat);
+  calc_stat(tvel, cog, tatt, yaw, teng, rpm, stat);
+
   if(stat.ctrl_src == ACS_AP1)
     {	
       if (!m_ap_inst){

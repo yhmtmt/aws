@@ -1,6 +1,6 @@
 #ifndef _F_AWS1_AP_H_
 #define _F_AWS1_AP_H_
-// Copyright(c) 2016 Yohei Matsumoto, All right reserved. 
+// Copyright(c) 2016-2018 Yohei Matsumoto, All right reserved. 
 
 // f_aws1_ap.h is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -47,8 +47,8 @@ protected:
 	// control situation estimate
 	float dyaw, dcog, byaw, drev; // derivative of yaw, cog, rev and bias of yaw
 	bool is_rud_ltor;
-	float yaw_prev, cog_prev, rev_prev;
-	long long tyaw_prev, tcog_prev, trev_prev;
+	float yaw_prev, cog_prev, rev_prop_prev;
+	long long tyaw_prev, tcog_prev, trev_prop_prev;
 	float devyaw, devcog, devrev;      // deviation of stable yaw, cog, rev
 
 	long long twindow_stability_check;  // time window for stability check
@@ -61,7 +61,9 @@ protected:
 	float rudmidlr, rudmidrl;
 	float dir_local_flow, spd_local_flow;
 	char * str_tbl_stable_rpm[60];
+	char * str_tbl_stable_nrpm[60];
 	float tbl_stable_rpm[60];	
+	float tbl_stable_nrpm[60];
 	float alpha_tbl_stable_rpm;
 	float alpha_rud_mid;
 	
