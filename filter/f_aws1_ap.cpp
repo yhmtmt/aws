@@ -40,7 +40,7 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   m_wp(NULL), m_meng(127.), m_seng(127.), m_rud(127.), 
   m_smax(10), m_smin(3), m_rev_max(5500), m_rev_min(700),
   m_meng_max(200), m_meng_min(80), m_seng_max(200), m_seng_min(80),
-  devyaw(5.0f), devcog(5.0f), devrev(500.f),
+  devyaw(3.0f), devcog(3.0f), devsog(1.0f), devrev(500.f),
   m_pc(0.1f), m_ic(0.1f), m_dc(0.1f), m_ps(0.1f), m_is(0.1f), m_ds(0.1f),
   m_cdiff(0.f), m_sdiff(0.f), m_revdiff(0.f),
   m_dcdiff(0.f), m_icdiff(0.f),
@@ -50,8 +50,10 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   rudmidlr(127.0f), rudmidrl(127.0f),
   alpha_tbl_stable_rpm(0.01f),
   alpha_rud_mid(0.01f),
+  alpha_flw(0.1f),
   twindow_stability_check_sec(3),
-  m_Lo(8), m_Wo(2), m_Lais(400), m_Wais(80), m_Rav(3), m_Tav(300), m_Cav_max(45)
+  m_Lo(8), m_Wo(2), m_Lais(400), m_Wais(80), m_Rav(3), m_Tav(300), m_Cav_max(45),
+  yaw_bias(0.0f)
 {
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
   register_fpar("ch_engstate", (ch_base**)&m_engstate, typeid(ch_eng_state).name(), "Engine State channel.");	
@@ -95,9 +97,17 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   register_fpar("tav", &m_Tav, "Time for avoidance (second)");
   register_fpar("cav_max", &m_Cav_max, "Maximum course change for avoidance");
 
+  register_fpar("devyaw", &devyaw, "Yaw Deviation in deg");
+  register_fpar("devcog", &devcog, "COG Deviation in deg");
+  register_fpar("devsog", &devsog, "SOG Deviation in deg");
+  register_fpar("devrev", &devrev, "Rev Deviation in deg");
+  
   register_fpar("alpha_tbl_stable_rpm", &alpha_tbl_stable_rpm, "Update rate of stable rpm table");
   register_fpar("alpha_rud_mid", &alpha_rud_mid, "Update rate of midship rudder position.");
-  register_fpar("twindow_stability_check", &twindow_stability_check_sec, "Window stability check in second.");  
+  register_fpar("alpha_flw", &alpha_flw, "Update rate of local flow");  
+  register_fpar("twindow_stability_check", &twindow_stability_check_sec, "Window stability check in second.");
+
+  // registering rpm tables
   for (int itbl = 0; itbl < 60; itbl++){
     tbl_stable_rpm[itbl] = 127.0;
     str_tbl_stable_rpm[itbl] = new char[9];
@@ -165,8 +175,9 @@ bool f_aws1_ap::init_run()
   }
 
   twindow_stability_check = twindow_stability_check_sec * SEC;
-  yaw_prev = cog_prev = rev_prop_prev = 0.0f;
-  tyaw_prev = tcog_prev = trev_prop_prev = 0;
+  crs_flw = spd_flw = 0.0f;
+  yaw_prev = cog_prev = sog_prev = rev_prop_prev = 0.0f;
+  tyaw_prev = tcog_prev = tsog_prev = trev_prop_prev = 0;
   tbegin_stable = -1;
  
   return true;
@@ -176,11 +187,13 @@ void f_aws1_ap::destroy_run()
 {
 }
 
-bool f_aws1_ap::is_yaw_cog_rev_stable(const float cog, const float yaw, const float rev)
+bool f_aws1_ap::is_stable(const float cog, const float sog,
+			  const float yaw, const float rev)
 {   
   if(abs(yaw-yaw_stbl) < devyaw &&
      abs(cog-cog_stbl) < devcog &&
-     abs(rev-rev_stbl) < devrev){
+     abs(rev-rev_stbl) < devrev &&
+     abs(sog-sog_stbl) < devsog){
     if(tbegin_stable < 0){
       tbegin_stable = get_time();      
     }else
@@ -189,20 +202,20 @@ bool f_aws1_ap::is_yaw_cog_rev_stable(const float cog, const float yaw, const fl
     yaw_stbl = yaw;
     cog_stbl = cog;
     rev_stbl = rev;
+    sog_stbl = sog;
     tbegin_stable = -1;
   }
   return false;
 }
 
-void f_aws1_ap::calc_stat(const long long tcog, const float cog,
+void f_aws1_ap::calc_stat(const long long tvel, const float cog,
+			  const float sog,
 			  const long long tyaw, const float yaw,
 			  const long long trev, const float rev,
 			  const s_aws1_ctrl_stat & stat)
 {
   unsigned short meng, seng, rud;
-  meng = stat.meng_aws;
-  seng = stat.seng_aws;  
-  float rev_prop; 
+  float rev_prop, u, v; 
   if(meng <= stat.meng_nuf && meng >= stat.meng_nub)
     rev_prop = 0;
   else if(meng < stat.meng_nub){
@@ -210,7 +223,18 @@ void f_aws1_ap::calc_stat(const long long tcog, const float cog,
   }else{
     rev_prop = rev;
   }
-
+  
+  angle_drift = cog - (yaw + yaw_bias);
+  if(angle_drift > 180.0)
+    angle_drift -= 360.0f;
+  else if (angle_drift < -180.0)
+    angle_drift += 360.0f;
+  angle_drift *= (PI / 180.0f);
+  u = sog * cos(angle_drift);
+  v = sog * sin(angle_drift);
+  
+  meng = stat.meng_aws;
+  seng = stat.seng_aws;  
   rud = stat.rud_aws;
   
   if(meng_prev != meng){
@@ -233,6 +257,7 @@ void f_aws1_ap::calc_stat(const long long tcog, const float cog,
       is_rud_ltor = true;
   }else
     drud = 0;
+  
   rud_prev = rud;  
   
   // Assumption: 
@@ -247,8 +272,11 @@ void f_aws1_ap::calc_stat(const long long tcog, const float cog,
   // local_flow_dir, local_flow_spd: local flow (estimated during engine cutoff)
   // tbl_stable_rpm[60]: enging control table (rpm vs instruction value)
   
-  if(tcog >  tcog_prev)
-    dcog = (double) SEC * (cog - cog_prev) / (double) (tcog - tcog_prev);
+  if(tvel > tcog_prev)
+    dcog = (double) SEC * (cog - cog_prev) / (double) (tvel - tcog_prev);
+
+  if(tvel > tsog_prev)
+    dsog = (double) SEC * (sog - sog_prev) / (double) (tvel - tsog_prev);
 
   if(tyaw > tyaw_prev)
     dyaw = (double) SEC * (yaw - yaw_prev) / (double)(tyaw - tyaw_prev);
@@ -257,26 +285,30 @@ void f_aws1_ap::calc_stat(const long long tcog, const float cog,
     drev = (double) SEC * (rev_prop - rev_prop_prev) / (double)(trev - trev_prop_prev);
 
   cog_prev = cog;
-  tcog_prev = tcog;
+  tcog_prev = tvel;
+  tsog_prev = tvel;
   yaw_prev = yaw;
   tyaw_prev = tyaw;
   rev_prop_prev = rev_prop;
   trev_prop_prev = trev;
 
-  if (is_yaw_cog_rev_stable(cog, yaw, rev_prop)){
+  if (is_stable(cog, sog, yaw, rev_prop)){
     int irev =  (int)(rev_prop * 0.01);
     float ialpha = (float)(1.0 - alpha_tbl_stable_rpm);
     if(irev >= 0){
       tbl_stable_rpm[irev] = (float)(tbl_stable_rpm[irev] * ialpha
 				     +alpha_tbl_stable_rpm * m_meng);
     if(m_verb)
-      cout << "rpmtbl[" << irev << "] is updated to " << tbl_stable_rpm[irev] << endl;
+      cout << "rpmtbl[" << irev << "] is updated to "
+	   << tbl_stable_rpm[irev] << endl;
     }else{
       tbl_stable_nrpm[-irev] = (float)(float)(tbl_stable_nrpm[irev] * ialpha
 				     +alpha_tbl_stable_rpm * m_meng);
     if(m_verb)
-      cout << "nrpmtbl[" << irev << "] is updated to " << tbl_stable_nrpm[irev] << endl;
+      cout << "nrpmtbl[" << irev << "] is updated to "
+	   << tbl_stable_nrpm[irev] << endl;
     }
+    
     ialpha = (float)(1.0 - alpha_rud_mid);
     if (is_rud_ltor){
       rudmidlr = (float)(rudmidlr * ialpha + alpha_rud_mid * m_rud);      
@@ -287,40 +319,36 @@ void f_aws1_ap::calc_stat(const long long tcog, const float cog,
       if(m_verb)
 	cout << "rudmidrl is updated to " << rudmidrl << endl;
     }
+
+    if(rev_prop == 0){
+      ialpha = (float)(1.0 - alpha_flw);
+      crs_flw = crs_flw * ialpha + alpha_flw * cog;
+      spd_flw = spd_flw * ialpha + alpha_flw * sog;
+      if(m_verb)
+	cout << "local flow updated to C" << crs_flw << ",S" << spd_flw << endl;
+    }    
   }
 }
 
 bool f_aws1_ap::proc()
 {
-  float cog, sog, yaw;
-  if(!m_state){
-    return false;
-  }
-  if(!m_ctrl_stat){
-    return false;
-  }
-  
+  float cog, sog, rpm, roll, pitch, yaw;  
   s_aws1_ctrl_stat stat;
-  long long tvel = 0;
-  m_state->get_velocity(tvel, cog, sog);
   Mat Rorg;
   Point3f Porg;
+  unsigned char trim;
   long long t = 0;
+  long long teng = 0;
+  long long tvel = 0;
+  long long tatt = 0;
+  m_state->get_velocity(tvel, cog, sog);
   Rorg = m_state->get_enu_rotation(t);
   m_state->get_position_ecef(t, Porg.x, Porg.y, Porg.z);
-  float rpm;
-  unsigned char trim;
-  long long teng;
   m_engstate->get_rapid(teng, rpm, trim);
-
-  long long tatt = 0;
-  {
-    float roll, pitch;
-    m_state->get_attitude(tatt, roll, pitch, yaw);
-  }
-  
+  m_state->get_attitude(tatt, roll, pitch, yaw);
   m_ctrl_stat->get(stat);
-  calc_stat(tvel, cog, tatt, yaw, teng, rpm, stat);
+  
+  calc_stat(tvel, cog, sog, tatt, yaw, teng, rpm, stat);
 
   if(stat.ctrl_src == ACS_AP1)
     {	
@@ -358,13 +386,11 @@ bool f_aws1_ap::proc()
     m_icdiff = m_isdiff = m_irevdiff = 0.;
   }
   
-  if(m_ctrl_inst){
-    m_inst.tcur = get_time();
-    m_inst.meng_aws = saturate_cast<unsigned char>(m_meng);
-    m_inst.seng_aws = saturate_cast<unsigned char>(m_seng);
-    m_inst.rud_aws = saturate_cast<unsigned char>(m_rud);
-    m_ctrl_inst->set(m_inst);
-  }
+  m_inst.tcur = get_time();
+  m_inst.meng_aws = saturate_cast<unsigned char>(m_meng);
+  m_inst.seng_aws = saturate_cast<unsigned char>(m_seng);
+  m_inst.rud_aws = saturate_cast<unsigned char>(m_rud);
+  m_ctrl_inst->set(m_inst);
   
   return true;
 }
@@ -566,7 +592,7 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
   m_ap_inst->get_stay_pos_rel(rx, ry, d, dir);
   float cdiff = (float)(dir - cog);
   if(m_verb){
-    printf("ap stay d=%02.1f", d);
+    printf("ap stay d=%02.1f\n", d);
   }
 
   if(d > 5.0)

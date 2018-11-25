@@ -45,21 +45,22 @@ protected:
 	bool m_verb;
 
 	// control situation estimate
-	float dyaw, dcog, byaw, drev; // derivative of yaw, cog, rev and bias of yaw
+	float dyaw, dcog, dsog, drev; // derivative of yaw, cog, sog, rev
+	float crs_flw, spd_flw; // course and speed of flow
+	float alpha_flw; // flow update factor
 	bool is_rud_ltor;
-	float yaw_prev, cog_prev, rev_prop_prev;
-	long long tyaw_prev, tcog_prev, trev_prop_prev;
-	float devyaw, devcog, devrev;      // deviation of stable yaw, cog, rev
+	float yaw_prev, cog_prev, sog_prev, rev_prop_prev;
+	long long tyaw_prev, tcog_prev, tsog_prev, trev_prop_prev;
+	float devyaw, devcog, devsog, devrev;      // deviation of stable yaw, cog, rev
 
 	long long twindow_stability_check;  // time window for stability check
 	int twindow_stability_check_sec;   // second version of twindow_stability_check
 	long long tbegin_stable;           // the time yaw/cog/rev stabilized
-	float yaw_stbl, cog_stbl, rev_stbl;
-	bool is_yaw_cog_rev_stable(const float cog,
-				   const float yaw, const float rev);
+	float yaw_stbl, cog_stbl, rev_stbl, sog_stbl;
+	bool is_stable(const float cog, const float sog,
+		       const float yaw, const float rev);
 	
 	float rudmidlr, rudmidrl;
-	float dir_local_flow, spd_local_flow;
 	char * str_tbl_stable_rpm[60];
 	char * str_tbl_stable_nrpm[60];
 	float tbl_stable_rpm[60];	
@@ -76,6 +77,7 @@ protected:
 	float m_ps, m_is, m_ds; // PID for speed control
 	
 	float m_meng, m_seng, m_rud;
+	float rev_prop, u, v, angle_drift, yaw_bias;
 	unsigned short  dmeng, dseng, drud;
 	unsigned short meng_prev, seng_prev, rud_prev;
 	
@@ -98,7 +100,8 @@ protected:
 	void stay(const float sog, const float cog, const float yaw);
 	void cursor(const float sog, const float cog, const float yaw, bool bav = false);
 
-	void calc_stat(const long long tcog, const float cog,
+	void calc_stat(const long long tvel, const float cog,
+		       const float sog,
 		       const long long tyaw, const float yaw,
 		       const long long trev, const float rev,
 		       const s_aws1_ctrl_stat & stat);
