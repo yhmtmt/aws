@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+message ApCotnrolState{
+	float yaw_bias = 1;
+	float rudmidlr = 2;
+	float rudmidrl = 3;
+	repeated float tbl_stable_rpm = 4;
+	repeated float tbl_stable_nrpm = 5;
+}
