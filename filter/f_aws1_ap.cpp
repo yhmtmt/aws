@@ -119,11 +119,42 @@ f_aws1_ap::~f_aws1_ap()
 
 bool f_aws1_ap::init_run()
 {
+  if(!m_state){
+    cerr << "Error in f_aws1_ap::init_run(). ";
+    cerr << "state is not connected." << endl;
+    return false;
+  }
+
+  if(!m_engstate){
+    cerr << "Error in f_aws1_ap::init_run(). ";
+    cerr << "engstate is not connected." << endl;
+    return false;
+  }
+
+  if(!m_ctrl_inst){
+    cerr << "Error in f_aws1_ap::init_run(). ";
+    cerr << "ctrl_inst is not connected." << endl;
+    return false;
+  }
+
+  if(!m_ctrl_stat){
+    cerr << "Error in f_aws1_ap::init_run(). ";
+    cerr << "ctrl_stat is not connected." << endl;
+    return false;
+  }
+
+  if(!m_ap_inst){
+    cerr << "Error in f_aws1_ap::init_run(). ";
+    cerr << "ap_inst is not connected." << endl;
+    return false;
+  }
+
+
   twindow_stability_check = twindow_stability_check_sec * SEC;
   yaw_prev = cog_prev = rev_prev = 0.0f;
   tyaw_prev = tcog_prev = trev_prev = 0;
   tbegin_stable = -1;
-  
+ 
   return true;
 }
 
