@@ -97,6 +97,7 @@ using namespace cv;
 #include "../channel/ch_obj.h"
 #include "../channel/ch_wp.h"
 
+/*
 // include file list. If you add newly designed your filter, please insert
 // your filter's header file here. 
 #include "../filter/f_base.h"
@@ -154,6 +155,7 @@ using namespace cv;
 #include "../filter/f_obj_manager.h"
 
 #include "aws_stdlib.h"
+*/
 
 bool g_kill;
 
