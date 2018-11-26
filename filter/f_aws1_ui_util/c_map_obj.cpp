@@ -74,7 +74,9 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
     pocirc->config_depth(hmarks[i].hmark, display_depth);
     pocirc->disable(hmarks[i].hmark);
     hmarks[i].hstr = potxt->reserv(20);
-    potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0), sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos, 0, display_depth);
+    potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0),
+		  sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos,
+		  0, display_depth);
     potxt->disable(hmarks[i].hstr);
 
     {
@@ -221,9 +223,10 @@ int c_map_waypoint_obj::collision(const glm::vec2 pos)
 
 /////////////////////////////////////////////////////////////////// c_ais_obj
 bool c_map_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
-  c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline,
-  const glm::vec4 & _clr, const glm::vec2 & sz_fnt,
-  const glm::vec2 & _sz_rect, const unsigned int _nmax_objs)
+			 c_gl_text_obj * _potxt, c_gl_2d_line_obj * _poline,
+			 const glm::vec4 & _clr, const glm::vec2 & sz_fnt,
+			 const glm::vec2 & _sz_rect,
+			 const unsigned int _nmax_objs)
 {
   nmax_objs = _nmax_objs;
   porect = _porect;
@@ -235,17 +238,17 @@ bool c_map_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
   clr = _clr;
   glm::vec2 pos(0.f, 0.f), mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y);
   glm::vec2 sz_ship2d(sz_fnt.x, (float)(sz_fnt.y * 0.5));
-
+  
   hmarks.resize(nmax_objs);
   objs.resize(nmax_objs);
   for (int i = 0; i < nmax_objs; i++){
     hmarks[i].hmark = porect->add(clr, pos, 0.0f, sz_rect);
-	if (i == 0) {
-		cout << "First index of map line is " << hmarks[i].hmark << endl;
-	}
-	else if (i == nmax_objs - 1) {
-		cout << "Last index of map line is " << hmarks[i].hmark << endl;
-	}
+    if (i == 0) {
+      cout << "First index of map line is " << hmarks[i].hmark << endl;
+    }
+    else if (i == nmax_objs - 1) {
+      cout << "Last index of map line is " << hmarks[i].hmark << endl;
+    }
     porect->config_border(hmarks[i].hmark, true, 1.0);
     porect->config_depth(hmarks[i].hmark, display_depth);
     porect->disable(hmarks[i].hmark);
@@ -254,10 +257,10 @@ bool c_map_ais_obj::init(c_gl_2d_obj * _porect, c_gl_2d_obj * _potri,
     potri->config_border(hmarks[i].hship2d, false, 1.0);
     potri->config_depth(hmarks[i].hship2d, display_depth + 1);
     potri->disable(hmarks[i].hship2d);
-
+    
     hmarks[i].hstr = potxt->reserv(64);
     potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0),
-      sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, display_depth);
+		  sz_fnt, mgn_fnt, c_gl_text_obj::an_lb, pos, 0, display_depth);
 
     float pts[4]={0, 0, 0, 0};
     
@@ -466,7 +469,7 @@ void c_map_coast_line_obj::update_drawings()
 
 /////////////////////////////////////////////////////////////////// c_own_ship
 bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
-  const glm::vec4 & clr, const glm::vec2 & sz)
+		      const glm::vec4 & clr, const glm::vec2 & sz)
 {
   potri = _potri;
   poline = _poline;
@@ -477,9 +480,12 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   potri->config_border(hship, true, 1.0);
 
   float pts[4] = { 0, 0, 1, 1 };
+  glm::vec2 pos(0.f,0.f);
   hline_vel = poline->add(2, pts);
   poline->config_color(clr);
-  poline->config_depth(hline_vel, 10);
+  poline->config_depth(hline_vel, display_depth);
+  poline->config_position(hline_vel, pos);
+  poline->disable(h);
   return true;
 }
 
@@ -495,7 +501,9 @@ void c_own_ship::disable()
   poline->disable(hline_vel);
 }
 
-void c_own_ship::set_param(const float rx, const float ry, const float rz, const float hdg, const float vx, const float vy, const float pix_per_meter)
+void c_own_ship::set_param(const float rx, const float ry, const float rz,
+			   const float hdg, const float vx, const float vy,
+			   const float pix_per_meter)
 {
   float th = (float)((90.f - hdg) * PI / 180.);
   potri->config_rotation(hship, th);

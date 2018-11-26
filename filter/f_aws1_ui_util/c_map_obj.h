@@ -191,25 +191,25 @@ private:
 class c_own_ship
 {
 private:
-	c_gl_2d_obj * potri;
-	c_gl_2d_line_obj * poline;
-	int hship, hline_vel;
-	float tvel;
+  c_gl_2d_obj * potri;
+  c_gl_2d_line_obj * poline;
+  int hship, hline_vel;
+  float tvel;
 public:
-	c_own_ship() :tvel(300)
-	{
+ c_own_ship() :tvel(300)
+    {
+      
+    }
 
-	}
-
-	bool init(c_gl_2d_obj * potri, c_gl_2d_line_obj * poline,
-		const glm::vec4 & clr, const glm::vec2 & sz);
-	void set_param(const float rx, const float ry, const float rz,
-		const float hdg, const float vx, const float vy, const float pix_per_meter);
-	void set_vel_len(const float t = 300) {
-		tvel = t;
-	}
-	void enable();
-	void disable();
+  bool init(c_gl_2d_obj * potri, c_gl_2d_line_obj * poline,
+	    const glm::vec4 & clr, const glm::vec2 & sz);
+  void set_param(const float rx, const float ry, const float rz,
+		 const float hdg, const float vx, const float vy, const float pix_per_meter);
+  void set_vel_len(const float t = 300) {
+    tvel = t;
+  }
+  void enable();
+  void disable();
 };
 
 class c_cursor

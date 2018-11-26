@@ -1379,77 +1379,76 @@ int c_gl_2d_line_obj::add(const int npts, const float * pts, bool blines)
 
 void c_gl_2d_line_obj::config_points(const int handle, const float * pts)
 {
-	if (handle < lbis.size()){
-		s_vertex * vtx = lbis[handle].vtx;
-		int npts = lbis[handle].npts;
-		memcpy((void*)vtx, (void*)pts, sizeof(float)* 2 * npts);
-		lbis[handle].bupdated = false;
-		bupdated = false;
-	}
+  if (handle < lbis.size()){
+    s_vertex * vtx = lbis[handle].vtx;
+    int npts = lbis[handle].npts;
+    memcpy((void*)vtx, (void*)pts, sizeof(float)* 2 * npts);
+    lbis[handle].bupdated = false;
+    bupdated = false;
+  }
 }
 
 void c_gl_2d_line_obj::remove(const int handle)
 {
-	if (handle < lbis.size()){
-		num_total_vertices -= lbis[handle].npts;
-		lbis[handle].bvalid = false;
-		lbis[handle].npts = 0;
-		lbis[handle].offset = 0;
-		lbis[handle].vtx = 0;
-	}
+  if (handle < lbis.size()){
+    num_total_vertices -= lbis[handle].npts;
+    lbis[handle].bvalid = false;
+    lbis[handle].npts = 0;
+    lbis[handle].offset = 0;
+    lbis[handle].vtx = 0;
+  }
 }
 
 void c_gl_2d_line_obj::update_vertices()
 {
+  for (int ilbi = 0; ilbi < lbis.size(); ilbi++){
+    s_line_buffer_inf & lbi = lbis[ilbi];
+    if (!lbi.bactive || !lbi.bvalid || lbi.bupdated)
+      continue;
+    
+    s_vertex * vtx = lbi.vtx;
+    s_vertex * vtx_trn = lbi.vtx_trn;
+    glm::mat2 & r = lbi.R;
+    for (int iv = 0; iv < lbi.npts; iv++){
+      vtx_trn[iv].x = vtx[iv].x * r[0][0] + vtx[iv].y * r[0][1] + lbi.t.x;
+      vtx_trn[iv].y = vtx[iv].x * r[1][0] + vtx[iv].y * r[1][1] + lbi.t.y;
+    }
+  }
 
-	for (int ilbi = 0; ilbi < lbis.size(); ilbi++){
-		s_line_buffer_inf & lbi = lbis[ilbi];
-		if (!lbi.bactive || !lbi.bvalid || lbi.bupdated)
-			continue;
-		
-		s_vertex * vtx = lbi.vtx;
-		s_vertex * vtx_trn = lbi.vtx_trn;
-		glm::mat2 & r = lbi.R;
-		for (int iv = 0; iv < lbi.npts; iv++){
-			vtx_trn[iv].x = vtx[iv].x * r[0][0] + vtx[iv].y * r[0][1] + lbi.t.x;
-			vtx_trn[iv].y = vtx[iv].x * r[1][0] + vtx[iv].y * r[1][1] + lbi.t.y;
-		}
-	}
-
-	glBindVertexArray(vao);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(s_vertex)* num_total_vertices, (void*)vertices_trn, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(posloc, 2, GL_FLOAT, GL_FALSE, sizeof(s_vertex), 0);
-	glEnableVertexAttribArray(posloc);
-
-	bupdated = true;
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(s_vertex)* num_total_vertices, (void*)vertices_trn, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(posloc, 2, GL_FLOAT, GL_FALSE, sizeof(s_vertex), 0);
+  glEnableVertexAttribArray(posloc);
+  
+  bupdated = true;
 }
 
 void c_gl_2d_line_obj::render()
 {
-	if (!bupdated)
-		update_vertices();
+  if (!bupdated)
+    update_vertices();
 
-	glm::mat4 T(1.0);
-	glUniform1i(modeloc, 3);
-	glBindVertexArray(vao);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	glEnableVertexAttribArray(posloc);
+  glm::mat4 T(1.0);
+  glUniform1i(modeloc, 3);
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  glEnableVertexAttribArray(posloc);
 
-	for (int ih = 0; ih < lbis.size(); ih++){
-		s_line_buffer_inf & lbi = lbis[ih];
-		if (!lbi.bvalid || !lbi.bactive)
-			continue;
-		glUniform4fv(clrloc, 1, glm::value_ptr(lbi.clr));
-		glUniform1f(depthloc, lbi.z);
-
-		glLineWidth(lbi.w);
-		glEnable(GL_LINE_SMOOTH);
-		if (lbi.blines)
-			glDrawArrays(GL_LINES, lbi.offset, lbi.npts);
-		else
-			glDrawArrays(GL_LINE_STRIP, lbi.offset, lbi.npts);
-	}
+  for (int ih = 0; ih < lbis.size(); ih++){
+    s_line_buffer_inf & lbi = lbis[ih];
+    if (!lbi.bvalid || !lbi.bactive)
+      continue;
+    glUniform4fv(clrloc, 1, glm::value_ptr(lbi.clr));
+    glUniform1f(depthloc, lbi.z);
+    
+    glLineWidth(lbi.w);
+    glEnable(GL_LINE_SMOOTH);
+    if (lbi.blines)
+      glDrawArrays(GL_LINES, lbi.offset, lbi.npts);
+    else
+      glDrawArrays(GL_LINE_STRIP, lbi.offset, lbi.npts);
+  }
 }
 
 
