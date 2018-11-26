@@ -20,53 +20,53 @@
 
 struct s_wp
 {
-	float lat, lon; // longitude lattitude
-	float x, y, z;	// corresponding ECEF to lat, lon
-	float rx, ry, rz; // Relative position in my own ship coordinate
-	float rarv;		// Arrival threashold radius
-	float v;		// velocity to go
-	long long t;	// arrival time
-	bool update_rpos;
-
-	s_wp() :lat(0.), lon(0.), x(0.), y(0.), z(0.), rarv(0.), v(0.), t(-1),
-		update_rpos(false)
-	{
-	}
-
-	s_wp(float _lat, float _lon, float _rarv, float _v) :
-		lat(_lat), lon(_lon), x(0.), y(0.), z(0.), rarv(_rarv), v(_v), t(-1),
-		update_rpos(false)
-	{
-		bihtoecef(lat, lon, 0., x, y, z);
-	}
-
-	s_wp(bool bnull): lat(FLT_MAX), lon(FLT_MAX), x(FLT_MAX), y(FLT_MAX), z(FLT_MAX), rarv(FLT_MAX), 
-		v(FLT_MAX), t(LLONG_MAX), update_rpos(bnull){
-	}
-
-	~s_wp()
-	{
-	}
-
-	bool is_null(){
-		return lat == FLT_MAX;
-	}
-
-	void update_pos_rel(const Mat & Rorg, float xorg, float yorg, float zorg)
-	{
-		eceftowrld(Rorg, xorg, yorg, zorg, x, y, z, rx, ry, rz);
-		update_rpos = true;
-	}
-
-	void set_arrival_time(const long long _t)
-	{
-		t = _t;
-	}
-
-	const long long get_arrival_time()
-	{
-		return t;
-	}
+  float lat, lon; // longitude lattitude
+  float x, y, z;	// corresponding ECEF to lat, lon
+  float rx, ry, rz; // Relative position in my own ship coordinate
+  float rarv;		// Arrival threashold radius
+  float v;		// velocity to go
+  long long t;	// arrival time
+  bool update_rpos;
+  
+s_wp() :lat(0.), lon(0.), x(0.), y(0.), z(0.), rarv(0.), v(0.), t(-1),
+    update_rpos(false)
+  {
+  }
+  
+s_wp(float _lat, float _lon, float _rarv, float _v) :
+  lat(_lat), lon(_lon), x(0.), y(0.), z(0.), rarv(_rarv), v(_v), t(-1),
+    update_rpos(false)
+  {
+    bihtoecef(lat, lon, 0., x, y, z);
+  }
+  
+s_wp(bool bnull): lat(FLT_MAX), lon(FLT_MAX), x(FLT_MAX), y(FLT_MAX), z(FLT_MAX), rarv(FLT_MAX), 
+    v(FLT_MAX), t(LLONG_MAX), update_rpos(bnull){
+}
+  
+  ~s_wp()
+  {
+  }
+  
+  bool is_null(){
+    return lat == FLT_MAX;
+  }
+  
+  void update_pos_rel(const Mat & Rorg, float xorg, float yorg, float zorg)
+  {
+    eceftowrld(Rorg, xorg, yorg, zorg, x, y, z, rx, ry, rz);
+    update_rpos = true;
+  }
+  
+  void set_arrival_time(const long long _t)
+  {
+    t = _t;
+  }
+  
+  const long long get_arrival_time()
+  {
+    return t;
+  }
 };
 
 // contains waypoints

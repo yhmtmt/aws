@@ -250,7 +250,10 @@ class f_aws1_ui: public f_glfw_window
   void handle_ctrl_csr(); // cursor mode: follows cursor position 
 
   void handle_ctrl_stb(); // stabilized mode: instruct cog and rpm
-  
+
+  void ctrl_cog_tgt();
+  void ctrl_sog_tgt();
+  void ctrl_rev_tgt();
   ///////////////////////////////////////////////// joypad handlers (used for manual control)
   s_jc_u3613m m_js;			// joystick wrapper. (Now i only support jc_u3613) 
   bool bjs;					// joystick control enable flag (switched from fset, touch panel, and js's start button)

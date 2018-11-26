@@ -1014,13 +1014,18 @@ bool f_aws1_ui::proc()
   case cm_stb:
     handle_ctrl_stb();
     break;
+  default:
+    ctrl_sog_tgt();
+    break;
   }
 
   if(ctrl_mode != cm_stb){
     cog_tgt = cog;
-    sog_tgt = sog;
     rev_tgt = rpm;
   }
+
+  m_ch_ap_inst->set_tgt_sog(sog_tgt);
+  m_ch_ap_inst->set_tgt_cog_and_rev(cog_tgt, rev_tgt);
   
   //m_inst to m_ch_ctrl_inst
   snd_ctrl_inst();
@@ -1150,6 +1155,32 @@ void f_aws1_ui::rcv_ctrl_stat()
   m_stat.rud_sta_out_nut = stat.rud_sta_out_nut;
   m_stat.rud_sta_out_min = stat.rud_sta_out_min;
 }
+
+void f_aws1_ui::ctrl_cog_tgt()
+{
+  if (m_js.id != -1 && bjs){
+    cog_tgt += (float)(m_js.lr2 * (255. / 90.));
+    cog_tgt = (float)(cog_tgt < 0 ? cog_tgt + 360.0 : (cog_tgt >= 360.0 ? cog_tgt - 360.0 : cog_tgt));
+  }
+}
+
+void f_aws1_ui::ctrl_sog_tgt()
+{
+  if (m_js.id != -1 && bjs){
+    sog_tgt -= (float)(m_js.ud1 * (sog_max / 90.));
+    sog_tgt = max(min(sog_tgt, sog_max), 0.f);
+  }
+}
+
+void f_aws1_ui::ctrl_rev_tgt()
+{
+  if (m_js.id != -1 && bjs){
+    rev_tgt -= (float)( m_js.ud1 * (rev_max / 90.));
+    rev_tgt = (float) max(min(rev_tgt, rev_max), 0.f);
+  }
+}
+
+
 
 void f_aws1_ui::handle_ctrl_crz()
 {
@@ -1283,16 +1314,8 @@ void f_aws1_ui::handle_ctrl_ctl()
 
 void f_aws1_ui::handle_ctrl_stb()
 {
-  if(!bjs)
-    return;
-  
-  if (m_js.id != -1){   
-    cog_tgt += (float)(m_js.lr2 * (255. / 90.));
-    rev_tgt -= (float)( m_js.ud1 * (rev_max / 90.));
-    rev_tgt = (float) max(min(rev_tgt, rev_max), 0.f);
-    cog_tgt = (float)(cog_tgt < 0 ? cog_tgt + 360.0 : (cog_tgt >= 360.0 ? cog_tgt - 360.0 : cog_tgt));
-  }
-  m_ch_ap_inst->set_tgt_cog_and_rev(cog_tgt, rev_tgt);
+  ctrl_cog_tgt();
+  ctrl_rev_tgt();
 }
 
 
@@ -1302,6 +1325,7 @@ void f_aws1_ui::handle_ctrl_csr()
   float d_mouse = (float)sqrt(pt_mouse_enu.x * pt_mouse_enu.x + pt_mouse_enu.y + pt_mouse_enu.y);
   
   m_ch_ap_inst->set_csr_pos(pt_mouse_bih.x, pt_mouse_bih.y, pt_mouse_enu.x, pt_mouse_enu.y, d_mouse, th_mouse);
+  ctrl_sog_tgt();
 }
 
 

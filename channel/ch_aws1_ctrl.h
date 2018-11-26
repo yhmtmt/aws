@@ -492,6 +492,20 @@ public:
     unlock();
   }
 
+  void set_tgt_sog(const float sog)
+  {
+    lock();
+    sog_tgt = sog;
+    unlock();
+  }
+
+  void get_tgt_sog(float & sog)
+  {
+    lock();
+    sog = sog_tgt;
+    unlock();
+  }
+  
   void set_tgt_cog_and_rev(const float cog, const float rpm)
   {
     lock();
