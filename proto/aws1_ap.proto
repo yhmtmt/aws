@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-message ApCotnrolState{
+message ApControlState{
 	float yaw_bias = 1;
 	float rudmidlr = 2;
 	float rudmidrl = 3;
