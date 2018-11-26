@@ -42,7 +42,7 @@ endif
 
 
 # modules
-MODS = filter channel util proto
+MODS =  proto filter channel util
 
 # base include paths
 INC = -I$(INC_CV_DIR) -I$(INC_GLIB) -I$(INC_EIGEN_DIR) -I$(INC_GLM) -I$(INC_MAVLINK)
