@@ -480,12 +480,11 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   potri->config_border(hship, true, 1.0);
 
   float pts[4] = { 0, 0, 1, 1 };
-  glm::vec2 pos(0.f,0.f);
   hline_vel = poline->add(2, pts);
   poline->config_color(clr);
-  poline->config_depth(hline_vel, display_depth);
+  poline->config_depth(hline_vel, 10);
   poline->config_position(hline_vel, pos);
-  poline->disable(h);
+  poline->disable(hline_vel);
   return true;
 }
 

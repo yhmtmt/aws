@@ -929,7 +929,7 @@ bool f_aws1_ui::proc()
   }
   
   // loading states
-  long long t;
+  long long t = 0;
   float roll, pitch, yaw, cog, sog, vx, vy;
   float xown, yown, zown;
   m_state->get_attitude(t, roll, pitch, yaw);
@@ -946,7 +946,6 @@ bool f_aws1_ui::proc()
   Mat Rown = m_state->get_enu_rotation(t);
   m_state->get_position(t, lat, lon, alt, galt);
 
-  long long t = 0;
   float rpm = 0.0f;
   unsigned char trim = 0;
   int poil = 0;

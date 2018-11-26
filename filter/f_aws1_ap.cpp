@@ -209,6 +209,15 @@ void f_aws1_ap::save_ctrl_state()
   // yaw_bias
   // rudmidlr, rudmidrl
   // str_tbl_stable_rpm, str_tbl_stable_nrpm
+  ApControlState ctrl_state;
+  ctrl_state.set_yaw_bias(yaw_bias);
+  ctrl_state.set_rudmidlr(rudmidlr);
+  ctrl_state.set_rudmidrl(rudmidrl);
+  for (int i = 0; i < 60; i++){
+    ctrl_state.set_tbl_stable_rpm(i, tbl_stable_rpm[i]);
+    ctrl_state.set_tbl_stable_nrpm(i, tbl_stable_nrpm[i]);
+  }
+  ctrl_state.SerializeToOstream(&file);
 }
 
 void f_aws1_ap::load_ctrl_state()
@@ -221,6 +230,16 @@ void f_aws1_ap::load_ctrl_state()
   // yaw_bias
   // rudmidlr, rudmidrl
   // str_tbl_stable_rpm, str_tbl_stable_nrpm
+  ApControlState ctrl_state;
+  ctrl_state.ParseFromIstream(&file);
+  
+  yaw_bias = ctrl_state.yaw_bias();
+  rudmidlr = ctrl_state.rudmidlr();
+  rudmidrl = ctrl_state.rudmidrl();
+  for (int i = 0; i < 60; i++){
+    tbl_stable_rpm[i] = ctrl_state.tbl_stable_rpm(i);
+    tbl_stable_nrpm[i] = ctrl_state.tbl_stable_nrpm(i);
+  }
 }
 
 bool f_aws1_ap::is_stable(const float cog, const float sog,
@@ -625,7 +644,7 @@ void f_aws1_ap::flw_tgt(const float sog, const float cog, const float yaw, bool 
   float sog_tgt = 0.0;
   m_ap_inst->get_tgt_sog(sog_tgt);
   
-  ctrl_to_sog_cog(sog, cdiff, m_smax, m_smin);
+  ctrl_to_sog_cog(sog, sog_tgt, cdiff, m_smax, m_smin);
 }
 
 void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
