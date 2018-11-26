@@ -259,8 +259,11 @@ rcmd:
 aws: $(OBJS) $(MODS)
 	$(CC) $(FLAGS) $(OBJS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(addprefix $(PROTO_DIR)/,$(PROTO_OBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS) -o $(EXE) $(LIB)
 
-log2txt: util/log2txt.o channel_factory.o filter_factory.o command.o c_aws.o c_aws_temp.o filter channel util orb_slam g2o DBoW2
-	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS)  command.o c_aws.o c_aws_temp.o filter_factory.o channel_factory.o util/log2txt.o -o log2txt $(LIB)
+#log2txt: util/log2txt.o channel_factory.o filter_factory.o command.o c_aws.o c_aws_temp.o filter channel util orb_slam g2o DBoW2
+#	$(CC) $(FLAGS) $(addprefix $(FDIR)/,$(FOBJS)) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS)  command.o c_aws.o c_aws_temp.o filter_factory.o channel_factory.o util/log2txt.o -o log2txt $(LIB)
+
+log2txt: util/log2txt.o channel_factory.o channel util orb_slam g2o DBoW2
+	$(CC) $(FLAGS) $(addprefix $(CDIR)/,$(COBJS)) $(addprefix $(UDIR)/,$(UOBJS)) $(ORB_SLAM_OBJS) $(G2O_OBJS) $(DBOW2_OBJS) channel_factory.o util/log2txt.o -o log2txt $(LIB)
 
 t2str: util/t2str.o util/c_clock.o
 	$(CC) util/t2str.o util/c_clock.o -o t2str
@@ -287,7 +290,7 @@ util:
 	cd $(UDIR); make CC="$(CC)" FLAGS="$(FLAGS)" OBJS="$(UOBJS)" DEPS="$(UDEPS)"
 
 proto:
-	cd $(PROTO_DIR); make PROTO_OBJS="$(PROTO_OBJS)" PROTO_DIR="$(PROTO_DIR)"
+	cd $(PROTO_DIR); make PROTO_PROTO="$(PROTO_PROTO)" PROTO_OBJS="$(PROTO_OBJS)" PROTO_DIR="$(PROTO_DIR)"
 
 orb_slam: $(ORB_SLAM_OBJS)
 
