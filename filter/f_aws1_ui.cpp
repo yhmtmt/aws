@@ -96,7 +96,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   ctrl_mode(cm_crz),
   m_rud_f(127.), m_meng_f(127.), m_seng_f(127.),
   bwear(false), twhbt_out(5 * SEC), twhbt(0), whbt0(USHRT_MAX), whbt(0),
-  sog_max(23),  rev_max(5600)
+  cog_tgt(0.f), sog_tgt(3.0f), rev_tgt(700),  sog_max(23),  rev_max(5600)
 {
   m_path_storage[0] = '.';m_path_storage[1] = '\0';
  
@@ -201,73 +201,73 @@ f_aws1_ui::~f_aws1_ui()
 bool f_aws1_ui::init_map_mask()
 {
     
-    // initializing mask for map mode    
+  // initializing mask for map mode    
 #define MAP_MASK_CIRCLE_DIV 18
 #define NUM_MAP_MASK_PTS (MAP_MASK_CIRCLE_DIV+1+4)
 #define NUM_MAP_MASK_TRIS (MAP_MASK_CIRCLE_DIV+3)
 #define NUM_MAP_MASK_IDX (NUM_MAP_MASK_TRIS*3)
     
-    struct s_pts{
-      float x, y;      
-    } pts[NUM_MAP_MASK_PTS];
-    
-    unsigned short idx[NUM_MAP_MASK_IDX];
-    double ths = PI / (double)MAP_MASK_CIRCLE_DIV;
-    double r = (double) get_max_circle_radius();
-	pts[NUM_MAP_MASK_PTS - 4].x = (float)(m_sz_win.width >> 1);
-	pts[NUM_MAP_MASK_PTS - 4].y = (float)(m_sz_win.height >> 1);
-    pts[NUM_MAP_MASK_PTS - 3].x = (float) (m_sz_win.width >> 1);
-    pts[NUM_MAP_MASK_PTS - 3].y = -(float) (m_sz_win.height >> 1);
-    pts[NUM_MAP_MASK_PTS - 2].x = 0.f;
-    pts[NUM_MAP_MASK_PTS - 2].y = pts[NUM_MAP_MASK_PTS - 4].y;
-    pts[NUM_MAP_MASK_PTS - 1].x = 0.f;
-    pts[NUM_MAP_MASK_PTS - 1].y = -pts[NUM_MAP_MASK_PTS - 4].y;
-
-
-	for(int i = 0; i < MAP_MASK_CIRCLE_DIV + 1; i++){
-      double th = ths * (double)i;
-      double c = cos(th);
-      double s = sin(th);
-      pts[i].x = (float)(r * s);
-      pts[i].y = (float)(r * c);
-    }
-
-	for (int i = 0; i < MAP_MASK_CIRCLE_DIV; i++) {
-		if (i < MAP_MASK_CIRCLE_DIV / 2)
-			idx[i * 3] = NUM_MAP_MASK_PTS - 4;
-		else
-			idx[i * 3] = NUM_MAP_MASK_PTS - 3;
-		idx[i * 3 + 1] = i;
-		idx[i * 3 + 2] = i + 1;
-	}
-
-	idx[(NUM_MAP_MASK_TRIS - 3) * 3] = NUM_MAP_MASK_PTS - 4;
-	idx[(NUM_MAP_MASK_TRIS - 3) * 3 + 1] = NUM_MAP_MASK_PTS - 2;
-	idx[(NUM_MAP_MASK_TRIS - 3) * 3 + 2] = 0;
-
-    idx[(NUM_MAP_MASK_TRIS - 2) * 3] = NUM_MAP_MASK_PTS - 4;
-    idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 1] = MAP_MASK_CIRCLE_DIV / 2;
-    idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 2] = NUM_MAP_MASK_PTS - 3;
-    
-    idx[(NUM_MAP_MASK_TRIS - 1) * 3] = NUM_MAP_MASK_PTS - 3;
-    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 1] = MAP_MASK_CIRCLE_DIV;
-    idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 2] = NUM_MAP_MASK_PTS - 1;
-    
-    if(!omap_mask.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d,
-		      NUM_MAP_MASK_PTS, (float*)pts, NUM_MAP_MASK_IDX, idx, 2)){
-      cerr << "Failed to initialize map mask." << endl;
-      return false;
-    }
-
-    glm::vec4 clrb(0.0f, 0.0f, 0.0f, 1.0f);
-    glm::vec2 pos(0.f,0.f);
-    hmap_mask[0] = omap_mask.add(clrb, pos, 0.f, 1.f);
-    hmap_mask[1] = omap_mask.add(clrb, pos, PI, 1.f);
-    for(int i = 0; i < 2; i++){
-      omap_mask.config_border(hmap_mask[i], false, 1.0f);
-      omap_mask.config_depth(hmap_mask[i], 9);
-    }
-    return true;
+  struct s_pts{
+    float x, y;      
+  } pts[NUM_MAP_MASK_PTS];
+  
+  unsigned short idx[NUM_MAP_MASK_IDX];
+  double ths = PI / (double)MAP_MASK_CIRCLE_DIV;
+  double r = (double) get_max_circle_radius();
+  pts[NUM_MAP_MASK_PTS - 4].x = (float)(m_sz_win.width >> 1);
+  pts[NUM_MAP_MASK_PTS - 4].y = (float)(m_sz_win.height >> 1);
+  pts[NUM_MAP_MASK_PTS - 3].x = (float) (m_sz_win.width >> 1);
+  pts[NUM_MAP_MASK_PTS - 3].y = -(float) (m_sz_win.height >> 1);
+  pts[NUM_MAP_MASK_PTS - 2].x = 0.f;
+  pts[NUM_MAP_MASK_PTS - 2].y = pts[NUM_MAP_MASK_PTS - 4].y;
+  pts[NUM_MAP_MASK_PTS - 1].x = 0.f;
+  pts[NUM_MAP_MASK_PTS - 1].y = -pts[NUM_MAP_MASK_PTS - 4].y;
+  
+  
+  for(int i = 0; i < MAP_MASK_CIRCLE_DIV + 1; i++){
+    double th = ths * (double)i;
+    double c = cos(th);
+    double s = sin(th);
+    pts[i].x = (float)(r * s);
+    pts[i].y = (float)(r * c);
+  }
+  
+  for (int i = 0; i < MAP_MASK_CIRCLE_DIV; i++) {
+    if (i < MAP_MASK_CIRCLE_DIV / 2)
+      idx[i * 3] = NUM_MAP_MASK_PTS - 4;
+    else
+      idx[i * 3] = NUM_MAP_MASK_PTS - 3;
+    idx[i * 3 + 1] = i;
+    idx[i * 3 + 2] = i + 1;
+  }
+  
+  idx[(NUM_MAP_MASK_TRIS - 3) * 3] = NUM_MAP_MASK_PTS - 4;
+  idx[(NUM_MAP_MASK_TRIS - 3) * 3 + 1] = NUM_MAP_MASK_PTS - 2;
+  idx[(NUM_MAP_MASK_TRIS - 3) * 3 + 2] = 0;
+  
+  idx[(NUM_MAP_MASK_TRIS - 2) * 3] = NUM_MAP_MASK_PTS - 4;
+  idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 1] = MAP_MASK_CIRCLE_DIV / 2;
+  idx[(NUM_MAP_MASK_TRIS - 2) * 3 + 2] = NUM_MAP_MASK_PTS - 3;
+  
+  idx[(NUM_MAP_MASK_TRIS - 1) * 3] = NUM_MAP_MASK_PTS - 3;
+  idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 1] = MAP_MASK_CIRCLE_DIV;
+  idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 2] = NUM_MAP_MASK_PTS - 1;
+  
+  if(!omap_mask.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d,
+		     NUM_MAP_MASK_PTS, (float*)pts, NUM_MAP_MASK_IDX, idx, 2)){
+    cerr << "Failed to initialize map mask." << endl;
+    return false;
+  }
+  
+  glm::vec4 clrb(0.0f, 0.0f, 0.0f, 1.0f);
+  glm::vec2 pos(0.f,0.f);
+  hmap_mask[0] = omap_mask.add(clrb, pos, 0.f, 1.f);
+  hmap_mask[1] = omap_mask.add(clrb, pos, PI, 1.f);
+  for(int i = 0; i < 2; i++){
+    omap_mask.config_border(hmap_mask[i], false, 1.0f);
+    omap_mask.config_depth(hmap_mask[i], 9);
+  }
+  return true;
 }
 
 bool f_aws1_ui::init_run()
@@ -459,7 +459,6 @@ bool f_aws1_ui::init_run()
   mouse_button = -1;
   mouse_action = -1;
   mouse_mods = -1;
-
   
   return true;
 }
@@ -929,6 +928,48 @@ bool f_aws1_ui::proc()
     m_cam = m_ch_cam->get_img_clone(m_tcam, m_frm_cam);    
   }
   
+  // loading states
+  long long t;
+  float roll, pitch, yaw, cog, sog, vx, vy;
+  float xown, yown, zown;
+  m_state->get_attitude(t, roll, pitch, yaw);
+
+  roll = min(max(-180.f, roll),180.f);
+  pitch = min(max(-180.f, pitch), 180.f);
+  yaw = min(max(-180.f, yaw), 180.f);
+  
+  m_state->get_velocity(t, cog, sog);
+  m_state->get_velocity_vector(t, vx, vy);
+  m_state->get_position_ecef(t, xown, yown, zown);
+  
+  float lat, lon, alt, galt;
+  Mat Rown = m_state->get_enu_rotation(t);
+  m_state->get_position(t, lat, lon, alt, galt);
+
+  long long t = 0;
+  float rpm = 0.0f;
+  unsigned char trim = 0;
+  int poil = 0;
+  float toil = 0.0f;
+  float temp = 0.0f;
+  float valt = 0.0f;
+  float frate = 0.0f;
+  unsigned int teng = 0;
+  int pclnt = 0;
+  int pfl = 0;
+  unsigned char ld = 0;
+  unsigned char tq = 0;
+  StatEng1 steng1 = (StatEng1)(EmergencyStop + 1);
+  StatEng2 steng2 = (StatEng2)(EngineShuttingDown + 1);
+  if(m_engstate){ // currentlly only for main engine
+    m_engstate->get_rapid(t, rpm, trim);
+    m_engstate->get_dynamic(t, poil, toil, temp, valt,
+			    frate, teng, pclnt, pfl, steng1, steng2, ld, tq);
+  }
+  
+  float depth;
+  m_state->get_depth(t, depth);
+  
   c_view_mode_box * pvm_box =
     dynamic_cast<c_view_mode_box*>(uim.get_ui_box(c_aws_ui_box_manager::view_mode));
   c_ctrl_mode_box * pcm_box = 
@@ -942,23 +983,22 @@ bool f_aws1_ui::proc()
   if(m_js.id != -1){
     m_js.set_btn();
     m_js.set_stk();
-    //    m_js.print(cout);
   }
 
   if (m_js.estart & s_jc_u3613m::EB_EVUP)
-	  bjs = !bjs;
+    bjs = !bjs;
 
   js_force_ctrl_stop(pcm_box);
 
   if (bwear) {
-	  if (whbt0 != whbt) {
-		  twhbt = get_time();
-		  whbt0 = whbt;
-	  }
-	  if (twhbt + twhbt_out < get_time()) {
-		  cout << "Wear device is not alive" << endl;
-		  ui_force_ctrl_stop(pcm_box);
-	  }
+    if (whbt0 != whbt) {
+      twhbt = get_time();
+      whbt0 = whbt;
+    }
+    if (twhbt + twhbt_out < get_time()) {
+      cout << "Wear device is not alive" << endl;
+      ui_force_ctrl_stop(pcm_box);
+    }
   }
 
   switch (ctrl_mode){
@@ -975,6 +1015,12 @@ bool f_aws1_ui::proc()
     handle_ctrl_stb();
     break;
   }
+
+  if(ctrl_mode != cm_stb){
+    cog_tgt = cog;
+    sog_tgt = sog;
+    rev_tgt = rpm;
+  }
   
   //m_inst to m_ch_ctrl_inst
   snd_ctrl_inst();
@@ -987,28 +1033,7 @@ bool f_aws1_ui::proc()
   
   // UI polling.
   glfwPollEvents();
-  
-  // loading states
-  long long t;
-  float roll, pitch, yaw, cog, sog, vx, vy;
-  float xown, yown, zown;
-  m_state->get_attitude(t, roll, pitch, yaw);
-  // applying saturation 
-  roll = min(max(-180.f, roll),180.f);
-  pitch = min(max(-180.f, pitch), 180.f);
-  yaw = min(max(-180.f, yaw), 180.f);
-  
-  m_state->get_velocity(t, cog, sog);
-  m_state->get_velocity_vector(t, vx, vy);
-  m_state->get_position_ecef(t, xown, yown, zown);
-  
-  float lat, lon, alt, galt;
-  Mat Rown = m_state->get_enu_rotation(t);
-  m_state->get_position(t, lat, lon, alt, galt);
-  
-  float depth;
-  m_state->get_depth(t, depth);
-  
+   
   // handling ui events
   bool event_handled = uim.set_mouse_event(pt_mouse,
 					   mouse_button, mouse_action,
@@ -1029,7 +1054,13 @@ bool f_aws1_ui::proc()
   update_ui_params(pvm_box, xown, yown, zown, vx, vy, yaw);
   
   // updating indicator
-  update_indicator(cog, sog, roll, pitch, yaw);
+  update_indicator(cog, sog, roll, pitch, yaw,
+		   rpm, trim, poil, toil, temp, valt,
+		   frate, teng, pclnt, pfl, ld,
+		   tq, steng1, steng2, depth);
+
+  // updating wear indicator params
+  update_wear_params(rpm, sog, cog, yaw, depth);
   
   // update route object
   update_route(prc_box);

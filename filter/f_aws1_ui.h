@@ -139,57 +139,9 @@ class f_aws1_ui: public f_glfw_window
   bool bwear;
   unsigned short wmeng, wrud, wrev, wsog, wcog, wyaw, wdpt, whbt, whbt0;
   long long twhbt, twhbt_out;
-
-  // Indicator
-  c_indicator ind;
-  void update_indicator(const float cog, const float sog, 
-	  const float roll, const float pitch, const float yaw)
+  void update_wear_params(const float rpm, const float sog, const float cog,
+			  const float yaw, const float depth)
   {
-    long long t = 0;
-    float rpm = 0.0f;
-    unsigned char trim = 0;
-    int poil = 0;
-    float toil = 0.0f;
-    float temp = 0.0f;
-    float valt = 0.0f;
-    float frate = 0.0f;
-    unsigned int teng = 0;
-    int pclnt = 0;
-    int pfl = 0;
-    unsigned char ld = 0;
-    unsigned char tq = 0;
-    StatEng1 steng1 = (StatEng1)(EmergencyStop + 1);
-    StatEng2 steng2 = (StatEng2)(EngineShuttingDown + 1);
-    float depth = 0.f;
-    
-    if(m_engstate){ // currentlly only for main engine
-      m_engstate->get_rapid(t, rpm, trim);
-      m_engstate->get_dynamic(t, poil, toil, temp, valt, frate, teng, pclnt, pfl, steng1, steng2, ld, tq);
-    }
-
-    if(m_state){
-      m_state->get_depth(t, depth);
-    }
-
-    float cogf = (float)(cog * (PI / 180.f));
-    float yawf = (float)(yaw * (PI / 180.f));
-    ind.set_param(
-		  m_time_str,
-		  m_stat.meng_aws,
-		  rpm, rev_tgt, trim, poil, toil, temp,
-		  valt, frate, teng, pclnt, pfl,
-		  ld, tq,
-		  ((steng1 >= 0 && steng1 <= EmergencyStop) ? strStatEng1[steng1] : NULL),
-		  ((steng2 >= 0 && steng2 <= EngineShuttingDown) ? strStatEng2[steng2] : NULL),
-		  m_stat.seng_aws, m_stat.rud_aws,
-		  cogf, (float)(cog_tgt * (PI/180.f)),
-		  sog, sog_tgt,
-		  yawf,
-		  (float)(pitch* (PI / 180.f)),
-		  (float)(-roll* (PI / 180.f)),
-		  depth);
-    ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
-
     // for android wear
     wmeng = (unsigned short) m_stat.meng_aws;
     wrud = (unsigned short) m_stat.rud_aws;
@@ -197,7 +149,33 @@ class f_aws1_ui: public f_glfw_window
     wsog = (unsigned short)(sog * 10);
     wcog = (unsigned short) cog;
     wyaw = (unsigned short) (yaw < 0 ? yaw + 360: yaw);
-    wdpt = (unsigned short) depth * 10;
+    wdpt = (unsigned short) depth * 10;    
+  }
+
+  // Indicator
+  c_indicator ind;
+  void update_indicator(const float cog, const float sog, 
+			const float roll, const float pitch, const float yaw,
+			const float rpm, const float trim, const int poil,
+			const float toil, const float temp, const float valt,
+			const float frate, const unsigned int teng,
+			const int pclnt, const int pfl, const unsigned char ld,
+			const unsigned char tq, const StatEng1 steng1,
+			const StatEng2 steng2, const float depth)
+  {
+    float cogf = (float)(cog * (PI / 180.f));
+    float yawf = (float)(yaw * (PI / 180.f));
+    const char *str_steng1 = ((steng1 >= 0 && steng1 <= EmergencyStop) ? strStatEng1[steng1] : NULL);
+    const char *str_steng2 = ((steng2 >= 0 && steng2 <= EngineShuttingDown) ? strStatEng2[steng2] : NULL);
+    ind.set_param( m_time_str, m_stat.meng_aws, rpm, rev_tgt, trim, poil,
+		   toil, temp, valt, frate, teng, pclnt, pfl, ld, tq,
+		   str_steng1, str_steng2, m_stat.seng_aws, m_stat.rud_aws,
+		   cogf, (float)(cog_tgt * (PI/180.f)), sog, sog_tgt, yawf,
+		  (float)(pitch* (PI / 180.f)), (float)(-roll* (PI / 180.f)),
+		  depth);
+    
+    ind.set_dir_cam(dir_cam_hdg + dir_cam_hdg_drag);
+
   }
   
   //////////////////////////////////////////// map objects
