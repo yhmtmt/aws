@@ -1,8 +1,8 @@
 
 
-all: $(PROTO_OBJS)
+all: $(PROTO_OBJS) $(PROTO_PROTO)
 
-%.cc: %.proto
+%.pb.cc: %.proto
 	protoc -I=$(PROTO_DIR) --cpp_out=$(PROTO_DIR) $(PROTO_DIR)/$<
 
 %.o: %.pb.cc
