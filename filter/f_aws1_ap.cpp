@@ -533,12 +533,15 @@ void f_aws1_ap::ctrl_to_rev(const float rev, const float rev_tgt,
   m_meng = min(m_meng_max, m_meng);
 }
 
-void f_aws1_ap::ctrl_to_sog(const float sog, const float smax, const float smin)
+void f_aws1_ap::ctrl_to_sog(const float sog, const float sog_tgt,
+			    const float smax, const float smin)
 {
   float rudmid = (is_rud_ltor ? rudmidlr : rudmidrl);
   float srange = (float)(smax - smin);
   
   float stgt = (float)(srange * (1.0 - max(0.f, min(1.f, abs(m_rud - rudmid) * (1.0f / rudmid)))) + smin);
+  stgt = min(sog_tgt, stgt);
+  
   float sdiff = (float)(stgt - sog);
   sdiff *= (float)(1. / srange);
   
@@ -554,17 +557,19 @@ void f_aws1_ap::ctrl_to_sog(const float sog, const float smax, const float smin)
   }
 }
 
-void f_aws1_ap::ctrl_to_sog_cog(const float sog, 
-				 const float cdiff,
+void f_aws1_ap::ctrl_to_sog_cog(const float sog, const float sog_tgt,
+				const float cdiff,
 				const float smax, const float smin)
 {
   ctrl_to_cog(cdiff);
-  ctrl_to_sog(sog, smax, smin);  
+  ctrl_to_sog(sog, sog_tgt, smax, smin);  
 }
 
 void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
 {
   float cc = 0;
+  float sog_tgt = 0.0;
+  m_ap_inst->get_tgt_sog(sog_tgt);
   
   if (bav)
     cc = calc_course_change_for_ais_ship(yaw);
@@ -580,12 +585,14 @@ void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
     s_wp & wp = m_wp->get_next_wp();
     float d = 0.;
     float cdiff = 0;
+    if(wp.v > 0)
+      sog_tgt = min(sog_tgt, wp.v);
     
     m_wp->get_diff(d, cdiff);
     cdiff += cc;
     cdiff *= (float)(1. / 180.); // normalize
     
-    ctrl_to_sog_cog(sog, cdiff, m_smax, m_smin);
+    ctrl_to_sog_cog(sog, sog_tgt, cdiff, m_smax, m_smin);
   }
   
   m_wp->unlock();
@@ -596,7 +603,10 @@ void f_aws1_ap::cursor(const float sog, const float cog, const float yaw, bool b
   float xr, yr, d, dir;
   m_ap_inst->get_csr_pos_rel(xr, yr, d, dir);
   float cdiff = (float)(dir - cog);
-  ctrl_to_sog_cog(sog, cdiff, m_smax, m_smin);
+  float sog_tgt = 0.0;
+  m_ap_inst->get_tgt_sog(sog_tgt);
+  
+  ctrl_to_sog_cog(sog, sog_tgt, cdiff, m_smax, m_smin);
 }
 
 void f_aws1_ap::flw_tgt(const float sog, const float cog, const float yaw, bool bav)
@@ -612,6 +622,9 @@ void f_aws1_ap::flw_tgt(const float sog, const float cog, const float yaw, bool 
   }
   
   cdiff *= (float)(1. / 180.);
+  float sog_tgt = 0.0;
+  m_ap_inst->get_tgt_sog(sog_tgt);
+  
   ctrl_to_sog_cog(sog, cdiff, m_smax, m_smin);
 }
 
@@ -632,9 +645,11 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
   if(m_verb){
     printf("ap stay d=%02.1f\n", d);
   }
+  float sog_tgt = 0.0;
+  m_ap_inst->get_tgt_sog(sog_tgt);
 
   if(d > 5.0)
-    ctrl_to_sog_cog(sog, cdiff, 2.0f, 1.0f);  
+    ctrl_to_sog_cog(sog, sog_tgt, cdiff, 2.0f, 1.0f);  
   else
     m_meng = 127.f;
 }
