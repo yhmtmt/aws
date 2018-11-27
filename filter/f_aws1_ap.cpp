@@ -115,14 +115,14 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   
   // registering rpm tables
   for (int itbl = 0; itbl < 60; itbl++){
-    tbl_stable_rpm[itbl] = 127.0;
+    tbl_stable_rpm[itbl] = (float)(itbl * (m_meng_max - 127.0f) / 60.0f + 127.0f);
     str_tbl_stable_rpm[itbl] = new char[9];
     if(!str_tbl_stable_rpm[itbl]){
       cerr << "Error in allocating memory for rpmtbl registration in aws1_ap" << endl;
       exit(1);
     }
 
-    tbl_stable_nrpm[itbl] = 127.0;
+    tbl_stable_nrpm[itbl] = (float)(itbl * (m_meng_min - 127.0f) / 60.0f + 127.0f);
     str_tbl_stable_nrpm[itbl] = new char[10];
     if(!str_tbl_stable_nrpm[itbl]){
       cerr << "Error in allocating memory for rpmtbl registration in aws1_ap" << endl;
@@ -214,8 +214,8 @@ void f_aws1_ap::save_ctrl_state()
   ctrl_state.set_rudmidlr(rudmidlr);
   ctrl_state.set_rudmidrl(rudmidrl);
   for (int i = 0; i < 60; i++){
-    ctrl_state.set_tbl_stable_rpm(i, tbl_stable_rpm[i]);
-    ctrl_state.set_tbl_stable_nrpm(i, tbl_stable_nrpm[i]);
+    ctrl_state.add_tbl_stable_rpm(tbl_stable_rpm[i]);
+    ctrl_state.add_tbl_stable_nrpm(tbl_stable_nrpm[i]); 
   }
   ctrl_state.SerializeToOstream(&file);
 }

@@ -545,7 +545,8 @@ bool c_cursor::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
   poline->config_color(hpos, clr);
   poline->config_depth(hpos, 0);
   poline->config_width(hpos, 1.0);
-
+  poline->config_position(hpos, glm::vec2(0.f,0.f));
+  
   hpos_str = potxt->reserv(32);
   pos_str = glm::vec2(pos[2].x, pos[2].y);
   glm::vec2 sz_mgn(sz_fnt.x * 0.6, sz_fnt.y);
