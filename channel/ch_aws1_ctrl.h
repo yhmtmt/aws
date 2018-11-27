@@ -468,7 +468,7 @@ protected:
   float d_tgt, dir_tgt;
 
   // Target course and Target rpm (used only in EAP_STB_MAN)
-  float cog_tgt, rpm_tgt;
+  float cog_tgt, rpm_tgt, sog_tgt;
   
   bool brpos;
 public:
