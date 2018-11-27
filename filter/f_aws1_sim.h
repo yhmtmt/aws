@@ -126,20 +126,23 @@ protected:
   void simulate_rudder(const float rud, const float rud_pos, float & rud_pos_next);
   void simulate_engine(const float eng, const float eng_pos, const float gear_pos, float & eng_pos_next, float & gear_pos_next);
   const float final_rev(const float thr_pos)
-	{
-	  if (thr_pos < 0.417)
-	    return 700;
-	  if (thr_pos < 0.709)
-	    return (5000 - 700) * (thr_pos - 0.417) / (0.709 - 0.417) + 700;
-	  if (thr_pos < 0.854)
-	    return (5600 - 5000) * (thr_pos - 0.709) / (0.854 - 0.709) + 5000;
-		return 5600;
-	}
-   
+  {
+    if (thr_pos < 0.417)
+      return 700;
+    if (thr_pos < 0.709)
+      return (5000 - 700) * (thr_pos - 0.417) / (0.709 - 0.417) + 700;
+    if (thr_pos < 0.854)
+      return (5600 - 5000) * (thr_pos - 0.709) / (0.854 - 0.709) + 5000;
+    return 5600;
+  }
+  
   bool m_bcsv_out;
   char m_fcsv_out[1024];
   ofstream m_fcsv;
   void save_csv(const long long tcur);
+
+  bool bupdate_model_params;
+  void update_model_params();
  public:
   f_aws1_sim(const char * name);
 

@@ -45,7 +45,7 @@ f_aws1_sim::f_aws1_sim(const char * name) :
   m_state(NULL), m_ch_ctrl_ui(NULL), m_ch_ctrl_ap1(NULL), m_ch_ctrl_ap2(NULL),
   m_ch_ctrl_stat(NULL),
   m_state_sim(NULL), m_engstate_sim(NULL), m_ch_ctrl_stat_sim(NULL),
-  m_tprev(0), m_bcsv_out(false), m_int_smpl_sec(0.1), m_wismpl(100), m_wosmpl(1)
+  m_tprev(0), m_bcsv_out(false), m_int_smpl_sec(0.1), m_wismpl(100), m_wosmpl(1), bupdate_model_params(true)
 {
 	// input channels for simulation results
   register_fpar("ch_state", (ch_base**)&m_state, typeid(ch_state).name(), "State channel");
@@ -146,7 +146,7 @@ f_aws1_sim::f_aws1_sim(const char * name) :
   m_fcsv_out[0] = '\0';
   register_fpar("fcsv", m_fcsv_out, 1024, "CSV output file.");
   register_fpar("vplane", &vplane, "Planing Velocity in kts");
-  
+  register_fpar("update_model_params", &bupdate_model_params, "Update model params.");
   mrctrl.alloc_param();
   register_model_params(mrctrl);
   mectrl.alloc_param();
@@ -184,15 +184,21 @@ bool f_aws1_sim::init_run()
     m_fcsv.precision(3);
   }
 
+  update_model_params();
+  return true;
+}
+
+void f_aws1_sim::update_model_params()
+{
   mrctrl.init();
   mectrl.init();
   mobf.init();
   mobfp.init();
   m3dof.init();
   m3dofp.init();
-  
-  return true;
+  bupdate_model_params = false;
 }
+
 
 void f_aws1_sim::destroy_run()
 {
@@ -562,6 +568,10 @@ void f_aws1_sim::save_csv(const long long tcur)
 
 bool f_aws1_sim::proc()
 {
+  if(bupdate_model_params){
+    update_model_params();
+  }
+  
   long long tcur = get_time();
   if (tcur < m_tprev + m_int_smpl)
     return true;
