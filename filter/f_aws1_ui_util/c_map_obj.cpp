@@ -86,6 +86,7 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
       poline->config_color(h, clr);
       poline->config_depth(h, display_depth);
       poline->config_position(h, pos);
+      poline->config_rotation(h, 0);
       poline->disable(h);
     }
     {
@@ -484,6 +485,7 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   poline->config_color(clr);
   poline->config_depth(hline_vel, 10);
   poline->config_position(hline_vel, pos);
+  poline->config_rotation(hline_vel, 0);
   poline->disable(hline_vel);
   return true;
 }
@@ -535,7 +537,7 @@ bool c_cursor::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
   poline->config_color(harrow, clr);
   poline->config_depth(harrow, 0);
   poline->config_width(harrow, 1.0);
-
+  poline->config_rotation(harrow, 0);
 
   s_vertex pos[3] = {
     { 0, 0 }, { (float)(-sz.x), sz.y }, { (float)(-sz.x * 1.5), sz.y }
@@ -546,6 +548,7 @@ bool c_cursor::init(c_gl_2d_line_obj * _poline, c_gl_text_obj * _potxt,
   poline->config_depth(hpos, 0);
   poline->config_width(hpos, 1.0);
   poline->config_position(hpos, glm::vec2(0.f,0.f));
+  poline->config_rotation(hpos, 0);
   
   hpos_str = potxt->reserv(32);
   pos_str = glm::vec2(pos[2].x, pos[2].y);
