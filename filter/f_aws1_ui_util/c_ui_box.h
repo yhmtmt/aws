@@ -586,12 +586,6 @@ public:
   int hmeng_in, hmeng_out, hseng_in, hseng_out, hrud_in, hrud_out;
   int hmeng_n, hmeng_f, hmeng_b, hseng_n, hseng_f, hseng_b;
   glm::vec2 scl_eng, scl_rud, pos_rud;
-
-  void create_engine_state_indicator(glm::vec2 & pos,
-				     const glm::vec2 & sz_fnt,
-				     const glm::vec4 & clr);
-  
-  void update_engine_state_indicator();
   
   void create_engine_indicator(int & heng_in, int & heng_out,
 			       int & heng_n, int & heng_f, int & heng_b,
@@ -637,15 +631,62 @@ public:
 
   void update_time_indicator(const char * str_time);
 
+ public:
+  struct s_arc_indicator
+  {
+    c_gl_2d_obj * potri;
+    glm::vec2 pos; // center position of the arc
+    glm::vec2 rad; //
+    int harc, hscale, * hstr_scale, hptr1, hptr2;
+    int step;
+    float rad_arc;
+    int num_scale;
+    int num_arc_pts;
+    float val_max, val_min;
+    
+  s_arc_indicator():
+    harc(0),hscale(0),hstr_scale(NULL), hptr1(0), hptr2(0),
+      step(0),rad_arc(0.f), num_scale(0), num_arc_pts(0),
+      val_max(0.f), val_min(0.f)
+    {
+    }
+    
+    ~s_arc_indicator()
+    {
+      delete [] hstr_scale;     
+    }
+    
+    bool init(const int _step, const float _rad_arc,
+	      const float _val_max, const float _val_min,
+	      const glm::vec2 & _pos,
+	      const glm::vec2 & sz_fnt,
+	      const glm::vec4 & clr,
+	      c_gl_2d_obj * _potri,
+	      c_gl_2d_line_obj * poline,
+	      c_gl_text_obj * potxt);
+    void update_ptr(const float val, int hptr);
+    void update_ptr1(const float val)
+    {
+      update_ptr(val,hptr1);
+    }
+    void update_ptr2(const float val)
+    {
+      update_ptr(val,hptr2);
+    }
+  };
+  
+ private:
+  s_arc_indicator arc_ind_rpm, arc_ind_sog;
+  
 #define RPM_STEP 7
-  glm::vec2 pos_rpm;
-  glm::vec2 rad_rpm;
-  int hrpm_arc, hrpm_scale, hstr_rpm_scale[RPM_STEP], hrpm_ptr, hrpm_tgt_ptr;
+#define RAD_RPM_ARC 6.5
+  void create_engine_state_indicator(glm::vec2 & pos,
+				     const glm::vec2 & sz_fnt,
+				     const glm::vec4 & clr);  
+  void update_engine_state_indicator();
   
 #define SOG_STEP 5
-  glm::vec2 pos_sog;
-  glm::vec2 rad_sog;
-  int hsog_arc, hsog_scale, hstr_sog_scale[SOG_STEP], hsog_ptr, hsog_tgt_ptr;
+#define RAD_SOG_ARC 6.5
   void create_sog_indicator(glm::vec2 & pos, const glm::vec2 & sz_fnt,
 			    const glm::vec4 & clr);
   void update_sog_indicator();

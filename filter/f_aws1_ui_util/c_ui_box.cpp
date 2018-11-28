@@ -1150,57 +1150,73 @@ c_indicator::~c_indicator()
 {
 }
 
-void c_indicator::create_engine_state_indicator(glm::vec2 & pos,
-						const glm::vec2 & sz_fnt,
-						const glm::vec4 & clr)
+bool c_indicator::s_arc_indicator::init(const int _step,
+					const float _rad_arc,
+					const float _val_max,
+					const float _val_min,
+					const glm::vec2 & _pos,
+					const glm::vec2 & sz_fnt,
+					const glm::vec4 & clr,
+					c_gl_2d_obj * _potri,
+					c_gl_2d_line_obj * poline,
+					c_gl_text_obj * potxt)
 {
-#define RAD_RPM_ARC 6.5
-#define NUM_RPM_SCALE (2*(RPM_STEP-1)+1)
-#define NUM_RPM_ARC_PTS (2*(NUM_RPM_SCALE-1)+1)
-  rad_rpm = sz_fnt;
-  rad_rpm.x *= (RAD_RPM_ARC + 0.5);
-  rad_rpm.y *= (RAD_RPM_ARC + 0.5);
-
-  pos_rpm = pos;
+  step = _step;
+  rad_arc = _rad_arc;
+  num_scale = 2 * (step - 1) + 1;
+  num_arc_pts = 2 * (num_scale - 1) + 1;
+  rad = sz_fnt;
+  rad.x *= (rad_arc + 0.5);
+  rad.y *= (rad_arc + 0.5);
+  hstr_scale = new int[step];
+  if(hstr_scale == NULL)
+    return false;
+  
+  val_max = _val_max;
+  val_min = _val_min;
+  
+  pos = _pos;
+  potri = _potri;
   glm::vec2 mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y);
   struct s_vertex{
     float x, y;
   };
+  
   // arc
   {
-    s_vertex pts[NUM_RPM_ARC_PTS];
-    float c, s, ths = (float)(PI / (float)(NUM_RPM_ARC_PTS - 1));
-    for (int i = 0; i < NUM_RPM_ARC_PTS; i++)
+    s_vertex pts[num_arc_pts];
+    float c, s, ths = (float)(PI / (float)(num_arc_pts - 1));
+    for (int i = 0; i < num_arc_pts; i++)
     {
       float th = (float)(i * ths);
       c = cos(th);
       s = sin(th);
-      pts[i].x = (float)(c * sz_fnt.x * RAD_RPM_ARC);
-      pts[i].y = (float)(s * sz_fnt.y * RAD_RPM_ARC);
+      pts[i].x = (float)(c * sz_fnt.x * rad_arc);
+      pts[i].y = (float)(s * sz_fnt.y * rad_arc);
     }
 
-    hrpm_arc = poline->add(NUM_RPM_ARC_PTS, (float*)pts);
-    poline->config_position(hrpm_arc, pos);
-    poline->config_rotation(hrpm_arc, 0);
-    poline->config_width(hrpm_arc, 1.0);
-    poline->config_color(hrpm_arc, clr);
-    poline->config_depth(hrpm_arc, 0);
+    harc = poline->add(num_arc_pts, (float*)pts);
+    poline->config_position(harc, pos);
+    poline->config_rotation(harc, 0);
+    poline->config_width(harc, 1.0);
+    poline->config_color(harc, clr);
+    poline->config_depth(harc, 0);
   }
 
   // scale
   {
-    float c, s, ths = (float)(PI / (float)(NUM_RPM_SCALE - 1));
-    s_vertex pts[NUM_RPM_SCALE * 2];
+    float c, s, ths = (float)(PI / (float)(num_scale - 1));
+    s_vertex pts[num_scale * 2];
 
-    for (int i = 0, iscl = RPM_STEP - 1; i < NUM_RPM_SCALE; i++){
+    for (int i = 0, iscl = step - 1; i < num_scale; i++){
       float th = (float)(ths * i);
       c = (float)(cos(th) * sz_fnt.x);
       s = (float)(sin(th) * sz_fnt.y);
       s_vertex & vtx0 = pts[2 * i];
       s_vertex & vtx1 = pts[2 * i + 1];
-      vtx0.x = (float)(c * RAD_RPM_ARC);
-      vtx0.y = (float)(s * RAD_RPM_ARC);
-      float rscl = (i % 2 == 0 ? (float)(RAD_RPM_ARC - 0.5) : (float)(RAD_RPM_ARC - 0.25));
+      vtx0.x = (float)(c * rad_arc);
+      vtx0.y = (float)(s * rad_arc);
+      float rscl = (i % 2 == 0 ? (float)(rad_arc - 0.5) : (float)(rad_arc - 0.25));
       vtx1.x = (float)(c * rscl);
       vtx1.y = (float)(s * rscl);
 
@@ -1209,55 +1225,67 @@ void c_indicator::create_engine_state_indicator(glm::vec2 & pos,
         float rstr = (float)(rscl - 0.25);
         glm::vec2 pos_str(c * rstr + pos.x, s * rstr + pos.y);
         snprintf(str, 4, "%d", iscl * 10);
-        hstr_rpm_scale[iscl] = potxt->reserv(2);
-        potxt->set(hstr_rpm_scale[iscl], str);
-        potxt->config(hstr_rpm_scale[iscl], clr, glm::vec4(0, 0, 0, 0),
+        hstr_scale[iscl] = potxt->reserv(2);
+        potxt->set(hstr_scale[iscl], str);
+        potxt->config(hstr_scale[iscl], clr, glm::vec4(0, 0, 0, 0),
           sz_fnt, mgn_fnt, c_gl_text_obj::an_ct, pos_str, (float)(th - 0.5 * PI));
-        potxt->config_depth(hstr_rpm_scale[iscl], 0);
-        potxt->enable(hstr_rpm_scale[iscl]);
+        potxt->config_depth(hstr_scale[iscl], 0);
+        potxt->enable(hstr_scale[iscl]);
         iscl--;
       }
     }
 
-    hrpm_scale = poline->add(NUM_RPM_SCALE * 2, (float*)pts, true);
-    poline->config_depth(hrpm_scale, 0);
-    poline->config_position(hrpm_scale, pos);
-    poline->config_rotation(hrpm_scale, 0.0);
-    poline->config_color(hrpm_scale, clr);
-    poline->config_width(hrpm_scale, 1.0f);
+    hscale = poline->add(num_scale * 2, (float*)pts, true);
+    poline->config_depth(hscale, 0);
+    poline->config_position(hscale, pos);
+    poline->config_rotation(hscale, 0.0);
+    poline->config_color(hscale, clr);
+    poline->config_width(hscale, 1.0f);
   }
   //indicator
-  hrpm_ptr = potri->add(clr, pos, 0.0f, 0.0f);
-  potri->config_border(hrpm_ptr, false, 1.0);
+  hptr1 = potri->add(clr, pos, 0.0f, 0.0f);
+  potri->config_border(hptr1, false, 1.0);
   glm::vec2 sz_ptr((float)(sz_fnt.x * 0.5), (float)(sz_fnt.y * 0.5));
-  potri->config_scale(hrpm_ptr, sz_ptr);
-  potri->config_depth(hrpm_ptr, 0);
-  potri->enable(hrpm_ptr);
+  potri->config_scale(hptr1, sz_ptr);
+  potri->config_depth(hptr1, 0);
+  potri->enable(hptr1);
   
-  hrpm_tgt_ptr = potri->add(clr, pos, 0.0f, 0.0f);  
-  potri->config_border(hrpm_ptr, true, 1.0);
-  potri->config_scale(hrpm_tgt_ptr, sz_ptr);
-  potri->config_depth(hrpm_tgt_ptr, 0);
-  potri->enable(hrpm_ptr);
+  hptr2 = potri->add(clr, pos, 0.0f, 0.0f);  
+  potri->config_border(hptr2, true, 1.0);
+  potri->config_scale(hptr2, sz_ptr);
+  potri->config_depth(hptr2, 0);
+  potri->enable(hptr2);
+  return true;
+}
+
+
+void c_indicator::s_arc_indicator::update_ptr(const float val, int hptr)
+{
+  float thtri = (float)(-val * PI / (val_max - val_min));
+  float th = (float)(PI + thtri);
+  glm::vec2 pos_tri((float)(cos(th) * rad.x + pos.x),
+		    (float)(sin(th) * rad.y + pos.y));
+  potri->config_rotation(hptr, thtri);
+  potri->config_position(hptr, pos_tri);
+}
+
+void c_indicator::create_engine_state_indicator(glm::vec2 & pos,
+						const glm::vec2 & sz_fnt,
+						const glm::vec4 & clr)
+{
+#define RAD_RPM_ARC 6.5
+  arc_ind_rpm.init(RPM_STEP, RAD_RPM_ARC,
+		   6000.f, 0.f,
+		   pos, sz_fnt, clr,
+		   potri, poline, potxt);
+  return;
 }
 
 void c_indicator::update_engine_state_indicator()
 {
-  float thtri = (float)(-mrpm * PI / 6000.0);
-  potri->config_rotation(hrpm_ptr, thtri);
-  float th = (float)(PI + thtri);
-  glm::vec2 pos((float)(cos(th) * rad_rpm.x + pos_rpm.x),
-    (float)(sin(th) * rad_rpm.y + pos_rpm.y));
-
-  potri->config_position(hrpm_ptr, pos);
-
-  thtri = (float)(-mrpm_tgt * PI / 6000.0);
-  potri->config_rotation(hrpm_tgt_ptr, thtri);
-  th = (float)(PI + thtri);
-  pos = glm::vec2((float)(cos(th) * rad_rpm.x + pos_rpm.x),
-		(float)(sin(th) * rad_rpm.y + pos_rpm.y));
-
-  potri->config_position(hrpm_tgt_ptr, pos); 
+  arc_ind_rpm.update_ptr1(mrpm);
+  arc_ind_rpm.update_ptr2(mrpm_tgt);
+  return;
 }
 
 void c_indicator::create_engine_indicator(int & heng_in, int & heng_out,
@@ -1396,107 +1424,18 @@ void c_indicator::create_sog_indicator(glm::vec2 & pos,
 				       const glm::vec4 & clr)
 {
 #define RAD_SOG_ARC 6.5
-#define NUM_SOG_SCALE (2*(SOG_STEP-1)+1)
-#define NUM_SOG_ARC_PTS (2*(NUM_SOG_SCALE-1)+1)
-  rad_sog = sz_fnt;
-  rad_sog.x *= (RAD_SOG_ARC + 0.5);
-  rad_sog.y *= (RAD_SOG_ARC + 0.5);
-
-  pos_sog = pos;
-  glm::vec2 mgn_fnt((float)(sz_fnt.x * 0.6), sz_fnt.y);
-  struct s_vertex{
-    float x, y;
-  };
-  // arc
-  {
-    s_vertex pts[NUM_SOG_ARC_PTS];
-    float c, s, ths = (float)(PI / (float)(NUM_SOG_ARC_PTS - 1));
-    for (int i = 0; i < NUM_SOG_ARC_PTS; i++)
-    {
-      float th = (float)(i * ths);
-      c = cos(th);
-      s = sin(th);
-      pts[i].x = (float)(c * sz_fnt.x * RAD_SOG_ARC);
-      pts[i].y = (float)(s * sz_fnt.y * RAD_SOG_ARC);
-    }
-
-    hsog_arc = poline->add(NUM_SOG_ARC_PTS, (float*)pts);
-    poline->config_position(hsog_arc, pos);
-    poline->config_rotation(hsog_arc, 0);
-    poline->config_width(hsog_arc, 1.0);
-    poline->config_color(hsog_arc, clr);
-    poline->config_depth(hsog_arc, 0);
-  }
-
-  // scale
-  {
-    float c, s, ths = (float)(PI / (float)(NUM_SOG_SCALE - 1));
-    s_vertex pts[NUM_SOG_SCALE * 2];
-
-    for (int i = 0, iscl = SOG_STEP - 1; i < NUM_SOG_SCALE; i++){
-      float th = (float)(ths * i);
-      c = (float)(cos(th) * sz_fnt.x);
-      s = (float)(sin(th) * sz_fnt.y);
-      s_vertex & vtx0 = pts[2 * i];
-      s_vertex & vtx1 = pts[2 * i + 1];
-      vtx0.x = (float)(c * RAD_SOG_ARC);
-      vtx0.y = (float)(s * RAD_SOG_ARC);
-      float rscl = (i % 2 == 0 ? (float)(RAD_SOG_ARC - 0.5) : (float)(RAD_SOG_ARC - 0.25));
-      vtx1.x = (float)(c * rscl);
-      vtx1.y = (float)(s * rscl);
-
-      if (i % 2 == 0){ // creating scale string
-        char str[4];
-        float rstr = (float)(rscl - 0.25);
-        glm::vec2 pos_str(c * rstr + pos.x, s * rstr + pos.y);
-        snprintf(str, 4, "%d", iscl * 10);
-        hstr_sog_scale[iscl] = potxt->reserv(2);
-        potxt->set(hstr_sog_scale[iscl], str);
-        potxt->config(hstr_sog_scale[iscl], clr, glm::vec4(0, 0, 0, 0),
-          sz_fnt, mgn_fnt, c_gl_text_obj::an_ct, pos_str, (float)(th - 0.5 * PI));
-        potxt->config_depth(hstr_sog_scale[iscl], 0);
-        potxt->enable(hstr_sog_scale[iscl]);
-        iscl--;
-      }
-    }
-
-    hsog_scale = poline->add(NUM_SOG_SCALE * 2, (float*)pts, true);
-    poline->config_depth(hsog_scale, 0);
-    poline->config_position(hsog_scale, pos);
-    poline->config_rotation(hsog_scale, 0.0);
-    poline->config_color(hsog_scale, clr);
-    poline->config_width(hsog_scale, 1.0f);
-  }
-  //indicator
-  hsog_ptr = potri->add(clr, pos, 0.0f, 0.0f);
-  potri->config_border(hsog_ptr, false, 1.0);
-  glm::vec2 sz_ptr((float)(sz_fnt.x * 0.5), (float)(sz_fnt.y * 0.5));
-  potri->config_scale(hsog_ptr, sz_ptr);
-  potri->config_depth(hsog_ptr, 0);
-  potri->enable(hsog_ptr);
-  
-  hsog_tgt_ptr = potri->add(clr, pos, 0.0f, 0.0f);
-  potri->config_border(hsog_ptr, true, 1.0);
-  potri->config_scale(hsog_tgt_ptr, sz_ptr);
-  potri->config_depth(hsog_tgt_ptr, 0);
-  potri->enable(hsog_ptr);
+  arc_ind_sog.init(SOG_STEP, RAD_SOG_ARC,
+		   40, 0,
+		   pos, sz_fnt, clr,
+		   potri, poline, potxt);
+  return;		   
 }
 
 void c_indicator::update_sog_indicator()
 {
-  float thtri = (float)(-sog * PI / 40.0);
-  potri->config_rotation(hsog_ptr, thtri);
-  float th = (float)(PI + thtri);
-  glm::vec2 pos((float)(cos(th) * rad_sog.x + pos_sog.x),
-    (float)(sin(th) * rad_sog.y + pos_sog.y));
-  potri->config_position(hsog_ptr, pos);
-
-  thtri = (float)(-sog_tgt * PI / 40.0);
-  potri->config_rotation(hsog_tgt_ptr, thtri);
-  th = (float)(PI + thtri);
-  pos = glm::vec2((float)(cos(th) * rad_sog.x + pos_sog.x),
-		  (float)(sin(th) * rad_sog.y + pos_sog.y));
-  potri->config_position(hsog_tgt_ptr, pos);
+  arc_ind_sog.update_ptr1(sog);
+  arc_ind_sog.update_ptr2(sog_tgt);
+  return;
 }
 
 void c_indicator::create_rp_indicator(glm::vec2 & pos,
