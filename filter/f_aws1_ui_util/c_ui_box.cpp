@@ -1273,7 +1273,6 @@ void c_indicator::create_engine_state_indicator(glm::vec2 & pos,
 						const glm::vec2 & sz_fnt,
 						const glm::vec4 & clr)
 {
-#define RAD_RPM_ARC 6.5
   arc_ind_rpm.init(RPM_STEP, RAD_RPM_ARC,
 		   6000.f, 0.f,
 		   pos, sz_fnt, clr,
@@ -1423,7 +1422,6 @@ void c_indicator::create_sog_indicator(glm::vec2 & pos,
 				       const glm::vec2 & sz_fnt,
 				       const glm::vec4 & clr)
 {
-#define RAD_SOG_ARC 6.5
   arc_ind_sog.init(SOG_STEP, RAD_SOG_ARC,
 		   40, 0,
 		   pos, sz_fnt, clr,
