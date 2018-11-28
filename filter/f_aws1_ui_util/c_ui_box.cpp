@@ -1159,7 +1159,8 @@ bool c_indicator::s_arc_indicator::init(const int _step,
 					const glm::vec4 & clr,
 					c_gl_2d_obj * _potri,
 					c_gl_2d_line_obj * poline,
-					c_gl_text_obj * potxt)
+					c_gl_text_obj * potxt,
+					bool bptr1, bool bptr2)
 {
   step = _step;
   rad_arc = _rad_arc;
@@ -1242,19 +1243,25 @@ bool c_indicator::s_arc_indicator::init(const int _step,
     poline->config_color(hscale, clr);
     poline->config_width(hscale, 1.0f);
   }
-  //indicator
-  hptr1 = potri->add(clr, pos, 0.0f, 0.0f);
-  potri->config_border(hptr1, false, 1.0);
-  glm::vec2 sz_ptr((float)(sz_fnt.x * 0.5), (float)(sz_fnt.y * 0.5));
-  potri->config_scale(hptr1, sz_ptr);
-  potri->config_depth(hptr1, 0);
-  potri->enable(hptr1);
   
-  hptr2 = potri->add(clr, pos, 0.0f, 0.0f);  
-  potri->config_border(hptr2, true, 1.0);
-  potri->config_scale(hptr2, sz_ptr);
-  potri->config_depth(hptr2, 0);
-  potri->enable(hptr2);
+  //indicator
+  if(bptr1){
+    glm::vec2 sz_ptr((float)(sz_fnt.x * 0.5), (float)(sz_fnt.y * 0.5));
+    hptr1 = potri->add(clr, pos, 0.0f, 0.0f);
+    potri->config_border(hptr1, false, 1.0);
+    potri->config_scale(hptr1, sz_ptr);
+    potri->config_depth(hptr1, 0);
+    potri->enable(hptr1);
+  }
+  
+  if(bptr2){
+    glm::vec2 sz_ptr((float)(sz_fnt.x * 0.5), (float)(sz_fnt.y * 0.5));
+    hptr2 = potri->add(clr, pos, 0.0f, 0.0f);  
+    potri->config_border(hptr2, true, 1.0);
+    potri->config_scale(hptr2, sz_ptr);
+    potri->config_depth(hptr2, 0);
+    potri->enable(hptr2);
+  }
   return true;
 }
 

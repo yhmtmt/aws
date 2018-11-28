@@ -645,7 +645,7 @@ public:
     float val_max, val_min;
     
   s_arc_indicator():
-    harc(0),hscale(0),hstr_scale(NULL), hptr1(0), hptr2(0),
+    harc(-1),hscale(-1),hstr_scale(NULL), hptr1(-1), hptr2(-1),
       step(0),rad_arc(0.f), num_scale(0), num_arc_pts(0),
       val_max(0.f), val_min(0.f)
     {
@@ -663,14 +663,19 @@ public:
 	      const glm::vec4 & clr,
 	      c_gl_2d_obj * _potri,
 	      c_gl_2d_line_obj * poline,
-	      c_gl_text_obj * potxt);
+	      c_gl_text_obj * potxt,
+	      bool bptr1=true, bool bptr2=true);
     void update_ptr(const float val, int hptr);
     void update_ptr1(const float val)
     {
+      if(hptr1 == -1)
+	return;
       update_ptr(val,hptr1);
     }
     void update_ptr2(const float val)
     {
+      if(hptr2 == -1)
+	return;
       update_ptr(val,hptr2);
     }
   };
