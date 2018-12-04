@@ -359,9 +359,9 @@ void f_aws1_ap::calc_stat(const long long tvel, const float cog,
     }else{
       tbl_stable_nrpm[-irev] = (float)(float)(tbl_stable_nrpm[irev] * ialpha
 				     +alpha_tbl_stable_rpm * m_meng);
-    if(m_verb)
-      cout << "nrpmtbl[" << irev << "] is updated to "
-	   << tbl_stable_nrpm[irev] << endl;
+      if(m_verb)
+	cout << "nrpmtbl[" << irev << "] is updated to "
+	     << tbl_stable_nrpm[-irev] << endl;
     }
     
     ialpha = (float)(1.0 - alpha_rud_mid);
@@ -520,10 +520,10 @@ void f_aws1_ap::ctrl_to_cog(const float cdiff)
   }
   _cdiff *= (float)(1.0f/180.0f);
   m_dcdiff = (float)(_cdiff - m_cdiff);
-  if((cdiff < 0 && m_rud > 0.f) ||
-     cdiff > 0 && m_rud < 255.f)    
-    m_icdiff += cdiff;
-  m_cdiff = cdiff;
+  if((_cdiff < 0 && m_rud > 0.f) ||
+     _cdiff > 0 && m_rud < 255.f)    
+    m_icdiff += _cdiff;
+  m_cdiff = _cdiff;
   
   m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255.);
 
@@ -678,7 +678,9 @@ void f_aws1_ap::stb_man(const float cog, const float rev)
 {
   float cog_tgt, rev_tgt;
   m_ap_inst->get_tgt_cog_and_rev(cog_tgt, rev_tgt);
-  
+  if(m_verb){
+    cout << "Target cog: " << cog_tgt << "(" << cog << ") Target rev: " << rev_tgt << "(" << rev << ")" << endl;
+  }
   ctrl_to_cog((float)(cog_tgt - cog));
   ctrl_to_rev(rev, rev_tgt, m_rev_max, m_rev_min);  
 }
