@@ -270,7 +270,10 @@ void f_aws1_ap::calc_stat(const long long tvel, const float cog,
 			  const s_aws1_ctrl_stat & stat)
 {
   unsigned short meng, seng, rud;
-  float rev_prop, u, v; 
+  meng = stat.meng_aws;
+  seng = stat.seng_aws;  
+  rud = stat.rud_aws;
+
   if(meng <= stat.meng_nuf && meng >= stat.meng_nub)
     rev_prop = 0;
   else if(meng < stat.meng_nub){
@@ -284,14 +287,11 @@ void f_aws1_ap::calc_stat(const long long tvel, const float cog,
     angle_drift -= 360.0f;
   else if (angle_drift < -180.0)
     angle_drift += 360.0f;
+  
   angle_drift *= (PI / 180.0f);
   u = sog * cos(angle_drift);
   v = sog * sin(angle_drift);
-  
-  meng = stat.meng_aws;
-  seng = stat.seng_aws;  
-  rud = stat.rud_aws;
-  
+    
   if(meng_prev != meng){
     dmeng = meng - meng_prev;
   }else
@@ -417,7 +417,7 @@ bool f_aws1_ap::proc()
 	e_ap_mode mode = m_ap_inst->get_mode();
 	switch (mode){
 	case EAP_STB_MAN: // stabilized manual mode
-	  stb_man(cog, rpm);
+	  stb_man(cog, rev_prop_prev);
 	  break;	  
 	case EAP_CURSOR:
 	  cursor(sog, cog, yaw, false);
@@ -441,6 +441,10 @@ bool f_aws1_ap::proc()
     m_meng = 127.;
     m_seng = 127.;
     m_icdiff = m_isdiff = m_irevdiff = 0.;
+  }
+  if(m_verb){
+    cout << "(meng, seng, rud)=(" << m_meng
+	 << "," << m_seng << "," << m_rud << ")" << endl;
   }
   
   m_inst.tcur = get_time();
@@ -539,17 +543,38 @@ void f_aws1_ap::ctrl_to_cog(const float cdiff)
 void f_aws1_ap::ctrl_to_rev(const float rev, const float rev_tgt,
 			    const float rev_max, const float rev_min)
 {
-  int irev = (int)(rev_tgt * 0.01);
+  float _rev_tgt;
+  if(abs(rev_tgt) < rev_min)
+    _rev_tgt = 0;
+  else
+    _rev_tgt = rev_tgt;
   
-  m_meng = tbl_stable_rpm[irev];
-  
-  float revdiff = max(min(rev_max, rev_tgt), rev_min) - rev;
-  revdiff *= (float)(1. / rev_tgt);
-  m_drevdiff = (float)(revdiff - m_revdiff);
-  m_irevdiff += revdiff;
-  m_meng += (float)((m_prev * m_revdiff + m_irev * m_irevdiff + m_drev * m_drevdiff) * 255. + tbl_stable_rpm[irev]);
-  m_meng = max(127.0f, m_meng);
-  m_meng = min(m_meng_max, m_meng);
+  int irev = (int)(_rev_tgt * 0.01);
+  if(irev < 0){ // for negative _rev_tgt
+    m_meng = tbl_stable_rpm[irev];
+    float revdiff = max(min(rev_max, -_rev_tgt), rev_min) - rev;
+    revdiff *= (float)(-1. / (rev_max - rev_min));
+    m_drevdiff = (float)(revdiff - m_revdiff);
+    m_irevdiff += revdiff;
+    m_revdiff = revdiff;
+    m_meng += (float)((m_prev * m_revdiff + m_irev * m_irevdiff
+		       + m_drev * m_drevdiff) * 255.);
+    m_meng = min(127.0f, m_meng);
+    m_meng = max(m_meng_min, m_meng);
+  }else {
+    m_meng = tbl_stable_rpm[irev];
+    float revdiff = max(min(rev_max, _rev_tgt), rev_min) - rev;  
+    revdiff *= (float)(1. / (rev_max - rev_min));
+    m_drevdiff = (float)(revdiff - m_revdiff);
+    m_irevdiff += revdiff;
+    m_revdiff = revdiff;
+    m_meng += (float)((m_prev * m_revdiff + m_irev * m_irevdiff + m_drev * m_drevdiff) * 255.);
+    m_meng = max(127.0f, m_meng);
+    m_meng = min(m_meng_max, m_meng);
+  }
+  if(m_verb){
+    cout << "rev ctrl (p,i,d)=" << m_revdiff << "," << m_irevdiff << "," << m_drevdiff << " vtbl[" << irev << "]=" << (irev < 0 ? tbl_stable_nrpm[-irev] : tbl_stable_rpm[irev]) << endl;
+  }
 }
 
 void f_aws1_ap::ctrl_to_sog(const float sog, const float sog_tgt,
@@ -678,9 +703,7 @@ void f_aws1_ap::stb_man(const float cog, const float rev)
 {
   float cog_tgt, rev_tgt;
   m_ap_inst->get_tgt_cog_and_rev(cog_tgt, rev_tgt);
-  if(m_verb){
-    cout << "Target cog: " << cog_tgt << "(" << cog << ") Target rev: " << rev_tgt << "(" << rev << ")" << endl;
-  }
   ctrl_to_cog((float)(cog_tgt - cog));
+  cout << "rev:" << rev << " rev_tgt:" << rev_tgt << endl;
   ctrl_to_rev(rev, rev_tgt, m_rev_max, m_rev_min);  
 }

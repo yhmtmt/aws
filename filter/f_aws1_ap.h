@@ -84,7 +84,7 @@ protected:
   
   // control limitter 
   float m_smax, m_smin;
-  float m_rev_max, m_rev_min;
+  float m_rev_max, m_rev_min; // rev limit (absolute value)
   float m_meng_max, m_meng_min;
   float m_seng_max, m_seng_min;
   
