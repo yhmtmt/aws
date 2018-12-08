@@ -634,8 +634,7 @@ void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
     
     m_wp->get_diff(d, cdiff);
     cdiff += cc;
-    cdiff *= (float)(1. / 180.); // normalize
-    
+   
     ctrl_to_sog_cog(sog, sog_tgt, cdiff, m_smax, m_smin);
   }
   
@@ -665,7 +664,6 @@ void f_aws1_ap::flw_tgt(const float sog, const float cog, const float yaw, bool 
       cdiff -= 360.;
   }
   
-  cdiff *= (float)(1. / 180.);
   float sog_tgt = 0.0;
   m_ap_inst->get_tgt_sog(sog_tgt);
   
