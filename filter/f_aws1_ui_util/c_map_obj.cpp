@@ -470,10 +470,12 @@ void c_map_coast_line_obj::update_drawings()
 
 /////////////////////////////////////////////////////////////////// c_own_ship
 bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
+		      c_gl_2d_obj * _pocirc,
 		      const glm::vec4 & clr, const glm::vec2 & sz)
 {
   potri = _potri;
   poline = _poline;
+  pocirc = _pocirc;
 
   glm::vec2 pos(0, 0);
   hship = potri->add(clr, pos, 0, sz);
@@ -487,34 +489,59 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   poline->config_position(hline_vel, pos);
   poline->config_rotation(hline_vel, 0);
   poline->disable(hline_vel);
+
+  hstay_point = pocirc->add(clr, pos, 0.0f, sz);
+  pocirc->config_border(hstay_point, true, 1.0);
+  pocirc->config_depth(hstay_point, display_depth);
+  pocirc->disable(hstay_point);
+
+  hstay_line = poline->add(2, pts);
+  poline->config_color(clr);
+  poline->config_depth(hstay_line, 10);
+  poline->config_position(hstay_line, pos);
+  poline->config_rotation(hstay_line, 0);
+  poline->disable(hline_vel);
+  
   return true;
 }
 
 void c_own_ship::enable()
 {
   potri->enable(hship);
+  pocirc->enable(hstay_point);
   poline->enable(hline_vel);
+  poline->enable(hstay_line);
 }
 
 void c_own_ship::disable()
 {
   potri->disable(hship);
+  pocirc->disable(hstay_point);
   poline->disable(hline_vel);
+  poline->disable(hstay_line);  
 }
 
 void c_own_ship::set_param(const float rx, const float ry, const float rz,
-			   const float hdg, const float vx, const float vy,
-			   const float pix_per_meter)
+			   const float rxs, const float rys, const float rzs,
+			   const float hdg, const float vx, const float vy)
 {
-  float th = (float)((90.f - hdg) * PI / 180.);
-  potri->config_rotation(hship, th);
-  float pts[4] = {
-    (float)(rx * pix_per_meter), (float)(ry * pix_per_meter),
-    (float)((rx + vx * tvel) * pix_per_meter), (float)((ry + vy * tvel) * pix_per_meter)
-  };
-  glm::vec2 pos(pts[0], pts[1]);
-  potri->config_position(hship, pos);
-  poline->config_points(hline_vel, pts);
+  if(mode == ui_mode_map){
+    glm::vec2 pos_own = calc_map_pos(rx, ry, rz);
+    glm::vec2 pos_stay= calc_map_pos(rxs, rys, rzs);
+    float th = (float)((90.f - hdg) * PI / 180.);
+    potri->config_rotation(hship, th);
+    float pts[4] = {
+      (float)(pos_own.x), (float)(pos_own.y),
+      (float)((rx + vx * tvel) * pix_per_meter), (float)((ry + vy * tvel) * pix_per_meter)
+    };
+    glm::vec2 pos(pts[0], pts[1]);
+    potri->config_position(hship, pos_own);
+    pocirc->config_position(hstay_point, pos_stay);
+    poline->config_points(hline_vel, pts);
+    pts[2] = pos_stay.x;
+    pts[3] = pos_stay.y;
+    poline->config_points(hstay_line, pts);
+  }
 }
 
 /////////////////////////////////////////////////////////////////// c_cursor

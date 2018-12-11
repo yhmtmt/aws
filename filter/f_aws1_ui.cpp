@@ -405,7 +405,7 @@ bool f_aws1_ui::init_run()
 		fov_cam_x, sz_scrn))
     return false; 
 
-  if (!own_ship.init(&otri, &oline, clr, sz_ship2d))
+  if (!own_ship.init(&otri, &oline, &ocirc, clr, sz_ship2d))
     return false;
 
   if (!coast_line.init(&oline3d_map, clr, 4096))
@@ -1828,10 +1828,21 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
     own_ship.disable();
   }
   else if (pvm_box->get_mode() == ui_mode_map){
-    float rx, ry, rz;
+    own_ship.set_map_param(pix_per_meter, Rmap,
+			   pt_map_center_ecef.x, pt_map_center_ecef.y,
+			   pt_map_center_ecef.z);
+
+    float rx, ry, rz, rxs, rys, rzs, d, dir;
     eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z, xown, yown, zown, rx, ry, rz);
     own_ship.enable();
-    own_ship.set_param(rx, ry, rz, yaw, vx, vy, pix_per_meter);
+    if(m_ch_ap_inst->get_mode() == EAP_STAY){
+      m_ch_ap_inst->get_stay_pos_rel(rxs, rys, d, dir);
+    }else{
+      rxs = rx;
+      rys = ry;
+      rzs = rz;
+      own_ship.set_param(rx, ry, rz, rxs, rys, rzs, yaw, vx, vy);
+    }
     
     float wx = (float)(meter_per_pix * (m_sz_win.width >> 1)),
       wy = (float)(meter_per_pix * (m_sz_win.height >> 1));
