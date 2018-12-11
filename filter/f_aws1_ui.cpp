@@ -1824,25 +1824,26 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
     pm = glm::perspective((float)(fov_cam_y * PI / 180.0f), ratio, 1.f, 10000.f/*30e6f*/);
     vm = glm::lookAt(glm::vec3(0, 0, height_cam), glm::vec3(s, c, height_cam), glm::vec3(0, 0, 1));
     pvm = pm * vm;
-    
+    own_ship.set_ui_mode(ui_mode_fpv);
     own_ship.disable();
   }
   else if (pvm_box->get_mode() == ui_mode_map){
     own_ship.set_map_param(pix_per_meter, Rmap,
 			   pt_map_center_ecef.x, pt_map_center_ecef.y,
 			   pt_map_center_ecef.z);
-
+    own_ship.set_ui_mode(ui_mode_map);
+    own_ship.enable();
+    
     float rx, ry, rz, rxs, rys, rzs, d, dir;
     eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z, xown, yown, zown, rx, ry, rz);
-    own_ship.enable();
     if(m_ch_ap_inst->get_mode() == EAP_STAY){
       m_ch_ap_inst->get_stay_pos_rel(rxs, rys, d, dir);
     }else{
       rxs = rx;
       rys = ry;
       rzs = rz;
-      own_ship.set_param(rx, ry, rz, rxs, rys, rzs, yaw, vx, vy);
     }
+    own_ship.set_param(rx, ry, rz, rxs, rys, rzs, yaw, vx, vy);
     
     float wx = (float)(meter_per_pix * (m_sz_win.width >> 1)),
       wy = (float)(meter_per_pix * (m_sz_win.height >> 1));

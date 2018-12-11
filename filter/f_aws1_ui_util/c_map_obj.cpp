@@ -527,7 +527,7 @@ void c_own_ship::set_param(const float rx, const float ry, const float rz,
 {
   if(mode == ui_mode_map){
     glm::vec2 pos_own = calc_map_pos(rx, ry, rz);
-    glm::vec2 pos_stay= calc_map_pos(rxs, rys, rzs);
+    glm::vec2 pos_stay= calc_map_pos(rx + rxs, ry + rys, rzs);
     float th = (float)((90.f - hdg) * PI / 180.);
     potri->config_rotation(hship, th);
     float pts[4] = {
@@ -537,6 +537,7 @@ void c_own_ship::set_param(const float rx, const float ry, const float rz,
     glm::vec2 pos(pts[0], pts[1]);
     potri->config_position(hship, pos_own);
     pocirc->config_position(hstay_point, pos_stay);
+    pocirc->config_rotation(hstay_point, th);
     poline->config_points(hline_vel, pts);
     pts[2] = pos_stay.x;
     pts[3] = pos_stay.y;
