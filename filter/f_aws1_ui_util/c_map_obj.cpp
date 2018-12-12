@@ -470,13 +470,14 @@ void c_map_coast_line_obj::update_drawings()
 
 /////////////////////////////////////////////////////////////////// c_own_ship
 bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
-		      c_gl_2d_obj * _pocirc,
+		      c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
 		      const glm::vec4 & clr, const glm::vec2 & sz)
 {
   potri = _potri;
   poline = _poline;
   pocirc = _pocirc;
-
+  potxt = _potxt;
+  
   glm::vec2 pos(0, 0);
   hship = potri->add(clr, pos, 0, sz);
   potri->config_depth(hship, 10);
@@ -501,6 +502,45 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   poline->config_position(hstay_line, pos);
   poline->config_rotation(hstay_line, 0);
   poline->disable(hline_vel);
+
+  // bearing indicator
+  radius = sz.x * 5;
+  glm::vec2 sz_tgt((float)(sz.x * 0.5), (float)(sz.y * 0.5));
+  hbearing_tgt = potri->add(clr, pos, 0, sz_tgt);
+  potri->config_depth(hbearing_tgt, 10);
+  potri->config_border(hbearing_tgt, true, 1.0);
+  struct s_vertex{
+    float x, y;
+    s_vertex()
+    {
+    };
+    s_vertex(const float _x, const float _y):x(_x), y(_y)
+    {
+    }
+  } bearing_pts[72];
+  
+  for(int i = 0; i < 36; i++){
+    float th = (float)(i * 10.0 * PI / 180.0f);
+    float s = (float)  (radius * cos(th)), c = (float) (radius * sin(th));
+    char str[3];
+    bearing_pts[2 * i] = s_vertex((float)(0.9 * s), (float)(0.9 * c));
+    bearing_pts[2 * i + 1] = s_vertex(s, c);
+    pos_bearing_str[i] = glm::vec2(s, c);
+    snprintf(str, 3, "%02d", i);
+    hbearing_txt[i] = potxt->reserv(2);
+    potxt->set(hbearing_txt[i], str);
+    potxt->config(hbearing_txt[i], clr, glm::vec4(0,0,0,0),
+		  sz_tgt, sz_tgt,
+		  c_gl_text_obj::an_cb,
+		  pos_bearing_str[i], th);
+  }
+  
+  hbearing = poline->add(72, (float*)bearing_pts, true);
+  poline->config_depth(hbearing, 0);
+  poline->config_position(hbearing, pos);
+  poline->config_rotation(hbearing, 0.0);
+  poline->config_color(hbearing, clr);
+  poline->config_width(hbearing, 1.0f);  
   
   return true;
 }
@@ -511,6 +551,12 @@ void c_own_ship::enable()
   pocirc->enable(hstay_point);
   poline->enable(hline_vel);
   poline->enable(hstay_line);
+  
+  potri->enable(hbearing_tgt);
+  poline->enable(hbearing);
+  for(int i = 0; i < 36; i++){
+    potxt->enable(hbearing_txt[i]);
+  }  
 }
 
 void c_own_ship::disable()
@@ -519,16 +565,34 @@ void c_own_ship::disable()
   pocirc->disable(hstay_point);
   poline->disable(hline_vel);
   poline->disable(hstay_line);  
+
+  potri->disable(hbearing_tgt);
+  poline->disable(hbearing);
+  for(int i = 0; i < 36; i++){
+    potxt->disable(hbearing_txt[i]);
+  }  
 }
 
 void c_own_ship::set_param(const float rx, const float ry, const float rz,
 			   const float rxs, const float rys, const float rzs,
-			   const float hdg, const float vx, const float vy)
+			   const float hdg, const float vx, const float vy,
+			   const float cog_tgt)
 {
-  if(mode == ui_mode_map){
+  if(mode == ui_mode_map){    
     glm::vec2 pos_own = calc_map_pos(rx, ry, rz);
     glm::vec2 pos_stay= calc_map_pos(rx + rxs, ry + rys, rzs);
-    float th = (float)((90.f - hdg) * PI / 180.);
+
+    float th = hdg * PI / 180.f;
+    float c = (float)(radius * cos(th)), s = (float)(radius * sin(th));
+    poline->config_position(hbearing, pos_own);
+    potri->config_rotation(hbearing_tgt, th);
+    potri->config_position(hbearing_tgt, glm::vec2(s, c));
+    for(int i = 0; i < 36; i++){
+      glm::vec2 pos_txt = pos_bearing_str[i] + pos_own;
+      potxt->config_position(hbearing_txt[i], pos_txt);
+    }
+    
+    th = (float)(0.5 * PI - th);
     potri->config_rotation(hship, th);
     float pts[4] = {
       (float)(pos_own.x), (float)(pos_own.y),
@@ -541,7 +605,7 @@ void c_own_ship::set_param(const float rx, const float ry, const float rz,
     poline->config_points(hline_vel, pts);
     pts[2] = pos_stay.x;
     pts[3] = pos_stay.y;
-    poline->config_points(hstay_line, pts);
+    poline->config_points(hstay_line, pts);    
   }
 }
 

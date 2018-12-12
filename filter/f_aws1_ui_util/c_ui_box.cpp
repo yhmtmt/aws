@@ -1229,7 +1229,8 @@ bool c_indicator::s_arc_indicator::init(const int _step,
         hstr_scale[iscl] = potxt->reserv(2);
         potxt->set(hstr_scale[iscl], str);
         potxt->config(hstr_scale[iscl], clr, glm::vec4(0, 0, 0, 0),
-          sz_fnt, mgn_fnt, c_gl_text_obj::an_ct, pos_str, (float)(th - 0.5 * PI));
+		      sz_fnt, mgn_fnt, c_gl_text_obj::an_ct,
+		      pos_str, (float)(th - 0.5 * PI));
         potxt->config_depth(hstr_scale[iscl], 0);
         potxt->enable(hstr_scale[iscl]);
         iscl--;

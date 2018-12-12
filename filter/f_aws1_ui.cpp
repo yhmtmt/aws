@@ -302,13 +302,13 @@ bool f_aws1_ui::init_run()
       cerr << "In filter " << m_name << ", ";
       cerr << "AIS object channel is not connected." << endl;
     }
-  
+  /*
   if (!m_ch_obst)
     {
       cerr << "In filter " << m_name << ", ";
       cerr << "Obstacle channel is not connected." << endl;
     }
-  
+  */
   if (!m_ch_ap_inst)
     {
       cerr << "In filter " << m_name << ", ";
@@ -374,8 +374,8 @@ bool f_aws1_ui::init_run()
 
     if (!oline3d_map.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 0x0001FFFF))
       return false;
-
-	if(!init_map_mask())
+    
+    if(!init_map_mask())
       return false;
   }
   
@@ -405,7 +405,7 @@ bool f_aws1_ui::init_run()
 		fov_cam_x, sz_scrn))
     return false; 
 
-  if (!own_ship.init(&otri, &oline, &ocirc, clr, sz_ship2d))
+  if (!own_ship.init(&otri, &oline, &ocirc, &otxt, clr, sz_ship2d))
     return false;
 
   if (!coast_line.init(&oline3d_map, clr, 4096))
@@ -1843,7 +1843,7 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
       rys = ry;
       rzs = rz;
     }
-    own_ship.set_param(rx, ry, rz, rxs, rys, rzs, yaw, vx, vy);
+    own_ship.set_param(rx, ry, rz, rxs, rys, rzs, yaw, vx, vy, cog_tgt);
     
     float wx = (float)(meter_per_pix * (m_sz_win.width >> 1)),
       wy = (float)(meter_per_pix * (m_sz_win.height >> 1));

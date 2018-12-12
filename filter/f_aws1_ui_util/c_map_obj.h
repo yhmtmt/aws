@@ -194,8 +194,13 @@ private:
   c_gl_2d_obj * potri;
   c_gl_2d_obj * pocirc;
   c_gl_2d_line_obj * poline;
-
+  c_gl_text_obj * potxt;
+  
   int hship, hline_vel, hstay_point, hstay_line ;
+
+  float radius;
+  glm::vec2 pos_bearing_str[36];
+  int hbearing, hbearing_txt[36], hbearing_tgt;
   float tvel;
 public:
  c_own_ship() :tvel(300)
@@ -207,11 +212,13 @@ public:
     potri->collision(pos, hship);
   }
   
-  bool init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline, c_gl_2d_obj * _pocirc,
+  bool init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
+	    c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
 	    const glm::vec4 & clr, const glm::vec2 & sz);
   void set_param(const float rx, const float ry, const float rz,
 		 const float rxs, const float rys, const float rzs,
-		 const float hdg, const float vx, const float vy);
+		 const float hdg, const float vx, const float vy,
+		 const float cog_tgt);
 
   void set_vel_len(const float t = 300) {
     tvel = t;
