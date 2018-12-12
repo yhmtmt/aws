@@ -197,14 +197,15 @@ private:
   float tvel;
 public:
  c_own_ship() :tvel(300)
-    {
-      
+    {      
     }
 
   bool init(c_gl_2d_obj * potri, c_gl_2d_line_obj * poline,
 	    const glm::vec4 & clr, const glm::vec2 & sz);
   void set_param(const float rx, const float ry, const float rz,
-		 const float hdg, const float vx, const float vy, const float pix_per_meter);
+		 const float hdg,
+		 const float vx, const float vy, const float pix_per_meter);
+
   void set_vel_len(const float t = 300) {
     tvel = t;
   }
