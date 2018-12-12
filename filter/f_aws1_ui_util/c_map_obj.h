@@ -199,8 +199,7 @@ private:
   int hship, hline_vel, hstay_point, hstay_line ;
 
   float radius;
-  glm::vec2 pos_bearing_str[36];
-  int hbearing, hbearing_txt[36], hbearing_tgt;
+  int hbearing, hbearing_tgt;
   float tvel;
 public:
  c_own_ship() :tvel(300)

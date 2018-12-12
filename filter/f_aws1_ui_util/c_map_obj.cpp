@@ -521,18 +521,10 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   
   for(int i = 0; i < 36; i++){
     float th = (float)(i * 10.0 * PI / 180.0f);
-    float s = (float)  (radius * cos(th)), c = (float) (radius * sin(th));
+    float s = (float)  (radius * sin(th)), c = (float) (radius * cos(th));
     char str[3];
     bearing_pts[2 * i] = s_vertex((float)(0.9 * s), (float)(0.9 * c));
     bearing_pts[2 * i + 1] = s_vertex(s, c);
-    pos_bearing_str[i] = glm::vec2(s, c);
-    snprintf(str, 3, "%02d", i);
-    hbearing_txt[i] = potxt->reserv(2);
-    potxt->set(hbearing_txt[i], str);
-    potxt->config(hbearing_txt[i], clr, glm::vec4(0,0,0,0),
-		  sz_tgt, sz_tgt,
-		  c_gl_text_obj::an_cb,
-		  pos_bearing_str[i], th);
   }
   
   hbearing = poline->add(72, (float*)bearing_pts, true);
@@ -554,9 +546,6 @@ void c_own_ship::enable()
   
   potri->enable(hbearing_tgt);
   poline->enable(hbearing);
-  for(int i = 0; i < 36; i++){
-    potxt->enable(hbearing_txt[i]);
-  }  
 }
 
 void c_own_ship::disable()
@@ -568,9 +557,6 @@ void c_own_ship::disable()
 
   potri->disable(hbearing_tgt);
   poline->disable(hbearing);
-  for(int i = 0; i < 36; i++){
-    potxt->disable(hbearing_txt[i]);
-  }  
 }
 
 void c_own_ship::set_param(const float rx, const float ry, const float rz,
@@ -582,17 +568,13 @@ void c_own_ship::set_param(const float rx, const float ry, const float rz,
     glm::vec2 pos_own = calc_map_pos(rx, ry, rz);
     glm::vec2 pos_stay= calc_map_pos(rx + rxs, ry + rys, rzs);
 
-    float th = hdg * PI / 180.f;
+    float th = cog_tgt * PI / 180.f;
     float c = (float)(radius * cos(th)), s = (float)(radius * sin(th));
     poline->config_position(hbearing, pos_own);
-    potri->config_rotation(hbearing_tgt, th);
-    potri->config_position(hbearing_tgt, glm::vec2(s, c));
-    for(int i = 0; i < 36; i++){
-      glm::vec2 pos_txt = pos_bearing_str[i] + pos_own;
-      potxt->config_position(hbearing_txt[i], pos_txt);
-    }
+    potri->config_rotation(hbearing_tgt, (float)(0.5 * PI - th));
+    potri->config_position(hbearing_tgt, glm::vec2(s + rx, c + ry));
     
-    th = (float)(0.5 * PI - th);
+    th = (float)(0.5 * PI - hdg * PI / 180.f);
     potri->config_rotation(hship, th);
     float pts[4] = {
       (float)(pos_own.x), (float)(pos_own.y),
