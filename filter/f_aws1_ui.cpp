@@ -1838,10 +1838,11 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
     eceftowrld(Rmap, pt_map_center_ecef.x, pt_map_center_ecef.y, pt_map_center_ecef.z, xown, yown, zown, rx, ry, rz);
     if(m_ch_ap_inst->get_mode() == EAP_STAY){
       m_ch_ap_inst->get_stay_pos_rel(rxs, rys, d, dir);
+      rzs = 0;
     }else{
-      rxs = rx;
-      rys = ry;
-      rzs = rz;
+      rxs = 0;
+      rys = 0;
+      rzs = 0;
     }
     own_ship.set_param(rx, ry, rz, rxs, rys, rzs, yaw, vx, vy, cog_tgt);
     
