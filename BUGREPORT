@@ -1,4 +1,11 @@
 User interface
+* gl resource management (total resource size, used resource size)
+* ap's control table smoother smoothing out monotonically as the control value.
+* model parameter optimization
+* simulator does not reduce rev as reduced control value
+* short range router (and short range map consideration)
+* exit button in sys
+* log button in sys
 * ais marker, box and line should be removed
 * scales for rudder and engine are required
 * depth should be indicated
@@ -7,30 +14,12 @@ User interface
 * estimated current position of ais target should be indicated
 * life time of 0 sog ais target should be extended
 * cursor position should placed at fixed region
-* waypoint to waypoint lines are not correctlly indicated
 * The menu open/close markers are not sufficientlly sensitive. (larger size is prefered.)
 * waypoint cannot be drugged.
 * roll, pitch, yaw indicators should be on horizon related to camera parameter
 * c_ui_box_manager should expanded in f_aws1_ui.
 * f_aws1_ctrl should have test mode(run without actual zgpio device.)
-* aws1_ui should have representative order in crz mode(all these orders merely set corresponding control values)
-  - starboard {10,20,30} 
-  - port {10,20,30}
-  - midship
-  - navigation full
-  - full ahead/astern
-  - half ahead/astern
-  - slow ahead/astern
-  - dead slow ahead/astern
-  - stop
-* fset aws1_ui crz <command>
-* fset parameters for control values for each command
-* assignment aws1_ui's joystic cross key in crz mode
-  - up/down->ahead/astern
-  - left/right->port/starboard
-* in nutral gear state, analog sticks in crz mode should not work
 * autopilot mode is changed to crz mode when joystic input is excited
-* new autopilot mode crs mode (keep current course)
 * heartbeat check between aws1_ctrl and aws1_ui
   - if aws1_ctrl does not detect heartbeat from aws1_ui set all control to neutral
   - if aws1_ui does not detect heartbeat from aws1_ctrl indicate control error
