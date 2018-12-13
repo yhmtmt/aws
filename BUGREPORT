@@ -1,6 +1,7 @@
 User interface
 * gl resource management (total resource size, used resource size)
 * ap's control table smoother smoothing out monotonically as the control value.
+* stb mode on android wear
 * model parameter optimization
 * simulator does not reduce rev as reduced control value
 * short range router (and short range map consideration)

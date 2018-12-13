@@ -98,7 +98,16 @@ void printGlMatrix(const GLdouble * m);
 
 bool load_glsl_program(const char * ffs, const char * fvs, GLuint & p);
 
-class c_gl_text_obj
+class c_gl_obj{
+ private:
+ public:
+  c_gl_obj(){};
+  virtual ~c_gl_obj(){};
+  virtual size_t get_reserved_resource_size() = 0;
+  virtual size_t get_used_resource_size() = 0;
+};
+
+class c_gl_text_obj: public c_gl_obj
 {
 public:
   enum e_anchor{
@@ -182,7 +191,7 @@ private:
 
 public:
   c_gl_text_obj();
-  ~c_gl_text_obj();
+  virtual ~c_gl_text_obj();
 
   bool init(const char * ftex, const char * finf, GLuint _modeloc,
     GLuint _posloc, GLuint _txcloc, GLuint _smploc,
@@ -220,9 +229,24 @@ public:
   bool render(unsigned int texture_unit);
 
   void update_vertices(bool bfull = true);
+
+  virtual size_t get_reserved_resource_size()
+  {
+    return (size_t) sz_buf;
+  }
+  
+  virtual size_t get_used_resource_size()
+  {
+    int num_chars = 0;
+    for(int i = 0; i < sbis.size(); i++){
+      if(sbis[i].bvalid)
+	num_chars += sbis[i].length;
+    }
+    return (size_t) num_chars;
+  }
 };
 
-class c_gl_line_obj
+class c_gl_line_obj: public c_gl_obj
 {
 private:
   GLuint vao, vbo;
@@ -259,7 +283,7 @@ private:
   bool bupdated;
 public:
   c_gl_line_obj();
-  ~c_gl_line_obj();
+  virtual ~c_gl_line_obj();
 
   bool init(GLuint modeloc, GLuint posloc, GLuint Mmvploc, GLuint clrloc,
     unsigned int buffer_size = 4096);
@@ -353,9 +377,18 @@ public:
   void update_vertices();
 
   void render(const glm::mat4 & PV);
+  virtual size_t get_reserved_resource_size()
+  {
+    return (size_t) buffer_size;
+  }
+  
+  virtual size_t get_used_resource_size()
+  {
+    return (size_t) num_total_vertices;
+  }
 };
 
-class c_gl_point_obj
+class c_gl_point_obj: public c_gl_obj
 {
 private:
   GLuint vao, vbo;
@@ -368,7 +401,7 @@ private:
 
 public:
   c_gl_point_obj() : vao(0), size(1.0){}
-  ~c_gl_point_obj(){
+  virtual ~c_gl_point_obj(){
     destroy();
   }
 
@@ -398,10 +431,17 @@ public:
   }
 
   void render(const glm::mat4 & PV);
-
+  virtual size_t get_reserved_resource_size()
+  {
+    return 0;
+  }
+  virtual size_t get_used_resource_size()
+  {
+    return 0;
+  }
 };
 
-class c_gl_2d_line_obj
+class c_gl_2d_line_obj: public c_gl_obj
 {
   GLuint vao, vbo;
   struct s_vertex
@@ -441,7 +481,7 @@ class c_gl_2d_line_obj
   bool bupdated;
 public:
   c_gl_2d_line_obj();
-  ~c_gl_2d_line_obj();
+  virtual ~c_gl_2d_line_obj();
 
   bool init(GLuint modeloc, GLuint posloc, GLuint clrloc, GLuint _depthloc,
     unsigned int buffer_size = 4096);
@@ -557,9 +597,16 @@ public:
   void update_vertices();
 
   void render();
+
+  virtual size_t get_reserved_resource_size(){
+    return (size_t) buffer_size;
+  }
+  virtual size_t get_used_resource_size(){
+    return (size_t) num_total_vertices;
+  }
 };
 
-class c_gl_2d_obj
+class c_gl_2d_obj: c_gl_obj
 {
 public:
   enum e_type{
@@ -624,7 +671,7 @@ private:
   void reorder(const int handle);
 public:
   c_gl_2d_obj();
-  ~c_gl_2d_obj();
+  virtual ~c_gl_2d_obj();
 
   void destroy();
 
@@ -632,8 +679,6 @@ public:
   {
     if (handle < iis.size())
     {
-      if(prottype.nvtx == 13)
-	cout << "enabled." << endl;
       iis[handle].bactive = true;
     }
   }
@@ -642,9 +687,6 @@ public:
   {
     if (handle < iis.size())
     {
-      if(prottype.nvtx == 13)
-	cout << "enabled." << endl;
-
       return iis[handle].bactive;
     }
     return false;
@@ -685,10 +727,16 @@ public:
   bool collision(const glm::vec2 & pt, const int handle);
   void render();
   void update_vertices();
+
+  virtual size_t get_reserved_resource_size()
+  {
+    return (size_t) buffer_size; 
+  }
+  virtual size_t get_used_resource_size()
+  {
+    return (size_t) iis.size();
+  }
+  
 };
-
-
-
-
 
 #endif

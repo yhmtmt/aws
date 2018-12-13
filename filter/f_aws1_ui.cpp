@@ -378,7 +378,7 @@ bool f_aws1_ui::init_run()
     if(!init_map_mask())
       return false;
   }
-  
+    
   glm::vec4 clr(0, 1, 0, 1);
   glm::vec4 clrb(0, 0, 0, 0.5);
   glm::vec2 sz_fnt(20, 20), sz_fnt_small(10, 10);
@@ -459,6 +459,22 @@ bool f_aws1_ui::init_run()
   mouse_button = -1;
   mouse_action = -1;
   mouse_mods = -1;
+
+  cout << ">>>>>>>>>>>> GL Resource Usage <<<<<<<<<<<<<<" << endl;
+  cout << "rect:" << orect.get_reserved_resource_size()
+       << "/" << orect.get_used_resource_size() << endl;
+  cout << "circ:" << ocirc.get_reserved_resource_size()
+       << "/" << ocirc.get_used_resource_size() << endl;
+  cout << "tri:" << otri.get_reserved_resource_size()
+       << "/" << otri.get_used_resource_size() << endl;
+  cout << "txt:" << otxt.get_reserved_resource_size()
+       << "/" << otxt.get_used_resource_size() << endl;
+  cout << "line:" << oline.get_reserved_resource_size()
+       << "/" << oline.get_used_resource_size() << endl;
+  cout << "line3d:" << oline3d.get_reserved_resource_size()
+       << "/" << oline3d.get_used_resource_size() << endl;
+  cout << "line3d_map:" << oline3d_map.get_reserved_resource_size()
+       << "/" << oline3d_map.get_used_resource_size() << endl;
   
   return true;
 }

@@ -490,258 +490,261 @@ bool load_glsl_program(const char * ffs, const char * fvs,  GLuint & p)
 /////////////////////////////////////////////////////////////////////////////// c_gl_text_obj
 void c_gl_text_obj::parse_var_name(ifstream & ifile, char * str_var, int & len_str_var)
 {
-	len_str_var = 0;
-	while (1){
-		if (ifile.eof())
-			break;
-
-		char c = ifile.get();
-		if (c == '"'){
-			break;
-		}
-
-		str_var[len_str_var] = c;
-		len_str_var++;
-	}
-
-	str_var[len_str_var] = '\0';
+  len_str_var = 0;
+  while (1){
+    if (ifile.eof())
+      break;
+    
+    char c = ifile.get();
+    if (c == '"'){
+      break;
+    }
+    
+    str_var[len_str_var] = c;
+    len_str_var++;
+  }
+  
+  str_var[len_str_var] = '\0';
 }
 
 int c_gl_text_obj::parse_int(ifstream & ifile, char * str_var, int & len_str_var)
 {
-	len_str_var = 0;
-	while (1){
-		if (ifile.eof())
-			break;
-
-		char c = ifile.get();
-		if (c == ',' || c == '}')
-			break;
-
-		str_var[len_str_var] = c;
-		len_str_var++;
-	}
-	str_var[len_str_var] = '\0';
-
-	return atoi(str_var);
+  len_str_var = 0;
+  while (1){
+    if (ifile.eof())
+      break;
+    
+    char c = ifile.get();
+    if (c == ',' || c == '}')
+      break;
+    
+    str_var[len_str_var] = c;
+    len_str_var++;
+  }
+  str_var[len_str_var] = '\0';
+  
+  return atoi(str_var);
 }
 
-float c_gl_text_obj::parse_float(ifstream & ifile, char * str_var, int & len_str_var)
+float c_gl_text_obj::parse_float(ifstream & ifile, char * str_var,
+				 int & len_str_var)
 {
-	len_str_var = 0;
-	while (1){
-		if (ifile.eof())
-			break;
-
-		char c = ifile.get();
-		if (c == ',' || c == '}')
-			break;
-
-		str_var[len_str_var] = c;
-		len_str_var++;
-	}
-	str_var[len_str_var] = '\0';
-
-	return atof(str_var);
+  len_str_var = 0;
+  while (1){
+    if (ifile.eof())
+      break;
+    
+    char c = ifile.get();
+    if (c == ',' || c == '}')
+      break;
+    
+    str_var[len_str_var] = c;
+    len_str_var++;
+  }
+  str_var[len_str_var] = '\0';
+  
+  return atof(str_var);
 }
 
-c_gl_text_obj::c_gl_text_obj() : vao(0), vertices(NULL), texcoord(NULL), indices(NULL), bupdated(false)
+c_gl_text_obj::c_gl_text_obj() : vao(0), vertices(NULL), texcoord(NULL),
+				 indices(NULL), bupdated(false)
 {
 }
 
 c_gl_text_obj::~c_gl_text_obj()
 {
-	destroy();
+  destroy();
 }
 
 void c_gl_text_obj::destroy()
 {
-	if (vao != 0){
-		glDeleteBuffers(2, vbo);
-		glDeleteVertexArrays(1, &vao);
-		vao = 0;
-	}
+  if (vao != 0){
+    glDeleteBuffers(2, vbo);
+    glDeleteVertexArrays(1, &vao);
+    vao = 0;
+  }
 
-	if (vertices)
-		delete[] vertices;
+  if (vertices)
+    delete[] vertices;
+  
+  vertices = NULL;
+  
+  if (indices)
+    delete[] indices;
+  indices = NULL;
+  
+  if (texcoord)
+    delete[] texcoord;
+  
+  texcoord = NULL;
 
-	vertices = NULL;
-
-	if (indices)
-		delete[] indices;
-	indices = NULL;
-
-	if (texcoord)
-		delete[] texcoord;
-
-	texcoord = NULL;
-
-	for (int isbi = 0; isbi < sbis.size(); isbi++){
-		delete[] sbis[isbi].str;
-		sbis[isbi].str = NULL;
-	}
-	sbis.clear();
+  for (int isbi = 0; isbi < sbis.size(); isbi++){
+    delete[] sbis[isbi].str;
+    sbis[isbi].str = NULL;
+  }
+  sbis.clear();
 }
 
 bool c_gl_text_obj::init(const char * ftex, const char * finf, GLuint _modeloc,
-	 GLuint _posloc, GLuint _txcloc, GLuint _smploc, GLuint _clrloc, GLuint _bkgclrloc, GLuint _depthloc,
-	 unsigned int _sz_buf)
+			 GLuint _posloc, GLuint _txcloc, GLuint _smploc,
+			 GLuint _clrloc, GLuint _bkgclrloc, GLuint _depthloc,
+			 unsigned int _sz_buf)
 {
-	modeloc = _modeloc;
-	posloc = _posloc;
-	txcloc = _txcloc;
-	smploc = _smploc;
-	clrloc = _clrloc;
-	bkgclrloc = _bkgclrloc;
-	sz_buf = _sz_buf;
-	depthloc = _depthloc;
+  modeloc = _modeloc;
+  posloc = _posloc;
+  txcloc = _txcloc;
+  smploc = _smploc;
+  clrloc = _clrloc;
+  bkgclrloc = _bkgclrloc;
+  sz_buf = _sz_buf;
+  depthloc = _depthloc;
+  
+  int depth;
+  glGetIntegerv(GL_DEPTH_BITS, &depth);
+  zstep = (float)(2.0 / (float)(1 << depth));
+  
+  vector <s_texcoord> _texcoord(128);
+  
+  // loop until eof
+  // seeking for "index":<uint>
+  // seeking for "x":<float> "y":<float> "width":<width> "height":<height>
+  // add _texcoord
+  ifstream ifile(finf);
+  if (!ifile.is_open()){
+    cerr << "Failed to open file " << finf << endl;
+    return false;
+  }
 
-	int depth;
-	glGetIntegerv(GL_DEPTH_BITS, &depth);
-	zstep = (float)(2.0 / (float)(1 << depth));
+  parser_state = ps_none;
+  char str_var[128];
+  int len_str_var = 0;
+  int index;
+  float x, y, w, h;
+  
+  bool bfind = false;
+  while (!ifile.eof()){
+    char c;
+    c = ifile.get();
+    switch (c){
+    case '"':
+      parse_var_name(ifile, str_var, len_str_var);
+      if (strcmp("index", str_var) == 0){
+	parser_state = ps_index;
+	bfind = true;
+      }
+      else if (strcmp("x", str_var) == 0 && bfind){
+	parser_state = ps_x;
+      }
+      else if (strcmp("y", str_var) == 0 && bfind){
+	parser_state = ps_y;
+      }
+      else if (strcmp("width", str_var) == 0 && bfind){
+	parser_state = ps_w;
+      }
+      else if (strcmp("height", str_var) == 0 && bfind){
+	parser_state = ps_h;
+      }
+      break;
+    case ':':
+      if (!bfind)
+	break;
+      switch (parser_state){
+      case ps_index:
+	index = parse_int(ifile, str_var, len_str_var);
+	break;
+      case ps_x:
+	x = parse_float(ifile, str_var, len_str_var);
+	break;
+      case ps_y:
+	y = parse_float(ifile, str_var, len_str_var);
+	break;
+      case ps_w:
+	w = parse_float(ifile, str_var, len_str_var);
+	break;
+      case ps_h:
+	h = parse_float(ifile, str_var, len_str_var);
+	_texcoord[index].u = x;
+	_texcoord[index].v = y + 0.02;
+	_texcoord[index].w = w;
+	_texcoord[index].h = h;
+	bfind = false;
+	break;
+      }
+      parser_state = ps_none;
+      break;
+    }
+  }
 
-	vector <s_texcoord> _texcoord(128);
-
-	// loop until eof
-	// seeking for "index":<uint>
-	// seeking for "x":<float> "y":<float> "width":<width> "height":<height>
-	// add _texcoord
-	ifstream ifile(finf);
-	if (!ifile.is_open()){
-		cerr << "Failed to open file " << finf << endl;
-		return false;
-	}
-
-	parser_state = ps_none;
-	char str_var[128];
-	int len_str_var = 0;
-	int index;
-	float x, y, w, h;
-
-	bool bfind = false;
-	while (!ifile.eof()){
-		char c;
-		c = ifile.get();
-		switch (c){
-		case '"':
-			parse_var_name(ifile, str_var, len_str_var);
-			if (strcmp("index", str_var) == 0){
-				parser_state = ps_index;
-				bfind = true;
-			}
-			else if (strcmp("x", str_var) == 0 && bfind){
-				parser_state = ps_x;
-			}
-			else if (strcmp("y", str_var) == 0 && bfind){
-				parser_state = ps_y;
-			}
-			else if (strcmp("width", str_var) == 0 && bfind){
-				parser_state = ps_w;
-			}
-			else if (strcmp("height", str_var) == 0 && bfind){
-				parser_state = ps_h;
-			}
-			break;
-		case ':':
-			if (!bfind)
-				break;
-			switch (parser_state){
-			case ps_index:
-				index = parse_int(ifile, str_var, len_str_var);
-				break;
-			case ps_x:
-				x = parse_float(ifile, str_var, len_str_var);
-				break;
-			case ps_y:
-				y = parse_float(ifile, str_var, len_str_var);
-				break;
-			case ps_w:
-				w = parse_float(ifile, str_var, len_str_var);
-				break;
-			case ps_h:
-				h = parse_float(ifile, str_var, len_str_var);
-				_texcoord[index].u = x;
-				_texcoord[index].v = y + 0.02;
-				_texcoord[index].w = w;
-				_texcoord[index].h = h;
-				bfind = false;
-				break;
-			}
-			parser_state = ps_none;
-			break;
-		}
-	}
-
-	Mat tex = imread(ftex);
-	if (tex.empty()){
-		cerr << "Failed to open file " << ftex << endl;
-		return false;
-	}
-
-	Mat tex_r = Mat::zeros(tex.rows, tex.cols, CV_8UC1);
-	MatIterator_<Vec3b> itr = tex.begin<Vec3b>();
-	MatIterator_<uchar> itr_dst = tex_r.begin<uchar>();
-	for (; itr != tex.end<Vec3b>(); itr++, itr_dst++){
-		*itr_dst = (*itr)[0];
-	}
-
-	glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-	glGenTextures(1, &htex);
-	glBindTexture(GL_TEXTURE_2D, htex);
-	glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-	awsFlip(tex_r, false, true, false);
-
-	glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, tex_r.cols, tex_r.rows, 0,
-		GL_RED, GL_UNSIGNED_BYTE, tex_r.data);
-
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	glGenBuffers(2, vbo);
-	vertices = new s_vertex[sz_buf * 4];
-	indices = new unsigned short[sz_buf * 6];
-
-	texcoord = new s_texcoord[_texcoord.size()];
-	for (int itcd = 0; itcd < _texcoord.size(); itcd++){
-		texcoord[itcd] = _texcoord[itcd];
-	}
-
-	sbis.reserve(128);
-
-	return true;
+  Mat tex = imread(ftex);
+  if (tex.empty()){
+    cerr << "Failed to open file " << ftex << endl;
+    return false;
+  }
+  
+  Mat tex_r = Mat::zeros(tex.rows, tex.cols, CV_8UC1);
+  MatIterator_<Vec3b> itr = tex.begin<Vec3b>();
+  MatIterator_<uchar> itr_dst = tex_r.begin<uchar>();
+  for (; itr != tex.end<Vec3b>(); itr++, itr_dst++){
+    *itr_dst = (*itr)[0];
+  }
+  
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glGenTextures(1, &htex);
+  glBindTexture(GL_TEXTURE_2D, htex);
+  glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+  awsFlip(tex_r, false, true, false);
+  
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, tex_r.cols, tex_r.rows, 0,
+	       GL_RED, GL_UNSIGNED_BYTE, tex_r.data);
+  
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glGenBuffers(2, vbo);
+  vertices = new s_vertex[sz_buf * 4];
+  indices = new unsigned short[sz_buf * 6];
+  
+  texcoord = new s_texcoord[_texcoord.size()];
+  for (int itcd = 0; itcd < _texcoord.size(); itcd++){
+    texcoord[itcd] = _texcoord[itcd];
+  }
+  
+  sbis.reserve(128);
+  
+  return true;
 }
 
 const int c_gl_text_obj::reserv(const unsigned int len)
 {
-	int isbis = -1;
-	int num_chars = len;
-	for (int i = 0; i < sbis.size(); i++){
-		if (!sbis[i].bvalid){
-			isbis = i;
-		}
-		else {
-			num_chars += sbis[i].length;
-		}
-	}
+  int isbis = -1;
+  int num_chars = len;
+  for (int i = 0; i < sbis.size(); i++){
+    if (!sbis[i].bvalid){
+      isbis = i;
+    }
+    else {
+      num_chars += sbis[i].length;
+    }
+  }
 
-	if (num_chars >= sz_buf) {
-		cerr << "c_gl_text_obj::reserv cannot allocate sufficient size for buffer. Buffer size should be increased in initialization phase. " << endl;
-		return -1;
-	}
-
-	if (isbis < 0){
-		sbis.push_back(s_string_buffer_inf());
-		isbis =(int)(sbis.size() - 1);
-	}
-
-	sbis[isbis].length = len + 1;
-	sbis[isbis].str = new char[len + 1];
-	sbis[isbis].bvalid = true;
-	bupdated = false;
-	return isbis;
+  if (num_chars >= sz_buf) {
+    cerr << "c_gl_text_obj::reserv cannot allocate sufficient size for buffer. Buffer size should be increased in initialization phase. " << endl;
+    return -1;
+  }
+  
+  if (isbis < 0){
+    sbis.push_back(s_string_buffer_inf());
+    isbis =(int)(sbis.size() - 1);
+  }
+  
+  sbis[isbis].length = len + 1;
+  sbis[isbis].str = new char[len + 1];
+  sbis[isbis].bvalid = true;
+  bupdated = false;
+  return isbis;
 }
 
 void c_gl_text_obj::set(int handle, const char * str)
@@ -1077,7 +1080,8 @@ void c_gl_line_obj::destroy()
   vertices = NULL;
 }
 
-bool c_gl_line_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _Mmvploc, GLuint _clrloc, unsigned int _buffer_size)
+bool c_gl_line_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _Mmvploc,
+			 GLuint _clrloc, unsigned int _buffer_size)
 {
   buffer_size = _buffer_size;
   vertices = new s_vertex[buffer_size];
@@ -1200,36 +1204,37 @@ void c_gl_line_obj::render(const glm::mat4 & PV)
 /////////////////////////////////////////////////////////////// c_gl_point_obj
 void c_gl_point_obj::destroy()
 {
-	if (vao != 0){
-		glDeleteBuffers(1, &vbo);
-		glDeleteVertexArrays(1, &vao);
-		vao = 0;
-	}
+  if (vao != 0){
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
+    vao = 0;
+  }
 }
-bool c_gl_point_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _Mmvploc, GLuint _clrloc)
+bool c_gl_point_obj::init(GLuint _modeloc, GLuint _posloc,
+			  GLuint _Mmvploc, GLuint _clrloc)
 {
-	modeloc = _modeloc;
-	posloc = _posloc;
-	Mmvploc = _Mmvploc;
-	clrloc = _clrloc;
+  modeloc = _modeloc;
+  posloc = _posloc;
+  Mmvploc = _Mmvploc;
+  clrloc = _clrloc;
 
-	glGenVertexArrays(1, &vao);
-	glBindVertexArray(vao);
-	glGenBuffers(1, &vbo);
-
-	glGetFloatv(GL_POINT_SIZE_RANGE, szrange);
-	size = szrange[2];
-	return true;
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glGenBuffers(1, &vbo);
+  
+  glGetFloatv(GL_POINT_SIZE_RANGE, szrange);
+  size = szrange[2];
+  return true;
 }
 
 void c_gl_point_obj::add(const int num_points, const float * points)
 {
-	glBindVertexArray(vao);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo);
-	num_total_vertices = num_points;
-	glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 *  num_total_vertices, (void*)points, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(posloc, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
-	glEnableVertexAttribArray(posloc);
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo);
+  num_total_vertices = num_points;
+  glBufferData(GL_ARRAY_BUFFER, sizeof(float) * 3 *  num_total_vertices, (void*)points, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(posloc, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
+  glEnableVertexAttribArray(posloc);
 }
 
 void c_gl_point_obj::render(const glm::mat4 & PV)
@@ -1459,28 +1464,28 @@ c_gl_2d_obj::c_gl_2d_obj() :vtxbuf(NULL), idxbuf(NULL), vao(0)
 
 c_gl_2d_obj::~c_gl_2d_obj()
 {
-	destroy();
+  destroy();
 }
 
 void c_gl_2d_obj::destroy()
 {
-	if (vao != 0){
-		glDeleteBuffers(2, vbo);
-		glDeleteVertexArrays(1, &vao);
-		vao = 0;
-	}
-
-	prottype.destroy();
-
-	if (vtxbuf)
-		delete[] vtxbuf;
-
-	if (idxbuf)
-		delete[] idxbuf;
-
-	vtxbuf = NULL;
-	idxbuf = NULL;
-
+  if (vao != 0){
+    glDeleteBuffers(2, vbo);
+    glDeleteVertexArrays(1, &vao);
+    vao = 0;
+  }
+  
+  prottype.destroy();
+  
+  if (vtxbuf)
+    delete[] vtxbuf;
+  
+  if (idxbuf)
+    delete[] idxbuf;
+  
+  vtxbuf = NULL;
+  idxbuf = NULL;
+  
 }
 
 bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _posloc,
