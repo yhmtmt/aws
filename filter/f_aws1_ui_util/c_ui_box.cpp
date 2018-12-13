@@ -1756,6 +1756,7 @@ void c_indicator::update_hc_indicator()
     char str_ctgt[5];
     snprintf(str_ctgt, 5, "T%02d", (int)(cog_tgt * (18.0 / PI) + 0.5));
     potxt->set(hstr_ctgt, str_ctgt);
+    potxt->enable(hstr_ctgt);
     
     for (int i = 0; i < YAW_STEP; i++){
       // projectig the scale vectors in the camera coordinate
