@@ -63,6 +63,29 @@ protected:
   float rudmidlr, rudmidrl;
   char * str_tbl_stable_rpm[60];
   char * str_tbl_stable_nrpm[60];
+  void monotonize_tbl_stable_rpm(int i = 0)
+  {
+    float vprev = tbl_stable_rpm[i];
+    for (i+=1;i < 60;i++){
+      if(tbl_stable_rpm[i] < vprev){
+	tbl_stable_rpm[i] = vprev;
+      }else{
+	vprev = tbl_stable_rpm[i];
+      }
+    }
+  }
+  void monotonize_tbl_stable_nrpm(int i = 0)
+  {
+    float vprev = tbl_stable_nrpm[i];
+    for (i+=1;i < 60;i++){
+      if(tbl_stable_nrpm[i] > vprev){
+	tbl_stable_nrpm[i] = vprev;
+      }else{
+	vprev = tbl_stable_nrpm[i];
+      }
+    }   
+  }
+  
   float tbl_stable_rpm[60];	
   float tbl_stable_nrpm[60];
   float alpha_tbl_stable_rpm;

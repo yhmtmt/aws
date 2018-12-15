@@ -240,6 +240,8 @@ void f_aws1_ap::load_ctrl_state()
     tbl_stable_rpm[i] = ctrl_state.tbl_stable_rpm(i);
     tbl_stable_nrpm[i] = ctrl_state.tbl_stable_nrpm(i);
   }
+  monotonize_tbl_stable_rpm();
+  monotonize_tbl_stable_nrpm();
 }
 
 bool f_aws1_ap::is_stable(const float cog, const float sog,
@@ -353,12 +355,14 @@ void f_aws1_ap::calc_stat(const long long tvel, const float cog,
     if(irev >= 0){
       tbl_stable_rpm[irev] = (float)(tbl_stable_rpm[irev] * ialpha
 				     +alpha_tbl_stable_rpm * m_meng);
+      monotonize_tbl_stable_rpm(irev);
     if(m_verb)
       cout << "rpmtbl[" << irev << "] is updated to "
 	   << tbl_stable_rpm[irev] << endl;
     }else{
       tbl_stable_nrpm[-irev] = (float)(float)(tbl_stable_nrpm[irev] * ialpha
 				     +alpha_tbl_stable_rpm * m_meng);
+      monotonize_tbl_stable_nrpm(-irev);
       if(m_verb)
 	cout << "nrpmtbl[" << irev << "] is updated to "
 	     << tbl_stable_nrpm[-irev] << endl;
