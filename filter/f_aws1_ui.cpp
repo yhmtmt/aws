@@ -1033,21 +1033,24 @@ bool f_aws1_ui::proc()
     ctrl_sog_tgt();
     break;
   }
-
-  if(ctrl_mode != cm_stb){
-    cog_tgt = cog;
-    rev_tgt = rpm;
-  }
-
-  m_ch_ap_inst->set_tgt_sog(sog_tgt);
-  m_ch_ap_inst->set_tgt_cog_and_rev(cog_tgt, rev_tgt);
-  
-  //m_inst to m_ch_ctrl_inst
+ 
+  // m_inst to m_ch_ctrl_inst
   snd_ctrl_inst();
   
   // m_ch_ctrl_stat to m_stat
   rcv_ctrl_stat();
   
+  if(ctrl_mode != cm_stb){
+    cog_tgt = cog;
+    if(crz_ds_ah <= m_stat.meng_aws) // ahead
+      rev_tgt = rpm;
+    else if (crz_ds_as >=  m_stat.meng_aws) //astern
+      rev_tgt = -rpm;
+  }
+
+  m_ch_ap_inst->set_tgt_sog(sog_tgt);
+  m_ch_ap_inst->set_tgt_cog_and_rev(cog_tgt, rev_tgt);
+
   // Window forcus is now at this window
   glfwMakeContextCurrent(pwin());
   
@@ -1191,7 +1194,7 @@ void f_aws1_ui::ctrl_rev_tgt()
 {
   if (m_js.id != -1 && bjs){
     rev_tgt -= (float)( m_js.ud1 * (rev_max / 90.));
-    rev_tgt = (float) max(min(rev_tgt, rev_max), 0.f);
+    rev_tgt = (float) max(min(rev_tgt, rev_max), -rev_max);
   }
 }
 

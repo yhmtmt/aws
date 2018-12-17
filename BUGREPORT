@@ -1,5 +1,4 @@
 User interface
-* stb mode zero and negative rev shoudl be handled
 * stb mode on android wear
 * model parameter optimization
 * simulator does not reduce rev as reduced control value

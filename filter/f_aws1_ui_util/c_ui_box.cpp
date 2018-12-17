@@ -1281,6 +1281,18 @@ void c_indicator::create_engine_state_indicator(glm::vec2 & pos,
 						const glm::vec2 & sz_fnt,
 						const glm::vec4 & clr)
 {
+  hstr_tgt_rev = potxt->reserv(4);
+  hstr_rev = potxt->reserv(4);
+  potxt->config(hstr_tgt_rev, clr, glm::vec4(0,0,0,0),
+		sz_fnt, sz_fnt, c_gl_text_obj::an_cb, pos, 0);
+  potxt->config(hstr_rev, clr, glm::vec4(0,0,0,0),
+		sz_fnt, sz_fnt, c_gl_text_obj::an_cb,
+		glm::vec2(pos.x, pos.y + sz_fnt.y), 0);
+  
+  potxt->config_depth(hstr_tgt_rev, 0);
+  potxt->config_depth(hstr_rev, 0);
+  potxt->enable(hstr_tgt_rev);
+  potxt->enable(hstr_rev);
   arc_ind_rpm.init(RPM_STEP, RAD_RPM_ARC,
 		   6000.f, 0.f,
 		   pos, sz_fnt, clr,
@@ -1290,8 +1302,13 @@ void c_indicator::create_engine_state_indicator(glm::vec2 & pos,
 
 void c_indicator::update_engine_state_indicator()
 {
+  char buf[4];
+  snprintf(buf, 4, "C%02d", (int)(mrpm/100));
+  potxt->set(hstr_rev, buf);
+  snprintf(buf, 4, "T%02d", (int)(mrpm_tgt/100));
+  potxt->set(hstr_tgt_rev, buf);
   arc_ind_rpm.update_ptr1(mrpm);
-  arc_ind_rpm.update_ptr2(mrpm_tgt);
+  arc_ind_rpm.update_ptr2(abs(mrpm_tgt));
   return;
 }
 
@@ -1981,7 +1998,7 @@ void c_indicator::set_param(const char * str_time,
   update_engine_indicator(hmeng_in, hmeng_n, hmeng_f, hmeng_b, meng);
   update_engine_indicator(hseng_in, hseng_n, hseng_f, hseng_b, seng);
   update_engine_state_indicator();
-  update_params_indicator(_sog, _depth,  _mrpm, _mtrim, _mpoil, _mtoil,
+  update_params_indicator(_sog, _depth, _mrpm, _mtrim, _mpoil, _mtoil,
 			  _mtemp,  _mvalt,
 			  _mfrate, _mteng, _mpclnt, _mpfl, _mld, _mtq,
 			  _mst1, _mst2);

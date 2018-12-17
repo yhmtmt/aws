@@ -685,6 +685,7 @@ public:
   
 #define RPM_STEP 7
 #define RAD_RPM_ARC 6.5
+  int hstr_tgt_rev, hstr_rev;
   void create_engine_state_indicator(glm::vec2 & pos,
 				     const glm::vec2 & sz_fnt,
 				     const glm::vec4 & clr);  
