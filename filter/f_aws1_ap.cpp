@@ -548,9 +548,11 @@ void f_aws1_ap::ctrl_to_rev(const float rev, const float rev_tgt,
 			    const float rev_max, const float rev_min)
 {
   float _rev_tgt;
-  if(abs(rev_tgt) < rev_min)
+  if(abs(rev_tgt) < rev_min){
     _rev_tgt = 0;
-  else
+    m_meng = 127.0f;
+    return;
+  }else
     _rev_tgt = rev_tgt;
   
   int irev = (int)(_rev_tgt * 0.01);
@@ -559,10 +561,14 @@ void f_aws1_ap::ctrl_to_rev(const float rev, const float rev_tgt,
     float revdiff = max(min(rev_max, -_rev_tgt), rev_min) - rev;
     revdiff *= (float)(-1. / (rev_max - rev_min));
     m_drevdiff = (float)(revdiff - m_revdiff);
-    m_irevdiff += revdiff;
+    float irevdiff = m_irevdiff + revdiff;
     m_revdiff = revdiff;
-    m_meng += (float)((m_prev * m_revdiff + m_irev * m_irevdiff
+    float dmeng = (float)((m_prev * m_revdiff + m_irev * irevdiff
 		       + m_drev * m_drevdiff) * 255.);
+    if(dmeng > 0 || m_meng_min != m_meng){
+      m_meng += dmeng;
+      m_irevdiff = irevdiff;
+    }
     m_meng = min(127.0f, m_meng);
     m_meng = max(m_meng_min, m_meng);
   }else {
@@ -570,9 +576,13 @@ void f_aws1_ap::ctrl_to_rev(const float rev, const float rev_tgt,
     float revdiff = max(min(rev_max, _rev_tgt), rev_min) - rev;  
     revdiff *= (float)(1. / (rev_max - rev_min));
     m_drevdiff = (float)(revdiff - m_revdiff);
-    m_irevdiff += revdiff;
+    float irevdiff = m_irevdiff + revdiff;
     m_revdiff = revdiff;
-    m_meng += (float)((m_prev * m_revdiff + m_irev * m_irevdiff + m_drev * m_drevdiff) * 255.);
+    float dmeng = (float)((m_prev * m_revdiff + m_irev * irevdiff + m_drev * m_drevdiff) * 255.);
+    if(dmeng < 0 || m_meng_max != m_meng){
+      m_meng += dmeng;
+      m_irevdiff = irevdiff;
+    }
     m_meng = max(127.0f, m_meng);
     m_meng = min(m_meng_max, m_meng);
   }
