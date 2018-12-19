@@ -34,8 +34,8 @@ protected:
   // simulation models
   c_model_rudder_ctrl mrctrl; // rudder control model
   c_model_engine_ctrl mectrl; // engine control model
-  c_model_outboard_force mobf, mobfp; // engine force model, later is for the planing mode
-  c_model_3dof m3dof, m3dofp;         // kinetic model, later is for the planing mode
+  c_model_outboard_force mobf, mobfp, mobfb; // engine force model, later is for the planing mode and astern mode
+  c_model_3dof m3dof, m3dofp, m3dofb;         // kinetic model, later is for the planing mode and astern mode
   double vplane; // planing velocity
   
   // input channels

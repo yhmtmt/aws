@@ -155,10 +155,14 @@ f_aws1_sim::f_aws1_sim(const char * name) :
   register_model_params(mobf);
   mobfp.alloc_param(1);
   register_model_params(mobfp);
+  mobfb.alloc_param(2);
+  register_model_params(mobfb);
   m3dof.alloc_param(0);
   register_model_params(m3dof);
   m3dofp.alloc_param(1);
   register_model_params(m3dofp);
+  m3dofb.alloc_param(2);
+  register_model_params(m3dofb);
 }
 
 bool f_aws1_sim::init_run()

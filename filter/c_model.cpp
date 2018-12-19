@@ -29,7 +29,7 @@ using namespace cv;
 ///////////////////////////////// base of  simulation model for boat parts
 bool c_model_base::alloc_param(int _index)
 {
-index = _index;
+  index = _index;
   if (index < 0)
     return true;
 

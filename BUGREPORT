@@ -36,16 +36,3 @@ remote command
 AWS sys
 * when init_run failed, the state should be stopped and all filters started with init_run should be stopped by calling destroy_run
 
-#### Solved
-* in windows version, aws_mkdir is not working.
-* Selected AIS object is not collect
-* When waypoint is selected by mouse, menu box does not reflect the waypoint number selected.
-* selected ais object is changed when the order of the object is changed.
-* indicator draws a long line rolling with roll scale at the center.
-* during dragging map, flickers are caused frequently.
-* Menus and indicator are overwrapped with objects.
-* Map cannot be back to the own-ship centered mode.
-* chls command should show channel type
-* map range scale should be 1000, 2000 ..., 10k, 20k, ...., 200k, 300k
-* in map mode, circle masking layer is not working
-* speed indicator should be text

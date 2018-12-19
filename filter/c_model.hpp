@@ -484,6 +484,8 @@ BOOST_PYTHON_MODULE( pyawssim ){
     .def("set_params", &c_model_base::set_params_py)
     .def("get_params", &c_model_base::get_params_py)
     .def("get_str_params", &c_model_base::get_str_params_py)
+    .def("init", &c_model_base::init)
+    .def("alloc_param", &c_model_base::alloc_param)
     ;
   
   python::class_<c_model_3dof, python::bases<c_model_base> >("c_model_3dof")
