@@ -497,7 +497,7 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   pocirc->disable(hstay_point);
 
   hstay_line = poline->add(2, pts);
-  poline->config_color(clr);
+  poline->config_color(hstay_line, clr);
   poline->config_depth(hstay_line, 10);
   poline->config_position(hstay_line, pos);
   poline->config_rotation(hstay_line, 0);
@@ -542,8 +542,7 @@ void c_own_ship::enable()
   potri->enable(hship);
   pocirc->enable(hstay_point);
   poline->enable(hline_vel);
-  poline->enable(hstay_line);
-  
+  poline->enable(hstay_line); 
   potri->enable(hbearing_tgt);
   poline->enable(hbearing);
 }
@@ -554,7 +553,6 @@ void c_own_ship::disable()
   pocirc->disable(hstay_point);
   poline->disable(hline_vel);
   poline->disable(hstay_line);  
-
   potri->disable(hbearing_tgt);
   poline->disable(hbearing);
 }
