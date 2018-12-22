@@ -487,6 +487,7 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   hline_vel = poline->add(2, pts);
   poline->config_color(hline_vel, clr);
   poline->config_depth(hline_vel, 10);
+  poline->config_width(hline_vel, 1.0);
   poline->config_position(hline_vel, pos);
   poline->config_rotation(hline_vel, 0);
   poline->disable(hline_vel);
@@ -501,6 +502,7 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   poline->config_depth(hstay_line, 10);
   poline->config_position(hstay_line, pos);
   poline->config_rotation(hstay_line, 0);
+  poline->config_width(hstay_line, 1.0);
   poline->disable(hline_vel);
 
   // bearing indicator
