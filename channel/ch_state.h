@@ -306,7 +306,6 @@ class ch_state: public ch_base
 	  float mps = (float)(sog * KNOT);
 	  vx = (float)(mps * nvx);
 	  vy = (float)(mps * nvy);
-
 	  unlock();
   }
 

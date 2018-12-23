@@ -1863,6 +1863,7 @@ void f_aws1_ui::update_ui_params(c_view_mode_box * pvm_box,
       rys = 0;
       rzs = 0;
     }
+
     own_ship.set_param(rx, ry, rz, rxs, rys, rzs, yaw, vx, vy, cog_tgt);
     
     float wx = (float)(meter_per_pix * (m_sz_win.width >> 1)),

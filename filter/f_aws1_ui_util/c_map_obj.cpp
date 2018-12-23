@@ -486,7 +486,7 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   float pts[4] = { 0, 0, 1, 1 };
   hline_vel = poline->add(2, pts);
   poline->config_color(hline_vel, clr);
-  poline->config_depth(hline_vel, 10);
+  poline->config_depth(hline_vel, display_depth);
   poline->config_width(hline_vel, 1.0);
   poline->config_position(hline_vel, pos);
   poline->config_rotation(hline_vel, 0);
@@ -499,7 +499,7 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
 
   hstay_line = poline->add(2, pts);
   poline->config_color(hstay_line, clr);
-  poline->config_depth(hstay_line, 10);
+  poline->config_depth(hstay_line, display_depth);
   poline->config_position(hstay_line, pos);
   poline->config_rotation(hstay_line, 0);
   poline->config_width(hstay_line, 1.0);
@@ -573,7 +573,7 @@ void c_own_ship::set_param(const float rx, const float ry, const float rz,
     poline->config_position(hbearing, pos_own);
     potri->config_rotation(hbearing_tgt, (float)(0.5 * PI - th));
     potri->config_position(hbearing_tgt, glm::vec2(s + pos_own.x, c + pos_own.y));
-    
+  
     th = (float)(0.5 * PI - hdg * PI / 180.f);
     potri->config_rotation(hship, th);
     float pts[4] = {
@@ -585,6 +585,7 @@ void c_own_ship::set_param(const float rx, const float ry, const float rz,
     pocirc->config_position(hstay_point, pos_stay);
     pocirc->config_rotation(hstay_point, th);
     poline->config_points(hline_vel, pts);
+
     pts[2] = pos_stay.x;
     pts[3] = pos_stay.y;
     poline->config_points(hstay_line, pts);    

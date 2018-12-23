@@ -315,6 +315,14 @@ size_t ch_state::write_buf(const char * buf)
 	z = ptr[9];
 	cog = ptr[10];
 	sog = ptr[11];
+	{
+	  float th = (float)(cog * (PI / 180.));
+	  nvx = (float)sin(th);
+	  nvy = (float)cos(th);
+	  float mps = (float)(sog * KNOT);
+	  vx = (float)(mps * nvx);
+	  vy = (float)(mps * nvy);
+	}
 	depth = ptr[12];
 	mx = ptr[13];
 	my = ptr[14];
