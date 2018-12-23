@@ -519,7 +519,10 @@ void f_aws1_ap::ctrl_to_cog(const float cdiff)
 {
   float rudmid = (is_rud_ltor ? rudmidlr : rudmidrl);
   float _cdiff = cdiff;
-  // cdiff is normalized to [-180f,180f] 
+  // cdiff is normalized to [-180f,180f]
+  if(rev_prop < 0)
+    _cdiff = -_cdiff;
+  
   if (abs(_cdiff) > 180.0f){
     if(_cdiff < 0)
       _cdiff += 360.f;
@@ -528,13 +531,13 @@ void f_aws1_ap::ctrl_to_cog(const float cdiff)
   }
   _cdiff *= (float)(1.0f/180.0f);
   m_dcdiff = (float)(_cdiff - m_cdiff);
-  if((_cdiff < 0 && m_rud > 0.f) ||
-     _cdiff > 0 && m_rud < 255.f)    
+  if((_cdiff < 0 && m_rud > 0.f) || (_cdiff > 0 && m_rud < 255.f))
     m_icdiff += _cdiff;
-  m_cdiff = _cdiff;
   
-  m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255.);
+  m_cdiff = _cdiff;
 
+  m_rud = (float)((m_pc * m_cdiff + m_ic * m_icdiff + m_dc * m_dcdiff) * 255.);
+  
   m_rud += rudmid;  
   m_rud = max(m_rud, 0.f);
   m_rud = min(m_rud, 255.f);
@@ -716,6 +719,5 @@ void f_aws1_ap::stb_man(const float cog, const float rev)
   float cog_tgt, rev_tgt;
   m_ap_inst->get_tgt_cog_and_rev(cog_tgt, rev_tgt);
   ctrl_to_cog((float)(cog_tgt - cog));
-  cout << "rev:" << rev << " rev_tgt:" << rev_tgt << endl;
   ctrl_to_rev(rev, rev_tgt, m_rev_max, m_rev_min);  
 }
