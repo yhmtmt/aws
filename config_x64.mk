@@ -43,8 +43,8 @@ LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
 INC_GLIB = /usr/include/glib-2.0
 INC_GLIB_CONFIG = /usr/lib/x86_64-linux-gnu/glib-2.0/include
 INC_GLM = /usr/include/glm
-INC_PYTHON=/usr/include/python3.5m
-LIB_BOOST_PYTHON=-lboost_python-py35
+INC_PYTHON=/usr/include/python3.6m
+LIB_BOOST_PYTHON=-lboost_python-py36
 ########################################################### OpenCV Linker option
 #LIB_CV = -L$(LIB_CV_DIR) -lopencv_world
 LIB_CV = -L$(LIB_CV_DIR) -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video
