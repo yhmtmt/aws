@@ -258,7 +258,7 @@ class c_model_rudder_ctrl: public c_model_base
   static const char * _str_par[num_params];
   static const char * _str_par_exp[num_params];
  public:
-  c_model_rudder_ctrl():rslack(0.f), rrud(12*PI/180.f),
+  c_model_rudder_ctrl():rslack(0.f), rrud(10*PI/180.f),
     rudp(30*PI/180.f), ruds(-30*PI/180.f)
     {
     }

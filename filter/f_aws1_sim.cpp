@@ -485,14 +485,14 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
 		  stcur.gear_pos, stcur.thro_pos, stcur.thro_slack);
     if(stprev.sog < vplane){
       // displacement model parameters
-      mobf.update((stprev.rud_pos - stprev.rud_slack)*(PI/180.),
+      mobf.update((stprev.rud_pos - stprev.rud_slack),
 		  stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
 		  stprev.rev, v, f);
           m3dof.update(v, f, dt, v);
     }
     else{
       // plaing model parameters
-      mobfp.update((stprev.rud_pos - stprev.rud_slack)*(PI/180.),
+      mobfp.update((stprev.rud_pos - stprev.rud_slack),
 		   stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
 		   stprev.rev, v, f);
       m3dofp.update(v, f, dt, v);

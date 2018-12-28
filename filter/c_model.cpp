@@ -209,21 +209,21 @@ void c_model_rudder_ctrl::update(const int u, const float ra,
   double era = ra_inf - ra;
   if(abs(era) < dra){
     ra_new = (float)ra_inf;
-    slack_new = (float)(slack + era);
+    slack_new = (float)(slack - era);
   }else if(era < 0){    
     ra_new = (float)(ra - dra);
-    slack_new = (float)(slack - dra);
+    slack_new = (float)(slack + dra);
   }else if(era > 0){
     ra_new = (float)(ra + dra);
-    slack_new = (float)(slack + dra);
+    slack_new = (float)(slack - dra);
   }
 
   if(rslack < 0){
-    slack_new = min((float)rslack, slack_new);
-    slack_new = max(0.f, slack_new);
-  }else{
     slack_new = max((float)rslack, slack_new);
     slack_new = min(0.f, slack_new);
+  }else{
+    slack_new = min((float)rslack, slack_new);
+    slack_new = max(0.f, slack_new);
   }
 }
 
