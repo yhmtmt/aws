@@ -467,7 +467,8 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     double th = stprev.cog;
     
     double sog_ms = stprev.sog * (1852. / 3600.);
-    double dx = sog_ms * dt * sin(th), dy = sog_ms * dt * cos(th); //next position in enu coordinate
+    double dx = sog_ms * dt * sin(th),
+      dy = sog_ms * dt * cos(th); //next position in enu coordinate
     double alt = 0.;
     
     wrldtoecef(stprev.Rwrld, stprev.xe, stprev.ye, stprev.ze, dx, dy, 0.,
@@ -477,21 +478,27 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     v[0] = sog_ms * cos(phi);
     v[1] = sog_ms * sin(phi);
     v[2] = stprev.ryaw;
-
+    
     mrctrl.update(stprev.rud, stprev.rud_pos, stprev.rud_slack, dt,
 		  stcur.rud_pos, stcur.rud_slack);
     mectrl.update(stprev.eng, stprev.gear_pos, stprev.thro_pos,
 		  stprev.thro_slack, dt,
 		  stcur.gear_pos, stcur.thro_pos, stcur.thro_slack);
-    if(stprev.sog < vplane){
-      // displacement model parameters
+    if(v[0] < 0){
+      // astern model
+      mobfb.update((stprev.rud_pos - stprev.rud_slack),
+		  stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
+		  stprev.rev, v, f);
+      m3dofb.update(v, f, dt, v);
+    }else if(v[0] < vplane){
+      // displacement model
       mobf.update((stprev.rud_pos - stprev.rud_slack),
 		  stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
 		  stprev.rev, v, f);
-          m3dof.update(v, f, dt, v);
+      m3dof.update(v, f, dt, v);
     }
     else{
-      // plaing model parameters
+      // planing model
       mobfp.update((stprev.rud_pos - stprev.rud_slack),
 		   stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
 		   stprev.rev, v, f);
