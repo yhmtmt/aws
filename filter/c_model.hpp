@@ -327,6 +327,10 @@ class c_model_engine_ctrl: public c_model_base
   enum {
     par_fth, par_bth, par_umax, par_umin,
     par_rgamma, par_rfdelta, par_rbdelta, par_fslack, par_bslack,
+    par_e0f,par_e0df,par_epf,par_epdf,par_eff, par_r0f,par_rpf, par_rff,
+    par_qddf,par_qudf,par_qdpf,par_qupf,
+    par_e0b,par_e0db,par_efb,par_r0b,par_rfb,
+    par_qdb, par_qub,
     num_params
   };
   static const char * _str_par[num_params];

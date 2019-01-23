@@ -231,14 +231,33 @@ void c_model_rudder_ctrl::update(const int u, const float ra,
 const char * c_model_engine_ctrl::_str_par[num_params] =
   {
     "fth", "bth", "umax", "umin",
-    "rgamma", "rfdelta", "rbdelta", "fslack", "bslack"    
+    "rgamma", "rfdelta", "rbdelta", "fslack", "bslack",
+    "e0f", "e0df", "epf", "epdf", "eff", "r0f", "rpf", "rff", "qddf", "qudf", "qdpf", "qupf",
+    "e0b", "e0bd", "efb", "r0b", "rfb", "qdb", "qub"    
   };
 
 const char * c_model_engine_ctrl::_str_par_exp[num_params] =
   {
     "Threshold, neutral to forward", "Threshold neutral to backward",
     "Maximum value of control input", "Minimum value of control input",
-    "Speed of gear switching (rate per second)", "Speed of throttle control in forward gear (rate per second)", "Speed of throttle control in backward gear (rate per second)", "Throttle slack in forward gear", "Throttle slack in backward gear"    
+    "Speed of gear switching (rate per second)", "Speed of throttle control in forward gear (rate per second)", "Speed of throttle control in backward gear (rate per second)", "Throttle slack in forward gear", "Throttle slack in backward gear",
+    "Forward engine control, idle point (up control)",
+    "Forward engine control, idle point (down control)",
+    "Forward engine control, planing point (up control)",
+    "Forward engine control, planing point (down control)",
+    "Forward engine control, full point",
+    "Forward engine rev, idle point",
+    "Forward engine rev, planing point",
+    "Forward engine rev, full point",
+    "Quadratic coefficient, forward-down control curve, displacement mode",
+    "Quadratic coefficient, forward-up control curve, displacement mode",
+    "Quadratic coefficient, forward-down control curve, planing mode",
+    "Quadratic coefficient, forward-up control curve, planing mode",
+    "Backward engine control, idle point (up control)",
+    "Backward engine control, idle point (down control)",
+    "Backward engine control, full point",
+    "Quadratic coefficient, backward-down control curve",
+    "Quadratic coefficeint, backward-up control curve"
   };
 
 void c_model_engine_ctrl::update(const int u, const float gamma,
