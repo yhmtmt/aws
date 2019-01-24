@@ -245,7 +245,6 @@ void f_aws1_sim::set_control_input()
     break;
   }
   m_sv_cur.thro_pos = m_output_vectors[0].thro_pos;
-  m_sv_cur.thro_slack = m_output_vectors[0].thro_slack;
   m_sv_cur.gear_pos = m_output_vectors[0].gear_pos;
   m_sv_cur.rud_pos = m_output_vectors[0].rud_pos;
   m_sv_cur.rud_slack = m_output_vectors[0].rud_slack;
@@ -482,25 +481,25 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     mrctrl.update(stprev.rud, stprev.rud_pos, stprev.rud_slack, dt,
 		  stcur.rud_pos, stcur.rud_slack);
     mectrl.update(stprev.eng, stprev.gear_pos, stprev.thro_pos,
-		  stprev.thro_slack, dt,
-		  stcur.gear_pos, stcur.thro_pos, stcur.thro_slack);
+		  stprev.rev, dt,
+		  stcur.gear_pos, stcur.thro_pos, stcur.rev);
     if(v[0] < 0){
       // astern model
       mobfb.update((stprev.rud_pos - stprev.rud_slack),
-		  stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
+		  stprev.gear_pos, stprev.thro_pos,
 		  stprev.rev, v, f);
       m3dofb.update(v, f, dt, v);
     }else if(v[0] < vplane){
       // displacement model
       mobf.update((stprev.rud_pos - stprev.rud_slack),
-		  stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
+		  stprev.gear_pos, stprev.thro_pos,
 		  stprev.rev, v, f);
       m3dof.update(v, f, dt, v);
     }
     else{
       // planing model
       mobfp.update((stprev.rud_pos - stprev.rud_slack),
-		   stprev.gear_pos, stprev.thro_pos - stprev.thro_slack,
+		   stprev.gear_pos, stprev.thro_pos,
 		   stprev.rev, v, f);
       m3dofp.update(v, f, dt, v);
     }
@@ -520,7 +519,6 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
       stcur.cog -= 2 * PI;
     
     stcur.sog = sqrt(v[0] * v[0] + v[1] * v[1]) * (3600. / 1852.);
-    stcur.rev = final_rev(stcur.thro_pos - stcur.thro_slack);
   }
 }
 

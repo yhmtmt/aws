@@ -90,7 +90,7 @@ const char * c_model_3dof::_str_par_exp[num_params] = {
 
 void c_model_3dof::init()
 {
-M = Mat::zeros(3, 3, CV_64FC1);
+  M = Mat::zeros(3, 3, CV_64FC1);
   double * data = M.ptr<double>();
   
   for (int i = 0; i < 9; i++)
@@ -231,7 +231,7 @@ void c_model_rudder_ctrl::update(const int u, const float ra,
 const char * c_model_engine_ctrl::_str_par[num_params] =
   {
     "fth", "bth", "umax", "umin",
-    "rgamma", "rfdelta", "rbdelta", "fslack", "bslack",
+    "rgamma", "rfdelta", "rbdelta",
     "e0f", "e0df", "epf", "epdf", "eff", "r0f", "rpf", "rff", "qddf", "qudf", "qdpf", "qupf",
     "e0b", "e0bd", "efb", "r0b", "rfb", "qdb", "qub"    
   };
@@ -240,7 +240,7 @@ const char * c_model_engine_ctrl::_str_par_exp[num_params] =
   {
     "Threshold, neutral to forward", "Threshold neutral to backward",
     "Maximum value of control input", "Minimum value of control input",
-    "Speed of gear switching (rate per second)", "Speed of throttle control in forward gear (rate per second)", "Speed of throttle control in backward gear (rate per second)", "Throttle slack in forward gear", "Throttle slack in backward gear",
+    "Speed of gear switching (rate per second)", "Speed of throttle control in forward gear (rate per second)", "Speed of throttle control in backward gear (rate per second)",
     "Forward engine control, idle point (up control)",
     "Forward engine control, idle point (down control)",
     "Forward engine control, planing point (up control)",
@@ -260,35 +260,127 @@ const char * c_model_engine_ctrl::_str_par_exp[num_params] =
     "Quadratic coefficeint, backward-up control curve"
   };
 
-void c_model_engine_ctrl::update(const int u, const float gamma,
-				 const float delta,
-				 const float slack, const float dt,
-				 float & gamma_new, float & delta_new,
-				 float & slack_new)
+void c_model_engine_ctrl::init()
+{
+  double sf = umax-fth;
+  double sb = umin-bth;
+  
+  _e0f=(e0f-fth)/sf;
+  _e0df=(e0df-fth)/sf;
+  _epf=(epf-fth)/sf;
+  _epdf=(epdf-fth)/sf;
+  _eff=(eff-fth)/sf;
+  _qddf=sf*sf*qddf;
+  _qudf=sf*sf*qudf;
+  _qdpf=sf*sf*qdpf;
+  _qupf=sf*sf*qupf;
+  calc_qeq_coeff(_e0df, r0f, _epdf, rpf, _qddf, lddf, cddf);
+  calc_qeq_coeff(_e0f, r0f, _epf, rpf, _qudf, ludf, cudf);
+  calc_qeq_coeff(_epdf, rpf, _eff, rff, _qdpf, ldpf, cdpf);
+  calc_qeq_coeff(_epf, rpf,  _eff, rff, _qupf, lupf, cupf);
+  
+  _e0b=(e0b-bth)/sb;
+  _e0db=(e0db-bth)/sb;
+  _efb=(efb-bth)/sb;
+  _qdb=sb*sb*qdb;
+  _qub=sb*sb*qub;
+  calc_qeq_coeff(_e0db,r0b,_efb,rfb, _qub, lub, cub);
+  calc_qeq_coeff(_e0b,r0b,_efb,rfb, _qdb, ldb, cdb);
+}
+
+void c_model_engine_ctrl::calc_qeq_coeff(const double x0, const double y0,
+					 const double x1,const double y1,
+					 const double cq,
+					 double & cl, double & cc)
+{
+  double base = 1 / (x1-x0);
+  double x0x0 = x0 * x0;
+  double x1x1 = x1 * x1;
+  cl = (cq * (x0x0 - x1x1) - y0 + y1) * base;
+  cc = -(-cq * x0 * x1x1 + x1 * (cq * x0x0 - y0) + x0 * y1) * base;
+}
+
+void c_model_engine_ctrl::calc_final_rev(const double gamma, const double delta, bool is_ctrl_up, const float rev, float & rev_new)
+{
+  if(gamma >= 1.0){ // forward
+    if(is_ctrl_up){ // up ctrl
+      if(delta < _e0f) // idle
+	rev_new = (float)r0f;
+      else if(delta < _epf) // displacement
+	rev_new = (float)(_qudf * delta * delta + ludf * delta + cudf);
+      else if(delta < _eff) // planing
+	rev_new = (float)(_qupf * delta * delta + lupf * delta + cupf);
+      else
+	rev_new = (float)rff;
+      
+      if(rev_new < rev) // down to up transient state
+	rev_new = rev;
+    }else{ // down ctrl
+      if(delta < _e0df)
+	rev_new = r0f;
+      else if (delta < _epdf)
+	rev_new = (float)(_qddf * delta * delta + lddf * delta + cddf);
+      else if (delta < _eff)
+	rev_new = (float)(_qdpf * delta * delta + ldpf * delta + cdpf);
+      else
+	rev_new = (float)rff;
+      
+      if(rev_new > rev) // up to down transient state
+	rev_new = (float)rev;
+    }
+  }else if(gamma <= -1.0){ // backward
+    if(is_ctrl_up){ // up ctrl
+      if(delta < _e0b) // idle
+	rev_new = (float)r0b;
+      else if(delta < _efb) 
+	rev_new = (float)(_qub * delta * delta + lub * delta + cub);
+      else
+	rev_new = (float)rfb;
+      
+      if(rev_new > rev)
+	rev_new = (float)rev;      
+    }else{ // down ctrl
+      if(delta < _e0db) //idle
+	rev_new = (float)r0b;
+      else if(delta < _efb)
+	rev_new = (float)(_qdb * delta * delta + ldb * delta + cdb);
+      else
+	rev_new = (float)rfb;
+      
+      if(rev_new < rev)
+	rev_new = (float)rev;
+    }
+  }else{ //neutral
+    rev_new = 0;
+  }
+}
+
+void c_model_engine_ctrl::update(const int u,
+				 const float gamma, const float delta, const float rev,
+				 const float dt,
+				 float & gamma_new, float & delta_new, float & rev_new)
 {
   gamma_new = gamma;// gear position
   delta_new = delta;// throttle position
-  slack_new = slack;      
-
+  rev_new = rev; // rev value
+  
   // determining action mode, and final (gamma, delta) for the input u.
   double unorm, rdelta;
-  double gamma_inf, delta_inf, slack_inf;
+  double gamma_inf, delta_inf;
   if(u <= bth){
     delta_inf = (gamma == -1.0 ? (bth - u) /  (bth - umin) : 0.0);
     gamma_inf = -1.0;
-    slack_inf = bslack;
     rdelta = rbdelta;
   }else if (u >= fth){
     delta_inf = (gamma == 1.0 ? (u - fth) / (umax - fth) : 0.0);
     gamma_inf = 1.0;
-    slack_inf = fslack;
     rdelta = rfdelta;
   }else{
     delta_inf = 0.0;
-    gamma_inf = 0.0;      
+    gamma_inf = 0.0;
   }
   
-  if(gamma != gamma_inf && delta == 0.0)
+  if(gamma != gamma_inf && delta == 0.0) // gear is moving
     {
       // gamma -> gamma_inf
       double dgamma = rgamma * dt;
@@ -300,14 +392,20 @@ void c_model_engine_ctrl::update(const int u, const float gamma,
       }else{
 	gamma_new = (float)(gamma + dgamma);
       }
-      return;
+      return; 
     }
 
-  if(delta_inf == delta)
+  if(delta_inf == delta) // no throttle change
     return;
 
+  bool is_ctrl_up = false;  
   double ddelta = rdelta * dt;
   double edelta = delta_inf - delta;
+  if(gamma_inf < 0){ // backward
+    is_ctrl_up = edelta < 0;
+  }else if (gamma_inf > 0){ // forward
+    is_ctrl_up = edelta > 0;
+  }
   
   if(abs(edelta) < ddelta){
     delta_new = (float)delta_inf;
@@ -317,11 +415,8 @@ void c_model_engine_ctrl::update(const int u, const float gamma,
     delta_new = (float)(delta - ddelta);
   }
 
-  slack_new = slack + delta_new - delta;
-  slack_new = min((float)slack_inf, slack_new);
-  slack_new = max(0.f, slack_new);
+  calc_final_rev(gamma_new, delta_new, is_ctrl_up, rev, rev_new);
 }
-
 
 //////////////////////////////////////// force model for outboard mortor
 const char * c_model_outboard_force::_str_par[num_params] = {

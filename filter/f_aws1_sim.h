@@ -57,7 +57,7 @@ protected:
     double lat, lon, xe, ye, ze, roll, pitch, yaw, cog, sog, ryaw;		
     Mat Rwrld;
     float eng, rud, rev, fuel; 
-    float thro_pos, thro_slack, gear_pos, rud_pos, rud_slack;
+    float thro_pos, gear_pos, rud_pos, rud_slack;
     
   s_state_vector(const long long & _t,
 		 const double & _lat, const double & _lon,
@@ -76,7 +76,7 @@ protected:
   s_state_vector() :lat(135.f), lon(35.f),
       roll(0.f), pitch(0.f), yaw(0.f), cog(0.f), sog(0.f),
       eng(127.0f), rud(127.0f), rev(700.f), fuel(0.1f),
-      thro_pos(0.f), thro_slack(0.f), gear_pos(0.f),
+      thro_pos(0.f), gear_pos(0.f),
       rud_pos(0.f), rud_slack(0.f)
     {
       update_coordinates();
@@ -92,7 +92,7 @@ protected:
       cout << " rud:" << rud << " rud_pos:" << rud_pos
 	   << " rud_slack:" << rud_slack;
       cout << " eng: " << eng << " gear_pos:" << gear_pos
-	   << " thro_pos: " << thro_pos << " thro_slack:" << thro_slack;
+	   << " thro_pos: " << thro_pos;
       cout << " rev:" << rev;
       cout << " yaw:" << yaw;
       cout << " cog:" << cog;
@@ -125,16 +125,6 @@ protected:
   void simulate(const long long tcur, const int iosv);
   void simulate_rudder(const float rud, const float rud_pos, float & rud_pos_next);
   void simulate_engine(const float eng, const float eng_pos, const float gear_pos, float & eng_pos_next, float & gear_pos_next);
-  const float final_rev(const float thr_pos)
-  {
-    if (thr_pos < 0.417)
-      return 700;
-    if (thr_pos < 0.709)
-      return (5000 - 700) * (thr_pos - 0.417) / (0.709 - 0.417) + 700;
-    if (thr_pos < 0.854)
-      return (5600 - 5000) * (thr_pos - 0.709) / (0.854 - 0.709) + 5000;
-    return 5600;
-  }
   
   bool m_bcsv_out;
   char m_fcsv_out[1024];

@@ -323,10 +323,18 @@ class c_model_engine_ctrl: public c_model_base
 {
  private:
   double fth, bth, umax, umin;
-  double rgamma, rfdelta, rbdelta, fslack, bslack;
+  double rgamma, rfdelta, rbdelta;
+  double e0f,e0df,epf,epdf,eff,r0f,rpf,rff,qddf,qudf,qdpf,qupf;
+  double _e0f,_e0df,_epf,_epdf,_eff,_qddf,_qudf,_qdpf,_qupf;
+  double e0b,e0db,efb,r0b,rfb,qdb,qub;
+  double _e0b,_e0db,_efb,_qdb,_qub;
+  double lddf,cddf,ludf,cudf,ldpf,cdpf,lupf,cupf;
+  double ldb,cdb,lub,cub;
+  
+  
   enum {
     par_fth, par_bth, par_umax, par_umin,
-    par_rgamma, par_rfdelta, par_rbdelta, par_fslack, par_bslack,
+    par_rgamma, par_rfdelta, par_rbdelta,
     par_e0f,par_e0df,par_epf,par_epdf,par_eff, par_r0f,par_rpf, par_rff,
     par_qddf,par_qudf,par_qdpf,par_qupf,
     par_e0b,par_e0db,par_efb,par_r0b,par_rfb,
@@ -335,16 +343,23 @@ class c_model_engine_ctrl: public c_model_base
   };
   static const char * _str_par[num_params];
   static const char * _str_par_exp[num_params];
+  void calc_qeq_coeff(const double x0, const double y0,
+		      const double x1, const double y1,
+		      const double cq, double & cl, double & cc);
+  void calc_final_rev(const double gamma, const double delta,
+		      bool is_ctrl_up, const float rev, float & rev_new);
 public:
   c_model_engine_ctrl():fth(0x7f+0x19), bth(0x7f - 0x19),
     umax(0x00ff), umin(0x0000),
-    rgamma(0.5), rfdelta(0.5), rbdelta(0.5), fslack(0.05), bslack(0.05)
+    rgamma(0.5), rfdelta(0.5), rbdelta(0.5)
     {      
     }
 
   virtual ~c_model_engine_ctrl()
     {
     }
+
+  virtual void init();
   
   virtual const char * _get_str_param(int iparam)
   {
@@ -377,10 +392,44 @@ public:
       return &rfdelta;
     case par_rbdelta:
       return &rbdelta;
-    case par_fslack:
-      return &fslack;
-    case par_bslack:
-      return &bslack;      
+    case par_e0f:
+      return &e0f;
+    case par_e0df:
+      return &e0df;
+    case par_epf:
+      return &epf;
+    case par_epdf:
+      return &epdf;
+    case par_eff:
+      return &eff;
+    case par_r0f:
+      return &r0f;
+    case par_rpf:
+      return &rpf;
+    case par_rff:
+      return &rff;
+    case par_qddf:
+      return &qddf;
+    case par_qudf:
+      return &qudf;
+    case par_qdpf:
+      return &qdpf;
+    case par_qupf:
+      return &qupf;
+    case par_e0b:
+      return &e0b;
+    case par_e0db:
+      return &e0db;
+    case par_efb:
+      return &efb;
+    case par_r0b:
+      return &r0b;
+    case par_rfb:
+      return &rfb;
+    case par_qdb:
+      return &qdb;
+    case par_qub:
+      return &qub;
     }
     return NULL;
   }
@@ -389,7 +438,6 @@ public:
   {
     return num_params;
   }
-
   
   // u: control input [0,255]
   // gamma: gear position [-1,1]; Forward: 1, Backward: -1, Neutral: 0
@@ -398,16 +446,16 @@ public:
   //        Note that actual throttle position is delta - slack
   // dt: time step in second
   // (ganmma_new, delta_new, slack_new): updated (gamma, delta, slack)
-  void update(const int u, const float gamma, const float delta,
-	      const float slack, const float dt,
-	      float & gamma_new, float & delta_new, float & slack_new);
+  void update(const int u,
+	      const float gamma, const float delta, const float rev,
+	      const float dt,
+	      float & gamma_new, float & delta_new, float & rev_new);
   #ifdef PY_EXPORT
-  boost::python::tuple update_py(const int u, const float gamma, const float delta,
-			      const float slack, const float dt)
+  boost::python::tuple update_py(const int u, const float gamma, const float delta, const float rev, const float dt)
   {
-    float gamma_new=0., delta_new=0., slack_new=0.;
-    update(u, gamma, delta, slack, dt, gamma_new, delta_new, slack_new);
-    return boost::python::make_tuple(gamma_new, delta_new, slack_new);
+    float gamma_new=0., delta_new=0., rev_new=0.;
+    update(u, gamma, delta, rev, dt, gamma_new, delta_new, rev_new);
+    return boost::python::make_tuple(gamma_new, delta_new, rev_new);
   }
   #endif
 };
