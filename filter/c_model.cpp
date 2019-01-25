@@ -233,7 +233,7 @@ const char * c_model_engine_ctrl::_str_par[num_params] =
     "fth", "bth", "umax", "umin",
     "rgamma", "rfdelta", "rbdelta",
     "e0f", "e0df", "epf", "epdf", "eff", "r0f", "rpf", "rff", "qddf", "qudf", "qdpf", "qupf",
-    "e0b", "e0bd", "efb", "r0b", "rfb", "qdb", "qub"    
+    "e0b", "e0db", "efb", "r0b", "rfb", "qdb", "qub"    
   };
 
 const char * c_model_engine_ctrl::_str_par_exp[num_params] =
