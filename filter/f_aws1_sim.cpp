@@ -483,6 +483,7 @@ void f_aws1_sim::update_output_sample(const long long & tcur)
     mectrl.update(stprev.eng, stprev.gear_pos, stprev.thro_pos,
 		  stprev.rev, dt,
 		  stcur.gear_pos, stcur.thro_pos, stcur.rev);
+
     if(v[0] < 0){
       // astern model
       mobfb.update((stprev.rud_pos - stprev.rud_slack),

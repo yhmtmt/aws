@@ -351,7 +351,7 @@ void c_model_engine_ctrl::calc_final_rev(const double gamma, const double delta,
 	rev_new = (float)rev;
     }
   }else{ //neutral
-    rev_new = 0;
+    rev_new = 0.5 * (r0b + r0f);
   }
 }
 
@@ -378,8 +378,9 @@ void c_model_engine_ctrl::update(const int u,
   }else{
     delta_inf = 0.0;
     gamma_inf = 0.0;
+    rdelta = gamma < 0 ? rbdelta : rfdelta;
   }
-  
+
   if(gamma != gamma_inf && delta == 0.0) // gear is moving
     {
       // gamma -> gamma_inf
@@ -392,21 +393,26 @@ void c_model_engine_ctrl::update(const int u,
       }else{
 	gamma_new = (float)(gamma + dgamma);
       }
+      calc_final_rev(gamma_new, 0.0, true, rev, rev_new);
       return; 
     }
 
   if(delta_inf == delta) // no throttle change
     return;
-
-  bool is_ctrl_up = false;  
+  
   double ddelta = rdelta * dt;
   double edelta = delta_inf - delta;
+
+  bool is_ctrl_up = false;
   if(gamma_inf < 0){ // backward
     is_ctrl_up = edelta < 0;
   }else if (gamma_inf > 0){ // forward
     is_ctrl_up = edelta > 0;
   }
-  
+  if(is_ctrl_up)
+    cout << "up" << endl;
+  else
+    cout << "down" << endl;
   if(abs(edelta) < ddelta){
     delta_new = (float)delta_inf;
   }else if(edelta > 0){
