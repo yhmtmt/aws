@@ -284,8 +284,8 @@ void c_model_engine_ctrl::init()
   _efb=(efb-bth)/sb;
   _qdb=sb*sb*qdb;
   _qub=sb*sb*qub;
-  calc_qeq_coeff(_e0db,r0b,_efb,rfb, _qub, lub, cub);
-  calc_qeq_coeff(_e0b,r0b,_efb,rfb, _qdb, ldb, cdb);
+  calc_qeq_coeff(_e0db,r0b,_efb,rfb,_qdb, ldb, cdb);
+  calc_qeq_coeff(_e0b,r0b,_efb,rfb, _qub, lub, cub);
 }
 
 void c_model_engine_ctrl::calc_qeq_coeff(const double x0, const double y0,
@@ -409,10 +409,7 @@ void c_model_engine_ctrl::update(const int u,
   }else if (gamma_inf > 0){ // forward
     is_ctrl_up = edelta > 0;
   }
-  if(is_ctrl_up)
-    cout << "up" << endl;
-  else
-    cout << "down" << endl;
+
   if(abs(edelta) < ddelta){
     delta_new = (float)delta_inf;
   }else if(edelta > 0){
