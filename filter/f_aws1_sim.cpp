@@ -200,6 +200,7 @@ void f_aws1_sim::update_model_params()
   mobfp.init();
   m3dof.init();
   m3dofp.init();
+  m3dofb.init();
   bupdate_model_params = false;
 }
 
