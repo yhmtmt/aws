@@ -90,6 +90,8 @@ protected:
   float tbl_stable_nrpm[60];
   float alpha_tbl_stable_rpm;
   float alpha_rud_mid;
+
+  char tbl_spd_rpm[30];
   
   // for wp mode
   float m_cdiff, m_sdiff, m_revdiff; 

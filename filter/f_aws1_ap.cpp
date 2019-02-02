@@ -113,26 +113,13 @@ f_aws1_ap::f_aws1_ap(const char * name) :
   fctrl_state[0] = '\0';
   register_fpar("fctrl_state", fctrl_state, sizeof(fctrl_state), "Autopilot Control State");
   
-  // registering rpm tables
-  for (int itbl = 0; itbl < 60; itbl++){
-    tbl_stable_rpm[itbl] = (float)(itbl * (m_meng_max - 127.0f) / 60.0f + 127.0f);
-    str_tbl_stable_rpm[itbl] = new char[9];
-    if(!str_tbl_stable_rpm[itbl]){
-      cerr << "Error in allocating memory for rpmtbl registration in aws1_ap" << endl;
-      exit(1);
-    }
-
-    tbl_stable_nrpm[itbl] = (float)(itbl * (m_meng_min - 127.0f) / 60.0f + 127.0f);
-    str_tbl_stable_nrpm[itbl] = new char[10];
-    if(!str_tbl_stable_nrpm[itbl]){
-      cerr << "Error in allocating memory for rpmtbl registration in aws1_ap" << endl;
-      exit(1);
-    }
-    snprintf(str_tbl_stable_rpm[itbl], 9, "rpmtbl%02d", itbl);
-    register_fpar(str_tbl_stable_rpm[itbl], tbl_stable_rpm + itbl, "Stable RPM engine control value");
-    snprintf(str_tbl_stable_rpm[itbl], 10, "nrpmtbl%02d", itbl);
-    register_fpar(str_tbl_stable_rpm[itbl], tbl_stable_rpm + itbl, "Stable RPM engine control value (negative)");
-
+  tbl_spd_rpm[0] = 0;
+  tbl_spd_rpm[1] = 0;
+  for (int i=2; i < 30; i++){
+    if (i < 23)
+      tbl_spd_rpm[i] = (char)(7 + (double)(i - 2) * (56.0 - 7.0) / 20.0);  
+    else
+      tbl_spd_rpm[i] = 56.0;
   }
 }
 
@@ -604,17 +591,19 @@ void f_aws1_ap::ctrl_to_sog(const float sog, const float sog_tgt,
   stgt = min(sog_tgt, stgt);
   
   float sdiff = (float)(stgt - sog);
-  sdiff *= (float)(1. / srange);
+  sdiff *= (float)(1. / smax);
   
   m_dsdiff = (float)(sdiff - m_sdiff);
   m_isdiff += sdiff;
   m_sdiff = sdiff;
-  
-  m_meng = (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255. + 127.);
+ 
+  m_meng = tbl_stable_rpm[tbl_spd_rpm[(int)stgt]];
+  m_meng += (float)((m_ps * m_sdiff + m_is * m_isdiff + m_ds * m_dsdiff) * 255.);
   m_meng = (float)min(m_meng, m_meng_max);
   m_meng = (float)max(m_meng, 127.f);  
   if(m_verb){
-    printf("ap meng=%3.1f stgt=%2.1f sog=%2.1f s=%2.2f ds=%2.2f is=%2.2f \n", m_meng, stgt, sog, m_sdiff, m_dsdiff, m_isdiff);
+    printf("ap tbl[%d]=%d meng=%3.1f stgt=%2.1f sog=%2.1f s=%2.2f ds=%2.2f is=%2.2f \n", (int)stgt, (int)tbl_spd_rpm[(int)stgt], m_meng, stgt, sog, 
+	   m_sdiff, m_dsdiff, m_isdiff);
   }
 }
 
