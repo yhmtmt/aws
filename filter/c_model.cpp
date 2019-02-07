@@ -492,12 +492,12 @@ void c_model_outboard_force::update(const double _rud, const double _gear,
     double nrovr = nrox * vrx + nroy * vry;
    
     // calculate disturbance D and lift L
-    D = -0.5 * CD * abs(nrovr);
+    D = - 0.5 * CD * abs(nrovr);
     Dx = D * vrx;
     Dy = D * vry;
     
     L = 
-      - (nrvr > 0  ? 0.5 /*forward*/: -0.5/*backward*/) * CL * nrovr;
+      - (nrvr > 0  ? 0.5 : -0.5) * CL * nrovr;
     Lx = L * vrox;
     Ly = L * vroy;
     
