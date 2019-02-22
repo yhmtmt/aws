@@ -300,8 +300,13 @@ void c_model_engine_ctrl::calc_qeq_coeff(const double x0, const double y0,
   cc = -(-cq * x0 * x1x1 + x1 * (cq * x0x0 - y0) + x0 * y1) * base;
 }
 
-void c_model_engine_ctrl::calc_final_rev(const double gamma, const double delta, bool is_ctrl_up, const float rev, float & rev_new)
+void c_model_engine_ctrl::calc_final_rev(const double gamma, const double delta,
+					 bool is_ctrl_up, const float rev,
+					 float & rev_new)
 {
+  // Note: the function calculate rev as the positive value.
+  //       Inverse revolution should be handled with the gear direction.
+  
   if(gamma >= 1.0){ // forward
     if(is_ctrl_up){ // up ctrl
       if(delta < _e0f) // idle
@@ -456,6 +461,8 @@ void c_model_outboard_force::update(const double _rud, const double _gear,
 				    const double _thro, const double _rev,
 				    const double * v, double * f)
 {
+  // Note: this function assume _rev is the positive value.
+  //       sign of gear value indicates the direction of propeller revolution
   double g = 0.0;
   if(_gear != 1.0 &&  _gear != -1.0){
     g = 0.0;
@@ -475,7 +482,7 @@ void c_model_outboard_force::update(const double _rud, const double _gear,
   
   // calculate x, y thrust force T(v, rev), and
   // decompose Tx = T cos phi, Ty=T sin phi
-  double T = (CTL * vr * _rev + CTQ * _rev * _rev) * g;
+  double T = (CTL * vr * _rev)  + (CTQ * _rev * _rev) * g;
   double Tx = nrx * T, Ty = nry * T;
   
   // flow to rudder angle psi
