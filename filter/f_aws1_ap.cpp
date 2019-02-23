@@ -696,7 +696,7 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
   float sog_tgt = 0.0;
   m_ap_inst->get_tgt_sog(sog_tgt);
 
-  if(d > 5.0)
+  if(d > 10.0)
     ctrl_to_sog_cog(sog, sog_tgt, cdiff, 2.0f, 1.0f);  
   else
     m_meng = 127.f;
