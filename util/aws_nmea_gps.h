@@ -201,4 +201,114 @@ public:
 	{return ENDT_ZDA;};
 };
 
+class c_gll: public c_nmea_dat
+{
+ public:
+  double lon, lat; // in degree
+  e_gp_dir lon_dir, lat_dir;
+  short hour, mint, msec; // UTC time. hour,minuite,msec
+  bool available; // A(valid) or V(invalid)
+ c_gll():lon(0),lat(0),lon_dir(EGP_E),lat_dir(EGP_N),
+    hour(0),mint(0),msec(0)
+    {
+    }
+
+  virtual bool dec(const char * str);
+  virtual ostream & show(ostream & out) const
+  {
+    out << "GPGLL>";
+    out << " UTC: " << hour << ":" << mint << ":" << msec / 1000 << ":" << msec % 1000;
+    out << " POS: " << lat << (lat_dir == EGP_N  ? "N":"S") << ","
+	<< lon << (lon_dir == EGP_E ? "E":"W");
+    out << " Available: " << (available ? "yes":"no") << endl;
+    return out;
+  }
+
+  virtual e_nd_type get_type() const
+  {return ENDT_GLL; };    
+};
+
+class c_hdt: public c_nmea_dat
+{
+ public:
+  float hdg; // heading in degree
+
+ c_hdt():hdg(0)
+    {
+    }
+
+  virtual bool dec(const char * str);
+  virtual ostream & show(ostream & out) const
+  {
+    out << "GPHDT>";
+    out << " HDG: " << hdg << endl;
+    return out;
+  }
+
+  virtual e_nd_type get_type() const
+  {return ENDT_HDT;};    
+};
+
+class c_rot: public c_nmea_dat
+{
+ public:
+  float rot;
+  bool available;
+  
+ c_rot():rot(0),available(false)
+    {
+    }
+
+  virtual bool dec(const char * str);
+  virtual ostream & show(ostream & out) const
+  {
+    out << "GPROT>";
+    out << " ROT: " << rot <<
+      " Available: " << (available ? "Yes":"No") << endl;
+    return out;
+  }
+
+  virtual e_nd_type get_type() const
+  {return ENDT_RMC;};
+};
+
+
+//////////////////////////////////////////////////// hemisphere's psat message
+class c_psat_hpr: public c_nmea_dat
+{
+ public:
+  short hour, mint, sec;
+  float hdg, pitch, roll; // attitude in degree;
+  bool gyro; // true: values are from gyro, false: from gps
+
+ c_psat_hpr():hour(0),mint(0),sec(0),hdg(0),pitch(0),roll(0),gyro(false)
+    {
+    }
+  virtual bool dec(const char * str);
+  virtual ostream & show(ostream & out) const
+  {
+    out << " PSAT,HPR>";
+    out << " HDG: " << hdg << ", PITCH: " << pitch << ", ROLL: " << roll;
+    out << " Source: " << (gyro ? "Gyro":"GPS") << endl;
+    return out;
+  }
+
+  virtual e_nd_type get_type() const
+  {
+    return ENDT_PSAT_HPR;
+  }
+};
+
+class c_psat_dec
+{
+ protected:
+  c_psat_hpr hpr;
+
+ public:
+  c_psat_dec()
+    {
+    }
+  c_nmea_dat * dec(const char * str);  
+};
+
 #endif

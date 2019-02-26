@@ -32,85 +32,85 @@ using namespace std;
 
 bool c_gga::dec(const char * str)
 {
-	int i = 0;
-	int ipar = 0;
-	int len;
-	char buf[32];
-	char tok[32];
-	while(ipar < 15){
-		len = parstrcpy(buf, &str[i], ',');
-		i += len + 1;
-		if(len == 0){ 
-			ipar++;
-			continue;
-		}
-
-		switch(ipar){
-		case 0: // $GPGGA 
-			break;
-		case 1: // TIME hhmmss
-			parstrcpy(tok, buf, 2);
-			m_h = (short) atoi(tok);
-			parstrcpy(tok, buf+2, 2);
-			m_m = (short) atoi(tok);
-			parstrcpy(tok, buf+4, '\0');
-			m_s = (float) atof(tok);
-			break;
-		case 2: // LAT
-			parstrcpy(tok, buf, 2);
-			m_lat_deg = atof(tok);
-			parstrcpy(tok, buf+2, '\0');
-			m_lat_deg += atof(tok) / 60;
-			break;
-		case 3: // N or S
-			if(buf[0] == 'N')
-				m_lat_dir = EGP_N;
-			else
-				m_lat_dir = EGP_S;
-			break;				
-		case 4: // LON
-			parstrcpy(tok, buf, 3);
-			m_lon_deg = atof(tok);
-			parstrcpy(tok, buf + 3, '\0');
-			m_lon_deg += atof(tok) / 60;
-			break;
-		case 5: // E or W
-			if(buf[0] == 'E')
-				m_lon_dir = EGP_E;
-			else
-				m_lon_dir = EGP_W;
-			break;
-		case 6: // Fix Stats
-			m_fix = (e_gp_fix_stat)(buf[0] - '0');
-		case 7: // NUM_SATS
-			m_num_sats = atoi(buf);
-			break;
-		case 8: // HDOP
-			m_hdop = (float) atof(buf);
-			break;
-		case 9: // Altitude
-			m_alt = (float) atof(buf);
-			break;
-		case 10: // M
-			break;
-		case 11:// Geoidal separation
-			m_geos = (float) atof(buf);
-			break;
-		case 12: // M
-			break;
-		case 13: // dgps age
-			m_dgps_age = (float) atof(buf);
-			break;
-		case 14: // dgps station id
-			if(parstrcpy(tok, buf, '*'))
-				m_dgps_station = atoi(buf);
-			break;
-		}
-
-		ipar++;
-	}
-
-	return true;
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  while(ipar < 15){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $GPGGA 
+      break;
+    case 1: // TIME hhmmss
+      parstrcpy(tok, buf, 2);
+      m_h = (short) atoi(tok);
+      parstrcpy(tok, buf+2, 2);
+      m_m = (short) atoi(tok);
+      parstrcpy(tok, buf+4, '\0');
+      m_s = (float) atof(tok);
+      break;
+    case 2: // LAT
+      parstrcpy(tok, buf, 2);
+      m_lat_deg = atof(tok);
+      parstrcpy(tok, buf+2, '\0');
+      m_lat_deg += atof(tok) / 60.0;
+      break;
+    case 3: // N or S
+      if(buf[0] == 'N')
+	m_lat_dir = EGP_N;
+      else
+	m_lat_dir = EGP_S;
+      break;				
+    case 4: // LON
+      parstrcpy(tok, buf, 3);
+      m_lon_deg = atof(tok);
+      parstrcpy(tok, buf + 3, '\0');
+      m_lon_deg += atof(tok) / 60;
+      break;
+    case 5: // E or W
+      if(buf[0] == 'E')
+	m_lon_dir = EGP_E;
+      else
+	m_lon_dir = EGP_W;
+      break;
+    case 6: // Fix Stats
+      m_fix = (e_gp_fix_stat)(buf[0] - '0');
+    case 7: // NUM_SATS
+      m_num_sats = atoi(buf);
+      break;
+    case 8: // HDOP
+      m_hdop = (float) atof(buf);
+      break;
+    case 9: // Altitude
+      m_alt = (float) atof(buf);
+      break;
+    case 10: // M
+      break;
+    case 11:// Geoidal separation
+      m_geos = (float) atof(buf);
+      break;
+    case 12: // M
+      break;
+    case 13: // dgps age
+      m_dgps_age = (float) atof(buf);
+      break;
+    case 14: // dgps station id
+      if(parstrcpy(tok, buf, '*'))
+	m_dgps_station = atoi(buf);
+      break;
+    }
+    
+    ipar++;
+  }
+  
+  return true;
 }
 
 /////////////////////////////////////////// gsa decoder
@@ -406,50 +406,265 @@ vtgerror:
 ////////////////////////////////////////////////zda decoder
 bool c_zda::dec(const char * str)
 {
-	int i = 0;
-	int ipar = 0;
-	int len;
-	char buf[32];
-	char tok[32];
-
-	while(ipar < 7){
-		len = parstrcpy(buf, &str[i], ',');
-		i += len + 1;
-		if(len == 0){ 
-			ipar++;
-			continue;
-		}
-
-		switch(ipar){
-		case 0: // $GPRMC
-			break;
-		case 1: // TIME hhmmss
-			parstrcpy(tok, buf, 2);
-			m_h = (short) atoi(tok);
-			parstrcpy(tok, buf+2, 2);
-			m_m = (short) atoi(tok);
-			parstrcpy(tok, buf+4, '\0');
-			m_s = (float) atof(tok);
-			break;
-		case 2: // day
-			m_dy = atoi(buf);
-			break;
-		case 3: // month
-			m_mn = atoi(buf);
-			break;
-		case 4: // year
-			m_yr = atoi(buf);
-			break;				
-		case 5: // local zone hour offset
-			m_lzh = atoi(buf);
-			break;
-		case 6: // local zone minute offset
-			m_lzm = atoi(buf);
-			break;
-		}
-		ipar++;
-	}
-
-	return true;
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  
+  while(ipar < 7){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $GPRMC
+      break;
+    case 1: // TIME hhmmss
+      parstrcpy(tok, buf, 2);
+      m_h = (short) atoi(tok);
+      parstrcpy(tok, buf+2, 2);
+      m_m = (short) atoi(tok);
+      parstrcpy(tok, buf+4, '\0');
+      m_s = (float) atof(tok);
+      break;
+    case 2: // day
+      m_dy = atoi(buf);
+      break;
+    case 3: // month
+      m_mn = atoi(buf);
+      break;
+    case 4: // year
+      m_yr = atoi(buf);
+      break;				
+    case 5: // local zone hour offset
+      m_lzh = atoi(buf);
+      break;
+    case 6: // local zone minute offset
+      m_lzm = atoi(buf);
+      break;
+    }
+    ipar++;
+  }
+  
+  return true;
 }
 
+
+////////////////////////////////////////////////gll decoder
+bool c_gll::dec(const char * str)
+{
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  
+  while(ipar < 7){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $GPGLL
+      break;
+    case 1: // lattitude: ddmm.mmmm
+      parstrcpy(tok, buf, 2);
+      lat = (double) atoi(tok);
+      parstrcpy(tok, buf+2, '\0');
+      lat += (double) (atof(tok) * (1.0/60.0));
+      break;
+    case 2: // N or S
+      if(buf[0] == 'N')
+	lat_dir = EGP_N;
+      else
+	lat_dir = EGP_S;
+      break;				    
+    case 3: // longitude dddmm.mmmm
+      parstrcpy(tok, buf, 3);
+      lon = atof(tok);
+      parstrcpy(tok, buf + 3, '\0');
+      lon += atof(tok) * (1.0/ 60.0);
+      break;
+    case 4: // E or W
+      if(buf[0] == 'E')
+	lon_dir = EGP_E;
+      else
+	lon_dir = EGP_W;
+      break;				
+    case 5: // time hhmmss.ss
+      parstrcpy(tok, buf, 2);
+      hour = (short) atoi(tok);
+      parstrcpy(tok, buf+2, 2);
+      mint = (short) atoi(tok);
+      parstrcpy(tok, buf+4, '\0');
+      msec = (short) (atof(tok) * 1000);
+      break;
+    case 6: // availability
+      if(buf[0] == 'A')
+	available = true;
+      else
+	available = false;
+      break;				
+    }
+    ipar++;
+  }
+  
+  return true;
+}
+
+
+////////////////////////////////////////////////hdt decoder
+bool c_hdt::dec(const char * str)
+{
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  
+  while(ipar < 3){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $GPHDT
+      break;
+    case 1: // heading
+      hdg = (float)atof(buf);
+      break;
+    case 2: // T
+      break;				    
+    }
+    ipar++;
+  }
+  
+  return true;
+}
+
+////////////////////////////////////////////////hdt decoder
+bool c_rot::dec(const char * str)
+{
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  
+  while(ipar < 3){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $GPROT
+      break;
+    case 1: // Rate of Turn
+      rot = (float)atof(buf);
+      break;
+    case 2: // A or not
+      if (buf[0] == 'A')
+	available = true;
+      else
+	available = false;
+      break;				    
+    }
+    ipar++;
+  }
+  
+  return true;
+}
+
+//////////////////////////////////////////////// hemisphere's psat decoder
+c_nmea_dat * c_psat_dec::dec(const char * str)
+{
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  while (ipar < 2){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $PSAT
+      break;
+    case 1: // HPR or GBS or INTLT
+      switch(buf[0]){
+      case 'H':
+	return (hpr.dec(&str[i]) ? &hpr : NULL);
+      case 'G':
+	return NULL;
+      case 'I':
+	return NULL;
+      }
+    }
+  }
+  
+  return NULL;
+}
+
+bool c_psat_hpr::dec(const char * str)
+{
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  
+  while(ipar < 4){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // time
+      parstrcpy(tok, buf, 2);
+      hour = (short) atoi(tok);
+      parstrcpy(tok, buf+2, 2);
+      mint = (short) atoi(tok);
+      parstrcpy(tok, buf+4, '\0');
+      sec = (short) atoi(tok);
+      break;
+    case 1: // heading
+      hdg = (float)atof(buf);
+      break;
+    case 2: // pitch
+      pitch = (float)atof(buf);
+      break;
+    case 3: // roll
+      roll = (float)atof(buf);
+      break;
+    case 4: // from GPS or Gyro
+      if(buf[0] == 'N')
+	gyro = false;
+      else
+	gyro = true;
+      break;
+    }
+    ipar++;
+  }
+  
+  return true;
+}

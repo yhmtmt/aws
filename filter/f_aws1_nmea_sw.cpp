@@ -86,90 +86,89 @@ void f_aws1_nmea_sw::destroy_run()
 
 void f_aws1_nmea_sw::aws_to_out()
 {
-	while(m_aws_nmea_i->pop(m_nmea)){
-		e_nd_type type = get_nd_type(m_nmea);
-
-		if(m_verb){
-			cout << "AWS > " << m_nmea << endl;
-		}
-
-		if(m_ap_nmea_o && m_aws_ctrl){
-			switch(type){
-			case ENDT_APB:
-			case ENDT_AAM:
-			case ENDT_BOD:
-			case ENDT_BWC:
-			case ENDT_XTE:
-			case ENDT_RMB:
-			case ENDT_APA:
-				if(m_aws_ocnt == 0){
-					if(m_verb){
-						cout << "AP < " << m_nmea << endl;
-					}
-					m_ap_nmea_o->push(m_nmea);			
-					m_ap_out = true;				
-				}	
-				break;
-			default:
-				break;
-			}
-		}
-	}
+  while(m_aws_nmea_i->pop(m_nmea)){
+    e_nd_type type = get_nd_type(m_nmea);
+    
+    if(m_verb){
+      cout << "AWS > " << m_nmea << endl;
+    }
+    
+    if(m_ap_nmea_o && m_aws_ctrl){
+      switch(type){
+      case ENDT_APB:
+      case ENDT_AAM:
+      case ENDT_BOD:
+      case ENDT_BWC:
+      case ENDT_XTE:
+      case ENDT_RMB:
+      case ENDT_APA:
+	if(m_aws_ocnt == 0){
+	  if(m_verb){
+	    cout << "AP < " << m_nmea << endl;
+	  }
+	  m_ap_nmea_o->push(m_nmea);			
+	  m_ap_out = true;				
+	}	
+	break;
+      default:
+	break;
+      }
+    }
+  }
 }
 
 void f_aws1_nmea_sw::ap_to_out()
 {
-	while(m_ap_nmea_i->pop(m_nmea)){
-		if(m_verb)
-			cout << "AP > " << m_nmea << endl;
-		if(m_aws_ocnt == 0){
-			if(m_verb)
-				cout << "AWS < " << m_nmea << endl;
-			if(m_aws_nmea_o)
-				m_aws_nmea_o->push(m_nmea);
-			m_aws_out = true;
-		}
-	}
+  while(m_ap_nmea_i->pop(m_nmea)){
+    if(m_verb)
+      cout << "AP > " << m_nmea << endl;
+    if(m_aws_ocnt == 0){
+      if(m_verb)
+	cout << "AWS < " << m_nmea << endl;
+      if(m_aws_nmea_o)
+	m_aws_nmea_o->push(m_nmea);
+      m_aws_out = true;
+    }
+  }
 }
 
 void f_aws1_nmea_sw::gff_to_out()
 {
-	while(m_gff_nmea_i->pop(m_nmea)){
-		e_nd_type type = get_nd_type(m_nmea);
-
-		if(m_state && type == ENDT_DBT){
-			const c_dbt * pdbt = dynamic_cast<const c_dbt*>(m_nmea_dec.decode(m_nmea));
-			if(pdbt){
-				m_state->set_depth(get_time(), pdbt->dm);
-			}
-		}
-
-		if(m_verb)
-			cout << "GFF > " << m_nmea << endl;
-
-		if(m_aws_nmea_o)
-			m_aws_nmea_o->push(m_nmea);
-
-		if(m_ap_nmea_o && !m_aws_ctrl){
-			switch(type){
-			case ENDT_APB:
-			case ENDT_AAM:
-			case ENDT_VTG:
-			case ENDT_XTE:
-				if(m_ap_ocnt == 0){
-					if(m_verb)
-						cout << "AP < " << m_nmea << endl;
-
-					m_ap_nmea_o->push(m_nmea);
-					m_ap_out = true;
-				}
-				break;				
-			default:
-				break;
-			}
-		}
-
+  while(m_gff_nmea_i->pop(m_nmea)){
+    e_nd_type type = get_nd_type(m_nmea);
+    
+    if(m_state && type == ENDT_DBT){
+      const c_dbt * pdbt = dynamic_cast<const c_dbt*>(m_nmea_dec.decode(m_nmea));
+      if(pdbt){
+	m_state->set_depth(get_time(), pdbt->dm);
+      }
+    }
+    
+    if(m_verb)
+      cout << "GFF > " << m_nmea << endl;
+    
+    if(m_aws_nmea_o)
+      m_aws_nmea_o->push(m_nmea);
+    
+    if(m_ap_nmea_o && !m_aws_ctrl){
+      switch(type){
+      case ENDT_APB:
+      case ENDT_AAM:
+      case ENDT_VTG:
+      case ENDT_XTE:
+	if(m_ap_ocnt == 0){
+	  if(m_verb)
+	    cout << "AP < " << m_nmea << endl;
+	  
+	  m_ap_nmea_o->push(m_nmea);
+	  m_ap_out = true;
 	}
+	break;				
+      default:
+	break;
+      }
+    }   
+  }
 }
 
 void f_aws1_nmea_sw::ais_to_out()

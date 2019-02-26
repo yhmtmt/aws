@@ -1,5 +1,4 @@
-// Copyright(c) 2012 Yohei Matsumoto, Tokyo University of Marine
-// Science and Technology, All right reserved. 
+// Copyright(c) 2019 Yohei Matsumoto, All right reserved. 
 
 // aws_nmea.h is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -19,22 +18,28 @@
 
 // NMEA data type
 enum e_nd_type{
-	/* GPS related NMEA message */
-	ENDT_GGA, ENDT_GSA, ENDT_GSV, ENDT_RMC, ENDT_VTG, ENDT_ZDA, ENDT_GLL,
-	/* ARPA related NMEA message */
-	ENDT_TTM,
-	/* Fish Finder's NMEA message */
-	ENDT_DBT, ENDT_MTW,
-	/* AIS related NMEA message */
-	ENDT_VDM, ENDT_VDO, ENDT_ABK, 
-	/* Autopilot related NMEA message */
-	ENDT_APB, ENDT_AAM, ENDT_BOD, ENDT_BWC, ENDT_XTE, ENDT_RMB, ENDT_APA,
-	/* Undefined NMEA message */
-	ENDT_UNDEF,
+  /* GPS related NMEA message */
+  ENDT_GGA, ENDT_GSA, ENDT_GSV, ENDT_RMC, ENDT_VTG, ENDT_ZDA, ENDT_GLL,
+  ENDT_HDT, ENDT_ROT,
+  /* Hemisphere V104 specific message */  
+  ENDT_PSAT,  
+  /* ARPA related NMEA message */
+  ENDT_TTM,
+  /* Fish Finder's NMEA message */
+  ENDT_DBT, ENDT_MTW,
+  /* AIS related NMEA message */
+  ENDT_VDM, ENDT_VDO, ENDT_ABK, 
+  /* Autopilot related NMEA message */
+  ENDT_APB, ENDT_AAM, ENDT_BOD, ENDT_BWC, ENDT_XTE, ENDT_RMB, ENDT_APA,
+  /* Undefined NMEA message */
+  ENDT_UNDEF,
+  
+  /* sub type for decoded VDM message */
+  ENDT_VDM1, ENDT_VDM4, ENDT_VDM5, ENDT_VDM6,
+  ENDT_VDM8, ENDT_VDM18, ENDT_VDM19, ENDT_VDM24,
 
-	/* sub type for decoded VDM message */
-	ENDT_VDM1, ENDT_VDM4, ENDT_VDM5, ENDT_VDM6,
-	ENDT_VDM8, ENDT_VDM18, ENDT_VDM19, ENDT_VDM24
+  /* Hemisphere V104 specific message */  
+  ENDT_PSAT_HPR
 };
 
 extern const char * str_nd_type[ENDT_UNDEF];
@@ -162,24 +167,28 @@ public:
 class c_nmea_dec
 {
 protected:
-	c_gga gga;
-	c_gsa gsa;
-	c_gsv gsv;
-	c_rmc rmc;
-	c_vtg vtg;
-	c_zda zda;
-	c_ttm ttm;
-	c_dbt dbt;
-	c_mtw mtw;
-	c_abk abk;
+  c_gga gga;
+  c_gsa gsa;
+  c_gsv gsv;
+  c_rmc rmc;
+  c_vtg vtg;
+  c_zda zda;
+  c_gll gll;
+  c_hdt hdt;
+  c_rot rot;	
+  c_ttm ttm;
+  c_dbt dbt;
+  c_mtw mtw;
+  c_abk abk;
 
-	c_vdm_dec vdmdec;
-	c_vdm_dec vdodec;
-public:
-	c_nmea_dec()
-	{
-	}
-	const c_nmea_dat * decode(const char * str);
+  c_psat_dec psatdec;
+  c_vdm_dec vdmdec;
+  c_vdm_dec vdodec;
+ public:
+  c_nmea_dec()
+    {
+    }
+  const c_nmea_dat * decode(const char * str);
 };
 
 #endif

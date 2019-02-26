@@ -31,6 +31,8 @@ using namespace std;
 
 const char * str_nd_type[ENDT_UNDEF] = {
   "GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", "GLL",
+  "HDT", "ROT",
+  "PSAT",
   "TTM", 
   "DBT", "MTW",
   "VDM", "VDO", "ABK",
@@ -39,79 +41,87 @@ const char * str_nd_type[ENDT_UNDEF] = {
 
 e_nd_type get_nd_type(const char * str)
 {
-	for(int i = 0; i < ENDT_UNDEF; i++){
-		const char * st = str_nd_type[i];
-		if(st[0] == str[3] && st[1] == str[4] && st[2] == str[5])
-			return (e_nd_type) i;
+  for(int i = 0; i < ENDT_UNDEF; i++){
+    const char * st = str_nd_type[i];
+    if (i == ENDT_PSAT){
+      if(st[0] == str[1] && st[1] == str[2]
+	 && st[2] == str[3] && st[3] == str[4])
+	{
+	  return (e_nd_type) i;
 	}
-	return ENDT_UNDEF;
+    }
+    
+    if(st[0] == str[3] && st[1] == str[4] && st[2] == str[5])
+      return (e_nd_type) i;
+  }
+  return ENDT_UNDEF;
 }
 
 
 unsigned char calc_nmea_chksum(const char * str)
 {
-	unsigned char cs = 0x00;
-	int i;
-	for(i = 1; str[i] != '*' && str[i] != '\0'; i++)
-		cs ^= str[i];
-	return cs;
+  unsigned char cs = 0x00;
+  int i;
+  for(i = 1; str[i] != '*' && str[i] != '\0'; i++)
+    cs ^= str[i];
+  return cs;
 }
 
 bool eval_nmea_chksum(const char * str)
 {
-	
-	unsigned char cs = 0x00;
-	int i;
-	for(i = 1; str[i] != '*' && str[i] != '\0' && i < 83; i++)
-		cs ^= str[i];
-
-	if(i == 83)
-		return false;
-
-	unsigned char csa = (unsigned char) htoi(&str[i+1]);
-	return cs == csa;
+  
+  unsigned char cs = 0x00;
+  int i;
+  for(i = 1; str[i] != '*' && str[i] != '\0' && i < 83; i++)
+    cs ^= str[i];
+  
+  if(i == 83)
+    return false;
+  
+  unsigned char csa = (unsigned char) htoi(&str[i+1]);
+  return cs == csa;
 }
 
 //////////////////////////////////////////////// string handler
 
 unsigned int htoi(const char * str)
 {
-	unsigned int r = 0;
-	for(int i = 0; str[i] != '\0'; i++){
-		r *= 16;
-		r += (str[i] >= 'a' ? str[i] - 'a' + 10: 
-		(str[i] >= 'A' ? str[i] - 'A'  + 10: str[i] - '0') );
-	}
-
-	return r;
+  unsigned int r = 0;
+  for(int i = 0; str[i] != '\0'; i++){
+    r *= 16;
+    r += (str[i] >= 'a' ? str[i] - 'a' + 10: 
+	  (str[i] >= 'A' ? str[i] - 'A'  + 10: str[i] - '0') );
+  }
+  
+  return r;
 }
 
 bool parstrcmp(const char * str1, const char * str2)
 {
-	for(int i = 0; str1[i] != '\0' && str2[i] != '\0'; i++)
-		if(str1[i] != str2[i])
-			return false;
-	return true;
+  for(int i = 0; str1[i] != '\0' && str2[i] != '\0'; i++)
+    if(str1[i] != str2[i])
+      return false;
+  return true;
 }
 
 int parstrcpy(char * str, const char * src, int num)
 {
-	int i;
-	for(i = 0; i < num; i++)
-		str[i] = src[i];
-	str[i] = '\0';
-	return i;
+  int i;
+  for(i = 0; i < num; i++)
+    str[i] = src[i];
+  str[i] = '\0';
+  return i;
 }
 
 int parstrcpy(char * str, const char * src, char delim, int max_buf)
 {
-	int i;
-	
-	for(i = 0; src[i] != delim && src[i] != '\0' && i < max_buf; i++)
-		str[i] = src[i];
-
-	str[i] = '\0';
-	return (src[i] == delim ? i : -1);
+  int i;
+  
+  for(i = 0; src[i] != delim && src[i] != '\0' && i < max_buf; i++)
+    str[i] = src[i];
+  
+  str[i] = '\0';
+  return (src[i] == delim ? i : -1);
 }
 
 
@@ -119,65 +129,77 @@ int parstrcpy(char * str, const char * src, char delim, int max_buf)
 ///////////////////////////////////////////// navdat decoder
 const c_nmea_dat * c_nmea_dec::decode(const char * str)
 {
-	if(!eval_nmea_chksum(str)){
-	  cerr << "Check sum is not valid. " << str << endl;
-		return NULL;
-	}
-
-	e_nd_type nt = get_nd_type(str);
-	if(nt == ENDT_UNDEF)
-		return NULL;
-
-	c_nmea_dat * pnd = NULL;
-	switch(nt){
-	case ENDT_GGA:
-	  pnd = &gga;
-		break;
-	case ENDT_GSA:
-		pnd = &gsa;
-		break;
-	case ENDT_GSV:
-		pnd = &gsv;
-		break;
-	case ENDT_RMC:
-		pnd = &rmc;
-		break;
-	case ENDT_VTG:
-		pnd = &vtg;
-		break;
-	case ENDT_ZDA:
-		pnd = &zda;
-		break;
-	case ENDT_TTM:
-		pnd = &ttm;
-		break;
-	case ENDT_DBT:
-		pnd = &dbt;
-		break;
-	case ENDT_MTW:
-		pnd = &mtw;
-		break;
-	case ENDT_VDM:	
-		pnd = vdmdec.dec(str);
-		break;
-	case ENDT_VDO:
-		pnd = vdodec.dec(str);
-		break;
-	case ENDT_ABK:
-		pnd = &abk;
-		break;
-	case ENDT_UNDEF:
-		pnd = NULL;
-	};
-	
-	if(pnd && pnd->dec(str)){	
-		pnd->m_toker[0] = str[1];
-		pnd->m_toker[1] = str[2];
-		pnd->m_cs = true;
-	}else{
-		return NULL;
-	}
-	return pnd;
+  if(!eval_nmea_chksum(str)){
+    cerr << "Check sum is not valid. " << str << endl;
+    return NULL;
+  }
+  
+  e_nd_type nt = get_nd_type(str);
+  if(nt == ENDT_UNDEF)
+    return NULL;
+  
+  c_nmea_dat * pnd = NULL;
+  switch(nt){
+  case ENDT_GGA:
+    pnd = &gga;
+    break;
+  case ENDT_GSA:
+    pnd = &gsa;
+    break;
+  case ENDT_GSV:
+    pnd = &gsv;
+    break;
+  case ENDT_RMC:
+    pnd = &rmc;
+    break;
+  case ENDT_VTG:
+    pnd = &vtg;
+    break;
+  case ENDT_ZDA:
+    pnd = &zda;
+    break;
+  case ENDT_GLL:
+    pnd = &gll;
+    break;
+  case ENDT_HDT:
+    pnd = &hdt;
+    break;
+  case ENDT_ROT:
+    pnd = &rot;
+    break;
+  case ENDT_PSAT:
+    pnd = psatdec.dec(str);
+    break;
+  case ENDT_TTM:
+    pnd = &ttm;
+    break;
+  case ENDT_DBT:
+    pnd = &dbt;
+    break;
+  case ENDT_MTW:
+    pnd = &mtw;
+    break;
+  case ENDT_VDM:	
+    pnd = vdmdec.dec(str);
+    break;
+  case ENDT_VDO:
+    pnd = vdodec.dec(str);
+    break;
+  case ENDT_ABK:
+    pnd = &abk;
+    break;
+  case ENDT_UNDEF:
+    pnd = NULL;
+  };
+  
+  if(pnd && pnd->dec(str)){	
+    pnd->m_toker[0] = str[1];
+    pnd->m_toker[1] = str[2];
+    pnd->m_cs = true;
+  }else{
+    return NULL;
+  }
+  return pnd;
 }
 
 //////////////////////////////////////////////// ttm decoder
