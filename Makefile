@@ -67,6 +67,7 @@ PROTO =
 
 ################################################# Image processing configuration
 ifeq ($(AWS1_AP),y)
+	DEFS += -DAWS1_AP
 	FILTER += f_aws1_ap
 	PROTO += aws1_ap
 endif

@@ -177,7 +177,9 @@ using namespace cv;
 #include "filter/f_map.h"
 #include "filter/f_router.h"
 #include "filter/f_time.h"
+#ifdef AWS1_AP
 #include "filter/f_aws1_ap.h"
+#endif
 #include "filter/f_obj_manager.h"
 #include "filter/f_wp_manager.h"
 #include "filter/f_env_sensor.h"
@@ -351,8 +353,10 @@ void f_base::register_factory()
 	register_factory<f_env_sensor>("env");
 	register_factory<f_volt_sensor>("volt");
 	register_factory<f_ngt1>("ngt1");
-	
+#ifdef AWS1_AP	
 	register_factory<f_aws1_ap>("aws1_ap");
+#endif
+
 	register_factory<f_obj_manager>("obj_manager");
 
 	register_factory<f_map>("map");
