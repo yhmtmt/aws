@@ -1,4 +1,4 @@
-CC	= arm-xilinx-linux-gnueabi-g++
+CC	= $(CROSS_COMPILE)g++ -Wno-psabi
 CPU 	= arm
 
 # n: disable all the window filter later
