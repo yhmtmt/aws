@@ -73,7 +73,7 @@ bool c_map_waypoint_obj::init(c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
     pocirc->config_border(hmarks[i].hmark, true, 1.0);
     pocirc->config_depth(hmarks[i].hmark, display_depth);
     pocirc->disable(hmarks[i].hmark);
-    hmarks[i].hstr = potxt->reserv(20);
+    hmarks[i].hstr = potxt->reserv(25);
     potxt->config(hmarks[i].hstr, clr, glm::vec4(0, 0, 0, 0),
 		  sz_fnt, mgn_fnt, c_gl_text_obj::an_cb, pos,
 		  0, display_depth);
@@ -115,7 +115,7 @@ void c_map_waypoint_obj::update_drawings()
     return;
   }
 
-  char buf[20];
+  char buf[25];
   glm::vec2 pos0, pos1;
   for (int iwp = 0; iwp < nmaxwps; iwp++) {
     if (!pocirc->is_enabled(hmarks[iwp].hmark)) {
@@ -163,10 +163,10 @@ void c_map_waypoint_obj::update_drawings()
     pos_inf.x += (float)(2.0 * rmark);
     pos_inf.y += (float)(2.0 * rmark);
     if (iwp == next) {
-      snprintf(buf, 20, "WP%03d\nD%4.0f\nC%3.1f", iwp, dist, crs);
+      snprintf(buf, 25, "WP%03d\nD%4.0f\nC%3.1f\nX%3.1f", iwp, dist, crs, xerr);
     }
     else {
-      snprintf(buf, 20, "WP%03d", iwp);
+      snprintf(buf, 25, "WP%03d", iwp);
     }
     potxt->set(hmarks[iwp].hstr, buf);
     potxt->config_position(hmarks[iwp].hstr, pos_inf);
@@ -204,11 +204,13 @@ void c_map_waypoint_obj::set_focus(const int iwp)
   focus = iwp;
 }
 
-void c_map_waypoint_obj::set_next(const int iwp, const float _dist, const float _crs)
+void c_map_waypoint_obj::set_next(const int iwp, const float _dist, const float _crs, const float _xerr)
 {
+
   next = iwp;
   dist = _dist;
   crs = _crs;
+  xerr = _xerr;
 }
 
 int c_map_waypoint_obj::collision(const glm::vec2 pos)

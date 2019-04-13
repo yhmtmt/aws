@@ -102,7 +102,7 @@ protected:
   float m_ps, m_is, m_ds; // PID for speed control
   
   float m_meng, m_seng, m_rud;
-  float rev_prop, u, v, angle_drift, yaw_bias;
+  float rev_prop, u, v, uflw, vflw, ucor, vcor, angle_drift, angle_flw, angle_drift_cor, yaw_bias, sog_cor, cog_cor;
   unsigned short  dmeng, dseng, drud;
   unsigned short meng_prev, seng_prev, rud_prev;
   float alpha_yaw_bias;

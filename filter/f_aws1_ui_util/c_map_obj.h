@@ -90,7 +90,7 @@ private:
   };
   vector<s_marker> hmarks;
   int focus, next;
-  float dist, crs;
+  float dist, crs, xerr;
   int nmaxwps;
   float rmark;
  public:
@@ -105,7 +105,7 @@ private:
   void disable(const int iwp);
   void disable();
   void set_focus(const int iwp);
-  void set_next(const int iwp, const float dist, const float crs);
+  void set_next(const int iwp, const float dist, const float crs, const float xerr);
   virtual int collision(const glm::vec2 pos);
 };
 

@@ -276,11 +276,31 @@ void f_aws1_ap::calc_stat(const long long tvel, const float cog,
     angle_drift -= 360.0f;
   else if (angle_drift < -180.0)
     angle_drift += 360.0f;
-  
+  if(m_verb)
+    cout << "cog,sog,drift=" << cog << "," << sog << "," << angle_drift << endl;
   angle_drift *= (PI / 180.0f);
   u = sog * cos(angle_drift);
   v = sog * sin(angle_drift);
-    
+  
+  angle_flw = crs_flw - (yaw + yaw_bias);
+  if(angle_flw > 180.0)
+    angle_flw -= 360.0f;
+  else if(angle_flw < -180.0)
+    angle_flw += 360.0f;
+  if(m_verb)
+    cout << "cflw,sflw,drift" << crs_flw << "," << spd_flw << "," << angle_flw << endl;
+  angle_flw *= (PI / 180.0f);
+  uflw = spd_flw * cos(angle_flw);
+  vflw = spd_flw * sin(angle_flw);  
+
+  ucor = u - uflw;
+  vcor = v - vflw;
+  angle_drift_cor = 180.0f * atan2(vcor, ucor) / PI;
+  cog_cor = angle_drift_cor + (yaw + yaw_bias);
+  sog_cor = sqrt(uflw * uflw + vflw * vflw);  
+  if(m_verb)
+    cout << "ccor,scor,drift" << cog_cor << "," << sog_cor << "," << angle_drift_cor << endl;
+  
   if(meng_prev != meng){
     dmeng = meng - meng_prev;
   }else
@@ -417,7 +437,7 @@ bool f_aws1_ap::proc()
 	  flw_tgt(sog, cog, yaw, false);
 	  break;
 	case EAP_STAY:
-	  stay(sog, cog, yaw);
+	  stay(sog_cor, cog_cor, yaw);
 	  break;
 	case EAP_WP:
 	  wp(sog, cog, yaw, false);
@@ -635,10 +655,11 @@ void f_aws1_ap::wp(const float sog, const float cog, const float yaw, bool bav)
     s_wp & wp = m_wp->get_next_wp();
     float d = 0.;
     float cdiff = 0;
+    float xdiff = 0;
     if(wp.v > 0)
       sog_tgt = min(sog_tgt, wp.v);
     
-    m_wp->get_diff(d, cdiff);
+    m_wp->get_diff(d, cdiff, xdiff);
     cdiff += cc;
    
     ctrl_to_sog_cog(sog, sog_tgt, cdiff, m_smax, m_smin);

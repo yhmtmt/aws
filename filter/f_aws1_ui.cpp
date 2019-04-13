@@ -634,9 +634,9 @@ void f_aws1_ui::update_route(c_route_cfg_box * prc_box)
       iwp++;
     }
   
-  float ddiff, cdiff;
-  m_ch_wp->get_diff(ddiff, cdiff);
-  owp.set_next(m_ch_wp->get_next(), ddiff, cdiff);
+  float ddiff, cdiff, xdiff;
+  m_ch_wp->get_diff(ddiff, cdiff, xdiff);
+  owp.set_next(m_ch_wp->get_next(), ddiff, cdiff, xdiff);
   
   if (obj_mouse_on.type == ot_wp){
     owp.set_focus(obj_mouse_on.handle);

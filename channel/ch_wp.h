@@ -91,6 +91,7 @@ protected:
 	list<s_wp*>::iterator itr_next;
 	float dist_next;
 	float cdiff_next;
+	float xdiff_next;
 
 	void find_next(){
 		for(itr = wps.begin(), inext = 0; itr != wps.end() && (*itr)->get_arrival_time() > 0; inext++, itr++);
@@ -98,7 +99,7 @@ protected:
 	}
 
 public:
-	ch_wp(const char * name) :ch_base(name), focus(0), dist_next(0.), cdiff_next(0), cmd(cmd_none), id(0)
+ ch_wp(const char * name) :ch_base(name), focus(0), dist_next(0.), cdiff_next(0), xdiff_next(0), cmd(cmd_none), id(0)
 	{
 		itr_next = itr_focus = itr = wps.begin();
 	}
@@ -132,16 +133,20 @@ public:
 		return id;
 	}
 
-	void set_diff(const float dist, const float cdiff)
+	void set_diff(const float dist, const float cdiff, const float xdiff)
 	{
+	  cout << "Entering set_diff" <<endl;
 		dist_next = dist;
 		cdiff_next = cdiff;
+		xdiff_next = xdiff;
+		cout << "exiting set_diff" << endl;
 	}
 
-	void get_diff(float & dist, float & cdiff)
+	void get_diff(float & dist, float & cdiff, float & xdiff)
 	{
 		dist = dist_next;
 		cdiff = cdiff_next;
+		xdiff = xdiff_next;
 	}
 
 
@@ -151,6 +156,15 @@ public:
 
 	s_wp & get_next_wp(){		
 		return **itr_next;
+	}
+
+	s_wp & get_prev_wp(){
+	  cout << "Entering get_prev_wp" << endl;
+	  if(itr_next == wps.begin()){
+	    cout << "Exiting get_prev_wp" << endl;
+	    return **itr_next;
+	  }
+	  return **std::prev(itr_next);
 	}
 
 	void set_next_wp(){
