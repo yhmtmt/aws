@@ -125,57 +125,71 @@ bool f_wp_manager::proc()
 
 	// if there is next waypoint, calculate the difference between waypoint and ship state, and checking waypoint arrival
 	if(!m_wp->is_finished()){
-		s_wp & wp = m_wp->get_next_wp();
-		s_wp & wp_prev = m_wp->get_prev_wp();
-		wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);			
-		float d2 = wp.rx * wp.rx + wp.ry * wp.ry;
-
-		float d = (float)sqrt(d2);
-		float ctgt = (float)(atan2(wp.rx, wp.ry) * 180. / PI);
-		float cdiff = (float)(ctgt - cog);
-		if(abs(cdiff) > 180.){
-			if(cdiff < 0)
-				cdiff += 360.;
-			else
-				cdiff -= 360.;
-		}
-		
-		float xdiff = 0.0;
-		if(wp_prev.rx != wp.rx && wp_prev.ry != wp.ry){
-		  // note that my own ship is at (0, 0)
-		  //(wpx, wpy) : vector from previous wp to next wp
-		  //(-wp_prev.rx, -wp_prev.ry) : vector from previous wp to own ship
-		  // awp : length of (wpx, wpy)
-		  // iawp : inverse of awp
-		  // bwp : length of  (-wp_prev.rx, -wp_prev.ry)
-		  // swp : prjection of (-wp_prev.rx, -wp_prev.ry) on (wpx, wpy)
-		  // (dx, dy) : perpendicular vector on (wpx, wpy) toward own ship
-		  // (wpy, -wpx) : right perpendicular vector of (wpx, wpy)
-		  float wpx = (float)(wp.rx - wp_prev.rx);
-		  float wpy = (float)(wp.ry - wp_prev.ry);
-		  float awp = (float)sqrt(wpx * wpx + wpy * wpy);
-		  float bwp = (float)sqrt(wp_prev.rx * wp_prev.rx 
-					  + wp_prev.ry * wp_prev.ry);
-		  float iawp = (float)(1.0 / awp);
-		  float swp = (float)(iawp * (-wpx * wp_prev.rx 
-					      - wpy * wp_prev.ry));
-		  float siawp = (float)(swp * iawp);
-		  float swpx = (float)(siawp * wpx);
-		  float swpy = (float)(siawp * wpy);
-		  float dx = (float)(-wp_prev.rx - swpx);
-		  float dy = (float)(-wp_prev.ry - swpy);
-		  
-		  // xdiff is given as (dx, dy).(wpy,-wpx)
-		  // (it means that xdiff is positive in right direction)
-		  xdiff = (float)(iawp * (wpy * dx - wpx * dy));
-		}
-		m_wp->set_diff(d, cdiff, xdiff);
-		if(d < wp.rarv){// arrived
-			wp.set_arrival_time(get_time());
-			m_wp->set_next_wp();
-		}
+	  s_wp & wp = m_wp->get_next_wp();
+	  s_wp & wp_prev = m_wp->get_prev_wp();
+	  wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
+	  wp_prev.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
+	  float rx_tgt = wp.rx, ry_tgt = wp.ry;
+	  
+	  float xdiff = 0.0;
+	  if(wp_prev.rx != wp.rx && wp_prev.ry != wp.ry){
+	    // note that my own ship is at (0, 0)
+	    //(wpx, wpy) : vector from previous wp to next wp
+	    //(-wp_prev.rx, -wp_prev.ry) : vector from previous wp to own ship
+	    // awp : length of (wpx, wpy)
+	    // iawp : inverse of awp
+	    // bwp : length of  (-wp_prev.rx, -wp_prev.ry)
+	    // swp : prjection of (-wp_prev.rx, -wp_prev.ry) on (wpx, wpy)
+	    // (dx, dy) : perpendicular vector on (wpx, wpy) toward own ship
+	    // (wpy, -wpx) : right perpendicular vector of (wpx, wpy)
+	    float wpx = (float)(wp.rx - wp_prev.rx);
+	    float wpy = (float)(wp.ry - wp_prev.ry);
+	    float awp = (float)sqrt(wpx * wpx + wpy * wpy);
+	    float bwp = (float)sqrt(wp_prev.rx * wp_prev.rx 
+				    + wp_prev.ry * wp_prev.ry);
+	    float iawp = (float)(1.0 / awp);
+	    float swp = (float)(iawp * (-wpx * wp_prev.rx 
+					- wpy * wp_prev.ry));
+	    float siawp = (float)(swp * iawp);
+	    float swpx = (float)(siawp * wpx);
+	    float swpy = (float)(siawp * wpy);
+	    float dx = (float)(-wp_prev.rx - swpx);
+	    float dy = (float)(-wp_prev.ry - swpy);
+	    
+	    // xdiff is given as (dx, dy).(wpy,-wpx)
+	    // (it means that xdiff is positive in right direction)
+	    xdiff = (float)(iawp * (wpy * dx - wpx * dy));
+	    if(xdiff >= wp.rarv){
+	      rx_tgt = (float)(swpx + wp_prev.rx);
+	      ry_tgt = (float)(swpy + wp_prev.ry);
+	    }else if(xdiff > 0 || xdiff < 0){
+	      float sahd = sqrt(wp.rarv * wp.rarv - xdiff * xdiff);
+	      siawp = (float)((swp + sahd) * iawp);
+	      rx_tgt = (float)(siawp * wpx + wp_prev.rx);
+	      ry_tgt = (float (siawp * wpy + wp_prev.ry);
+	    }	    
+	  }
+	
+	  float d2 = rx_tgt * rx_tgt + ry_tgt * ry_tgt;
+	  
+	  float d = (float)sqrt(d2);
+	  float ctgt = (float)(atan2(rx_tgt, ry_tgt) * 180. / PI);
+	  float cdiff = (float)(ctgt - cog);
+	  if(abs(cdiff) > 180.){
+	    if(cdiff < 0)
+	      cdiff += 360.;
+	    else
+	      cdiff -= 360.;
+	  }
+	  
+	  m_wp->set_diff(d, cdiff, xdiff);
+	  
+	  if(d < wp.rarv){// arrived
+	    wp.set_arrival_time(get_time());
+	    m_wp->set_next_wp();
+	  }
 	}
-
+	
 	m_wp->unlock();
 	return true;
 }
