@@ -171,7 +171,7 @@ bool f_wp_manager::proc()
 	float sahd = sqrt(wp.rarv * wp.rarv - xdiff * xdiff);
 	siawp = (float)((swp + sahd) * iawp);
 	rx_tgt = (float)(siawp * wpx + wp_prev.rx);
-	ry_tgt = (float (siawp * wpy + wp_prev.ry);
+	ry_tgt = (float) (siawp * wpy + wp_prev.ry);
 		  }
       }
       
