@@ -129,12 +129,19 @@ bool f_wp_manager::proc()
   // if there is next waypoint, calculate the difference between waypoint and ship state, and checking waypoint arrival
   if(!m_wp->is_finished()){
     s_wp & wp = m_wp->get_next_wp();
-    s_wp & wp_prev = m_wp->get_prev_wp();
-    wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
-    wp_prev.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
     float rx_tgt = wp.rx, ry_tgt = wp.ry;
     float d2 = rx_tgt * rx_tgt + ry_tgt * ry_tgt;      
     float d = (float)sqrt(d2);
+    if(d < wp.rarv){// arrived
+      wp.set_arrival_time(get_time());
+      m_wp->set_next_wp();
+      m_wp->set_diff(d, 0, 0);
+      m_wp->unlock();
+      return true;
+    }
+    s_wp & wp_prev = m_wp->get_prev_wp();
+    wp.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
+    wp_prev.update_pos_rel(Rorg, Porg.x, Porg.y, Porg.z);
     
     float xdiff = 0.0;
     if(wp_prev.rx != wp.rx && wp_prev.ry != wp.ry){
@@ -164,15 +171,18 @@ bool f_wp_manager::proc()
       // xdiff is given as (dx, dy).(wpy,-wpx)
       // (it means that xdiff is positive in right direction)
       xdiff = (float)(iawp * (wpy * dx - wpx * dy));
-      if(xdiff >= wp.rarv){
+      float rlim = (float)(wp.rarv * 3.0f);
+      if(xdiff >= rlim){
 	rx_tgt = (float)(swpx + wp_prev.rx);
 	ry_tgt = (float)(swpy + wp_prev.ry);
       }else if(xdiff > 0 || xdiff < 0){
-	float sahd = sqrt(wp.rarv * wp.rarv - xdiff * xdiff);
+	float sahd = sqrt(rlim * rlim - xdiff * xdiff);
 	siawp = (float)((swp + sahd) * iawp);
+	siawp = min(siawp, 1.0f);
+	siawp = max(siawp, 0.0f);
 	rx_tgt = (float)(siawp * wpx + wp_prev.rx);
 	ry_tgt = (float) (siawp * wpy + wp_prev.ry);
-		  }
+      }
       }
       
       float ctgt = (float)(atan2(rx_tgt, ry_tgt) * 180. / PI);
@@ -184,12 +194,7 @@ bool f_wp_manager::proc()
 	  cdiff -= 360.;
       }
       
-      m_wp->set_diff(d, cdiff, xdiff);
-      
-      if(d < wp.rarv){// arrived
-	wp.set_arrival_time(get_time());
-	m_wp->set_next_wp();
-      }
+      m_wp->set_diff(d, cdiff, xdiff);     
     }
     
     m_wp->unlock();
