@@ -144,6 +144,16 @@ ifeq ($(GLFW_WINDOW),y)
 	OFLAGS += -fopenmp
 endif
 
+ifeq ($(RADAR),y)
+	DEFS += -DRADAR
+	RADAR_SRC = f_radar_src
+	EMULATOR = $(RADAR_SRC)/emulator
+	NAVICO = $(RADAR_SRC)/navico
+	GARMINXHD = $(RADAR_SRC)/garminxhd
+	GARMINHD = $(RADAR_SRC)/garminhd
+	FILTER += f_radar $(RADAR_SRC)/RadarFactory $(RADAR_SRC)/socketutil $(EMULATOR)/EmulatorControl $(EMULATOR)/EmulatorReceive $(NAVICO)/NavicoLocate $(NAVICO)/NavicoReceive $(NAVICO)/NavicoControl $(GARMINXHD)/GarminxHDControl $(GARMINXHD)/GarminxHdReceive $(GARMINHD)/GarminHDControl $(GARMINHD)/GarminHDReceive
+endif
+
 ###################################################### f_orb_slam configuration
 ifeq ($(ORB_SLAM), y)
 	FILTER += f_orb_slam
