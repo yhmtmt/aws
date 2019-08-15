@@ -172,10 +172,8 @@ void f_aws1_ctrl::get_gpio()
   unsigned int val;
   if(!m_sim){
     ioctl(m_fd, ZGPIO_IOCGET, &val);
-    m_stat.rud_rmc = ((unsigned char*) &val)[0];
-    m_stat.meng_rmc = ((unsigned char*) &val)[1];
-    m_stat.seng_rmc = ((unsigned char*) &val)[2];
-    m_stat.rud_sta = ((unsigned char*) &val)[3];
+    m_stat.rud_rmc = ((unsigned char*) &val)[2];
+    m_stat.meng_rmc = ((unsigned char*) &val)[3];
   }else{
     unsigned rud_inst = map_oval(m_stat.rud,
 		m_stat.rud_max, m_stat.rud_nut, m_stat.rud_min,
@@ -234,10 +232,6 @@ void f_aws1_ctrl::set_gpio()
 		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
 		      m_stat.meng_max, m_stat.meng_nuf, m_stat.meng_nut, 
 		      m_stat.meng_nub, m_stat.meng_min);  
-    m_stat.seng = map_oval(m_stat.seng_aws, 
-		      0xff, 0x7f + 0x19, 0x7f, 0x7f - 0x19, 0x00,
-		      m_stat.seng_max, m_stat.seng_nuf, m_stat.seng_nut, 
-		      m_stat.seng_nub, m_stat.seng_min);
     break;
   case ACS_RMT:
     m_stat.rud = map_oval(m_stat.rud_rmc, 
@@ -248,23 +242,12 @@ void f_aws1_ctrl::set_gpio()
 			  m_stat.meng_nub_rmc, m_stat.meng_min_rmc,
 			  m_stat.meng_max, m_stat.meng_nuf, m_stat.meng_nut, m_stat.meng_nub, 
 			  m_stat.meng_min);  
-    m_stat.seng = map_oval(m_stat.seng_rmc, 
-			  m_stat.seng_max_rmc, m_stat.seng_nuf_rmc, m_stat.seng_nut_rmc, 
-			  m_stat.seng_nub_rmc, m_stat.seng_min_rmc,
-			  m_stat.seng_max, m_stat.seng_nuf, m_stat.seng_nut, m_stat.seng_nub, 
-			  m_stat.seng_min);
     break;
   }
   
-  ((unsigned char *) &val)[0] = m_stat.rud;
-  ((unsigned char *) &val)[1] = m_stat.meng;
-  ((unsigned char *) &val)[2] = m_stat.seng;
-  
-  m_stat.rud_sta_out = map_oval(m_stat.rud_sta, 
-			       m_stat.rud_sta_max, m_stat.rud_sta_nut, m_stat.rud_sta_min,
-			       m_stat.rud_sta_out_max, m_stat.rud_sta_out_nut, m_stat.rud_sta_out_min);
-  ((unsigned char *) &val)[3] = m_stat.rud_sta_out;
-  
+  ((unsigned char *) &val)[2] = m_stat.rud;
+  ((unsigned char *) &val)[3] = m_stat.meng;
+    
   if(!m_sim){
     ioctl(m_fd, ZGPIO_IOCSET2, &val);
   }
