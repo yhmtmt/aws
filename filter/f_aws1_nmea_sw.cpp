@@ -41,33 +41,33 @@ using namespace cv;
 
 f_aws1_nmea_sw::f_aws1_nmea_sw(const char * name): f_base(name), 
 	m_state(NULL), m_ais_obj(NULL),
-	m_aws_nmea_i(NULL), m_ap_nmea_i(NULL), m_gff_nmea_i(NULL),
-	m_ais_nmea_i(NULL), m_gps_nmea_i(NULL),
-	m_aws_nmea_o(NULL), m_ap_nmea_o(NULL), m_gff_nmea_o(NULL), 
-	m_ais_nmea_o(NULL), m_gps_nmea_o(NULL),
+	m_aws_nmea_i(NULL), m_wx220_nmea_i(NULL), m_gff_nmea_i(NULL),
+	m_ais_nmea_i(NULL), m_v104_nmea_i(NULL),
+	m_aws_nmea_o(NULL), m_wx220_nmea_o(NULL), m_gff_nmea_o(NULL), 
+	m_ais_nmea_o(NULL), m_v104_nmea_o(NULL),
 	m_aws_ctrl(false), m_verb(false),
-	m_aws_oint(1), m_ap_oint(1), m_gff_oint(1), m_ais_oint(1), m_gps_oint(1),
-	m_aws_ocnt(0), m_ap_ocnt(0), m_gff_ocnt(0), m_ais_ocnt(0), m_gps_ocnt(0)
+	m_aws_oint(1), m_wx220_oint(1), m_gff_oint(1), m_ais_oint(1), m_v104_oint(1),
+	m_aws_ocnt(0), m_wx220_ocnt(0), m_gff_ocnt(0), m_ais_ocnt(0), m_v104_ocnt(0)
 {
 	register_fpar("state", (ch_base**)&m_state, typeid(ch_state).name(), "State output channel.");
 	register_fpar("ais_obj", (ch_base**)&m_ais_obj, typeid(ch_ais_obj).name(), "AIS object channel.");
 	register_fpar("aws_nmea_i", (ch_base**)&m_aws_nmea_i, typeid(ch_nmea).name(), "Input Channel of aws_nmea.");
 	register_fpar("aws_nmea_o", (ch_base**)&m_aws_nmea_o, typeid(ch_nmea).name(), "Output Channel of aws_nmea.");
-	register_fpar("ap_nmea_i", (ch_base**)&m_ap_nmea_i, typeid(ch_nmea).name(), "Input Channel of ap_nmea.");
-	register_fpar("ap_nmea_o", (ch_base**)&m_ap_nmea_o, typeid(ch_nmea).name(), "Output Channel of ap_nmea.");
+	register_fpar("wx220_nmea_i", (ch_base**)&m_wx220_nmea_i, typeid(ch_nmea).name(), "Input Channel of wx220_nmea.");
+	register_fpar("wx220_nmea_o", (ch_base**)&m_wx220_nmea_o, typeid(ch_nmea).name(), "Output Channel of wx220_nmea.");
 	register_fpar("gff_nmea_i", (ch_base**)&m_gff_nmea_i, typeid(ch_nmea).name(), "Input Channel of gff_nmea.");
 	register_fpar("gff_nmea_o", (ch_base**)&m_gff_nmea_o, typeid(ch_nmea).name(), "Output Channel of gff_nmea.");
 	register_fpar("ais_nmea_i", (ch_base**)&m_ais_nmea_i, typeid(ch_nmea).name(), "Input Channel of ais_nmea.");
 	register_fpar("ais_nmea_o", (ch_base**)&m_ais_nmea_o, typeid(ch_nmea).name(), "Output Channel of ais_nmea.");
-	register_fpar("gps_nmea_i", (ch_base**)&m_gps_nmea_i, typeid(ch_nmea).name(), "Input Channel of gps_nmea.");
-	register_fpar("gps_nmea_o", (ch_base**)&m_gps_nmea_o, typeid(ch_nmea).name(), "Output Channel of gps_nmea.");
+	register_fpar("v104_nmea_i", (ch_base**)&m_v104_nmea_i, typeid(ch_nmea).name(), "Input Channel of v104_nmea.");
+	register_fpar("v104_nmea_o", (ch_base**)&m_v104_nmea_o, typeid(ch_nmea).name(), "Output Channel of v104_nmea.");
 
 	register_fpar("aws_ctrl", &m_aws_ctrl, "If yes, APB message is switched from fish finder to aws (default false)");
 	register_fpar("awsint", &m_aws_oint, "Output interval of aws output channel (default 1)");
-	register_fpar("apint", &m_ap_oint, "Output interval of autopilot output channel (default 1)");
+	register_fpar("wx220int", &m_wx220_oint, "Output interval of WX220 output channel (default 1)");
 	register_fpar("gffint", &m_gff_oint, "Output interval of GPS fish finder output channel (default 1)");
 	register_fpar("aisint", &m_ais_oint, "Output interval of AIS output channel (default 1)");
-	register_fpar("gpsint", &m_gps_oint, "Output interval of GPS output channel (default 1)");
+	register_fpar("v104int", &m_v104_oint, "Output interval of V104 output channel (default 1)");
 	register_fpar("verb", &m_verb, "For debug.");
 }
 
@@ -93,7 +93,7 @@ void f_aws1_nmea_sw::aws_to_out()
       cout << "AWS > " << m_nmea << endl;
     }
     
-    if(m_ap_nmea_o && m_aws_ctrl){
+    if(m_wx220_nmea_o && m_aws_ctrl){
       switch(type){
       case ENDT_APB:
       case ENDT_AAM:
@@ -106,8 +106,8 @@ void f_aws1_nmea_sw::aws_to_out()
 	  if(m_verb){
 	    cout << "AP < " << m_nmea << endl;
 	  }
-	  m_ap_nmea_o->push(m_nmea);			
-	  m_ap_out = true;				
+	  m_wx220_nmea_o->push(m_nmea);			
+	  m_wx220_out = true;				
 	}	
 	break;
       default:
@@ -117,9 +117,9 @@ void f_aws1_nmea_sw::aws_to_out()
   }
 }
 
-void f_aws1_nmea_sw::ap_to_out()
+void f_aws1_nmea_sw::wx220_to_out()
 {
-  while(m_ap_nmea_i->pop(m_nmea)){
+  while(m_wx220_nmea_i->pop(m_nmea)){
     if(m_verb)
       cout << "AP > " << m_nmea << endl;
     if(m_aws_ocnt == 0){
@@ -150,18 +150,18 @@ void f_aws1_nmea_sw::gff_to_out()
     if(m_aws_nmea_o)
       m_aws_nmea_o->push(m_nmea);
     
-    if(m_ap_nmea_o && !m_aws_ctrl){
+    if(m_wx220_nmea_o && !m_aws_ctrl){
       switch(type){
       case ENDT_APB:
       case ENDT_AAM:
       case ENDT_VTG:
       case ENDT_XTE:
-	if(m_ap_ocnt == 0){
+	if(m_wx220_ocnt == 0){
 	  if(m_verb)
 	    cout << "AP < " << m_nmea << endl;
 	  
-	  m_ap_nmea_o->push(m_nmea);
-	  m_ap_out = true;
+	  m_wx220_nmea_o->push(m_nmea);
+	  m_wx220_out = true;
 	}
 	break;				
       default:
@@ -227,9 +227,9 @@ void f_aws1_nmea_sw::ais_to_out()
   }
 }
 
-void f_aws1_nmea_sw::gps_to_out()
+void f_aws1_nmea_sw::v104_to_out()
 {
-  while(m_gps_nmea_i->pop(m_nmea)){
+  while(m_v104_nmea_i->pop(m_nmea)){
     e_nd_type type = get_nd_type(m_nmea);
     
     if(m_state){
@@ -318,12 +318,12 @@ void f_aws1_nmea_sw::gps_to_out()
 	m_ais_out = true;
       }
       
-      if(m_ap_nmea_o && m_ap_ocnt == 0){
+      if(m_wx220_nmea_o && m_wx220_ocnt == 0){
 	if(m_verb)
 	  cout << "AP < " << m_nmea << endl;
-	if(m_ap_nmea_o)
-	  m_ap_nmea_o->push(m_nmea);
-	m_ap_out = true;
+	if(m_wx220_nmea_o)
+	  m_wx220_nmea_o->push(m_nmea);
+	m_wx220_out = true;
       }
       break;
     }    
@@ -332,13 +332,13 @@ void f_aws1_nmea_sw::gps_to_out()
 
 bool f_aws1_nmea_sw::proc()
 {
-  m_aws_out = m_ap_out = m_gff_out = m_ais_out = false;
+  m_aws_out = m_wx220_out = m_gff_out = m_ais_out = false;
   
   if(m_aws_nmea_i)
 	aws_to_out();
 
-  if(m_ap_nmea_i)
-	ap_to_out();
+  if(m_wx220_nmea_i)
+	wx220_to_out();
 
   if(m_gff_nmea_i)
 	gff_to_out();
@@ -346,8 +346,8 @@ bool f_aws1_nmea_sw::proc()
   if(m_ais_nmea_i)
 	ais_to_out();
 
-  if(m_gps_nmea_i)
-	gps_to_out();
+  if(m_v104_nmea_i)
+	v104_to_out();
 
   if(m_aws_ocnt > 0)
     m_aws_ocnt--;
@@ -355,11 +355,11 @@ bool f_aws1_nmea_sw::proc()
   if(m_aws_out == true)
     m_aws_ocnt = m_aws_oint;
   
-  if(m_ap_ocnt > 0)
-    m_ap_ocnt--;
+  if(m_wx220_ocnt > 0)
+    m_wx220_ocnt--;
   
-  if(m_ap_out == true)
-    m_ap_ocnt = m_ap_oint;
+  if(m_wx220_out == true)
+    m_wx220_ocnt = m_wx220_oint;
   
   if(m_gff_ocnt > 0)
     m_gff_ocnt--;
@@ -373,11 +373,11 @@ bool f_aws1_nmea_sw::proc()
   if(m_ais_out == true)
     m_ais_ocnt = m_ais_oint;
   
-  if(m_gps_ocnt > 0)
-	  m_gps_ocnt--;
+  if(m_v104_ocnt > 0)
+	  m_v104_ocnt--;
 
-  if(m_gps_out == true)
-	  m_gps_ocnt = m_gps_oint;
+  if(m_v104_out == true)
+	  m_v104_ocnt = m_v104_oint;
   return true;
 }
  
