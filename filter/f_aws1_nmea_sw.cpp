@@ -240,8 +240,7 @@ void f_aws1_nmea_sw::v104_to_out()
 	  if(pgga){
 	    m_state->set_position(get_time(), 
 				  (float) (pgga->m_lat_dir == EGP_N ? pgga->m_lat_deg : -pgga->m_lat_deg),
-				  (float) (pgga->m_lon_dir == EGP_E ? pgga->m_lon_deg : -pgga->m_lon_deg),
-				  pgga->m_alt, pgga->m_geos);
+				  (float) (pgga->m_lon_dir == EGP_E ? pgga->m_lon_deg : -pgga->m_lon_deg));
 	  }
 	}
 	break;
@@ -252,6 +251,26 @@ void f_aws1_nmea_sw::v104_to_out()
 	    m_state->set_velocity(get_time(), pvtg->crs_t, pvtg->v_n);
 	  }
 	}
+	break;
+      case ENDT_PSAT_HPR:
+	{
+	  const c_psat_hpr * psat_hpr = dynamic_cast<const c_psat_hpr*>(m_nmea_dec.decode(m_nmea));
+	  if(psat_hpr){
+	    m_state->set_attitude(get_time(), psat_hpr->roll, psat_hpr->pitch, psat_hpr->hdg);
+	  }
+	}
+	break;	
+      case ENDT_GLL:
+	{
+	  const c_gll * pgll = dynamic_cast<const c_gll*>(m_nmea_dec.decode(m_nmea));
+	  if(pgll){
+	    m_state->set_position(get_time(),
+				  (float) (pgll->lat_dir == EGP_N ? pgll->lat : -pgll->lat),
+				  (float) (pgll->lon_dir == EGP_E ? pgll->lon : -pgll->lon));
+
+	  }
+	}
+	break;
       case ENDT_RMC: // time
 	{
 	  const c_rmc * prmc = dynamic_cast<const c_rmc*>(m_nmea_dec.decode(m_nmea));	  
@@ -270,8 +289,7 @@ void f_aws1_nmea_sw::v104_to_out()
 	}
 	break;
       case ENDT_ZDA: // time 
-	{
-	  
+	{	  
 	  const c_zda * pzda = dynamic_cast<const c_zda*>(m_nmea_dec.decode(m_nmea));
 	  if(pzda){
 	    tmex tm;
