@@ -297,10 +297,10 @@ size_t ch_state::write_buf(const char * buf)
 	lock();
 	const long long *lptr = (const long long*)buf;
 	tpos = lptr[0];
-	tatt = lptr[1];;
-	tvel = lptr[2];
-	tdp = lptr[3];
-	t9dof = lptr[4];
+	talt = lptr[1];
+	tatt = lptr[2];
+	tvel = lptr[3];
+	tdp = lptr[4];
 
 	const float * ptr = (const float*)(lptr + 5);
 	roll = ptr[0];
@@ -309,12 +309,11 @@ size_t ch_state::write_buf(const char * buf)
 	lat = ptr[3];
 	lon = ptr[4];
 	alt = ptr[5];
-	galt = ptr[6];
-	x = ptr[7];
-	y = ptr[8];
-	z = ptr[9];
-	cog = ptr[10];
-	sog = ptr[11];
+	x = ptr[6];
+	y = ptr[7];
+	z = ptr[8];
+	cog = ptr[9];
+	sog = ptr[10];
 	{
 	  float th = (float)(cog * (PI / 180.));
 	  nvx = (float)sin(th);
@@ -323,18 +322,9 @@ size_t ch_state::write_buf(const char * buf)
 	  vx = (float)(mps * nvx);
 	  vy = (float)(mps * nvy);
 	}
-	depth = ptr[12];
-	mx = ptr[13];
-	my = ptr[14];
-	mz = ptr[15];
-	ax = ptr[16];
-	ay = ptr[17];
-	az = ptr[18];
-	gx = ptr[19];
-	gy = ptr[20];
-	gz = ptr[21];
+	depth = ptr[11];
 
-	const double * dptr = (const double*)(ptr + 22);
+	const double * dptr = (const double*)(ptr + 12);
 	memcpy((void*)R.data, (void*)dptr, sizeof(double)* 9);
 
 	unlock();
@@ -346,10 +336,10 @@ size_t ch_state::read_buf(char * buf)
 	lock();
 	long long * lptr = (long long *)buf;
 	lptr[0] = tpos;
-	lptr[1] = tatt;
-	lptr[2] = tvel;
-	lptr[3] = tdp;
-	lptr[4] = t9dof;
+	lptr[1] = talt;
+	lptr[2] = tatt;
+	lptr[3] = tvel;
+	lptr[4] = tdp;
 
 	float * ptr = (float*)(lptr + 5);
 	ptr[0] = roll;
@@ -358,24 +348,14 @@ size_t ch_state::read_buf(char * buf)
 	ptr[3] = lat;
 	ptr[4] = lon;
 	ptr[5] = alt;
-	ptr[6] = galt;
-	ptr[7] = x;
-	ptr[8] = y;
-	ptr[9] = z;
-	ptr[10] = cog;
-	ptr[11] = sog;
-	ptr[12] = depth;
-	ptr[13] = mx;
-	ptr[14] = my;
-	ptr[15] = mz;
-	ptr[16] = ax;
-	ptr[17] = ay;
-	ptr[18] = az;
-	ptr[19] = gx;
-	ptr[20] = gy;
-	ptr[21] = gz;
+	ptr[6] = x;
+	ptr[7] = y;
+	ptr[8] = z;
+	ptr[9] = cog;
+	ptr[10] = sog;
+	ptr[11] = depth;
 
-	double * dptr = (double*)(ptr + 22);
+	double * dptr = (double*)(ptr + 12);
 	memcpy((void*)dptr, (void*)R.data, sizeof(double)* 9);
 	unlock();
 	return get_dsize();
@@ -383,182 +363,156 @@ size_t ch_state::read_buf(char * buf)
 
 int ch_state::write(FILE * pf, long long tcur)
 {
-	if (!pf)
-		return 0;
+  if (!pf)
+    return 0;
+  
+  int sz = 0;
+  if (tdp <= tdpf && tvel <= tvelf && tatt <= tattf && tpos <= tposf
+      && talt <= taltf){
+    return sz;
+  }
+  
+  sz = sizeof(long long)* 6;
+	
+  lock();
+  fwrite((void*)&tcur, sizeof(long long), 1, pf);
+  fwrite((void*)&tpos, sizeof(long long), 1, pf);
 
-	int sz = 0;
-	if (tdp <= tdpf && tvel <= tvelf && tatt <= tattf && tpos <= tposf){
-		return sz;
-	}
+  fwrite((void*)&lat, sizeof(float), 1, pf);
+  fwrite((void*)&lon, sizeof(float), 1, pf);
+  tposf = tpos;
+  
+  fwrite((void*)&talt, sizeof(long long), 1, pf);	
+  fwrite((void*)&alt, sizeof(float), 1, pf);
 
-	sz = sizeof(long long)* 6;
+  sz += sizeof(float)* 3;
 
-	lock();
-	fwrite((void*)&tcur, sizeof(long long), 1, pf);
-	fwrite((void*)&tpos, sizeof(long long), 1, pf);
+  fwrite((void*)&tatt, sizeof(long long), 1, pf);
+  fwrite((void*)&roll, sizeof(float), 1, pf);
+  fwrite((void*)&pitch, sizeof(float), 1, pf);
+  fwrite((void*)&yaw, sizeof(float), 1, pf);
+  tattf = tatt;
+  sz += sizeof(float)* 3;
 
-	fwrite((void*)&lat, sizeof(float), 1, pf);
-	fwrite((void*)&lon, sizeof(float), 1, pf);
-	fwrite((void*)&alt, sizeof(float), 1, pf);
-	fwrite((void*)&galt, sizeof(float), 1, pf);
-	tposf = tpos;
-	sz += sizeof(float)* 4;
+  fwrite((void*)&tvel, sizeof(long long), 1, pf);
+  fwrite((void*)&cog, sizeof(float), 1, pf);
+  fwrite((void*)&sog, sizeof(float), 1, pf);
+  tvelf = tvel;
+  sz += sizeof(float)* 2;
+	
+  fwrite((void*)&tdp, sizeof(long long), 1, pf);
+  fwrite((void*)&depth, sizeof(float), 1, pf);
+  tdpf = tdp;
+  sz += sizeof(float);
 
-	fwrite((void*)&tatt, sizeof(long long), 1, pf);
-	fwrite((void*)&roll, sizeof(float), 1, pf);
-	fwrite((void*)&pitch, sizeof(float), 1, pf);
-	fwrite((void*)&yaw, sizeof(float), 1, pf);
-	tattf = tatt;
-	sz += sizeof(float)* 3;
-
-	fwrite((void*)&tvel, sizeof(long long), 1, pf);
-	fwrite((void*)&cog, sizeof(float), 1, pf);
-	fwrite((void*)&sog, sizeof(float), 1, pf);
-	tvelf = tvel;
-	sz += sizeof(float)* 2;
-
-	fwrite((void*)&tdp, sizeof(long long), 1, pf);
-	fwrite((void*)&depth, sizeof(float), 1, pf);
-	tdpf = tdp;
-	sz += sizeof(float);
-
-	fwrite((void*)&t9dof, sizeof(long long), 1, pf);
-	fwrite((void*)&mx, sizeof(float), 1, pf);
-	fwrite((void*)&my, sizeof(float), 1, pf);
-	fwrite((void*)&mz, sizeof(float), 1, pf);
-	fwrite((void*)&ax, sizeof(float), 1, pf);
-	fwrite((void*)&ay, sizeof(float), 1, pf);
-	fwrite((void*)&az, sizeof(float), 1, pf);
-	fwrite((void*)&gx, sizeof(float), 1, pf);
-	fwrite((void*)&gy, sizeof(float), 1, pf);
-	fwrite((void*)&gz, sizeof(float), 1, pf);
-	sz += sizeof(float) * 9;
-
-	m_tfile = tcur;
-	unlock();
-	return sz;
+  m_tfile = tcur;
+  unlock();
+  return sz;
 }
 
 int ch_state::read(FILE * pf, long long tcur)
 {
-	if (!pf)
-		return 0;
+  if (!pf)
+    return 0;
+  
+  int sz = 0;
+  if (tposf < tcur && tposf != tpos){
+    set_position(tposf, latf, lonf);
+  }
+  
+  if(taltf < tcur && taltf != talt){
+    set_alt(taltf, altf);
+  }
+  
+  if (tattf < tcur && tattf != tatt){
+    set_attitude(tattf, rollf, pitchf, yawf);
+  }
+  
+  if (tvelf < tcur && tvelf != tvel){
+    set_velocity(tvelf, cogf, sogf);
+  }
+  
+  if (tdpf < tcur && tdpf != tdp){
+    set_depth(tdpf, depthf);
+  }
+  
+  if (t9doff < tcur && t9doff != t9dof){
+    set_9dof(t9doff, mxf, myf, mzf, axf, ayf, azf, gxf, gyf, gzf);
+  }
+  
+  while (!feof(pf)){
+    if (m_tfile > tcur){
+      break;
+    }
+    
+    lock();
+    size_t res = 0;
+    res += fread((void*)&m_tfile, sizeof(long long), 1, pf);
+    
+    res += fread((void*)&tposf, sizeof(long long), 1, pf);
+    res += fread((void*)&latf, sizeof(float), 1, pf);
+    res += fread((void*)&lonf, sizeof(float), 1, pf);
 
-	int sz = 0;
-	if (tposf < tcur && tposf != tpos){
-		set_position(tposf, latf, lonf, altf, galtf);
-	}
-
-	if (tattf < tcur && tattf != tatt){
-		set_attitude(tattf, rollf, pitchf, yawf);
-	}
-
-	if (tvelf < tcur && tvelf != tvel){
-		set_velocity(tvelf, cogf, sogf);
-	}
-
-	if (tdpf < tcur && tdpf != tdp){
-		set_depth(tdpf, depthf);
-	}
-
-	if (t9doff < tcur && t9doff != t9dof){
-		set_9dof(t9doff, mxf, myf, mzf, axf, ayf, azf, gxf, gyf, gzf);
-	}
-
-	while (!feof(pf)){
-		if (m_tfile > tcur){
-			break;
-		}
-
-		lock();
-		size_t res = 0;
-		res += fread((void*)&m_tfile, sizeof(long long), 1, pf);
-
-		res += fread((void*)&tposf, sizeof(long long), 1, pf);
-		res += fread((void*)&latf, sizeof(float), 1, pf);
-		res += fread((void*)&lonf, sizeof(float), 1, pf);
-		res += fread((void*)&altf, sizeof(float), 1, pf);
-		res += fread((void*)&galtf, sizeof(float), 1, pf);
-
-		res += fread((void*)&tattf, sizeof(long long), 1, pf);
-		res += fread((void*)&rollf, sizeof(float), 1, pf);
-		res += fread((void*)&pitchf, sizeof(float), 1, pf);
-		res += fread((void*)&yawf, sizeof(float), 1, pf);
-
-		res += fread((void*)&tvelf, sizeof(long long), 1, pf);
-		res += fread((void*)&cogf, sizeof(float), 1, pf);
-		res += fread((void*)&sogf, sizeof(float), 1, pf);
-
-		res += fread((void*)&tdpf, sizeof(long long), 1, pf);
-		res += fread((void*)&depthf, sizeof(float), 1, pf);
-
-		res += fread((void*)&t9doff, sizeof(long long), 1, pf);
-		res += fread((void*)&mxf, sizeof(float), 1, pf);
-		res += fread((void*)&myf, sizeof(float), 1, pf);
-		res += fread((void*)&mzf, sizeof(float), 1, pf);
-		res += fread((void*)&axf, sizeof(float), 1, pf);
-		res += fread((void*)&ayf, sizeof(float), 1, pf);
-		res += fread((void*)&azf, sizeof(float), 1, pf);
-		res += fread((void*)&gxf, sizeof(float), 1, pf);
-		res += fread((void*)&gyf, sizeof(float), 1, pf);
-		res += fread((void*)&gzf, sizeof(float), 1, pf);
-
-		sz = res;
-		unlock();
-	}
-	return sz;
+    res += fread((void*)&taltf, sizeof(long long), 1, pf);
+    res += fread((void*)&altf, sizeof(float), 1, pf);
+    
+    res += fread((void*)&tattf, sizeof(long long), 1, pf);
+    res += fread((void*)&rollf, sizeof(float), 1, pf);
+    res += fread((void*)&pitchf, sizeof(float), 1, pf);
+    res += fread((void*)&yawf, sizeof(float), 1, pf);
+    
+    res += fread((void*)&tvelf, sizeof(long long), 1, pf);
+    res += fread((void*)&cogf, sizeof(float), 1, pf);
+    res += fread((void*)&sogf, sizeof(float), 1, pf);
+		
+    res += fread((void*)&tdpf, sizeof(long long), 1, pf);
+    res += fread((void*)&depthf, sizeof(float), 1, pf);
+   
+    sz = res;
+    unlock();
+  }
+  return sz;
 }
 
 bool ch_state::log2txt(FILE * pbf, FILE * ptf)
 {
-	fprintf(ptf, "t, tpos, tatt, tvel, tdp, t9dofc, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth, mx, my, mz, ax, ay, az, gx, gy, gz\n");
-	while (!feof(pbf)){
-		long long t, tmax = 0;
-
-		size_t res = 0;
-		res += fread((void*)&m_tfile, sizeof(long long), 1, pbf);
-
-		res += fread((void*)&t, sizeof(long long), 1, pbf);
-		res += fread((void*)&lat, sizeof(float), 1, pbf);
-		res += fread((void*)&lon, sizeof(float), 1, pbf);
-		res += fread((void*)&alt, sizeof(float), 1, pbf);
-		res += fread((void*)&galt, sizeof(float), 1, pbf);
-		tposf = tpos = t;
-
-		res += fread((void*)&t, sizeof(long long), 1, pbf);
-		res += fread((void*)&roll, sizeof(float), 1, pbf);
-		res += fread((void*)&pitch, sizeof(float), 1, pbf);
-		res += fread((void*)&yaw, sizeof(float), 1, pbf);
-		tattf = tatt = t;
-
-		res += fread((void*)&t, sizeof(long long), 1, pbf);
-		res += fread((void*)&cog, sizeof(float), 1, pbf);
-		res += fread((void*)&sog, sizeof(float), 1, pbf);
-
-		tvelf = tvel = t;
-
-		res += fread((void*)&t, sizeof(long long), 1, pbf);
-		res += fread((void*)&depth, sizeof(float), 1, pbf);
-		tdpf = tdp = t;
-
-		res += fread((void*)&t9doff, sizeof(long long), 1, pbf);
-		res += fread((void*)&mxf, sizeof(float), 1, pbf);
-		res += fread((void*)&myf, sizeof(float), 1, pbf);
-		res += fread((void*)&mzf, sizeof(float), 1, pbf);
-		res += fread((void*)&axf, sizeof(float), 1, pbf);
-		res += fread((void*)&ayf, sizeof(float), 1, pbf);
-		res += fread((void*)&azf, sizeof(float), 1, pbf);
-		res += fread((void*)&gxf, sizeof(float), 1, pbf);
-		res += fread((void*)&gyf, sizeof(float), 1, pbf);
-		res += fread((void*)&gzf, sizeof(float), 1, pbf);
-		t9dof = t9doff;
-
-		fprintf(ptf, "%lld, %lld, %lld, %lld, %lld, %lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f,",
-			m_tfile, tpos, tatt, tvel, tdp, t9dof, lat, lon, alt, galt, yaw, pitch, roll, cog, sog, depth);
-		fprintf(ptf, "%+04.4f, %+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f,%+04.4f\n",
-			mxf, myf, mzf, axf, ayf, azf, gxf, gyf, gzf);
-	}
-	return true;
+  fprintf(ptf, "t, tpos, talt, tatt, tvel, tdp, lat, lon, alt, yaw, pitch, roll, cog, sog, depth\n");
+  while (!feof(pbf)){
+    long long t, tmax = 0;
+	  
+    size_t res = 0;
+    res += fread((void*)&m_tfile, sizeof(long long), 1, pbf);
+    
+    res += fread((void*)&t, sizeof(long long), 1, pbf);
+    res += fread((void*)&lat, sizeof(float), 1, pbf);
+    res += fread((void*)&lon, sizeof(float), 1, pbf);
+    tposf = tpos = t;
+    
+    res += fread((void*)&t, sizeof(long long), 1, pbf);
+    res += fread((void*)&alt, sizeof(float), 1, pbf);
+    taltf = talt = t;		
+    
+    res += fread((void*)&t, sizeof(long long), 1, pbf);
+    res += fread((void*)&roll, sizeof(float), 1, pbf);
+    res += fread((void*)&pitch, sizeof(float), 1, pbf);
+    res += fread((void*)&yaw, sizeof(float), 1, pbf);
+    tattf = tatt = t;
+    
+    res += fread((void*)&t, sizeof(long long), 1, pbf);
+    res += fread((void*)&cog, sizeof(float), 1, pbf);
+    res += fread((void*)&sog, sizeof(float), 1, pbf);
+    
+    tvelf = tvel = t;
+    
+    res += fread((void*)&t, sizeof(long long), 1, pbf);
+    res += fread((void*)&depth, sizeof(float), 1, pbf);
+    tdpf = tdp = t;
+    
+    
+    fprintf(ptf, "%lld, %lld, %lld, %lld, %lld, %lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f\n",
+	    m_tfile, tpos, talt, tatt, tvel, tdp, lat, lon, alt, yaw, pitch, roll, cog, sog, depth);
+  }
+  return true;
 }
 
 /////////////////////////////////////////////////////////////// ch_env

@@ -327,7 +327,7 @@ void f_aws1_sim::set_input_state_vector(const long long & tcur)
     long long t = 0;
 	float roll, pitch, yaw, lat, lon, alt, galt, cog, sog;
 	m_state->get_attitude(t, roll, pitch, yaw);
-	m_state->get_position(t, lat, lon, alt, galt);
+	m_state->get_position(t, lat, lon);
 	m_state->get_velocity(t, cog, sog);
 	m_sv_cur.roll = roll * (PI / 180.f);
 	m_sv_cur.pitch = pitch * (PI / 180.f);
@@ -404,7 +404,7 @@ void f_aws1_sim::set_output_state_vector()
       float alt = 0.f, galt = 0.f;
       // output simulated lat, lon, roll, pitch, yaw, cog, sog
       m_state_sim->set_attitude(sv.t, sv.roll * (180.f / PI), sv.pitch * (180.f / PI), sv.yaw * (180.f / PI));
-      m_state_sim->set_position(sv.t, sv.lat * (180.f / PI), sv.lon * (180.f / PI), alt, galt);
+      m_state_sim->set_position(sv.t, sv.lat * (180.f / PI), sv.lon * (180.f / PI));
       m_state_sim->set_velocity(sv.t, sv.cog * (180.f / PI), sv.sog);
     }
   

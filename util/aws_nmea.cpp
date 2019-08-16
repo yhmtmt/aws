@@ -31,7 +31,7 @@ using namespace std;
 
 const char * str_nd_type[ENDT_UNDEF] = {
   "GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", "GLL",
-  "HDT", "ROT",
+  "HDT", "HEV", "ROT",
   "PSAT",
   "TTM", 
   "DBT", "MTW",
@@ -163,6 +163,9 @@ const c_nmea_dat * c_nmea_dec::decode(const char * str)
     break;
   case ENDT_HDT:
     pnd = &hdt;
+    break;
+  case ENDT_HEV:
+    pnd = &hev;
     break;
   case ENDT_ROT:
     pnd = &rot;

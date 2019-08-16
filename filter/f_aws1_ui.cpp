@@ -960,7 +960,7 @@ bool f_aws1_ui::proc()
   
   float lat, lon, alt, galt;
   Mat Rown = m_state->get_enu_rotation(t);
-  m_state->get_position(t, lat, lon, alt, galt);
+  m_state->get_position(t, lat, lon);
 
   float rpm = 0.0f;
   unsigned char trim = 0;
@@ -1658,7 +1658,7 @@ void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
       {
 	long long t; 
 	float lat, lon, alt, galt;
-	m_state->get_position(t, lat, lon, alt, galt);
+	m_state->get_position(t, lat, lon);
 	m_ch_ap_inst->set_stay_pos(lat, lon);
       }
       ctrl_mode = cm_ap;

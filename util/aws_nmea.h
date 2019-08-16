@@ -20,7 +20,7 @@
 enum e_nd_type{
   /* GPS related NMEA message */
   ENDT_GGA, ENDT_GSA, ENDT_GSV, ENDT_RMC, ENDT_VTG, ENDT_ZDA, ENDT_GLL,
-  ENDT_HDT, ENDT_ROT,
+  ENDT_HDT, ENDT_HEV, ENDT_ROT,
   /* Hemisphere V104 specific message */  
   ENDT_PSAT,  
   /* ARPA related NMEA message */
@@ -175,6 +175,7 @@ protected:
   c_zda zda;
   c_gll gll;
   c_hdt hdt;
+  c_hev hev;
   c_rot rot;	
   c_ttm ttm;
   c_dbt dbt;

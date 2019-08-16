@@ -219,7 +219,7 @@ bool f_state_estimator::proc()
 	float gps_lat, gps_lon, gps_alt, gps_galt;
 	float gps_xecef, gps_yecef, gps_zecef;
 	Mat Renu;
-	m_ch_state->get_position(tpos, gps_lat, gps_lon, gps_alt, gps_galt, gps_xecef, gps_yecef, gps_zecef, Renu);
+	m_ch_state->get_position(tpos, gps_lat, gps_lon, gps_xecef, gps_yecef, gps_zecef, Renu);
 
 	long long tvel;
 	float cog, sog;

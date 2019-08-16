@@ -552,7 +552,39 @@ bool c_hdt::dec(const char * str)
   return true;
 }
 
-////////////////////////////////////////////////hdt decoder
+////////////////////////////////////////////////hev decoder
+bool c_hev::dec(const char * str)
+{
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  
+  while(ipar < 3){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $GPHEV
+      break;
+    case 1: // heading
+      hev = (float)atof(buf);
+      break;
+    case 2: // T
+      break;				    
+    }
+    ipar++;
+  }
+  
+  return true;
+}
+
+////////////////////////////////////////////////rot decoder
 bool c_rot::dec(const char * str)
 {
   int i = 0;

@@ -190,48 +190,48 @@ public:
 class ch_state: public ch_base
 {
  protected:
-	 long long tatt, tpos, tvel, tdp;
-	 long long tattf, tposf, tvelf, tdpf;
-	 float roll, pitch, yaw; // roll(deg), pitch(deg), yaw(deg)
-	 float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
-	 float x, y, z; // ecef coordinate
-	 Mat R, Rret; // Rotation matrix for ENU transformation
-	 float cog, sog; // Course over ground(deg), Speed over ground (kts)
-	 float vx, vy;	 
-	 float nvx, nvy;
-	 float depth; // water depth
-	 long long m_tfile;
-	 float rollf, pitchf, yawf; // roll(deg), pitch(deg), yaw(deg)
-	 float lonf, latf, altf, galtf; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
-	 float xf, yf, zf; // ecef coordinate
-	 float cogf, sogf; // Course over ground(deg), Speed over ground (kts)
-	 float depthf; // water depth
-
-	 // 9dof sensor calibrated
-	 long long t9dof;
-	 float mx, my, mz;
-	 float ax, ay, az;
-	 float gx, gy, gz;
-
-	 // 9dof sensor calibrated
-	 long long t9doff;
-	 float mxf, myf, mzf;
-	 float axf, ayf, azf;
-	 float gxf, gyf, gzf;
-
+  long long tatt, tpos, talt, tvel, tdp;
+  long long tattf, tposf, taltf, tvelf, tdpf;
+  float roll, pitch, yaw; // roll(deg), pitch(deg), yaw(deg)
+  float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
+  float x, y, z; // ecef coordinate
+  Mat R, Rret; // Rotation matrix for ENU transformation
+  float cog, sog; // Course over ground(deg), Speed over ground (kts)
+  float vx, vy;	 
+  float nvx, nvy;
+  float depth; // water depth
+  long long m_tfile;
+  float rollf, pitchf, yawf; // roll(deg), pitch(deg), yaw(deg)
+  float lonf, latf, altf, galtf; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
+  float xf, yf, zf; // ecef coordinate
+  float cogf, sogf; // Course over ground(deg), Speed over ground (kts)
+  float depthf; // water depth
+  
+  // 9dof sensor calibrated
+  long long t9dof;
+  float mx, my, mz;
+  float ax, ay, az;
+  float gx, gy, gz;
+  
+  // 9dof sensor calibrated
+  long long t9doff;
+  float mxf, myf, mzf;
+  float axf, ayf, azf;
+  float gxf, gyf, gzf;
+  
  public:
  ch_state(const char * name): ch_base(name), 
-	   m_tfile(0), tatt(0), tpos(0), tvel(0), tdp(0),
-	   tattf(0), tposf(0), tvelf(0), tdpf(0), 
-	   roll(0), pitch(0), yaw(0), lon(0), lat(0), alt(0), galt(0),
-	   x(0), y(0), z(0), cog(0), sog(0), depth(0),
-	   t9dof(0), mx(0), my(0), mz(0), ax(0), ay(0), az(0),
-	   gx(0), gy(0), gz(0)
-	   {
-	     R = Mat::eye(3, 3, CV_64FC1);
-	   }
-	 
-	 void set_attitude(const long long _tatt, const float _r, const float _p, const float _y)
+    m_tfile(0), tatt(0), tpos(0), tvel(0), tdp(0),
+    tattf(0), tposf(0), tvelf(0), tdpf(0), 
+    roll(0), pitch(0), yaw(0), lon(0), lat(0), alt(0), galt(0),
+    x(0), y(0), z(0), cog(0), sog(0), depth(0),
+    t9dof(0), mx(0), my(0), mz(0), ax(0), ay(0), az(0),
+    gx(0), gy(0), gz(0)
+    {
+      R = Mat::eye(3, 3, CV_64FC1);
+    }
+  
+  void set_attitude(const long long _tatt, const float _r, const float _p, const float _y)
   {
     lock();
     tatt = _tatt;
@@ -280,20 +280,34 @@ class ch_state: public ch_base
   }
 
 
-  void set_position(const long long _tpos, const float _lat, const float _lon, const float _alt, const float _galt)
+  void set_position(const long long _tpos, const float _lat, const float _lon)
   {
     lock();
     tpos = _tpos;
     lat = _lat;
     lon = _lon;
-    alt = _alt;
-    galt = _galt;
     float lat_rad = (float)(lat * (PI / 180.)), lon_rad = (float)(lon * (PI / 180.));
     getwrldrot(lat_rad, lon_rad, R);
     bihtoecef(lat_rad, lon_rad, alt, x, y, z);
     unlock();
   }
 
+  void set_alt(const long long _talt, const float _alt)
+  {
+    lock();
+    talt = _talt;
+    alt = _alt;
+    unlock();
+  }
+
+  void get_alt(long long & _talt, float & _alt)
+  {
+    lock();
+    _talt = talt;
+    _alt = alt;
+    unlock();
+  }
+  
   void set_velocity(const long long & _tvel, const float _cog, const float _sog)
   {
 	  lock();
@@ -326,91 +340,86 @@ class ch_state: public ch_base
     unlock();
   }
 
-  void get_position(long long & _tpos, float & _lat, float & _lon, float & _alt, float & _galt,
+  void get_position(long long & _tpos, float & _lat, float & _lon, 
 	  float & _x, float & _y, float & _z, Mat & Renu)
-  {
-	  lock();
-	  _tpos = tpos;
-	  _lat = lat;
-	  _lon = lon;
-	  _alt = alt;
-	  _galt = galt;
-	  _x = x;
-	  _y = y;
-	  _z = z;
-	  R.copyTo(Renu);
-	  unlock();
-  }
-
-  void get_position(long long & _tpos, float & _lat, float & _lon, float & _alt, float & _galt)
   {
     lock();
     _tpos = tpos;
     _lat = lat;
     _lon = lon;
-    _alt = alt;
-    _galt = galt;
+    _x = x;
+    _y = y;
+    _z = z;
+    R.copyTo(Renu);
+    unlock();
+  }
+
+  void get_position(long long & _tpos, float & _lat, float & _lon)
+  {
+    lock();
+    _tpos = tpos;
+    _lat = lat;
+    _lon = lon;
     unlock();
   }
 
   void get_position_ecef(long long & _tpos, float & _x, float & _y, float & _z)
   {
-	  lock();
-	  _tpos = tpos;
-	  _x = x;
-	  _y = y;
-	  _z = z;
-	  unlock();
+    lock();
+    _tpos = tpos;
+    _x = x;
+    _y = y;
+    _z = z;
+    unlock();
   }
 
   const Mat & get_enu_rotation(long long & _tpos)
   {
-	  lock();
-	  _tpos = tpos;
-	  R.copyTo(Rret);
-	  unlock();
-	  return Rret;
+    lock();
+    _tpos = tpos;
+    R.copyTo(Rret);
+    unlock();
+    return Rret;
   }
 
   void get_velocity(long long & _tvel, float & _cog, float & _sog)
   {
-	  lock();
-	  _tvel = tvel;
-	  _cog = cog;
-	  _sog = sog;
-	  unlock();
+    lock();
+    _tvel = tvel;
+    _cog = cog;
+    _sog = sog;
+    unlock();
   }
 
   void get_velocity_vector(long long & _tvel, float & _vx, float & _vy)
   {
-	  lock();
-	  _tvel = tvel;
-	  _vx = vx;
-	  _vy = vy;
-	  unlock();
+    lock();
+    _tvel = tvel;
+    _vx = vx;
+    _vy = vy;
+    unlock();
   }
 
   void get_norm_velocity_vector(long long & _tvel, float & _nvx, float & _nvy)
   {
-	  lock();
-	  _tvel = tvel;
-	  _nvx = nvx;
-	  _nvy = nvy;
-	  unlock();
+    lock();
+    _tvel = tvel;
+    _nvx = nvx;
+    _nvy = nvy;
+    unlock();
   }
-
+  
   void get_depth(long long & _tdp, float & _depth)
   {
-	  lock();
-	  _tdp = tdp;
-	  _depth = depth;
-	  unlock();
+    lock();
+    _tdp = tdp;
+    _depth = depth;
+    unlock();
   }
 
   virtual size_t get_dsize()
   {
-    return sizeof(long long) * 4 + sizeof(float) * 13 + sizeof(double) * 9
-		+ sizeof(long long) * 2 + sizeof(float) * 9;
+    return sizeof(long long) * 5 + sizeof(float) * 12 + sizeof(double) * 9;
   }
   
   virtual size_t write_buf(const char *buf);
@@ -419,13 +428,13 @@ class ch_state: public ch_base
   virtual void print(ostream & out)
   {
     out << "channel " << m_name  <<  endl;
-	out << "mxmymz axayaz gxgygz" << mx << "," << my << "," << mz << " " << ax << "," << ay << "," << az << " " << gx << "," << gy << "," << gz << " t=" << t9dof << endl;
+    out << "mxmymz axayaz gxgygz" << mx << "," << my << "," << mz << " " << ax << "," << ay << "," << az << " " << gx << "," << gy << "," << gz << " t=" << t9dof << endl;
   }
-
+  
   virtual int write(FILE * pf, long long tcur);
-
+  
   virtual int read(FILE * pf, long long tcur);
-
+  
   virtual bool log2txt(FILE * pbf, FILE * ptf);
 };
 

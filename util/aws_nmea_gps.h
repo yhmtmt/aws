@@ -249,6 +249,27 @@ class c_hdt: public c_nmea_dat
   {return ENDT_HDT;};    
 };
 
+class c_hev: public c_nmea_dat
+{
+ public:
+  float hev; // heave in meter
+
+ c_hev():hev(0)
+    {
+    }
+
+  virtual bool dec(const char * str);
+  virtual ostream & show(ostream & out) const
+  {
+    out << "GPHEV>";
+    out << " HEV: " << hev << endl;
+    return out;
+  }
+
+  virtual e_nd_type get_type() const
+  {return ENDT_HEV;};    
+};
+
 class c_rot: public c_nmea_dat
 {
  public:
@@ -269,7 +290,7 @@ class c_rot: public c_nmea_dat
   }
 
   virtual e_nd_type get_type() const
-  {return ENDT_RMC;};
+  {return ENDT_ROT;};
 };
 
 

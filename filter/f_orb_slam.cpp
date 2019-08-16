@@ -2810,7 +2810,7 @@ namespace ORB_SLAM2
 			float roll, pitch, yaw;
 			m_ch_state->get_attitude(tatt, roll, pitch, yaw);
 			float lat, lon, alt, galt;
-			m_ch_state->get_position(tpos, lat, lon, alt, galt);
+			m_ch_state->get_position(tpos, lat, lon);
 			float xecef, yecef, zecef;
 			m_ch_state->get_position_ecef(tecef, xecef, yecef, zecef);
 			float cog, sog;
