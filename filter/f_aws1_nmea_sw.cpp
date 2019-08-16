@@ -265,16 +265,17 @@ void f_aws1_nmea_sw::v104_to_out()
 	    tm.tm_sec = (int) prmc->m_s;
 	    tm.tm_msec = (int)((prmc->m_s - tm.tm_sec) * 100);
 	    tm.tm_isdst = -1;
-	    f_base::set_time(tm);	  
+	    //f_base::set_time(tm);	  
 	  }
 	}
 	break;
       case ENDT_ZDA: // time 
 	{
+	  
 	  const c_zda * pzda = dynamic_cast<const c_zda*>(m_nmea_dec.decode(m_nmea));
 	  if(pzda){
 	    tmex tm;
-	    tm.tm_year = pzda->m_yr + (m_tm.tm_year / 100) * 100;
+	    tm.tm_year = pzda->m_yr;
 	    tm.tm_mon = pzda->m_mn - 1;
 	    tm.tm_mday = pzda->m_dy;
 	    tm.tm_hour = pzda->m_h;
@@ -282,8 +283,8 @@ void f_aws1_nmea_sw::v104_to_out()
 	    tm.tm_sec = (int) pzda->m_s;
 	    tm.tm_msec = (int)((pzda->m_s - tm.tm_sec) * 100);
 	    tm.tm_isdst = -1;
-	    f_base::set_time(tm);	  
-	    f_base::set_tz(pzda->m_lzh * 60 + pzda->m_lzm);
+	    //f_base::set_time(tm);
+	    //f_base::set_tz(pzda->m_lzh * 60 + pzda->m_lzm);
 	  }
 	}
 	break;

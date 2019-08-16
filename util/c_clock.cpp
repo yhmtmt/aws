@@ -57,11 +57,43 @@ void gmtimeex(long long msec, tmex & tm)
   tm.tm_msec = msec % 1000;
 }
 
+
+// Original code is from https://codeday.me/jp/qa/20190322/454429.html
+const int SecondsPerMinute = 60;
+const int SecondsPerHour = 3600;
+const int SecondsPerDay = 86400;
+const int DaysOfMonth[12] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+bool IsLeapYear(short year)
+{
+    if (year % 4 != 0) return false;
+    if (year % 100 != 0) return true;
+    return (year % 400) == 0;
+}
+
+long long mkgmtimeex(tmex & tm)
+{
+    long long secs = 0;
+    for (short y = 1970; y < tm.tm_year; ++y)
+        secs += (IsLeapYear(y)? 366: 365) * SecondsPerDay;
+    for (short m = 0; m < tm.tm_mon; ++m) {
+        secs += DaysOfMonth[m - 1] * SecondsPerDay;
+        if (m == 2 && IsLeapYear(tm.tm_year)) secs += SecondsPerDay;
+    }
+    secs += (tm.tm_mday - 1) * SecondsPerDay;
+    secs +=  tm.tm_hour * SecondsPerHour;
+    secs +=  tm.tm_min * SecondsPerMinute;
+    secs +=  tm.tm_sec;
+    return secs * 1000 + tm.tm_msec;
+}
+/*
 long long mkgmtimeex(tmex & tm)
 {
   long long sec = (long long) mkgmtime((struct tm*) &tm);
+  cout << "mkgmtimeex sec " << sec << endl;
   return sec * 1000 + tm.tm_msec;
 }
+*/
 
 long long mkgmtimeex_tz(tmex & tm /* local time */, 
 			int tzm /* time zone in minute */)
@@ -261,6 +293,7 @@ void c_clock::set_time(tmex & tm)
   m_delta = new_time - m_tcur;
 #else 
   m_delta = new_time - m_tcur - m_offset;
+  cout << "new_time " << new_time << " cur_time " << m_tcur << " offset " << m_offset << endl;
 #endif
 }
 
