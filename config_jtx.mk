@@ -10,7 +10,7 @@ GLFW_WINDOW = y
 AWS1_AP = y
 IMGPROC = y
 AVT_CAM = n
-VMB_CAM = y
+VMB_CAM = n
 UVC_CAM = y
 GST_CAM = y
 SANYO_HD5400 = n
@@ -42,7 +42,7 @@ INC_GST = /usr/lib/aarch64-linux-gnu/gstreamer-1.0/include -I/usr/include/gstrea
 LIB_GST = /usr/lib/arm-linux-gnueabihf/gstreamer-1.0
 INC_GLIB = /usr/include/glib-2.0
 INC_GLIB_CONFIG = /usr/lib/aarch64-linux-gnu/glib-2.0/include
-INC_GLM = /usr/local/include/glm
+INC_GLM = /usr/include/glm
 
 ########################################################### OpenCV Linker option
 LIB_CV = -L$(LIB_CV_DIR) -lopencv_calib3d -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_highgui -lopencv_imgproc -lopencv_ml -lopencv_objdetect -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_video -lopencv_videostab  -lopencv_imgcodecs -lopencv_videoio -lopencv_video

@@ -427,8 +427,11 @@ class ch_state: public ch_base
   
   virtual void print(ostream & out)
   {
-    out << "channel " << m_name  <<  endl;
-    out << "mxmymz axayaz gxgygz" << mx << "," << my << "," << mz << " " << ax << "," << ay << "," << az << " " << gx << "," << gy << "," << gz << " t=" << t9dof << endl;
+    out << "channel " << m_name << ":";
+    out << "LATLON:" << lat << "," << lon;
+    out << " RPY:" << roll << "," << pitch << "," << yaw;
+    out << "cogsog:" << cog << "," << sog;
+    out << endl;
   }
   
   virtual int write(FILE * pf, long long tcur);
