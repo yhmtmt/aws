@@ -22,7 +22,9 @@ enum e_nd_type{
   ENDT_GGA, ENDT_GSA, ENDT_GSV, ENDT_RMC, ENDT_VTG, ENDT_ZDA, ENDT_GLL,
   ENDT_HDT, ENDT_HEV, ENDT_ROT,
   /* Hemisphere V104 specific message */  
-  ENDT_PSAT,  
+  ENDT_PSAT,
+  /* Airmar WX220 specific message */
+  ENDT_MDA, ENDT_WMV, ENDT_XDR,
   /* ARPA related NMEA message */
   ENDT_TTM,
   /* Fish Finder's NMEA message */
@@ -172,7 +174,7 @@ protected:
   c_gsv gsv;
   c_rmc rmc;
   c_vtg vtg;
-  c_zda zda;
+  c_zda zda;  
   c_gll gll;
   c_hdt hdt;
   c_hev hev;

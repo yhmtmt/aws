@@ -24,6 +24,15 @@ enum e_gp_fix_stat{
 	EGPF_LOST, EGPF_GPSF, EGPF_DGPSF, EGPF_PPS, EGPF_RTK, EGPF_FRTK, EGPF_ESTM, EGPF_MAN, EGPF_SIM
 };
 
+enum e_spd_unit
+  {
+    ESU_KNOT, ESU_MPS, ESU_KPH, ESU_SMPH, ESU_UNDEF
+  };
+
+const char *  get_str_spd_unit(e_spd_unit spd_unit);
+  
+
+  
 // class for $gga
 class c_gga: public c_nmea_dat
 {
@@ -331,5 +340,91 @@ class c_psat_dec
     }
   c_nmea_dat * dec(const char * str);  
 };
+
+
+///////////////////////////////////////// Airmar weather station specific NMEA
+class c_mda: public c_nmea_dat
+{
+ public:
+  float iom, bar, temp_air, temp_wtr, hmdr, hmda, dpt, dir_wnd_t, dir_wnd_m,  wspd_kts, wspd_mps;
+  
+ c_mda():iom(0.f), bar(0.f), temp_air(0.f), temp_wtr(0.f), hmdr(0.f), hmda(0.f), dpt(0.f), dir_wnd_t(0.f), dir_wnd_m(0.f), wspd_kts(0.f), wspd_mps(0.f)
+    {
+    }
+
+  virtual bool dec(const char * str);
+  virtual ostream & show(ostream & out) const
+  {
+    out << "MDA>";
+    out << " IOM: " << iom 
+	<< " BAR: " << bar 
+	<< " Tair: " << temp_air 
+	<< " Twtr: " << temp_wtr 
+	<< " HMDRel: " << hmdr 
+	<< " HMDAbs: " << hmda 
+	<< " DewPt: " << dpt 
+	<< " TrueWindDir: " << dir_wnd_t
+	<< " MagWindDir: " << dir_wnd_m
+	<< " WinSpd(kts): " << wspd_kts
+	<< " WinSpd(mps): " << wspd_mps << endl;    
+    return out;
+  }
+
+  virtual e_nd_type get_type() const
+  {return ENDT_MDA;};
+};
+
+
+
+class c_wmv: public c_nmea_dat
+{
+ public:
+  float wangl, wspd;
+  e_spd_unit spd_unit;
+  bool relative; // otherwise, theoretical 
+  bool valid;  
+ c_wmv():wangl(0.f), wspd(0.f), spd_unit(ESU_UNDEF), relative(false), valid(false)
+    {
+    }
+
+  virtual bool dec(const char * str);
+  virtual ostream & show(ostream & out) const
+  {
+    out << "WMV>";
+    out << " Wangl: " << wangl << (relative ? "R":"T") <<
+      " Wspd: " << wspd << "[" << get_str_spd_unit(spd_unit) << "]";
+    
+    return out;
+  }
+
+  virtual e_nd_type get_type() const
+  {return ENDT_WMV;};
+};
+
+
+// here we only assume type B xdr sentence defined by AIRMAR.
+class c_xdr: public c_nmea_dat
+{
+ public:
+  float pitch, roll;
+
+ c_xdr():pitch(0.f), roll(0.f)
+    {
+    }
+
+  virtual bool dec(const char * str);
+  
+  virtual ostream & show(ostream & out) const
+  {
+    out << "XDR(TypeB)>";
+    out << " pitch: " << pitch <<
+      " roll: " << roll << endl;
+    return out;
+  }
+
+  virtual e_nd_type get_type() const
+  {return ENDT_XDR;};
+};
+
 
 #endif

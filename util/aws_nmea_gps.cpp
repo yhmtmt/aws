@@ -28,6 +28,19 @@ using namespace std;
 
 #include "aws_nmea.h"
 
+
+const char * str_spd_unit[ESU_UNDEF] =
+  {
+    "kts", "mps", "kph", "smph"
+  };
+
+const char * get_str_spd_unit(e_spd_unit spd_unit)
+{
+  if(spd_unit == ESU_UNDEF)
+    return NULL;
+  return str_spd_unit[spd_unit];
+}
+
 /////////////////////////////////////////// gga decoder
 
 bool c_gga::dec(const char * str)
@@ -421,7 +434,7 @@ bool c_zda::dec(const char * str)
     }
     
     switch(ipar){
-    case 0: // $GPRMC
+    case 0: // $GPZDA
       break;
     case 1: // TIME hhmmss
       parstrcpy(tok, buf, 2);
@@ -628,14 +641,14 @@ c_nmea_dat * c_psat_dec::dec(const char * str)
   int len;
   char buf[32];
   char tok[32];
-  while (ipar < 2){
+
+   while (ipar < 2){
     len = parstrcpy(buf, &str[i], ',');
     i += len + 1;
     if(len == 0){
       ipar++;
       continue;
     }
-    
     switch(ipar){
     case 0: // $PSAT
       break;
@@ -649,6 +662,7 @@ c_nmea_dat * c_psat_dec::dec(const char * str)
 	return NULL;
       }
     }
+    ipar++;
   }
   
   return NULL;
@@ -661,7 +675,6 @@ bool c_psat_hpr::dec(const char * str)
   int len;
   char buf[32];
   char tok[32];
-  
   while(ipar < 4){
     len = parstrcpy(buf, &str[i], ',');
     i += len + 1;
@@ -669,7 +682,6 @@ bool c_psat_hpr::dec(const char * str)
       ipar++;
       continue;
     }
-    
     switch(ipar){
     case 0: // time
       parstrcpy(tok, buf, 2);
@@ -700,3 +712,220 @@ bool c_psat_hpr::dec(const char * str)
   
   return true;
 }
+
+///////////////////////////////////////// Airmar weather station specific NMEA
+bool c_mda::dec(const char * str)
+{
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  
+  while(ipar < 21){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $WIMDA
+      break;
+    case 1: // iom
+      iom = atof(buf);
+      break;
+    case 2: // I
+      if (buf[0] != 'I')
+	return false;
+      break;
+    case 3: // bar
+      bar = atof(buf);
+      break;
+    case 4: // B
+      if(buf[0] != 'B')
+	return false;
+      break;				
+    case 5: //temp_air
+      temp_air = atof(buf);
+      break;
+    case 6: // C
+      if(buf[0] != 'C')
+	return false;
+      break;
+    case 7: // temp_wtr
+      temp_wtr = atof(buf);
+      break;
+    case 8: // C
+      if(buf[0] != 'C')
+	return false;
+      break;
+    case 9: //hmdr
+      hmdr = atof(buf);
+      break;
+    case 10://hmda
+      hmda = atof(buf);
+      break;
+    case 11: // dpt
+      dpt = atof(buf);
+      break;
+    case 12: // C
+      if(buf[0] != 'C')
+	return false;
+      break;
+    case 13:
+      dir_wnd_t = atof(buf);
+      break;
+    case 14:
+      if(buf[0] != 'T')
+	return false;
+      break;
+    case 15:
+      dir_wnd_m = atof(buf);
+      break;
+    case 16:
+      if(buf[0] != 'M')
+	return false;
+      break;
+    case 17:
+      wspd_kts = atof(buf);
+      break;
+    case 18:
+      if(buf[0] != 'N')
+	return false;
+      break;
+    case 19:
+      wspd_mps = atof(buf);
+      break;
+    case 20:
+      if(buf[0] != 'M')
+	return false;
+      break;      
+    }
+    ipar++;
+  }
+  
+  return true;
+}
+
+bool c_wmv::dec(const char * str)
+{
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  
+  while(ipar < 6){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $WIWMV
+      break;
+    case 1: // wangl
+      wangl = atof(buf);
+      break;
+    case 2: // R or T
+      if (buf[0] == 'R')
+	relative = true;
+      else if (buf[0] == 'T')
+	relative = false;
+      else
+	return false;
+      break;
+    case 3: // wspd
+      wspd = atof(buf);
+      break;
+    case 4: // K or M or N or S
+      switch(buf[0]){
+      case 'K':
+	spd_unit = ESU_KPH;
+	break;
+      case 'M':
+	spd_unit = ESU_MPS;
+	break;
+      case 'N':
+	spd_unit = ESU_KNOT;
+	break;
+      case 'S':
+	spd_unit = ESU_SMPH;
+	break;
+      }
+      break;				
+    case 5: // valid or not
+      if(buf[0] == 'A')
+	valid = true;
+      else if(buf[0] == 'V')
+	valid = false;
+      else
+	return false;	
+      break;
+    }
+    ipar++;
+  }
+  
+  return true;
+}
+
+bool c_xdr::dec(const char * str)
+{
+  int i = 0;
+  int ipar = 0;
+  int len;
+  char buf[32];
+  char tok[32];
+  
+  while(ipar < 21){
+    len = parstrcpy(buf, &str[i], ',');
+    i += len + 1;
+    if(len == 0){ 
+      ipar++;
+      continue;
+    }
+    
+    switch(ipar){
+    case 0: // $YXXDR
+      break;
+    case 1: // A
+      if(buf[0] != 'A')
+	return false;
+      break;
+    case 2: // Pitch
+      pitch = atof(buf);
+      break;
+    case 3: // D
+      if(buf[0] != 'D')
+	return false;
+      break;
+    case 4: // PITCH
+      if(strcmp(buf, "PITCH") != 0 )
+	return false;
+      break;				
+    case 5: // A
+      if(buf[0] != 'A')
+	return false;
+      break;
+    case 6: // Roll
+      roll = atof(buf);
+      break;
+    case 7: // D
+      if(buf[0] != 'D')
+	return false;
+      break;
+    case 8: // ROLL
+      if(strcmp(buf, "ROLL") != 0)
+	return false;
+      break;
+    }
+    ipar++;
+  }
+  
+  return true;
+}
+

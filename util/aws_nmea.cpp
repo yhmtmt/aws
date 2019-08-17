@@ -33,6 +33,7 @@ const char * str_nd_type[ENDT_UNDEF] = {
   "GGA", "GSA", "GSV", "RMC", "VTG", "ZDA", "GLL",
   "HDT", "HEV", "ROT",
   "PSAT",
+  "MDA", "WMV", "XDR",
   "TTM", 
   "DBT", "MTW",
   "VDM", "VDO", "ABK",
@@ -47,6 +48,8 @@ e_nd_type get_nd_type(const char * str)
       if(st[0] == str[1] && st[1] == str[2]
 	 && st[2] == str[3] && st[3] == str[4])
 	{
+	  if(str[6] == 'H' && str[7] == 'P' && str[8] == 'R')
+	    return (e_nd_type) ENDT_PSAT_HPR;
 	  return (e_nd_type) i;
 	}
     }
@@ -172,6 +175,23 @@ const c_nmea_dat * c_nmea_dec::decode(const char * str)
     break;
   case ENDT_PSAT:
     pnd = psatdec.dec(str);
+    if(pnd){
+      pnd->m_toker[0] = str[1];
+      pnd->m_toker[1] = str[2];
+      pnd->m_cs = true;
+      return pnd;
+    }
+    return NULL;
+    break;
+  case ENDT_PSAT_HPR:
+    pnd = psatdec.dec(str);
+    if(pnd){
+      pnd->m_toker[0] = str[1];
+      pnd->m_toker[1] = str[2];
+      pnd->m_cs = true;
+      return pnd;
+    }
+    return NULL;  
     break;
   case ENDT_TTM:
     pnd = &ttm;
@@ -184,9 +204,23 @@ const c_nmea_dat * c_nmea_dec::decode(const char * str)
     break;
   case ENDT_VDM:	
     pnd = vdmdec.dec(str);
+    if(pnd){
+      pnd->m_toker[0] = str[1];
+      pnd->m_toker[1] = str[2];
+      pnd->m_cs = true;
+      return pnd;
+    }
+    return NULL;
     break;
   case ENDT_VDO:
     pnd = vdodec.dec(str);
+    if(pnd){
+      pnd->m_toker[0] = str[1];
+      pnd->m_toker[1] = str[2];
+      pnd->m_cs = true;
+      return pnd;
+    }
+    return NULL;
     break;
   case ENDT_ABK:
     pnd = &abk;
