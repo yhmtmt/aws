@@ -729,7 +729,6 @@ bool c_mda::dec(const char * str)
       ipar++;
       continue;
     }
-    
     switch(ipar){
     case 0: // $WIMDA
       break;

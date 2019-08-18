@@ -178,7 +178,10 @@ protected:
   c_gll gll;
   c_hdt hdt;
   c_hev hev;
-  c_rot rot;	
+  c_rot rot;
+  c_mda mda;
+  c_wmv wmv;
+  c_xdr xdr;
   c_ttm ttm;
   c_dbt dbt;
   c_mtw mtw;

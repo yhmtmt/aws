@@ -173,6 +173,15 @@ const c_nmea_dat * c_nmea_dec::decode(const char * str)
   case ENDT_ROT:
     pnd = &rot;
     break;
+  case ENDT_MDA:
+    pnd = &mda;
+    break;
+  case ENDT_WMV:
+    pnd = &wmv;
+    break;
+  case ENDT_XDR:
+    pnd = &xdr;
+    break;
   case ENDT_PSAT:
     pnd = psatdec.dec(str);
     if(pnd){
