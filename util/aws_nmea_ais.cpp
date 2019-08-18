@@ -255,40 +255,40 @@ c_vdm * c_vdm_dec::dec(const char * str)
 
 c_vdm * c_vdm_dec::dec_payload(s_pl * ppl)
 {
-	m_type = (short) ppl->payload[0];
-	c_vdm * pnd = NULL;
-	switch(m_type){
-	case 1: // Position report class A 
-	case 2: // Position Report Class A (Assigned Schedule)
-	case 3: // Position Report Class A (Response to interrogation)
-		pnd = &vdm_msg1;
-		break;
-	case 4:
-	case 11:
-		pnd = &vdm_msg4;
-		break;
-	case 5:
-		pnd = &vdm_msg5;
-		break;
-	case 8:
-		pnd = &vdm_msg8;
-		break;
-	case 18:
-		pnd = &vdm_msg18;
-		break;
-	case 19:
-		pnd = &vdm_msg19;
-		break;
-	case 24:
-		pnd = &vdm_msg24;
-		break;
-	default:
-		break;
-	}
-
-	if(pnd != NULL)
-		pnd->dec_payload(ppl);
-	return pnd;
+  m_type = (short) ppl->payload[0];
+  c_vdm * pnd = NULL;
+  switch(m_type){
+  case 1: // Position report class A 
+  case 2: // Position Report Class A (Assigned Schedule)
+  case 3: // Position Report Class A (Response to interrogation)
+    pnd = &vdm_msg1;
+    break;
+  case 4:
+  case 11:
+    pnd = &vdm_msg4;
+    break;
+  case 5:
+    pnd = &vdm_msg5;
+    break;
+  case 8:
+    pnd = &vdm_msg8;
+    break;
+  case 18:
+    pnd = &vdm_msg18;
+    break;
+  case 19:
+    pnd = &vdm_msg19;
+    break;
+  case 24:
+    pnd = &vdm_msg24;
+    break;
+  default:
+    break;
+  }
+  
+  if(pnd != NULL)
+    pnd->dec_payload(ppl);
+  return pnd;
 }
 
 ////////////////////////////////////// c_vdm_msg1

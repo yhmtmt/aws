@@ -190,8 +190,8 @@ public:
 class ch_state: public ch_base
 {
  protected:
-  long long tatt, tpos, talt, tvel, tdp;
-  long long tattf, tposf, taltf, tvelf, tdpf;
+  long long tatt, tpos, talt, tvel, twx, tdp;
+  long long tattf, tposf, taltf, tvelf, twxf, tdpf;
   float roll, pitch, yaw; // roll(deg), pitch(deg), yaw(deg)
   float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
   float x, y, z; // ecef coordinate
@@ -206,6 +206,14 @@ class ch_state: public ch_base
   float xf, yf, zf; // ecef coordinate
   float cogf, sogf; // Course over ground(deg), Speed over ground (kts)
   float depthf; // water depth
+
+  // from wx220 
+  float bar, barf /*air pressure (bar)*/,
+    temp_air, temp_airf /* air temperature (C)*/,
+    hmdr, hmdrf /* relative humidity (%)*/ ,
+    dew, dewf /* dew point (C) */,
+    dir_wnd_t, dir_wnd_tf /* True wind direction (deg)*/,
+    wspd_mps, wspd_mpsf /* wind speed (m/s) */ ;
   
   // 9dof sensor calibrated
   long long t9dof;
@@ -324,10 +332,41 @@ class ch_state: public ch_base
   }
 
   void set_depth(const long long & _tdp, const float _depth){
-	  lock();
-	  tdp = _tdp;
-	  depth = _depth;
-	  unlock();
+    lock();
+    tdp = _tdp;
+    depth = _depth;
+    unlock();
+  }
+
+  void set_weather(const long long & _twx, const float _bar,
+		   const float _temp_air, const float _hmdr,
+		   const float _dew, const float _dir_wnd_t,
+		   const float _wspd_mps)
+  {
+    lock();
+    twx = _twx;
+    bar = _bar;
+    temp_air = _temp_air;
+    hmdr = _hmdr;
+    dew = _dew;
+    dir_wnd_t = _dir_wnd_t;
+    wspd_mps = _wspd_mps;
+    unlock();
+  }
+
+  void get_weather(long long & _twx, float & _bar, float & _temp_air,
+		   float & _hmdr, float & _dew,
+		   float & _dir_wnd_t, float & _wspd_mps)
+  {
+    lock();
+    _twx = twx;
+    _bar = bar;
+    _temp_air = temp_air;
+    _hmdr = hmdr;
+    _dew = dew;
+    _dir_wnd_t = dir_wnd_t;
+    _wspd_mps = wspd_mps;
+    unlock();
   }
 
   void get_attitude(long long & _tatt, float & _r, float & _p, float & _y)
@@ -417,9 +456,11 @@ class ch_state: public ch_base
     unlock();
   }
 
+
+  
   virtual size_t get_dsize()
   {
-    return sizeof(long long) * 5 + sizeof(float) * 12 + sizeof(double) * 9;
+    return sizeof(long long) * 6 + sizeof(float) * 18 + sizeof(double) * 9;
   }
   
   virtual size_t write_buf(const char *buf);

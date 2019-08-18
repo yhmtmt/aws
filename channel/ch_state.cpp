@@ -301,8 +301,9 @@ size_t ch_state::write_buf(const char * buf)
 	tatt = lptr[2];
 	tvel = lptr[3];
 	tdp = lptr[4];
-
-	const float * ptr = (const float*)(lptr + 5);
+	twx = lptr[5];
+	
+	const float * ptr = (const float*)(lptr + 6);
 	roll = ptr[0];
 	pitch = ptr[1];
 	yaw = ptr[2];
@@ -323,8 +324,14 @@ size_t ch_state::write_buf(const char * buf)
 	  vy = (float)(mps * nvy);
 	}
 	depth = ptr[11];
-
-	const double * dptr = (const double*)(ptr + 12);
+	bar = ptr[12];
+	temp_air = ptr[13];
+	hmdr = ptr[14];
+	dew = ptr[15];
+	dir_wnd_t = ptr[16];
+	wspd_mps = ptr[17];
+	
+	const double * dptr = (const double*)(ptr + 18);
 	memcpy((void*)R.data, (void*)dptr, sizeof(double)* 9);
 
 	unlock();
@@ -340,7 +347,8 @@ size_t ch_state::read_buf(char * buf)
 	lptr[2] = tatt;
 	lptr[3] = tvel;
 	lptr[4] = tdp;
-
+	lptr[5] = twx;
+	
 	float * ptr = (float*)(lptr + 5);
 	ptr[0] = roll;
 	ptr[1] = pitch;
@@ -354,8 +362,14 @@ size_t ch_state::read_buf(char * buf)
 	ptr[9] = cog;
 	ptr[10] = sog;
 	ptr[11] = depth;
-
-	double * dptr = (double*)(ptr + 12);
+	ptr[12] =  bar;
+	ptr[13] = temp_air;
+	ptr[14] = hmdr;
+	ptr[15] = dew;
+	ptr[16] = dir_wnd_t;
+	ptr[17] = wspd_mps;
+	
+	double * dptr = (double*)(ptr + 18);
 	memcpy((void*)dptr, (void*)R.data, sizeof(double)* 9);
 	unlock();
 	return get_dsize();
@@ -405,6 +419,16 @@ int ch_state::write(FILE * pf, long long tcur)
   tdpf = tdp;
   sz += sizeof(float);
 
+  fwrite((void*)&twx, sizeof(long long), 1, pf);
+  fwrite((void*)&bar, sizeof(float), 1, pf);
+  fwrite((void*)&temp_air, sizeof(float), 1, pf);
+  fwrite((void*)&hmdr, sizeof(float), 1, pf);
+  fwrite((void*)&dew, sizeof(float), 1, pf);
+  fwrite((void*)&dir_wnd_t, sizeof(float), 1, pf);
+  fwrite((void*)&wspd_mps, sizeof(float), 1, pf);
+  twxf = twx;
+  sz += sizeof(float) * 6;
+  
   m_tfile = tcur;
   unlock();
   return sz;
@@ -467,7 +491,14 @@ int ch_state::read(FILE * pf, long long tcur)
 		
     res += fread((void*)&tdpf, sizeof(long long), 1, pf);
     res += fread((void*)&depthf, sizeof(float), 1, pf);
-   
+
+    res += fread((void*)&twxf, sizeof(long long), 1, pf);
+    res += fread((void*)&barf, sizeof(float), 1, pf);
+    res += fread((void*)&temp_airf, sizeof(float), 1, pf);
+    res += fread((void*)&hmdrf, sizeof(float), 1, pf);
+    res += fread((void*)&dewf, sizeof(float), 1, pf);
+    res += fread((void*)&dir_wnd_tf, sizeof(float), 1, pf);
+    res += fread((void*)&wspd_mpsf, sizeof(float), 1, pf);
     sz = res;
     unlock();
   }
@@ -476,7 +507,7 @@ int ch_state::read(FILE * pf, long long tcur)
 
 bool ch_state::log2txt(FILE * pbf, FILE * ptf)
 {
-  fprintf(ptf, "t, tpos, talt, tatt, tvel, tdp, lat, lon, alt, yaw, pitch, roll, cog, sog, depth\n");
+  fprintf(ptf, "t, tpos, talt, tatt, tvel, tdp, twx, lat, lon, alt, yaw, pitch, roll, cog, sog, depth, bar, temp_air, hmdr, dew, dir_wnd_t, wspd_mps\n");
   while (!feof(pbf)){
     long long t, tmax = 0;
 	  
@@ -508,9 +539,17 @@ bool ch_state::log2txt(FILE * pbf, FILE * ptf)
     res += fread((void*)&depth, sizeof(float), 1, pbf);
     tdpf = tdp = t;
     
+    res += fread((void*)&t, sizeof(long long), 1, pbf);
+    res += fread((void*)&bar, sizeof(float), 1, pbf);
+    res += fread((void*)&temp_air, sizeof(float), 1, pbf);
+    res += fread((void*)&hmdr, sizeof(float), 1, pbf);
+    res += fread((void*)&dew, sizeof(float), 1, pbf);
+    res += fread((void*)&dir_wnd_t, sizeof(float), 1, pbf);
+    res += fread((void*)&wspd_mps, sizeof(float), 1, pbf);        
+    twxf = twx = t;
     
-    fprintf(ptf, "%lld, %lld, %lld, %lld, %lld, %lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f\n",
-	    m_tfile, tpos, talt, tatt, tvel, tdp, lat, lon, alt, yaw, pitch, roll, cog, sog, depth);
+    fprintf(ptf, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f,%+06.1f,%+06.1f,%+06.1f,%+06.1f \n",
+	    m_tfile, tpos, talt, tatt, tvel, tdp, twx, lat, lon, alt, yaw, pitch, roll, cog, sog, depth, bar, temp_air, hmdr, dew, dir_wnd_t, wspd_mps);
   }
   return true;
 }

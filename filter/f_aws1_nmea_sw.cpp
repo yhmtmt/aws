@@ -91,40 +91,44 @@ void f_aws1_nmea_sw::aws_to_out()
     
     if(m_verb){
       cout << "AWS > " << m_nmea << endl;
-    }
-    
-    if(m_wx220_nmea_o && m_aws_ctrl){
-      switch(type){
-      case ENDT_APB:
-      case ENDT_AAM:
-      case ENDT_BOD:
-      case ENDT_BWC:
-      case ENDT_XTE:
-      case ENDT_RMB:
-      case ENDT_APA:
-	if(m_aws_ocnt == 0){
-	  if(m_verb){
-	    cout << "AP < " << m_nmea << endl;
-	  }
-	  m_wx220_nmea_o->push(m_nmea);			
-	  m_wx220_out = true;				
-	}	
-	break;
-      default:
-	break;
-      }
-    }
+    }    
   }
 }
 
+// from WX220, 
 void f_aws1_nmea_sw::wx220_to_out()
 {
   while(m_wx220_nmea_i->pop(m_nmea)){
+    e_nd_type type = get_nd_type(m_nmea);
+    
     if(m_verb)
-      cout << "AP > " << m_nmea << endl;
+      cout << "WX220 > " << m_nmea << endl;
+
+    if(m_state){
+      switch(type){
+      case ENDT_MDA:
+	{
+	  const c_mda * pmda = dynamic_cast<const c_mda*>(m_nmea_dec.decode(m_nmea));
+	  if(pmda){
+	    m_state->set_weather(get_time(), pmda->bar, pmda->temp_air, pmda->hmdr, pmda->dpt, pmda->dir_wnd_t, pmda->wspd_mps);
+	  }
+	}
+	break;
+      case ENDT_WMV:
+	{
+	}
+	break;
+      case ENDT_XDR:
+	{
+	}
+	break;
+      }
+    }
+    
     if(m_aws_ocnt == 0){
       if(m_verb)
 	cout << "AWS < " << m_nmea << endl;
+      
       if(m_aws_nmea_o)
 	m_aws_nmea_o->push(m_nmea);
       m_aws_out = true;
@@ -132,6 +136,7 @@ void f_aws1_nmea_sw::wx220_to_out()
   }
 }
 
+// from GPS fish finder, only DBT(depth information) information is used.
 void f_aws1_nmea_sw::gff_to_out()
 {
   while(m_gff_nmea_i->pop(m_nmea)){
@@ -150,27 +155,13 @@ void f_aws1_nmea_sw::gff_to_out()
     if(m_aws_nmea_o)
       m_aws_nmea_o->push(m_nmea);
     
-    if(m_wx220_nmea_o && !m_aws_ctrl){
-      switch(type){
-      case ENDT_APB:
-      case ENDT_AAM:
-      case ENDT_VTG:
-      case ENDT_XTE:
-	if(m_wx220_ocnt == 0){
-	  if(m_verb)
-	    cout << "AP < " << m_nmea << endl;
-	  
-	  m_wx220_nmea_o->push(m_nmea);
-	  m_wx220_out = true;
-	}
-	break;				
-      default:
-	break;
-      }
-    }   
-  }
+  }   
 }
 
+
+// from AIS receiver, only position reports both from class A and B  are used.
+// All nmea sentences from AIS receiver are transfered to GPS Fish finder.
+// AIS Object older than 300 msec is eliminated from object channel.
 void f_aws1_nmea_sw::ais_to_out()
 {
   while(m_ais_nmea_i->pop(m_nmea)){
@@ -227,6 +218,8 @@ void f_aws1_nmea_sw::ais_to_out()
   }
 }
 
+// From satellite compass, we use GGA and GLL as the position report, VTG as the corse and speed report, ZDA as time report, and PSAT,HPR, the hemisphere's specific sentence, as the attitude report.
+// Note that, in the current implementation, the time synchronization lines are in comment. 
 void f_aws1_nmea_sw::v104_to_out()
 {
   while(m_v104_nmea_i->pop(m_nmea)){
@@ -234,7 +227,7 @@ void f_aws1_nmea_sw::v104_to_out()
     
     if(m_state){
       switch(type){
-      case ENDT_GGA: // lat, lon, alt
+      case ENDT_GGA: // lat, lon
 	{
 	  const c_gga * pgga = dynamic_cast<const c_gga*>(m_nmea_dec.decode(m_nmea));
 	  if(pgga){
@@ -337,13 +330,6 @@ void f_aws1_nmea_sw::v104_to_out()
 	m_ais_out = true;
       }
       
-      if(m_wx220_nmea_o && m_wx220_ocnt == 0){
-	if(m_verb)
-	  cout << "AP < " << m_nmea << endl;
-	if(m_wx220_nmea_o)
-	  m_wx220_nmea_o->push(m_nmea);
-	m_wx220_out = true;
-      }
       break;
     }    
   }
@@ -393,10 +379,10 @@ bool f_aws1_nmea_sw::proc()
     m_ais_ocnt = m_ais_oint;
   
   if(m_v104_ocnt > 0)
-	  m_v104_ocnt--;
+    m_v104_ocnt--;
 
   if(m_v104_out == true)
-	  m_v104_ocnt = m_v104_oint;
+    m_v104_ocnt = m_v104_oint;
   return true;
 }
  
