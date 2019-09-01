@@ -103,7 +103,6 @@ void f_aws1_nmea_sw::wx220_to_out()
     
     if(m_verb)
       cout << "WX220 > " << m_nmea << endl;
-    cout << "WX220 > " << m_nmea << endl;
     
     if(m_state){
       switch(type){

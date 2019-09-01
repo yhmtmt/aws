@@ -349,7 +349,7 @@ size_t ch_state::read_buf(char * buf)
 	lptr[4] = tdp;
 	lptr[5] = twx;
 	
-	float * ptr = (float*)(lptr + 5);
+	float * ptr = (float*)(lptr + 6);
 	ptr[0] = roll;
 	ptr[1] = pitch;
 	ptr[2] = yaw;
