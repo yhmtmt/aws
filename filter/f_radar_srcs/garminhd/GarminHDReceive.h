@@ -32,8 +32,8 @@
 #ifndef _GARMIN_HD_RECEIVE_H_
 #define _GARMIN_HD_RECEIVE_H_
 
-#include "RadarReceive.h"
-#include "socketutil.h"
+#include "../RadarReceive.h"
+#include "../socketutil.h"
 
 
 struct radar_line;
@@ -44,19 +44,17 @@ struct radar_line;
 
 class GarminHDReceive : public RadarReceive {
  public:
-  GarminHDReceive(radar_pi *pi, RadarInfo *ri, NetworkAddress reportAddr, NetworkAddress dataAddr) : RadarReceive(pi, ri) {
+ GarminHDReceive(NetworkAddress interfaceAddr, NetworkAddress reportAddr, NetworkAddress dataAddr) : RadarReceive() {
     m_report_addr = reportAddr;
     m_next_spoke = -1;
     m_radar_status = 0;
     m_shutdown_time_requested = 0;
     m_is_shutdown = false;
     m_first_receive = true;
-    m_interface_addr = m_pi->GetRadarInterfaceAddress(ri->m_radar);
+    m_interface_addr = interfaceAddr;
     m_receive_socket = GetLocalhostServerTCPSocket();
     m_send_socket = GetLocalhostSendTCPSocket(m_receive_socket);
-    snprintf(buf, 32, "%s: %s", m_ri->m_name.c_str(), ("Initializing"));	     
-    SetInfoStatus(std::string(buf));
-    m_ri->m_showManualValueInAuto = true;
+    //    m_ri->m_showManualValueInAuto = true;
 
     printf(("radar_pi: %s receive thread created"), m_ri->m_name.c_str());
   };
@@ -65,7 +63,6 @@ class GarminHDReceive : public RadarReceive {
 
   void *Entry(void);
   void Shutdown(void);
-  std::string GetInfoStatus();
 
   NetworkAddress m_interface_addr;
   NetworkAddress m_report_addr;
@@ -94,9 +91,6 @@ class GarminHDReceive : public RadarReceive {
 
   std::string m_addr;  // Radar's IP address
 
-  wxCriticalSection m_lock;  // Protects m_status
-  std::string m_status;         // Userfriendly string
-
   bool m_auto_gain;               // True if auto gain mode is on
   int m_gain;                     // 0..100
   RadarControlState m_sea_mode;   // RCS_OFF, RCS_MANUAL, RCS_AUTO_1
@@ -107,10 +101,6 @@ class GarminHDReceive : public RadarReceive {
 
   bool UpdateScannerStatus(int status);
 
-  void SetInfoStatus(std::string status) {
-    wxCriticalSectionLocker lock(m_lock);
-    m_status = status;
-  }
 };
 
 #endif /* _GARMIN_XH_RECEIVE_H_ */

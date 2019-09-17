@@ -33,6 +33,8 @@
 #define _RADARRECEIVE_H_
 
 #include "RadarControl.h"
+#define DEFINE_RADAR(t, n, s, l, a, b, c, d)
+#include "RadarType.h"
 
 // The base class for a specific implementation of a thread
 // that receives data from a radar.
@@ -46,17 +48,6 @@ class RadarReceive{
   virtual ~RadarReceive() {}
 
   virtual void *Entry(void) = 0;
-
-  /*
-   * GetInfoStatus
-   *
-   * Return a string that explains whether the radar has been seen,
-   * if interesting at which IP address or whatever, and whether it is functional.
-   *
-   * It can include newlines. It is presented to the end users, so it must be
-   * a translated string.
-   */
-  virtual std::string GetInfoStatus() = 0;
 
   /*
    * Shutdown

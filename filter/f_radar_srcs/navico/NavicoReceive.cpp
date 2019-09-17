@@ -34,7 +34,6 @@
 #include "MessageBox.h"
 #include "NavicoControl.h"
 
-PLUGIN_BEGIN_NAMESPACE
 
 /*
  * This file not only contains the radar receive threads, it is also
@@ -1124,13 +1123,4 @@ void NavicoReceive::Shutdown() {
   printf(("radar_pi: %s receive thread will take long time to stop"), m_ri->m_name.c_str());
 }
 
-std::string NavicoReceive::GetInfoStatus() {
-  wxCriticalSectionLocker lock(m_lock);
-  // Called on the UI thread, so be gentle
-  if (m_firmware.length() > 0) {
-    return m_status + wxT("\n") + m_firmware;
-  }
-  return m_status;
-}
 
-PLUGIN_END_NAMESPACE

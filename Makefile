@@ -92,6 +92,13 @@ else
 	DEFS += -D_F_CAM_H
 endif
 
+ifeq ($(RADAR),y)
+	RADAR_GARMIN = f_radar_srcs/garminxhd/GarminxHDControl f_radar_srcs/garminxhd/GarminxHDReceive f_radar_srcs/garminhd/GarminHDControl f_radar_srcs/garminxhd/GarminHDReceive
+	RADAR_EMULATOR = f_radar_srcs/emulator/EmulatorControl f_radar_srcs/emulator/EmulatorReceive
+	RADAR_NAVICO = f_radar_srcs/navico/NavicoControl f_radar_srcs/navico/NavicoReceive
+	FILTER += f_radar $(RADAR_GARMIN) $(RADAR_EMULATOR) $(RADAR_NAVICO)
+endif
+
 ################################################## f_misc configuration
 ifeq ($(MISC),y)
 	FILTER += f_misc f_imgshk

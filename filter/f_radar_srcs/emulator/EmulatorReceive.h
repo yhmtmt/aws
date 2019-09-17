@@ -32,10 +32,9 @@
 #ifndef _EMULATORRECEIVE_H_
 #define _EMULATORRECEIVE_H_
 
-#include "RadarReceive.h"
-#include "socketutil.h"
+#include "../RadarReceive.h"
+#include "../socketutil.h"
 
-PLUGIN_BEGIN_NAMESPACE
 
 //
 // An intermediary class that implements the common parts of any Emulator radar.
@@ -59,7 +58,6 @@ class EmulatorReceive : public RadarReceive {
 
   void *Entry(void);
   void Shutdown(void);
-  wxString GetInfoStatus();
 
  private:
   void EmulateFakeBuffer(void);
@@ -72,7 +70,5 @@ class EmulatorReceive : public RadarReceive {
   SOCKET m_receive_socket;  // Where we listen for message from m_send_socket
   SOCKET m_send_socket;     // A message to this socket will interrupt select() and allow immediate shutdown
 };
-
-PLUGIN_END_NAMESPACE
 
 #endif /* _EMULATORRECEIVE_H_ */

@@ -40,7 +40,7 @@ DEFINE_RADAR(RT_GARMIN_XHD,                                /* Type */
              GARMIN_XHD_SPOKES,                            /* Spokes */
              GARMIN_XHD_MAX_SPOKE_LEN,                     /* Spoke length */
              GarminxHDControlsDialog,                      /* Controls class */
-             GarminxHDReceive(gx_report, gx_data), /* Receive class */
+             GarminxHDReceive(interfaceAddr, gx_report, gx_data), /* Receive class */
              GarminxHDControl(gx_send),                    /* Send/Control class */
              RO_SINGLE                                     /* This type only has a single radar and does not need locating */
 )

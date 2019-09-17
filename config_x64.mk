@@ -19,6 +19,7 @@ STEREO = y
 CAMCALIB = y
 STABILIZER = y
 MISC = y
+RADAR = y
 
 ############################################################ Path configuration
 CUR_DIR = $(shell pwd)

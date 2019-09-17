@@ -32,7 +32,8 @@
 #ifndef _NAVICOCONTROL_H_
 #define _NAVICOCONTROL_H_
 
-#include "socketutil.h"
+#include "../RadarReceive.h"
+#include "../socketutil.h"
 
 class NavicoControl : public RadarControl {
  public:
@@ -46,7 +47,7 @@ class NavicoControl : public RadarControl {
   void RadarTxOn();
   bool RadarStayAlive();
   bool SetRange(int meters);
-  bool SetControlValue(ControlType controlType, RadarControlItem &item);
+  bool SetControlValue(ControlType controlType, int value, RadarControlState state);
 
  private:
   struct sockaddr_in m_addr;

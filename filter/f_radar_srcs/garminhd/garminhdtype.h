@@ -38,7 +38,7 @@ DEFINE_RADAR(RT_GARMIN_HD,                              /* Type */
              GARMIN_HD_SPOKES,                          /* Spokes */
              GARMIN_HD_MAX_SPOKE_LEN,                   /* Spoke length */
              GarminHDControlsDialog,                    /* Controls class */
-             GarminHDReceive(g_report, g_data), /* Receive class */
+             GarminHDReceive(interfaceAddr, g_report, g_data), /* Receive class */
              GarminHDControl(g_send),                   /* Send/Control class */
              0                                          /* 0 = Primary, 1 = Secondary etc */
 )

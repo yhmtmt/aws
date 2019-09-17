@@ -21,10 +21,15 @@
 #ifndef _F_RADAR_H_
 #define _F_RADAR_H_
 
+enum RangeUnits { RANGE_MIXED, RANGE_METRIC, RANGE_NAUTIC };
+static const int RangeUnitsToMeters[3] = {1852, 1000, 1852};
+
 #include "../channel/ch_base.h"
-#include "f_radar_src/RadarDefs.h"
-#include "f_radar_src/RadarReceive.h"
-#include "f_radar_src/RadarFactory.h"
+#include "f_base.h"
+
+#include "f_radar_srcs/RadarDefs.h"
+#include "f_radar_srcs/RadarReceive.h"
+#include "f_radar_srcs/RadarFactory.h"
 
 
 class f_radar_ctrl: public f_base
@@ -44,7 +49,7 @@ class f_radar_ctrl: public f_base
 
   virtual bool init_run()
   {
-    pcontrol = RadarFactroy::MakeRadarControl(radar_type);
+    pcontrol = RadarFactory::MakeRadarControl(radar_type);
   }
 
   virtual void destroy_run()
@@ -76,7 +81,7 @@ class f_radar_rcv: public f_base
 
   virtual bool init_run()
   {
-    preceive = RadarFactroy::MakeRadarReceive(radar_type);
+    preceive = RadarFactory::MakeRadarReceive(radar_type);
   }
 
   virtual void destroy_run()

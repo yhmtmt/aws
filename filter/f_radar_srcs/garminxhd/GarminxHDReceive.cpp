@@ -30,6 +30,11 @@
  ***************************************************************************
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <string>
+#include <mutex>
 #include "GarminxHDReceive.h"
 
 /*
@@ -235,7 +240,7 @@ void *GarminxHDReceive::Entry(void) {
   SOCKET dataSocket = INVALID_SOCKET;
   SOCKET reportSocket = INVALID_SOCKET;
 
-  printf(("radar_pi: GarminxHDReceive thread %s starting"), m_ri->m_name.c_str());
+  printf(("radar_pi: GarminxHDReceive thread starting"));
 
   if (m_interface_addr.addr.s_addr == 0) {
     reportSocket = GetNewReportSocket();
@@ -287,18 +292,21 @@ void *GarminxHDReceive::Entry(void) {
     r = select(maxFd + 1, &fdin, 0, 0, &tv);
 
     if (r > 0) {
-      if (m_receive_socket != INVALID_SOCKET && FD_ISSET(m_receive_socket, &fdin)) {
+      if (m_receive_socket != INVALID_SOCKET
+	  && FD_ISSET(m_receive_socket, &fdin)) {
         rx_len = sizeof(rx_addr);
-        r = recvfrom(m_receive_socket, (char *)data, sizeof(data), 0, (struct sockaddr *)&rx_addr, &rx_len);
+        r = recvfrom(m_receive_socket, (char *)data,
+		     sizeof(data), 0, (struct sockaddr *)&rx_addr, &rx_len);
         if (r > 0) {
-          printf(("radar_pi: %s received stop instruction"), m_ri->m_name.c_str());
+          printf(("radar_pi: received stop instruction"));
           break;
         }
       }
 
       if (dataSocket != INVALID_SOCKET && FD_ISSET(dataSocket, &fdin)) {
         rx_len = sizeof(rx_addr);
-        r = recvfrom(dataSocket, (char *)data, sizeof(data), 0, (struct sockaddr *)&rx_addr, &rx_len);
+        r = recvfrom(dataSocket, (char *)data, sizeof(data),
+		     0, (struct sockaddr *)&rx_addr, &rx_len);
         if (r > 0) {
           ProcessFrame(data, (size_t)r);
           no_data_timeout = -15;
@@ -312,7 +320,8 @@ void *GarminxHDReceive::Entry(void) {
 
       if (reportSocket != INVALID_SOCKET && FD_ISSET(reportSocket, &fdin)) {
         rx_len = sizeof(rx_addr);
-        r = recvfrom(reportSocket, (char *)data, sizeof(data), 0, (struct sockaddr *)&rx_addr, &rx_len);
+        r = recvfrom(reportSocket, (char *)data, sizeof(data),
+		     0, (struct sockaddr *)&rx_addr, &rx_len);
         if (r > 0) {
           NetworkAddress radar_address;
           radar_address.addr = rx_addr.ipv4.sin_addr;
@@ -765,13 +774,6 @@ void GarminxHDReceive::Shutdown() {
     }
   }
   printf(("radar_pi: %s receive thread will take long time to stop"), m_ri->m_name.c_str());
-}
-
-std::string GarminxHDReceive::GetInfoStatus() {
-  wxCriticalSectionLocker lock(m_lock);
-  // Called on the UI thread, so be gentle
-
-  return m_status;
 }
 
 

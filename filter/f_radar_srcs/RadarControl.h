@@ -32,6 +32,22 @@
 #ifndef _RADARCONTROL_H_
 #define _RADARCONTROL_H_
 
+#include "socketutil.h"
+
+enum RadarControlState {
+  RCS_OFF = -1,
+  RCS_MANUAL = 0,
+  RCS_AUTO_1,
+  RCS_AUTO_2,
+  RCS_AUTO_3,
+  RCS_AUTO_4,
+  RCS_AUTO_5,
+  RCS_AUTO_6,
+  RCS_AUTO_7,
+  RCS_AUTO_8,
+  RCS_AUTO_9
+};
+
 typedef enum ControlType {
   CT_NONE,
 #define CONTROL_TYPE(x, y) x,
@@ -54,7 +70,7 @@ class RadarControl {
    * @param interfaceAddress     The IPv4 address of the ethernet card on this machine
    * @param radarAddress         The IPV4 address of the radar scanner
    */
-  virtual bool Init(radar_pi *pi, RadarInfo *ri, NetworkAddress &interfaceAddress, NetworkAddress &radarAddress) = 0;
+  virtual bool Init(std::string & name, NetworkAddress &interfaceAddress, NetworkAddress &radarAddress) = 0;
 
   /*
    * Ask the radar to switch off.
@@ -90,7 +106,7 @@ class RadarControl {
    * @param     button          Button that this originates from.
    * @returns   true on success, false on failure.
    */
-  virtual bool SetControlValue(ControlType controlType, RadarControlItem &item) = 0;
+  virtual bool SetControlValue(ControlType controlType, int value, RadarControlState state) = 0;
 };
 
 #endif /* _RADARCONTROL_H_ */

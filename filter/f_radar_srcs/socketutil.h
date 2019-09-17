@@ -33,6 +33,25 @@
 #ifndef _SOCKETUTIL_H_
 #define _SOCKETUTIL_H_
 
+#include <string.h>
+#include <netinet/in.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <unistd.h>
+#include <errno.h>
+
+#ifndef SOCKET
+#define SOCKET int
+#endif
+
+#ifndef INVALID_SOCKET
+#define INVALID_SOCKET ((SOCKET)~0)
+#endif
+
+
+#define SOCKETERRSTR (strerror(errno))
+#define closesocket(fd) close(fd)
+
 #define VALID_IPV4_ADDRESS(i)                                                                                                    \
   (i && i->ifa_addr && i->ifa_addr->sa_family == AF_INET && (i->ifa_flags & IFF_UP) > 0 && (i->ifa_flags & IFF_LOOPBACK) == 0 && \
    (i->ifa_flags & IFF_MULTICAST) > 0)
@@ -75,19 +94,21 @@ class NetworkAddress {
   NetworkAddress(const std::string str) {
     uint8_t *paddr = (uint8_t *)&addr;
     char tok[6];
+
     addr.s_addr = 0;
     port = 0;
 
     int ic = 0; // char counter
     int id = 0; // dot counter
-    while(cstr[i] && id < 4){
-      const char * cstr = str.c_str() + ic;
+    const char * cstr = str.c_str();
+    while(cstr[0] && id < 4){
+      cstr = str.c_str() + ic;
       int itok = 0;
       for(; cstr[itok]!=0 && cstr[itok] != '.' && cstr[itok] != ':'; itok++)
 	tok[itok] = cstr[itok];
       if(cstr[itok]){
 	tok[itok] = '\0';
-	paddr[id] = atoi(tok[itok]);
+	paddr[id] = atoi(tok);
 	id++;
       }else{
 	break;

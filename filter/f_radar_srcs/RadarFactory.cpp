@@ -39,17 +39,7 @@ const char * RadarTypeName[RT_MAX] = {
 #include "RadarType.h"
 };
 
-ControlsDialog* RadarFactory::MakeControlsDialog(size_t radarType, int radar) {
-  switch (radarType) {
-#define DEFINE_RADAR(t, x, s, l, a, b, c, d) \
-  case t:                                    \
-    return new a;
-#include "RadarType.h"
-  };
-  return 0;
-}
-
-RadarReceive* RadarFactory::MakeRadarReceive(size_t radarType) {
+RadarReceive* RadarFactory::MakeRadarReceive(size_t radarType, NetworkAddress interfaceAddr) {
   switch (radarType) {
 #define DEFINE_RADAR(t, x, s, l, a, b, c, d) \
   case t:                                    \

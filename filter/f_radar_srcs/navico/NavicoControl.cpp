@@ -164,11 +164,9 @@ bool NavicoControl::SetRange(int meters) {
   return false;
 }
 
-bool NavicoControl::SetControlValue(ControlType controlType, RadarControlItem &item) {
+bool NavicoControl::SetControlValue(ControlType controlType, int value, RadarControlState state) {
   bool r = false;
 
-  int value = item.GetValue();
-  RadarControlState state = item.GetState();
   int autoValue = 0;
   if (state > RCS_MANUAL) {
     autoValue = state - RCS_MANUAL;

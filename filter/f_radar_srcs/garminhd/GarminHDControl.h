@@ -32,7 +32,8 @@
 #ifndef _GARMIN_HD_CONTROL_H_
 #define _GARMIN_HD_CONTROL_H_
 
-#include "socketutil.h"
+#include "../RadarReceive.h"
+#include "../socketutil.h"
 
 class GarminHDControl : public RadarControl {
  public:
@@ -45,7 +46,7 @@ class GarminHDControl : public RadarControl {
   bool RadarStayAlive();
   bool SetRange(int meters);
 
-  bool SetControlValue(ControlType controlType, RadarControlItem &item);
+  bool SetControlValue(ControlType controlType, int value, RadarControlState state);
 
  private:
   void logBinaryData(std::string & what, const void *data, int size);

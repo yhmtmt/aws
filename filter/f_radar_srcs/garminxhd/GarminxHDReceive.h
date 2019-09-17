@@ -32,8 +32,8 @@
 #ifndef _GARMIN_XH_RECEIVE_H_
 #define _GARMIN_XH_RECEIVE_H_
 
-#include "RadarReceive.h"
-#include "socketutil.h"
+#include "../RadarReceive.h"
+#include "../socketutil.h"
 
 //
 // An intermediary class that implements the common parts of any Navico radar.
@@ -41,7 +41,7 @@
 
 class GarminxHDReceive : public RadarReceive {
  public:
-  GarminxHDReceive(NetworkAddress reportAddr, NetworkAddress dataAddr) : RadarReceive() {
+ GarminxHDReceive(NetworkAddress interfaceAddr, NetworkAddress reportAddr, NetworkAddress dataAddr) : RadarReceive() {
     m_data_addr = dataAddr;
     m_report_addr = reportAddr;
     m_next_spoke = -1;
@@ -49,30 +49,24 @@ class GarminxHDReceive : public RadarReceive {
     m_shutdown_time_requested = 0;
     m_is_shutdown = false;
     m_first_receive = true;
-    m_interface_addr = m_pi->GetRadarInterfaceAddress(ri->m_radar);
+    m_interface_addr = interfaceAddr;
     m_receive_socket = GetLocalhostServerTCPSocket();
     m_send_socket = GetLocalhostSendTCPSocket(m_receive_socket);
-    char buf[32];
-    snprintf(buf, 32, "%s: %s", m_ri->m_name.c_str(), _("Initializing"));
-    
-    SetInfoStatus(std::string(buf));
-    m_ri->m_showManualValueInAuto = true;
-    m_ri->m_timed_idle_hardware = true;
-
-    printf(("radar_pi: %s receive thread created"), m_ri->m_name.c_str());
+    //    m_ri->m_showManualValueInAuto = true;
+    //    m_ri->m_timed_idle_hardware = true;
+    //    printf(("radar_pi: %s receive thread created"), m_ri->m_name.c_str());
   };
 
   ~GarminxHDReceive() {}
 
   void *Entry(void);
   void Shutdown(void);
-  std::string GetInfoStatus();
 
   NetworkAddress m_interface_addr;
   NetworkAddress m_data_addr;
   NetworkAddress m_report_addr;
 
-  wxLongLong m_shutdown_time_requested;  // Main thread asks this thread to stop
+  long long m_shutdown_time_requested;  // Main thread asks this thread to stop
   volatile bool m_is_shutdown;
 
  private:
@@ -97,9 +91,6 @@ class GarminxHDReceive : public RadarReceive {
 
   std::string m_addr;  // Radar's IP address
 
-  wxCriticalSection m_lock;  // Protects m_status
-  std::string m_status;         // Userfriendly string
-
   bool m_auto_gain;                     // True if auto gain mode is on
   int m_gain;                           // 0..100
   RadarControlState m_sea_mode;         // RCS_OFF, RCS_MANUAL, RCS_AUTO_1
@@ -110,11 +101,6 @@ class GarminxHDReceive : public RadarReceive {
   bool m_no_transmit_zone_mode;         // True if there is a zone
 
   bool UpdateScannerStatus(int status);
-
-  void SetInfoStatus(std::string status) {
-    wxCriticalSectionLocker lock(m_lock);
-    m_status = status;
-  }
 };
 
 

@@ -30,6 +30,7 @@
  */
 
 #include <string>
+
 #include "GarminxHDControl.h"
 
 #pragma pack(push, 1)
@@ -58,10 +59,7 @@ GarminxHDControl::GarminxHDControl(NetworkAddress sendAddress) {
   m_addr = sendAddress.GetSockAddrIn();  // addr part overwritten by actual radar addr
 
   m_radar_socket = INVALID_SOCKET;
-  m_name = ("Navico radar");
 
-  m_pi = 0;
-  m_ri = 0;
   m_name = ("GarminxHD");
 }
 
@@ -97,12 +95,12 @@ bool GarminxHDControl::Init(std::string & name, NetworkAddress &ifadr, NetworkAd
   }
 
   if (r) {
-    printf("radar_pi: Unable to create UDP sending socket"));
+    printf("radar_pi: Unable to create UDP sending socket");
     // Might as well give up now
     return false;
   }
 
-  printf(("radar_pi: %s transmit socket open"), m_name);
+  printf(("radar_pi: %s transmit socket open"), m_name.c_str());
   return true;
 }
 
@@ -111,7 +109,7 @@ void GarminxHDControl::logBinaryData(const std::string &what, const void *data, 
   const uint8_t *d = (const uint8_t *)data;
   int i = 0;
 
-  explain.Alloc(size * 3 + 50);
+  explain.reserve(size * 3 + 50);
   explain += ("radar_pi: ") + m_name + (" ");
   explain += what;
   char valstr[32];
@@ -120,16 +118,16 @@ void GarminxHDControl::logBinaryData(const std::string &what, const void *data, 
     snprintf(valstr, 32, " %02X", d[i]);    
     explain += valstr;
   } 
-  printf(explain.c_str());
+  printf("%s", explain.c_str());
 }
 
 bool GarminxHDControl::TransmitCmd(const void *msg, int size) {
   if (m_radar_socket == INVALID_SOCKET) {
-    printf("radar_pi: Unable to transmit command to unknown radar"));
+    printf("radar_pi: Unable to transmit command to unknown radar");
     return false;
   }
   if (sendto(m_radar_socket, (char *)msg, size, 0, (struct sockaddr *)&m_addr, sizeof(m_addr)) < size) {
-    printf("radar_pi: Unable to transmit command to %s: %s"), m_name.c_str(), SOCKETERRSTR);
+    printf("radar_pi: Unable to transmit command to %s: %s", m_name.c_str(), SOCKETERRSTR);
     return false;
   }
 //  IF_LOG_AT(LOGLEVEL_TRANSMIT, logBinaryData(wxString::Format(wxT("%s transmit"), m_name), msg, size));
@@ -176,10 +174,8 @@ bool GarminxHDControl::SetRange(int meters) {
   return false;
 }
 
-bool GarminxHDControl::SetControlValue(ControlType controlType, RadarControlItem &item, RadarControlButton *button) {
+bool GarminxHDControl::SetControlValue(ControlType controlType, int value, RadarControlState state) {
   bool r = false;
-  int value = item.GetValue();
-  RadarControlState state = item.GetState();
 
   rad_ctl_pkt_9 pck_9;
   rad_ctl_pkt_10 pck_10;
@@ -249,7 +245,7 @@ bool GarminxHDControl::SetControlValue(ControlType controlType, RadarControlItem
         pck_12.packet_type = 0x940;
         pck_12.parm1 = value * 32;
         r = TransmitCmd(&pck_12, sizeof(pck_12));
-        m_ri->m_no_transmit_start.Update(value);  // necessary because we hacked "off" as auto value
+	//        m_ri->m_no_transmit_start.Update(value);  // necessary because we hacked "off" as auto value
       }
       printf(("radar_pi: %s No Transmit Start: value=%d state=%d"), m_name.c_str(), value, (int)state);
       break;

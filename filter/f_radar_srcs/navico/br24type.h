@@ -26,7 +26,7 @@ DEFINE_RADAR(RT_BR24,                                               /* Type */
              NAVICO_SPOKES,                                         /* Spokes */
              NAVICO_SPOKE_LEN,                                      /* Spoke length */
              NavicoControlsDialog(RT_BR24),                         /* Controls class */
-             NavicoReceive(reportBR24, dataBR24, sendBR24), /* Receive class */
+             NavicoReceive(interfaceAddr, reportBR24, dataBR24, sendBR24), /* Receive class */
              NavicoControl(),                                       /* Send/Control class */
              RO_SINGLE /* This type only has a single radar and does not need locating */
 )

@@ -591,10 +591,3 @@ void GarminHDReceive::Shutdown() {
   printf(("radar_pi: %s receive thread will take long time to stop"), m_ri->m_name.c_str());
 }
 
-wxString GarminHDReceive::GetInfoStatus() {
-  wxCriticalSectionLocker lock(m_lock);
-  // Called on the UI thread, so be gentle
-
-  return m_status;
-}
-

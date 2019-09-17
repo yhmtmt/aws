@@ -28,7 +28,7 @@ DEFINE_RADAR(RT_4GA,                                                /* Type */
              NAVICO_SPOKES,                                         /* Spokes */
              NAVICO_SPOKE_LEN,                                      /* Spoke length (max) */
              NavicoControlsDialog(RT_4GA),                          /* ControlsDialog class constructor */
-             NavicoReceive(report4G_A, data4G_A, send4G_A), /* Receive class constructor */
+             NavicoReceive(interfaceAddr, report4G_A, data4G_A, send4G_A), /* Receive class constructor */
              NavicoControl(),                                       /* Send/Control class constructor */
              RO_PRIMARY                                             /* This type has two radars and this is the first */
 )

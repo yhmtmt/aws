@@ -182,11 +182,9 @@ bool GarminHDControl::SetRange(int meters) {
   return false;
 }
 
-bool GarminHDControl::SetControlValue(ControlType controlType, RadarControlItem &item) {
+bool GarminHDControl::SetControlValue(ControlType controlType, int value, RadarControlState state) {
   bool r = false;
-  int value = item.GetValue();
-  RadarControlState state = item.GetState();
-
+ 
   rad_ctl_pkt_9 pck_9;
   rad_ctl_pkt_10 pck_10;
   rad_ctl_pkt_12 pck_12;

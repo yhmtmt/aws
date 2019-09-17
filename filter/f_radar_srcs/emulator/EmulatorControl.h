@@ -32,7 +32,8 @@
 #ifndef _EMULATORCONTROL_H_
 #define _EMULATORCONTROL_H_
 
-#include "socketutil.h"
+#include "../RadarReceive.h"
+#include "../socketutil.h"
 
 class EmulatorControl : public RadarControl {
  public:
@@ -44,7 +45,7 @@ class EmulatorControl : public RadarControl {
   void RadarTxOn();
   bool RadarStayAlive();
   bool SetRange(int meters);
-  bool SetControlValue(ControlType controlType, RadarControlItem &item);
+  bool SetControlValue(ControlType controlType, int value, RadarControlState state);
 
  private:
   std::string m_name;

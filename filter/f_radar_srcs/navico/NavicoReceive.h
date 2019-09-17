@@ -34,8 +34,8 @@
 
 #include "NavicoCommon.h"
 #include "NavicoLocate.h"
-#include "RadarReceive.h"
-#include "socketutil.h"
+#include "../RadarReceive.h"
+#include "../socketutil.h"
 
 //
 // An intermediary class that implements the common parts of any Navico radar.
@@ -43,7 +43,7 @@
 
 class NavicoReceive : public RadarReceive {
  public:
-  NavicoReceive(radar_pi *pi, RadarInfo *ri, NetworkAddress reportAddr, NetworkAddress dataAddr, NetworkAddress sendAddr)
+  NavicoReceive(NetworkAddress interfaceAddr, NetworkAddress reportAddr, NetworkAddress dataAddr, NetworkAddress sendAddr)
       : RadarReceive(pi, ri) {
     m_data_addr = dataAddr;
     m_report_addr = reportAddr;
@@ -53,7 +53,7 @@ class NavicoReceive : public RadarReceive {
     m_shutdown_time_requested = 0;
     m_is_shutdown = false;
     m_first_receive = true;
-    m_interface_addr = m_pi->GetRadarInterfaceAddress(ri->m_radar);
+    m_interface_addr = interfaceAddr;
     m_receive_socket = GetLocalhostServerTCPSocket();
     m_send_socket = GetLocalhostSendTCPSocket(m_receive_socket);
     char buf[32];
@@ -122,20 +122,12 @@ class NavicoReceive : public RadarReceive {
   char m_radar_status;
   bool m_first_receive;
 
-  wxCriticalSection m_lock;  // Protects m_status
-  std::string m_status;         // Userfriendly string
   std::string m_firmware;       // Userfriendly string #2
 
-  void SetInfoStatus(std::string status) {
-    wxCriticalSectionLocker lock(m_lock);
-    m_status = status;
-  }
   void SetFirmware(std::string s) {
-    wxCriticalSectionLocker lock(m_lock);
     m_firmware = s;
   }
 };
 
-PLUGIN_END_NAMESPACE
 
 #endif /* _NAVICORECEIVE_H_ */
