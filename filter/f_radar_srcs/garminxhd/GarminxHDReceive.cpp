@@ -215,6 +215,201 @@ SOCKET GarminxHDReceive::GetNewDataSocket() {
   return socket;
 }
 
+
+bool GarminxHDReceive::Init(NetworkAddress interfaceAddr)
+{
+  no_data_timeout = 0;
+  no_spoke_timeout = 0;
+  
+  uint8_t data[sizeof(radar_line)];
+  m_interface_array = 0;
+  m_interface = 0;
+  radar_addr = 0;  
+  dataSocket = INVALID_SOCKET;
+  reportSocket = INVALID_SOCKET;
+
+  printf(("radar_pi: GarminxHDReceive thread starting"));
+  if(m_receive_socket == INVALID_SOCKET)
+    return false;
+  
+  if (m_interface_addr.addr.s_addr == 0) {
+    reportSocket = GetNewReportSocket();
+  }  
+  return true;
+}
+
+bool GarminxHDReceive::Loop()
+{
+  int r = 0;
+  union {
+    sockaddr_storage addr;
+    sockaddr_in ipv4;
+  } rx_addr;
+  socklen_t rx_len;
+  
+  if(m_receive_socket != INVALID_SOCKET)
+    return false;
+  
+  if (reportSocket == INVALID_SOCKET) {
+    reportSocket = PickNextEthernetCard();
+    if (reportSocket != INVALID_SOCKET) {
+      no_data_timeout = 0;
+      no_spoke_timeout = 0;
+    }
+  }
+  
+  if (radar_addr) {
+    // If we have detected a radar antenna at this address start opening more sockets.
+    // We do this later for 2 reasons:
+    // - Resource consumption
+    // - Timing. If we start processing radar data before the rest of the system
+    //           is initialized then we get ordering/race condition issues.
+    if (dataSocket == INVALID_SOCKET) {
+      dataSocket = GetNewDataSocket();
+    }
+  } else {
+    if (dataSocket != INVALID_SOCKET) {
+      closesocket(dataSocket);
+      dataSocket = INVALID_SOCKET;
+    }
+  }
+  
+  struct timeval tv = {(long)0, (long)(MILLIS_PER_SELECT * 1000)};
+  
+  fd_set fdin;
+  FD_ZERO(&fdin);
+  
+  int maxFd = INVALID_SOCKET;
+  if (m_receive_socket != INVALID_SOCKET) {
+    FD_SET(m_receive_socket, &fdin);
+    maxFd = MAX(m_receive_socket, maxFd);
+  }
+  if (reportSocket != INVALID_SOCKET) {
+    FD_SET(reportSocket, &fdin);
+    maxFd = MAX(reportSocket, maxFd);
+  }
+  if (dataSocket != INVALID_SOCKET) {
+    FD_SET(dataSocket, &fdin);
+    maxFd = MAX(dataSocket, maxFd);
+  }
+  
+  r = select(maxFd + 1, &fdin, 0, 0, &tv);
+  
+  if (r > 0) {
+    if (m_receive_socket != INVALID_SOCKET
+	&& FD_ISSET(m_receive_socket, &fdin)) {
+      rx_len = sizeof(rx_addr);
+      r = recvfrom(m_receive_socket, (char *)data,
+		   sizeof(data), 0, (struct sockaddr *)&rx_addr, &rx_len);
+      if (r > 0) {
+	printf(("radar_pi: received stop instruction"));
+	return false;
+      }
+    }
+    
+    if (dataSocket != INVALID_SOCKET && FD_ISSET(dataSocket, &fdin)) {
+      rx_len = sizeof(rx_addr);
+      r = recvfrom(dataSocket, (char *)data, sizeof(data),
+		   0, (struct sockaddr *)&rx_addr, &rx_len);
+      if (r > 0) {
+	ProcessFrame(data, (size_t)r);
+	no_data_timeout = -15;
+	no_spoke_timeout = -5;
+      } else {
+	closesocket(dataSocket);
+	dataSocket = INVALID_SOCKET;
+	printf(("radar_pi: %s illegal frame"), m_ri->m_name.c_str());
+      }
+    }
+    
+    if (reportSocket != INVALID_SOCKET && FD_ISSET(reportSocket, &fdin)) {
+      rx_len = sizeof(rx_addr);
+      r = recvfrom(reportSocket, (char *)data, sizeof(data),
+		   0, (struct sockaddr *)&rx_addr, &rx_len);
+      if (r > 0) {
+	NetworkAddress radar_address;
+	radar_address.addr = rx_addr.ipv4.sin_addr;
+	radar_address.port = rx_addr.ipv4.sin_port;
+	
+	if (ProcessReport(data, (size_t)r)) {
+	  if (!radar_addr) {
+	    wxCriticalSectionLocker lock(m_lock);
+	    m_ri->DetectedRadar(m_interface_addr, radar_address);  // enables transmit data
+	    
+	    // the dataSocket is opened in the next loop
+	    
+	    radarFoundAddr = rx_addr.ipv4;
+	    radar_addr = &radarFoundAddr;
+	    m_addr = radar_address.FormatNetworkAddress();
+	    
+	    if (m_ri->m_state.GetValue() == RADAR_OFF) {
+	      printf(("radar_pi: %s detected at %s"), m_ri->m_name.c_str(), m_addr.c_str());
+	      m_ri->m_state.Update(RADAR_STANDBY);
+	    }
+	  }
+	  no_data_timeout = SECONDS_SELECT(-15);
+	}
+      } else {
+	printf(("radar_pi: %s illegal report"), m_ri->m_name.c_str());
+	closesocket(reportSocket);
+	reportSocket = INVALID_SOCKET;
+      }
+    }    
+  } else {  // no data received -> select timeout    
+    if (no_data_timeout >= SECONDS_SELECT(2)) {
+      no_data_timeout = 0;
+      if (reportSocket != INVALID_SOCKET) {
+	closesocket(reportSocket);
+	reportSocket = INVALID_SOCKET;
+	m_ri->m_state.Update(RADAR_OFF);
+	CLEAR_STRUCT(m_interface_addr);
+	radar_addr = 0;
+      }
+    } else {
+      no_data_timeout++;
+    }
+    
+    if (no_spoke_timeout >= SECONDS_SELECT(2)) {
+      no_spoke_timeout = 0;
+      m_ri->ResetRadarImage();
+    } else {
+      no_spoke_timeout++;
+    }
+  }
+
+  if (reportSocket == INVALID_SOCKET) {
+    // If we closed the reportSocket then close the command and data socket
+    if (dataSocket != INVALID_SOCKET) {
+      closesocket(dataSocket);
+      dataSocket = INVALID_SOCKET;
+    }
+  }
+  
+  return true;
+}
+
+void GarminxHDReceive::Destroy()
+{
+  if (dataSocket != INVALID_SOCKET) {
+    closesocket(dataSocket);
+  }
+  if (reportSocket != INVALID_SOCKET) {
+    closesocket(reportSocket);
+  }
+  if (m_send_socket != INVALID_SOCKET) {
+    closesocket(m_send_socket);
+    m_send_socket = INVALID_SOCKET;
+  }
+  if (m_receive_socket != INVALID_SOCKET) {
+    closesocket(m_receive_socket);
+  }
+
+  if (m_interface_array) {
+    freeifaddrs(m_interface_array);
+  }
+}
+
+
 /*
  * Entry
  *

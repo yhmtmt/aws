@@ -27,10 +27,71 @@ static const int RangeUnitsToMeters[3] = {1852, 1000, 1852};
 #include "../channel/ch_base.h"
 #include "f_base.h"
 
-#include "f_radar_srcs/RadarDefs.h"
-#include "f_radar_srcs/RadarReceive.h"
-#include "f_radar_srcs/RadarFactory.h"
+static const NetworkAddress gx_data(239, 254, 2, 0, 50102);
+static const NetworkAddress gx_report(239, 254, 2, 0, 50100);
+static const NetworkAddress gx_send(172, 16, 2, 0, 50101);
+#define RANGE_METRIC_RT_GARMIN_XHD \
+  { 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000, 12000, 16000, 24000, 36000, 48000, 64000 }
+// Garmin mixed range is the same as nautical miles, it does not support really short ranges
+#define RANGE_MIXED_RT_GARMIN_XHD                                                                                         \
+  {                                                                                                                       \
+    1852 / 8, 1852 / 4, 1852 / 2, 1852 * 3 / 4, 1852 * 1, 1852 * 3 / 2, 1852 * 2, 1852 * 3, 1852 * 4, 1852 * 6, 1852 * 8, \
+        1852 * 12, 1852 * 16, 1852 * 24, 1852 * 36, 1852 * 48                                                             \
+  }
+#define RANGE_NAUTIC_RT_GARMIN_XHD                                                                                        \
+  {                                                                                                                       \
+    1852 / 8, 1852 / 4, 1852 / 2, 1852 * 3 / 4, 1852 * 1, 1852 * 3 / 2, 1852 * 2, 1852 * 3, 1852 * 4, 1852 * 6, 1852 * 8, \
+        1852 * 12, 1852 * 16, 1852 * 24, 1852 * 36, 1852 * 48                                                             \
+  }
 
+// Garmin xHD has 1440 spokes of varying 519 - 705 bytes each
+#define GARMIN_XHD_SPOKES 1440
+#define GARMIN_XHD_MAX_SPOKE_LEN 705
+
+
+#include "f_radar_srcs/garminxhd/GarminxHDControl.h"
+#include "f_radar_srcs/garminxhd/GarminxHDReceive.h"
+
+class f_radar:public f_base
+{
+ protected:
+  GarminxHDControl control;
+  GarminxHDReceive receive;
+  NetworkAddress interface_address;
+ public:
+ f_radar(const char * name): f_base(name), interface_address(172,16,1,1,0),
+    receive(this, interface_address, gx_report, gx_data), control(this, gx_send)
+  {
+  }
+
+  virtual ~f_radar()
+    {
+    }
+
+  virtual bool init_run()
+  {
+    if(!control.Init("GarminxHDControl", interface_address, gx_send)){
+      return false;
+    }
+
+    if(!receive.Init(interface_address)){
+      return false;
+    }
+      
+    return true;
+  }
+
+  virtual void destroy_run()
+  {
+    receive.Destroy();
+  }
+
+  virtual bool proc()
+  {
+    
+    return receive.Loop();
+  }
+};
 
 class f_radar_ctrl: public f_base
 {
@@ -49,7 +110,6 @@ class f_radar_ctrl: public f_base
 
   virtual bool init_run()
   {
-    pcontrol = RadarFactory::MakeRadarControl(radar_type);
   }
 
   virtual void destroy_run()
@@ -81,7 +141,6 @@ class f_radar_rcv: public f_base
 
   virtual bool init_run()
   {
-    preceive = RadarFactory::MakeRadarReceive(radar_type);
   }
 
   virtual void destroy_run()

@@ -55,7 +55,7 @@ typedef struct {
 
 #pragma pack(pop)
 
-GarminxHDControl::GarminxHDControl(NetworkAddress sendAddress) {
+GarminxHDControl::GarminxHDControl(f_base * _pfilter, NetworkAddress sendAddress): pfilter(_pfilter) {
   m_addr = sendAddress.GetSockAddrIn();  // addr part overwritten by actual radar addr
 
   m_radar_socket = INVALID_SOCKET;
