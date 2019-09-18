@@ -58,7 +58,7 @@ class GarminxHDReceive{
 
   ~GarminxHDReceive() {}
 
-  bool Init(NetworkAddress interfaceAddr);
+  bool Init(ch_state * state, ch_radar_state * radar_state, ch_radar_image * radar_image, NetworkAddress interfaceAddr);
   bool Loop();
   void Destroy();
   
@@ -109,7 +109,9 @@ class GarminxHDReceive{
   sockaddr_in *radar_addr;
   int no_data_timeout = 0;
   int no_spoke_timeout = 0;
-  
+  ch_state * state;
+  ch_radar_state * radar_state;
+  ch_radar_image * radar_image;
   bool UpdateScannerStatus(int status);    
 };
 

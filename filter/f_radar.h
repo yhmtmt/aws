@@ -21,7 +21,7 @@
 #ifndef _F_RADAR_H_
 #define _F_RADAR_H_
 
-#include "../channel/ch_base.h"
+#include "../channel/ch_radar.h"
 #include "f_base.h"
 
 #include "f_radar_srcs/socketutil.h"
@@ -45,18 +45,26 @@ class f_radar:public f_base
   GarminxHDReceive receive;
   NetworkAddress interface_address;
 
+  ch_state * state;
+  ch_radar_image * radar;
+  ch_radar_state * radar_state;
+  ch_radar_ctrl * radar_ctrl;
+  
  public:
   // RadarInfo related data members
-  struct line_history {
-    uint8_t *line;
-    long long time;
-    GeoPosition pos;
-  };
 
-  line_history *m_history;  
+  line_history *m_history;
+  
   long long m_boot_time;
   long long m_radar_timeout, m_data_timeout, m_stayalive_timeout;
-  int m_state, m_gain, m_gain_state, m_scan_speed, m_bearing_alignment, m_interference_rejection,  m_rain_clutter, m_rain_mode, m_sea_clutter, m_sea_mode, m_no_transmit_start, m_no_transmit_start_state, m_no_transmit_end, m_no_transmit_end_state, m_timed_idle, m_timed_idle_mode, m_timed_run, m_next_state_change;
+  int m_state, m_gain, m_gain_state, m_scan_speed,
+    m_bearing_alignment, m_interference_rejection,
+    m_rain_clutter, m_rain_mode, m_sea_clutter,
+    m_sea_mode, m_no_transmit_start,
+    m_no_transmit_start_state, m_no_transmit_end,
+    m_no_transmit_end_state, m_timed_idle,
+    m_timed_idle_mode, m_timed_run, m_next_state_change;
+  
   receive_statistics m_statistics;
   int m_range;
   long long GetBootTime(){ return m_boot_time;};
@@ -67,16 +75,12 @@ class f_radar:public f_base
     }
     m_stayalive_timeout = 0;    
   }
-  void ProcessRadarSpoke(int angle, int bearing, uint8_t *data, size_t len, int range_meters, long long time);
-
-  void ResetRadarImage()
+  void ProcessRadarSpoke(int angle, int bearing, uint8_t *data, size_t len, int range_meters, long long t)
   {
-    for (size_t i = 0; i < GARMIN_XHD_SPOKES; i++) {
-      memset(m_history[i].line, 0, GARMIN_XHD_MAX_SPOKE_LEN);
-      m_history[i].time = 0;
-      m_history[i].pos.lat = 0.;
-      m_history[i].pos.lon = 0.;
-    }    
+    long long tpos;
+    float lat, lon;
+    state->get_pos(tpos, lat, lon);
+    radar->set_spoke(t, lat, lon, angle, bearing, data, len, range_meters);
   }
 
   void resetTimeout(long long now)
@@ -102,32 +106,38 @@ class f_radar:public f_base
     if(!receive.Init(interface_address)){
       return false;
     }
-    
-    m_history = (line_history *)calloc(sizeof(line_history), GARMIN_XHD_SPOKES);
-    for (size_t i = 0; i < GARMIN_XHD_SPOKES; i++) {
-      m_history[i].line = (uint8_t *)calloc(sizeof(uint8_t), GARMIN_XHD_MAX_SPOKE_LEN);
-    }
+    if(!radar)
+      return false;
 
     return true;
   }
 
   virtual void destroy_run()
   {
-    if (m_history) {
-      for (size_t i = 0; i < GARMIN_XHD_SPOKES; i++) {
-	if (m_history[i].line) {
-	  free(m_history[i].line);
-	}
-      }
-      free(m_history);
-    }
-
     receive.Destroy();
   }
 
   virtual bool proc()
   {
-    
+    radar_command_id id;
+    int val;
+    int state;
+    while(radar_ctrl.pop(id, val, state))
+      {
+	switch(id){
+	case RC_TXOFF:
+	  control.RadarTxOff();
+	  break;
+	case RC_TXON:
+	  control.RadarTxOn();
+	  break;
+	case RC_RANGE:
+	  control.SetRange(val);
+	  break;
+	default:
+	  control.SetControlValue(id, val, state);
+	  break;	  	  
+      }
     return receive.Loop();
   }
 };
