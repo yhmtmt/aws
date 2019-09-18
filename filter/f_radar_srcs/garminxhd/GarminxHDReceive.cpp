@@ -36,10 +36,14 @@
 
 #include <iostream>
 #include <vector>
+#include <queue>
 #include <string>
 #include <map>
 #include <mutex>
 using namespace std;
+#include <opencv2/opencv.hpp>
+using namespace cv;
+
 
 #include "../../../util/aws_stdlib.h"
 #include "../../../util/aws_thread.h"
@@ -399,7 +403,9 @@ bool GarminxHDReceive::Loop()
 
 void GarminxHDReceive::Destroy()
 {
-  state = radar_state = radar_image = NULL;
+  state = NULL;
+  radar_state = NULL;
+  radar_image = NULL;
   
   if (dataSocket != INVALID_SOCKET) {
     closesocket(dataSocket);
@@ -608,7 +614,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x0930:  // Dome offset, called bearing alignment here
         printf(("radar_pi: Garmin xHD 0x0930: bearing alignment %d"), (int32_t)packet12->parm1 / 32);
-	radar_state->set_bearing_alignment = (int32_t)packet12->parm1 / 32;
+	radar_state->set_bearing_alignment((int32_t)packet12->parm1 / 32);
         return true;
 
       case 0x0932:  // Crosstalk reject, I guess this is the same as interference rejection?

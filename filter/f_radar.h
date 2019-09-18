@@ -21,6 +21,7 @@
 #ifndef _F_RADAR_H_
 #define _F_RADAR_H_
 
+#include "../channel/ch_state.h"
 #include "../channel/ch_radar.h"
 #include "f_base.h"
 
@@ -28,6 +29,8 @@
 #include "f_radar_srcs/garminxhd/garminxhd.h"
 #include "f_radar_srcs/garminxhd/GarminxHDControl.h"
 #include "f_radar_srcs/garminxhd/GarminxHDReceive.h"
+
+
 
 struct receive_statistics {
   int packets;
@@ -37,7 +40,6 @@ struct receive_statistics {
   int missing_spokes;
 };
 
-
 class f_radar:public f_base
 {
  protected:
@@ -46,15 +48,13 @@ class f_radar:public f_base
   NetworkAddress interface_address;
 
   ch_state * state;
-  ch_radar_image * radar;
+  ch_radar_image * radar_image;
   ch_radar_state * radar_state;
   ch_radar_ctrl * radar_ctrl;
   
  public:
   // RadarInfo related data members
-
-  line_history *m_history;
-  
+ 
   long long m_boot_time;
   long long m_radar_timeout, m_data_timeout, m_stayalive_timeout;
   int m_state, m_gain, m_gain_state, m_scan_speed,
@@ -79,8 +79,8 @@ class f_radar:public f_base
   {
     long long tpos;
     float lat, lon;
-    state->get_pos(tpos, lat, lon);
-    radar->set_spoke(t, lat, lon, angle, bearing, data, len, range_meters);
+    state->get_position(tpos, lat, lon);
+    radar_image->set_spoke(t, lat, lon, angle, bearing, data, len, range_meters);
   }
 
   void resetTimeout(long long now)
@@ -103,11 +103,12 @@ class f_radar:public f_base
       return false;
     }
 
-    if(!receive.Init(interface_address)){
+    if(!receive.Init(state, radar_state, radar_image, interface_address)){
       return false;
     }
-    if(!radar)
+    if(!radar_image || !radar_state || !radar_ctrl)
       return false;
+    
 
     return true;
   }
@@ -121,8 +122,8 @@ class f_radar:public f_base
   {
     radar_command_id id;
     int val;
-    int state;
-    while(radar_ctrl.pop(id, val, state))
+    RadarControlState state;
+    while(radar_ctrl->pop(id, val, state))
       {
 	switch(id){
 	case RC_TXOFF:
@@ -134,9 +135,40 @@ class f_radar:public f_base
 	case RC_RANGE:
 	  control.SetRange(val);
 	  break;
+	case RC_BEARING_ALIGNMENT:
+	  control.SetControlValue(CT_BEARING_ALIGNMENT, val, state);
+	  break;
+	case RC_NO_TRANSMIT_START:
+	  control.SetControlValue(CT_NO_TRANSMIT_START, val, state);
+	  break;	  
+	case RC_NO_TRANSMIT_END:
+	  control.SetControlValue(CT_NO_TRANSMIT_END, val, state);
+	  break;
+	case RC_GAIN:
+	  control.SetControlValue(CT_GAIN, val, state);
+	  break;
+	case RC_SEA:
+	  control.SetControlValue(CT_SEA, val, state);
+	  break;
+	case RC_RAIN:
+	  control.SetControlValue(CT_RAIN, val, state);
+	  break;
+	case RC_INTERFERENCE_REJECTION:
+	  control.SetControlValue(CT_INTERFERENCE_REJECTION, val, state);
+	  break;
+	case RC_SCAN_SPEED:
+	  control.SetControlValue(CT_SCAN_SPEED, val, state);
+	  break;
+	case RC_TIMED_IDLE:
+	  control.SetControlValue(CT_TIMED_IDLE, val, state);
+	  break;
+	case RC_TIMED_RUN:
+	  control.SetControlValue(CT_TIMED_RUN, val, state);
+	  break;	  
 	default:
-	  control.SetControlValue(id, val, state);
-	  break;	  	  
+
+	  break;
+	}
       }
     return receive.Loop();
   }

@@ -1,12 +1,29 @@
 #ifndef CH_RADAR_H
 #define CH_RADAR_H
 #include "ch_base.h"
+#include "../filter/f_radar_srcs/socketutil.h"
 #include "../filter/f_radar_srcs/garminxhd/garminxhd.h"
+
+
+
+enum RadarControlState {
+  RCS_OFF = -1,
+  RCS_MANUAL = 0,
+  RCS_AUTO_1,
+  RCS_AUTO_2,
+  RCS_AUTO_3,
+  RCS_AUTO_4,
+  RCS_AUTO_5,
+  RCS_AUTO_6,
+  RCS_AUTO_7,
+  RCS_AUTO_8,
+  RCS_AUTO_9
+};
 
 class ch_radar_state: public ch_base
 {
  protected:
-  int m_state, m_gain, m_gain_state, m_scan_speed,
+  int m_state, m_range, m_gain, m_gain_state, m_scan_speed,
     m_bearing_alignment, m_interference_rejection,
     m_rain_clutter, m_rain_mode, m_sea_clutter,
     m_sea_mode, m_no_transmit_start,
@@ -28,10 +45,10 @@ class ch_radar_state: public ch_base
     unlock();
   }
 
-  void const int get_state()
+  const int get_state()
   {
     int state;
-    lock()
+    lock();
     state = m_state;
     unlock();
     return state;
@@ -69,7 +86,7 @@ class ch_radar_state: public ch_base
   void set_interference_rejection(const int interference_rejection)
   {
     lock();
-    m_interference_rejection = intereference_rejection;
+    m_interference_rejection = interference_rejection;
     unlock();
   }
 
@@ -110,7 +127,7 @@ class ch_radar_state: public ch_base
   {
     lock();
     m_timed_idle = timed_idle;
-    m_timed_idle_mode = timed_idle_mode;
+    m_timed_idle_mode = mode;
     unlock();
   }
 
@@ -150,8 +167,8 @@ class ch_radar_ctrl: public ch_base
   struct radar_command{
     radar_command_id id;
     int val;
-    int state;
-  radar_commandr(const radar_command_id _id, const int _val, const int _state):
+    RadarControlState state;
+  radar_command(const radar_command_id _id, const int _val, const RadarControlState _state):
     id(_id), val(_val), state(_state)
     {
     }    
@@ -166,7 +183,7 @@ class ch_radar_ctrl: public ch_base
     {      
     }
 
-  void push(const radar_command_id id, const int val, const int state)
+  void push(const radar_command_id id, const int val, const RadarControlState state)
   {
     
     lock();
@@ -174,7 +191,7 @@ class ch_radar_ctrl: public ch_base
     unlock();
   }
 
-  bool pop(radar_command_id & id, int & val, int & state)
+  bool pop(radar_command_id & id, int & val, RadarControlState & state)
   {
     lock();
     
@@ -205,7 +222,7 @@ class ch_radar_image: public ch_base
 
   int m_range_meters;
  public:
- ch_radar_image(const char * name):ch_base(name), th_weakest(32)
+ ch_radar_image(const char * name):ch_base(name)
   {
     m_history = (line_history *)calloc(sizeof(line_history), GARMIN_XHD_SPOKES);
     for (size_t i = 0; i < GARMIN_XHD_SPOKES; i++) {
