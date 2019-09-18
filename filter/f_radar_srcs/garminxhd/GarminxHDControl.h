@@ -32,7 +32,7 @@
 #ifndef _GARMIN_XHD_CONTROL_H_
 #define _GARMIN_XHD_CONTROL_H_
 
-#include "../RadarReceive.h"
+#include "garminxhd.h"
 #include "../socketutil.h"
 
 #include "../../../channel/ch_base.h"
@@ -43,7 +43,7 @@ class GarminxHDControl{
   GarminxHDControl(f_base * pfilter, NetworkAddress sendMultiCastAddress);
   ~GarminxHDControl();
 
-  bool Init(std::string & name, NetworkAddress &interfaceAddress, NetworkAddress &radarAddress);
+  bool Init(const std::string & name, const NetworkAddress &interfaceAddress, const NetworkAddress &radarAddress);
   void RadarTxOff();
   void RadarTxOn();
   bool RadarStayAlive();

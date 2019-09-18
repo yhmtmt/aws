@@ -30,12 +30,22 @@
  ***************************************************************************
  */
 
-#include <stdio.h>
-#include <stdlib.h>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
 
+#include <iostream>
+#include <vector>
 #include <string>
+#include <map>
 #include <mutex>
-#include "GarminxHDReceive.h"
+using namespace std;
+
+#include "../../../util/aws_stdlib.h"
+#include "../../../util/aws_thread.h"
+#include "../../../util/c_clock.h"
+
+#include "../../f_radar.h"
 
 /*
  * This file not only contains the radar receive threads, it is also
@@ -44,7 +54,7 @@
  */
 
 #define MILLIS_PER_SELECT 250
-#define SECONDS_SELECT(x) ((x)*MILLISECONDS_PER_SECOND / MILLIS_PER_SELECT)
+#define SECONDS_SELECT(x) ((x)*1000 / MILLIS_PER_SELECT)
 
 //
 //
@@ -87,7 +97,7 @@ void GarminxHDReceive::ProcessFrame(const uint8_t *data, size_t len) {
 
   pfilter->m_radar_timeout = now + WATCHDOG_TIMEOUT;
   pfilter->m_data_timeout = now + DATA_TIMEOUT;
-  pfilter->m_state.Update(RADAR_TRANSMIT);
+  pfilter->m_state = RADAR_TRANSMIT;
 
   const size_t packet_header_length = sizeof(radar_line) - GARMIN_XHD_MAX_SPOKE_LEN;
   pfilter->m_statistics.packets++;
@@ -123,8 +133,8 @@ void GarminxHDReceive::ProcessFrame(const uint8_t *data, size_t len) {
   heading_raw = SCALE_DEGREES_TO_RAW(pfilter->GetHeadingTrue());  // include variation
   bearing_raw = angle_raw + heading_raw;
 
-  SpokeBearing a = angle_raw + GARMIN_XHD_SPOKES * 2 % GARMIN_XHD_SPOKES;
-  SpokeBearing b = bearing_raw + GARMIN_XHD_SPOKES * 2 % GARMIN_XHD_SPOKES;;
+  int a = angle_raw + GARMIN_XHD_SPOKES * 2 % GARMIN_XHD_SPOKES;
+  int b = bearing_raw + GARMIN_XHD_SPOKES * 2 % GARMIN_XHD_SPOKES;;
 
   pfilter->m_range = packet->range_meters;
   pfilter->ProcessRadarSpoke(a, b, packet->line_data, len, packet->display_meters, time_rec);
@@ -132,7 +142,7 @@ void GarminxHDReceive::ProcessFrame(const uint8_t *data, size_t len) {
 
 SOCKET GarminxHDReceive::PickNextEthernetCard() {
   SOCKET socket = INVALID_SOCKET;
-  CLEAR_STRUCT(m_interface_addr);
+  memset(&m_interface_addr, 0, sizeof(m_interface_addr));
 
   // Pick the next ethernet card
   // If set, we used this one last time. Go to the next card.
@@ -182,11 +192,8 @@ SOCKET GarminxHDReceive::GetNewReportSocket() {
 
     printf(("radar_pi: %s scanning interface %s for data from %s"), pfilter->get_name(), addr.c_str(), rep_addr.c_str());
 
-    std::string s;
-    s << _("Scanning interface") << (" ") << addr;
-    SetInfoStatus(s);
+    printf("Scanning interface %s", addr.c_str());
   } else {
-    SetInfoStatus(error);
     printf(("radar_pi: Unable to listen to socket: %s"), error.c_str());
   }
   return socket;
@@ -200,7 +207,7 @@ SOCKET GarminxHDReceive::GetNewDataSocket() {
     return INVALID_SOCKET;
   }
 
-  error.Printf(("%s data: "), pfilter->get_name());
+  printf(("%s data: "), pfilter->get_name());
   socket = startUDPMulticastReceiveSocket(m_interface_addr, m_data_addr, error);
   if (socket != INVALID_SOCKET) {
     std::string addr = m_interface_addr.FormatNetworkAddress();
@@ -208,7 +215,6 @@ SOCKET GarminxHDReceive::GetNewDataSocket() {
 
     printf(("radar_pi: %s listening for data on %s from %s"), pfilter->get_name(), addr.c_str(), rep_addr.c_str());
   } else {
-    SetInfoStatus(error);
     printf(("radar_pi: Unable to listen to socket: %s"), error.c_str());
   }
   return socket;
@@ -220,7 +226,6 @@ bool GarminxHDReceive::Init(NetworkAddress interfaceAddr)
   no_data_timeout = 0;
   no_spoke_timeout = 0;
   
-  uint8_t data[sizeof(radar_line)];
   m_interface_array = 0;
   m_interface = 0;
   radar_addr = 0;  
@@ -245,6 +250,7 @@ bool GarminxHDReceive::Loop()
     sockaddr_in ipv4;
   } rx_addr;
   socklen_t rx_len;
+  uint8_t data[sizeof(radar_line)];
   
   if(m_receive_socket != INVALID_SOCKET)
     return false;
@@ -281,15 +287,15 @@ bool GarminxHDReceive::Loop()
   int maxFd = INVALID_SOCKET;
   if (m_receive_socket != INVALID_SOCKET) {
     FD_SET(m_receive_socket, &fdin);
-    maxFd = MAX(m_receive_socket, maxFd);
+    maxFd = max(m_receive_socket, maxFd);
   }
   if (reportSocket != INVALID_SOCKET) {
     FD_SET(reportSocket, &fdin);
-    maxFd = MAX(reportSocket, maxFd);
+    maxFd = max(reportSocket, maxFd);
   }
   if (dataSocket != INVALID_SOCKET) {
     FD_SET(dataSocket, &fdin);
-    maxFd = MAX(dataSocket, maxFd);
+    maxFd = max(dataSocket, maxFd);
   }
   
   r = select(maxFd + 1, &fdin, 0, 0, &tv);
@@ -361,7 +367,7 @@ bool GarminxHDReceive::Loop()
 	closesocket(reportSocket);
 	reportSocket = INVALID_SOCKET;
 	pfilter->m_state = RADAR_OFF;
-	CLEAR_STRUCT(m_interface_addr);
+	memset(&m_interface_addr, 0, sizeof(m_interface_addr));
 	radar_addr = 0;
       }
     } else {
@@ -406,203 +412,6 @@ void GarminxHDReceive::Destroy()
   if (m_interface_array) {
     freeifaddrs(m_interface_array);
   }
-}
-
-
-/*
- * Entry
- *
- * Called by wxThread when the new thread is running.
- * It should remain running until Shutdown is called.
- */
-void *GarminxHDReceive::Entry(void) {
-  int r = 0;
-  int no_data_timeout = 0;
-  int no_spoke_timeout = 0;
-  union {
-    sockaddr_storage addr;
-    sockaddr_in ipv4;
-  } rx_addr;
-  socklen_t rx_len;
-
-  uint8_t data[sizeof(radar_line)];
-  m_interface_array = 0;
-  m_interface = 0;
-  struct sockaddr_in radarFoundAddr;
-  sockaddr_in *radar_addr = 0;
-
-  SOCKET dataSocket = INVALID_SOCKET;
-  SOCKET reportSocket = INVALID_SOCKET;
-
-  printf(("radar_pi: GarminxHDReceive thread starting"));
-
-  if (m_interface_addr.addr.s_addr == 0) {
-    reportSocket = GetNewReportSocket();
-  }
-
-  while (m_receive_socket != INVALID_SOCKET) {
-    if (reportSocket == INVALID_SOCKET) {
-      reportSocket = PickNextEthernetCard();
-      if (reportSocket != INVALID_SOCKET) {
-        no_data_timeout = 0;
-        no_spoke_timeout = 0;
-      }
-    }
-    if (radar_addr) {
-      // If we have detected a radar antenna at this address start opening more sockets.
-      // We do this later for 2 reasons:
-      // - Resource consumption
-      // - Timing. If we start processing radar data before the rest of the system
-      //           is initialized then we get ordering/race condition issues.
-      if (dataSocket == INVALID_SOCKET) {
-        dataSocket = GetNewDataSocket();
-      }
-    } else {
-      if (dataSocket != INVALID_SOCKET) {
-        closesocket(dataSocket);
-        dataSocket = INVALID_SOCKET;
-      }
-    }
-
-    struct timeval tv = {(long)0, (long)(MILLIS_PER_SELECT * 1000)};
-
-    fd_set fdin;
-    FD_ZERO(&fdin);
-
-    int maxFd = INVALID_SOCKET;
-    if (m_receive_socket != INVALID_SOCKET) {
-      FD_SET(m_receive_socket, &fdin);
-      maxFd = MAX(m_receive_socket, maxFd);
-    }
-    if (reportSocket != INVALID_SOCKET) {
-      FD_SET(reportSocket, &fdin);
-      maxFd = MAX(reportSocket, maxFd);
-    }
-    if (dataSocket != INVALID_SOCKET) {
-      FD_SET(dataSocket, &fdin);
-      maxFd = MAX(dataSocket, maxFd);
-    }
-
-    r = select(maxFd + 1, &fdin, 0, 0, &tv);
-
-    if (r > 0) {
-      if (m_receive_socket != INVALID_SOCKET
-	  && FD_ISSET(m_receive_socket, &fdin)) {
-        rx_len = sizeof(rx_addr);
-        r = recvfrom(m_receive_socket, (char *)data,
-		     sizeof(data), 0, (struct sockaddr *)&rx_addr, &rx_len);
-        if (r > 0) {
-          printf(("radar_pi: received stop instruction"));
-          break;
-        }
-      }
-
-      if (dataSocket != INVALID_SOCKET && FD_ISSET(dataSocket, &fdin)) {
-        rx_len = sizeof(rx_addr);
-        r = recvfrom(dataSocket, (char *)data, sizeof(data),
-		     0, (struct sockaddr *)&rx_addr, &rx_len);
-        if (r > 0) {
-          ProcessFrame(data, (size_t)r);
-          no_data_timeout = -15;
-          no_spoke_timeout = -5;
-        } else {
-          closesocket(dataSocket);
-          dataSocket = INVALID_SOCKET;
-          printf(("radar_pi: %s illegal frame"), pfilter->get_name());
-        }
-      }
-
-      if (reportSocket != INVALID_SOCKET && FD_ISSET(reportSocket, &fdin)) {
-        rx_len = sizeof(rx_addr);
-        r = recvfrom(reportSocket, (char *)data, sizeof(data),
-		     0, (struct sockaddr *)&rx_addr, &rx_len);
-        if (r > 0) {
-          NetworkAddress radar_address;
-          radar_address.addr = rx_addr.ipv4.sin_addr;
-          radar_address.port = rx_addr.ipv4.sin_port;
-
-          if (ProcessReport(data, (size_t)r)) {
-            if (!radar_addr) {
-              pfilter->DetectedRadar(radar_address);  // enables transmit data
-
-              // the dataSocket is opened in the next loop
-
-              radarFoundAddr = rx_addr.ipv4;
-              radar_addr = &radarFoundAddr;
-              m_addr = radar_address.FormatNetworkAddress();
-
-              if (pfilter->m_state == RADAR_OFF) {
-                printf(("radar_pi: %s detected at %s"), pfilter->get_name(), m_addr.c_str());
-                pfilter->m_state = RADAR_STANDBY;
-              }
-            }
-            no_data_timeout = SECONDS_SELECT(-15);
-          }
-        } else {
-          printf(("radar_pi: %s illegal report"), pfilter->get_name());
-          closesocket(reportSocket);
-          reportSocket = INVALID_SOCKET;
-        }
-      }
-
-    } else {  // no data received -> select timeout
-
-      if (no_data_timeout >= SECONDS_SELECT(2)) {
-        no_data_timeout = 0;
-        if (reportSocket != INVALID_SOCKET) {
-          closesocket(reportSocket);
-          reportSocket = INVALID_SOCKET;
-          pfilter->m_state = RADAR_OFF;
-          CLEAR_STRUCT(m_interface_addr);
-          radar_addr = 0;
-        }
-      } else {
-        no_data_timeout++;
-      }
-
-      if (no_spoke_timeout >= SECONDS_SELECT(2)) {
-        no_spoke_timeout = 0;
-        pfilter->ResetRadarImage();
-      } else {
-        no_spoke_timeout++;
-      }
-    }
-
-    if (reportSocket == INVALID_SOCKET) {
-      // If we closed the reportSocket then close the command and data socket
-      if (dataSocket != INVALID_SOCKET) {
-        closesocket(dataSocket);
-        dataSocket = INVALID_SOCKET;
-      }
-    }
-
-  }  // endless loop until thread destroy
-
-  if (dataSocket != INVALID_SOCKET) {
-    closesocket(dataSocket);
-  }
-  if (reportSocket != INVALID_SOCKET) {
-    closesocket(reportSocket);
-  }
-  if (m_send_socket != INVALID_SOCKET) {
-    closesocket(m_send_socket);
-    m_send_socket = INVALID_SOCKET;
-  }
-  if (m_receive_socket != INVALID_SOCKET) {
-    closesocket(m_receive_socket);
-  }
-
-  if (m_interface_array) {
-    freeifaddrs(m_interface_array);
-  }
-
-#ifdef TEST_THREAD_RACES
-  printf(("radar_pi: %s receive thread sleeping"), pfilter->get_name());
-  wxMilliSleep(1000);
-#endif
-  printf(("radar_pi: %s receive thread stopping"), pfilter->get_name());
-  m_is_shutdown = true;
-  return 0;
 }
 
 /*
@@ -670,61 +479,58 @@ bool GarminxHDReceive::UpdateScannerStatus(int status) {
       case 2:
         pfilter->m_state = RADAR_WARMING_UP;
         printf(("radar_pi: %s reports status WARMUP"), pfilter->get_name());
-        stat = _("Warmup");
+        stat = ("Warmup");
         break;
       case 3:
         pfilter->m_state = (RADAR_STANDBY);
         printf(("radar_pi: %s reports status STANDBY"), pfilter->get_name());
-        stat = _("Standby");
+        stat = ("Standby");
         break;
       case 4:
         pfilter->m_state = (RADAR_SPINNING_UP);
         pfilter->m_data_timeout = now + DATA_TIMEOUT;
         printf(("radar_pi: %s reports status SPINNING UP"), pfilter->get_name());
-        stat = _("Spinning up");
+        stat = ("Spinning up");
         break;
       case 5:
         pfilter->m_state = (RADAR_TRANSMIT);
         printf(("radar_pi: %s reports status TRANSMIT"), pfilter->get_name());
-        stat = _("Transmit");
+        stat = ("Transmit");
         break;
       case 6:
         pfilter->m_state = (RADAR_STOPPING);
         pfilter->m_data_timeout = now + DATA_TIMEOUT;
         printf(("radar_pi: %s reports status STOPPING"), pfilter->get_name());
-        stat = _("Stopping");
+        stat = ("Stopping");
         break;
       case 7:
         pfilter->m_state = (RADAR_SPINNING_DOWN);
         printf(("radar_pi: %s reports status SPINNING DOWN"), pfilter->get_name());
-        stat = _("Spinning down");
+        stat = ("Spinning down");
         break;
       case 10:
         pfilter->m_state = (RADAR_STARTING);
         printf(("radar_pi: %s reports status STARTING"), pfilter->get_name());
-        stat = _("Starting");
+        stat = ("Starting");
         break;
       default:
         printf(("radar_pi: %s reports status %d"), pfilter->get_name(), m_radar_status);
 	{
-	  char buf[32];
-	  snprintf(buf, 32, " %d", m_radar_status);
-	  stat << _("Unknown status") << buf;
+	  stat = ("Unknown status");
 	}	
         ret = false;
         break;
     }
-    char buf[32]
-      snprintf(buf, 32, ("IP %s %s"), m_addr.c_str(), stat.c_str())
-      SetInfoStatus(std::string(buf));
+    char buf[32];
+    snprintf(buf, 32, ("IP %s %s"), m_addr.c_str(), stat.c_str());
+    printf("%s", buf);
   }
   return ret;
 }
 
 bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
-  logBinaryData("ProcessReport"), report, len);
-
-time_t now = pfilter->get_time() / SEC;
+  
+  time_t now = pfilter->get_time() / SEC;
 
   pfilter->resetTimeout(now);
 
@@ -855,7 +661,7 @@ time_t now = pfilter->get_time() / SEC;
         printf(("radar_pi: Garmin xHD 0x093a: sea clutter %d"), packet10->parm1);
         m_sea_clutter = packet10->parm1 / 100;
         pfilter->m_sea_clutter = m_sea_clutter;
-	pfilter->m_se_mode = m_sea_mode;
+	pfilter->m_sea_mode = m_sea_mode;
         return true;
       }
 
@@ -958,24 +764,6 @@ time_t now = pfilter->get_time() / SEC;
     }
   }
 
-  logBinaryData("radar_pi: Garmin xHD received unknown message"), report, len);
+  printf("radar_pi: Garmin xHD received unknown message");
   return false;
 }
-
-// Called from the main thread to stop this thread.
-// We send a simple one byte message to the thread so that it awakens from the select() call with
-// this message ready for it to be read on 'm_receive_socket'. See the constructor in GarminxHDReceive.h
-// for the setup of these two sockets.
-
-void GarminxHDReceive::Shutdown() {
-  if (m_send_socket != INVALID_SOCKET) {
-    m_shutdown_time_requested = wxGetUTCTimeMillis();
-    if (send(m_send_socket, "!", 1, MSG_DONTROUTE) > 0) {
-      printf(("radar_pi: %s requested receive thread to stop"), pfilter->get_name());
-      return;
-    }
-  }
-  printf(("radar_pi: %s receive thread will take long time to stop"), pfilter->get_name());
-}
-
-

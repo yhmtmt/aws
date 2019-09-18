@@ -29,9 +29,22 @@
  ***************************************************************************
  */
 
-#include <string>
+#include <cstdio>
+#include <cstring>
+#include <cmath>
 
-#include "GarminxHDControl.h"
+#include <iostream>
+#include <vector>
+#include <string>
+#include <map>
+#include <mutex>
+using namespace std;
+
+#include "../../../util/aws_stdlib.h"
+#include "../../../util/aws_thread.h"
+#include "../../../util/c_clock.h"
+
+#include "../../f_radar.h"
 
 #pragma pack(push, 1)
 
@@ -70,7 +83,7 @@ GarminxHDControl::~GarminxHDControl() {
   }
 }
 
-bool GarminxHDControl::Init(std::string & name, NetworkAddress &ifadr, NetworkAddress &radaradr) {
+bool GarminxHDControl::Init(const std::string & name, const NetworkAddress &ifadr, const NetworkAddress &radaradr) {
   int r;
   int one = 1;
 

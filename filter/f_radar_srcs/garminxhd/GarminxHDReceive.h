@@ -32,11 +32,7 @@
 #ifndef _GARMIN_XH_RECEIVE_H_
 #define _GARMIN_XH_RECEIVE_H_
 
-#include "../RadarReceive.h"
-#include "../socketutil.h"
-
-#include "../../../channel/ch_base.h"
-#include "../../f_base.h"
+class f_radar;
 
 //
 // An intermediary class that implements the common parts of any Navico radar.
@@ -44,7 +40,7 @@
 
 class GarminxHDReceive{
  public:
- GarminxHDReceive(f_base * _pfilter, NetworkAddress interfaceAddr, NetworkAddress reportAddr, NetworkAddress dataAddr) : pfilter(_pfilter){
+ GarminxHDReceive(f_radar * _pfilter, NetworkAddress interfaceAddr, NetworkAddress reportAddr, NetworkAddress dataAddr) : pfilter(_pfilter){
     m_data_addr = dataAddr;
     m_report_addr = reportAddr;
     m_next_spoke = -1;
@@ -107,7 +103,7 @@ class GarminxHDReceive{
   int m_rain_clutter;                   // 0..100
   bool m_no_transmit_zone_mode;         // True if there is a zone
 
-  f_base * pfilter;
+  f_radar * pfilter;
   SOCKET reportSocket, dataSocket;
   struct sockaddr_in radarFoundAddr;
   sockaddr_in *radar_addr;
