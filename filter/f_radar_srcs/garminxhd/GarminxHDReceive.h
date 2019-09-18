@@ -62,9 +62,6 @@ class GarminxHDReceive{
   bool Loop();
   void Destroy();
   
-  void *Entry(void);
-  void Shutdown(void);
-
   NetworkAddress m_interface_addr;
   NetworkAddress m_data_addr;
   NetworkAddress m_report_addr;
