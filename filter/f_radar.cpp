@@ -18,3 +18,9 @@ using namespace cv;
 
 #include "f_radar.h"
 
+const char * f_radar::str_radar_command_id[RC_NONE] = {
+  "txoff", "txon", "range", "bearing_alignment",
+  "no_transmit_start", "no_transmit_end",
+  "gain", "sea", "rain", "interference_rejection",
+  "scan_speed", "timed_idle", "timed_run"
+};

@@ -140,7 +140,7 @@ void GarminxHDReceive::ProcessFrame(const uint8_t *data, size_t len) {
   int a = angle_raw + GARMIN_XHD_SPOKES * 2 % GARMIN_XHD_SPOKES;
   int b = bearing_raw + GARMIN_XHD_SPOKES * 2 % GARMIN_XHD_SPOKES;;
 
-  pfilter->m_range = packet->range_meters;
+  radar_state->set_range(packet->range_meters);
   pfilter->ProcessRadarSpoke(a, b, packet->line_data, len, packet->display_meters, time_rec);
 }
 

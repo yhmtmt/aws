@@ -158,21 +158,25 @@ enum radar_command_id{
   RC_INTERFERENCE_REJECTION,
   RC_SCAN_SPEED,
   RC_TIMED_IDLE,
-  RC_TIMED_RUN
+  RC_TIMED_RUN,
+  RC_NONE
 };
+
+struct radar_command{
+  radar_command_id id;
+  int val;
+  RadarControlState state;
+
+radar_command(const radar_command_id _id, const int _val, const RadarControlState _state):
+  id(_id), val(_val), state(_state)
+  {
+  }    
+};
+
 
 class ch_radar_ctrl: public ch_base
 {
  protected:
-  struct radar_command{
-    radar_command_id id;
-    int val;
-    RadarControlState state;
-  radar_command(const radar_command_id _id, const int _val, const RadarControlState _state):
-    id(_id), val(_val), state(_state)
-    {
-    }    
-  };
   queue<radar_command> command_queue;
  public:
  ch_radar_ctrl(const char * name):ch_base(name)

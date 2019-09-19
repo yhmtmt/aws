@@ -57,16 +57,8 @@ class f_radar:public f_base
  
   long long m_boot_time;
   long long m_radar_timeout, m_data_timeout, m_stayalive_timeout;
-  int m_state, m_gain, m_gain_state, m_scan_speed,
-    m_bearing_alignment, m_interference_rejection,
-    m_rain_clutter, m_rain_mode, m_sea_clutter,
-    m_sea_mode, m_no_transmit_start,
-    m_no_transmit_start_state, m_no_transmit_end,
-    m_no_transmit_end_state, m_timed_idle,
-    m_timed_idle_mode, m_timed_run, m_next_state_change;
   
   receive_statistics m_statistics;
-  int m_range;
   long long GetBootTime(){ return m_boot_time;};
   double GetHeadingTrue(){ return 0.0;};
   void DetectedRadar(const NetworkAddress & radarAddress){
@@ -87,10 +79,23 @@ class f_radar:public f_base
   {
     m_radar_timeout = now + WATCHDOG_TIMEOUT;
   }
+
+  static const char * str_radar_command_id[RC_NONE];
+  radar_command cmd;
+  int cmd_state;
   
  f_radar(const char * name): f_base(name), interface_address(172,16,1,1,0),
-    receive(this, interface_address, gx_report, gx_data), control(this, gx_send)
+    receive(this, interface_address, gx_report, gx_data), control(this, gx_send), cmd(RC_NONE, 0, RCS_OFF)
   {
+    register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
+    register_fpar("radar_state", (ch_base**)&radar_state, typeid(ch_radar_state).name(), "Radar state channel");
+    register_fpar("radar_image", (ch_base**)&radar_image, typeid(ch_radar_image).name(), "Radar image channel");
+    register_fpar("radar_ctrl", (ch_base**)radar_ctrl, typeid(ch_radar_ctrl).name(), "Radar control channel");
+
+    register_fpar("cmd_id", (int*)&cmd.id, (int)RC_NONE, str_radar_command_id, "Command ID");
+    register_fpar("cmd_val", &cmd.val, "Command value");
+    register_fpar("cmd_state", &cmd_state, "Radar Control State OFF:-1, MANUAL:0, AUTO1-9:1-9");
+    
   }
 
   virtual ~f_radar()
@@ -120,6 +125,10 @@ class f_radar:public f_base
 
   virtual bool proc()
   {
+    if(cmd.id != RC_NONE){
+      radar_ctrl->push(cmd.id, cmd.val, cmd.state);
+    }
+    
     radar_command_id id;
     int val;
     RadarControlState state;

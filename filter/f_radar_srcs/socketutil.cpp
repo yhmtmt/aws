@@ -30,15 +30,20 @@
  ***************************************************************************
  */
 
+#include <stdio.h>
+#include <stdlib.h>
+
+#include <string>
+
 #include "socketutil.h"
 
 std::string FormatPackedAddress(const PackedAddress &addr) {
   uint8_t *a = (uint8_t *)&addr.addr;  // sin_addr is in network layout
-  std::string address;
-  char buf[32];
-  snprintf(buf, 32, "%u.%u.%u.%u port %u"), a[0], a[1], a[2], a[3], htons(addr.port));
 
-  return address(buf);
+  char buf[32];
+  snprintf(buf, 32, "%u.%u.%u.%u port %u", a[0], a[1], a[2], a[3], htons(addr.port));
+  std::string address(buf);
+  return address;
 }
 
 int radar_inet_aton(const char *cp, struct in_addr *addr) {
@@ -141,7 +146,7 @@ int radar_inet_aton(const char *cp, struct in_addr *addr) {
 bool socketReady(SOCKET sockfd, int timeout) {
   int r = 0;
   fd_set fdin;
-  struct timeval tv = {(int)timeout / MILLISECONDS_PER_SECOND, (int)(timeout % MILLISECONDS_PER_SECOND) * MILLISECONDS_PER_SECOND};
+  struct timeval tv = {(int)timeout / 1000, (int)(timeout % 1000) * 1000};
 
   FD_ZERO(&fdin);
   if (sockfd != INVALID_SOCKET) {
@@ -167,7 +172,7 @@ SOCKET startUDPMulticastReceiveSocket(const NetworkAddress &interface_address, c
   struct sockaddr_in listenAddress;
   int one = 1;
 
-  CLEAR_STRUCT(listenAddress);
+  memset(&listenAddress, 0, sizeof(listenAddress));
 #ifdef __WXMAC__xxx
   listenAddress.sin_len = sizeof(listenAddress);
 #endif
@@ -176,21 +181,22 @@ SOCKET startUDPMulticastReceiveSocket(const NetworkAddress &interface_address, c
   listenAddress.sin_port = mcast_address.port;
   rx_socket = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   if (rx_socket == INVALID_SOCKET) {
-    error_message << ("Cannot create UDP socket");
+    error_message = ("Cannot create UDP socket");
     goto fail;
   }
   if (setsockopt(rx_socket, SOL_SOCKET, SO_REUSEADDR, (const char *)&one, sizeof(one))) {
-    error_message <<("Cannot set reuse address option on socket");
+    error_message = ("Cannot set reuse address option on socket");
     goto fail;
   }
 
   if (::bind(rx_socket, (struct sockaddr *)&listenAddress, sizeof(listenAddress)) < 0) {
-    error_message << ("Cannot bind UDP socket to port ") << ntohs(mcast_address.port);
+    error_message = ("Cannot bind UDP socket to port ");
+    error_message += ntohs(mcast_address.port);
     goto fail;
   }
 
   if (socketAddMembership(rx_socket, interface_address, mcast_address)) {
-    error_message << ("Invalid IP address for UDP multicast");
+    error_message = ("Invalid IP address for UDP multicast");
     goto fail;
   }
 
@@ -226,7 +232,7 @@ SOCKET GetLocalhostServerTCPSocket() {
   SOCKET server = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
   struct sockaddr_in adr;
 
-  CLEAR_STRUCT(adr);
+  memset(&adr,0,sizeof(adr));
 #ifdef __WXMAC__
   adr.sin_len = sizeof(adr);
 #endif
@@ -240,7 +246,7 @@ SOCKET GetLocalhostServerTCPSocket() {
   }
 
   if (::bind(server, (struct sockaddr *)&adr, sizeof(adr)) < 0) {
-    printf("radar_pi: cannot bind socket to loopback address"));
+    printf("radar_pi: cannot bind socket to loopback address");
     closesocket(server);
     return INVALID_SOCKET;
   }
@@ -253,7 +259,7 @@ SOCKET GetLocalhostSendTCPSocket(SOCKET server) {
   struct sockaddr_in adr;
   socklen_t adrlen;
 
-  CLEAR_STRUCT(adr);
+  memset(&adr, 0, sizeof(adr));
   adrlen = sizeof(adr);
 
   if (client == INVALID_SOCKET) {
