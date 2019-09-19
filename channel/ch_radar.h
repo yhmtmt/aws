@@ -4,8 +4,6 @@
 #include "../filter/f_radar_srcs/socketutil.h"
 #include "../filter/f_radar_srcs/garminxhd/garminxhd.h"
 
-
-
 enum RadarControlState {
   RCS_OFF = -1,
   RCS_MANUAL = 0,
@@ -19,6 +17,34 @@ enum RadarControlState {
   RCS_AUTO_8,
   RCS_AUTO_9
 };
+
+enum radar_command_id{
+  RC_TXOFF, RC_TXON, RC_RANGE,
+  RC_BEARING_ALIGNMENT,
+  RC_NO_TRANSMIT_START,
+  RC_NO_TRANSMIT_END,  
+  RC_GAIN,
+  RC_SEA,
+  RC_RAIN,
+  RC_INTERFERENCE_REJECTION,
+  RC_SCAN_SPEED,
+  RC_TIMED_IDLE,
+  RC_TIMED_RUN,
+  RC_IMG,
+  RC_NONE
+};
+
+struct radar_command{
+  radar_command_id id;
+  int val;
+  RadarControlState state;
+
+radar_command(const radar_command_id _id, const int _val, const RadarControlState _state):
+  id(_id), val(_val), state(_state)
+  {
+  }    
+};
+
 
 class ch_radar_state: public ch_base
 {
@@ -61,6 +87,15 @@ class ch_radar_state: public ch_base
     unlock();
   }
 
+  const int get_scan_speed()
+  {
+    int scan_speed;
+    lock();
+    scan_speed = m_scan_speed;
+    unlock();
+    return scan_speed;
+  }
+  
   void set_range(const int range)
   {
     lock();
@@ -68,12 +103,39 @@ class ch_radar_state: public ch_base
     unlock();
   }
 
+  const int get_range()
+  {
+    int range;
+    lock();
+    range = m_range;
+    unlock();
+    return range;
+  }
+  
   void set_gain(const int gain, const int state)
   {
     lock();
     m_gain = gain;
     m_gain_state = state;
     unlock();
+  }
+
+  int get_gain()
+  {
+    int gain;
+    lock();
+    gain = m_gain;
+    unlock();
+    return gain;
+  }
+
+  int get_gain_state()
+  {
+    int gain_state;
+    lock();
+    gain_state = m_gain_state;
+    unlock();
+    return gain_state;
   }
 
   void set_bearing_alignment(const int bearing_alignment)
@@ -83,6 +145,15 @@ class ch_radar_state: public ch_base
     unlock();
   }
 
+  int get_bearing_alignment()
+  {
+    int bearing_alignment;
+    lock();
+    bearing_alignment = m_bearing_alignment;
+    unlock();
+    return bearing_alignment;
+  }
+
   void set_interference_rejection(const int interference_rejection)
   {
     lock();
@@ -90,6 +161,14 @@ class ch_radar_state: public ch_base
     unlock();
   }
 
+  int get_interference_rejection()
+  {
+    int interference_rejection;
+    lock();
+    interference_rejection = m_interference_rejection;
+    unlock();
+    return interference_rejection;
+  }
 
   void set_rain(const int rain, const int mode)
   {
@@ -99,12 +178,48 @@ class ch_radar_state: public ch_base
     unlock();
   }
 
+  int get_rain()
+  {
+    int rain;
+    lock();
+    rain = m_rain_clutter;
+    unlock();
+    return rain;
+  }
+
+  int get_rain_mode()
+  {
+    int rain_mode;
+    lock();
+    rain_mode = m_rain_mode;
+    unlock();
+    return rain_mode;
+  }
+  
   void set_sea(const int sea, const int mode)
   {
     lock();
     m_sea_clutter = sea;
     m_sea_mode = mode;
     unlock();
+  }
+
+  int get_sea()
+  {
+    int sea;
+    lock();
+    sea = m_sea_clutter;
+    unlock();
+    return sea;
+  }
+
+  int get_sea_mode()
+  {
+    int sea_mode;
+    lock();
+    sea_mode = m_sea_mode;
+    unlock();
+    return sea_mode;
   }
 
   void set_no_transmit_start(const int no_transmit_start, const int state)
@@ -115,6 +230,24 @@ class ch_radar_state: public ch_base
     unlock();
   }
 
+  int get_no_transmit_start()
+  {
+    int no_transmit_start;
+    lock();
+    no_transmit_start = m_no_transmit_start;
+    unlock();
+    return no_transmit_start;
+  }
+  
+  int get_no_transmit_start_state()
+  {
+    int no_transmit_start_state;
+    lock();
+    no_transmit_start_state = m_no_transmit_start_state;
+    unlock();
+    return no_transmit_start_state;
+  }
+
   void set_no_transmit_end(const int no_transmit_end, const int state)
   {
     lock();
@@ -123,12 +256,49 @@ class ch_radar_state: public ch_base
     unlock();
   }
 
+  int get_no_transmit_end()
+  {
+    int no_transmit_end;
+    lock();
+    no_transmit_end = m_no_transmit_end;
+    unlock();
+    return no_transmit_end;
+  }
+  
+  int get_no_transmit_end_state()
+  {
+    int no_transmit_end_state;
+    lock();
+    no_transmit_end_state = m_no_transmit_end_state;
+    unlock();
+    return no_transmit_end_state;
+  }
+
+  
   void set_timed_idle(const int timed_idle, const int mode)
   {
     lock();
     m_timed_idle = timed_idle;
     m_timed_idle_mode = mode;
     unlock();
+  }
+
+  int get_timed_idle()
+  {
+    int timed_idle;
+    lock();
+    timed_idle = m_timed_idle;
+    unlock();
+    return timed_idle;
+  }
+
+  int get_timed_idle_mode()
+  {
+    int timed_idle_mode;
+    lock();
+    timed_idle_mode = m_timed_idle_mode;
+    unlock();
+    return timed_idle_mode;
   }
 
   void set_timed_run(const int timed_run)
@@ -138,41 +308,31 @@ class ch_radar_state: public ch_base
     unlock();
   }
 
+  int get_timed_run()
+  {
+    int timed_run;
+    lock();
+    timed_run = m_timed_run;
+    unlock();
+    return timed_run;
+  }
+
   void set_next_state_change(const int next_state_change)
   {
     lock();
     m_next_state_change = next_state_change;
     unlock();
   }
-};
 
-
-enum radar_command_id{
-  RC_TXOFF, RC_TXON, RC_RANGE,
-  RC_BEARING_ALIGNMENT,
-  RC_NO_TRANSMIT_START,
-  RC_NO_TRANSMIT_END,  
-  RC_GAIN,
-  RC_SEA,
-  RC_RAIN,
-  RC_INTERFERENCE_REJECTION,
-  RC_SCAN_SPEED,
-  RC_TIMED_IDLE,
-  RC_TIMED_RUN,
-  RC_NONE
-};
-
-struct radar_command{
-  radar_command_id id;
-  int val;
-  RadarControlState state;
-
-radar_command(const radar_command_id _id, const int _val, const RadarControlState _state):
-  id(_id), val(_val), state(_state)
+  int get_next_state_change()
   {
-  }    
+    int next_state_change;
+    lock();
+    next_state_change = m_next_state_change;
+    unlock();
+    return next_state_change;
+  }
 };
-
 
 class ch_radar_ctrl: public ch_base
 {

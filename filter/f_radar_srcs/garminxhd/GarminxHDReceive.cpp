@@ -240,10 +240,11 @@ bool GarminxHDReceive::Init(ch_state * _state, ch_radar_state * _radar_state, ch
   dataSocket = INVALID_SOCKET;
   reportSocket = INVALID_SOCKET;
 
+  /*
   printf(("radar_pi: GarminxHDReceive thread starting"));
   if(m_receive_socket == INVALID_SOCKET)
     return false;
-  
+  */
   if (m_interface_addr.addr.s_addr == 0) {
     reportSocket = GetNewReportSocket();
   }  
@@ -259,10 +260,11 @@ bool GarminxHDReceive::Loop()
   } rx_addr;
   socklen_t rx_len;
   uint8_t data[sizeof(radar_line)];
-  
+
+  /*
   if(m_receive_socket != INVALID_SOCKET)
     return false;
-  
+  */
   if (reportSocket == INVALID_SOCKET) {
     reportSocket = PickNextEthernetCard();
     if (reportSocket != INVALID_SOCKET) {
@@ -293,10 +295,12 @@ bool GarminxHDReceive::Loop()
   FD_ZERO(&fdin);
   
   int maxFd = INVALID_SOCKET;
+  /*
   if (m_receive_socket != INVALID_SOCKET) {
     FD_SET(m_receive_socket, &fdin);
     maxFd = max(m_receive_socket, maxFd);
   }
+  */
   if (reportSocket != INVALID_SOCKET) {
     FD_SET(reportSocket, &fdin);
     maxFd = max(reportSocket, maxFd);
@@ -307,8 +311,10 @@ bool GarminxHDReceive::Loop()
   }
   
   r = select(maxFd + 1, &fdin, 0, 0, &tv);
-  
+
+
   if (r > 0) {
+      /*
     if (m_receive_socket != INVALID_SOCKET
 	&& FD_ISSET(m_receive_socket, &fdin)) {
       rx_len = sizeof(rx_addr);
@@ -319,7 +325,7 @@ bool GarminxHDReceive::Loop()
 	return false;
       }
     }
-    
+      */
     if (dataSocket != INVALID_SOCKET && FD_ISSET(dataSocket, &fdin)) {
       rx_len = sizeof(rx_addr);
       r = recvfrom(dataSocket, (char *)data, sizeof(data),
@@ -414,7 +420,8 @@ void GarminxHDReceive::Destroy()
   if (reportSocket != INVALID_SOCKET) {
     closesocket(reportSocket);
   }
-  
+
+  /*
   if (m_send_socket != INVALID_SOCKET) {
     closesocket(m_send_socket);
     m_send_socket = INVALID_SOCKET;
@@ -423,6 +430,7 @@ void GarminxHDReceive::Destroy()
   if (m_receive_socket != INVALID_SOCKET) {
     closesocket(m_receive_socket);
   }
+  */
 
   if (m_interface_array) {
     freeifaddrs(m_interface_array);

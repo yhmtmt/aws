@@ -49,8 +49,10 @@ class GarminxHDReceive{
     m_is_shutdown = false;
     m_first_receive = true;
     m_interface_addr = interfaceAddr;
+    /*
     m_receive_socket = GetLocalhostServerTCPSocket();
     m_send_socket = GetLocalhostSendTCPSocket(m_receive_socket);
+    */
     //    m_ri->m_showManualValueInAuto = true;
     //    m_ri->m_timed_idle_hardware = true;
     //    printf(("radar_pi: %s receive thread created"), m_ri->m_name.c_str());
@@ -79,9 +81,10 @@ class GarminxHDReceive{
 
   std::string m_ip;
 
+  /*
   SOCKET m_receive_socket;  // Where we listen for message from m_send_socket
   SOCKET m_send_socket;     // A message to this socket will interrupt select() and allow immediate shutdown
-
+  */
   struct ifaddrs *m_interface_array;
   struct ifaddrs *m_interface;
 

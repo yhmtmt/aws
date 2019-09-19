@@ -51,6 +51,15 @@ class f_radar:public f_base
   ch_radar_image * radar_image;
   ch_radar_state * radar_state;
   ch_radar_ctrl * radar_ctrl;
+  static const int range_vals[16];
+  const int find_nearest_range(const int range_meter){
+    int irange = 0;
+    while(range_vals[irange] > range_meter){
+      irange++;
+    }
+
+    return range_vals[irange];
+  }
   
  public:
   // RadarInfo related data members
@@ -61,12 +70,14 @@ class f_radar:public f_base
   receive_statistics m_statistics;
   long long GetBootTime(){ return m_boot_time;};
   double GetHeadingTrue(){ return 0.0;};
+  
   void DetectedRadar(const NetworkAddress & radarAddress){
     if(!control.Init("GarminxHDControl", interface_address, radarAddress)){
       return ;
     }
     m_stayalive_timeout = 0;    
   }
+  
   void ProcessRadarSpoke(int angle, int bearing, uint8_t *data, size_t len, int range_meters, long long t)
   {
     long long tpos;
@@ -127,6 +138,7 @@ class f_radar:public f_base
   {
     if(cmd.id != RC_NONE){
       radar_ctrl->push(cmd.id, cmd.val, cmd.state);
+      cmd.id = RC_NONE;      
     }
     
     radar_command_id id;
@@ -142,7 +154,7 @@ class f_radar:public f_base
 	  control.RadarTxOn();
 	  break;
 	case RC_RANGE:
-	  control.SetRange(val);
+	  control.SetRange(find_nearest_range(val));
 	  break;
 	case RC_BEARING_ALIGNMENT:
 	  control.SetControlValue(CT_BEARING_ALIGNMENT, val, state);
@@ -175,7 +187,6 @@ class f_radar:public f_base
 	  control.SetControlValue(CT_TIMED_RUN, val, state);
 	  break;	  
 	default:
-
 	  break;
 	}
       }
