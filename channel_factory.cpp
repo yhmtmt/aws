@@ -125,6 +125,10 @@ using namespace cv;
 #endif
 #include "channel/ch_aws3.h"
 
+#ifdef RADAR
+#include "channel/ch_radar.h"
+#endif
+
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
 // need to initialize global and static data structure related to channel

@@ -198,6 +198,10 @@ using namespace cv;
 #include "filter/f_gst_cam.h"
 #endif
 
+#ifdef RADAR
+#include "filter/f_radar.h"
+#endif
+
 // Initialization function. 
 // This function is called at the begining of the aws process start. If you
 // need to initialize global and static data structure please insert your 
@@ -377,4 +381,6 @@ void f_base::register_factory()
 	register_factory<f_gst_enc>("gstenc");
 	register_factory<f_gst_cam>("gstcam");
 #endif
+	
+	register_factory<f_radar>("radar");
 }
