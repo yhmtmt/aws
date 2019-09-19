@@ -1,3 +1,7 @@
+// Copyright (C) 2019 Yohei Matsumoto
+// This program is a modified version of the program code with following lines.
+// Thus the version is under GPLv2.
+
 /******************************************************************************
  *
  * Project:  OpenCPN

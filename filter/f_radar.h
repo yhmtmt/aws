@@ -30,8 +30,6 @@
 #include "f_radar_srcs/GarminxHDControl.h"
 #include "f_radar_srcs/GarminxHDReceive.h"
 
-
-
 struct receive_statistics {
   int packets;
   int broken_packets;
