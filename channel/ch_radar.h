@@ -2,7 +2,7 @@
 #define CH_RADAR_H
 #include "ch_base.h"
 #include "../filter/f_radar_srcs/socketutil.h"
-#include "../filter/f_radar_srcs/garminxhd/garminxhd.h"
+#include "../filter/f_radar_srcs/garminxhd.h"
 
 enum RadarControlState {
   RCS_OFF = -1,

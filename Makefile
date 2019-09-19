@@ -148,11 +148,8 @@ endif
 ifeq ($(RADAR),y)
 	DEFS += -DRADAR
 	RADAR_SRC = f_radar_srcs
-	EMULATOR = $(RADAR_SRC)/emulator
-	NAVICO = $(RADAR_SRC)/navico
-	GARMINXHD = $(RADAR_SRC)/garminxhd
-	GARMINHD = $(RADAR_SRC)/garminhd
-	FILTER += f_radar $(RADAR_SRC)/socketutil $(GARMINXHD)/GarminxHDControl $(GARMINXHD)/GarminxHDReceive
+
+	FILTER += f_radar $(RADAR_SRC)/socketutil $(RADAR_SRC)/GarminxHDControl $(RADAR_SRC)/GarminxHDReceive
 	CHANNEL += ch_radar
 endif
 

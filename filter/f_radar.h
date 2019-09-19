@@ -26,9 +26,9 @@
 #include "f_base.h"
 
 #include "f_radar_srcs/socketutil.h"
-#include "f_radar_srcs/garminxhd/garminxhd.h"
-#include "f_radar_srcs/garminxhd/GarminxHDControl.h"
-#include "f_radar_srcs/garminxhd/GarminxHDReceive.h"
+#include "f_radar_srcs/garminxhd.h"
+#include "f_radar_srcs/GarminxHDControl.h"
+#include "f_radar_srcs/GarminxHDReceive.h"
 
 
 
