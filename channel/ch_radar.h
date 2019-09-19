@@ -436,6 +436,15 @@ class ch_radar_image: public ch_base
     memcpy(hist_data, data, len);
     unlock();
   }
+
+  void get_spoke_data(unsigned char * data)
+  {
+    lock();
+    for (size_t i = 0; i < GARMIN_XHD_SPOKES; i++) {
+      memcpy(data + GARMIN_XHD_MAX_SPOKE_LEN * i, m_history[i].line, GARMIN_XHD_MAX_SPOKE_LEN * sizeof(unsigned char));
+    }    
+    unlock();
+  }
 };
 
 #endif
