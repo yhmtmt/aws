@@ -50,7 +50,6 @@
 
 
 #define SOCKETERRSTR (strerror(errno))
-#define closesocket(fd) close(fd)
 
 #define VALID_IPV4_ADDRESS(i)                                                                                                    \
   (i && i->ifa_addr && i->ifa_addr->sa_family == AF_INET && (i->ifa_flags & IFF_UP) > 0 && (i->ifa_flags & IFF_LOOPBACK) == 0 && \

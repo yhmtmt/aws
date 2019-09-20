@@ -51,11 +51,7 @@ using namespace cv;
 #include "../../util/aws_thread.h"
 #include "../../util/c_clock.h"
 
-
-
 #include "../f_radar.h"
-
-
 
 #pragma pack(push, 1)
 
@@ -79,7 +75,7 @@ typedef struct {
 
 #pragma pack(pop)
 
-GarminxHDControl::GarminxHDControl(f_base * _pfilter, NetworkAddress sendAddress): pfilter(_pfilter) {
+GarminxHDControl::GarminxHDControl(NetworkAddress sendAddress) {
   m_addr = sendAddress.GetSockAddrIn();  // addr part overwritten by actual radar addr
 
   m_radar_socket = INVALID_SOCKET;

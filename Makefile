@@ -149,7 +149,7 @@ ifeq ($(RADAR),y)
 	DEFS += -DRADAR
 	RADAR_SRC = f_radar_srcs
 
-	FILTER += f_radar $(RADAR_SRC)/socketutil $(RADAR_SRC)/GarminxHDControl $(RADAR_SRC)/GarminxHDReceive
+	FILTER += $(RADAR_SRC)/socketutil $(RADAR_SRC)/GarminxHDControl $(RADAR_SRC)/GarminxHDReceive f_radar
 	CHANNEL += ch_radar
 endif
 

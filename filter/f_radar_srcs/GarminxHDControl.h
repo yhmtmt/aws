@@ -39,12 +39,9 @@
 #include "garminxhd.h"
 #include "socketutil.h"
 
-#include "../../channel/ch_base.h"
-#include "../f_base.h"
-
 class GarminxHDControl{
  public:
-  GarminxHDControl(f_base * pfilter, NetworkAddress sendMultiCastAddress);
+  GarminxHDControl( NetworkAddress sendMultiCastAddress);
   ~GarminxHDControl();
 
   bool Init(const std::string & name, const NetworkAddress &interfaceAddress, const NetworkAddress &radarAddress);
@@ -55,7 +52,6 @@ class GarminxHDControl{
 
   bool SetControlValue(ControlType controlType, int value, RadarControlState state);
   
-
  private:
   void logBinaryData(const std::string &what, const void *data, int size);
   bool TransmitCmd(const void *msg, int size);
@@ -63,7 +59,6 @@ class GarminxHDControl{
   struct sockaddr_in m_addr;
   SOCKET m_radar_socket;
   std::string m_name;
-  f_base * pfilter;
 };
 
 #endif /* _GARMIN_XHD_CONTROL_H_ */

@@ -36,6 +36,7 @@
 #include <string>
 
 #include "socketutil.h"
+#define closesocket(fd) close(fd)
 
 std::string FormatPackedAddress(const PackedAddress &addr) {
   uint8_t *a = (uint8_t *)&addr.addr;  // sin_addr is in network layout
