@@ -381,6 +381,7 @@ void f_base::register_factory()
 	register_factory<f_gst_enc>("gstenc");
 	register_factory<f_gst_cam>("gstcam");
 #endif
-	
+#ifdef RADAR
 	register_factory<f_radar>("radar");
+#endif
 }

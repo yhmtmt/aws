@@ -19,7 +19,7 @@ STEREO = y
 CAMCALIB = y
 STABILIZER = y
 MISC = y
-
+RADAR = n
 ############################################################ Path configuration
 CUR_DIR = $(shell pwd)
 FDIR = $(CUR_DIR)/filter
