@@ -76,14 +76,6 @@ class f_radar:public f_base
     m_stayalive_timeout = 0;    
   }
   
-  void ProcessRadarSpoke(int angle, int bearing, uint8_t *data, size_t len, int range_meters, long long t)
-  {
-    long long tpos;
-    float lat, lon;
-    state->get_position(tpos, lat, lon);
-    radar_image->set_spoke(t, lat, lon, angle, bearing, data, len, range_meters);
-  }
-
   void resetTimeout(long long now)
   {
     m_radar_timeout = now + WATCHDOG_TIMEOUT;
@@ -93,19 +85,7 @@ class f_radar:public f_base
   radar_command cmd;
   int cmd_state;
   
- f_radar(const char * name): f_base(name), interface_address(172,16,1,1,0),
-    receive(this, interface_address, gx_report, gx_data), control(gx_send), cmd(RC_NONE, 0, RCS_OFF)
-  {
-    register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
-    register_fpar("radar_state", (ch_base**)&radar_state, typeid(ch_radar_state).name(), "Radar state channel");
-    register_fpar("radar_image", (ch_base**)&radar_image, typeid(ch_radar_image).name(), "Radar image channel");
-    register_fpar("radar_ctrl", (ch_base**)&radar_ctrl, typeid(ch_radar_ctrl).name(), "Radar control channel");
-
-    register_fpar("cmd_id", (int*)&cmd.id, (int)RC_NONE, str_radar_command_id, "Command ID");
-    register_fpar("cmd_val", &cmd.val, "Command value");
-    register_fpar("cmd_state", &cmd_state, "Radar Control State OFF:-1, MANUAL:0, AUTO1-9:1-9");
-    
-  }
+  f_radar(const char * name);
 
   virtual ~f_radar()
     {

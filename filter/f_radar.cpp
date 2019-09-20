@@ -45,6 +45,22 @@ const char * f_radar::str_radar_command_id[RC_NONE] = {
 const int f_radar::range_vals[16] = { 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000, 12000, 16000, 24000, 36000, 48000, 64000 };
 
 
+f_radar::f_radar(const char * name): f_base(name),
+				     interface_address(172,16,1,1,0),
+				     receive(this, interface_address, gx_report, gx_data),
+				     control(gx_send), cmd(RC_NONE, 0, RCS_OFF)
+{
+  register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
+  register_fpar("radar_state", (ch_base**)&radar_state, typeid(ch_radar_state).name(), "Radar state channel");
+  register_fpar("radar_image", (ch_base**)&radar_image, typeid(ch_radar_image).name(), "Radar image channel");
+  register_fpar("radar_ctrl", (ch_base**)&radar_ctrl, typeid(ch_radar_ctrl).name(), "Radar control channel");
+  
+  register_fpar("cmd_id", (int*)&cmd.id, (int)RC_NONE, str_radar_command_id, "Command ID");
+  register_fpar("cmd_val", &cmd.val, "Command value");
+  register_fpar("cmd_state", &cmd_state, "Radar Control State OFF:-1, MANUAL:0, AUTO1-9:1-9");
+  
+}
+
 bool f_radar::proc()
 {
   if(cmd.id != RC_NONE){
@@ -112,11 +128,37 @@ bool f_radar::proc()
 void f_radar::write_radar_image(int val)
 {
   // B-scope (x: range, y: azimuth)
-  Mat img(GARMIN_XHD_SPOKES, GARMIN_XHD_MAX_SPOKE_LEN, CV_8UC1);
-
+  Mat img(GARMIN_XHD_SPOKES, GARMIN_XHD_MAX_SPOKE_LEN, CV_8UC1);  
   radar_image->get_spoke_data(img.data);
-  char buf[64];
-  long long t = get_time();
-  snprintf(buf, 64, "radar_%lld.png", t);
-  imwrite(buf, img);
+    
+  if(val == 0){
+    char buf[64];
+    long long t = get_time();
+    snprintf(buf, 64, "radar_%lld.png", t);
+    imwrite(buf, img);
+  }
+
+  // PPI (North Up)
+  if(val == 1){
+    Mat ppi=Mat::zeros(GARMIN_XHD_MAX_SPOKE_LEN*2,
+		       GARMIN_XHD_MAX_SPOKE_LEN*2,CV_8UC1);
+    double spoke_angle = (double)(2 * PI) / (double)GARMIN_XHD_SPOKES;
+    for (int r = 0; r < img.rows; r++){
+      unsigned char * ptr = ppi.ptr<unsigned char>(r);
+      for (int c = 0; c < img.cols; c++){
+	int x = r - GARMIN_XHD_MAX_SPOKE_LEN;
+	int y = GARMIN_XHD_MAX_SPOKE_LEN - c;
+	int ispoke = (int)((double)GARMIN_XHD_SPOKES * atan2(x, y) * ( 0.5 / PI));
+	ispoke = (ispoke + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;
+	
+	int d = (int)(0.5 + sqrt((double)(x * x + y * y)));
+	unsigned char val;
+	if(d >= GARMIN_XHD_MAX_SPOKE_LEN || d < 0)
+	  val = 255;
+	else
+	  val = *(img.data + ispoke * GARMIN_XHD_MAX_SPOKE_LEN + d);
+	*(ptr + c) = val;	
+      }      
+    }    
+  }
 }

@@ -149,8 +149,12 @@ void GarminxHDReceive::ProcessFrame(const uint8_t *data, size_t len) {
   int a = (angle_raw + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;
   int b = (bearing_raw + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;;
 
+  long long tpos;
+  float lat, lon;
+  state->get_position(tpos, lat, lon);
   radar_state->set_range(packet->range_meters);
-  pfilter->ProcessRadarSpoke(a, b, packet->line_data, len, packet->display_meters, time_rec);
+  radar_image->set_spoke(tpos, lat, lon, b, packet->line_data, len, packet->range_meters);
+  
 }
 
 SOCKET GarminxHDReceive::PickNextEthernetCard() {

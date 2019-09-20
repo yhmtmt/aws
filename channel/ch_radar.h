@@ -435,7 +435,7 @@ class ch_radar_image: public ch_base
     unlock();
   }
 
-  void set_spoke(long long t, double lat, double lon, int angle,
+  void set_spoke(long long t, double lat, double lon,
 		 int bearing, unsigned char * data,
 		 size_t len, int range_meters)
   {
@@ -450,6 +450,20 @@ class ch_radar_image: public ch_base
     m_history[bearing].pos.lon = lon;
     m_history[bearing].time = t;
     memcpy(hist_data, data, len);
+    unlock();
+  }
+
+  void get_spoke(long long & t, double & lat, double & lon,
+		 int & bearing, unsigned char * data,
+		 size_t & len, int & range_meters)
+  {
+    lock();
+    unsigned char * hist_data = m_history[bearing].line;
+    len = m_history[bearing].len;
+    lat = m_history[bearing].pos.lat;
+    lon = m_history[bearing].pos.lon;
+    t = m_history[bearing].time;
+    memcpy(data, hist_data, len);
     unlock();
   }
 
