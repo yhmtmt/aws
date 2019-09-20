@@ -100,7 +100,7 @@ class f_radar:public f_base
     register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
     register_fpar("radar_state", (ch_base**)&radar_state, typeid(ch_radar_state).name(), "Radar state channel");
     register_fpar("radar_image", (ch_base**)&radar_image, typeid(ch_radar_image).name(), "Radar image channel");
-    register_fpar("radar_ctrl", (ch_base**)radar_ctrl, typeid(ch_radar_ctrl).name(), "Radar control channel");
+    register_fpar("radar_ctrl", (ch_base**)&radar_ctrl, typeid(ch_radar_ctrl).name(), "Radar control channel");
 
     register_fpar("cmd_id", (int*)&cmd.id, (int)RC_NONE, str_radar_command_id, "Command ID");
     register_fpar("cmd_val", &cmd.val, "Command value");

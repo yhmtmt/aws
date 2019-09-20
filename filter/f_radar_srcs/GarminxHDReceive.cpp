@@ -569,7 +569,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
     switch (packet_type) {
       case 0x0916:  // Dome Speed
-        printf(("radar_pi: Garmin xHD 0x0916: scan speed %d"), packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x0916: scan speed %d\n"), packet9->parm1);
         radar_state->set_scan_speed(packet9->parm1 >> 1);
         return true;
 
@@ -577,11 +577,11 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
                     // parm1 = 0 : Standby request
                     // parm1 = 1 : TX request
                     // Ignored, gxradar did nothing with this
-        printf(("radar_pi: Garmin xHD 0x0919: standby/transmit %d"), packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x0919: standby/transmit %d\n"), packet9->parm1);
         return true;
 
       case 0x091e:  // Range
-        printf(("radar_pi: Garmin xHD 0x091e: range %d"), packet12->parm1);
+        printf(("radar_pi: Garmin xHD 0x091e: range %d\n"), packet12->parm1);
         radar_state->set_range(packet12->parm1);  // Range in meters
         return true;
 
@@ -593,17 +593,17 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
         // Manual:    0x924 = 0, 0x925 = gain, 0x91d = 0 (could be last one used?)
 
       case 0x0924:  // AutoGain on/off
-        printf(("radar_pi: Garmin xHD 0x0924: autogain %d"), packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x0924: autogain %d\n"), packet9->parm1);
         m_auto_gain = packet9->parm1 > 0;
         return true;
 
       case 0x0925:  // Gain
-        printf(("radar_pi: Garmin xHD 0x0925: gain %d"), packet10->parm1);
+        printf(("radar_pi: Garmin xHD 0x0925: gain %d\n"), packet10->parm1);
         m_gain = packet10->parm1 / 100;
         return true;
 
       case 0x091d: {  // Auto Gain Mode
-        printf(("radar_pi: Garmin xHD 0x091d: auto-gain mode %d"), packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x091d: auto-gain mode %d\n"), packet9->parm1);
         RadarControlState state = RCS_MANUAL;
         if (m_auto_gain) {
           switch (packet9->parm1) {
@@ -619,13 +619,13 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
               break;
           }
         }
-        printf(("radar_pi: %s m_gain.Update(%d, %d)"), pfilter->get_name(), m_gain, (int)state);
+        printf(("radar_pi: %s m_gain.Update(%d, %d)\n"), pfilter->get_name(), m_gain, (int)state);
 	radar_state->set_gain(m_gain, state);
         return true;
       }
 
       case 0x0930:  // Dome offset, called bearing alignment here
-        printf(("radar_pi: Garmin xHD 0x0930: bearing alignment %d"), (int32_t)packet12->parm1 / 32);
+        printf(("radar_pi: Garmin xHD 0x0930: bearing alignment %d\n"), (int32_t)packet12->parm1 / 32);
 	radar_state->set_bearing_alignment((int32_t)packet12->parm1 / 32);
         return true;
 
@@ -635,7 +635,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
         return true;
 
       case 0x0933:  // Rain clutter mode
-        printf(("radar_pi: Garmin xHD 0x0933: rain mode %d"), packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x0933: rain mode %d\n"), packet9->parm1);
         switch (packet9->parm1) {
           case 0: {
             m_rain_mode = RCS_OFF;
@@ -650,7 +650,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x0934: {
         // Rain clutter level
-        printf(("radar_pi: Garmin xHD 0x0934: rain clutter %d"), packet10->parm1);
+        printf(("radar_pi: Garmin xHD 0x0934: rain clutter %d\n"), packet10->parm1);
         m_rain_clutter = packet10->parm1 / 100;
 	radar_state->set_rain(m_rain_clutter, m_rain_mode);
         return true;
@@ -658,7 +658,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x0939: {
         // Sea Clutter On/Off
-        printf(("radar_pi: Garmin xHD 0x0939: sea mode %d"), packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x0939: sea mode %d\n"), packet9->parm1);
         switch (packet9->parm1) {
           case 0: {
             m_sea_mode = RCS_OFF;
@@ -683,7 +683,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x093a: {
         // Sea Clutter level
-        printf(("radar_pi: Garmin xHD 0x093a: sea clutter %d"), packet10->parm1);
+        printf(("radar_pi: Garmin xHD 0x093a: sea clutter %d\n"), packet10->parm1);
         m_sea_clutter = packet10->parm1 / 100;
 	radar_state->set_sea(m_sea_clutter, m_sea_mode);
         return true;
@@ -691,7 +691,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x093b: {
         // Sea Clutter auto level
-        printf(("radar_pi: Garmin xHD 0x093a: sea clutter auto %d"), packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x093a: sea clutter auto %d\n"), packet9->parm1);
         if (m_sea_mode >= RCS_AUTO_1) {
           m_sea_mode = (RadarControlState)(RCS_AUTO_1 + packet9->parm1);
 	  radar_state->set_sea(m_sea_clutter, m_sea_mode);
@@ -700,7 +700,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
       }
 
       case 0x093f: {
-        printf(("radar_pi: Garmin xHD 0x093a: no transmit zone mode %d"), packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x093a: no transmit zone mode %d\n"), packet9->parm1);
         m_no_transmit_zone_mode = packet9->parm1 > 0;
         // parm1 = 0 = Zone off, in that case we want AUTO_RANGE - 1 = 'Off'.
         // parm1 = 1 = Zone on, in that case we will receive 0x0940+0x0941.
@@ -711,29 +711,29 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
         return true;
       }
       case 0x0940: {
-        printf(("radar_pi: Garmin xHD 0x0940: no transmit zone start %d"), packet12->parm1 / 32);
+        printf(("radar_pi: Garmin xHD 0x0940: no transmit zone start %d\n"), packet12->parm1 / 32);
         if (m_no_transmit_zone_mode) {
 	  radar_state->set_no_transmit_start(packet12->parm1 / 32, RCS_MANUAL);	  
         }
         return true;
       }
       case 0x0941: {
-        printf(("radar_pi: Garmin xHD 0x0941: no transmit zone end %d"), (int32_t)packet12->parm1 / 32);
+        printf(("radar_pi: Garmin xHD 0x0941: no transmit zone end %d\n"), (int32_t)packet12->parm1 / 32);
         if (m_no_transmit_zone_mode) {
 	  radar_state->set_no_transmit_end(packet12->parm1 / 32, RCS_MANUAL);	  
         }
         return true;
       }
       case 0x02bb: {
-        printf(("radar_pi: Garmin xHD 0x02bb: something %d"), (int32_t)packet12->parm1);
+        printf(("radar_pi: Garmin xHD 0x02bb: something %d\n"), (int32_t)packet12->parm1);
         return true;
       }
       case 0x02ec: {
-        printf(("radar_pi: Garmin xHD 0x02ec: something %d"), (int32_t)packet12->parm1);
+        printf(("radar_pi: Garmin xHD 0x02ec: something %d\n"), (int32_t)packet12->parm1);
         return true;
       }
       case 0x0942: {
-        printf(("radar_pi: Garmin xHD 0x0942: timed idle mode %d"), (int32_t)packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x0942: timed idle mode %d\n"), (int32_t)packet9->parm1);
         if (packet9->parm1 == 0) {
           m_timed_idle_mode = RCS_OFF;
         } else {
@@ -743,13 +743,13 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
       }
 
       case 0x0943: {
-        printf(("radar_pi: Garmin xHD 0x0943: timed idle time %d s"), (int32_t)packet10->parm1);
+        printf(("radar_pi: Garmin xHD 0x0943: timed idle time %d s\n"), (int32_t)packet10->parm1);
 	radar_state->set_timed_idle(packet10->parm1 / 60, m_timed_idle_mode);
         return true;
       }
 
       case 0x0944: {
-        printf(("radar_pi: Garmin xHD 0x0944: timed run time %d s"), (int32_t)packet10->parm1);
+        printf(("radar_pi: Garmin xHD 0x0944: timed run time %d s\n"), (int32_t)packet10->parm1);
 	radar_state->set_timed_run((packet10->parm1 / 60));
         return true;
       }
@@ -764,7 +764,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
 
       case 0x0993: {
         // State change announce
-        printf(("radar_pi: Garmin xHD 0x0993: state-change in %d ms"), packet12->parm1);
+        printf(("radar_pi: Garmin xHD 0x0993: state-change in %d ms\n"), packet12->parm1);
         radar_state->set_next_state_change(packet12->parm1 / 1000);
         return true;
       }
@@ -776,12 +776,12 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
         // Observed with Timed Transmit (hardware control via plotter) it reports
         // 'State machine event fault - unhandled state transition request'
 
-        printf(("radar_pi: Garmin xHD 0x099b: error '%s'"), packet->info);
+        printf(("radar_pi: Garmin xHD 0x099b: error '%s'\n"), packet->info);
         return true;
       }
     }
   }
 
-  printf("radar_pi: Garmin xHD received unknown message");
+  printf("radar_pi: Garmin xHD received unknown message\n");
   return false;
 }
