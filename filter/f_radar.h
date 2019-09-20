@@ -68,7 +68,6 @@ class f_radar:public f_base
   
   receive_statistics m_statistics;
   long long GetBootTime(){ return m_boot_time;};
-  double GetHeadingTrue(){ return 0.0;};
   
   void DetectedRadar(const NetworkAddress & radarAddress){
     if(!control.Init("GarminxHDControl", interface_address, radarAddress)){

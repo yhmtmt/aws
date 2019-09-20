@@ -138,11 +138,16 @@ void GarminxHDReceive::ProcessFrame(const uint8_t *data, size_t len) {
   short int heading_raw = 0;
   int bearing_raw;
 
-  heading_raw = SCALE_DEGREES_TO_RAW(pfilter->GetHeadingTrue());  // include variation
+  {
+    long long tatt;
+    float r,p,y;
+    state->get_attitude(tatt, r, p, y);
+    heading_raw = SCALE_DEGREES_TO_RAW(y);  // include variation
+  }
   bearing_raw = angle_raw + heading_raw;
 
-  int a = angle_raw + GARMIN_XHD_SPOKES * 2 % GARMIN_XHD_SPOKES;
-  int b = bearing_raw + GARMIN_XHD_SPOKES * 2 % GARMIN_XHD_SPOKES;;
+  int a = (angle_raw + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;
+  int b = (bearing_raw + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;;
 
   radar_state->set_range(packet->range_meters);
   pfilter->ProcessRadarSpoke(a, b, packet->line_data, len, packet->display_meters, time_rec);
