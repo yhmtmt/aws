@@ -123,8 +123,6 @@ bool f_radar::proc()
   return receive.Loop();
 }
 
-
-
 void f_radar::write_radar_image(int val)
 {
   // B-scope (x: range, y: azimuth)
@@ -143,9 +141,9 @@ void f_radar::write_radar_image(int val)
     Mat ppi=Mat::zeros(GARMIN_XHD_MAX_SPOKE_LEN*2,
 		       GARMIN_XHD_MAX_SPOKE_LEN*2,CV_8UC1);
     double spoke_angle = (double)(2 * PI) / (double)GARMIN_XHD_SPOKES;
-    for (int r = 0; r < img.rows; r++){
+    for (int r = 0; r < ppi.rows; r++){
       unsigned char * ptr = ppi.ptr<unsigned char>(r);
-      for (int c = 0; c < img.cols; c++){
+      for (int c = 0; c < ppi.cols; c++){
 	int x = r - GARMIN_XHD_MAX_SPOKE_LEN;
 	int y = GARMIN_XHD_MAX_SPOKE_LEN - c;
 	int ispoke = (int)((double)GARMIN_XHD_SPOKES * atan2(x, y) * ( 0.5 / PI));
@@ -157,7 +155,8 @@ void f_radar::write_radar_image(int val)
 	  val = 255;
 	else
 	  val = *(img.data + ispoke * GARMIN_XHD_MAX_SPOKE_LEN + d);
-	*(ptr + c) = val;	
+	*(ptr + c) = val;
+	//	cout << "r,c=" << r << "," << c << endl;
       }
     }
     char buf[64];

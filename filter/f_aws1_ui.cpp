@@ -952,6 +952,10 @@ bool f_aws1_ui::proc()
 
   roll = min(max(-180.f, roll),180.f);
   pitch = min(max(-180.f, pitch), 180.f);
+  if(yaw > 180.f)
+    yaw -= 360.f;
+  if(yaw < -180.f)
+    yaw += 360.f;
   yaw = min(max(-180.f, yaw), 180.f);
   
   m_state->get_velocity(t, cog, sog);
