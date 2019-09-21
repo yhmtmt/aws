@@ -639,7 +639,7 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
         return true;
 
       case 0x0932:  // Crosstalk reject, I guess this is the same as interference rejection?
-        printf(("radar_pi: Garmin xHD 0x0932: crosstalk/interference rejection %d"), packet9->parm1);
+        printf(("radar_pi: Garmin xHD 0x0932: crosstalk/interference rejection %d\n"), packet9->parm1);
 	radar_state->set_interference_rejection(packet9->parm1);
         return true;
 
@@ -791,6 +791,6 @@ bool GarminxHDReceive::ProcessReport(const uint8_t *report, size_t len) {
     }
   }
 
-  printf("radar_pi: Garmin xHD received unknown message\n");
+  //  printf("radar_pi: Garmin xHD received unknown message\n");
   return false;
 }

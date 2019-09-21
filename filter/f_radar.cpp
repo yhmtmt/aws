@@ -158,7 +158,12 @@ void f_radar::write_radar_image(int val)
 	else
 	  val = *(img.data + ispoke * GARMIN_XHD_MAX_SPOKE_LEN + d);
 	*(ptr + c) = val;	
-      }      
-    }    
+      }
+    }
+    char buf[64];
+    long long t = get_time();
+    snprintf(buf, 64, "radar_%lld.png", t);
+    
+    imwrite(buf, ppi);     
   }
 }
