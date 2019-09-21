@@ -52,17 +52,16 @@ class f_radar:public f_base
   static const int range_vals[16];
   const int find_nearest_range(const int range_meter){
     int irange = 0;
-    while(range_vals[irange] > range_meter){
-      irange++;
-    }
-
+    for(; irange < 16 && range_vals[irange] < range_meter; irange++);
     return range_vals[irange];
   }
 
   void write_radar_image(int val);
  public:
-  // RadarInfo related data members
- 
+  static const char * str_radar_command_id[RC_NONE];
+  radar_command cmd;
+  int cmd_state;
+
   long long m_boot_time;
   long long m_radar_timeout, m_data_timeout, m_stayalive_timeout;
   
@@ -81,10 +80,6 @@ class f_radar:public f_base
     m_radar_timeout = now + WATCHDOG_TIMEOUT;
   }
 
-  static const char * str_radar_command_id[RC_NONE];
-  radar_command cmd;
-  int cmd_state;
-  
   f_radar(const char * name);
 
   virtual ~f_radar()
