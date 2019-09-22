@@ -81,6 +81,27 @@ const char * f_aws1_ui::str_crz_cmd_exp[crz_undef] =
     "Steer to Hard a Starboard"    
   };
 
+const char * f_aws1_ui::str_stb_cmd[stb_undef] =
+  {
+    "stp",
+    "dsah", "slah", "hfah", "flah", "nf",
+    "dsas", "slas", "hfas", "flas"
+  };
+
+const char * f_aws1_ui::str_stb_cmd_exp[stb_undef] =
+  {
+    "Clutch to Neutral.",
+    "Clutch to Forward, Throttle to Dead Slow",
+    "Clutch to Forward, Throttle to Slow",
+    "Clutch to Forward, Throttle to Half",
+    "Clutch to Forward, Throttle to Full",
+    "Clutch to Forward, Throttle to Navigation Full",
+    "Clutch to Backward, Throttle to Dead Slow",
+    "Clutch to Backward, Throttle to Slow",
+    "Clutch to Backward, Throttle to Half",
+    "Clutch to Backward, Throttle to Full",
+  };
+
 f_aws1_ui::f_aws1_ui(const char * name) :
   f_glfw_window(name),
   m_state(NULL), m_engstate(NULL), m_ch_sys(NULL), m_ch_ctrl_inst(NULL),
@@ -93,7 +114,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   bupdate_map(true), pt_prev_map_update(0, 0, 0),
   map_range(4000), map_range_base(1000),  sz_mark(10.0f), mouse_state(ms_normal),
   bmap_center_free(false), btn_pushed(ebtn_nul), btn_released(ebtn_nul),
-  ctrl_mode(cm_crz),
+  ctrl_mode(cm_crz), crz_cm(crz_undef), stb_cm(stb_undef), stb_cog_tgt(FLT_MAX),
   m_rud_f(127.), m_meng_f(127.), m_seng_f(127.),
   bwear(false), twhbt_out(5 * SEC), twhbt(0), whbt0(USHRT_MAX), whbt(0),
   cog_tgt(0.f), sog_tgt(3.0f), rev_tgt(700),  sog_max(23),  rev_max(5600)
@@ -154,7 +175,10 @@ f_aws1_ui::f_aws1_ui(const char * name) :
     register_fpar(str_crz_cmd[icrz_cmd], crz_cmd_val+icrz_cmd, str_crz_cmd_exp[icrz_cmd]);
   }
   register_fpar("crz", (int*)&crz_cm, (int)crz_undef, str_crz_cmd, "Command for CRZ mode.");
-  // for aws1 
+  register_fpar("stb", (int*)&stb_cm, (int)stb_undef, str_stb_cmd, "Engine command for STB mode.");
+  register_fpar("stb_cog_tgt", &stb_cog_tgt, "Target cog for STB mode");
+  
+  // for aws1  
   crz_cmd_val[crz_stp] = 127;   // neutral
   crz_cmd_val[crz_ds_ah] = 152; // 700rpm
   crz_cmd_val[crz_sl_ah] = 200; //1000rpm
@@ -175,6 +199,18 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   crz_cmd_val[crz_p20] = 47;
   crz_cmd_val[crz_hap] = 0;
 
+  
+  stb_cmd_val[stb_stp] = 0; 
+  stb_cmd_val[stb_ds_ah] = 700;
+  stb_cmd_val[stb_sl_ah] = 1200;
+  stb_cmd_val[stb_hf_ah] = 2500;
+  stb_cmd_val[stb_fl_ah] = 4000;
+  stb_cmd_val[stb_nf] = 5500;  
+  stb_cmd_val[stb_ds_as] =-700; 
+  stb_cmd_val[stb_sl_as] = -1000;
+  stb_cmd_val[stb_hf_as] =  -1500;
+  stb_cmd_val[stb_fl_as] = -2000;
+  
   register_fpar("wear", &bwear, "Enable Android Wear control");
   register_fpar("wmeng", &wmeng, "Main engine value accessed from Android Wear.");
   register_fpar("wrud", &wrud, "Rudder value accessed from Android Wear");
@@ -997,7 +1033,21 @@ bool f_aws1_ui::proc()
     dynamic_cast<c_map_cfg_box*>(uim.get_ui_box(c_aws_ui_box_manager::map_cfg));
   c_route_cfg_box * prc_box =
     dynamic_cast<c_route_cfg_box*>(uim.get_ui_box(c_aws_ui_box_manager::route_cfg));
-  
+
+  if(crz_cm != crz_undef){
+    // force CRZ mode
+    ctrl_mode = cm_crz;
+    m_inst.ctrl_src = ACS_UI;
+    pcm_box->set_mode(c_ctrl_mode_box::crz);    
+  }
+
+  if(stb_cm != stb_undef){
+    // force stb mode
+    ctrl_mode = cm_stb;
+    m_inst.ctrl_src = ACS_AP1;
+    m_ch_ap_inst->set_mode(EAP_STB_MAN);
+  }
+    
   // process joypad inputs
   if(m_js.id != -1){
     m_js.set_btn();
@@ -1180,7 +1230,10 @@ void f_aws1_ui::rcv_ctrl_stat()
 
 void f_aws1_ui::ctrl_cog_tgt()
 {
-  if (m_js.id != -1 && bjs){
+  if(stb_cog_tgt != FLT_MAX){
+    cog_tgt = stb_cog_tgt;
+    stb_cog_tgt = FLT_MAX;
+  }else if (m_js.id != -1 && bjs){
     cog_tgt += (float)(m_js.lr2 * (255. / 90.));
     cog_tgt = (float)(cog_tgt < 0 ? cog_tgt + 360.0 : (cog_tgt >= 360.0 ? cog_tgt - 360.0 : cog_tgt));
   }
@@ -1196,7 +1249,10 @@ void f_aws1_ui::ctrl_sog_tgt()
 
 void f_aws1_ui::ctrl_rev_tgt()
 {
-  if (m_js.id != -1 && bjs){
+  if(stb_cm != stb_undef){
+    rev_tgt = stb_cmd_val[stb_cm];    
+    stb_cm = stb_undef;
+  }else if (m_js.id != -1 && bjs){
     rev_tgt -= (float)( m_js.ud1 * (rev_max / 90.));
     rev_tgt = (float) max(min(rev_tgt, rev_max), -rev_max);
   }
