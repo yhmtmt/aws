@@ -28,6 +28,7 @@
 #include "../channel/ch_map.h"
 #include "../channel/ch_wp.h"
 #include "../channel/ch_obj.h"
+#include "../channel/ch_radar.h"
 
 #include "../util/aws_jpad.h"
 
@@ -83,7 +84,10 @@ class f_aws1_ui: public f_glfw_window
                                         // ref. update_ctrl_mode_box(),
                                         //      handle_ctrl_csr()
   ch_image_ref * m_ch_cam;
-
+  ch_radar_image * m_ch_radar_image;
+  ch_radar_ctrl * m_ch_radar_ctrl;
+  ch_radar_state * m_ch_radar_state;
+  
   char m_path_storage[1024]; // path string to the storage
 
   /////////////////////////////////////////// shader related members

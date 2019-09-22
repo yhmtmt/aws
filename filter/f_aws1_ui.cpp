@@ -87,6 +87,7 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   m_ch_ctrl_stat(NULL), m_ch_wp(NULL), m_ch_map(NULL),
   m_ch_obj(NULL), m_ch_ais_obj(NULL), m_ch_obst(NULL),
   m_ch_ap_inst(NULL), m_ch_cam(NULL),
+  m_ch_radar_image(NULL), m_ch_radar_ctrl(NULL), m_ch_radar_state(NULL),
   m_js_id(0), bjs(false), m_bsvw(false), m_bss(false),
   fov_cam_x(100.0f), fcam(0), height_cam(2.0f), dir_cam_hdg(0.f),
   dir_cam_hdg_drag(0.f), num_max_wps(100), num_max_ais(100),
@@ -113,7 +114,10 @@ f_aws1_ui::f_aws1_ui(const char * name) :
   register_fpar("ch_ap_inst", (ch_base**)&m_ch_ap_inst, typeid(ch_aws1_ap_inst).name(), "Autopilot instruction channel");
 
   register_fpar("ch_cam", (ch_base**)&m_ch_cam, typeid(ch_image_ref).name(), "Maincamera Image channel.");
-
+  register_fpar("ch_radar_image", (ch_base**)&m_ch_radar_image, typeid(ch_radar_image).name(), "Radar image");
+  register_fpar("ch_radar_ctrl", (ch_base**)&m_ch_radar_ctrl, typeid(ch_radar_ctrl).name(), "Radar Control");
+  register_fpar("ch_radar_state", (ch_base**)&m_ch_radar_state, typeid(ch_radar_state).name());
+  
   fvs[0] = ffs[0] = '\0';
   register_fpar("fvs", fvs, 1024, "File path to the vertex shader program.");
   register_fpar("ffs", ffs, 1024, "File path to the fragment shader program.");
