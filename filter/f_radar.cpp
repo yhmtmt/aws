@@ -42,7 +42,10 @@ const char * f_radar::str_radar_command_id[RC_NONE] = {
   "scan_speed", "timed_idle", "timed_run", "img"
 };
 
-const int f_radar::range_vals[16] = { 250, 500, 750, 1000, 1500, 2000, 3000, 4000, 6000, 8000, 12000, 16000, 24000, 36000, 48000, 64000 };
+const int f_radar::range_vals[16] = {                                                                                                                       \
+    1852 / 8, 1852 / 4, 1852 / 2, 1852 * 3 / 4, 1852 * 1, 1852 * 3 / 2, 1852 * 2, 1852 * 3, 1852 * 4, 1852 * 6, 1852 * 8, \
+        1852 * 12, 1852 * 16, 1852 * 24, 1852 * 36, 1852 * 48                                                             \
+  };
 
 
 f_radar::f_radar(const char * name): f_base(name),
@@ -144,8 +147,8 @@ void f_radar::write_radar_image(int val)
     for (int r = 0; r < ppi.rows; r++){
       unsigned char * ptr = ppi.ptr<unsigned char>(r);
       for (int c = 0; c < ppi.cols; c++){
-	int x = r - GARMIN_XHD_MAX_SPOKE_LEN;
-	int y = GARMIN_XHD_MAX_SPOKE_LEN - c;
+	int x = c - GARMIN_XHD_MAX_SPOKE_LEN;
+	int y = GARMIN_XHD_MAX_SPOKE_LEN - r;
 	int ispoke = (int)((double)GARMIN_XHD_SPOKES * atan2(x, y) * ( 0.5 / PI));
 	ispoke = (ispoke + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;
 	
