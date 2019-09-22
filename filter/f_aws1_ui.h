@@ -237,10 +237,21 @@ class f_aws1_ui: public f_glfw_window
     crz_s10,crz_s20, crz_has,
     crz_undef
   } crz_cm;
-
   static const char * str_crz_cmd[crz_undef];
   static const char * str_crz_cmd_exp[crz_undef];
   unsigned char crz_cmd_val[crz_undef];
+  
+  enum e_stb_cmd{
+    stb_stp,
+    stb_ds_ah, stb_sl_ah, stb_hf_ah, stb_fl_ah, stb_nf,
+    stb_ds_as, stb_sl_as, stb_hf_as, stb_fl_as, 
+    stb_undef
+  } stb_cm; // if not used, stb_undef is used 
+  static const char * str_stb_cmd[stb_undef];
+  static const char * str_stb_cmd_exp[stb_undef];
+  short stb_cmd_val[stb_undef]; 
+  float stb_cog_tgt; // if not set, FLT_MAX is used
+  
   float sog_max, rev_max;
   float cog_tgt, sog_tgt, rev_tgt;
   
