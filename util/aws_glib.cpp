@@ -610,12 +610,12 @@ void c_gl_radar::destroy()
 
 void c_gl_radar::update_spoke(const long long _t,
 			      const double _lat, const double _lon,
-			      const int _range_meter,
+			      const int _range_meters,
 			      const int _bearing, const int _len,
 			      const unsigned char * _line)
 {
 
-  if(range_prev != _range_meter){
+  if(range_prev != _range_meters){
     texture_buffer = vector<GLubyte>(spoke_len_max * spokes, 0);    
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, spoke_len_max, spokes, GL_RED, GL_UNSIGNED_BYTE, &texture_buffer);
   }else{
@@ -629,7 +629,7 @@ void c_gl_radar::update_spoke(const long long _t,
 
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, _bearing, spoke_len_max, 1, GL_RED, GL_UNSIGNED_BYTE, _line);
 
-  range_prev = _range_meter;
+  range_prev = _range_meters;
   tprev_update = _t;
   bearing_prev = _bearing;
 }

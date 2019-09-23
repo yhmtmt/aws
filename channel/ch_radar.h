@@ -373,8 +373,7 @@ class ch_radar_ctrl: public ch_base
 
   bool pop(radar_command_id & id, int & val, RadarControlState & state)
   {
-    lock();
-    
+    lock();    
     if(command_queue.empty()){
       unlock();
       return false;
@@ -390,21 +389,29 @@ class ch_radar_ctrl: public ch_base
   }
 };
 
+
+struct s_radar_line
+{
+  int bearing;
+  unsigned char *line;
+  size_t len;
+  long long time;
+  GeoPosition pos;
+s_radar_line():bearing(-1){};
+};
+
 class ch_radar_image: public ch_base
 {
  protected:
-  struct line_history {
-    unsigned char *line;
-    size_t len;
-    long long time;
-    GeoPosition pos;
-  } * m_history;
-
+  s_radar_line * m_history;
+  long long tprev_update;
+  vector<s_radar_line*> updates;
+  
   int m_range_meters;
  public:
  ch_radar_image(const char * name):ch_base(name)
   {
-    m_history = (line_history *)calloc(sizeof(line_history), GARMIN_XHD_SPOKES);
+    m_history = (s_radar_line *)calloc(sizeof(s_radar_line), GARMIN_XHD_SPOKES);
     for (size_t i = 0; i < GARMIN_XHD_SPOKES; i++) {
       m_history[i].line = (unsigned char *)calloc(sizeof(unsigned char), GARMIN_XHD_MAX_SPOKE_LEN);
     }    
@@ -427,6 +434,7 @@ class ch_radar_image: public ch_base
     lock();
     for (size_t i = 0; i < GARMIN_XHD_SPOKES; i++) {
       memset(m_history[i].line, 0, GARMIN_XHD_MAX_SPOKE_LEN);
+      m_history[i].bearing = -1;
       m_history[i].len = 0;
       m_history[i].time = 0;
       m_history[i].pos.lat = 0.;
@@ -445,6 +453,9 @@ class ch_radar_image: public ch_base
     lock();
     m_range_meters = range_meters;
     unsigned char * hist_data = m_history[bearing].line;
+    if(m_history[bearing].bearing >= 0)
+      updates.push_back(&m_history[bearing]);    
+    m_history[bearing].bearing = bearing;
     m_history[bearing].len = len;
     m_history[bearing].pos.lat = lat;
     m_history[bearing].pos.lon = lon;
@@ -453,6 +464,13 @@ class ch_radar_image: public ch_base
     unlock();
   }
 
+  int get_range_meters()
+  {
+    lock();
+    int range_meters = m_range_meters;
+    unlock();
+    return range_meters;
+  }
   void get_spoke(long long & t, double & lat, double & lon,
 		 int & bearing, unsigned char * data,
 		 size_t & len, int & range_meters)
@@ -464,6 +482,22 @@ class ch_radar_image: public ch_base
     lon = m_history[bearing].pos.lon;
     t = m_history[bearing].time;
     memcpy(data, hist_data, len);
+    unlock();
+  }
+
+  const vector<s_radar_line *> & get_updates()
+    {
+      lock();
+      return updates;
+    }
+
+  void free_updates(const long long & t)
+  {
+    tprev_update = t;
+    for(auto itr = updates.begin(); itr != updates.end(); itr++)
+      (*itr)->bearing = -1;
+    
+    updates.clear();
     unlock();
   }
 

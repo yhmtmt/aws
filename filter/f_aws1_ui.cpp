@@ -1167,6 +1167,19 @@ bool f_aws1_ui::proc()
   
   // update button
   update_button(pvm_box);
+
+  // update radar data
+  if(m_ch_radar_image){
+    const int range_meters = m_ch_radar_image->get_range_meters();
+    
+    const vector<s_radar_line*> & updates = m_ch_radar_image->get_updates();
+    for(auto itr = updates.begin(); itr != updates.end(); itr++){
+      oradar.update_spoke((*itr)->time, (*itr)->pos.lat, (*itr)->pos.lon,
+			  range_meters,
+			  (*itr)->bearing, (*itr)->len, (*itr)->line);
+    }
+    m_ch_radar_image->free_updates(get_time());
+  }
   
   // rendering graphics
   render_gl_objs(pvm_box);

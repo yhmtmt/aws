@@ -163,7 +163,7 @@ class c_gl_radar
   
   void update_spoke(const long long _t,
 		    const double _lat, const double _lon,
-		    const int _range_meter,
+		    const int _range_meters,
 		    const int _bearing, const int _len,
 		    const unsigned char * _line);
   void render();
