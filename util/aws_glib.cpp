@@ -492,7 +492,7 @@ bool c_gl_radar::init(int _spokes, int _spoke_len_max,
 		      GLuint _modeloc, GLuint _trnloc, GLuint _scloc,
 		      GLuint _posloc, GLuint _txcloc, GLuint _smploc,
 		      GLuint _clrloc, GLuint _bkgclrloc, GLuint _depthloc,
-		      glm::vec4 & _clr, glm::vec4 & _bkgclr, const int _depth)
+		      glm::vec4 & _clr, glm::vec4 & _bkgclr)
 {
   spokes = _spokes;
   spoke_len_max = _spoke_len_max;
@@ -513,7 +513,6 @@ bool c_gl_radar::init(int _spokes, int _spoke_len_max,
   int depth;
   glGetIntegerv(GL_DEPTH_BITS, &depth);
   zstep = (float)(2.0 / (float)(1 << depth));
-  z = -1.0 + (float)(_depth * zstep);
   
   // Create Texture Buffer
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
@@ -635,8 +634,11 @@ void c_gl_radar::update_spoke(const long long _t,
   bearing_prev = _bearing;
 }
 
-void c_gl_radar::render(const long long _t, glm::vec2 & pos, float pix_per_meter)
+void c_gl_radar::render()
 {
+  if(!benable)
+    return;
+  
   glUniform1i(modeloc, 1);
 
   glBindVertexArray(vao);
@@ -656,7 +658,6 @@ void c_gl_radar::render(const long long _t, glm::vec2 & pos, float pix_per_meter
 
   glUniform2fv(trnloc, 1, glm::value_ptr(pos));
   
-  float scl = pix_per_meter * range_prev;
   glUniform1f(scloc, scl);
   glUniform4fv(clrloc, 1, glm::value_ptr(clr));
   glUniform4fv(bkgclrloc, 1, glm::value_ptr(bkgclr));

@@ -195,7 +195,7 @@ private:
   c_gl_2d_obj * pocirc;
   c_gl_2d_line_obj * poline;
   c_gl_text_obj * potxt;
-  
+  c_gl_radar * poradar;
   int hship, hline_vel, hstay_point, hstay_line ;
 
   float radius;
@@ -213,6 +213,7 @@ public:
   
   bool init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
 	    c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
+	    c_gl_radar * _poradar,
 	    const glm::vec4 & clr, const glm::vec2 & sz);
   void set_param(const float rx, const float ry, const float rz,
 		 const float rxs, const float rys, const float rzs,

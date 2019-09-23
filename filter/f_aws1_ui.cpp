@@ -414,6 +414,7 @@ bool f_aws1_ui::init_run()
 
     if (!oline3d_map.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 0x0001FFFF))
       return false;
+
     
     if(!init_map_mask())
       return false;
@@ -445,12 +446,18 @@ bool f_aws1_ui::init_run()
 		fov_cam_x, sz_scrn))
     return false; 
 
-  if (!own_ship.init(&otri, &oline, &ocirc, &otxt, clr, sz_ship2d))
+  if(!oradar.init(GARMIN_XHD_SPOKES, GARMIN_XHD_MAX_SPOKE_LEN, loc_mode,
+		  loc_t2d, loc_scale2d, loc_pos2d, loc_texcoord, loc_sampler,
+		  loc_gcolor, loc_gcolorb, loc_depth2d, clr, clrb))
+    return false;
+  
+  if (!own_ship.init(&otri, &oline, &ocirc, &otxt, &oradar, clr, sz_ship2d))
     return false;
 
   if (!coast_line.init(&oline3d_map, clr, 4096))
     return false;
 
+  
   glm::vec2 sz((float)(sz_fnt.x * 7), (float)(sz_fnt.y * 2)),
     pos((float)(-sz.x * 0.5), (float)((m_sz_win.height >> 1) - sz.y));
 
@@ -964,17 +971,20 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
   oline3d.render(pvm);
   oline3d_map.render(pvm);
 
+
   if (pvm_box->get_mode() == ui_mode_map) {
 	  omap_mask.render();
   }
 
+ 
   // 2d rendering
   oline.render();
   orect.render();
   otri.render();
   ocirc.render();
   otxt.render(0);
- 
+  oradar.render();
+  
   glUseProgram(0);
   // show rendering surface.
   glfwSwapBuffers(pwin());	

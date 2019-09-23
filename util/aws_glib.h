@@ -110,11 +110,13 @@ class c_gl_obj{
 class c_gl_radar
 {
  private:
+  bool benable;
   int spokes, spoke_len_max;
   GLuint modeloc, trnloc, scloc, posloc, txcloc, smploc, clrloc, bkgclrloc, depthloc;
   GLuint htex;
   GLuint vao, vbo[2];
-  float zstep, z;
+  float zstep, z, scl;
+  glm::vec2 pos;
   long long tprev_update;
   int bearing_prev, range_prev;
   struct s_vertex
@@ -128,7 +130,7 @@ class c_gl_radar
   vector<GLubyte> texture_buffer;
   glm::vec4 clr, bkgclr;
  public:
- c_gl_radar():spokes(0), spoke_len_max(0), htex(0), vao(0), vertices(NULL), indices(NULL)
+ c_gl_radar():benable(false), spokes(0), spoke_len_max(0), htex(0), vao(0), vertices(NULL), indices(NULL)
     {
       
   }
@@ -142,18 +144,39 @@ class c_gl_radar
 	    GLuint _trnloc, GLuint _scloc,
 	    GLuint _posloc, GLuint _txcloc, GLuint _smploc,
 	    GLuint _clrloc, GLuint _bkgclrloc, GLuint _depthloc,
-	    glm::vec4 & _clr, glm::vec4 & _bkgclr, const int _depth);
+	    glm::vec4 & _clr, glm::vec4 & _bkgclr);
 
   void destroy();
 
+  void set_scale(const float pix_per_meter){
+    scl = range_prev * pix_per_meter;
+  }
+
+  void set_pos(glm::vec2 & _pos){
+    pos = _pos;
+  }
+
+  void set_depth(int depth)
+  {
+      z = -1.0 + (float)(depth * zstep);
+  }
+  
   void update_spoke(const long long _t,
 		    const double _lat, const double _lon,
 		    const int _range_meter,
 		    const int _bearing, const int _len,
 		    const unsigned char * _line);
-  void render(const long long _t,
-	      glm::vec2 & pos /* own ship position in the screen */,
-	      float pix_per_meter);    
+  void render();
+
+  void enable()
+  {
+    benable=true;
+  }
+  
+  void disable()
+  {
+    benable=false;
+  }
 };
 
 class c_gl_text_obj: public c_gl_obj

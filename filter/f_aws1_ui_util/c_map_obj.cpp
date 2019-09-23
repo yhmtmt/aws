@@ -473,12 +473,14 @@ void c_map_coast_line_obj::update_drawings()
 /////////////////////////////////////////////////////////////////// c_own_ship
 bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
 		      c_gl_2d_obj * _pocirc, c_gl_text_obj * _potxt,
+		      c_gl_radar * _pradar, 
 		      const glm::vec4 & clr, const glm::vec2 & sz)
 {
   potri = _potri;
   poline = _poline;
   pocirc = _pocirc;
   potxt = _potxt;
+  poradar = _pradar;
   
   glm::vec2 pos(0, 0);
   hship = potri->add(clr, pos, 0, sz);
@@ -507,6 +509,9 @@ bool c_own_ship::init(c_gl_2d_obj * _potri, c_gl_2d_line_obj * _poline,
   poline->config_width(hstay_line, 1.0);
   poline->disable(hline_vel);
 
+  poradar->set_depth(display_depth);
+  poradar->disable();
+  
   // bearing indicator
   radius = sz.x * 5;
   glm::vec2 sz_tgt((float)(sz.x * 0.5), (float)(sz.y * 0.5));
@@ -549,6 +554,7 @@ void c_own_ship::enable()
   poline->enable(hstay_line); 
   potri->enable(hbearing_tgt);
   poline->enable(hbearing);
+  poradar->enable();
 }
 
 void c_own_ship::disable()
@@ -559,6 +565,7 @@ void c_own_ship::disable()
   poline->disable(hstay_line);  
   potri->disable(hbearing_tgt);
   poline->disable(hbearing);
+  poradar->disable();
 }
 
 void c_own_ship::set_param(const float rx, const float ry, const float rz,
@@ -575,7 +582,9 @@ void c_own_ship::set_param(const float rx, const float ry, const float rz,
     poline->config_position(hbearing, pos_own);
     potri->config_rotation(hbearing_tgt, (float)(0.5 * PI - th));
     potri->config_position(hbearing_tgt, glm::vec2(s + pos_own.x, c + pos_own.y));
-  
+    poradar->set_pos(pos_own);
+    poradar->set_scale(pix_per_meter);
+    
     th = (float)(0.5 * PI - hdg * PI / 180.f);
     potri->config_rotation(hship, th);
     float pts[4] = {

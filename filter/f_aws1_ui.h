@@ -114,6 +114,8 @@ class f_aws1_ui: public f_glfw_window
   c_gl_2d_line_obj oline /* 2d line */;
   c_gl_line_obj oline3d  /* 3d line */;
   c_gl_line_obj oline3d_map; /* 3d lin for map*/
+  c_gl_radar oradar;
+  
   Mat m_cam;                   // main camera image
   long long m_tcam, m_frm_cam; // time and frame number m_cam grabbed
   e_imfmt m_fmt_cam;           // image format of main camera
