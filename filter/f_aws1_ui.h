@@ -95,7 +95,7 @@ class f_aws1_ui: public f_glfw_window
   GLuint p;// shader program
   GLuint loc_mode /* rendering mode flag. See glsl.*/ , 
     loc_gcolor /* object color */ , loc_gcolorb /* object background color */,
-    loc_pos2d /* 2d point */, loc_inv_sz_half_scrn /* inverse half screen size */,
+    loc_pos2d /* 2d point */, loc_inv_sz_half_scrn /* inverse half screen size */, loc_t2d /* 2d translation */, loc_scale2d /* 2d scaling */,
     loc_Mmvp /* transform matrix */ , loc_Mm /* object rotation/translation matrix */, 
     loc_Lpar /* Light direction */, loc_sampler /* Texture sampler */, 
     loc_depth2d, loc_position, loc_normal, loc_texcoord;

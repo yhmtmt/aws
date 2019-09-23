@@ -1594,11 +1594,13 @@ bool f_glfw_test3d::setup_objects(c_icosahedron * pic)
 	delete[] tex;
 
 	GLuint loc_mode_flag = glGetUniformLocation(p, "mode");
+	GLuint loc_trn = glGetUniformLocation(p, "t2d");
+	GLuint loc_scl = glGetUniformLocation(p, "scale2d");
 	GLuint loc_gcolor = glGetUniformLocation(p, "gcolor");
 	GLuint loc_gcolorb = glGetUniformLocation(p, "gcolorb");
 	GLuint loc_pos2d = glGetAttribLocation(p, "pos2d");
 
-	otxt.init(ffnttex, ffntcfg, loc_mode_flag, loc_pos2d, texcdl, smpl, loc_gcolor, loc_gcolorb, depth2dl);
+	otxt.init(ffnttex, ffntcfg, loc_mode_flag, loc_trn, loc_scl, loc_pos2d, texcdl, smpl, loc_gcolor, loc_gcolorb, depth2dl);
 //	glm::vec2 sz_fnt = glm::vec2((float)(0.3 * 41.2890625 * 2.0 / (double)m_sz_win.width),
 //		(float)(0.3 * 40.0 * 2.0 / (double)m_sz_win.height));
 	glm::vec2 sz_fnt = glm::vec2((float)(41.2890625),
@@ -1676,7 +1678,7 @@ bool f_glfw_test3d::setup_objects(c_icosahedron * pic)
 	opts.add(1000, (const float*)vtx6);
 
 
-	o2d.init_circle(loc_mode_flag, loc_pos2d, loc_gcolor, depth2dl, 10, 
+	o2d.init_circle(loc_mode_flag, loc_trn, loc_scl, loc_pos2d, loc_gcolor, depth2dl, 10, 
 		1.0, 1.0);
 	o2d.add(glm::vec4(1.0, 0.0, 0.0, 1.0), glm::vec2(100, 100), 0, 150);
 	o2d.add(glm::vec4(0.0, 1.0, 0.0, 1.0), glm::vec2(100, -100), 0, 150);

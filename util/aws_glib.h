@@ -107,6 +107,55 @@ class c_gl_obj{
   virtual size_t get_used_resource_size() = 0;
 };
 
+class c_gl_radar
+{
+ private:
+  int spokes, spoke_len_max;
+  GLuint modeloc, trnloc, scloc, posloc, txcloc, smploc, clrloc, bkgclrloc, depthloc;
+  GLuint htex;
+  GLuint vao, vbo[2];
+  float zstep, z;
+  long long tprev_update;
+  int bearing_prev, range_prev;
+  struct s_vertex
+  {
+    float x, y;
+    float u, v;
+  };
+  int num_vertices, num_indices;
+  s_vertex * vertices; // built as _spokes * (3(in arc) + 1(in center))
+  unsigned short * indices;
+  vector<GLubyte> texture_buffer;
+  glm::vec4 clr, bkgclr;
+ public:
+ c_gl_radar():spokes(0), spoke_len_max(0), htex(0), vao(0), vertices(NULL), indices(NULL)
+    {
+      
+  }
+
+  ~c_gl_radar()
+    {
+      destroy();
+    }
+  
+  bool init(int _spokes, int _spoke_len_max, GLuint _modeloc,
+	    GLuint _trnloc, GLuint _scloc,
+	    GLuint _posloc, GLuint _txcloc, GLuint _smploc,
+	    GLuint _clrloc, GLuint _bkgclrloc, GLuint _depthloc,
+	    glm::vec4 & _clr, glm::vec4 & _bkgclr, const int _depth);
+
+  void destroy();
+
+  void update_spoke(const long long _t,
+		    const double _lat, const double _lon,
+		    const int _range_meter,
+		    const int _bearing, const int _len,
+		    const unsigned char * _line);
+  void render(const long long _t,
+	      glm::vec2 & pos /* own ship position in the screen */,
+	      float pix_per_meter);    
+};
+
 class c_gl_text_obj: public c_gl_obj
 {
 public:
@@ -124,7 +173,7 @@ public:
 
 private:
   bool bupdated;
-  GLuint modeloc, posloc, txcloc, smploc, clrloc, bkgclrloc, depthloc;
+  GLuint modeloc, trnloc, scloc,  posloc, txcloc, smploc, clrloc, bkgclrloc, depthloc;
   GLuint htex;
   GLuint vao, vbo[2];
 
@@ -194,6 +243,7 @@ public:
   virtual ~c_gl_text_obj();
 
   bool init(const char * ftex, const char * finf, GLuint _modeloc,
+	    GLuint _trnloc, GLuint _scloc,
     GLuint _posloc, GLuint _txcloc, GLuint _smploc,
     GLuint _clrloc, GLuint _bkgclrloc, GLuint _depthloc,
     unsigned int _sz_buf = 4096);
@@ -453,7 +503,7 @@ class c_gl_2d_line_obj: public c_gl_obj
   int num_total_vertices;
   s_vertex * vertices, *vertices_trn;
   float wrange[2];
-  GLuint modeloc, posloc, clrloc, depthloc;
+  GLuint modeloc, trnloc, scloc, posloc, clrloc, depthloc;
   float zstep;
 
   struct s_line_buffer_inf
@@ -483,7 +533,7 @@ public:
   c_gl_2d_line_obj();
   virtual ~c_gl_2d_line_obj();
 
-  bool init(GLuint modeloc, GLuint posloc, GLuint clrloc, GLuint _depthloc,
+  bool init(GLuint modeloc, GLuint trnloc, GLuint scloc, GLuint posloc, GLuint clrloc, GLuint _depthloc,
     unsigned int buffer_size = 4096);
   int add(const int npts, const float * pts, bool blines = false);
 
@@ -617,7 +667,7 @@ public:
 
 private:
   GLuint vao, vbo[2]; // veterx buffer objects: vertex and index
-  GLuint modeloc, posloc, clrloc, depthloc;
+  GLuint modeloc, trnloc, scloc, posloc, clrloc, depthloc;
   float zstep;
   struct s_vertex{
     float x, y;
@@ -700,14 +750,14 @@ public:
     }
   }
 
-  bool init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
+  bool init(GLuint _modeloc, GLuint _trnloc, GLuint _scloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
     const unsigned int npts, const float * points,
     const unsigned int nids, const unsigned short * indices,
     const unsigned int buffer_size = 64);
   
-  bool init_rectangle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
+  bool init_rectangle(GLuint _modeloc, GLuint _trnloc, GLuint _scloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
     const glm::vec2 & plb, glm::vec2 & sz, const unsigned int buffer_size = 64);
-  bool init_circle(GLuint _modeloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
+  bool init_circle(GLuint _modeloc, GLuint _trnloc, GLuint _scloc, GLuint _posloc, GLuint _clrloc, GLuint _depthloc,
     const unsigned int npts, const float rx, const float ry, const unsigned int buffer_size = 64);
 
   int add(const glm::vec4 & clr, const glm::vec2 & pos, const float rot = 0.0, const float scale = 1.0);

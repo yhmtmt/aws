@@ -293,7 +293,7 @@ bool f_aws1_ui::init_map_mask()
   idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 1] = MAP_MASK_CIRCLE_DIV;
   idx[(NUM_MAP_MASK_TRIS - 1) * 3 + 2] = NUM_MAP_MASK_PTS - 1;
   
-  if(!omap_mask.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d,
+  if(!omap_mask.init(loc_mode, loc_t2d, loc_scale2d, loc_pos2d, loc_gcolor, loc_depth2d,
 		     NUM_MAP_MASK_PTS, (float*)pts, NUM_MAP_MASK_IDX, idx, 2)){
     cerr << "Failed to initialize map mask." << endl;
     return false;
@@ -398,15 +398,15 @@ bool f_aws1_ui::init_run()
   {
     glm::vec2 lb(0, 0);
     glm::vec2 sz(1, 1);
-    if (!orect.init_rectangle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, lb, sz, 256))
+    if (!orect.init_rectangle(loc_mode, loc_t2d, loc_scale2d, loc_pos2d, loc_gcolor, loc_depth2d, lb, sz, 256))
       return false;
-    if (!otri.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 3, 1, 1, 256))
+    if (!otri.init_circle(loc_mode, loc_t2d, loc_scale2d, loc_pos2d, loc_gcolor, loc_depth2d, 3, 1, 1, 256))
       return false;
-    if (!ocirc.init_circle(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 10, 1, 1, 256))
+    if (!ocirc.init_circle(loc_mode, loc_t2d, loc_scale2d, loc_pos2d, loc_gcolor, loc_depth2d, 10, 1, 1, 256))
       return false;
-    if (!otxt.init(ftex, ftexinf, loc_mode, loc_pos2d, loc_texcoord, loc_sampler, loc_gcolor, loc_gcolorb, loc_depth2d, 65535))
+    if (!otxt.init(ftex, ftexinf, loc_mode, loc_t2d,  loc_scale2d, loc_pos2d, loc_texcoord, loc_sampler, loc_gcolor, loc_gcolorb, loc_depth2d, 65535))
       return false;
-    if (!oline.init(loc_mode, loc_pos2d, loc_gcolor, loc_depth2d, 8192))
+    if (!oline.init(loc_mode, loc_t2d, loc_scale2d, loc_pos2d, loc_gcolor, loc_depth2d, 8192))
       return false;
     
     if (!oline3d.init(loc_mode, loc_position, loc_Mmvp, loc_gcolor, 256))
@@ -492,7 +492,6 @@ bool f_aws1_ui::init_run()
   glEnable(GL_CULL_FACE);
   glEnable(GL_DEPTH_TEST);
   glDepthFunc(GL_LEQUAL);
-  //glEnable(GL_TEXTURE_2D);
   glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
   glEnable(GL_BLEND);
 
@@ -524,15 +523,16 @@ bool f_aws1_ui::setup_shader()
   load_glsl_program(ffs, fvs, p);
   
   loc_inv_sz_half_scrn = glGetUniformLocation(p, "inv_sz_half_scrn");
+  loc_t2d = glGetUniformLocation(p, "t2d");
   loc_Mmvp = glGetUniformLocation(p, "Mmvp");
   loc_Mm = glGetUniformLocation(p, "Mm");
   loc_Lpar = glGetUniformLocation(p, "Lpar");
   loc_sampler = glGetUniformLocation(p, "sampler");
+  loc_scale2d = glGetUniformLocation(p, "scale2d");
   loc_depth2d = glGetUniformLocation(p, "depth2d");
   loc_position = glGetAttribLocation(p, "position");
   loc_normal = glGetAttribLocation(p, "normal");
-  loc_texcoord = glGetAttribLocation(p, "texcoord");
-  
+  loc_texcoord = glGetAttribLocation(p, "texcoord");  
   loc_mode = glGetUniformLocation(p, "mode");
   loc_gcolor = glGetUniformLocation(p, "gcolor");
   loc_gcolorb = glGetUniformLocation(p, "gcolorb");
@@ -950,7 +950,10 @@ void f_aws1_ui::render_gl_objs(c_view_mode_box * pvm_box)
   
   glUseProgram(p);
   glUniform2fv(loc_inv_sz_half_scrn, 1, inv_sz_half_scrn);
-  
+  {
+    float t2d[2] = {0.f, 0.f};
+    glUniform2fv(loc_t2d, 1, t2d);
+  }
   // 3d rendering
   glUniform1i(loc_mode, 0);
   
@@ -1839,7 +1842,7 @@ void f_aws1_ui::update_route_cfg_box(c_route_cfg_box * prc_box, e_mouse_state mo
       break;
     case c_route_cfg_box::wp_del:
       m_ch_wp->ers();
-	  fwp = m_ch_wp->get_focused_wp();
+      fwp = m_ch_wp->get_focused_wp();
       break;
     case c_route_cfg_box::rt_prev:
       rt = m_ch_wp->get_route_id();

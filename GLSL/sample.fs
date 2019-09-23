@@ -21,7 +21,7 @@ void main()
         cosTheta = dot(Lpar, Normal);   
         outputF = min(1.0, cosTheta + 0.1) * clr;
         break;
-    case 1: // 2d text mode
+    case 1: // 2d tex mode
         clr = texture(sampler, Texcd);
         outputF = clr[0] * gcolor + (1.0 - clr[0]) * gcolorb;
         break;

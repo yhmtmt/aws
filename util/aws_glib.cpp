@@ -486,9 +486,188 @@ bool load_glsl_program(const char * ffs, const char * fvs,  GLuint & p)
 }
 
 
+////////////////////////////////////////////////////////////////// c_gl_radar
 
-/////////////////////////////////////////////////////////////////////////////// c_gl_text_obj
-void c_gl_text_obj::parse_var_name(ifstream & ifile, char * str_var, int & len_str_var)
+bool c_gl_radar::init(int _spokes, int _spoke_len_max,
+		      GLuint _modeloc, GLuint _trnloc, GLuint _scloc,
+		      GLuint _posloc, GLuint _txcloc, GLuint _smploc,
+		      GLuint _clrloc, GLuint _bkgclrloc, GLuint _depthloc,
+		      glm::vec4 & _clr, glm::vec4 & _bkgclr, const int _depth)
+{
+  spokes = _spokes;
+  spoke_len_max = _spoke_len_max;
+  
+  modeloc = _modeloc;
+  trnloc = _trnloc;
+  scloc = _scloc;
+  posloc = _posloc;
+  txcloc = _txcloc;
+  smploc = _smploc;
+  clrloc = _clrloc;
+  bkgclrloc = _bkgclrloc;
+  depthloc = _depthloc;
+
+  clr = _clr;
+  bkgclr = _bkgclr;
+  
+  int depth;
+  glGetIntegerv(GL_DEPTH_BITS, &depth);
+  zstep = (float)(2.0 / (float)(1 << depth));
+  z = -1.0 + (float)(_depth * zstep);
+  
+  // Create Texture Buffer
+  glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+  glGenTextures(1, &htex);
+  glBindTexture(GL_TEXTURE_2D, htex);
+
+  texture_buffer = vector<GLubyte>(spoke_len_max * spokes, 0);
+  
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, spoke_len_max, spokes, 0,
+	       GL_RED, GL_UNSIGNED_BYTE, &texture_buffer);
+  texture_buffer.clear();
+  
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+
+  // Create Vertex Buffer
+  glGenVertexArrays(1, &vao);
+  glBindVertexArray(vao);
+  glGenBuffers(2, vbo);
+  num_vertices = spokes * 4;
+  num_indices = spokes * 6;
+  vertices = new s_vertex[num_vertices];
+  indices = new unsigned short[num_indices];
+
+  // single spoke 
+  // vertices: 0: center, 1: arc[0], 2: arc[1], 3: arc[2]
+  // indices: (0, 2, 1) (0, 3, 2) two triangles counter clockwise
+
+  double spoke_angle = 2.0 * CV_PI / (double) spokes;
+  double a0, a1, a2;
+  for (int ispoke = 0; ispoke < spokes; ispoke++){
+    int center = 4 * ispoke;
+    int arc0 = 4 * ispoke + 1;
+    int arc1 = 4 * ispoke + 2;
+    int arc2 = 4 * ispoke + 3;
+    indices[6 * ispoke    ] = center;
+    indices[6 * ispoke + 1] = arc1;
+    indices[6 * ispoke + 2] = arc0;
+    indices[6 * ispoke + 3] = center;
+    indices[6 * ispoke + 4] = arc2;
+    indices[6 * ispoke + 5] = arc1;
+
+    // vertex 
+    vertices[center].x = 0.f;
+    vertices[center].y = 0.f;    
+    vertices[arc0].x = sin(spoke_angle * (ispoke - 1));
+    vertices[arc0].y = cos(spoke_angle * (ispoke - 1));
+    vertices[arc1].x = sin(spoke_angle * ispoke);
+    vertices[arc1].y = cos(spoke_angle * ispoke);
+    vertices[arc2].x = sin(spoke_angle * (ispoke + 1));
+    vertices[arc2].y = cos(spoke_angle * (ispoke + 1));
+    // texture coordinate
+    vertices[center].u = 0.f;
+    vertices[arc0].u = vertices[arc1].u = vertices[arc2].u = 1.0;
+    vertices[center].v = (float)((double)ispoke / (double)spokes);    
+    vertices[arc0].v = vertices[arc1].v = vertices[arc2].v = vertices[center].v;
+  }
+
+  // creating vertex buffer
+  glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(s_vertex)*num_vertices, vertices, GL_STATIC_DRAW);
+
+  // cireating index buffer
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short) * num_indices, indices, GL_STATIC_DRAW);
+
+  bearing_prev = -1;
+  tprev_update = -1;
+  range_prev = -1;
+  return true;
+}
+
+void c_gl_radar::destroy()
+{
+  if(vao != 0){
+    glDeleteBuffers(2, vbo);
+    glDeleteVertexArrays(1, &vao);
+
+    if(vertices)
+      delete[] vertices;
+    vertices = NULL;
+
+    if(indices)
+      delete[] indices;
+    indices = NULL;
+  }
+
+  if(htex != 0){
+    glDeleteTextures(1, &htex);
+    htex = 0;
+  }
+}
+
+void c_gl_radar::update_spoke(const long long _t,
+			      const double _lat, const double _lon,
+			      const int _range_meter,
+			      const int _bearing, const int _len,
+			      const unsigned char * _line)
+{
+
+  if(range_prev != _range_meter){
+    texture_buffer = vector<GLubyte>(spoke_len_max * spokes, 0);    
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, spoke_len_max, spokes, GL_RED, GL_UNSIGNED_BYTE, &texture_buffer);
+  }else{
+    texture_buffer = vector<GLubyte>(spoke_len_max, 0);  
+    // missing spokes are erased  
+    for (int ispoke = bearing_prev + 1; ispoke != _bearing; ispoke = (ispoke + 1) % spokes){
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, ispoke, spoke_len_max, 1, GL_RED, GL_UNSIGNED_BYTE, &texture_buffer);
+      
+    }
+  }
+
+  glTexSubImage2D(GL_TEXTURE_2D, 0, 0, _bearing, spoke_len_max, 1, GL_RED, GL_UNSIGNED_BYTE, _line);
+
+  range_prev = _range_meter;
+  tprev_update = _t;
+  bearing_prev = _bearing;
+}
+
+void c_gl_radar::render(const long long _t, glm::vec2 & pos, float pix_per_meter)
+{
+  glUniform1i(modeloc, 1);
+
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+  glVertexAttribPointer(posloc, 2, GL_FLOAT, GL_FALSE,
+			sizeof(s_vertex), 0);
+  glVertexAttribPointer(txcloc, 2, GL_FLOAT, GL_FALSE,
+			sizeof(s_vertex), (const void*)(sizeof(float)*2));
+  glEnableVertexAttribArray(posloc);
+  glEnableVertexAttribArray(txcloc);
+
+
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
+  glActiveTexture(GL_TEXTURE0);
+  glUniform1i(smploc, 0);
+  glBindTexture(GL_TEXTURE_2D, htex);
+
+  glUniform2fv(trnloc, 1, glm::value_ptr(pos));
+  
+  float scl = pix_per_meter * range_prev;
+  glUniform1f(scloc, scl);
+  glUniform4fv(clrloc, 1, glm::value_ptr(clr));
+  glUniform4fv(bkgclrloc, 1, glm::value_ptr(bkgclr));
+  glUniform1f(depthloc, z);
+  glDrawElements(GL_TRIANGLES, num_vertices, GL_UNSIGNED_SHORT, 0);
+}
+
+
+////////////////////////////////////////////////////////////////// c_gl_text_obj
+void c_gl_text_obj::parse_var_name(ifstream & ifile, char * str_var,
+				   int & len_str_var)
 {
   len_str_var = 0;
   while (1){
@@ -564,6 +743,11 @@ void c_gl_text_obj::destroy()
     vao = 0;
   }
 
+  if(htex != 0){
+    glDeleteTextures(1, &htex);
+    htex = 0;
+  }
+  
   if (vertices)
     delete[] vertices;
   
@@ -586,11 +770,14 @@ void c_gl_text_obj::destroy()
 }
 
 bool c_gl_text_obj::init(const char * ftex, const char * finf, GLuint _modeloc,
+			 GLuint _trnloc, GLuint _scloc,
 			 GLuint _posloc, GLuint _txcloc, GLuint _smploc,
 			 GLuint _clrloc, GLuint _bkgclrloc, GLuint _depthloc,
 			 unsigned int _sz_buf)
 {
   modeloc = _modeloc;
+  trnloc = _trnloc;
+  scloc = _scloc;
   posloc = _posloc;
   txcloc = _txcloc;
   smploc = _smploc;
@@ -749,305 +936,311 @@ const int c_gl_text_obj::reserv(const unsigned int len)
 
 void c_gl_text_obj::set(int handle, const char * str)
 {
-	if (handle < sbis.size()){
-		strncpy(sbis[handle].str, str, sbis[handle].length);
-		sbis[handle].str[sbis[handle].length - 1] = '\0';
-		sbis[handle].bupdate = false;
-	}
+  if (handle < sbis.size()){
+    strncpy(sbis[handle].str, str, sbis[handle].length);
+    sbis[handle].str[sbis[handle].length - 1] = '\0';
+    sbis[handle].bupdate = false;
+  }
 }
 
 void c_gl_text_obj::config(int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr,
 	const glm::vec2 & sz_fnt, const glm::vec2 & mgn, const e_anchor anch,
 	const glm::vec2 & t, const float  rot, const int depth)
 {
-	if (handle < sbis.size()){
-		sbis[handle].sz_fnt = sz_fnt;
-		float s = (float)sin(rot), c = (float)cos(rot);
-		sbis[handle].rot = glm::mat2(c, -s, s, c);
-		sbis[handle].t = t;
-		sbis[handle].bkgclr = bkgclr;
-		sbis[handle].clr = clr;
-		sbis[handle].anch = anch;
-		sbis[handle].mgn = mgn;
-		sbis[handle].bupdate = false;
-		config_depth(handle, depth);
-	}
+  if (handle < sbis.size()){
+    sbis[handle].sz_fnt = sz_fnt;
+    float s = (float)sin(rot), c = (float)cos(rot);
+    sbis[handle].rot = glm::mat2(c, -s, s, c);
+    sbis[handle].t = t;
+    sbis[handle].bkgclr = bkgclr;
+    sbis[handle].clr = clr;
+    sbis[handle].anch = anch;
+    sbis[handle].mgn = mgn;
+    sbis[handle].bupdate = false;
+    config_depth(handle, depth);
+  }
 }
 
 void c_gl_text_obj::config_font_size(const int handle, const glm::vec2 & sz_fnt)
 {
-	if (handle < sbis.size()){
-		sbis[handle].sz_fnt = sz_fnt;
-		sbis[handle].bupdate = false;
-	}
+  if (handle < sbis.size()){
+    sbis[handle].sz_fnt = sz_fnt;
+    sbis[handle].bupdate = false;
+  }
 }
 
 void c_gl_text_obj::config_font_space(const int handle, const glm::vec2 & mgn)
 {
-	if (handle < sbis.size()){
-		sbis[handle].mgn = mgn;
-		sbis[handle].bupdate = false;
-	}
+  if (handle < sbis.size()){
+    sbis[handle].mgn = mgn;
+    sbis[handle].bupdate = false;
+  }
 }
 
 void c_gl_text_obj::config_color(const int handle, const glm::vec4 & clr, const glm::vec4 & bkgclr)
 {
-	if (handle < sbis.size()){
-		sbis[handle].clr = clr;
-		sbis[handle].bkgclr = bkgclr;
-		//sbis[handle].bupdate = false;
-	}
+  if (handle < sbis.size()){
+    sbis[handle].clr = clr;
+    sbis[handle].bkgclr = bkgclr;
+    //sbis[handle].bupdate = false;
+  }
 }
 
 void c_gl_text_obj::config_position(const int handle, glm::vec2 & t)
 {
-	if (handle < sbis.size()){
-		sbis[handle].t = t;
-		sbis[handle].bupdate = false;
-	}
+  if (handle < sbis.size()){
+    sbis[handle].t = t;
+    sbis[handle].bupdate = false;
+  }
 }
 
 void c_gl_text_obj::config_rotation(const int handle, const float rot)
 {
-	if (handle < sbis.size()){
-		float s = (float)sin(rot), c = (float)cos(rot);
-		sbis[handle].rot = glm::mat2(c, -s, s, c);
-		sbis[handle].bupdate = false;
-	}
+  if (handle < sbis.size()){
+    float s = (float)sin(rot), c = (float)cos(rot);
+    sbis[handle].rot = glm::mat2(c, -s, s, c);
+    sbis[handle].bupdate = false;
+  }
 }
 
 void c_gl_text_obj::config_rotation(const int handle, const float c, const float s)
 {
-	if (handle < sbis.size())
-	{
-		sbis[handle].rot = glm::mat2(c, -s, s, c);
-		sbis[handle].bupdate = false;
-	}
+  if (handle < sbis.size())
+    {
+      sbis[handle].rot = glm::mat2(c, -s, s, c);
+      sbis[handle].bupdate = false;
+    }
 }
 
 void c_gl_text_obj::config_anchor(const int handle, const e_anchor anch)
 {
-	if (handle < sbis.size()){
-		sbis[handle].anch = anch;
-		sbis[handle].bupdate = false;
-	}
+  if (handle < sbis.size()){
+    sbis[handle].anch = anch;
+    sbis[handle].bupdate = false;
+  }
 }
 
 
 void c_gl_text_obj::config_depth(const int handle, const int depth)
 {
-	if (handle < sbis.size())
-	{
-		sbis[handle].z = -1.0 + (float)(depth * zstep);
-	}
+  if (handle < sbis.size())
+    {
+      sbis[handle].z = -1.0 + (float)(depth * zstep);
+    }
 }
 
 
 void c_gl_text_obj::remove(int handle)
 {
-	if (handle < sbis.size()){
-		sbis[handle].bvalid = false;
-		if (sbis[handle].str)
-			delete[] sbis[handle].str;
-	}
+  if (handle < sbis.size()){
+    sbis[handle].bvalid = false;
+    if (sbis[handle].str)
+      delete[] sbis[handle].str;
+  }
 }
 
 void c_gl_text_obj::update_vertices(bool bfull)
 {
-	// creating vertices
-	unsigned int offset = 0;
-	s_vertex * _vtx = vertices;
-	unsigned short * _idx = indices;
-	for (int istr = 0; istr < sbis.size(); istr++){
-		s_string_buffer_inf & sbi = sbis[istr];
-		if (!sbis[istr].bvalid)
-			continue;
-		if (bfull){
-			sbi.offset = offset;
-			sbi.vtx = _vtx;
-			sbi.idx = _idx;
-			update_vertices(sbi);
-			_vtx = sbi.vtx + sbi.length * 4;
-			_idx = sbi.idx + sbi.length * 6;
-			offset = sbi.offset + sbi.length;
-		}
-		else{
-			if (sbi.bupdate)
-				continue;
-			update_vertices(sbi);
-		}
-	}
-	if (bfull){
-		num_vertices = offset * 4;
-		total_str_len = offset;
-	}
+  // creating vertices
+  unsigned int offset = 0;
+  s_vertex * _vtx = vertices;
+  unsigned short * _idx = indices;
+  for (int istr = 0; istr < sbis.size(); istr++){
+    s_string_buffer_inf & sbi = sbis[istr];
+    if (!sbis[istr].bvalid)
+      continue;
+    if (bfull){
+      sbi.offset = offset;
+      sbi.vtx = _vtx;
+      sbi.idx = _idx;
+      update_vertices(sbi);
+      _vtx = sbi.vtx + sbi.length * 4;
+      _idx = sbi.idx + sbi.length * 6;
+      offset = sbi.offset + sbi.length;
+    }
+    else{
+      if (sbi.bupdate)
+	continue;
+      update_vertices(sbi);
+    }
+  }
+  if (bfull){
+    num_vertices = offset * 4;
+    total_str_len = offset;
+  }
 }
 
 void c_gl_text_obj::update_vertices(s_string_buffer_inf & sbi)
 {
-	sbi.chars = 0;
-	char * str = sbi.str;
-	float x = 0.f, y = 0.f;
-	float xmin = FLT_MAX, xmax = -FLT_MAX, ymin = FLT_MAX, ymax = -FLT_MAX;
-	s_vertex * _vtx = sbi.vtx;
-	unsigned short * _idx = sbi.idx;
-	unsigned int offset = sbi.offset;
-	for (int ic = 0; ic < sbi.length; ic++){
-		if (str[ic] == '\n'){
-			y -= sbi.mgn[1];
-			x = 0.f;
-		}
-		else{
-			s_texcoord & tc = texcoord[str[ic]];
-			if (tc.w != 0.f){
-				_vtx[0].x = _vtx[2].x = x;
-				_vtx[1].x = _vtx[3].x = x + sbi.sz_fnt[0];
-				_vtx[0].y = _vtx[1].y = y;
-				_vtx[2].y = _vtx[3].y = y - sbi.sz_fnt[1];
-				_vtx[0].u = _vtx[2].u = tc.u;
-				_vtx[1].u = _vtx[3].u = tc.u + tc.w;
-				_vtx[0].v = _vtx[1].v = tc.v + tc.h;
-				_vtx[2].v = _vtx[3].v = tc.v;
-				_idx[0] = (unsigned short)(4 * offset);
-				_idx[1] = (unsigned short)(_idx[0] + 2);
-				_idx[2] = (unsigned short)(_idx[0] + 1);
-				_idx[3] = (unsigned short)(_idx[0] + 1);
-				_idx[4] = (unsigned short)(_idx[0] + 2);
-				_idx[5] = (unsigned short)(_idx[0] + 3);
-				xmin = min(xmin, _vtx[0].x);
-				ymin = min(ymin, _vtx[2].y);
-				xmax = max(xmax, _vtx[1].x);
-				ymax = max(ymax, _vtx[0].y);
-				_vtx += 4;
-				_idx += 6;
-				offset++;
-				sbi.chars++;
-			}
-
-			x += sbi.mgn[0];
-		}
-	}
-	// shifting center position
-	float cx, cy;
-	switch (sbi.anch & 0x0F)
-	{
-	case an_hl:
-		cx = xmin;
-		break;
-	case an_hc:
-		cx = (float)(0.5 * (xmax + xmin));
-		break;
-	case an_hr:
-		cx = xmax;
-	}
-
-	switch (sbi.anch & 0xF0)
-	{
-	case an_vb:
-		cy = ymin;
-		break;
-	case an_vc:
-		cy = (float)(0.5 * (ymin + ymax));
-		break;
-	case an_vt:
-		cy = ymax;
-	}
-
-	int n = sbi.chars * 4;
-	for (int ic = 0; ic < n; ic++){
-		s_vertex & v = sbi.vtx[ic];
-		v.x -= cx;
-		v.y -= cy;
-		glm::vec2 tmp;
-		tmp.x = v.x * sbi.rot[0][0] + v.y * sbi.rot[0][1] + sbi.t.x;
-		tmp.y = v.x * sbi.rot[1][0] + v.y * sbi.rot[1][1] + sbi.t.y;
-		v.x = tmp.x;
-		v.y = tmp.y;
-	}
-
-	xmin -= cx;
-	xmax -= cx;
-	ymin -= cy;
-	ymax -= cy;
-
-	sbi.box[0].x = xmin; sbi.box[0].y = ymin;
-	sbi.box[1].x = xmin; sbi.box[1].y = ymax;
-	sbi.box[2].x = xmax; sbi.box[2].y = ymin;
-	sbi.box[3].x = xmax; sbi.box[3].y = ymax;
-	for (int ib = 0; ib < 4; ib++){
-		glm::vec2 tmp;
-		tmp.x = sbi.box[ib].x * sbi.rot[0][0] + sbi.box[ib].y * sbi.rot[0][1] + sbi.t.x;
-		tmp.y = sbi.box[ib].x * sbi.rot[1][0] + sbi.box[ib].y * sbi.rot[1][1] + sbi.t.y;
-		sbi.box[ib] = tmp;
-	}
-
-	sbi.bupdate = true;
+  sbi.chars = 0;
+  char * str = sbi.str;
+  float x = 0.f, y = 0.f;
+  float xmin = FLT_MAX, xmax = -FLT_MAX, ymin = FLT_MAX, ymax = -FLT_MAX;
+  s_vertex * _vtx = sbi.vtx;
+  unsigned short * _idx = sbi.idx;
+  unsigned int offset = sbi.offset;
+  for (int ic = 0; ic < sbi.length; ic++){
+    if (str[ic] == '\n'){
+      y -= sbi.mgn[1];
+      x = 0.f;
+    }
+    else{
+      s_texcoord & tc = texcoord[str[ic]];
+      if (tc.w != 0.f){
+	_vtx[0].x = _vtx[2].x = x;
+	_vtx[1].x = _vtx[3].x = x + sbi.sz_fnt[0];
+	_vtx[0].y = _vtx[1].y = y;
+	_vtx[2].y = _vtx[3].y = y - sbi.sz_fnt[1];
+	_vtx[0].u = _vtx[2].u = tc.u;
+	_vtx[1].u = _vtx[3].u = tc.u + tc.w;
+	_vtx[0].v = _vtx[1].v = tc.v + tc.h;
+	_vtx[2].v = _vtx[3].v = tc.v;
+	_idx[0] = (unsigned short)(4 * offset);
+	_idx[1] = (unsigned short)(_idx[0] + 2);
+	_idx[2] = (unsigned short)(_idx[0] + 1);
+	_idx[3] = (unsigned short)(_idx[0] + 1);
+	_idx[4] = (unsigned short)(_idx[0] + 2);
+	_idx[5] = (unsigned short)(_idx[0] + 3);
+	xmin = min(xmin, _vtx[0].x);
+	ymin = min(ymin, _vtx[2].y);
+	xmax = max(xmax, _vtx[1].x);
+	ymax = max(ymax, _vtx[0].y);
+	_vtx += 4;
+	_idx += 6;
+	offset++;
+	sbi.chars++;
+      }
+      
+      x += sbi.mgn[0];
+    }
+  }
+  // shifting center position
+  float cx, cy;
+  switch (sbi.anch & 0x0F)
+    {
+    case an_hl:
+      cx = xmin;
+      break;
+    case an_hc:
+      cx = (float)(0.5 * (xmax + xmin));
+      break;
+    case an_hr:
+      cx = xmax;
+    }
+  
+  switch (sbi.anch & 0xF0)
+    {
+    case an_vb:
+      cy = ymin;
+      break;
+    case an_vc:
+      cy = (float)(0.5 * (ymin + ymax));
+      break;
+    case an_vt:
+      cy = ymax;
+    }
+  
+  int n = sbi.chars * 4;
+  for (int ic = 0; ic < n; ic++){
+    s_vertex & v = sbi.vtx[ic];
+    v.x -= cx;
+    v.y -= cy;
+    glm::vec2 tmp;
+    tmp.x = v.x * sbi.rot[0][0] + v.y * sbi.rot[0][1] + sbi.t.x;
+    tmp.y = v.x * sbi.rot[1][0] + v.y * sbi.rot[1][1] + sbi.t.y;
+    v.x = tmp.x;
+    v.y = tmp.y;
+  }
+  
+  xmin -= cx;
+  xmax -= cx;
+  ymin -= cy;
+  ymax -= cy;
+  
+  sbi.box[0].x = xmin; sbi.box[0].y = ymin;
+  sbi.box[1].x = xmin; sbi.box[1].y = ymax;
+  sbi.box[2].x = xmax; sbi.box[2].y = ymin;
+  sbi.box[3].x = xmax; sbi.box[3].y = ymax;
+  for (int ib = 0; ib < 4; ib++){
+    glm::vec2 tmp;
+    tmp.x = sbi.box[ib].x * sbi.rot[0][0] + sbi.box[ib].y * sbi.rot[0][1] + sbi.t.x;
+    tmp.y = sbi.box[ib].x * sbi.rot[1][0] + sbi.box[ib].y * sbi.rot[1][1] + sbi.t.y;
+    sbi.box[ib] = tmp;
+  }
+  
+  sbi.bupdate = true;
 }
 
 bool c_gl_text_obj::render(unsigned int texture_unit)
 {
-	update_vertices(!bupdated);
-	glUniform1i(modeloc, 1);
+  update_vertices(!bupdated);
+  glUniform1i(modeloc, 1);
 
-	// vertex buffer
-	glBindVertexArray(vao);
-	glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(s_vertex)*num_vertices, vertices, GL_DYNAMIC_DRAW);
-	glVertexAttribPointer(posloc, 2, GL_FLOAT, GL_FALSE,
-		sizeof(s_vertex), 0);
-	glVertexAttribPointer(txcloc, 2, GL_FLOAT, GL_FALSE,
-		sizeof(s_vertex), (const void*)(sizeof(float)* 2));
-	glEnableVertexAttribArray(posloc);
-	glEnableVertexAttribArray(txcloc);
-	// index buffer
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short)* 6 * total_str_len, indices, GL_DYNAMIC_DRAW);
-
-	glActiveTexture(GL_TEXTURE0 + texture_unit);
-	glUniform1i(smploc, texture_unit);
-	glBindTexture(GL_TEXTURE_2D, htex);
-
-	// rendering
-	for (int istr = 0; istr < sbis.size(); istr++){
-		if (!sbis[istr].bact)
-			continue;
-		glUniform4fv(clrloc, 1, glm::value_ptr(sbis[istr].clr));
-		glUniform4fv(bkgclrloc, 1, glm::value_ptr(sbis[istr].bkgclr));
-		glUniform1f(depthloc, sbis[istr].z);
-		glDrawElements(GL_TRIANGLES, sbis[istr].chars * 6, GL_UNSIGNED_SHORT, (const void*)(sizeof(unsigned short)* sbis[istr].offset * 6));
-	}
-
-	return true;
+  // vertex buffer
+  glBindVertexArray(vao);
+  glBindBuffer(GL_ARRAY_BUFFER, vbo[0]);
+  glBufferData(GL_ARRAY_BUFFER, sizeof(s_vertex)*num_vertices, vertices, GL_DYNAMIC_DRAW);
+  glVertexAttribPointer(posloc, 2, GL_FLOAT, GL_FALSE,
+			sizeof(s_vertex), 0);
+  glVertexAttribPointer(txcloc, 2, GL_FLOAT, GL_FALSE,
+			sizeof(s_vertex), (const void*)(sizeof(float)* 2));
+  glEnableVertexAttribArray(posloc);
+  glEnableVertexAttribArray(txcloc);
+  // index buffer
+  glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned short)* 6 * total_str_len, indices, GL_DYNAMIC_DRAW);
+  
+  glActiveTexture(GL_TEXTURE0 + texture_unit);
+  glUniform1i(smploc, texture_unit);
+  glBindTexture(GL_TEXTURE_2D, htex);
+  {
+    glm::vec2 org(0.f,0.f);
+    float scl = 1.0f;
+    glUniform2fv(trnloc, 1, glm::value_ptr(org));
+    glUniform1f(scloc, scl);    
+  }
+  
+  // rendering
+  for (int istr = 0; istr < sbis.size(); istr++){
+    if (!sbis[istr].bact)
+      continue;
+    glUniform4fv(clrloc, 1, glm::value_ptr(sbis[istr].clr));
+    glUniform4fv(bkgclrloc, 1, glm::value_ptr(sbis[istr].bkgclr));
+    glUniform1f(depthloc, sbis[istr].z);
+    glDrawElements(GL_TRIANGLES, sbis[istr].chars * 6, GL_UNSIGNED_SHORT, (const void*)(sizeof(unsigned short)* sbis[istr].offset * 6));
+  }
+  
+  return true;
 }
 
 int c_gl_text_obj::collision(const glm::vec2 & pt)
 {
-	for (int ih = 0; ih < sbis.size(); ih++){
-		s_string_buffer_inf & sbi = sbis[ih];
-		if (!sbi.bvalid || !sbi.bact)
-			continue;
-		glm::vec2 vbase[2];
-		vbase[0] = sbi.box[2] - sbi.box[0];
-		vbase[1] = sbi.box[1] - sbi.box[0];
-
-		glm::vec2 vpt[4];
-		vpt[0] = pt - sbi.box[0];
-		vpt[1] = pt - sbi.box[3];
-		if (glm::dot(vpt[0], vbase[0]) < 0)
-			continue;
-
-		if (glm::dot(vpt[0], vbase[1]) < 0)
-			continue;
-
-		if (glm::dot(vpt[1], vbase[0]) > 0)
-			continue;
-
-		if (glm::dot(vpt[1], vbase[1]) > 0)
-			continue;
-
-		return ih;
-	}
-	return -1;
+  for (int ih = 0; ih < sbis.size(); ih++){
+    s_string_buffer_inf & sbi = sbis[ih];
+    if (!sbi.bvalid || !sbi.bact)
+      continue;
+    glm::vec2 vbase[2];
+    vbase[0] = sbi.box[2] - sbi.box[0];
+    vbase[1] = sbi.box[1] - sbi.box[0];
+    
+    glm::vec2 vpt[4];
+    vpt[0] = pt - sbi.box[0];
+    vpt[1] = pt - sbi.box[3];
+    if (glm::dot(vpt[0], vbase[0]) < 0)
+      continue;
+    
+    if (glm::dot(vpt[0], vbase[1]) < 0)
+      continue;
+    
+    if (glm::dot(vpt[1], vbase[0]) > 0)
+      continue;
+    
+    if (glm::dot(vpt[1], vbase[1]) > 0)
+      continue;
+    
+    return ih;
+  }
+  return -1;
 }
 
 ////////////////////////////////////////////////////////////////////// c_gl_line_obj
@@ -1290,7 +1483,7 @@ void c_gl_2d_line_obj::config_depth(const int handle, const int depth)
 }
 
 
-bool c_gl_2d_line_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc,
+bool c_gl_2d_line_obj::init(GLuint _modeloc, GLuint _trnloc, GLuint _scloc, GLuint _posloc, GLuint _clrloc,
 			    GLuint _depthloc, unsigned int _buffer_size)
 {
   buffer_size = _buffer_size;
@@ -1301,6 +1494,8 @@ bool c_gl_2d_line_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc,
     return false;
   
   modeloc = _modeloc;
+  trnloc = _trnloc;
+  scloc = _scloc;
   posloc = _posloc;
   clrloc = _clrloc;
   depthloc = _depthloc;
@@ -1439,6 +1634,13 @@ void c_gl_2d_line_obj::render()
   glBindVertexArray(vao);
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glEnableVertexAttribArray(posloc);
+  
+  {
+    float scl = 1.0f;
+    glm::vec2 org(0.f,0.f);    
+    glUniform2fv(trnloc, 1, glm::value_ptr(org));
+    glUniform1f(scloc, scl);
+  }
 
   for (int ih = 0; ih < lbis.size(); ih++){
     s_line_buffer_inf & lbi = lbis[ih];
@@ -1488,7 +1690,7 @@ void c_gl_2d_obj::destroy()
   
 }
 
-bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _posloc,
+bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _trnloc, GLuint _scloc, GLuint _posloc,
 				 GLuint _clrloc, GLuint _depthloc,
 				 const glm::vec2 & plb, glm::vec2 & sz,
 				 const unsigned int _buffer_size)
@@ -1496,6 +1698,8 @@ bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _posloc,
   type = rectangle;
   
   modeloc = _modeloc;
+  trnloc = _trnloc;
+  scloc = _scloc;
   posloc = _posloc;
   clrloc = _clrloc;
   depthloc = _depthloc;
@@ -1546,7 +1750,8 @@ bool c_gl_2d_obj::init_rectangle(GLuint _modeloc, GLuint _posloc,
   return true;
 }
 
-bool c_gl_2d_obj::init_circle(GLuint _modeloc, GLuint _posloc,
+bool c_gl_2d_obj::init_circle(GLuint _modeloc, GLuint _trnloc, GLuint _scloc,
+			      GLuint _posloc,
 			      GLuint _clrloc, GLuint _depthloc,
 			      const unsigned int npts, const float rx,
 			      const float ry, const unsigned int _buffer_size)
@@ -1554,6 +1759,8 @@ bool c_gl_2d_obj::init_circle(GLuint _modeloc, GLuint _posloc,
   type = circle;
   
   modeloc = _modeloc;
+  trnloc = _trnloc;
+  scloc = _scloc;
   posloc = _posloc;
   clrloc = _clrloc;
   depthloc = _depthloc;
@@ -1608,7 +1815,8 @@ bool c_gl_2d_obj::init_circle(GLuint _modeloc, GLuint _posloc,
   return true;
 }
 
-bool c_gl_2d_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc,
+bool c_gl_2d_obj::init(GLuint _modeloc, GLuint _trnloc, GLuint _scloc,
+		       GLuint _posloc, GLuint _clrloc,
 		       GLuint _depthloc,
 		       const unsigned int npts, const float * points,
 		       const unsigned int nids, const unsigned short * indices,
@@ -1617,6 +1825,8 @@ bool c_gl_2d_obj::init(GLuint _modeloc, GLuint _posloc, GLuint _clrloc,
   type = custom;
   
   modeloc = _modeloc;
+  trnloc = _trnloc;
+  scloc = _scloc;
   posloc = _posloc;
   clrloc = _clrloc;
   depthloc = _depthloc;
@@ -2162,7 +2372,13 @@ void c_gl_2d_obj::render()
   glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vbo[1]);
   
   glUniform1i(modeloc, 3);
-  
+  {
+    glm::vec2 org(0.f,0.f);
+    float scl = 1.0f;
+    glUniform2fv(trnloc, 1, glm::value_ptr(org));
+    glUniform1f(scloc, scl);
+  }
+
   for (int ih = 0; ih < iis.size(); ih++){
     if (!iis[ih].bactive || !iis[ih].bvalid)
       continue;
