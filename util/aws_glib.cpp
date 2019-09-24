@@ -518,22 +518,45 @@ bool c_gl_radar::init(int _spokes, int _spoke_len_max,
   glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
   glGenTextures(1, &htex);
   glBindTexture(GL_TEXTURE_2D, htex);
-
-  texture_buffer = vector<GLubyte>(spoke_len_max * spokes, 0);
-  
-  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, spoke_len_max, spokes, 0,
-	       GL_RED, GL_UNSIGNED_BYTE, &texture_buffer);
-  texture_buffer.clear();
-  
+  glTexParameteri(GL_TEXTURE_2D, GL_GENERATE_MIPMAP, GL_TRUE);  
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_LINEAR);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  spoke_zero = Mat::zeros(1, spoke_len_max, CV_8UC1);  
+  Mat texture_buffer(2048,2048,CV_8UC1);
+  for (int i = 0; i < 2048*2048; i++)
+    texture_buffer.data[i] = 0;
+  glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 1024, 2048, 0,
+	       GL_RED, GL_UNSIGNED_BYTE, texture_buffer.data);
+  float uend = (float)((double)spoke_len_max/(double)1024),
+    vend = (float)((double)spokes/(double)2048);  
+
 
   // Create Vertex Buffer
   glGenVertexArrays(1, &vao);
   glBindVertexArray(vao);
-  glGenBuffers(2, vbo);
+  glGenBuffers(2, vbo);			 			  
+
+  /*
+  num_vertices = 4;
+  num_indices = 6;
+  vertices = new s_vertex[num_vertices];
+  indices = new unsigned short[num_indices];
+  vertices[0].x = vertices[1].x = -1.0f;
+  vertices[2].x = vertices[3].x = 1.0f;  
+  vertices[0].y = vertices[2].y = -1.0f;
+  vertices[1].y = vertices[3].y = 1.0f;
+  vertices[0].u = vertices[1].u = 0.0f;
+  vertices[2].u = vertices[3].u = 1.0f;  
+  vertices[0].v = vertices[2].v = 0.0f;
+  vertices[1].v = vertices[3].v = 1.0f;
+ 
+  indices[0] = 0;indices[1]=3;indices[2]=1;
+  indices[3] = 0;indices[4]=2;indices[5]=3;  
+  */
+
   num_vertices = spokes * 4;
   num_indices = spokes * 6;
   vertices = new s_vertex[num_vertices];
@@ -568,9 +591,9 @@ bool c_gl_radar::init(int _spokes, int _spoke_len_max,
     vertices[arc2].y = cos(spoke_angle * (ispoke + 1));
     // texture coordinate
     vertices[center].u = 0.f;
-    vertices[arc0].u = vertices[arc1].u = vertices[arc2].u = 1.0;
-    vertices[center].v = (float)((double)ispoke / (double)spokes);    
-    vertices[arc0].v = vertices[arc1].v = vertices[arc2].v = vertices[center].v;
+    vertices[arc0].u = vertices[arc1].u = vertices[arc2].u = uend;
+    vertices[center].v = (float)(vend * (double)ispoke / (double)spokes);    
+    vertices[arc0].v = vertices[arc1].v = vertices[arc2].v = vertices[center].v;    
   }
 
   // creating vertex buffer
@@ -583,7 +606,7 @@ bool c_gl_radar::init(int _spokes, int _spoke_len_max,
 
   bearing_prev = -1;
   tprev_update = -1;
-  range_prev = -1;
+  range_prev = 1852;
   return true;
 }
 
@@ -616,17 +639,20 @@ void c_gl_radar::update_spoke(const long long _t,
 {
 
   if(range_prev != _range_meters){
-    texture_buffer = vector<GLubyte>(spoke_len_max * spokes, 0);    
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, spoke_len_max, spokes, GL_RED, GL_UNSIGNED_BYTE, &texture_buffer);
+    cout << "radar image erased" << endl;
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, spoke_len_max, spokes, GL_RED, GL_UNSIGNED_BYTE, NULL);
+    range_prev = _range_meters;
   }else{
-    texture_buffer = vector<GLubyte>(spoke_len_max, 0);  
+
     // missing spokes are erased  
-    for (int ispoke = bearing_prev + 1; ispoke != _bearing; ispoke = (ispoke + 1) % spokes){
-      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, ispoke, spoke_len_max, 1, GL_RED, GL_UNSIGNED_BYTE, &texture_buffer);
+    for (int ispoke = (bearing_prev + 1) %spokes; ispoke != _bearing; ispoke = (ispoke + 1) % spokes){
+      cout << "spoke " << ispoke << " erased" << endl;
+      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, ispoke, spoke_len_max, 1, GL_RED, GL_UNSIGNED_BYTE, spoke_zero.data);
       
     }
   }
 
+  
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, _bearing, spoke_len_max, 1, GL_RED, GL_UNSIGNED_BYTE, _line);
 
   range_prev = _range_meters;
@@ -638,7 +664,8 @@ void c_gl_radar::render()
 {
   if(!benable)
     return;
-  
+
+  glEnable(GL_TEXTURE_2D);
   glUniform1i(modeloc, 1);
 
   glBindVertexArray(vao);
@@ -662,7 +689,7 @@ void c_gl_radar::render()
   glUniform4fv(clrloc, 1, glm::value_ptr(clr));
   glUniform4fv(bkgclrloc, 1, glm::value_ptr(bkgclr));
   glUniform1f(depthloc, z);
-  glDrawElements(GL_TRIANGLES, num_vertices, GL_UNSIGNED_SHORT, 0);
+  glDrawElements(GL_TRIANGLES, num_indices, GL_UNSIGNED_SHORT, 0);
 }
 
 

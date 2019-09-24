@@ -422,6 +422,8 @@ bool f_aws1_ui::init_run()
     
   glm::vec4 clr(0, 1, 0, 1);
   glm::vec4 clrb(0, 0, 0, 0.5);
+  glm::vec4 clrw(1,1,0,1);
+  glm::vec4 clr0(0.f,0.f,0.f,0.5f);
   glm::vec2 sz_fnt(20, 20), sz_fnt_small(10, 10);
   glm::vec2 sz_scrn(m_sz_win.width, m_sz_win.height);
   glm::vec2 sz_mark_xy((float)(2.0 * sz_mark), (float)(2.0 * sz_mark));
@@ -448,7 +450,7 @@ bool f_aws1_ui::init_run()
 
   if(!oradar.init(GARMIN_XHD_SPOKES, GARMIN_XHD_MAX_SPOKE_LEN, loc_mode,
 		  loc_t2d, loc_scale2d, loc_pos2d, loc_texcoord, loc_sampler,
-		  loc_gcolor, loc_gcolorb, loc_depth2d, clr, clrb))
+		  loc_gcolor, loc_gcolorb, loc_depth2d, clrw, clrb))
     return false;
   
   if (!own_ship.init(&otri, &oline, &ocirc, &otxt, &oradar, clr, sz_ship2d))
@@ -1173,11 +1175,13 @@ bool f_aws1_ui::proc()
     const int range_meters = m_ch_radar_image->get_range_meters();
     
     const vector<s_radar_line*> & updates = m_ch_radar_image->get_updates();
+
     for(auto itr = updates.begin(); itr != updates.end(); itr++){
       oradar.update_spoke((*itr)->time, (*itr)->pos.lat, (*itr)->pos.lon,
 			  range_meters,
 			  (*itr)->bearing, (*itr)->len, (*itr)->line);
     }
+
     m_ch_radar_image->free_updates(get_time());
   }
   

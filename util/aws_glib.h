@@ -124,13 +124,14 @@ class c_gl_radar
     float x, y;
     float u, v;
   };
+  Mat spoke_zero;
   int num_vertices, num_indices;
   s_vertex * vertices; // built as _spokes * (3(in arc) + 1(in center))
   unsigned short * indices;
-  vector<GLubyte> texture_buffer;
+  
   glm::vec4 clr, bkgclr;
  public:
- c_gl_radar():benable(false), spokes(0), spoke_len_max(0), htex(0), vao(0), vertices(NULL), indices(NULL)
+ c_gl_radar():benable(false), spokes(0), spoke_len_max(0), htex(0), vao(0), vertices(NULL), indices(NULL), range_prev(1852)
     {
       
   }

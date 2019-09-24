@@ -411,9 +411,9 @@ class ch_radar_image: public ch_base
  public:
  ch_radar_image(const char * name):ch_base(name)
   {
-    m_history = (s_radar_line *)calloc(sizeof(s_radar_line), GARMIN_XHD_SPOKES);
+    m_history = (s_radar_line *)calloc(GARMIN_XHD_SPOKES, sizeof(s_radar_line));
     for (size_t i = 0; i < GARMIN_XHD_SPOKES; i++) {
-      m_history[i].line = (unsigned char *)calloc(sizeof(unsigned char), GARMIN_XHD_MAX_SPOKE_LEN);
+      m_history[i].line = (unsigned char *)calloc(GARMIN_XHD_MAX_SPOKE_LEN, sizeof(unsigned char));
     }    
   }
 

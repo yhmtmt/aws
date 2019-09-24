@@ -204,7 +204,7 @@ public:
   virtual bool handle_left_push(const glm::vec2 & pt);
   virtual bool handle_left_release(const glm::vec2 & pt);
  public:
- c_view_mode_box() :c_aws_ui_box(), mode(fpv), btn_pushed(nul), btn_released(nul)
+ c_view_mode_box() :c_aws_ui_box(), mode(map), btn_pushed(nul), btn_released(nul)
   {
     hstr.resize(nul);
 		hbtn.resize(nul);

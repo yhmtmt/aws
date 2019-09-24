@@ -50,9 +50,13 @@ bool f_radar_sim::init_run()
   }
 
   spoke_offset = 0; range_offset = 0;
-  spokes = Mat::zeros(GARMIN_XHD_SPOKES, GARMIN_XHD_MAX_SPOKE_LEN, CV_8UC1);
- 
-  
+  spoke_next = 0;
+  spokes = (unsigned char **) malloc(sizeof(unsigned char*)*GARMIN_XHD_SPOKES);
+  for(int ispoke = 0; ispoke < GARMIN_XHD_SPOKES; ispoke++){
+    spokes[ispoke] = (unsigned char*) malloc(sizeof(unsigned char)*GARMIN_XHD_MAX_SPOKE_LEN);
+    memset(spokes[ispoke], 0, sizeof(unsigned char)*GARMIN_XHD_MAX_SPOKE_LEN);
+  }
+
   return true;
 }
 
@@ -61,8 +65,8 @@ void f_radar_sim::generate_test_pattern()
   long long t = get_time();
   if(t - tprev_image_update >  period){
     for (int spoke = 0; spoke < GARMIN_XHD_SPOKES; spoke++){
-      unsigned char * spoke_data = spokes.ptr<unsigned char>(spoke);
-      int pattern_period = (spoke_offset + spoke) % GARMIN_XHD_MAX_SPOKE_LEN;
+      unsigned char * spoke_data = spokes[spoke];
+      int pattern_period = 1 + (spoke_offset + spoke) % GARMIN_XHD_MAX_SPOKE_LEN;
       int pattern_phase = range_offset;
       for(int range = 0; range < GARMIN_XHD_MAX_SPOKE_LEN; range++){
 	if(((range_offset + range) / pattern_period) % 2)
@@ -73,13 +77,18 @@ void f_radar_sim::generate_test_pattern()
     }
     
     spoke_offset += GARMIN_XHD_SPOKES / 60;
-    range_offset += GARMIN_XHD_MAX_SPOKE_LEN / 60;    
+    range_offset += GARMIN_XHD_MAX_SPOKE_LEN / 60;
     tprev_image_update = t;
   }
 }
 
 void f_radar_sim::destroy_run()
 {
+    for(int ispoke = 0; ispoke < GARMIN_XHD_SPOKES; ispoke++){
+      free(spokes[ispoke]);
+    }
+    free(spokes);
+    spokes = NULL;
 }
 
 bool f_radar_sim::proc()
@@ -101,7 +110,6 @@ bool f_radar_sim::proc()
   default:
     break;
   }
-
   
   // update spoke
   for(int ispoke = 0; ispoke < num_spokes_per_proc; ispoke++){
@@ -112,14 +120,14 @@ bool f_radar_sim::proc()
     state->get_position(tpos, lat, lon);
 
     radar_image->set_spoke(tpos, lat, lon,
-			   (ispoke + spoke_prev) % GARMIN_XHD_SPOKES,
-			   spokes.ptr<unsigned char>(ispoke),
+			   spoke_next,
+			   spokes[ispoke],
 			   GARMIN_XHD_MAX_SPOKE_LEN, range_meters);
+    spoke_next = (spoke_next + 1) % GARMIN_XHD_SPOKES;
   }
   
   return true;
 }
-
 
 const char * f_radar::str_radar_command_id[RC_NONE] = {
   "txoff", "txon", "range", "bearing_alignment",

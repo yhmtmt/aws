@@ -1142,7 +1142,7 @@ const char * c_indicator::str_params[PRM_UNDEF] =
 
 c_indicator::c_indicator() : porect(NULL), potri(NULL), poline(NULL), potxt(NULL),
 meng(127), seng(127), rud(0), cog(0.1f), sog(10), yaw(0.05f), pitch(0.5f), roll(0.5f),
-veng_n(0x7f), veng_nf(0x7f + 0x19), veng_nb(0x7f - 0x19), dir_cam(0.f), mode(ui_mode_fpv)
+veng_n(0x7f), veng_nf(0x7f + 0x19), veng_nb(0x7f - 0x19), dir_cam(0.f), mode(ui_mode_map)
 {
 }
 

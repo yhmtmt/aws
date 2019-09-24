@@ -52,18 +52,18 @@ class f_radar_sim: public f_base
     SM_NONE
   } mode;
   static const char * str_sim_mode[SM_NONE];
-  int spoke_prev;
+  int spoke_next;
   long long tprev_proc;
   long long tprev_image_update;
   long long tproc_period;
   int num_spokes_per_proc;
   
-  Mat spokes;
+  unsigned char ** spokes;
   int spoke_offset, range_offset;
   void generate_test_pattern();
  public:
  f_radar_sim(const char * name):f_base(name), mode(SM_TEST),
-    miss_rate(0.3), period(2*SEC), range_meters(1852), spoke_prev(-1), tprev_proc(-1), tprev_image_update(-1)
+    miss_rate(0.3), period(2*SEC), range_meters(1852), spoke_next(0), tprev_proc(-1), tprev_image_update(-1)
   {
     register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
     register_fpar("radar_image", (ch_base**)&radar_image, typeid(ch_radar_image).name(), "Radar image channel");
