@@ -383,5 +383,6 @@ void f_base::register_factory()
 #endif
 #ifdef RADAR
 	register_factory<f_radar>("radar");
+	register_factory<f_radar_sim>("radar_sim");
 #endif
 }

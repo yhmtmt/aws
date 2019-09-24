@@ -35,6 +35,92 @@ using namespace cv;
 
 #include "f_radar.h"
 
+const char * f_radar_sim::str_sim_mode[SM_NONE] = { "rand" };
+
+bool f_radar_sim::init_run()
+{
+  if(!state){
+    cerr << "state channel is not found." << endl;
+    return false;
+  }
+
+  if(!radar_image){
+    cerr << "radar_image channel is not found." << endl;
+    return false;
+  }
+
+  spoke_offset = 0; range_offset = 0;
+  spokes = Mat::zeros(GARMIN_XHD_SPOKES, GARMIN_XHD_MAX_SPOKE_LEN, CV_8UC1);
+ 
+  
+  return true;
+}
+
+void f_radar_sim::generate_test_pattern()
+{
+  long long t = get_time();
+  if(t - tprev_image_update >  period){
+    for (int spoke = 0; spoke < GARMIN_XHD_SPOKES; spoke++){
+      unsigned char * spoke_data = spokes.ptr<unsigned char>(spoke);
+      int pattern_period = (spoke_offset + spoke) % GARMIN_XHD_MAX_SPOKE_LEN;
+      int pattern_phase = range_offset;
+      for(int range = 0; range < GARMIN_XHD_MAX_SPOKE_LEN; range++){
+	if(((range_offset + range) / pattern_period) % 2)
+	  spoke_data[range] = 255;
+	else
+	  spoke_data[range] = 0;
+      }
+    }
+    
+    spoke_offset += GARMIN_XHD_SPOKES / 60;
+    range_offset += GARMIN_XHD_MAX_SPOKE_LEN / 60;    
+    tprev_image_update = t;
+  }
+}
+
+void f_radar_sim::destroy_run()
+{
+}
+
+bool f_radar_sim::proc()
+{
+  long long tcur = get_time();
+  if(tprev_proc < 0){
+    tprev_proc = tcur;;
+  }else{
+    tproc_period = tcur - tprev_proc;
+    num_spokes_per_proc = (int)((double) tproc_period / ((double)period / (double)GARMIN_XHD_SPOKES));
+    tprev_proc = tcur;    
+  }
+
+  // update image
+  switch(mode){
+  case SM_TEST:
+    generate_test_pattern();
+    break;
+  default:
+    break;
+  }
+
+  
+  // update spoke
+  for(int ispoke = 0; ispoke < num_spokes_per_proc; ispoke++){
+    if((double)rand() / (double)RAND_MAX < miss_rate)
+      continue;
+    long long tpos;
+    float lat, lon;
+    state->get_position(tpos, lat, lon);
+
+    radar_image->set_spoke(tpos, lat, lon,
+			   (ispoke + spoke_prev) % GARMIN_XHD_SPOKES,
+			   spokes.ptr<unsigned char>(ispoke),
+			   GARMIN_XHD_MAX_SPOKE_LEN, range_meters);
+  }
+  
+  return true;
+}
+
+
 const char * f_radar::str_radar_command_id[RC_NONE] = {
   "txoff", "txon", "range", "bearing_alignment",
   "no_transmit_start", "no_transmit_end",

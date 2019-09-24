@@ -38,6 +38,49 @@ struct receive_statistics {
   int missing_spokes;
 };
 
+class f_radar_sim: public f_base
+{
+ protected:  
+  ch_state * state;
+  ch_radar_image * radar_image;
+  
+  int range_meters;
+  long long period;
+  double miss_rate;
+  enum e_sim_mode {
+    SM_TEST,
+    SM_NONE
+  } mode;
+  static const char * str_sim_mode[SM_NONE];
+  int spoke_prev;
+  long long tprev_proc;
+  long long tprev_image_update;
+  long long tproc_period;
+  int num_spokes_per_proc;
+  
+  Mat spokes;
+  int spoke_offset, range_offset;
+  void generate_test_pattern();
+ public:
+ f_radar_sim(const char * name):f_base(name), mode(SM_TEST),
+    miss_rate(0.3), period(2*SEC), range_meters(1852), spoke_prev(-1), tprev_proc(-1), tprev_image_update(-1)
+  {
+    register_fpar("state", (ch_base**)&state, typeid(ch_state).name(), "State channel");
+    register_fpar("radar_image", (ch_base**)&radar_image, typeid(ch_radar_image).name(), "Radar image channel");
+    register_fpar("range_meters", &range_meters, "Range in meter (default 1852)");
+    register_fpar("period", &period, "Scanner rotating period in 100nsec. (default 2e7)");
+    register_fpar("miss_rate", &miss_rate, "Spoke miss rate. (default 0.3)");
+  }
+
+  virtual ~f_radar_sim()
+    {
+    }
+  
+  virtual bool init_run();
+  virtual void destroy_run();
+  virtual bool proc();
+};
+
 class f_radar:public f_base
 {
  protected:
