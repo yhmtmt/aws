@@ -524,10 +524,7 @@ bool c_gl_radar::init(int _spokes, int _spoke_len_max,
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
   glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-  spoke_zero = Mat::zeros(1, spoke_len_max, CV_8UC1);  
-  Mat texture_buffer(2048,2048,CV_8UC1);
-  for (int i = 0; i < 2048*2048; i++)
-    texture_buffer.data[i] = 0;
+  texture_buffer = Mat::zeros(2048,2048,CV_8UC1);
   glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 1024, 2048, 0,
 	       GL_RED, GL_UNSIGNED_BYTE, texture_buffer.data);
   float uend = (float)((double)spoke_len_max/(double)1024),
@@ -606,7 +603,7 @@ bool c_gl_radar::init(int _spokes, int _spoke_len_max,
 
   bearing_prev = -1;
   tprev_update = -1;
-  range_prev = 1852;
+  range_meters = 1852;
   return true;
 }
 
@@ -638,26 +635,41 @@ void c_gl_radar::update_spoke(const long long _t,
 			      const unsigned char * _line)
 {
 
-  if(range_prev != _range_meters){
-    cout << "radar image erased" << endl;
-    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, spoke_len_max, spokes, GL_RED, GL_UNSIGNED_BYTE, NULL);
-    range_prev = _range_meters;
-  }else{
-
-    // missing spokes are erased  
-    for (int ispoke = (bearing_prev + 1) %spokes; ispoke != _bearing; ispoke = (ispoke + 1) % spokes){
-      cout << "spoke " << ispoke << " erased" << endl;
-      glTexSubImage2D(GL_TEXTURE_2D, 0, 0, ispoke, spoke_len_max, 1, GL_RED, GL_UNSIGNED_BYTE, spoke_zero.data);
-      
-    }
+  if(range_meters != _range_meters){
+    texture_buffer = Mat::zeros(2048,2048,CV_8UC1);    
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, spoke_len_max, spokes, GL_RED, GL_UNSIGNED_BYTE, texture_buffer.data);
+    range_meters = _range_meters;
   }
-
   
   glTexSubImage2D(GL_TEXTURE_2D, 0, 0, _bearing, spoke_len_max, 1, GL_RED, GL_UNSIGNED_BYTE, _line);
 
-  range_prev = _range_meters;
+  range_meters = _range_meters;
   tprev_update = _t;
   bearing_prev = _bearing;
+}
+
+void c_gl_radar::update_spokes(const long long _t,
+			      const int _range_meters,
+			       const int _bearing_from, const int _bearing_to,
+			       const unsigned char * _lines)
+{
+
+  if(range_meters != _range_meters){
+    texture_buffer = Mat::zeros(2048,2048,CV_8UC1);    
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, spoke_len_max, spokes, GL_RED, GL_UNSIGNED_BYTE, texture_buffer.data);
+    range_meters = _range_meters;
+    return;
+  }
+
+  if(_bearing_to < spokes)
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, _bearing_from, spoke_len_max, _bearing_to - _bearing_from + 1, GL_RED, GL_UNSIGNED_BYTE, _lines);
+  else{
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, _bearing_from, spoke_len_max, spokes - _bearing_from, GL_RED, GL_UNSIGNED_BYTE, _lines);
+    glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, spoke_len_max, _bearing_to - spokes + 1, GL_RED, GL_UNSIGNED_BYTE, _lines + spoke_len_max * (spokes - _bearing_from));    
+  }
+
+  tprev_update = _t;
+  bearing_prev = _bearing_to % spokes;
 }
 
 void c_gl_radar::render()

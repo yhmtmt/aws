@@ -113,15 +113,17 @@ bool f_radar_sim::proc()
   
   // update spoke
   for(int ispoke = 0; ispoke < num_spokes_per_proc; ispoke++){
-    if((double)rand() / (double)RAND_MAX < miss_rate)
+    if((double)rand() / (double)RAND_MAX < miss_rate){
+      spoke_next = (spoke_next + 1) % GARMIN_XHD_SPOKES;
       continue;
+    }
+    
     long long tpos;
     float lat, lon;
     state->get_position(tpos, lat, lon);
-
     radar_image->set_spoke(tpos, lat, lon,
 			   spoke_next,
-			   spokes[ispoke],
+			   spokes[spoke_next],
 			   GARMIN_XHD_MAX_SPOKE_LEN, range_meters);
     spoke_next = (spoke_next + 1) % GARMIN_XHD_SPOKES;
   }

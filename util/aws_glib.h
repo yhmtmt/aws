@@ -118,20 +118,20 @@ class c_gl_radar
   float zstep, z, scl;
   glm::vec2 pos;
   long long tprev_update;
-  int bearing_prev, range_prev;
+  int bearing_prev, range_meters;
   struct s_vertex
   {
     float x, y;
     float u, v;
   };
-  Mat spoke_zero;
+  Mat texture_buffer;
   int num_vertices, num_indices;
   s_vertex * vertices; // built as _spokes * (3(in arc) + 1(in center))
   unsigned short * indices;
   
   glm::vec4 clr, bkgclr;
  public:
- c_gl_radar():benable(false), spokes(0), spoke_len_max(0), htex(0), vao(0), vertices(NULL), indices(NULL), range_prev(1852)
+ c_gl_radar():benable(false), spokes(0), spoke_len_max(0), htex(0), vao(0), vertices(NULL), indices(NULL), range_meters(1852)
     {
       
   }
@@ -150,13 +150,28 @@ class c_gl_radar
   void destroy();
 
   void set_scale(const float pix_per_meter){
-    scl = range_prev * pix_per_meter;
+    scl = range_meters * pix_per_meter;
   }
 
   void set_pos(glm::vec2 & _pos){
     pos = _pos;
   }
 
+  const int get_range_meters()
+  {
+    return range_meters;
+  }
+
+  const long long get_time_last_update()
+  {
+    return tprev_update;
+  }
+
+  const int get_bearing_last_update()
+  {
+    return bearing_prev;
+  }
+  
   void set_depth(int depth)
   {
       z = -1.0 + (float)(depth * zstep);
@@ -167,6 +182,10 @@ class c_gl_radar
 		    const int _range_meters,
 		    const int _bearing, const int _len,
 		    const unsigned char * _line);
+  void update_spokes(const long long _t,
+		     const int _range_meters,
+		     const int _bearing_from, const int _bearing_to,
+		     const unsigned char * _lines);
   void render();
 
   void enable()
