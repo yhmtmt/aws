@@ -1177,7 +1177,7 @@ bool f_aws1_ui::proc()
     const vector<s_radar_line*> & updates = m_ch_radar_image->get_updates();
 
     int bearing_last = oradar.get_bearing_last_update();
-    int bearing_min = (bearing_last + 1) % GARMIN_XHD_SPOKES;
+    int bearing_min = bearing_last + 1;
     int bearing_max = bearing_last;
     long long t_last = oradar.get_time_last_update();
     long long t_new = t_last;
@@ -1188,7 +1188,7 @@ bool f_aws1_ui::proc()
       }
       t_new = max((*itr)->time, t_new);
       int bearing = (*itr)->bearing;                  
-      if(bearing  < bearing_last){
+      if(bearing  < bearing_min){
 	bearing += GARMIN_XHD_SPOKES;
       }
       bearing_max = max(bearing, bearing_max);      
@@ -1197,18 +1197,22 @@ bool f_aws1_ui::proc()
     if(bearing_max - bearing_last > 0){
       Mat spokes_update = Mat::zeros(bearing_max - bearing_last,
 				     GARMIN_XHD_MAX_SPOKE_LEN, CV_8UC1);
-      
       for(auto itr = updates.begin(); itr != updates.end(); itr++){
 	if((*itr)->time < t_last){ // past spoke is ignored
 	  continue;
 	}
 	int bearing = (*itr)->bearing;
-	if(bearing  < bearing_last){
+	if(bearing  < bearing_min){
 	  bearing += GARMIN_XHD_SPOKES;
 	}
-	unsigned char * spoke = spokes_update.ptr<unsigned char>(bearing - bearing_min);      
+	unsigned char * spoke = spokes_update.ptr<unsigned char>(bearing - bearing_min);
+	//	cout << "update:" << (*itr)->bearing << "," << bearing << "," <<bearing_last << "," << bearing_max << "," << bearing_min << endl;
 	memcpy((void*)spoke, (void*)(*itr)->line, sizeof(unsigned char) * (*itr)->len);
 	
+      }
+      if(bearing_min >= GARMIN_XHD_SPOKES){
+	bearing_min -= GARMIN_XHD_SPOKES;
+	bearing_max -= GARMIN_XHD_SPOKES;
       }
       oradar.update_spokes(t_new, range_meters, bearing_min, bearing_max,
 			   spokes_update.data);
