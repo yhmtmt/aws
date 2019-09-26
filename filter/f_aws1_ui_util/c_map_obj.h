@@ -45,7 +45,7 @@ protected:
       return pos;
     }
  public:
- c_map_obj() :mode(ui_mode_fpv)
+ c_map_obj() :mode(ui_mode_map)
   {
   }
   
