@@ -134,12 +134,10 @@ public:
 	}
 
 	void set_diff(const float dist, const float cdiff, const float xdiff)
-	{
-	  cout << "Entering set_diff" <<endl;
-		dist_next = dist;
-		cdiff_next = cdiff;
-		xdiff_next = xdiff;
-		cout << "exiting set_diff" << endl;
+	{	  
+	  dist_next = dist;
+	  cdiff_next = cdiff;
+	  xdiff_next = xdiff;
 	}
 
 	void get_diff(float & dist, float & cdiff, float & xdiff)
@@ -159,9 +157,7 @@ public:
 	}
 
 	s_wp & get_prev_wp(){
-	  cout << "Entering get_prev_wp" << endl;
 	  if(itr_next == wps.begin()){
-	    cout << "Exiting get_prev_wp" << endl;
 	    return **itr_next;
 	  }
 	  return **std::prev(itr_next);
