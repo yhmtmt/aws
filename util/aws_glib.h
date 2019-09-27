@@ -176,16 +176,20 @@ class c_gl_radar
   {
       z = -1.0 + (float)(depth * zstep);
   }
-  
+
+  void update_image(Mat &img);
   void update_spoke(const long long _t,
 		    const double _lat, const double _lon,
 		    const int _range_meters,
 		    const int _bearing, const int _len,
 		    const unsigned char * _line);
+  void update_done();
   void update_spokes(const long long _t,
 		     const int _range_meters,
 		     const int _bearing_from, const int _bearing_to,
 		     const unsigned char * _lines);
+    
+		     
   void render();
 
   void enable()

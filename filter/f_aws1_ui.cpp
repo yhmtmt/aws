@@ -421,7 +421,7 @@ bool f_aws1_ui::init_run()
   }
     
   glm::vec4 clr(0, 1, 0, 1);
-  glm::vec4 clrb(0, 0, 0, 0.5);
+  glm::vec4 clrb(0, 0, 0, 0);
   glm::vec4 clrw(1,1,0,1);
   glm::vec4 clr0(0.f,0.f,0.f,0.5f);
   glm::vec2 sz_fnt(20, 20), sz_fnt_small(10, 10);
@@ -1173,16 +1173,40 @@ bool f_aws1_ui::proc()
   // update radar data
   if(m_ch_radar_image){
     const int range_meters = m_ch_radar_image->get_range_meters();
+    Mat ppi=Mat::zeros(GARMIN_XHD_MAX_SPOKE_LEN*2,
+		       GARMIN_XHD_MAX_SPOKE_LEN*2,CV_8UC1);
     
-    const vector<s_radar_line*> & updates = m_ch_radar_image->get_updates();
-
+    Mat img(GARMIN_XHD_SPOKES, GARMIN_XHD_MAX_SPOKE_LEN, CV_8UC1);  
+    m_ch_radar_image->get_spoke_data(img.data);
+     
+    double spoke_angle = (double)(2 * PI) / (double)GARMIN_XHD_SPOKES;
+    for (int r = 0; r < ppi.rows; r++){
+      unsigned char * ptr = ppi.ptr<unsigned char>(r);
+      for (int c = 0; c < ppi.cols; c++){
+	int x = c - GARMIN_XHD_MAX_SPOKE_LEN;
+	int y = r - GARMIN_XHD_MAX_SPOKE_LEN;
+	int ispoke = (int)((double)GARMIN_XHD_SPOKES * atan2(x, y) * ( 0.5 / PI));
+	ispoke = (ispoke + GARMIN_XHD_SPOKES * 2) % GARMIN_XHD_SPOKES;
+	
+	int d = (int)(0.5 + sqrt((double)(x * x + y * y)));
+	unsigned char val;
+	if(d >= GARMIN_XHD_MAX_SPOKE_LEN || d < 0)
+	  val = 255;
+	else
+	  val = *(img.data + ispoke * GARMIN_XHD_MAX_SPOKE_LEN + d);
+	*(ptr + c) = val;
+	//	cout << "r,c=" << r << "," << c << endl;
+      }
+    }
+    oradar.update_image(ppi);
+    /*
     int bearing_last = oradar.get_bearing_last_update();
     int bearing_min = bearing_last + 1;
     int bearing_max = bearing_last;
     long long t_last = oradar.get_time_last_update();
     long long t_new = t_last;
 
-    for(auto itr = updates.begin(); itr != updates.end(); itr++){
+     for(auto itr = updates.begin(); itr != updates.end(); itr++){
       if((*itr)->time < t_last){ // past spoke is ignored
 	continue;
       }
@@ -1217,6 +1241,16 @@ bool f_aws1_ui::proc()
       oradar.update_spokes(t_new, range_meters, bearing_min, bearing_max,
 			   spokes_update.data);
     }
+    */
+    /*
+    const vector<s_radar_line*> & updates = m_ch_radar_image->get_updates();
+    for(auto itr = updates.begin(); itr != updates.end(); itr++){
+      oradar.update_spoke((*itr)->time, (*itr)->pos.lat, (*itr)->pos.lon, range_meters, (*itr)->bearing, (*itr)->len, (*itr)->line);
+    }
+
+    
+    oradar.update_done();
+    */
     m_ch_radar_image->free_updates(get_time());
   }
   
