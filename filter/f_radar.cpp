@@ -66,7 +66,7 @@ void f_radar_sim::generate_test_pattern()
   if(t - tprev_image_update >  period){
     for (int spoke = 0; spoke < GARMIN_XHD_SPOKES; spoke++){
       unsigned char * spoke_data = spokes[spoke];
-      int pattern_period = 1 + (spoke_offset + spoke) % GARMIN_XHD_MAX_SPOKE_LEN;
+      int pattern_period = 1 + (spoke_offset) % GARMIN_XHD_MAX_SPOKE_LEN;
       int pattern_phase = range_offset;
       for(int range = 0; range < GARMIN_XHD_MAX_SPOKE_LEN; range++){
 	if(((range_offset + range) / pattern_period) % 2)
@@ -76,10 +76,13 @@ void f_radar_sim::generate_test_pattern()
       }
     }
     
-    spoke_offset += GARMIN_XHD_SPOKES / 60;
-    range_offset += GARMIN_XHD_MAX_SPOKE_LEN / 60;
     tprev_image_update = t;
   }
+  spoke_offset += GARMIN_XHD_SPOKES / 60;
+  range_offset += GARMIN_XHD_MAX_SPOKE_LEN / 60;
+  spoke_offset %= GARMIN_XHD_SPOKES;
+  range_offset %= GARMIN_XHD_MAX_SPOKE_LEN;
+  
 }
 
 void f_radar_sim::destroy_run()
