@@ -325,18 +325,19 @@ void f_aws1_sim::set_input_state_vector(const long long & tcur)
   m_sv_cur.t = tcur;
   if (m_state){
     long long t = 0;
-	float roll, pitch, yaw, lat, lon, alt, galt, cog, sog;
-	m_state->get_attitude(t, roll, pitch, yaw);
-	m_state->get_position(t, lat, lon);
-	m_state->get_velocity(t, cog, sog);
-	m_sv_cur.roll = roll * (PI / 180.f);
-	m_sv_cur.pitch = pitch * (PI / 180.f);
-	m_sv_cur.yaw = yaw * (PI / 180.f);
-	m_sv_cur.cog = cog * (PI / 180.f);
-	m_sv_cur.sog = sog;
-	m_sv_cur.lat = lat * (PI / 180.f);
-	m_sv_cur.lon = lon * (PI / 180.f);
-	m_sv_cur.update_coordinates();
+    float roll, pitch, yaw, cog, sog;
+    double lat, lon;
+    m_state->get_attitude(t, roll, pitch, yaw);
+    m_state->get_position(t, lat, lon);
+    m_state->get_velocity(t, cog, sog);
+    m_sv_cur.roll = roll * (PI / 180.f);
+    m_sv_cur.pitch = pitch * (PI / 180.f);
+    m_sv_cur.yaw = yaw * (PI / 180.f);
+    m_sv_cur.cog = cog * (PI / 180.f);
+    m_sv_cur.sog = sog;
+    m_sv_cur.lat = lat * (PI / 180.f);
+    m_sv_cur.lon = lon * (PI / 180.f);
+    m_sv_cur.update_coordinates();
   }
 
   if (m_engstate)

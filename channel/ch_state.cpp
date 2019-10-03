@@ -32,310 +32,310 @@ using namespace cv;
 #include "ch_state.h"
 
 bool ch_estate::get_pos(const long long t, const Mat & Qv, const Mat & Qx,
-	float & lat, float & lon, float & alt,
-	float & xecef, float & yecef, float & zecef,
-	Mat & Pecef, Mat & Renu, bool both)
+			double & lat, double & lon, double & alt,
+			double & xecef, double & yecef, double & zecef,
+			Mat & Pecef, Mat & Renu, bool both)
 
 {
-	if (num_pos_opt == 0)
-		return false;
+  if (num_pos_opt == 0)
+    return false;
 
-	float u, v;
-	Mat Pv;
-	if (!get_vel(t, Qv, u, v, Pv))
-		return false;
+  float u, v;
+  Mat Pv;
+  if (!get_vel(t, Qv, u, v, Pv))
+    return false;
 
-	lock();
-	// seek nearest position record
-	int ipos_new = (cur_pos_opt + pos_opt.size() - 1) % pos_opt.size();
-	int ipos_old = (ipos_new + num_pos_opt - 1) % pos_opt.size();
-	long long tnew = pos_opt[ipos_new].t;
-	long long told = pos_opt[ipos_old].t;
-	if (tnew < t){
-		ipos_old = ipos_new;
-		ipos_new = -1;
-	}
-	else if (told > t){
-		ipos_new = ipos_old;
-		ipos_old = -1;
-	}
-	else{
-		int n = num_pos_opt;
-		while (n != 0)
-		{
-			int nmid = n >> 1;
-			int ipos_mid = (ipos_old + nmid) % pos_opt.size();
-			if (pos_opt[ipos_mid].t < t){
-				ipos_old = ipos_mid;
-				n -= nmid;
-			}
-			else{
-				ipos_new = ipos_mid;
-				n = nmid;
-			}
-		}
-	}
-
-	float dtxf, dtxb;
-	Mat Pdtxf, Pdtxb, Peceff, Pecefb;
-	float xf, yf, xb, yb;
-	float xef, yef, zef, xeb, yeb, zeb;
-	if (ipos_old >= 0){
-		s_pos_opt & pold = pos_opt[ipos_old];
-		dtxf = (float)((t - pold.t)  * (1.0 / (double)SEC));
-		Pdtxf = pold.Penu + dtxf * Qx + dtxf * dtxf * Pv;
-
-		xf = (float)(u * dtxf);
-		yf = (float)(v * dtxf);
-		wrldtoecef(pold.Renu, pold.xecef, pold.yecef, pold.zecef, xf, yf, 0., xef, yef, zef);
-		Peceff = calc_Pecef(pold.Renu, Pdtxf);
-	}
-
-	if ((both && ipos_new >= 0) || ipos_old < 0){
-		s_pos_opt & pnew = pos_opt[ipos_new];
-		dtxb = (float)((pnew.t - t) * (1.0 / (double)(SEC)));
-		Pdtxb = pnew.Penu + dtxb * Qx + dtxb * dtxb * Pv;
-
-		xb = (float)(-u * dtxb);
-		yb = (float)(-v * dtxb);
-		wrldtoecef(pnew.Renu, pnew.xecef, pnew.yecef, pnew.zecef, xb, yb, 0., xeb, yeb, zeb);
-		Pecefb = calc_Pecef(pnew.Renu, Pdtxb);
-	}
-
-	if (both && ipos_new >= 0 && ipos_old >= 0){
-		Mat Pfi = Peceff.inv();
-		Mat Pbi = Pecefb.inv();
-		Pecef = (Pfi + Pbi).inv();
-		float * pPfi = Pfi.ptr<float>();
-		float * pPbi = Pbi.ptr<float>();
-		float _xf, _yf, _zf, _xb, _yb, _zb;
-		_xf = pPfi[0] * xef + pPfi[1] * yef + pPfi[2] * zef;
-		_yf = pPfi[3] * xef + pPfi[4] * yef + pPfi[5] * zef;
-		_zf = pPfi[6] * xef + pPfi[7] * yef + pPfi[8] * zef;
-		_xb = pPbi[0] * xeb + pPbi[1] * yeb + pPbi[2] * zeb;
-		_yb = pPbi[3] * xeb + pPbi[4] * yeb + pPbi[5] * zeb;
-		_zb = pPbi[6] * xeb + pPbi[7] * yeb + pPbi[8] * zeb;
-		_xf += _xb;
-		_yf += _yb;
-		_zf += _zb;
-
-		float * pPecef = Pecef.ptr<float>();
-		xecef = pPecef[0] * _xf + pPecef[1] * _yf + pPecef[2] * _zf;
-		yecef = pPecef[3] * _xf + pPecef[4] * _yf + pPecef[5] * _zf;
-		zecef = pPecef[6] * _xf + pPecef[7] * _yf + pPecef[8] * _zf;
+  lock();
+  // seek nearest position record
+  int ipos_new = (cur_pos_opt + pos_opt.size() - 1) % pos_opt.size();
+  int ipos_old = (ipos_new + num_pos_opt - 1) % pos_opt.size();
+  long long tnew = pos_opt[ipos_new].t;
+  long long told = pos_opt[ipos_old].t;
+  if (tnew < t){
+    ipos_old = ipos_new;
+    ipos_new = -1;
+  }
+  else if (told > t){
+    ipos_new = ipos_old;
+    ipos_old = -1;
+  }
+  else{
+    int n = num_pos_opt;
+    while (n != 0)
+      {
+	int nmid = n >> 1;
+	int ipos_mid = (ipos_old + nmid) % pos_opt.size();
+	if (pos_opt[ipos_mid].t < t){
+	  ipos_old = ipos_mid;
+	  n -= nmid;
 	}
 	else{
-		if (ipos_old >= 0){
-			Pecef = Peceff;
-			xecef = xef;
-			yecef = yef;
-			zecef = zef;
-		}
-		else{
-			Pecef = Pecefb;
-			xecef = xeb;
-			yecef = yeb;
-			zecef = zeb;
-		}
+	  ipos_new = ipos_mid;
+	  n = nmid;
 	}
-	eceftobih(xecef, yecef, zecef, lat, lon, alt);
-	getwrldrot(lat, lon, Renu);
-	lat *= (float)(180. / PI);
-	lon *= (float)(180. / PI);
+      }
+  }
 
-	unlock();
-
-	return true;
+  double dtxf, dtxb;
+  Mat Pdtxf, Pdtxb, Peceff, Pecefb;
+  double xf, yf, xb, yb;
+  double xef, yef, zef, xeb, yeb, zeb;
+  if (ipos_old >= 0){
+    s_pos_opt & pold = pos_opt[ipos_old];
+    dtxf = ((t - pold.t)  * (1.0 / (double)SEC));
+    Pdtxf = pold.Penu + dtxf * Qx + dtxf * dtxf * Pv;
+    
+    xf = (u * dtxf);
+    yf = (v * dtxf);
+    wrldtoecef(pold.Renu, pold.xecef, pold.yecef, pold.zecef, xf, yf, 0., xef, yef, zef);
+    Peceff = calc_Pecef(pold.Renu, Pdtxf);
+  }
+  
+  if ((both && ipos_new >= 0) || ipos_old < 0){
+    s_pos_opt & pnew = pos_opt[ipos_new];
+    dtxb = ((pnew.t - t) * (1.0 / (double)(SEC)));
+    Pdtxb = pnew.Penu + dtxb * Qx + dtxb * dtxb * Pv;
+    
+    xb = (-u * dtxb);
+    yb = (-v * dtxb);
+    wrldtoecef(pnew.Renu, pnew.xecef, pnew.yecef, pnew.zecef, xb, yb, 0., xeb, yeb, zeb);
+    Pecefb = calc_Pecef(pnew.Renu, Pdtxb);
+  }
+  
+  if (both && ipos_new >= 0 && ipos_old >= 0){
+    Mat Pfi = Peceff.inv();
+    Mat Pbi = Pecefb.inv();
+    Pecef = (Pfi + Pbi).inv();
+    double * pPfi = Pfi.ptr<double>();
+    double * pPbi = Pbi.ptr<double>();
+    double _xf, _yf, _zf, _xb, _yb, _zb;
+    _xf = pPfi[0] * xef + pPfi[1] * yef + pPfi[2] * zef;
+    _yf = pPfi[3] * xef + pPfi[4] * yef + pPfi[5] * zef;
+    _zf = pPfi[6] * xef + pPfi[7] * yef + pPfi[8] * zef;
+    _xb = pPbi[0] * xeb + pPbi[1] * yeb + pPbi[2] * zeb;
+    _yb = pPbi[3] * xeb + pPbi[4] * yeb + pPbi[5] * zeb;
+    _zb = pPbi[6] * xeb + pPbi[7] * yeb + pPbi[8] * zeb;
+    _xf += _xb;
+    _yf += _yb;
+    _zf += _zb;
+    
+    double * pPecef = Pecef.ptr<double>();
+    xecef = pPecef[0] * _xf + pPecef[1] * _yf + pPecef[2] * _zf;
+    yecef = pPecef[3] * _xf + pPecef[4] * _yf + pPecef[5] * _zf;
+    zecef = pPecef[6] * _xf + pPecef[7] * _yf + pPecef[8] * _zf;
+  }
+  else{
+    if (ipos_old >= 0){
+      Pecef = Peceff;
+      xecef = xef;
+      yecef = yef;
+      zecef = zef;
+    }
+    else{
+      Pecef = Pecefb;
+      xecef = xeb;
+      yecef = yeb;
+      zecef = zeb;
+    }
+  }
+  eceftobih(xecef, yecef, zecef, lat, lon, alt);
+  getwrldrot(lat, lon, Renu);
+  lat *= (180. / PI);
+  lon *= (180. / PI);
+  
+  unlock();
+  
+  return true;
 }
 
-bool ch_estate::get_vel(const long long t, const Mat & Qv, float & u, float & v,
-	Mat & Pv, bool both)
+bool ch_estate::get_vel(const long long t, const Mat & Qv,
+			float & u, float & v, Mat & Pv, bool both)
 {
-	lock();
-	int ivel_new = (cur_vel_opt + vel_opt.size() - 1) % vel_opt.size();
-	int ivel_old = (ivel_new + num_vel_opt - 1) % vel_opt.size();
-	long long tnew = vel_opt[ivel_new].t;
-	long long told = vel_opt[ivel_old].t;
-	if (tnew < t){
-		ivel_old = ivel_new;
-		ivel_new = -1;
-	}
-	else if (told > t){
-		ivel_new = ivel_old;
-		ivel_old = -1;
-	}
-	else{
-		int n = num_vel_opt;
-		while (n != 0)
-		{
-			int nmid = n >> 1;
-			int ivel_mid = (ivel_old + nmid) % vel_opt.size();
-			if (vel_opt[ivel_mid].t < t){
-				ivel_old = ivel_mid;
-				n -= nmid;
-			}
-			else{
-				ivel_new = ivel_mid;
-				n = nmid;
-			}
-		}
-	}
-
-	Mat Pvf, Pvb;
-	float uf, vf, ub, vb;
-	if (ivel_old >= 0){
-		s_vel_opt & v = vel_opt[ivel_old];
-		float dt = (float)((t - v.t) * (1. / (double)SEC));
-		Pvf = v.Pv + dt * Qv;
-		uf = v.u;
-		vf = v.v;
-	}
-
-	if ((both && ivel_new >= 0) || ivel_old < 0){
-		s_vel_opt & v = vel_opt[ivel_new];
-		float dt = (float)((v.t - t) * (1. / (double)SEC));
-		Pvb = v.Pv + dt * Qv;
-		ub = v.u;
-		vb = v.v;
-	}
-
-	if (both && ivel_new >= 0 && ivel_old >= 0){
-		Mat Pfi = Pvf.inv();
-		Mat Pbi = Pvb.inv();
-		Pv = (Pfi + Pbi).inv();
-		float * pPfi = Pfi.ptr<float>();
-		float * pPbi = Pbi.ptr<float>();
-		float _uf = (float)(pPfi[0] * uf + pPfi[1] * vf);
-		float _vf = (float)(pPfi[2] * uf + pPfi[3] * vf);
-		float _ub = (float)(pPbi[0] * ub + pPbi[1] * vb);
-		float _vb = (float)(pPbi[2] * ub + pPbi[3] * vb);
-		_uf += _ub;
-		_vf += _vb;
-		float * pPv = Pv.ptr<float>();
-		u = (float)(pPv[0] * _uf + pPv[1] * _vf);
-		v = (float)(pPv[2] * _uf + pPv[3] * _vf);
+  lock();
+  int ivel_new = (cur_vel_opt + vel_opt.size() - 1) % vel_opt.size();
+  int ivel_old = (ivel_new + num_vel_opt - 1) % vel_opt.size();
+  long long tnew = vel_opt[ivel_new].t;
+  long long told = vel_opt[ivel_old].t;
+  if (tnew < t){
+    ivel_old = ivel_new;
+    ivel_new = -1;
+  }
+  else if (told > t){
+    ivel_new = ivel_old;
+    ivel_old = -1;
+  }
+  else{
+    int n = num_vel_opt;
+    while (n != 0)
+      {
+	int nmid = n >> 1;
+	int ivel_mid = (ivel_old + nmid) % vel_opt.size();
+	if (vel_opt[ivel_mid].t < t){
+	  ivel_old = ivel_mid;
+	  n -= nmid;
 	}
 	else{
-		if (ivel_old >= 0){
-			u = ub;
-			v = vb;
-			Pv = Pvb;
-		}
-		else{
-			u = uf;
-			v = vf;
-			Pv = Pvf;
-		}
+	  ivel_new = ivel_mid;
+	  n = nmid;
 	}
-	unlock();
-	return true;
+      }
+  }
+  
+  Mat Pvf, Pvb;
+  float uf, vf, ub, vb;
+  if (ivel_old >= 0){
+    s_vel_opt & v = vel_opt[ivel_old];
+    float dt = (float)((t - v.t) * (1. / (double)SEC));
+    Pvf = v.Pv + dt * Qv;
+    uf = v.u;
+    vf = v.v;
+  }
+  
+  if ((both && ivel_new >= 0) || ivel_old < 0){
+    s_vel_opt & v = vel_opt[ivel_new];
+    float dt = (float)((v.t - t) * (1. / (double)SEC));
+    Pvb = v.Pv + dt * Qv;
+    ub = v.u;
+    vb = v.v;
+  }
+
+  if (both && ivel_new >= 0 && ivel_old >= 0){
+    Mat Pfi = Pvf.inv();
+    Mat Pbi = Pvb.inv();
+    Pv = (Pfi + Pbi).inv();
+    float * pPfi = Pfi.ptr<float>();
+    float * pPbi = Pbi.ptr<float>();
+    float _uf = (float)(pPfi[0] * uf + pPfi[1] * vf);
+    float _vf = (float)(pPfi[2] * uf + pPfi[3] * vf);
+    float _ub = (float)(pPbi[0] * ub + pPbi[1] * vb);
+    float _vb = (float)(pPbi[2] * ub + pPbi[3] * vb);
+    _uf += _ub;
+    _vf += _vb;
+    float * pPv = Pv.ptr<float>();
+    u = (float)(pPv[0] * _uf + pPv[1] * _vf);
+    v = (float)(pPv[2] * _uf + pPv[3] * _vf);
+  }
+  else{
+    if (ivel_old >= 0){
+      u = ub;
+      v = vb;
+      Pv = Pvb;
+    }
+    else{
+      u = uf;
+      v = vf;
+      Pv = Pvf;
+    }
+  }
+  unlock();
+  return true;
 }
 
 bool ch_estate::get_att(const long long t, float & roll, float & pitch, float & yaw)
 {
-	lock();
-	int iatt_new = (cur_att_opt + att_opt.size() - 1) % att_opt.size();
-	int iatt_old = (iatt_new + num_att_opt - 1) % att_opt.size();
-	long long tnew = att_opt[iatt_new].t;
-	long long told = att_opt[iatt_old].t;
-	if (tnew < t){
-		iatt_old = iatt_new;
-		iatt_new = -1;
-	}
-	else if (told > t){
-		iatt_new = iatt_old;
-		iatt_old = -1;
-	}
-	else{
-		int n = num_att_opt;
-		while (n != 0)
-		{
-			int nmid = n >> 1;
-			int iatt_mid = (iatt_old + nmid) % att_opt.size();
-			if (att_opt[iatt_mid].t < t){
-				iatt_old = iatt_mid;
-				n -= nmid;
-			}
-			else{
-				iatt_new = iatt_mid;
-				n = nmid;
-			}
-		}
-	}
-
-	if (iatt_old >= 0 && iatt_new > 0 && iatt_old != iatt_new){
-		s_att_opt & att_new = att_opt[iatt_new];
-		s_att_opt & att_old = att_opt[iatt_old];
-		float a = (float)((float)(att_new.t - t) / (float)(att_new.t - att_old.t));
-		float ia = 1.0 - a;
-
-		roll = ia * att_new.roll - a * att_old.roll;
-		pitch = ia * att_new.pitch - a * att_old.pitch;
-		yaw = ia * att_new.yaw - a * att_old.yaw;
-
-	}
-	else if (iatt_old >= 0){
-		s_att_opt & att_old = att_opt[iatt_old];
-		roll = att_old.roll;
-		pitch = att_old.pitch;
-		yaw = att_old.yaw;
+  lock();
+  int iatt_new = (cur_att_opt + att_opt.size() - 1) % att_opt.size();
+  int iatt_old = (iatt_new + num_att_opt - 1) % att_opt.size();
+  long long tnew = att_opt[iatt_new].t;
+  long long told = att_opt[iatt_old].t;
+  if (tnew < t){
+    iatt_old = iatt_new;
+    iatt_new = -1;
+  }
+  else if (told > t){
+    iatt_new = iatt_old;
+    iatt_old = -1;
+  }
+  else{
+    int n = num_att_opt;
+    while (n != 0)
+      {
+	int nmid = n >> 1;
+	int iatt_mid = (iatt_old + nmid) % att_opt.size();
+	if (att_opt[iatt_mid].t < t){
+	  iatt_old = iatt_mid;
+	  n -= nmid;
 	}
 	else{
-		s_att_opt & att_new = att_opt[iatt_new];
-		roll = att_new.roll;
-		pitch = att_new.pitch;
-		yaw = att_new.yaw;
+	  iatt_new = iatt_mid;
+	  n = nmid;
 	}
-	unlock();
-	return true;
+      }
+  }
+  
+  if (iatt_old >= 0 && iatt_new > 0 && iatt_old != iatt_new){
+    s_att_opt & att_new = att_opt[iatt_new];
+    s_att_opt & att_old = att_opt[iatt_old];
+    float a = (float)((float)(att_new.t - t) / (float)(att_new.t - att_old.t));
+    float ia = 1.0 - a;
+    
+    roll = ia * att_new.roll - a * att_old.roll;
+    pitch = ia * att_new.pitch - a * att_old.pitch;
+    yaw = ia * att_new.yaw - a * att_old.yaw;
+    
+  }
+  else if (iatt_old >= 0){
+    s_att_opt & att_old = att_opt[iatt_old];
+    roll = att_old.roll;
+    pitch = att_old.pitch;
+    yaw = att_old.yaw;
+  }
+  else{
+    s_att_opt & att_new = att_opt[iatt_new];
+    roll = att_new.roll;
+    pitch = att_new.pitch;
+    yaw = att_new.yaw;
+  }
+  unlock();
+  return true;
 }
 
 
 ///////////////////////////////////////////////////////////////////////// ch_state
 size_t ch_state::write_buf(const char * buf)
 {
-	lock();
-	const long long *lptr = (const long long*)buf;
-	tpos = lptr[0];
-	talt = lptr[1];
-	tatt = lptr[2];
-	tvel = lptr[3];
-	tdp = lptr[4];
-	twx = lptr[5];
+  lock();
+  const long long *lptr = (const long long*)buf;
+  tpos = lptr[0];
+  talt = lptr[1];
+  tatt = lptr[2];
+  tvel = lptr[3];
+  tdp = lptr[4];
+  twx = lptr[5];
 	
-	const float * ptr = (const float*)(lptr + 6);
-	roll = ptr[0];
-	pitch = ptr[1];
-	yaw = ptr[2];
-	lat = ptr[3];
-	lon = ptr[4];
-	alt = ptr[5];
-	x = ptr[6];
-	y = ptr[7];
-	z = ptr[8];
-	cog = ptr[9];
-	sog = ptr[10];
-	{
-	  float th = (float)(cog * (PI / 180.));
-	  nvx = (float)sin(th);
-	  nvy = (float)cos(th);
-	  float mps = (float)(sog * KNOT);
-	  vx = (float)(mps * nvx);
-	  vy = (float)(mps * nvy);
-	}
-	depth = ptr[11];
-	bar = ptr[12];
-	temp_air = ptr[13];
-	hmdr = ptr[14];
-	dew = ptr[15];
-	dir_wnd_t = ptr[16];
-	wspd_mps = ptr[17];
-	
-	const double * dptr = (const double*)(ptr + 18);
-	memcpy((void*)R.data, (void*)dptr, sizeof(double)* 9);
-
-	unlock();
-	return get_dsize();
+  const float * ptr = (const float*)(lptr + 6);
+  roll = ptr[0];
+  pitch = ptr[1];
+  yaw = ptr[2];
+  cog = ptr[3];
+  sog = ptr[4];
+  {
+    float th = (float)(cog * (PI / 180.));
+    nvx = (float)sin(th);
+    nvy = (float)cos(th);
+    float mps = (float)(sog * KNOT);
+    vx = (float)(mps * nvx);
+    vy = (float)(mps * nvy);
+  }
+  depth = ptr[5];
+  bar = ptr[6];
+  temp_air = ptr[7];
+  hmdr = ptr[8];
+  dew = ptr[9];
+  dir_wnd_t = ptr[10];
+  wspd_mps = ptr[11];
+  
+  const double * dptr = (const double*)(ptr + 12);
+  lat = dptr[0];
+  lon = dptr[1];
+  alt = dptr[2];
+  x = dptr[3];
+  y = dptr[4];
+  z = dptr[5];
+  memcpy((void*)R.data, (void*)(dptr+6), sizeof(double)* 9);
+  
+  unlock();
+  return get_dsize();
 }
 
 size_t ch_state::read_buf(char * buf)
@@ -353,24 +353,25 @@ size_t ch_state::read_buf(char * buf)
 	ptr[0] = roll;
 	ptr[1] = pitch;
 	ptr[2] = yaw;
-	ptr[3] = lat;
-	ptr[4] = lon;
-	ptr[5] = alt;
-	ptr[6] = x;
-	ptr[7] = y;
-	ptr[8] = z;
-	ptr[9] = cog;
-	ptr[10] = sog;
-	ptr[11] = depth;
-	ptr[12] =  bar;
-	ptr[13] = temp_air;
-	ptr[14] = hmdr;
-	ptr[15] = dew;
-	ptr[16] = dir_wnd_t;
-	ptr[17] = wspd_mps;
+	ptr[3] = cog;
+	ptr[4] = sog;
+	ptr[5] = depth;
+	ptr[6] =  bar;
+	ptr[7] = temp_air;
+	ptr[8] = hmdr;
+	ptr[9] = dew;
+	ptr[10] = dir_wnd_t;
+	ptr[11] = wspd_mps;
 	
-	double * dptr = (double*)(ptr + 18);
-	memcpy((void*)dptr, (void*)R.data, sizeof(double)* 9);
+	double * dptr = (double*)(ptr + 12);
+	ptr[0] = lat;
+	ptr[1] = lon;
+	ptr[2] = alt;
+	ptr[3] = x;
+	ptr[4] = y;
+	ptr[5] = z;
+
+	memcpy((void*)dptr, (void*)(R.data+6), sizeof(double)* 9);
 	unlock();
 	return get_dsize();
 }
@@ -392,12 +393,12 @@ int ch_state::write(FILE * pf, long long tcur)
   fwrite((void*)&tcur, sizeof(long long), 1, pf);
   fwrite((void*)&tpos, sizeof(long long), 1, pf);
 
-  fwrite((void*)&lat, sizeof(float), 1, pf);
-  fwrite((void*)&lon, sizeof(float), 1, pf);
+  fwrite((void*)&lat, sizeof(double), 1, pf);
+  fwrite((void*)&lon, sizeof(double), 1, pf);
   tposf = tpos;
   
   fwrite((void*)&talt, sizeof(long long), 1, pf);	
-  fwrite((void*)&alt, sizeof(float), 1, pf);
+  fwrite((void*)&alt, sizeof(double), 1, pf);
 
   sz += sizeof(float)* 3;
 
@@ -474,11 +475,11 @@ int ch_state::read(FILE * pf, long long tcur)
     res += fread((void*)&m_tfile, sizeof(long long), 1, pf);
     
     res += fread((void*)&tposf, sizeof(long long), 1, pf);
-    res += fread((void*)&latf, sizeof(float), 1, pf);
-    res += fread((void*)&lonf, sizeof(float), 1, pf);
+    res += fread((void*)&latf, sizeof(double), 1, pf);
+    res += fread((void*)&lonf, sizeof(double), 1, pf);
 
     res += fread((void*)&taltf, sizeof(long long), 1, pf);
-    res += fread((void*)&altf, sizeof(float), 1, pf);
+    res += fread((void*)&altf, sizeof(double), 1, pf);
     
     res += fread((void*)&tattf, sizeof(long long), 1, pf);
     res += fread((void*)&rollf, sizeof(float), 1, pf);
@@ -515,8 +516,8 @@ bool ch_state::log2txt(FILE * pbf, FILE * ptf)
     res += fread((void*)&m_tfile, sizeof(long long), 1, pbf);
     
     res += fread((void*)&t, sizeof(long long), 1, pbf);
-    res += fread((void*)&lat, sizeof(float), 1, pbf);
-    res += fread((void*)&lon, sizeof(float), 1, pbf);
+    res += fread((void*)&lat, sizeof(double), 1, pbf);
+    res += fread((void*)&lon, sizeof(double), 1, pbf);
     tposf = tpos = t;
     
     res += fread((void*)&t, sizeof(long long), 1, pbf);
@@ -548,7 +549,7 @@ bool ch_state::log2txt(FILE * pbf, FILE * ptf)
     res += fread((void*)&wspd_mps, sizeof(float), 1, pbf);        
     twxf = twx = t;
     
-    fprintf(ptf, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %+013.8f, %+013.8f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f,%+06.1f,%+06.1f,%+06.1f,%+06.1f \n",
+    fprintf(ptf, "%lld, %lld, %lld, %lld, %lld, %lld, %lld, %+013.8lf, %+013.8lf, %+06.1lf, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f, %+06.1f,%+06.1f,%+06.1f,%+06.1f,%+06.1f \n",
 	    m_tfile, tpos, talt, tatt, tvel, tdp, twx, lat, lon, alt, yaw, pitch, roll, cog, sog, depth, bar, temp_air, hmdr, dew, dir_wnd_t, wspd_mps);
   }
   return true;

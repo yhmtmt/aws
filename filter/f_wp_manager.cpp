@@ -74,7 +74,7 @@ bool f_wp_manager::proc()
   long long t = 0;
   m_state->get_velocity(t, cog, sog);
   Mat Rorg;
-  Point3f Porg;
+  Point3d Porg;
   Rorg = m_state->get_enu_rotation(t);
   m_state->get_position_ecef(t, Porg.x, Porg.y, Porg.z);
   

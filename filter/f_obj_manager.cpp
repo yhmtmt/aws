@@ -63,28 +63,28 @@ void f_obj_manager::destroy_run()
 
 bool f_obj_manager::proc()
 {
-	Mat Renu;
-	float x, y, z;
-	float r, p;
-	float vox, voy;
-	long long t = 0;
-	Renu = m_state->get_enu_rotation(t);
-	m_state->get_position_ecef(t, x, y, z);
-	m_state->get_velocity_vector(t, vox, voy);
-
-	if(m_ais_obj){
-		// update enu coordinate
-		if(!Renu.empty()){
-			m_ais_obj->update_rel_pos_and_vel(Renu, x, y, z);
-			m_ais_obj->remove_old(get_time() - m_dtold);
-			m_ais_obj->remove_out(m_range);
-		}
-		m_ais_obj->reset_updates();
-		m_ais_obj->calc_tdcpa(t, vox, voy);
-	}
-
-	if(m_obj){
-	}
-
-	return true;
+  Mat Renu;
+  double x, y, z;
+  float r, p;
+  float vox, voy;
+  long long t = 0;
+  Renu = m_state->get_enu_rotation(t);
+  m_state->get_position_ecef(t, x, y, z);
+  m_state->get_velocity_vector(t, vox, voy);
+  
+  if(m_ais_obj){
+    // update enu coordinate
+    if(!Renu.empty()){
+      m_ais_obj->update_rel_pos_and_vel(Renu, x, y, z);
+      m_ais_obj->remove_old(get_time() - m_dtold);
+      m_ais_obj->remove_out(m_range);
+    }
+    m_ais_obj->reset_updates();
+    m_ais_obj->calc_tdcpa(t, vox, voy);
+  }
+  
+  if(m_obj){
+  }
+  
+  return true;
 }

@@ -122,7 +122,7 @@ bool f_radar_sim::proc()
     }
     
     long long tpos;
-    float lat, lon;
+    double lat, lon;
     state->get_position(tpos, lat, lon);
     radar_image->set_spoke(tpos, lat, lon,
 			   spoke_next,

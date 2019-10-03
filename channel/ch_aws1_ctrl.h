@@ -598,7 +598,7 @@ public:
     return brpos;
   }
   
-  void update_pos_rel(const Mat & Rorg, float & xorg, float & yorg, float & zorg)
+  void update_pos_rel(const Mat & Rorg, double & xorg, double & yorg, double & zorg)
   {
     lock();
     eceftowrld(Rorg, xorg, yorg, zorg, x_stay, y_stay, z_stay, rx_stay, ry_stay, rz_stay);

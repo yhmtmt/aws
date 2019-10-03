@@ -1135,7 +1135,7 @@ bool LayerData::merge(const LayerData & layerData)
   {
   }
 
-  bool Points::save(ofsteram & ofile)
+  bool Points::save(ofstream & ofile)
   {
   }
 

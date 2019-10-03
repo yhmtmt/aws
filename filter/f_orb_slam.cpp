@@ -2809,9 +2809,9 @@ namespace ORB_SLAM2
 			long long tatt, tpos, tecef, tvel;
 			float roll, pitch, yaw;
 			m_ch_state->get_attitude(tatt, roll, pitch, yaw);
-			float lat, lon, alt, galt;
+			double lat, lon;
 			m_ch_state->get_position(tpos, lat, lon);
-			float xecef, yecef, zecef;
+			double xecef, yecef, zecef;
 			m_ch_state->get_position_ecef(tecef, xecef, yecef, zecef);
 			float cog, sog;
 			m_ch_state->get_velocity(tvel, cog, sog);
@@ -2841,7 +2841,7 @@ namespace ORB_SLAM2
 			y -= 2 * hfont;
 
 			dt = (int)(tpos - m_cur_time);
-			snprintf(buf, 1024, "t %+10d lat %+3.8f lon %+3.8f alt %+3.3f", dt, lat, lon, alt);
+			snprintf(buf, 1024, "t %+10d lat %+3.8f lon %+3.8f", dt, lat, lon);
 			drawGlText(x, y, buf, 0, 1, 0, 1, GLUT_BITMAP_8_BY_13);
 			y -= 2 * hfont;
 

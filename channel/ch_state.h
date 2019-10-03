@@ -21,8 +21,8 @@
 
 struct s_pos_opt{
 	long long t;
-	float lat, lon, alt;
-	float xecef, yecef, zecef;
+	double lat, lon, alt;
+	double xecef, yecef, zecef;
 	Mat Renu, Penu, Pecef;
 	s_pos_opt():t(0), lat(0), lon(0), alt(0), xecef(0), yecef(0), zecef(0), Renu(), Penu(), Pecef(){}
 	s_pos_opt(const s_pos_opt & p) :t(p.t), lat(p.lat), lon(p.lon), alt(p.alt), 
@@ -55,135 +55,137 @@ struct s_att_opt{
 class ch_estate : public ch_base
 {
 protected:
-	int cur_pos_opt;
-	int num_pos_opt;
-	vector<s_pos_opt> pos_opt;
+  int cur_pos_opt;
+  int num_pos_opt;
+  vector<s_pos_opt> pos_opt;
 
 
-	int cur_vel_opt;
-	int num_vel_opt;
-	vector<s_vel_opt> vel_opt;
+  int cur_vel_opt;
+  int num_vel_opt;
+  vector<s_vel_opt> vel_opt;
+  
 
-
-	int cur_att_opt;
-	int num_att_opt;
-	vector<s_att_opt> att_opt;
-public:
-	ch_estate(const char * name) :ch_base(name)
-	{
-		cur_pos_opt = num_pos_opt = 0;
-		cur_vel_opt = num_vel_opt = 0;
-		pos_opt.resize(100);
-		vel_opt.resize(100);
-	}
-	virtual ~ch_estate()
-	{
-	}
-
-	void set_pos_opt(const long long _t, const float _lat, const float _lon, const float _alt,
-		const float _x, const float _y, const float _z, const Mat & Pecef, const Mat & Penu, const Mat & Renu)
-	{
-		lock();
-		s_pos_opt & p = pos_opt[cur_pos_opt];
-		p.t = _t;
-		p.lat = _lat;
-		p.lon = _lon;
-		p.alt = _alt;
-		p.xecef = _x;
-		p.yecef = _y;
-		p.zecef = _z;
-		p.Pecef = Pecef.clone();
-		p.Penu = Penu.clone();
-		p.Renu = Renu.clone();
-		cur_pos_opt++;
-		if (cur_pos_opt == pos_opt.size())
-			cur_pos_opt = 0;
-		if (num_pos_opt < pos_opt.size())
-			num_pos_opt++;
-
-		unlock();
-	}
+  int cur_att_opt;
+  int num_att_opt;
+  vector<s_att_opt> att_opt;
+ public:
+ ch_estate(const char * name) :ch_base(name)
+  {
+    cur_pos_opt = num_pos_opt = 0;
+    cur_vel_opt = num_vel_opt = 0;
+    pos_opt.resize(100);
+    vel_opt.resize(100);
+  }
+  virtual ~ch_estate()
+    {
+    }
+  
+  void set_pos_opt(const long long _t,
+		   const double _lat, const double _lon, const float _alt,
+		   const double _x, const double _y, const double _z,
+		   const Mat & Pecef, const Mat & Penu, const Mat & Renu)
+  {
+    lock();
+    s_pos_opt & p = pos_opt[cur_pos_opt];
+    p.t = _t;
+    p.lat = _lat;
+    p.lon = _lon;
+    p.alt = _alt;
+    p.xecef = _x;
+    p.yecef = _y;
+    p.zecef = _z;
+    p.Pecef = Pecef.clone();
+    p.Penu = Penu.clone();
+    p.Renu = Renu.clone();
+    cur_pos_opt++;
+    if (cur_pos_opt == pos_opt.size())
+      cur_pos_opt = 0;
+    if (num_pos_opt < pos_opt.size())
+      num_pos_opt++;
+    
+    unlock();
+  }
 	
-	void get_pos_opt(vector<s_pos_opt> & _pos_opt)
-	{
-		lock();
-		_pos_opt.resize(num_pos_opt);
-	
-		for (int i = 0, ipos = (int)((cur_pos_opt + pos_opt.size() - 1) % pos_opt.size());
-			i < num_pos_opt; i++, ipos = (int)((ipos + pos_opt.size() - 1) % pos_opt.size())){
-			_pos_opt[i].t = pos_opt[ipos].t;
-			_pos_opt[i].alt = pos_opt[ipos].alt;
-			_pos_opt[i].lat = pos_opt[ipos].lat;
-			_pos_opt[i].lon = pos_opt[ipos].lon;
-			_pos_opt[i].xecef = pos_opt[ipos].xecef;
-			_pos_opt[i].yecef = pos_opt[ipos].yecef;
-			_pos_opt[i].zecef = pos_opt[ipos].zecef;
-			_pos_opt[i].Pecef = pos_opt[ipos].Pecef.clone();
-			_pos_opt[i].Penu = pos_opt[ipos].Penu.clone();
-			_pos_opt[i].Renu = pos_opt[ipos].Renu.clone();
-		}
-		unlock();
-	}
+  void get_pos_opt(vector<s_pos_opt> & _pos_opt)
+  {
+    lock();
+    _pos_opt.resize(num_pos_opt);
+    
+    for (int i = 0, ipos = (int)((cur_pos_opt + pos_opt.size() - 1) % pos_opt.size());
+	 i < num_pos_opt; i++, ipos = (int)((ipos + pos_opt.size() - 1) % pos_opt.size())){
+      _pos_opt[i].t = pos_opt[ipos].t;
+      _pos_opt[i].alt = pos_opt[ipos].alt;
+      _pos_opt[i].lat = pos_opt[ipos].lat;
+      _pos_opt[i].lon = pos_opt[ipos].lon;
+      _pos_opt[i].xecef = pos_opt[ipos].xecef;
+      _pos_opt[i].yecef = pos_opt[ipos].yecef;
+      _pos_opt[i].zecef = pos_opt[ipos].zecef;
+      _pos_opt[i].Pecef = pos_opt[ipos].Pecef.clone();
+      _pos_opt[i].Penu = pos_opt[ipos].Penu.clone();
+      _pos_opt[i].Renu = pos_opt[ipos].Renu.clone();
+    }
+    unlock();
+  }
 
-	bool get_pos(const long long t, const Mat & Qv, const Mat & Qx,
-		float & lat, float & lon, float & alt,
-		float & xecef, float & yecef, float & zecef,
-		Mat & Pecef, Mat & Renu, bool both = false);
+  bool get_pos(const long long t, const Mat & Qv, const Mat & Qx,
+	       double & lat, double & lon, double & alt,
+	       double & xecef, double & yecef, double & zecef,
+	       Mat & Pecef, Mat & Renu, bool both = false);
+  
+  Mat calc_Pecef(const Mat & Renu, const Mat & Penu){
+    Mat Pecef = Mat::zeros(3, 3, CV_64FC1);
+    Pecef.at<double>(0, 0) = Penu.at<double>(0, 0);
+    Pecef.at<double>(0, 1) = Penu.at<double>(0, 1);
+    Pecef.at<double>(1, 0) = Penu.at<double>(1, 0);
+    Pecef.at<double>(1, 1) = Penu.at<double>(1, 1);
+    Pecef = Renu.t() * Pecef * Renu;
+    return Pecef;
+  }
 
-	Mat calc_Pecef(const Mat & Renu, const Mat & Penu){
-		Mat Pecef = Mat::zeros(3, 3, CV_32FC1);
-		Mat Renuf;
-		Renu.convertTo(Renuf, CV_32FC1);
-		Pecef.at<float>(0, 0) = Penu.at<float>(0, 0);
-		Pecef.at<float>(0, 1) = Penu.at<float>(0, 1);
-		Pecef.at<float>(1, 0) = Penu.at<float>(1, 0);
-		Pecef.at<float>(1, 1) = Penu.at<float>(1, 1);
-		Pecef = Renuf.t() * Pecef * Renuf;
-		return Pecef;
-	}
+  void set_vel_opt(const long long _t, const float _u, const float _v, 
+		   const float _cog, const float _sog, const Mat & Pv)
+  {
+    lock();
+    s_vel_opt & v = vel_opt[cur_vel_opt];
+    v.t = _t;
+    v.u = _u;
+    v.v = _v;
+    v.cog = _cog;
+    v.sog = _sog;
+    v.Pv = Pv.clone();
+    cur_vel_opt++;
+    if (cur_vel_opt == vel_opt.size())
+      cur_vel_opt = 0;
+    
+    if (num_vel_opt < vel_opt.size())
+      num_vel_opt++;
+    
+    unlock();
+  }
 
-	void set_vel_opt(const long long _t, const float _u, const float _v, 
-		const float _cog, const float _sog, const Mat & Pv)
-	{
-		lock();
-		s_vel_opt & v = vel_opt[cur_vel_opt];
-		v.t = _t;
-		v.u = _u;
-		v.v = _v;
-		v.cog = _cog;
-		v.sog = _sog;
-		v.Pv = Pv.clone();
-		cur_vel_opt++;
-		if (cur_vel_opt == vel_opt.size())
-			cur_vel_opt = 0;
+  bool get_vel(const long long t, const Mat & Qv,
+	       float & u, float & v, Mat & Pv, bool both = false);
 
-		if (num_vel_opt < vel_opt.size())
-			num_vel_opt++;
+  void set_att_opt(const long long t,
+		   const float & roll, const float & pitch, const float & yaw)
+  {
+    lock();
+    s_att_opt & at = att_opt[cur_att_opt];
+    at.t = t;
+    at.roll = roll;
+    at.pitch = pitch;
+    at.yaw = yaw;
+    cur_att_opt++;
+    if (cur_att_opt == att_opt.size())
+      cur_att_opt = 0;
+    
+    if (num_att_opt < att_opt.size())
+      num_att_opt++;
+    
+    unlock();
+  }
 
-		unlock();
-	}
-
-	bool get_vel(const long long t, const Mat & Qv, float & u, float & v, Mat & Pv, bool both = false);
-
-	void set_att_opt(const long long t, const float & roll, const float & pitch, const float & yaw)
-	{
-		lock();
-		s_att_opt & at = att_opt[cur_att_opt];
-		at.t = t;
-		at.roll = roll;
-		at.pitch = pitch;
-		at.yaw = yaw;
-		cur_att_opt++;
-		if (cur_att_opt == att_opt.size())
-			cur_att_opt = 0;
-
-		if (num_att_opt < att_opt.size())
-			num_att_opt++;
-
-		unlock();
-	}
-
-	bool get_att(const long long t, float & roll, float & pitch, float & yaw);
+  bool get_att(const long long t, float & roll, float & pitch, float & yaw);
 };
 
 // state channel contains row sensor data.
@@ -193,7 +195,7 @@ class ch_state: public ch_base
   long long tatt, tpos, talt, tvel, twx, tdp;
   long long tattf, tposf, taltf, tvelf, twxf, tdpf;
   float roll, pitch, yaw; // roll(deg), pitch(deg), yaw(deg)
-  float lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
+  double lon, lat, alt, galt; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
   float x, y, z; // ecef coordinate
   Mat R, Rret; // Rotation matrix for ENU transformation
   float cog, sog; // Course over ground(deg), Speed over ground (kts)
@@ -202,8 +204,8 @@ class ch_state: public ch_base
   float depth; // water depth
   long long m_tfile;
   float rollf, pitchf, yawf; // roll(deg), pitch(deg), yaw(deg)
-  float lonf, latf, altf, galtf; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
-  float xf, yf, zf; // ecef coordinate
+  double lonf, latf, altf, galtf; // longitude(deg), latitude(deg), altitude(m), geoid altitude(m)
+  double xf, yf, zf; // ecef coordinate
   float cogf, sogf; // Course over ground(deg), Speed over ground (kts)
   float depthf; // water depth
 
@@ -288,19 +290,19 @@ class ch_state: public ch_base
   }
 
 
-  void set_position(const long long _tpos, const float _lat, const float _lon)
+  void set_position(const long long _tpos, const double _lat, const double _lon)
   {
     lock();
     tpos = _tpos;
     lat = _lat;
     lon = _lon;
-    float lat_rad = (float)(lat * (PI / 180.)), lon_rad = (float)(lon * (PI / 180.));
+    double lat_rad = (lat * (PI / 180.)), lon_rad = (lon * (PI / 180.));
     getwrldrot(lat_rad, lon_rad, R);
     bihtoecef(lat_rad, lon_rad, alt, x, y, z);
     unlock();
   }
 
-  void set_alt(const long long _talt, const float _alt)
+  void set_alt(const long long _talt, const double _alt)
   {
     lock();
     talt = _talt;
@@ -379,8 +381,8 @@ class ch_state: public ch_base
     unlock();
   }
 
-  void get_position(long long & _tpos, float & _lat, float & _lon, 
-	  float & _x, float & _y, float & _z, Mat & Renu)
+  void get_position(long long & _tpos, double & _lat, double & _lon, 
+	  double & _x, double & _y, double & _z, Mat & Renu)
   {
     lock();
     _tpos = tpos;
@@ -393,7 +395,7 @@ class ch_state: public ch_base
     unlock();
   }
 
-  void get_position(long long & _tpos, float & _lat, float & _lon)
+  void get_position(long long & _tpos, double & _lat, double & _lon)
   {
     lock();
     _tpos = tpos;
@@ -402,7 +404,7 @@ class ch_state: public ch_base
     unlock();
   }
 
-  void get_position_ecef(long long & _tpos, float & _x, float & _y, float & _z)
+  void get_position_ecef(long long & _tpos, double & _x, double & _y, double & _z)
   {
     lock();
     _tpos = tpos;
@@ -460,7 +462,7 @@ class ch_state: public ch_base
   
   virtual size_t get_dsize()
   {
-    return sizeof(long long) * 6 + sizeof(float) * 18 + sizeof(double) * 9;
+    return sizeof(long long) * 6 + sizeof(float) * 12 + sizeof(double) * 15;
   }
   
   virtual size_t write_buf(const char *buf);

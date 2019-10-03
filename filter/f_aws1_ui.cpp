@@ -1002,7 +1002,7 @@ bool f_aws1_ui::proc()
   // loading states
   long long t = 0;
   float roll, pitch, yaw, cog, sog, vx, vy;
-  float xown, yown, zown;
+  double xown, yown, zown;
   m_state->get_attitude(t, roll, pitch, yaw);
 
   roll = min(max(-180.f, roll),180.f);
@@ -1017,7 +1017,7 @@ bool f_aws1_ui::proc()
   m_state->get_velocity_vector(t, vx, vy);
   m_state->get_position_ecef(t, xown, yown, zown);
   
-  float lat, lon, alt, galt;
+  double lat, lon;
   Mat Rown = m_state->get_enu_rotation(t);
   m_state->get_position(t, lat, lon);
 
@@ -1822,7 +1822,7 @@ void f_aws1_ui::update_ctrl_mode_box(c_ctrl_mode_box * pcm_box)
       m_ch_ap_inst->set_mode(EAP_STAY);
       {
 	long long t; 
-	float lat, lon, alt, galt;
+	double lat, lon;
 	m_state->get_position(t, lat, lon);
 	m_ch_ap_inst->set_stay_pos(lat, lon);
       }

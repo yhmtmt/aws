@@ -404,7 +404,7 @@ bool f_aws1_ap::proc()
   float cog, sog, rpm, roll, pitch, yaw;  
   s_aws1_ctrl_stat stat;
   Mat Rorg;
-  Point3f Porg;
+  Point3d Porg;
   unsigned char trim;
   long long t = 0;
   long long teng = 0;
@@ -702,7 +702,7 @@ void f_aws1_ap::stay(const float sog, const float cog, const float yaw)
   { // updating relative position of the stay point.
     long long t;
     Mat Rorg;
-    float xorg, yorg, zorg;
+    double xorg, yorg, zorg;
     Rorg = m_state->get_enu_rotation(t);
     m_state->get_position_ecef(t, xorg, yorg, zorg);
     m_ap_inst->update_pos_rel(Rorg, xorg, yorg, zorg);
