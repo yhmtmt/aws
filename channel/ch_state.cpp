@@ -371,7 +371,7 @@ size_t ch_state::read_buf(char * buf)
 	dptr[4] = y;
 	dptr[5] = z;
 
-	memcpy((void*)dptr, (void*)(R.data+6), sizeof(double)* 9);
+	memcpy((void*)(dptr+6), (void*)(R.data), sizeof(double)* 9);
 	unlock();
 	return get_dsize();
 }
