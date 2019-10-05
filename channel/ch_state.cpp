@@ -364,12 +364,12 @@ size_t ch_state::read_buf(char * buf)
 	ptr[11] = wspd_mps;
 	
 	double * dptr = (double*)(ptr + 12);
-	ptr[0] = lat;
-	ptr[1] = lon;
-	ptr[2] = alt;
-	ptr[3] = x;
-	ptr[4] = y;
-	ptr[5] = z;
+	dptr[0] = lat;
+	dptr[1] = lon;
+	dptr[2] = alt;
+	dptr[3] = x;
+	dptr[4] = y;
+	dptr[5] = z;
 
 	memcpy((void*)dptr, (void*)(R.data+6), sizeof(double)* 9);
 	unlock();
